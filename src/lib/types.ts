@@ -1,0 +1,55 @@
+export type Product = {
+  id: string;
+  name: string;
+  sku: string;
+  stock: number;
+  price: number;
+  cost: number;
+  category: string;
+  status: 'active' | 'inactive';
+  imageUrl: string;
+  imageHint: string;
+  tax1: boolean;
+  tax2: boolean;
+};
+
+export type InventoryMovement = {
+  id: string;
+  productName: string;
+  type: 'sale' | 'purchase' | 'adjustment';
+  quantity: number;
+  date: string;
+};
+
+export type Sale = {
+  id: string;
+  customerName: string;
+  items: {
+    productId: string;
+    productName: string;
+    quantity: number;
+    price: number;
+  }[];
+  total: number;
+  date: string;
+};
+
+export type Purchase = {
+    id: string;
+    supplier: string;
+    items: {
+        productId: string;
+        productName: string;
+        quantity: number;
+        cost: number;
+    }[];
+    total: number;
+    date: string;
+};
+
+export type Customer = {
+    id: string;
+    name: string;
+    email?: string;
+    phone?: string;
+}

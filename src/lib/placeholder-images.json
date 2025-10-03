@@ -1,3 +1,40 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "1",
+      "description": "A professional laptop on a clean desk.",
+      "imageUrl": "https://images.unsplash.com/photo-1453928582365-b6ad33cbcf64?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxsYXB0b3AlMjBkZXNrfGVufDB8fHx8MTc1OTM4Mzg4OHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "laptop desk"
+    },
+    {
+      "id": "2",
+      "description": "A sleek wireless mouse.",
+      "imageUrl": "https://images.unsplash.com/photo-1631749352020-b8ce2d86727e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHx3aXJlbGVzcyUyMG1vdXNlfGVufDB8fHx8MTc1OTQzODYzNnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "wireless mouse"
+    },
+    {
+      "id": "3",
+      "description": "A mechanical keyboard with RGB lighting.",
+      "imageUrl": "https://images.unsplash.com/photo-1618586810102-aaa7049200c0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxtZWNoYW5pY2FsJTIwa2V5Ym9hcmR8ZW58MHx8fHwxNzU5Mzk3NzYyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "mechanical keyboard"
+    },
+    {
+      "id": "4",
+      "description": "A high-resolution 4K monitor displaying vibrant colors.",
+      "imageUrl": "https://images.unsplash.com/photo-1675151638960-fc1513f8021e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHw0ayUyMG1vbml0b3J8ZW58MHx8fHwxNzU5NDYwOTU3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "4k monitor"
+    },
+    {
+      "id": "5",
+      "description": "A compact USB-C hub with multiple ports.",
+      "imageUrl": "https://images.unsplash.com/photo-1759106397919-1bfd8a419213?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHx1c2JjJTIwaHVifGVufDB8fHx8MTc1OTQ2MDk1N3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "usbc hub"
+    },
+    {
+      "id": "6",
+      "description": "A high-definition webcam mounted on a monitor.",
+      "imageUrl": "https://images.unsplash.com/photo-1636569826709-8e07f6104992?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxoZCUyMHdlYmNhbXxlbnwwfHx8fDE3NTk0MTI1MDh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "hd webcam"
+    }
+  ]
 }
