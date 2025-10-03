@@ -13,11 +13,12 @@ import { mockProducts } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import type { Product, CartItem, Customer } from "@/lib/types";
+import type { Product, CartItem, Customer, Sale } from "@/lib/types";
 import { TicketPreview } from "@/components/ticket-preview";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const initialCustomers: Customer[] = [
     { id: 'eventual', name: 'Cliente Eventual' },
@@ -34,6 +35,11 @@ export default function POSPage() {
   const [newCustomer, setNewCustomer] = useState({ id: '', name: '', phone: '', address: '' });
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [isCustomerSearchOpen, setIsCustomerSearchOpen] = useState(false);
+
+  const [isProcessSaleDialogOpen, setIsProcessSaleDialogOpen] = useState(false);
+  const [transactionType, setTransactionType] = useState<'contado' | 'credito'>('contado');
+  const [paymentMethod, setPaymentMethod] = useState<string>('efectivo');
+  const [lastSale, setLastSale] = useState<Sale | null>(null);
   
   const selectedCustomer = customers.find(c => c.id === selectedCustomerId) ?? null;
 
@@ -85,7 +91,7 @@ export default function POSPage() {
   const taxes = subtotal * 0.13; // Example 13% tax
   const total = subtotal + taxes;
 
-  const handleProcessSale = () => {
+  const handleProcessSale = (andPrint: boolean) => {
      if (cartItems.length === 0) {
       toast({
         variant: "destructive",
@@ -94,11 +100,41 @@ export default function POSPage() {
       });
       return;
     }
+
+    const saleId = `SALE-${Date.now()}`;
+    const newSale: Sale = {
+        id: saleId,
+        customerName: selectedCustomer?.name ?? 'Cliente Eventual',
+        items: cartItems.map(item => ({
+            productId: item.product.id,
+            productName: item.product.name,
+            quantity: item.quantity,
+            price: item.product.price
+        })),
+        total: total,
+        date: new Date().toISOString(),
+        transactionType: transactionType,
+        paymentMethod: transactionType === 'contado' ? paymentMethod : undefined,
+    }
+    
+    setLastSale(newSale);
+    // Here you would typically save the `newSale` object to your database.
+    console.log("Processing sale:", newSale);
+
+
     toast({
       title: "Venta Procesada",
-      description: "La venta ha sido registrada exitosamente.",
+      description: `La venta ${saleId} ha sido registrada exitosamente.`,
     });
+    
     setCartItems([]);
+    setIsProcessSaleDialogOpen(false);
+
+    if (andPrint) {
+      setTimeout(() => {
+        setIsPrintPreviewOpen(true);
+      }, 100);
+    }
   }
 
   const handleAddNewCustomer = () => {
@@ -371,9 +407,66 @@ export default function POSPage() {
             )}
           </CardContent>
           <CardFooter className="flex flex-col gap-2">
-            <Button className="w-full bg-primary hover:bg-primary/90" size="lg" onClick={handleProcessSale} disabled={cartItems.length === 0}>
-              Procesar Venta
-            </Button>
+             <Dialog open={isProcessSaleDialogOpen} onOpenChange={setIsProcessSaleDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button className="w-full bg-primary hover:bg-primary/90" size="lg" disabled={cartItems.length === 0}>
+                        Procesar Venta
+                    </Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Finalizar Venta</DialogTitle>
+                        <DialogDescription>
+                            Selecciona el tipo de transacción y método de pago.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-6 py-4">
+                        <div className="space-y-2">
+                            <Label>Tipo de Transacción</Label>
+                            <RadioGroup defaultValue="contado" value={transactionType} onValueChange={(value: 'contado' | 'credito') => setTransactionType(value)}>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="contado" id="contado" />
+                                    <Label htmlFor="contado">Contado</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="credito" id="credito" />
+                                    <Label htmlFor="credito">Crédito</Label>
+                                </div>
+                            </RadioGroup>
+                        </div>
+                        {transactionType === 'contado' && (
+                            <div className="space-y-2">
+                                <Label>Método de Pago</Label>
+                                <RadioGroup defaultValue="efectivo" value={paymentMethod} onValueChange={setPaymentMethod}>
+                                    <div className="flex flex-col space-y-2">
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="efectivo" id="efectivo" />
+                                            <Label htmlFor="efectivo">Efectivo</Label>
+                                        </div>
+                                         <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="transferencia" id="transferencia" />
+                                            <Label htmlFor="transferencia">Transferencia</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="pago-movil" id="pago-movil" />
+                                            <Label htmlFor="pago-movil">Pago Móvil</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="tarjeta" id="tarjeta" />
+                                            <Label htmlFor="tarjeta">Tarjeta</Label>
+                                        </div>
+                                    </div>
+                                </RadioGroup>
+                            </div>
+                        )}
+                    </div>
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button variant="outline" onClick={() => handleProcessSale(false)}>Guardar Venta</Button>
+                        <Button onClick={() => handleProcessSale(true)}>Guardar e Imprimir</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             <Button className="w-full" variant="outline" size="lg" onClick={() => setIsPrintPreviewOpen(true)} disabled={cartItems.length === 0}>
               <Printer className="mr-2 h-4 w-4" />
               Imprimir Ticket
@@ -382,7 +475,7 @@ export default function POSPage() {
         </Card>
       </div>
     </div>
-    {cartItems.length > 0 && (
+    {(cartItems.length > 0 || lastSale) && (
       <TicketPreview
         isOpen={isPrintPreviewOpen}
         onOpenChange={setIsPrintPreviewOpen}
@@ -392,9 +485,11 @@ export default function POSPage() {
         total={total}
         storeName="TIENDA FACIL WEB"
         customer={selectedCustomer}
+        saleId={lastSale?.id}
       />
     )}
   </>
   );
 }
 
+    

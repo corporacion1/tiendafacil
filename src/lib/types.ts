@@ -1,3 +1,4 @@
+
 export type Product = {
   id: string;
   name: string;
@@ -38,6 +39,8 @@ export type Sale = {
   }[];
   total: number;
   date: string;
+  transactionType: 'contado' | 'credito';
+  paymentMethod?: string;
 };
 
 export type Purchase = {
@@ -59,3 +62,5 @@ export type Customer = {
     phone?: string;
     address?: string;
 }
+
+    
