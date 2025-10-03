@@ -173,7 +173,7 @@ export default function SettingsPage() {
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                             <div className="space-y-2">
                                 <Label htmlFor="tax-1">Impuesto 1 (%)</Label>
-                                <Input id="tax-1" type="number" placeholder="Ej: 13" defaultValue="13" />
+                                <Input id="tax-1" type="number" placeholder="Ej: 16" defaultValue="16" />
                                 <CardDescription>Impuesto general sobre las ventas (IVA).</CardDescription>
                             </div>
                             <div className="space-y-2">
@@ -300,3 +300,5 @@ export default function SettingsPage() {
         </Dialog>
     );
 }
+
+    
