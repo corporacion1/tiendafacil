@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { mockProducts } from "@/lib/data";
 
 const productSchema = z.object({
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres."),
@@ -43,6 +44,17 @@ export default function ProductsPage() {
   });
 
   function onSubmit(data: z.infer<typeof productSchema>) {
+    const existingProduct = mockProducts.find(product => product.sku.toLowerCase() === data.sku.toLowerCase());
+
+    if (existingProduct) {
+      toast({
+        variant: "destructive",
+        title: "SKU Duplicado",
+        description: `Ya existe un producto con el SKU "${data.sku}". Por favor, usa un SKU diferente.`,
+      });
+      return;
+    }
+
     console.log(data);
     toast({
       title: "Producto Creado",
@@ -65,12 +77,12 @@ export default function ProductsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 control={form.control}
-                name="name"
+                name="sku"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nombre del Producto</FormLabel>
+                    <FormLabel>SKU (Código)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ej: Laptop Pro" {...field} />
+                      <Input placeholder="Ej: LP-001" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -78,12 +90,12 @@ export default function ProductsPage() {
               />
               <FormField
                 control={form.control}
-                name="sku"
+                name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>SKU (Código)</FormLabel>
+                    <FormLabel>Nombre del Producto</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ej: LP-001" {...field} />
+                      <Input placeholder="Ej: Laptop Pro" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
