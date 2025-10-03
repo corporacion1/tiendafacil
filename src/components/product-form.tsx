@@ -74,7 +74,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const handleSubmit = (data: ProductFormValues) => {
     const placeholder = getRandomPlaceholder();
     
-    const imageUrl = data.imageUrl ? data.imageUrl : placeholder.imageUrl;
+    const imageUrl = data.imageUrl || placeholder.imageUrl;
     const imageHint = data.imageUrl ? data.imageHint : placeholder.imageHint;
 
     const productData: Product = {
@@ -84,25 +84,21 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       imageHint: imageHint,
     };
     
-    if (product) {
-        onSubmit(productData);
-    } else {
-        const result = onSubmit(productData);
-        if (result === true) {
-            form.reset({
-                ...form.getValues(),
-                 id: `prod-${Date.now()}`,
-                 name: "",
-                 sku: "",
-                 price: 0,
-                 wholesalePrice: 0,
-                 cost: 0,
-                 stock: 0,
-                 description: "",
-                 imageUrl: "",
-                 status: true,
-            });
-        }
+    const result = onSubmit(productData);
+    if (!product && result === true) {
+        form.reset({
+            ...form.getValues(),
+             id: `prod-${Date.now()}`,
+             name: "",
+             sku: "",
+             price: 0,
+             wholesalePrice: 0,
+             cost: 0,
+             stock: 0,
+             description: "",
+             imageUrl: "",
+             status: true,
+        });
     }
   };
 
