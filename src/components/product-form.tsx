@@ -40,13 +40,6 @@ interface ProductFormProps {
     onCancel?: () => void;
 }
 
-const calculateProfit = (price: number, cost: number) => {
-  if (cost > 0 && price > cost) {
-    return (((price - cost) / cost) * 100).toFixed(2);
-  }
-  return '0.00';
-};
-
 const getInitialValues = (product?: Product): ProductFormValues => {
     if (product) {
         return {
@@ -78,6 +71,14 @@ const getInitialValues = (product?: Product): ProductFormValues => {
       imageHint: "",
     };
 };
+
+const calculateProfit = (price: number, cost: number) => {
+  if (cost > 0 && price > cost) {
+    return (((price - cost) / cost) * 100).toFixed(2);
+  }
+  return '0.00';
+};
+
 
 export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const form = useForm<ProductFormValues>({
