@@ -26,6 +26,12 @@ export function SiteSidebar() {
     { href: "/reports", label: "Reportes", icon: FileText },
   ];
 
+  const posNavItems = [
+    { href: "/dashboard", label: "Dashboard", icon: Home }
+  ];
+
+  const currentNavItems = pathname === '/pos' ? posNavItems : navItems;
+
   return (
     <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
       <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
@@ -37,7 +43,7 @@ export function SiteSidebar() {
           <span className="sr-only">Tienda Facil</span>
         </Link>
         <TooltipProvider>
-        {navItems.map((item) => (
+        {currentNavItems.map((item) => (
           <Tooltip key={item.href}>
             <TooltipTrigger asChild>
               <Link

@@ -2,12 +2,15 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Boxes, FileText, Home, PackagePlus, PanelLeft, Settings, ShoppingCart, Store } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./theme-toggle";
 
 export function SiteHeader() {
+  const pathname = usePathname();
+
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: Home },
     { href: "/inventory", label: "Inventario", icon: Boxes },
@@ -16,6 +19,13 @@ export function SiteHeader() {
     { href: "/purchases", label: "Compras", icon: Store },
     { href: "/reports", label: "Reportes", icon: FileText },
   ];
+
+  const posNavItems = [
+    { href: "/dashboard", label: "Dashboard", icon: Home }
+  ];
+
+  const currentNavItems = pathname === '/pos' ? posNavItems : navItems;
+
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
@@ -35,7 +45,7 @@ export function SiteHeader() {
               <Store className="h-5 w-5 transition-all group-hover:scale-110" />
               <span className="sr-only">Tienda Facil</span>
             </Link>
-            {navItems.map((item) => (
+            {currentNavItems.map((item) => (
                 <Link
                 key={item.href}
                 href={item.href}

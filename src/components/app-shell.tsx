@@ -23,16 +23,22 @@ function MainApp({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isMounted) return;
-    // Lock the app if navigating away from the POS page
-    if (previousPathname.current === '/pos' && pathname !== '/pos' && hasPin) {
+    
+    // Lock the app if navigating away from the dashboard page
+    if (previousPathname.current === '/dashboard' && pathname !== '/dashboard' && hasPin) {
       lockApp();
     }
+    
     // Update the previous pathname for the next render
     previousPathname.current = pathname;
   }, [pathname, lockApp, hasPin, isMounted]);
 
-  if (!isMounted || isLocked) {
-    return <PinModal />;
+  if (!isMounted) {
+    return null; // or a loading spinner
+  }
+
+  if (isLocked) {
+      return <PinModal />;
   }
 
   return (

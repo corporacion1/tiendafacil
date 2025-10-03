@@ -133,7 +133,7 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
   }, [toast]);
 
   const value = {
-    isLocked: !isMounted || isLocked,
+    isLocked,
     unlockApp,
     lockApp,
     setPin,
