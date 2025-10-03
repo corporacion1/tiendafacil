@@ -17,33 +17,17 @@ function MainApp({ children }: { children: React.ReactNode }) {
   const { isLocked, lockApp, hasPin } = useSecurity();
   const pathname = usePathname();
   const previousPathname = useRef(pathname);
-  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
+    if (!hasPin) return;
 
-  useEffect(() => {
-    if (!isMounted || !hasPin) return;
-
-    const fromPosToDashboard = previousPathname.current === '/pos' && pathname === '/dashboard';
-    const navigatingAwayFromNonPos = previousPathname.current !== '/pos' && pathname !== previousPathname.current && pathname !== '/pos';
-
-    if (fromPosToDashboard) {
+    // Lock the app only when navigating away from the POS page
+    if (previousPathname.current === '/pos' && pathname !== '/pos') {
       lockApp();
-    } else if (navigatingAwayFromNonPos) {
-       // Only lock if we are not on the dashboard already and navigating away
-      if (previousPathname.current !== '/dashboard' || (previousPathname.current === '/dashboard' && pathname !== '/pos')) {
-         if (pathname !== '/dashboard') lockApp();
-      }
     }
     
     previousPathname.current = pathname;
-  }, [pathname, lockApp, hasPin, isMounted]);
-
-  if (!isMounted) {
-    return null;
-  }
+  }, [pathname, lockApp, hasPin]);
 
   if (isLocked) {
       return <PinModal />;

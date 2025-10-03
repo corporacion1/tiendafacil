@@ -16,13 +16,11 @@ interface SecurityContextType {
 const SecurityContext = createContext<SecurityContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'tienda_facil_pin';
-const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 export const SecurityProvider = ({ children }: { children: React.ReactNode }) => {
   const [storedPin, setStoredPin] = useState<string | null>(null);
-  const [isLocked, setIsLocked] = useState(true); // Start locked by default to be safe
+  const [isLocked, setIsLocked] = useState(true);
   const { toast } = useToast();
-  const inactivityTimer = useRef<NodeJS.Timeout>();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -31,53 +29,25 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
       let pinFromStorage = localStorage.getItem(STORAGE_KEY);
       if (pinFromStorage) {
         setStoredPin(pinFromStorage);
-        // Lock app on initial load if there is a pin
-        setIsLocked(true);
+        setIsLocked(true); 
       } else {
-        const defaultPin = "1234";
-        localStorage.setItem(STORAGE_KEY, defaultPin);
-        setStoredPin(defaultPin);
-        setIsLocked(true);
+        setIsLocked(false);
       }
     } catch (error) {
       console.error("Could not access localStorage", error);
-      setIsLocked(false); // If localStorage fails, unlock the app
+      setIsLocked(false);
     }
   }, []);
-
+  
   const lockApp = useCallback(() => {
     if (storedPin) {
       setIsLocked(true);
     }
   }, [storedPin]);
 
-  const resetInactivityTimer = useCallback(() => {
-    if (inactivityTimer.current) {
-        clearTimeout(inactivityTimer.current);
-    }
-    inactivityTimer.current = setTimeout(lockApp, INACTIVITY_TIMEOUT);
-  }, [lockApp]);
-  
-  useEffect(() => {
-    if (!isMounted || isLocked || !storedPin) return;
-
-    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
-    events.forEach(event => window.addEventListener(event, resetInactivityTimer));
-    resetInactivityTimer();
-
-    return () => {
-      events.forEach(event => window.removeEventListener(event, resetInactivityTimer));
-      if (inactivityTimer.current) {
-          clearTimeout(inactivityTimer.current);
-      }
-    };
-  }, [isLocked, storedPin, resetInactivityTimer, isMounted]);
-
-
   const unlockApp = useCallback((pin: string) => {
     if (pin === storedPin) {
       setIsLocked(false);
-      resetInactivityTimer();
       toast({
         title: "Desbloqueado",
         description: "Bienvenido de nuevo.",
@@ -89,7 +59,7 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
         description: "El PIN que ingresaste es incorrecto. Inténtalo de nuevo.",
       });
     }
-  }, [storedPin, toast, resetInactivityTimer]);
+  }, [storedPin, toast]);
 
   const setPin = useCallback((newPin: string) => {
     if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
@@ -106,7 +76,7 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
       setIsLocked(true);
       toast({
         title: "PIN de seguridad establecido",
-        description: "La aplicación se bloqueará la próxima vez que la uses.",
+        description: "La aplicación se bloqueará al iniciar o al salir del POS.",
       });
     } catch (error) {
       console.error("Could not access localStorage", error);
@@ -123,9 +93,6 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
       localStorage.removeItem(STORAGE_KEY);
       setStoredPin(null);
       setIsLocked(false);
-       if (inactivityTimer.current) {
-            clearTimeout(inactivityTimer.current);
-        }
       toast({
         title: "PIN de seguridad eliminado",
         description: "La aplicación ya no se bloqueará.",
@@ -136,7 +103,7 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
   }, [toast]);
 
   const value = {
-    isLocked: !isMounted ? true : isLocked, // Render locked state on server and on initial client render
+    isLocked: !isMounted ? true : (!!storedPin && isLocked),
     unlockApp,
     lockApp,
     setPin,
@@ -158,4 +125,3 @@ export const useSecurity = (): SecurityContextType => {
   }
   return context;
 };
-
