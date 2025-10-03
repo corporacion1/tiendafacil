@@ -85,25 +85,24 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     };
     
     if (product) {
-      onSubmit(productData);
-      return;
-    }
-
-    const result = onSubmit(productData);
-    if (result === true) {
-        form.reset({
-            ...form.getValues(),
-             id: `prod-${Date.now()}`,
-             name: "",
-             sku: "",
-             price: 0,
-             wholesalePrice: 0,
-             cost: 0,
-             stock: 0,
-             description: "",
-             imageUrl: "",
-             status: true,
-        });
+        onSubmit(productData);
+    } else {
+        const result = onSubmit(productData);
+        if (result === true) {
+            form.reset({
+                ...form.getValues(),
+                 id: `prod-${Date.now()}`,
+                 name: "",
+                 sku: "",
+                 price: 0,
+                 wholesalePrice: 0,
+                 cost: 0,
+                 stock: 0,
+                 description: "",
+                 imageUrl: "",
+                 status: true,
+            });
+        }
     }
   };
 
@@ -352,3 +351,5 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     </Form>
   );
 }
+
+    
