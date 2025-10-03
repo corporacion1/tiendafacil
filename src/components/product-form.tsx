@@ -224,7 +224,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                         <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Selecciona una familia" />
-                            </SelectTrigger>
+                            </Trigger>
                         </FormControl>
                         <SelectContent>
                             {initialFamilies.map(family => <SelectItem key={family.id} value={family.name}>{family.name}</SelectItem>)}
@@ -405,3 +405,5 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     </Form>
   );
 }
+
+    
