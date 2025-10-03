@@ -23,7 +23,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 const generateSaleId = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let result = '';
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 7; i++) {
         result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return result;
@@ -93,26 +93,26 @@ export default function POSPage() {
     }
   };
   
-const toggleWholesalePrice = (productId: string, currentPrice: number) => {
-    const itemToUpdate = cartItems.find(item => item.product.id === productId && item.price === currentPrice);
-    if (!itemToUpdate) return;
+  const toggleWholesalePrice = (productId: string, currentPrice: number) => {
+      const itemToUpdate = cartItems.find(item => item.product.id === productId && item.price === currentPrice);
+      if (!itemToUpdate) return;
   
-    const isRetail = itemToUpdate.price === itemToUpdate.product.price;
-    const newPrice = isRetail ? itemToUpdate.product.wholesalePrice : itemToUpdate.product.price;
+      const isRetail = itemToUpdate.price === itemToUpdate.product.price;
+      const newPrice = isRetail ? itemToUpdate.product.wholesalePrice : itemToUpdate.product.price;
   
-    toast({
-        title: "Precio Actualizado",
-        description: `Precio de "${itemToUpdate.product.name}" cambiado a ${isRetail ? 'mayorista' : 'detal'}.`
-    });
-
-    setCartItems(prevItems => 
-        prevItems.map(item => {
-            if (item.product.id === productId && item.price === currentPrice) {
-                return { ...item, price: newPrice };
-            }
-            return item;
-        })
-    );
+      toast({
+          title: "Precio Actualizado",
+          description: `Precio de "${itemToUpdate.product.name}" cambiado a ${isRetail ? 'mayorista' : 'detal'}.`
+      });
+  
+      setCartItems(prevItems => 
+          prevItems.map(item => {
+              if (item.product.id === productId && item.price === currentPrice) {
+                  return { ...item, price: newPrice };
+              }
+              return item;
+          })
+      );
   };
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
