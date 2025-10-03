@@ -1,3 +1,4 @@
+
 "use client"
 import { useState } from "react";
 import Image from "next/image"
@@ -12,14 +13,25 @@ import { Separator } from "@/components/ui/separator"
 import { mockProducts } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import type { Product, CartItem } from "@/lib/types";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import type { Product, CartItem, Customer } from "@/lib/types";
 import { TicketPreview } from "@/components/ticket-preview";
+
+const initialCustomers: Customer[] = [
+    { id: 'eventual', name: 'Cliente Eventual' },
+    { id: 'johndoe', name: 'John Doe' }
+];
 
 export default function POSPage() {
   const { toast } = useToast();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
+  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
+  const [selectedCustomer, setSelectedCustomer] = useState<string>('eventual');
+  const [newCustomerName, setNewCustomerName] = useState("");
+  const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
+
 
   const addToCart = (product: Product) => {
     setCartItems(prevItems => {
@@ -84,6 +96,29 @@ export default function POSPage() {
     });
     setCartItems([]);
   }
+
+  const handleAddNewCustomer = () => {
+    if (newCustomerName.trim() === "") {
+        toast({
+            variant: "destructive",
+            title: "Nombre inválido",
+            description: "El nombre del cliente no puede estar vacío.",
+        });
+        return;
+    }
+    const newCustomer: Customer = {
+        id: (customers.length + 1).toString(),
+        name: newCustomerName,
+    };
+    setCustomers(prev => [...prev, newCustomer]);
+    setSelectedCustomer(newCustomer.id);
+    setNewCustomerName("");
+    setIsCustomerDialogOpen(false);
+    toast({
+        title: "Cliente Agregado",
+        description: `El cliente "${newCustomer.name}" ha sido agregado y seleccionado.`,
+    });
+  };
 
   const filteredProducts = mockProducts.filter(
     (product) =>
@@ -161,16 +196,51 @@ export default function POSPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="customer">Cliente</Label>
-              <Select defaultValue="eventual">
-                <SelectTrigger id="customer">
-                  <SelectValue placeholder="Seleccionar cliente" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="eventual">Cliente Eventual</SelectItem>
-                  <SelectItem value="johndoe">John Doe</SelectItem>
-                </SelectContent>
-              </Select>
+                <Label htmlFor="customer">Cliente</Label>
+                <div className="flex gap-2">
+                    <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
+                        <SelectTrigger id="customer">
+                        <SelectValue placeholder="Seleccionar cliente" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {customers.map(customer => (
+                                <SelectItem key={customer.id} value={customer.id}>{customer.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" size="icon">
+                                <PlusCircle className="h-4 w-4" />
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Agregar Nuevo Cliente</DialogTitle>
+                                <DialogDescription>
+                                    Ingresa el nombre del nuevo cliente.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="new-customer-name">Nombre del Cliente</Label>
+                                    <Input 
+                                        id="new-customer-name" 
+                                        value={newCustomerName}
+                                        onChange={(e) => setNewCustomerName(e.target.value)}
+                                        placeholder="Ej: Jane Doe"
+                                    />
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild>
+                                    <Button variant="outline">Cancelar</Button>
+                                </DialogClose>
+                                <Button onClick={handleAddNewCustomer}>Guardar Cliente</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
             <Separator />
             <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
