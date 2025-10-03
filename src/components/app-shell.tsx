@@ -59,8 +59,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <SecurityProvider>
         <MainApp>{children}</MainApp>
+        <Toaster />
       </SecurityProvider>
-      <Toaster />
     </ThemeProvider>
   );
 }

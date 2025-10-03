@@ -32,7 +32,6 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
       if (pinFromStorage) {
         setStoredPin(pinFromStorage);
       } else {
-        // Set default PIN if none exists
         const defaultPin = "1234";
         localStorage.setItem(STORAGE_KEY, defaultPin);
         setStoredPin(defaultPin);
@@ -103,7 +102,7 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
       setIsLocked(true);
       toast({
         title: "PIN de seguridad establecido",
-        description: "La aplicación se bloqueará la próxima vez que la abras.",
+        description: "La aplicación se bloqueará la próxima vez que la uses.",
       });
     } catch (error) {
       console.error("Could not access localStorage", error);
@@ -133,7 +132,7 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
   }, [toast]);
 
   const value = {
-    isLocked,
+    isLocked: isMounted && isLocked,
     unlockApp,
     lockApp,
     setPin,
