@@ -378,13 +378,15 @@ export default function InventoryPage() {
                     Modifica los detalles del producto y guarda los cambios.
                 </DialogDescription>
             </DialogHeader>
-            {productToEdit && (
-                <ProductForm 
-                    product={productToEdit}
-                    onSubmit={handleUpdateProduct}
-                    onCancel={() => setProductToEdit(null)}
-                />
-            )}
+            <div className="max-h-[80vh] overflow-y-auto p-1">
+                {productToEdit && (
+                    <ProductForm 
+                        product={productToEdit}
+                        onSubmit={handleUpdateProduct}
+                        onCancel={() => setProductToEdit(null)}
+                    />
+                )}
+            </div>
         </DialogContent>
     </Dialog>
 
