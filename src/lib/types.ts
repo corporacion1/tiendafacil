@@ -14,6 +14,11 @@ export type Product = {
   tax2: boolean;
 };
 
+export type CartItem = {
+  product: Product;
+  quantity: number;
+};
+
 export type InventoryMovement = {
   id: string;
   productName: string;
