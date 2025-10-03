@@ -73,11 +73,16 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
   const handleSubmit = (data: ProductFormValues) => {
     const placeholder = getRandomPlaceholder();
+    
+    // Check if the image URL is empty and assign a placeholder if it is.
+    const imageUrl = data.imageUrl ? data.imageUrl : placeholder.imageUrl;
+    const imageHint = data.imageUrl ? data.imageHint : placeholder.imageHint;
+
     const productData: Product = {
       ...data,
       status: data.status ? 'active' : 'inactive',
-      imageUrl: data.imageUrl || placeholder.imageUrl,
-      imageHint: data.imageHint || placeholder.imageHint,
+      imageUrl: imageUrl,
+      imageHint: imageHint,
     };
     
     // If it's an existing product, just submit.
@@ -352,4 +357,5 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 }
     
 
+    
     
