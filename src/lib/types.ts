@@ -4,6 +4,7 @@ export type Product = {
   sku: string;
   stock: number;
   price: number;
+  wholesalePrice: number;
   cost: number;
   category: string;
   status: 'active' | 'inactive';

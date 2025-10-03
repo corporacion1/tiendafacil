@@ -17,6 +17,7 @@ const productSchema = z.object({
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres."),
   sku: z.string().min(3, "El SKU debe tener al menos 3 caracteres."),
   price: z.coerce.number().positive("El precio debe ser un número positivo."),
+  wholesalePrice: z.coerce.number().positive("El precio debe ser un número positivo."),
   cost: z.coerce.number().positive("El costo debe ser un número positivo."),
   description: z.string().optional(),
   tax1: z.boolean().default(false),
@@ -32,6 +33,7 @@ export default function ProductsPage() {
       name: "",
       sku: "",
       price: 0,
+      wholesalePrice: 0,
       cost: 0,
       description: "",
       tax1: true,
@@ -88,13 +90,26 @@ export default function ProductsPage() {
                 )}
               />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <FormField
                 control={form.control}
                 name="price"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Precio de Venta</FormLabel>
+                    <FormLabel>Precio Detal</FormLabel>
+                    <FormControl>
+                      <Input type="number" placeholder="0.00" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="wholesalePrice"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Precio Mayor</FormLabel>
                     <FormControl>
                       <Input type="number" placeholder="0.00" {...field} />
                     </FormControl>

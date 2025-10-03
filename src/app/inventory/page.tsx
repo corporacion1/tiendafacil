@@ -67,7 +67,8 @@ export default function InventoryPage() {
                   </TableHead>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead className="hidden md:table-cell">Precio</TableHead>
+                  <TableHead className="hidden md:table-cell">Precio Detal</TableHead>
+                  <TableHead className="hidden md:table-cell">Precio Mayor</TableHead>
                   <TableHead className="hidden md:table-cell">
                     Stock
                   </TableHead>
@@ -97,6 +98,9 @@ export default function InventoryPage() {
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
                       ${product.price.toFixed(2)}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      ${product.wholesalePrice.toFixed(2)}
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
                       {product.stock}
