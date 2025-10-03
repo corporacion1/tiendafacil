@@ -1,6 +1,6 @@
 "use client"
 import { useState } from "react";
-import { PlusCircle, Trash2, X } from "lucide-react";
+import { PackagePlus, PlusCircle, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
