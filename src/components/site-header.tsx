@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Boxes, FileText, Home, Package, PackagePlus, PanelLeft, Settings, ShoppingCart, Store } from "lucide-react";
+import { Boxes, FileText, Home, PackagePlus, PanelLeft, Settings, ShoppingCart, Store } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./theme-toggle";
