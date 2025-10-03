@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Image from "next/image";
-import { File, ListFilter, MoreHorizontal, PlusCircle, Trash2, ArrowUpDown, X } from "lucide-react";
+import { File, ListFilter, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,11 +18,32 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { mockProducts, mockInventoryMovements } from "@/lib/data";
 import type { Product, InventoryMovement } from "@/lib/types";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { cn } from "@/lib/utils";
+
 
 export default function InventoryPage() {
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>(mockProducts);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [productSearch, setProductSearch] = useState("");
+  
+  const [open, setOpen] = useState(false)
+  const [selectedProductCombo, setSelectedProductCombo] = useState<Product | null>(null)
+
 
   const handleEdit = (product: Product) => {
     toast({
@@ -47,6 +68,13 @@ export default function InventoryPage() {
   };
 
   const productMovements = selectedProduct ? mockInventoryMovements.filter(m => m.productName === selectedProduct.name) : [];
+
+  const filteredProducts = useMemo(() => {
+    return products.filter(product =>
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.sku.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [products, searchTerm]);
 
   return (
     <Tabs defaultValue="all">
@@ -101,16 +129,48 @@ export default function InventoryPage() {
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
                         <Label htmlFor="product">Producto</Label>
-                        <Select>
-                            <SelectTrigger id="product">
-                                <SelectValue placeholder="Selecciona un producto" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {products.map(p => (
-                                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <Popover open={open} onOpenChange={setOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={open}
+                                className="w-full justify-between"
+                                >
+                                {selectedProductCombo
+                                    ? selectedProductCombo.name
+                                    : "Selecciona un producto..."}
+                                <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                <Command>
+                                    <CommandInput placeholder="Buscar producto..." />
+                                    <CommandList>
+                                        <CommandEmpty>No se encontraron productos.</CommandEmpty>
+                                        <CommandGroup>
+                                            {products.map((product) => (
+                                                <CommandItem
+                                                key={product.id}
+                                                value={product.name}
+                                                onSelect={(currentValue) => {
+                                                    const product = products.find(p => p.name.toLowerCase() === currentValue.toLowerCase());
+                                                    setSelectedProductCombo(product || null);
+                                                    setOpen(false)
+                                                }}
+                                                >
+                                                <X className={cn(
+                                                    "mr-2 h-4 w-4",
+                                                    selectedProductCombo?.id === product.id ? "opacity-100" : "opacity-0"
+                                                )} />
+                                                {product.name}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="type">Tipo de Movimiento</Label>
@@ -129,6 +189,10 @@ export default function InventoryPage() {
                         <Label htmlFor="quantity">Cantidad</Label>
                         <Input id="quantity" type="number" placeholder="0" />
                     </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="responsable">Responsable</Label>
+                        <Input id="responsable" type="text" placeholder="Nombre del responsable" required />
+                    </div>
                 </div>
                 <DialogFooter>
                     <DialogClose asChild>
@@ -146,10 +210,24 @@ export default function InventoryPage() {
       <TabsContent value="all">
         <Card>
           <CardHeader>
-            <CardTitle>Inventario de Productos</CardTitle>
-            <CardDescription>
-              Administra y consulta tu inventario.
-            </CardDescription>
+            <div className="flex justify-between items-center">
+                <div>
+                    <CardTitle>Inventario de Productos</CardTitle>
+                    <CardDescription>
+                    Administra y consulta tu inventario.
+                    </CardDescription>
+                </div>
+                <div className="relative w-full max-w-sm">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                    type="search"
+                    placeholder="Buscar por nombre o SKU..."
+                    className="pl-8 sm:w-full"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+            </div>
           </CardHeader>
           <CardContent>
             <Table>
@@ -171,7 +249,7 @@ export default function InventoryPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {products.map((product) => (
+                {filteredProducts.map((product) => (
                   <TableRow key={product.id}>
                     <TableCell className="hidden sm:table-cell">
                       <Image
@@ -283,7 +361,7 @@ export default function InventoryPage() {
           </CardContent>
           <CardFooter>
             <div className="text-xs text-muted-foreground">
-              Mostrando <strong>1-10</strong> de <strong>{products.length}</strong>{" "}
+              Mostrando <strong>1-{filteredProducts.length}</strong> de <strong>{products.length}</strong>{" "}
               productos
             </div>
           </CardFooter>
