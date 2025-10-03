@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Image from "next/image";
 import { File, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -237,7 +238,7 @@ export default function InventoryPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="hidden w-[64px] sm:table-cell">
-                    <span className="sr-only">Icon</span>
+                    <span className="sr-only">Imagen</span>
                   </TableHead>
                   <TableHead>Nombre</TableHead>
                   <TableHead>Estado</TableHead>
@@ -255,8 +256,19 @@ export default function InventoryPage() {
                 {filteredProducts.map((product) => (
                   <TableRow key={product.id}>
                     <TableCell className="hidden sm:table-cell">
-                      <div className="flex items-center justify-center w-10 h-10 bg-muted rounded-md">
-                        <Package className="h-5 w-5 text-muted-foreground" />
+                      <div className="relative flex items-center justify-center w-10 h-10 bg-muted rounded-md overflow-hidden">
+                        {product.imageUrl ? (
+                          <Image
+                            src={product.imageUrl}
+                            alt={product.name}
+                            fill
+                            className="object-cover"
+                            sizes="40px"
+                            data-ai-hint={product.imageHint}
+                          />
+                        ) : (
+                          <Package className="h-5 w-5 text-muted-foreground" />
+                        )}
                       </div>
                     </TableCell>
                     <TableCell className="font-medium">{product.name}</TableCell>

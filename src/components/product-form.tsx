@@ -26,7 +26,9 @@ const productSchema = z.object({
   warehouse: z.string().optional(),
   tax1: z.boolean().default(false),
   tax2: z.boolean().default(false),
-  status: z.enum(['active', 'inactive'])
+  status: z.enum(['active', 'inactive']),
+  imageUrl: z.string().url("Debe ser una URL de imagen válida.").optional().or(z.literal('')),
+  imageHint: z.string().optional(),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -53,6 +55,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         unit: product.unit || "",
         family: product.family || "",
         warehouse: product.warehouse || "",
+        imageUrl: product.imageUrl || "",
+        imageHint: product.imageHint || "",
     } : {
       id: `prod-${Date.now()}`,
       name: "",
@@ -68,6 +72,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       tax1: true,
       tax2: false,
       status: 'active',
+      imageUrl: "",
+      imageHint: "",
     },
   });
   
@@ -94,6 +100,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
              tax1: true,
              tax2: false,
              status: 'active',
+             imageUrl: "",
+             imageHint: "",
         });
     }
   };
@@ -277,6 +285,35 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             </FormItem>
           )}
         />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+                control={form.control}
+                name="imageUrl"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>URL de la Imagen</FormLabel>
+                    <FormControl>
+                    <Input placeholder="https://example.com/image.jpg" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
+            <FormField
+                control={form.control}
+                name="imageHint"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Palabras Clave de la Imagen</FormLabel>
+                    <FormControl>
+                    <Input placeholder="Ej: laptop desk" {...field} />
+                    </FormControl>
+                     <FormDescription>Dos palabras para buscar una imagen si la URL está vacía.</FormDescription>
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
             <div className="grid gap-4">
                  <FormField

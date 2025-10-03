@@ -8,7 +8,6 @@ export type Product = {
   price: number;
   wholesalePrice: number;
   cost: number;
-  category: string;
   status: 'active' | 'inactive';
   tax1: boolean;
   tax2: boolean;
@@ -16,6 +15,8 @@ export type Product = {
   family?: string;
   warehouse?: string;
   description?: string;
+  imageUrl?: string;
+  imageHint?: string;
 };
 
 export type CartItem = {

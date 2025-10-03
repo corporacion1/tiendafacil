@@ -2,6 +2,7 @@
 "use client"
 import { useState, useEffect } from "react";
 import { usePathname, useRouter } from 'next/navigation';
+import Image from "next/image";
 import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -289,7 +290,18 @@ export default function POSPage() {
                             </Button>
                         </DialogTrigger>
                     </div>
-                    <Package className="w-12 h-12 text-muted-foreground" />
+                     {product.imageUrl ? (
+                        <Image
+                            src={product.imageUrl}
+                            alt={product.name}
+                            fill
+                            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
+                            className="object-cover transition-transform group-hover:scale-105"
+                            data-ai-hint={product.imageHint}
+                        />
+                        ) : (
+                        <Package className="w-12 h-12 text-muted-foreground" />
+                    )}
                     <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded">
                       ${product.price.toFixed(2)}
                     </div>
@@ -574,8 +586,19 @@ export default function POSPage() {
         </DialogHeader>
         {productDetails && (
             <div className="grid gap-4">
-                 <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md">
-                    <Package className="w-16 h-16 text-muted-foreground" />
+                 <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
+                    {productDetails.imageUrl ? (
+                        <Image
+                            src={productDetails.imageUrl}
+                            alt={productDetails.name}
+                            fill
+                            className="object-cover"
+                            sizes="300px"
+                            data-ai-hint={productDetails.imageHint}
+                        />
+                        ) : (
+                        <Package className="w-16 h-16 text-muted-foreground" />
+                    )}
                  </div>
                  <div className="grid gap-2">
                     <div className="flex justify-between">
