@@ -1,608 +1,171 @@
-
-
 "use client"
-import { useState, useEffect } from "react";
-import { usePathname } from 'next/navigation';
-import Image from "next/image"
-import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags } from "lucide-react"
+import { ArrowUpRight, DollarSign, Users, Package } from "lucide-react";
+import Link from "next/link";
+import {
+  Bar,
+  BarChart,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Tooltip,
+} from "recharts";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { mockProducts, initialCustomers, mockSales, mockInventoryMovements } from "@/lib/data"
-import { useToast } from "@/hooks/use-toast"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import type { Product, CartItem, Customer, Sale, InventoryMovement } from "@/lib/types";
-import { TicketPreview } from "@/components/ticket-preview";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { cn } from "@/lib/utils";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useSecurity } from "@/contexts/security-context";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { monthlySalesData, mockInventoryMovements } from "@/lib/data";
 
-const generateSaleId = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = '';
-    for (let i = 0; i < 7; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-}
-
-export default function POSPage() {
-  const { toast } = useToast();
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
-  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('eventual');
-  const [newCustomer, setNewCustomer] = useState({ id: '', name: '', phone: '', address: '' });
-  const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
-  const [isCustomerSearchOpen, setIsCustomerSearchOpen] = useState(false);
-
-  const [isProcessSaleDialogOpen, setIsProcessSaleDialogOpen] = useState(false);
-  const [transactionType, setTransactionType] = useState<'contado' | 'credito'>('contado');
-  const [paymentMethod, setPaymentMethod] = useState<string>('efectivo');
-  const [lastSale, setLastSale] = useState<Sale | null>(null);
-  
-  const [productDetails, setProductDetails] = useState<Product | null>(null);
-
-  const { lockApp, hasPin } = useSecurity();
-  const pathname = usePathname();
-
-  useEffect(() => {
-    return () => {
-      if (hasPin && pathname === '/') {
-        lockApp();
-      }
-    };
-  }, [pathname, hasPin, lockApp]);
-
-  const selectedCustomer = customers.find(c => c.id === selectedCustomerId) ?? null;
-
-  const addToCart = (product: Product) => {
-    setCartItems(prevItems => {
-      const existingItem = prevItems.find(item => item.product.id === product.id && item.price === product.price);
-      if (existingItem) {
-        return prevItems.map(item =>
-          item.product.id === product.id && item.price === product.price
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      }
-      return [...prevItems, { product, quantity: 1, price: product.price }];
-    });
-  };
-
-  const removeFromCart = (productId: string, price: number) => {
-    setCartItems(prevItems => prevItems.filter(item => !(item.product.id === productId && item.price === price)));
-     toast({
-      title: "Producto Eliminado",
-      description: "El producto ha sido eliminado del carrito.",
-    });
-  };
-  
-  const clearCart = () => {
-    setCartItems([]);
-    toast({
-        title: "Carrito Vaciado",
-        description: "Todos los productos han sido eliminados del carrito.",
-    });
-  };
-
-  const updateQuantity = (productId: string, price: number, newQuantity: number) => {
-    if (newQuantity <= 0) {
-      removeFromCart(productId, price);
-    } else {
-      setCartItems(prevItems =>
-        prevItems.map(item =>
-          item.product.id === productId && item.price === price
-            ? { ...item, quantity: newQuantity }
-            : item
-        )
-      );
-    }
-  };
-  
-  const toggleWholesalePrice = (productId: string, currentPrice: number) => {
-      const itemToUpdate = cartItems.find(item => item.product.id === productId && item.price === currentPrice);
-      if (!itemToUpdate) return;
-  
-      const isRetail = itemToUpdate.price === itemToUpdate.product.price;
-      const newPrice = isRetail ? itemToUpdate.product.wholesalePrice : itemToUpdate.product.price;
-  
-      toast({
-          title: "Precio Actualizado",
-          description: `Precio de "${itemToUpdate.product.name}" cambiado a ${isRetail ? 'mayorista' : 'detal'}.`
-      });
-  
-      setCartItems(prevItems => 
-          prevItems.map(item => {
-              if (item.product.id === productId && item.price === currentPrice) {
-                  return { ...item, price: newPrice };
-              }
-              return item;
-          })
-      );
-  };
-
-  const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const taxes = subtotal * 0.13; // Example 13% tax
-  const total = subtotal + taxes;
-
-  const handleProcessSale = (andPrint: boolean) => {
-     if (cartItems.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "Carrito vacío",
-        description: "Agrega productos al carrito para procesar la venta.",
-      });
-      return;
-    }
-
-    const saleId = generateSaleId();
-    const newSale: Sale = {
-        id: saleId,
-        customerName: selectedCustomer?.name ?? 'Cliente Eventual',
-        items: cartItems.map(item => ({
-            productId: item.product.id,
-            productName: item.product.name,
-            quantity: item.quantity,
-            price: item.price
-        })),
-        total: total,
-        date: new Date().toISOString(),
-        transactionType: transactionType,
-        paymentMethod: transactionType === 'contado' ? paymentMethod : undefined,
-    }
-    
-    // Add sale to mock data
-    mockSales.unshift(newSale);
-
-    // Update product stock and create inventory movements
-    cartItems.forEach(item => {
-        const productIndex = mockProducts.findIndex(p => p.id === item.product.id);
-        if (productIndex !== -1) {
-            mockProducts[productIndex].stock -= item.quantity;
-        }
-        
-        const movement: InventoryMovement = {
-            id: `mov-${Date.now()}-${item.product.id}`,
-            productName: item.product.name,
-            type: 'sale',
-            quantity: -item.quantity,
-            date: newSale.date,
-        };
-        mockInventoryMovements.unshift(movement);
-    });
-
-    setLastSale(newSale);
-    
-    toast({
-      title: "Venta Procesada",
-      description: `La venta con control #${saleId} ha sido registrada.`,
-    });
-    
-    setCartItems([]);
-    setIsProcessSaleDialogOpen(false);
-
-    if (andPrint) {
-      setTimeout(() => {
-        setIsPrintPreviewOpen(true);
-      }, 100);
-    }
-  }
-
-  const handleAddNewCustomer = () => {
-    if (newCustomer.name.trim() === "") {
-        toast({
-            variant: "destructive",
-            title: "Nombre inválido",
-            description: "El nombre del cliente no puede estar vacío.",
-        });
-        return;
-    }
-    
-    // Use timestamp for a more unique ID
-    const newId = newCustomer.id.trim() || `cust-${Date.now()}`;
-
-    if (customers.some(c => c.id === newId)) {
-       toast({
-            variant: "destructive",
-            title: "ID Duplicado",
-            description: "Ya existe un cliente con ese ID. Por favor, elige otro.",
-        });
-        return;
-    }
-
-    const customerToAdd: Customer = {
-        id: newId,
-        name: newCustomer.name,
-        phone: newCustomer.phone,
-        address: newCustomer.address,
-    };
-
-    setCustomers(prev => [...prev, customerToAdd]);
-    setSelectedCustomerId(customerToAdd.id);
-    setNewCustomer({ id: '', name: '', phone: '', address: '' });
-    setIsCustomerDialogOpen(false);
-    toast({
-        title: "Cliente Agregado",
-        description: `El cliente "${customerToAdd.name}" ha sido agregado y seleccionado.`,
-    });
-  };
-
-  const filteredProducts = mockProducts.filter(
-    (product) =>
-      product.status === 'active' &&
-      (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.sku.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
+export default function Dashboard() {
   return (
-    <Dialog onOpenChange={(open) => !open && setProductDetails(null)}>
-    <div className="grid flex-1 auto-rows-max gap-4 md:grid-cols-3 lg:gap-8">
-      <div className="grid auto-rows-max items-start gap-4 md:col-span-2 lg:gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Productos</CardTitle>
-            <div className="mt-4">
-              <Input
-                placeholder="Buscar por nombre o SKU..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {filteredProducts.map((product) => (
-                <Card key={product.id} className="overflow-hidden group">
-                  <div className="relative">
-                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                        <Button size="sm" onClick={() => addToCart(product)}>Agregar</Button>
-                        <DialogTrigger asChild>
-                            <Button size="icon" variant="ghost" className="absolute top-1 right-1 h-7 w-7 text-white" onClick={() => setProductDetails(product)}>
-                                <ZoomIn className="h-5 w-5" />
-                            </Button>
-                        </DialogTrigger>
-                    </div>
-                    <Image
-                      alt={product.name}
-                      className="aspect-square w-full object-cover"
-                      height="150"
-                      src={product.imageUrl}
-                      width="150"
-                      data-ai-hint={product.imageHint}
-                    />
-                    <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded">
-                      ${product.price.toFixed(2)}
-                    </div>
-                  </div>
-                  <CardFooter className="p-2 bg-background/80 backdrop-blur-sm">
-                    <h3 className="text-sm font-medium truncate">{product.name}</h3>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-      <div className="grid auto-rows-max items-start gap-4 lg:gap-8">
-        <Card>
-          <CardHeader className="flex flex-row justify-between items-center">
-            <CardTitle>Carrito de Compra</CardTitle>
-            {cartItems.length > 0 && (
-                 <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm">
-                            <Trash2 className="mr-2 h-4 w-4" /> Vaciar Carrito
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                        <AlertDialogTitle>¿Vaciar el carrito?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Esta acción eliminará todos los productos del carrito. ¿Estás seguro de que deseas continuar?
-                        </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={clearCart}>Sí, vaciar</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            )}
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-                <Label htmlFor="customer">Cliente</Label>
-                <div className="flex gap-2">
-                    <Popover open={isCustomerSearchOpen} onOpenChange={setIsCustomerSearchOpen}>
-                        <PopoverTrigger asChild>
-                            <Button
-                                variant="outline"
-                                role="combobox"
-                                aria-expanded={isCustomerSearchOpen}
-                                className="w-full justify-between"
-                            >
-                                {selectedCustomer ? selectedCustomer.name : "Seleccionar cliente..."}
-                                <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                            <Command>
-                                <CommandInput placeholder="Buscar cliente..." />
-                                <CommandList>
-                                    <CommandEmpty>No se encontraron clientes.</CommandEmpty>
-                                    <CommandGroup>
-                                        {customers.map((customer) => (
-                                            <CommandItem
-                                                key={customer.id}
-                                                value={customer.name}
-                                                onSelect={() => {
-                                                    setSelectedCustomerId(customer.id);
-                                                    setIsCustomerSearchOpen(false);
-                                                }}
-                                            >
-                                                <Check
-                                                    className={cn(
-                                                        "mr-2 h-4 w-4",
-                                                        selectedCustomerId === customer.id ? "opacity-100" : "opacity-0"
-                                                    )}
-                                                />
-                                                {customer.name}
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                    </Popover>
-
-                    <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="outline" size="icon">
-                                <PlusCircle className="h-4 w-4" />
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Agregar Nuevo Cliente</DialogTitle>
-                                <DialogDescription>
-                                    Completa el formulario para agregar un nuevo cliente.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="grid gap-4 py-4">
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="new-customer-id" className="text-right">ID (Opcional)</Label>
-                                    <Input id="new-customer-id" value={newCustomer.id} onChange={(e) => setNewCustomer(prev => ({ ...prev, id: e.target.value }))} className="col-span-3" placeholder="Identificación fiscal, etc." />
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="new-customer-name" className="text-right">Nombre*</Label>
-                                    <Input id="new-customer-name" value={newCustomer.name} onChange={(e) => setNewCustomer(prev => ({ ...prev, name: e.target.value }))} className="col-span-3" placeholder="Ej: Jane Doe" required />
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="new-customer-phone" className="text-right">Teléfono</Label>
-                                    <Input id="new-customer-phone" value={newCustomer.phone} onChange={(e) => setNewCustomer(prev => ({ ...prev, phone: e.target.value }))} className="col-span-3" />
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="new-customer-address" className="text-right">Dirección</Label>
-                                    <Input id="new-customer-address" value={newCustomer.address} onChange={(e) => setNewCustomer(prev => ({ ...prev, address: e.target.value }))} className="col-span-3" />
-                                </div>
-                            </div>
-                            <DialogFooter>
-                                <DialogClose asChild>
-                                    <Button variant="outline">Cancelar</Button>
-                                </DialogClose>
-                                <Button onClick={handleAddNewCustomer}>Guardar Cliente</Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
-                </div>
-            </div>
-            <Separator />
-            <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
-                {cartItems.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-8">
-                        <ShoppingCart className="h-12 w-12 mb-4" />
-                        <p>Tu carrito está vacío.</p>
-                        <p className="text-sm">Agrega productos para comenzar una venta.</p>
-                    </div>
-                ) : (
-                    cartItems.map((item, index) => (
-                        <div key={`${item.product.id}-${index}`} className="flex justify-between items-center gap-2">
-                            <div className="flex-grow">
-                                <p className="font-medium text-sm">{item.product.name}</p>
-                                <p className={cn("text-xs", item.price === item.product.wholesalePrice ? "text-accent-foreground font-semibold" : "text-muted-foreground")}>
-                                    ${item.price.toFixed(2)}
-                                </p>
-                            </div>
-                            <Input
-                                type="number"
-                                value={item.quantity}
-                                onChange={(e) => updateQuantity(item.product.id, item.price, parseInt(e.target.value, 10) || 1)}
-                                className="h-8 w-16"
-                                min="1"
-                            />
-                            <div className="text-right font-semibold w-20">${(item.price * item.quantity).toFixed(2)}</div>
-                            <div className="flex items-center">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-accent-foreground" onClick={() => toggleWholesalePrice(item.product.id, item.price)}>
-                                    <Tags className={cn("h-4 w-4", item.price === item.product.wholesalePrice && "text-accent-foreground")} />
-                                </Button>
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
-                                            <X className="h-4 w-4" />
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                        <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            Esto eliminará "{item.product.name}" de tu carrito.
-                                        </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => removeFromCart(item.product.id, item.price)}>Eliminar</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            </div>
-                        </div>
-                    ))
-                )}
-            </div>
-            {cartItems.length > 0 && (
-                <>
-                    <Separator />
-                    <div className="space-y-2">
-                    <div className="flex justify-between">
-                        <span>Subtotal</span>
-                        <span>${subtotal.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                        <span>Impuestos (13%)</span>
-                        <span>${taxes.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between font-semibold text-lg">
-                        <span>Total</span>
-                        <span>${total.toFixed(2)}</span>
-                    </div>
-                    </div>
-                </>
-            )}
-          </CardContent>
-          <CardFooter className="flex flex-col gap-2">
-             <Dialog open={isProcessSaleDialogOpen} onOpenChange={setIsProcessSaleDialogOpen}>
-                <DialogTrigger asChild>
-                    <Button className="w-full bg-primary hover:bg-primary/90" size="lg" disabled={cartItems.length === 0}>
-                        Procesar Venta
-                    </Button>
-                </DialogTrigger>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Finalizar Venta</DialogTitle>
-                        <DialogDescription>
-                            Selecciona el tipo de transacción y método de pago.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-6 py-4">
-                        <div className="space-y-2">
-                            <Label>Tipo de Transacción</Label>
-                            <RadioGroup defaultValue="contado" value={transactionType} onValueChange={(value: 'contado' | 'credito') => setTransactionType(value)}>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="contado" id="contado" />
-                                    <Label htmlFor="contado">Contado</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="credito" id="credito" />
-                                    <Label htmlFor="credito">Crédito</Label>
-                                </div>
-                            </RadioGroup>
-                        </div>
-                        {transactionType === 'contado' && (
-                            <div className="space-y-2">
-                                <Label>Método de Pago</Label>
-                                <RadioGroup defaultValue="efectivo" value={paymentMethod} onValueChange={setPaymentMethod}>
-                                    <div className="flex flex-col space-y-2">
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="efectivo" id="efectivo" />
-                                            <Label htmlFor="efectivo">Efectivo</Label>
-                                        </div>
-                                         <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="transferencia" id="transferencia" />
-                                            <Label htmlFor="transferencia">Transferencia</Label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="pago-movil" id="pago-movil" />
-                                            <Label htmlFor="pago-movil">Pago Móvil</Label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="tarjeta" id="tarjeta" />
-                                            <Label htmlFor="tarjeta">Tarjeta</Label>
-                                        </div>
-                                    </div>
-                                </RadioGroup>
-                            </div>
-                        )}
-                    </div>
-                    <DialogFooter className="gap-2 sm:gap-0">
-                        <Button variant="outline" onClick={() => handleProcessSale(false)}>Guardar Venta</Button>
-                        <Button onClick={() => handleProcessSale(true)}>Guardar e Imprimir</Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            <Button className="w-full" variant="outline" size="lg" onClick={() => setIsPrintPreviewOpen(true)} disabled={cartItems.length === 0 && !lastSale}>
-              <Printer className="mr-2 h-4 w-4" />
-              Imprimir Ticket
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
+    <div className="flex min-h-screen w-full flex-col">
+      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+        <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Ventas Totales
+              </CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">$45,231.89</div>
+              <p className="text-xs text-muted-foreground">
+                +20.1% from last month
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Clientes
+              </CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">+2350</div>
+              <p className="text-xs text-muted-foreground">
+                +180.1% from last month
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Ventas</CardTitle>
+              <Package className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">+12,234</div>
+              <p className="text-xs text-muted-foreground">
+                +19% from last month
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Productos Activos
+              </CardTitle>
+              <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">573</div>
+              <p className="text-xs text-muted-foreground">
+                +201 since last hour
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+        <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
+          <Card className="xl:col-span-2">
+            <CardHeader>
+              <CardTitle>Ventas Mensuales</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart data={monthlySalesData}>
+                  <XAxis
+                    dataKey="month"
+                    stroke="#888888"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    stroke="#888888"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => `$${value}`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      borderColor: 'hsl(var(--border))',
+                    }}
+                  />
+                  <Bar dataKey="sales" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center">
+              <div className="grid gap-2">
+                <CardTitle>Movimientos Recientes</CardTitle>
+                <CardDescription>
+                  Ventas y compras recientes.
+                </CardDescription>
+              </div>
+              <Button asChild size="sm" className="ml-auto gap-1 bg-accent hover:bg-accent/90">
+                <Link href="/inventory">
+                  Ver Todo
+                  <ArrowUpRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Producto</TableHead>
+                    <TableHead className="text-right">Tipo</TableHead>
+                    <TableHead className="text-right">Cantidad</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {mockInventoryMovements.map((movement) => (
+                    <TableRow key={movement.id}>
+                      <TableCell>
+                        <div className="font-medium">{movement.productName}</div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Badge variant={movement.type === "sale" ? "destructive" : "secondary"}>
+                          {movement.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">{movement.quantity}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
     </div>
-    
-    <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-            <DialogTitle>{productDetails?.name}</DialogTitle>
-            <DialogDescription>SKU: {productDetails?.sku}</DialogDescription>
-        </DialogHeader>
-        {productDetails && (
-            <div className="grid gap-4">
-                 <div className="relative aspect-square w-full">
-                    <Image src={productDetails.imageUrl} alt={productDetails.name} fill className="object-cover rounded-md" />
-                 </div>
-                 <div className="grid gap-2">
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Disponibilidad:</span>
-                        <span className="font-semibold">{productDetails.stock} unidades</span>
-                    </div>
-                     <Separator />
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Precio Detal:</span>
-                        <span className="font-semibold">${productDetails.price.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Precio Mayor:</span>
-                        <span className="font-semibold">${productDetails.wholesalePrice.toFixed(2)}</span>
-                    </div>
-                 </div>
-            </div>
-        )}
-        <DialogFooter>
-            <DialogClose asChild>
-                <Button variant="secondary">Cerrar</Button>
-            </DialogClose>
-            <Button onClick={() => {
-                if(productDetails) {
-                    addToCart(productDetails);
-                    setProductDetails(null);
-                    toast({title: `"${productDetails.name}" agregado al carrito`})
-                }
-            }}>
-                Agregar al Carrito
-            </Button>
-        </DialogFooter>
-    </DialogContent>
-    
-    {(cartItems.length > 0 || lastSale) && (
-      <TicketPreview
-        isOpen={isPrintPreviewOpen}
-        onOpenChange={setIsPrintPreviewOpen}
-        cartItems={lastSale && lastSale.items.map(item => ({ product: mockProducts.find(p => p.id === item.productId)!, quantity: item.quantity, price: item.price })) || cartItems}
-        subtotal={lastSale?.total ? lastSale.total / 1.13 : subtotal}
-        taxes={lastSale?.total ? lastSale.total - (lastSale.total / 1.13) : taxes}
-        total={lastSale?.total || total}
-        storeName="TIENDA FACIL WEB"
-        customer={selectedCustomer}
-        saleId={lastSale?.id}
-      />
-    )}
-  </Dialog>
   );
 }
