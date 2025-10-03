@@ -40,6 +40,13 @@ interface ProductFormProps {
     onCancel?: () => void;
 }
 
+const calculateProfit = (price: number, cost: number) => {
+  if (cost > 0 && price > cost) {
+    return (((price - cost) / cost) * 100).toFixed(2);
+  }
+  return '0.00';
+};
+
 export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -52,7 +59,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         imageUrl: product.imageUrl || "",
         imageHint: product.imageHint || "",
     } : {
-      id: `prod-${Date.now()}`,
+      id: 'prod-' + Date.now(),
       name: "",
       sku: "",
       price: 0,
@@ -80,7 +87,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
     if (!product && result === true) {
         form.reset({
-             id: `prod-${Date.now()}`,
+             id: 'prod-' + Date.now(),
              name: "",
              sku: "",
              price: 0,
@@ -223,7 +230,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                     {...field}
                    />
                 </FormControl>
-                 <FormDescription>Utilidad: <span className="font-semibold">{(form.watch('cost') > 0 && form.watch('price') > form.watch('cost')) ? (((form.watch('price') - form.watch('cost')) / form.watch('cost')) * 100).toFixed(2) : '0.00'}%</span></FormDescription>
+                 <FormDescription>Utilidad: <span className="font-semibold">{calculateProfit(form.watch('price'), form.watch('cost'))}%</span></FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -242,7 +249,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                     {...field}
                   />
                 </FormControl>
-                <FormDescription>Utilidad: <span className="font-semibold">{(form.watch('cost') > 0 && form.watch('wholesalePrice') > form.watch('cost')) ? (((form.watch('wholesalePrice') - form.watch('cost')) / form.watch('cost')) * 100).toFixed(2) : '0.00'}%</span></FormDescription>
+                <FormDescription>Utilidad: <span className="font-semibold">{calculateProfit(form.watch('wholesalePrice'), form.watch('cost'))}%</span></FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -373,3 +380,5 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     </Form>
   );
 }
+
+    
