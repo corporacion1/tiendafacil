@@ -5,7 +5,7 @@ import { useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import type { CartItem, Customer } from "@/lib/types";
+import type { CartItem, Customer, Product } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
 
 interface TicketPreviewProps {
@@ -35,6 +35,9 @@ export function TicketPreview({
     let tax2Amount = 0;
 
     cartItems.forEach(item => {
+      // The product might not exist if it was deleted, so we check for it.
+      if (!item.product) return;
+
       const itemSubtotal = item.price * item.quantity;
       if (item.product.tax1 && settings.tax1 > 0) {
         tax1Amount += itemSubtotal * (settings.tax1 / 100);

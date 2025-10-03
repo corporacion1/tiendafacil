@@ -2,8 +2,7 @@
 "use client"
 import { useState, useEffect } from "react";
 import { usePathname, useRouter } from 'next/navigation';
-import Image from "next/image"
-import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags } from "lucide-react"
+import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -281,8 +280,8 @@ export default function POSPage() {
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {filteredProducts.map((product) => (
                 <Card key={product.id} className="overflow-hidden group">
-                  <div className="relative">
-                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                  <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative">
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
                         <Button size="sm" onClick={() => addToCart(product)}>Agregar</Button>
                         <DialogTrigger asChild>
                             <Button size="icon" variant="ghost" className="absolute top-1 right-1 h-7 w-7 text-white" onClick={() => setProductDetails(product)}>
@@ -290,18 +289,11 @@ export default function POSPage() {
                             </Button>
                         </DialogTrigger>
                     </div>
-                    <Image
-                      alt={product.name}
-                      className="aspect-square w-full object-cover"
-                      height="150"
-                      src={product.imageUrl}
-                      width="150"
-                      data-ai-hint={product.imageHint}
-                    />
+                    <Package className="w-12 h-12 text-muted-foreground" />
                     <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded">
                       ${product.price.toFixed(2)}
                     </div>
-                  </div>
+                  </CardContent>
                   <CardFooter className="p-2 bg-background/80 backdrop-blur-sm">
                     <h3 className="text-sm font-medium truncate">{product.name}</h3>
                   </CardFooter>
@@ -582,8 +574,8 @@ export default function POSPage() {
         </DialogHeader>
         {productDetails && (
             <div className="grid gap-4">
-                 <div className="relative aspect-square w-full">
-                    <Image src={productDetails.imageUrl} alt={productDetails.name} fill className="object-cover rounded-md" />
+                 <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md">
+                    <Package className="w-16 h-16 text-muted-foreground" />
                  </div>
                  <div className="grid gap-2">
                     <div className="flex justify-between">
@@ -630,5 +622,3 @@ export default function POSPage() {
   </Dialog>
   );
 }
-
-    

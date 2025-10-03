@@ -151,7 +151,7 @@ export default function ReportsPage() {
         if (!sale) return [];
         return sale.items.map(item => {
             const product = products.find(p => p.id === item.productId);
-            const fallbackProduct = { id: item.productId, name: item.productName, price: item.price, stock: 0, category: '', cost: 0, imageHint: '', imageUrl: '', sku: '', status: 'inactive' as 'inactive', tax1: false, tax2: false, wholesalePrice: item.price };
+            const fallbackProduct: Product = { id: item.productId, name: item.productName, price: item.price, stock: 0, category: '', cost: 0, status: 'inactive', tax1: false, tax2: false, wholesalePrice: item.price };
             return {
                 product: product || fallbackProduct,
                 quantity: item.quantity,

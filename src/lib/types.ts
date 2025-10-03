@@ -10,8 +10,6 @@ export type Product = {
   cost: number;
   category: string;
   status: 'active' | 'inactive';
-  imageUrl: string;
-  imageHint: string;
   tax1: boolean;
   tax2: boolean;
   unit?: string;
