@@ -153,6 +153,15 @@ export default function POSPage() {
       });
       return;
     }
+    
+    if (transactionType === 'credito' && selectedCustomerId === 'eventual') {
+        toast({
+            variant: "destructive",
+            title: "Cliente no válido para crédito",
+            description: "Por favor, selecciona un cliente registrado para procesar una venta a crédito.",
+        });
+        return;
+    }
 
     const saleId = generateSaleId();
     const newSale: Sale = {
@@ -168,6 +177,9 @@ export default function POSPage() {
         date: new Date().toISOString(),
         transactionType: transactionType,
         paymentMethod: transactionType === 'contado' ? paymentMethod : undefined,
+        status: transactionType === 'credito' ? 'unpaid' : 'paid',
+        paidAmount: transactionType === 'credito' ? 0 : total,
+        payments: transactionType === 'credito' ? [] : undefined,
     }
     
     mockSales.unshift(newSale);
@@ -618,3 +630,5 @@ export default function POSPage() {
   </Dialog>
   );
 }
+
+    
