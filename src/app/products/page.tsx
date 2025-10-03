@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,9 @@ const productSchema = z.object({
   wholesalePrice: z.coerce.number().positive("El precio debe ser un número positivo."),
   cost: z.coerce.number().positive("El costo debe ser un número positivo."),
   description: z.string().optional(),
+  unit: z.string().optional(),
+  family: z.string().optional(),
+  warehouse: z.string().optional(),
   tax1: z.boolean().default(false),
   tax2: z.boolean().default(false),
   status: z.boolean().default(true),
@@ -37,6 +41,9 @@ export default function ProductsPage() {
       wholesalePrice: 0,
       cost: 0,
       description: "",
+      unit: "",
+      family: "",
+      warehouse: "",
       tax1: true,
       tax2: false,
       status: true,
@@ -101,6 +108,47 @@ export default function ProductsPage() {
                   </FormItem>
                 )}
               />
+            </div>
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <FormField
+                    control={form.control}
+                    name="unit"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Unidad de Medida</FormLabel>
+                        <FormControl>
+                        <Input placeholder="Ej: Pieza, Kg, Litro" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="family"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Familia de Producto</FormLabel>
+                        <FormControl>
+                        <Input placeholder="Ej: Electrónica" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="warehouse"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Almacén de Destino</FormLabel>
+                        <FormControl>
+                        <Input placeholder="Ej: Almacén Principal" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <FormField

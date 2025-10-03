@@ -1,13 +1,14 @@
+
 import type { Product, InventoryMovement, Sale } from '@/lib/types';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export const mockProducts: Product[] = [
-  { id: '1', name: 'Laptop Pro 15"', sku: 'LP15-001', stock: 25, price: 1200, wholesalePrice: 1100, cost: 800, category: 'Electronics', status: 'active', imageUrl: PlaceHolderImages[0].imageUrl, imageHint: PlaceHolderImages[0].imageHint, tax1: true, tax2: false },
-  { id: '2', name: 'Wireless Mouse', sku: 'WM-002', stock: 150, price: 25, wholesalePrice: 20, cost: 10, category: 'Accessories', status: 'active', imageUrl: PlaceHolderImages[1].imageUrl, imageHint: PlaceHolderImages[1].imageHint, tax1: true, tax2: false },
-  { id: '3', name: 'Mechanical Keyboard', sku: 'MK-003', stock: 75, price: 80, wholesalePrice: 70, cost: 45, category: 'Accessories', status: 'active', imageUrl: PlaceHolderImages[2].imageUrl, imageHint: PlaceHolderImages[2].imageHint, tax1: true, tax2: false },
-  { id: '4', name: '4K 27" Monitor', sku: '4KM-004', stock: 40, price: 350, wholesalePrice: 320, cost: 250, category: 'Monitors', status: 'active', imageUrl: PlaceHolderImages[3].imageUrl, imageHint: PlaceHolderImages[3].imageHint, tax1: true, tax2: true },
-  { id: '5', name: 'USB-C Hub', sku: 'UCH-005', stock: 200, price: 45, wholesalePrice: 40, cost: 20, category: 'Accessories', status: 'active', imageUrl: PlaceHolderImages[4].imageUrl, imageHint: PlaceHolderImages[4].imageHint, tax1: true, tax2: false },
-  { id: '6', name: 'Webcam HD 1080p', sku: 'WHD-006', stock: 80, price: 60, wholesalePrice: 50, cost: 35, category: 'Peripherals', status: 'inactive', imageUrl: PlaceHolderImages[5].imageUrl, imageHint: PlaceHolderImages[5].imageHint, tax1: true, tax2: false },
+  { id: '1', name: 'Laptop Pro 15"', sku: 'LP15-001', stock: 25, price: 1200, wholesalePrice: 1100, cost: 800, category: 'Electronics', status: 'active', imageUrl: PlaceHolderImages[0].imageUrl, imageHint: PlaceHolderImages[0].imageHint, tax1: true, tax2: false, unit: 'Pieza', family: 'Computadoras', warehouse: 'Principal' },
+  { id: '2', name: 'Wireless Mouse', sku: 'WM-002', stock: 150, price: 25, wholesalePrice: 20, cost: 10, category: 'Accessories', status: 'active', imageUrl: PlaceHolderImages[1].imageUrl, imageHint: PlaceHolderImages[1].imageHint, tax1: true, tax2: false, unit: 'Pieza', family: 'Periféricos', warehouse: 'Principal' },
+  { id: '3', name: 'Mechanical Keyboard', sku: 'MK-003', stock: 75, price: 80, wholesalePrice: 70, cost: 45, category: 'Accessories', status: 'active', imageUrl: PlaceHolderImages[2].imageUrl, imageHint: PlaceHolderImages[2].imageHint, tax1: true, tax2: false, unit: 'Pieza', family: 'Periféricos', warehouse: 'Principal' },
+  { id: '4', name: '4K 27" Monitor', sku: '4KM-004', stock: 40, price: 350, wholesalePrice: 320, cost: 250, category: 'Monitors', status: 'active', imageUrl: PlaceHolderImages[3].imageUrl, imageHint: PlaceHolderImages[3].imageHint, tax1: true, tax2: true, unit: 'Pieza', family: 'Monitores', warehouse: 'Principal' },
+  { id: '5', name: 'USB-C Hub', sku: 'UCH-005', stock: 200, price: 45, wholesalePrice: 40, cost: 20, category: 'Accessories', status: 'active', imageUrl: PlaceHolderImages[4].imageUrl, imageHint: PlaceHolderImages[4].imageHint, tax1: true, tax2: false, unit: 'Pieza', family: 'Accesorios', warehouse: 'Principal' },
+  { id: '6', name: 'Webcam HD 1080p', sku: 'WHD-006', stock: 80, price: 60, wholesalePrice: 50, cost: 35, category: 'Peripherals', status: 'inactive', imageUrl: PlaceHolderImages[5].imageUrl, imageHint: PlaceHolderImages[5].imageHint, tax1: true, tax2: false, unit: 'Pieza', family: 'Periféricos', warehouse: 'Secundario' },
 ];
 
 export const mockInventoryMovements: InventoryMovement[] = [

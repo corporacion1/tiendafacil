@@ -1,4 +1,5 @@
 
+
 export type Product = {
   id: string;
   name: string;
@@ -13,6 +14,9 @@ export type Product = {
   imageHint: string;
   tax1: boolean;
   tax2: boolean;
+  unit?: string;
+  family?: string;
+  warehouse?: string;
 };
 
 export type CartItem = {
