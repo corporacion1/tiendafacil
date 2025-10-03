@@ -45,7 +45,7 @@ interface ProductFormProps {
 const getRandomPlaceholder = () => {
     const randomIndex = Math.floor(Math.random() * PlaceHolderImages.length);
     return PlaceHolderImages[randomIndex];
-}
+};
 
 export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const form = useForm<ProductFormValues>({
@@ -85,6 +85,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     };
     
     const result = onSubmit(productData);
+
+    // Si es un producto nuevo y el envío fue exitoso, resetea el formulario
     if (!product && result === true) {
         form.reset({
             ...form.getValues(),
@@ -181,7 +183,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                         <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Selecciona una familia" />
-                            </Trigger>
+                            </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                             {initialFamilies.map(family => <SelectItem key={family.id} value={family.name}>{family.name}</SelectItem>)}
@@ -201,7 +203,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                         <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Selecciona un almacén" />
-                            </Trigger>
+                            </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                             {initialWarehouses.map(warehouse => <SelectItem key={warehouse.id} value={warehouse.name}>{warehouse.name}</SelectItem>)}
@@ -347,5 +349,3 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     </Form>
   );
 }
-
-    
