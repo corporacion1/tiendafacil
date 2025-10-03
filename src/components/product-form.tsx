@@ -26,8 +26,7 @@ const productSchema = z.object({
   warehouse: z.string().optional(),
   tax1: z.boolean().default(false),
   tax2: z.boolean().default(false),
-  status: z.enum(['active', 'inactive']),
-  category: z.string(),
+  status: z.enum(['active', 'inactive'])
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -69,13 +68,13 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       tax1: true,
       tax2: false,
       status: 'active',
-      category: "Uncategorized",
     },
   });
   
   const handleSubmit = (data: ProductFormValues) => {
     const productData: Product = {
       ...data,
+      category: data.family || "Uncategorized"
     };
     
     const result = onSubmit(productData);
@@ -96,7 +95,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
              tax1: true,
              tax2: false,
              status: 'active',
-             category: "Uncategorized",
         });
     }
   };
@@ -345,3 +343,5 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     </Form>
   );
 }
+
+    
