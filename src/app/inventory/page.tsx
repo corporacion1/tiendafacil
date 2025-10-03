@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { mockProducts, mockInventoryMovements } from "@/lib/data";
+import { mockProducts, mockInventoryMovements, mockSales } from "@/lib/data";
 import type { Product, InventoryMovement } from "@/lib/types";
 import {
   Command,
@@ -32,27 +32,46 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { cn } from "@/lib/utils";
+import { ProductForm } from "@/components/product-form";
 
 
 export default function InventoryPage() {
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>(mockProducts);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [productSearch, setProductSearch] = useState("");
   
   const [open, setOpen] = useState(false)
   const [selectedProductCombo, setSelectedProductCombo] = useState<Product | null>(null)
 
 
   const handleEdit = (product: Product) => {
-    toast({
-      title: "Función no implementada",
-      description: `La edición para "${product.name}" estará disponible pronto.`,
-    });
+    setProductToEdit(product);
   };
 
+  const handleUpdateProduct = (updatedProduct: Product) => {
+    setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+    toast({
+        title: "Producto Actualizado",
+        description: `El producto "${updatedProduct.name}" ha sido actualizado.`,
+    });
+    setProductToEdit(null); // Close the dialog
+  };
+  
   const handleDelete = (productId: string) => {
+     // Check if product is in any sale
+    const isProductInSale = mockSales.some(sale => sale.items.some(item => item.productId === productId));
+
+    if (isProductInSale) {
+        toast({
+            variant: "destructive",
+            title: "Eliminación Bloqueada",
+            description: "Este producto no se puede eliminar porque tiene ventas asociadas. Para mantener la integridad de los reportes, considere cambiar su estado a 'Inactivo'.",
+        });
+        return;
+    }
+    
     setProducts(prev => prev.filter(p => p.id !== productId));
     toast({
       title: "Producto Eliminado",
@@ -77,6 +96,7 @@ export default function InventoryPage() {
   }, [products, searchTerm]);
 
   return (
+    <>
     <Tabs defaultValue="all">
       <div className="flex items-center">
         <TabsList>
@@ -368,7 +388,25 @@ export default function InventoryPage() {
         </Card>
       </TabsContent>
     </Tabs>
+    <Dialog open={!!productToEdit} onOpenChange={(isOpen) => !isOpen && setProductToEdit(null)}>
+        <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+                <DialogTitle>Editar Producto</DialogTitle>
+                <DialogDescription>
+                    Modifica los detalles del producto y guarda los cambios.
+                </DialogDescription>
+            </DialogHeader>
+            {productToEdit && (
+                <ProductForm 
+                    product={productToEdit}
+                    onSubmit={handleUpdateProduct}
+                    onCancel={() => setProductToEdit(null)}
+                />
+            )}
+        </DialogContent>
+    </Dialog>
+
+    </>
   );
 }
 
-    

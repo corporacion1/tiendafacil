@@ -1,5 +1,5 @@
 
-import type { Product, InventoryMovement, Sale } from '@/lib/types';
+import type { Product, InventoryMovement, Sale, Unit, Family, Warehouse } from '@/lib/types';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export const mockProducts: Product[] = [
@@ -45,6 +45,8 @@ export const mockSales: Sale[] = [
         ],
         total: 105.00,
         date: '2023-10-28',
+        transactionType: 'contado',
+        paymentMethod: 'efectivo',
     },
     {
         id: 'SALE002',
@@ -54,5 +56,27 @@ export const mockSales: Sale[] = [
         ],
         total: 1200.00,
         date: '2023-10-27',
+        transactionType: 'credito',
     }
+];
+
+export const initialUnits: Unit[] = [
+    { id: 'u1', name: 'Pieza' },
+    { id: 'u2', name: 'Kg' },
+    { id: 'u3', name: 'Litro' },
+    { id: 'u4', name: 'Caja' },
+];
+
+export const initialFamilies: Family[] = [
+    { id: 'f1', name: 'Electrónica' },
+    { id: 'f2', name: 'Computadoras' },
+    { id: 'f3', name: 'Periféricos' },
+    { id: 'f4', name: 'Monitores' },
+    { id: 'f5', name: 'Accesorios' },
+];
+
+export const initialWarehouses: Warehouse[] = [
+    { id: 'w1', name: 'Principal' },
+    { id: 'w2', name: 'Secundario' },
+    { id: 'w3', name: 'Bodega Central' },
 ];
