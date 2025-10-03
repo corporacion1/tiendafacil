@@ -8,10 +8,10 @@ import { ThemeToggle } from "./theme-toggle";
 
 export function SiteHeader() {
   const navItems = [
-    { href: "/", label: "Dashboard", icon: Home },
+    { href: "/", label: "Punto de Venta", icon: ShoppingCart },
+    { href: "/dashboard", label: "Dashboard", icon: Home },
     { href: "/inventory", label: "Inventario", icon: Boxes },
     { href: "/products", label: "Productos", icon: PackagePlus },
-    { href: "/pos", label: "Punto de Venta", icon: ShoppingCart },
     { href: "/purchases", label: "Compras", icon: Store },
     { href: "/reports", label: "Reportes", icon: FileText },
   ];

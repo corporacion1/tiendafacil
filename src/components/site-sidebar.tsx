@@ -16,13 +16,12 @@ export function SiteSidebar() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: "/", label: "Dashboard", icon: Home },
+    { href: "/", label: "Punto de Venta", icon: ShoppingCart },
+    { href: "/dashboard", label: "Dashboard", icon: Home },
     { href: "/inventory", label: "Inventario", icon: Boxes },
     { href: "/products", label: "Productos", icon: PackagePlus },
-    { href: "/pos", label: "Punto de Venta", icon: ShoppingCart },
     { href: "/purchases", label: "Compras", icon: Store },
     { href: "/reports", label: "Reportes", icon: FileText },
-    { href: "/settings", label: "Configuración", icon: Settings },
   ];
 
   return (
@@ -61,13 +60,15 @@ export function SiteSidebar() {
           <TooltipTrigger asChild>
             <Link
               href="/settings"
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8"
+              className={cn("flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
+                 pathname === "/settings" && "bg-accent text-accent-foreground"
+              )}
             >
               <Settings className="h-5 w-5" />
-              <span className="sr-only">Settings</span>
+              <span className="sr-only">Configuración</span>
             </Link>
           </TooltipTrigger>
-          <TooltipContent side="right">Settings</TooltipContent>
+          <TooltipContent side="right">Configuración</TooltipContent>
         </Tooltip>
         </TooltipProvider>
       </nav>
