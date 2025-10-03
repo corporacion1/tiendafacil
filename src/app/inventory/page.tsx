@@ -41,6 +41,7 @@ export default function InventoryPage() {
   const { products, setProducts, updateProduct } = useProducts();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   
   const [open, setOpen] = useState(false)
@@ -79,6 +80,7 @@ export default function InventoryPage() {
       title: "Producto Eliminado",
       description: "El producto ha sido eliminado del inventario.",
     });
+    setProductToDelete(null);
   };
 
   const handleMoveInventory = () => {
@@ -287,82 +289,27 @@ export default function InventoryPage() {
                       {product.stock}
                     </TableCell>
                     <TableCell>
-                      <Dialog>
-                        <AlertDialog>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button aria-haspopup="true" size="icon" variant="ghost">
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Toggle menu</span>
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                              <DropdownMenuItem onSelect={() => handleEdit(product)}>Editar</DropdownMenuItem>
-                               <DialogTrigger asChild>
-                                <DropdownMenuItem onSelect={() => setSelectedProduct(product)}>Ver Movimientos</DropdownMenuItem>
-                              </DialogTrigger>
-                              <DropdownMenuSeparator />
-                              <AlertDialogTrigger asChild>
-                                <DropdownMenuItem className="text-destructive">
-                                  Eliminar
-                                </DropdownMenuItem>
-                              </AlertDialogTrigger>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                           <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>¿Eliminar Producto?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Esta acción es irreversible. ¿Estás seguro de que quieres eliminar "{product.name}"?
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(product.id)} className="bg-destructive hover:bg-destructive/90">
-                                  Sí, eliminar
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                        <DialogContent className="sm:max-w-lg">
-                            <DialogHeader>
-                                <DialogTitle>Movimientos de: {selectedProduct?.name}</DialogTitle>
-                                <DialogDescription>
-                                Un historial de todas las entradas y salidas de este producto.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Fecha</TableHead>
-                                        <TableHead>Tipo</TableHead>
-                                        <TableHead className="text-right">Cantidad</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {productMovements.map((movement) => (
-                                        <TableRow key={movement.id}>
-                                            <TableCell>{new Date(movement.date).toLocaleDateString()}</TableCell>
-                                            <TableCell>
-                                                <Badge variant={movement.type === "sale" ? "destructive" : movement.type === "purchase" ? "secondary" : "outline"}>
-                                                    {movement.type}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-right">{movement.quantity}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                             <DialogFooter>
-                                <DialogClose asChild>
-                                <Button type="button" variant="secondary">
-                                    Cerrar
-                                </Button>
-                                </DialogClose>
-                            </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                          <DropdownMenuItem onSelect={() => handleEdit(product)}>Editar</DropdownMenuItem>
+                          <DialogTrigger asChild>
+                            <DropdownMenuItem onSelect={() => setSelectedProduct(product)}>Ver Movimientos</DropdownMenuItem>
+                          </DialogTrigger>
+                          <DropdownMenuSeparator />
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem className="text-destructive" onSelect={() => setProductToDelete(product)}>
+                              Eliminar
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -378,6 +325,8 @@ export default function InventoryPage() {
         </Card>
       </TabsContent>
     </Tabs>
+
+    {/* Edit Product Dialog */}
     <Dialog open={!!productToEdit} onOpenChange={(isOpen) => !isOpen && setProductToEdit(null)}>
         <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
@@ -396,6 +345,65 @@ export default function InventoryPage() {
                 )}
             </div>
         </DialogContent>
+    </Dialog>
+
+    {/* Delete Product Alert */}
+    <AlertDialog open={!!productToDelete} onOpenChange={(isOpen) => !isOpen && setProductToDelete(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar Producto?</AlertDialogTitle>
+            <AlertDialogDescription>
+                Esta acción es irreversible. ¿Estás seguro de que quieres eliminar "{productToDelete?.name}"?
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => productToDelete && handleDelete(productToDelete.id)} className="bg-destructive hover:bg-destructive/90">
+                Sí, eliminar
+            </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
+    
+    {/* Movements Dialog */}
+    <Dialog open={!!selectedProduct} onOpenChange={(isOpen) => !isOpen && setSelectedProduct(null)}>
+      <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+              <DialogTitle>Movimientos de: {selectedProduct?.name}</DialogTitle>
+              <DialogDescription>
+              Un historial de todas las entradas y salidas de este producto.
+              </DialogDescription>
+          </DialogHeader>
+          <Table>
+              <TableHeader>
+                  <TableRow>
+                      <TableHead>Fecha</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead className="text-right">Cantidad</TableHead>
+                  </TableRow>
+              </TableHeader>
+              <TableBody>
+                  {productMovements.map((movement) => (
+                      <TableRow key={movement.id}>
+                          <TableCell>{new Date(movement.date).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                              <Badge variant={movement.type === "sale" ? "destructive" : movement.type === "purchase" ? "secondary" : "outline"}>
+                                  {movement.type}
+                              </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">{movement.quantity}</TableCell>
+                      </TableRow>
+                  ))}
+              </TableBody>
+          </Table>
+            <DialogFooter>
+              <DialogClose asChild>
+              <Button type="button" variant="secondary">
+                  Cerrar
+              </Button>
+              </DialogClose>
+          </DialogFooter>
+      </DialogContent>
     </Dialog>
     </>
   );

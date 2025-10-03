@@ -47,18 +47,19 @@ const calculateProfit = (price: number, cost: number) => {
   return '0.00';
 };
 
-export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
-  const form = useForm<ProductFormValues>({
-    resolver: zodResolver(productSchema),
-    defaultValues: product ? {
-        ...product,
-        description: product.description || "",
-        unit: product.unit || "",
-        family: product.family || "",
-        warehouse: product.warehouse || "",
-        imageUrl: product.imageUrl || "",
-        imageHint: product.imageHint || "",
-    } : {
+const getInitialValues = (product?: Product): ProductFormValues => {
+    if (product) {
+        return {
+            ...product,
+            description: product.description || "",
+            unit: product.unit || "",
+            family: product.family || "",
+            warehouse: product.warehouse || "",
+            imageUrl: product.imageUrl || "",
+            imageHint: product.imageHint || "",
+        };
+    }
+    return {
       id: 'prod-' + Date.now(),
       name: "",
       sku: "",
@@ -75,37 +76,24 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       status: 'active',
       imageUrl: "",
       imageHint: "",
-    },
+    };
+};
+
+export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
+  const form = useForm<ProductFormValues>({
+    resolver: zodResolver(productSchema),
+    defaultValues: getInitialValues(product),
   });
   
   const handleSubmit = (data: ProductFormValues) => {
     const productData: Product = { ...data };
     const result = onSubmit(productData);
     if (!product && result === true) {
-      form.reset({
-        id: 'prod-' + Date.now(),
-        name: "",
-        sku: "",
-        price: 0,
-        wholesalePrice: 0,
-        cost: 0,
-        stock: 0,
-        description: "",
-        unit: "",
-        family: "",
-        warehouse: "",
-        tax1: true,
-        tax2: false,
-        status: 'active',
-        imageUrl: "",
-        imageHint: "",
-      });
+      form.reset(getInitialValues());
     }
   };
 
   return (
-    <div>Este es un formulario de producto simplificado.</div>
-    /*
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -376,6 +364,5 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         </div>
       </form>
     </Form>
-    */
   );
 }
