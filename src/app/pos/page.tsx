@@ -35,7 +35,7 @@ export default function POSPage() {
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [isCustomerSearchOpen, setIsCustomerSearchOpen] = useState(false);
   
-  const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
+  const selectedCustomer = customers.find(c => c.id === selectedCustomerId) ?? null;
 
   const addToCart = (product: Product) => {
     setCartItems(prevItems => {
@@ -391,8 +391,10 @@ export default function POSPage() {
         taxes={taxes}
         total={total}
         storeName="TIENDA FACIL WEB"
+        customer={selectedCustomer}
       />
     )}
   </>
   );
 }
+

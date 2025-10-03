@@ -5,7 +5,7 @@ import { useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import type { CartItem } from "@/lib/types";
+import type { CartItem, Customer } from "@/lib/types";
 
 interface TicketPreviewProps {
   isOpen: boolean;
@@ -15,6 +15,7 @@ interface TicketPreviewProps {
   taxes: number;
   total: number;
   storeName: string;
+  customer: Customer | null;
 }
 
 export function TicketPreview({
@@ -25,8 +26,11 @@ export function TicketPreview({
   taxes,
   total,
   storeName,
+  customer,
 }: TicketPreviewProps) {
   const ticketRef = useRef<HTMLDivElement>(null);
+
+  const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
   const handlePrint = () => {
     const printContent = ticketRef.current;
@@ -43,50 +47,64 @@ export function TicketPreview({
               margin: 0;
               padding: 5px;
               color: #000;
+              background-color: #fff;
             }
             .ticket {
-              font-size: 12px;
+              font-size: 11px;
+              line-height: 1.4;
             }
-            .header {
+            .header, .footer {
               text-align: center;
-              margin-bottom: 10px;
             }
             .header h1 {
               font-size: 16px;
               margin: 0;
+              font-weight: 700;
             }
-            .header p {
-              margin: 2px 0;
+            .header p, .customer p {
+              margin: 0;
               font-size: 10px;
+            }
+            .customer {
+              margin-top: 10px;
             }
             .item, .total-line {
               display: flex;
               justify-content: space-between;
             }
-            .item div, .total-line div {
-              padding: 1px 0;
-            }
-            .item .name {
+            .item .name-col {
               width: 70%;
-              white-space: normal;
-              word-break: break-word;
             }
-            .item .price {
+            .item .price-col {
               width: 30%;
               text-align: right;
             }
+            .item .name {
+                display: block;
+            }
+            .item .price-per-unit {
+                font-size: 9px;
+            }
+
             .separator {
               border-top: 1px dashed #000;
               margin: 5px 0;
             }
+            .totals {
+                margin-top: 5px;
+            }
+            .totals .total-line.grand-total {
+              font-weight: bold;
+              font-size: 14px;
+              margin-top: 5px;
+            }
             .footer {
-              text-align: center;
               margin-top: 10px;
               font-size: 10px;
             }
             @page {
               size: 57mm auto;
-              margin: 5mm;
+              margin: 3mm;
             }
           </style>
         `);
@@ -112,35 +130,60 @@ export function TicketPreview({
           </DialogDescription>
         </DialogHeader>
         <div className="overflow-y-auto p-2 border rounded-md bg-gray-50 dark:bg-gray-800">
-          <div ref={ticketRef} className="ticket font-mono" style={{ fontFamily: "'Inconsolata', monospace", width: '100%', color: '#000' }}>
-            <div className="header" style={{ textAlign: 'center', marginBottom: '10px' }}>
-              <h1 style={{ fontSize: '16px', margin: '0' }}>{storeName}</h1>
+          <div ref={ticketRef} className="ticket font-mono" style={{ fontFamily: "'Inconsolata', monospace", width: '100%', color: '#000', backgroundColor: '#fff', padding: '5px' }}>
+            <div className="header" style={{ textAlign: 'center' }}>
+              <h1 style={{ fontSize: '16px', margin: '0', fontWeight: 'bold' }}>{storeName}</h1>
+              <p style={{ margin: '2px 0', fontSize: '10px' }}>Calle Falsa 123</p>
+              <p style={{ margin: '2px 0', fontSize: '10px' }}>Tel: +1 (555) 123-4567</p>
               <p style={{ margin: '2px 0', fontSize: '10px' }}>{new Date().toLocaleString()}</p>
             </div>
-            <div className="separator" style={{ borderTop: '1px dashed #000', margin: '5px 0' }}></div>
+            
+            {customer && (
+              <div className="customer" style={{ marginTop: '10px', fontSize: '10px' }}>
+                <div className="separator" style={{ borderTop: '1px dashed #000', margin: '5px 0' }}></div>
+                <p><strong>Cliente:</strong> {customer.name}</p>
+                {customer.id && customer.id !== 'eventual' && <p><strong>ID:</strong> {customer.id}</p>}
+                {customer.phone && <p><strong>Tel:</strong> {customer.phone}</p>}
+                {customer.address && <p><strong>Dir:</strong> {customer.address}</p>}
+              </div>
+            )}
+
+            <div className="separator" style={{ borderTop: '1px dashed #000', margin: '10px 0 5px' }}></div>
+            
             {cartItems.map(item => (
-              <div key={item.product.id} className="item" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <div className="name" style={{ width: '70%', whiteSpace: 'normal', wordBreak: 'break-word', padding: '1px 0' }}>
-                  {item.quantity}x {item.product.name}
+              <div key={item.product.id} className="item" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', lineHeight: '1.4' }}>
+                <div className="name-col" style={{ width: '70%' }}>
+                  <span className="name">{item.product.name}</span>
+                  <span className="price-per-unit" style={{ fontSize: '9px' }}>{item.quantity} x ${item.product.price.toFixed(2)}</span>
                 </div>
-                <div className="price" style={{ width: '30%', textAlign: 'right', padding: '1px 0' }}>
+                <div className="price-col" style={{ width: '30%', textAlign: 'right' }}>
                   ${(item.product.price * item.quantity).toFixed(2)}
                 </div>
               </div>
             ))}
+            
             <div className="separator" style={{ borderTop: '1px dashed #000', margin: '5px 0' }}></div>
-            <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <div>Subtotal:</div>
-              <div>${subtotal.toFixed(2)}</div>
+
+            <div className="totals" style={{ marginTop: '5px', fontSize: '11px' }}>
+                <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div>Total de Artículos:</div>
+                    <div>{totalItems}</div>
+                </div>
+                <div className="separator" style={{ borderTop: '1px dotted #ccc', margin: '2px 0' }}></div>
+                <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div>Subtotal:</div>
+                    <div>${subtotal.toFixed(2)}</div>
+                </div>
+                <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div>Impuestos (13%):</div>
+                    <div>${taxes.toFixed(2)}</div>
+                </div>
+                <div className="total-line grand-total" style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px', marginTop: '5px' }}>
+                    <div>TOTAL:</div>
+                    <div>${total.toFixed(2)}</div>
+                </div>
             </div>
-            <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <div>Impuestos:</div>
-              <div>${taxes.toFixed(2)}</div>
-            </div>
-            <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px', marginTop: '5px' }}>
-              <div>TOTAL:</div>
-              <div>${total.toFixed(2)}</div>
-            </div>
+            
             <div className="footer" style={{ textAlign: 'center', marginTop: '10px', fontSize: '10px' }}>
               <p>¡Gracias por tu compra!</p>
             </div>
@@ -158,3 +201,4 @@ export function TicketPreview({
     </Dialog>
   );
 }
+
