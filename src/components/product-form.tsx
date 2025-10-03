@@ -113,7 +113,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     let finalImageUrl = data.imageUrl;
     let finalImageHint = data.imageHint;
 
-    if (!finalImageUrl || form.getFieldState('imageUrl').invalid) {
+    if (!finalImageUrl || !z.string().url().safeParse(finalImageUrl).success) {
         const placeholder = getRandomPlaceholder();
         finalImageUrl = placeholder.imageUrl;
         finalImageHint = placeholder.imageHint;
@@ -187,7 +187,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                     <FormControl>
                         <Input placeholder="https://ejemplo.com/imagen.png" {...field} />
                     </FormControl>
-                    <FormDescription>Pega la URL de la imagen del producto. Si se deja en blanco, se usará una imagen por defecto.</FormDescription>
+                    <FormDescription>Pega la URL de la imagen del producto. Si se deja en blanco o no es válida, se usará una imagen por defecto.</FormDescription>
                     <FormMessage />
                 </FormItem>
             )}
@@ -244,7 +244,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                         <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Selecciona un almacén" />
-                            </SelectTrigger>
+                            </Trigger>
                         </FormControl>
                         <SelectContent>
                             {initialWarehouses.map(warehouse => <SelectItem key={warehouse.id} value={warehouse.name}>{warehouse.name}</SelectItem>)}
