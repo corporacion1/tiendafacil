@@ -152,23 +152,37 @@ export default function SettingsPage() {
                         <CardDescription>Configura la información de tu tienda que aparecerá en los tickets.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="store-name">Nombre de la Tienda</Label>
-                            <Input id="store-name" placeholder="Mi Tienda Increíble" />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="store-name">Nombre de la Tienda</Label>
+                                <Input id="store-name" placeholder="Mi Tienda Increíble" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="store-address">Dirección</Label>
+                                <Input id="store-address" placeholder="Calle Falsa 123" />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="store-phone">Teléfono</Label>
+                                <Input id="store-phone" placeholder="+1 (555) 123-4567" />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="store-slogan">Slogan o Mensaje para el Ticket</Label>
+                                <Input id="store-slogan" placeholder="¡Gracias por tu compra!" />
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="store-address">Dirección</Label>
-                            <Input id="store-address" placeholder="Calle Falsa 123" />
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="tax-1">Impuesto 1 (%)</Label>
+                                <Input id="tax-1" type="number" placeholder="Ej: 13" defaultValue="13" />
+                                <CardDescription>Impuesto general sobre las ventas (IVA).</CardDescription>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="tax-2">Impuesto 2 (%)</Label>
+                                <Input id="tax-2" type="number" placeholder="Ej: 5" defaultValue="0"/>
+                                 <CardDescription>Impuesto especial o selectivo.</CardDescription>
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="store-phone">Teléfono</Label>
-                            <Input id="store-phone" placeholder="+1 (555) 123-4567" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="store-slogan">Slogan o Mensaje para el Ticket</Label>
-                            <Input id="store-slogan" placeholder="¡Gracias por tu compra!" />
-                        </div>
-                        <Button className="bg-primary hover:bg-primary/90">Guardar Cambios</Button>
+                        <Button className="bg-primary hover:bg-primary/90 mt-4">Guardar Cambios</Button>
                     </CardContent>
                 </Card>
 
@@ -286,4 +300,3 @@ export default function SettingsPage() {
         </Dialog>
     );
 }
-
