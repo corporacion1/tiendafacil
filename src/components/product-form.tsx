@@ -7,7 +7,6 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type { Product } from "@/lib/types";
@@ -63,8 +62,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       unit: product?.unit || "",
       family: product?.family || "",
       warehouse: product?.warehouse || "",
-      tax1: product?.tax1 || true,
-      tax2: product?.tax2 || false,
+      tax1: product?.tax1 ?? true,
+      tax2: product?.tax2 ?? false,
       status: product ? product.status === 'active' : true,
       imageUrl: product?.imageUrl || "",
       imageHint: product?.imageHint || "product placeholder",
@@ -288,41 +287,36 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
           )}
         />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-            <div className="space-y-4">
-                <FormLabel>Impuestos</FormLabel>
-                <FormField
-                control={form.control}
-                name="tax1"
-                render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                    <FormControl>
-                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                        <FormLabel>Impuesto General (IVA)</FormLabel>
-                        <FormDescription>
-                        Aplica el impuesto general sobre las ventas.
-                        </FormDescription>
-                    </div>
-                    </FormItem>
-                )}
+            <div className="grid gap-4">
+                 <FormField
+                    control={form.control}
+                    name="tax1"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                                <FormLabel>Impuesto General (IVA)</FormLabel>
+                                <FormDescription>Aplica el impuesto general sobre las ventas.</FormDescription>
+                            </div>
+                            <FormControl>
+                                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                        </FormItem>
+                    )}
                 />
-                <FormField
-                control={form.control}
-                name="tax2"
-                render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                    <FormControl>
-                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                        <FormLabel>Impuesto Especial</FormLabel>
-                        <FormDescription>
-                        Aplica un impuesto especial o selectivo.
-                        </FormDescription>
-                    </div>
-                    </FormItem>
-                )}
+                 <FormField
+                    control={form.control}
+                    name="tax2"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                                <FormLabel>Impuesto Especial</FormLabel>
+                                <FormDescription>Aplica un impuesto especial o selectivo.</FormDescription>
+                            </div>
+                            <FormControl>
+                                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                        </FormItem>
+                    )}
                 />
             </div>
             <FormField
@@ -356,4 +350,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     </Form>
   );
 }
+    
+
     
