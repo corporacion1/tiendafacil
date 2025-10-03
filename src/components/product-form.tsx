@@ -79,31 +79,27 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   });
   
   const handleSubmit = (data: ProductFormValues) => {
-    const productData: Product = {
-      ...data,
-    };
-    
+    const productData: Product = { ...data };
     const result = onSubmit(productData);
-
     if (!product && result === true) {
-        form.reset({
-             id: 'prod-' + Date.now(),
-             name: "",
-             sku: "",
-             price: 0,
-             wholesalePrice: 0,
-             cost: 0,
-             stock: 0,
-             description: "",
-             unit: "",
-             family: "",
-             warehouse: "",
-             tax1: true,
-             tax2: false,
-             status: 'active',
-             imageUrl: "",
-             imageHint: "",
-        });
+      form.reset({
+        id: 'prod-' + Date.now(),
+        name: "",
+        sku: "",
+        price: 0,
+        wholesalePrice: 0,
+        cost: 0,
+        stock: 0,
+        description: "",
+        unit: "",
+        family: "",
+        warehouse: "",
+        tax1: true,
+        tax2: false,
+        status: 'active',
+        imageUrl: "",
+        imageHint: "",
+      });
     }
   };
 
