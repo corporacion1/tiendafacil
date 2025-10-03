@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -108,12 +107,12 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       }
   };
 
-
   const handleSubmit = (data: ProductFormValues) => {
     let finalImageUrl = data.imageUrl;
     let finalImageHint = data.imageHint;
 
-    if (!finalImageUrl || !z.string().url().safeParse(finalImageUrl).success) {
+    const urlCheck = z.string().url().safeParse(finalImageUrl);
+    if (!finalImageUrl || !urlCheck.success) {
         const placeholder = getRandomPlaceholder();
         finalImageUrl = placeholder.imageUrl;
         finalImageHint = placeholder.imageHint;
