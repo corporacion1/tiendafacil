@@ -1,5 +1,6 @@
 
-import type { Product, InventoryMovement, Sale, Unit, Family, Warehouse } from '@/lib/types';
+
+import type { Product, InventoryMovement, Sale, Unit, Family, Warehouse, Customer } from '@/lib/types';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 export const mockProducts: Product[] = [
@@ -58,6 +59,11 @@ export const mockSales: Sale[] = [
         date: '2023-10-27',
         transactionType: 'credito',
     }
+];
+
+export const initialCustomers: Customer[] = [
+    { id: 'eventual', name: 'Cliente Eventual' },
+    { id: 'johndoe', name: 'John Doe', phone: '555-1234', address: '123 Fake St' }
 ];
 
 export const initialUnits: Unit[] = [

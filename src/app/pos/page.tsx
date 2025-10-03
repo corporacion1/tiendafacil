@@ -9,7 +9,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { mockProducts } from "@/lib/data"
+import { mockProducts, initialCustomers } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
@@ -19,11 +19,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-
-const initialCustomers: Customer[] = [
-    { id: 'eventual', name: 'Cliente Eventual' },
-    { id: 'johndoe', name: 'John Doe', phone: '555-1234', address: '123 Fake St' }
-];
 
 const generateSaleId = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -98,7 +93,7 @@ export default function POSPage() {
     }
   };
   
-  const toggleWholesalePrice = (productId: string, currentPrice: number) => {
+const toggleWholesalePrice = (productId: string, currentPrice: number) => {
     const itemToUpdate = cartItems.find(item => item.product.id === productId && item.price === currentPrice);
     if (!itemToUpdate) return;
   
