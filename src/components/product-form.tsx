@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { Product } from "@/lib/types";
 import { initialFamilies, initialUnits, initialWarehouses } from "@/lib/data";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { PlaceHolderImages } from "@/lib/placeholder-images";
 
 const productSchema = z.object({
   id: z.string(),
@@ -29,7 +30,7 @@ const productSchema = z.object({
   tax1: z.boolean().default(false),
   tax2: z.boolean().default(false),
   status: z.enum(['active', 'inactive']),
-  imageUrl: z.string(),
+  imageUrl: z.string().url("Debe ser una URL de imagen válida.").optional().or(z.literal('')),
   imageHint: z.string(),
   category: z.string(),
 });
@@ -40,6 +41,11 @@ interface ProductFormProps {
     product?: Product;
     onSubmit: (data: Product) => boolean | void;
     onCancel?: () => void;
+}
+
+const getRandomPlaceholder = () => {
+    const randomIndex = Math.floor(Math.random() * PlaceHolderImages.length);
+    return PlaceHolderImages[randomIndex];
 }
 
 export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
@@ -60,21 +66,35 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       tax1: product?.tax1 || true,
       tax2: product?.tax2 || false,
       status: product ? product.status === 'active' : true,
-      // non-form fields that are part of the Product type
-      imageUrl: product?.imageUrl || "https://picsum.photos/seed/placeholder/400/400",
+      imageUrl: product?.imageUrl || "",
       imageHint: product?.imageHint || "product placeholder",
       category: product?.category || "Uncategorized",
     },
   });
 
   const handleSubmit = (data: ProductFormValues) => {
+    const placeholder = getRandomPlaceholder();
     const productData: Product = {
       ...data,
       status: data.status ? 'active' : 'inactive',
+      imageUrl: data.imageUrl || placeholder.imageUrl,
+      imageHint: data.imageHint || placeholder.imageHint,
     };
     const result = onSubmit(productData);
     if (result) {
-        form.reset();
+        form.reset({
+            ...form.getValues(),
+             id: `prod-${Date.now()}`,
+             name: "",
+             sku: "",
+             price: 0,
+             wholesalePrice: 0,
+             cost: 0,
+             stock: 0,
+             description: "",
+             imageUrl: "",
+             status: true,
+        });
     }
   };
 
@@ -110,6 +130,22 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             )}
           />
         </div>
+
+        <FormField
+            control={form.control}
+            name="imageUrl"
+            render={({ field }) => (
+                <FormItem>
+                    <FormLabel>URL de la Imagen</FormLabel>
+                    <FormControl>
+                        <Input placeholder="https://ejemplo.com/imagen.png" {...field} />
+                    </FormControl>
+                    <FormDescription>Pega la URL de la imagen del producto. Si se deja en blanco, se usará una imagen por defecto.</FormDescription>
+                    <FormMessage />
+                </FormItem>
+            )}
+        />
+        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <FormField
                 control={form.control}
@@ -312,3 +348,5 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     </Form>
   );
 }
+
+    

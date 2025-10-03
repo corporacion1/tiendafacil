@@ -17,6 +17,7 @@ export type Product = {
   unit?: string;
   family?: string;
   warehouse?: string;
+  description?: string;
 };
 
 export type CartItem = {
@@ -103,5 +104,7 @@ export const initialWarehouses: Warehouse[] = [
     { id: 'w2', name: 'Secundario' },
     { id: 'w3', name: 'Bodega Central' },
 ];
+
+    
 
     
