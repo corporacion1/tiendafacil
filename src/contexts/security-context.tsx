@@ -20,7 +20,7 @@ const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 export const SecurityProvider = ({ children }: { children: React.ReactNode }) => {
   const [storedPin, setStoredPin] = useState<string | null>(null);
-  const [isLocked, setIsLocked] = useState(true);
+  const [isLocked, setIsLocked] = useState(false); // Start unlocked
   const { toast } = useToast();
   const inactivityTimer = useRef<NodeJS.Timeout>();
 
@@ -45,18 +45,13 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
           localStorage.setItem(STORAGE_KEY, pinFromStorage);
       }
       setStoredPin(pinFromStorage);
-      if (pinFromStorage) {
-        setIsLocked(true);
-      } else {
-        setIsLocked(false);
-      }
     } catch (error) {
       console.error("Could not access localStorage", error);
-      setIsLocked(false);
     }
   }, []);
   
   useEffect(() => {
+    // This effect is now only for inactivity locking when already unlocked
     if (!isLocked && storedPin) {
       const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
       events.forEach(event => window.addEventListener(event, resetInactivityTimer));
