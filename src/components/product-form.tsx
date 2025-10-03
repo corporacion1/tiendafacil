@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -9,11 +8,10 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Product } from "@/lib/types";
 import { initialFamilies, initialUnits, initialWarehouses } from "@/lib/data";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
-import { useState, useEffect } from "react";
 
 const productSchema = z.object({
   id: z.string(),
@@ -48,6 +46,13 @@ const getRandomPlaceholder = () => {
     return PlaceHolderImages[randomIndex];
 };
 
+const calculateProfit = (price: number, cost: number) => {
+    if (cost > 0 && price > cost) {
+        return (((price - cost) / cost) * 100).toFixed(2);
+    }
+    return '0.00';
+};
+
 export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -78,43 +83,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       category: "Uncategorized",
     },
   });
-
-  const [retailProfit, setRetailProfit] = useState<string>('0.00');
-  const [wholesaleProfit, setWholesaleProfit] = useState<string>('0.00');
-
-  const cost = form.watch('cost');
-  const price = form.watch('price');
-  const wholesalePrice = form.watch('wholesalePrice');
-
-  useEffect(() => {
-      const calculateProfit = (price: number, cost: number) => {
-          if (cost > 0 && price > cost) {
-              return (((price - cost) / cost) * 100).toFixed(2);
-          }
-          return '0.00';
-      };
-      setRetailProfit(calculateProfit(price, cost));
-      setWholesaleProfit(calculateProfit(wholesalePrice, cost));
-  }, [price, wholesalePrice, cost]);
-
-  const handlePriceChange = (value: string, fieldName: 'price' | 'wholesalePrice') => {
-      const costValue = form.getValues('cost');
-      if (value.includes('%')) {
-          const percentage = parseFloat(value.replace(/[^0-9.]/g, ''));
-          if (!isNaN(percentage) && costValue > 0) {
-              const newPrice = costValue * (1 + percentage / 100);
-              form.setValue(fieldName, parseFloat(newPrice.toFixed(2)));
-          }
-      } else {
-          const numericValue = parseFloat(value);
-          if (!isNaN(numericValue)) {
-              form.setValue(fieldName, numericValue);
-          } else {
-              form.setValue(fieldName, 0);
-          }
-      }
-  };
-
+  
   const handleSubmit = (data: ProductFormValues) => {
     let finalImageUrl = data.imageUrl;
     let finalImageHint = data.imageHint;
@@ -136,7 +105,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
     if (!product && result === true) {
         form.reset({
-            ...form.getValues(),
              id: `prod-${Date.now()}`,
              name: "",
              sku: "",
@@ -146,6 +114,13 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
              stock: 0,
              description: "",
              imageUrl: "",
+             imageHint: "product placeholder",
+             category: "Uncategorized",
+             unit: "",
+             family: "",
+             warehouse: "",
+             tax1: true,
+             tax2: false,
              status: 'active',
         });
     }
@@ -269,7 +244,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
               <FormItem>
                 <FormLabel>Costo de Compra</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.01" placeholder="0.00" {...form.register('cost', { valueAsNumber: true })} />
+                  <Input type="number" step="0.01" placeholder="0.00" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -283,14 +258,13 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                 <FormLabel>Precio Detal</FormLabel>
                 <FormControl>
                    <Input 
-                    type="text" 
-                    placeholder="0.00 o 50%" 
-                    value={field.value} 
-                    onChange={(e) => handlePriceChange(e.target.value, 'price')} 
-                    onBlur={field.onBlur}
+                    type="number" 
+                    step="0.01"
+                    placeholder="0.00"
+                    {...field}
                    />
                 </FormControl>
-                 <FormDescription>Utilidad: <span className="font-semibold">{retailProfit}%</span></FormDescription>
+                 <FormDescription>Utilidad: <span className="font-semibold">{calculateProfit(form.watch('price'), form.watch('cost'))}%</span></FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -303,14 +277,13 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                 <FormLabel>Precio Mayor</FormLabel>
                 <FormControl>
                   <Input 
-                    type="text" 
-                    placeholder="0.00 o 30%" 
-                    value={field.value} 
-                    onChange={(e) => handlePriceChange(e.target.value, 'wholesalePrice')} 
-                    onBlur={field.onBlur}
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    {...field}
                   />
                 </FormControl>
-                <FormDescription>Utilidad: <span className="font-semibold">{wholesaleProfit}%</span></FormDescription>
+                <FormDescription>Utilidad: <span className="font-semibold">{calculateProfit(form.watch('wholesalePrice'), form.watch('cost'))}%</span></FormDescription>
                 <FormMessage />
               </FormItem>
             )}
