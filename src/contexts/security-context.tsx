@@ -20,9 +20,27 @@ const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 export const SecurityProvider = ({ children }: { children: React.ReactNode }) => {
   const [storedPin, setStoredPin] = useState<string | null>(null);
-  const [isLocked, setIsLocked] = useState(false); // Start unlocked
+  const [isLocked, setIsLocked] = useState(false);
   const { toast } = useToast();
   const inactivityTimer = useRef<NodeJS.Timeout>();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    try {
+      let pinFromStorage = localStorage.getItem(STORAGE_KEY);
+      if (pinFromStorage) {
+        setStoredPin(pinFromStorage);
+      } else {
+        // Set default PIN if none exists
+        const defaultPin = "1234";
+        localStorage.setItem(STORAGE_KEY, defaultPin);
+        setStoredPin(defaultPin);
+      }
+    } catch (error) {
+      console.error("Could not access localStorage", error);
+    }
+  }, []);
 
   const lockApp = useCallback(() => {
     if (storedPin) {
@@ -36,35 +54,21 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
     }
     inactivityTimer.current = setTimeout(lockApp, INACTIVITY_TIMEOUT);
   }, [lockApp]);
-
-  useEffect(() => {
-    try {
-      let pinFromStorage = localStorage.getItem(STORAGE_KEY);
-      if (!pinFromStorage) {
-          pinFromStorage = "1234";
-          localStorage.setItem(STORAGE_KEY, pinFromStorage);
-      }
-      setStoredPin(pinFromStorage);
-    } catch (error) {
-      console.error("Could not access localStorage", error);
-    }
-  }, []);
   
   useEffect(() => {
-    // This effect is now only for inactivity locking when already unlocked
-    if (!isLocked && storedPin) {
-      const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
-      events.forEach(event => window.addEventListener(event, resetInactivityTimer));
-      resetInactivityTimer();
+    if (!isMounted || isLocked || !storedPin) return;
 
-      return () => {
-        events.forEach(event => window.removeEventListener(event, resetInactivityTimer));
-        if (inactivityTimer.current) {
-            clearTimeout(inactivityTimer.current);
-        }
-      };
-    }
-  }, [isLocked, storedPin, resetInactivityTimer]);
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+    events.forEach(event => window.addEventListener(event, resetInactivityTimer));
+    resetInactivityTimer();
+
+    return () => {
+      events.forEach(event => window.removeEventListener(event, resetInactivityTimer));
+      if (inactivityTimer.current) {
+          clearTimeout(inactivityTimer.current);
+      }
+    };
+  }, [isLocked, storedPin, resetInactivityTimer, isMounted]);
 
 
   const unlockApp = useCallback((pin: string) => {
@@ -129,7 +133,7 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
   }, [toast]);
 
   const value = {
-    isLocked,
+    isLocked: !isMounted || isLocked,
     unlockApp,
     lockApp,
     setPin,

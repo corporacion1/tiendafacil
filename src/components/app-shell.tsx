@@ -8,24 +8,30 @@ import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { Toaster } from "@/components/ui/toaster";
 import { usePathname } from 'next/navigation';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 
 function MainApp({ children }: { children: React.ReactNode }) {
   const { isLocked, lockApp, hasPin } = useSecurity();
   const pathname = usePathname();
   const previousPathname = useRef(pathname);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
     // Lock the app if navigating away from the POS page
     if (previousPathname.current === '/pos' && pathname !== '/pos' && hasPin) {
       lockApp();
     }
     // Update the previous pathname for the next render
     previousPathname.current = pathname;
-  }, [pathname, lockApp, hasPin]);
+  }, [pathname, lockApp, hasPin, isMounted]);
 
-  if (isLocked) {
+  if (!isMounted || isLocked) {
     return <PinModal />;
   }
 
