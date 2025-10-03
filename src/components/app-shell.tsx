@@ -3,6 +3,7 @@
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { SecurityProvider, useSecurity } from "@/contexts/security-context";
+import { SettingsProvider } from "@/contexts/settings-context";
 import { PinModal } from "@/components/pin-modal";
 import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
@@ -24,17 +25,15 @@ function MainApp({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isMounted) return;
     
-    // Lock the app if navigating away from the dashboard page
     if (previousPathname.current === '/dashboard' && pathname !== '/dashboard' && hasPin) {
       lockApp();
     }
     
-    // Update the previous pathname for the next render
     previousPathname.current = pathname;
   }, [pathname, lockApp, hasPin, isMounted]);
 
   if (!isMounted) {
-    return <PinModal />; // Render PinModal on server and initial client render
+    return null;
   }
 
   if (isLocked) {
@@ -57,10 +56,12 @@ function MainApp({ children }: { children: React.ReactNode }) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <SecurityProvider>
-        <MainApp>{children}</MainApp>
-        <Toaster />
-      </SecurityProvider>
+        <SecurityProvider>
+          <SettingsProvider>
+            <MainApp>{children}</MainApp>
+            <Toaster />
+          </SettingsProvider>
+        </SecurityProvider>
     </ThemeProvider>
   );
 }

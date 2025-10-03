@@ -21,6 +21,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useSecurity } from "@/contexts/security-context";
+import { useSettings } from "@/contexts/settings-context";
 
 const generateSaleId = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -33,6 +34,7 @@ const generateSaleId = () => {
 
 export default function POSPage() {
   const { toast } = useToast();
+  const { settings } = useSettings();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
@@ -48,8 +50,6 @@ export default function POSPage() {
   const [lastSale, setLastSale] = useState<Sale | null>(null);
   
   const [productDetails, setProductDetails] = useState<Product | null>(null);
-  const [storeSlogan, setStoreSlogan] = useState("¡Gracias por tu compra!");
-
 
   const selectedCustomer = customers.find(c => c.id === selectedCustomerId) ?? null;
 
@@ -118,10 +118,29 @@ export default function POSPage() {
           })
       );
   };
-
+  
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const taxes = subtotal * 0.13; // Example 13% tax
-  const total = subtotal + taxes;
+  
+  const calculateTaxes = () => {
+    let tax1Amount = 0;
+    let tax2Amount = 0;
+    
+    cartItems.forEach(item => {
+      const itemSubtotal = item.price * item.quantity;
+      if(item.product.tax1 && settings.tax1 > 0) {
+        tax1Amount += itemSubtotal * (settings.tax1 / 100);
+      }
+      if(item.product.tax2 && settings.tax2 > 0) {
+        tax2Amount += itemSubtotal * (settings.tax2 / 100);
+      }
+    });
+
+    return { tax1Amount, tax2Amount, totalTaxes: tax1Amount + tax2Amount };
+  };
+
+  const { tax1Amount, tax2Amount, totalTaxes } = calculateTaxes();
+  const total = subtotal + totalTaxes;
+
 
   const handleProcessSale = (andPrint: boolean) => {
      if (cartItems.length === 0) {
@@ -149,10 +168,8 @@ export default function POSPage() {
         paymentMethod: transactionType === 'contado' ? paymentMethod : undefined,
     }
     
-    // Add sale to mock data
     mockSales.unshift(newSale);
 
-    // Update product stock and create inventory movements
     cartItems.forEach(item => {
         const productIndex = mockProducts.findIndex(p => p.id === item.product.id);
         if (productIndex !== -1) {
@@ -196,7 +213,6 @@ export default function POSPage() {
         return;
     }
     
-    // Use timestamp for a more unique ID
     const newId = newCustomer.id.trim() || `cust-${Date.now()}`;
 
     if (customers.some(c => c.id === newId)) {
@@ -455,10 +471,18 @@ export default function POSPage() {
                         <span>Subtotal</span>
                         <span>${subtotal.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between">
-                        <span>Impuestos (13%)</span>
-                        <span>${taxes.toFixed(2)}</span>
-                    </div>
+                     {settings.tax1 > 0 && (
+                        <div className="flex justify-between">
+                            <span>Impuesto {settings.tax1}%</span>
+                            <span>${tax1Amount.toFixed(2)}</span>
+                        </div>
+                    )}
+                    {settings.tax2 > 0 && (
+                        <div className="flex justify-between">
+                            <span>Impuesto {settings.tax2}%</span>
+                            <span>${tax2Amount.toFixed(2)}</span>
+                        </div>
+                    )}
                     <div className="flex justify-between font-semibold text-lg">
                         <span>Total</span>
                         <span>${total.toFixed(2)}</span>
@@ -584,14 +608,9 @@ export default function POSPage() {
       <TicketPreview
         isOpen={isPrintPreviewOpen}
         onOpenChange={setIsPrintPreviewOpen}
-        cartItems={lastSale && lastSale.items.map(item => ({ product: mockProducts.find(p => p.id === item.productId)!, quantity: item.quantity, price: item.price })) || cartItems}
-        subtotal={lastSale?.total ? lastSale.total / 1.13 : subtotal}
-        taxes={lastSale?.total ? lastSale.total - (lastSale.total / 1.13) : taxes}
-        total={lastSale?.total || total}
-        storeName="TIENDA FACIL WEB"
-        customer={selectedCustomer}
+        cartItems={lastSale ? lastSale.items.map(item => ({ product: mockProducts.find(p => p.id === item.productId)!, quantity: item.quantity, price: item.price })) : cartItems}
         saleId={lastSale?.id}
-        storeSlogan={storeSlogan}
+        customer={selectedCustomer}
       />
     )}
   </Dialog>

@@ -45,11 +45,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useSettings } from "@/contexts/settings-context";
 
 
 type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
 
 export default function ReportsPage() {
+    const { settings } = useSettings();
     const [selectedSaleDetails, setSelectedSaleDetails] = useState<Sale | null>(null);
     const [saleForTicket, setSaleForTicket] = useState<Sale | null>(null);
     const [isTicketPreviewOpen, setIsTicketPreviewOpen] = useState(false);
@@ -210,6 +212,35 @@ export default function ReportsPage() {
             (p.description && p.description.toLowerCase().includes(searchTerm.toLowerCase()))
         );
     }, [searchTerm, timeRange]);
+
+    const calculateTaxesForSale = (sale: Sale) => {
+        let tax1Amount = 0;
+        let tax2Amount = 0;
+        
+        const subtotal = sale.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+        
+        // This is a simplification. In a real scenario, we'd need to know
+        // which taxes were applied to each item at the time of sale.
+        // For now, we recalculate based on current product flags.
+        sale.items.forEach(item => {
+            const product = mockProducts.find(p => p.id === item.productId);
+            if (product) {
+                const itemSubtotal = item.price * item.quantity;
+                if(product.tax1 && settings.tax1 > 0) {
+                    tax1Amount += itemSubtotal * (settings.tax1 / 100);
+                }
+                if(product.tax2 && settings.tax2 > 0) {
+                    tax2Amount += itemSubtotal * (settings.tax2 / 100);
+                }
+            }
+        });
+        
+        const totalTaxes = tax1Amount + tax2Amount;
+        // Adjust subtotal based on total and calculated taxes
+        const calculatedSubtotal = sale.total - totalTaxes;
+
+        return { subtotal: calculatedSubtotal, tax1Amount, tax2Amount, totalTaxes };
+    };
 
 
   return (
@@ -428,23 +459,34 @@ export default function ReportsPage() {
                     </TableBody>
                 </Table>
             </div>
-            {selectedSaleDetails && (
-                <div className="mt-4 space-y-2 border-t pt-4">
-                    <div className="flex justify-between">
-                        <span>Subtotal:</span>
-                        <span>${(selectedSaleDetails.total / 1.13).toFixed(2)}</span>
+            {selectedSaleDetails && (() => {
+                 const { subtotal, tax1Amount, tax2Amount } = calculateTaxesForSale(selectedSaleDetails);
+                 return (
+                    <div className="mt-4 space-y-2 border-t pt-4">
+                        <div className="flex justify-between">
+                            <span>Subtotal:</span>
+                            <span>${subtotal.toFixed(2)}</span>
+                        </div>
+                        {settings.tax1 > 0 && tax1Amount > 0 && (
+                            <div className="flex justify-between">
+                                <span>Impuestos ({settings.tax1}%):</span>
+                                <span>${tax1Amount.toFixed(2)}</span>
+                            </div>
+                        )}
+                        {settings.tax2 > 0 && tax2Amount > 0 && (
+                            <div className="flex justify-between">
+                                <span>Impuestos ({settings.tax2}%):</span>
+                                <span>${tax2Amount.toFixed(2)}</span>
+                            </div>
+                        )}
+                        <Separator />
+                        <div className="flex justify-between font-bold text-lg">
+                            <span>Total General:</span>
+                            <span>${selectedSaleDetails.total.toFixed(2)}</span>
+                        </div>
                     </div>
-                     <div className="flex justify-between">
-                        <span>Impuestos (13%):</span>
-                        <span>${(selectedSaleDetails.total - selectedSaleDetails.total / 1.13).toFixed(2)}</span>
-                    </div>
-                     <Separator />
-                    <div className="flex justify-between font-bold text-lg">
-                        <span>Total General:</span>
-                        <span>${selectedSaleDetails.total.toFixed(2)}</span>
-                    </div>
-                </div>
-            )}
+                )
+            })()}
             <DialogFooter>
                 <DialogClose asChild>
                     <Button variant="outline">Cerrar</Button>
@@ -459,12 +501,8 @@ export default function ReportsPage() {
         isOpen={isTicketPreviewOpen}
         onOpenChange={setIsTicketPreviewOpen}
         cartItems={getTicketCartItems(saleForTicket)}
-        subtotal={saleForTicket.total / 1.13}
-        taxes={saleForTicket.total - (saleForTicket.total / 1.13)}
-        total={saleForTicket.total}
-        storeName="TIENDA FACIL WEB"
-        customer={getTicketCustomer(saleForTicket)}
         saleId={saleForTicket.id}
+        customer={getTicketCustomer(saleForTicket)}
       />
     )}
     </>

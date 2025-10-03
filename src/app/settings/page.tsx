@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { useSecurity } from "@/contexts/security-context";
+import { useSettings } from "@/contexts/settings-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,8 @@ import { Pencil, PlusCircle, Trash2 } from "lucide-react";
 
 export default function SettingsPage() {
     const { hasPin, setPin, removePin } = useSecurity();
+    const { settings, setSettings } = useSettings();
+    const [localSettings, setLocalSettings] = useState(settings);
     const [newPin, setNewPin] = useState('');
     const { toast } = useToast();
 
@@ -28,6 +31,21 @@ export default function SettingsPage() {
 
     const [editingItem, setEditingItem] = useState<{type: 'unit' | 'family' | 'warehouse', data: any} | null>(null);
     const [newItem, setNewItem] = useState<{type: 'unit' | 'family' | 'warehouse', name: string} | null>(null);
+
+    const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { id, value } = e.target;
+        setLocalSettings(prev => ({ ...prev, [id]: value }));
+    };
+
+    const handleNumberSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { id, value } = e.target;
+        setLocalSettings(prev => ({ ...prev, [id]: parseFloat(value) || 0 }));
+    };
+
+    const saveStoreSettings = () => {
+        setSettings(localSettings);
+        toast({ title: "Configuración guardada", description: "La información del comercio ha sido actualizada." });
+    };
 
     const handleActionWithToast = (title: string, description: string) => {
         toast({ title, description });
@@ -154,35 +172,35 @@ export default function SettingsPage() {
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="store-name">Nombre de la Tienda</Label>
-                                <Input id="store-name" placeholder="Mi Tienda Increíble" />
+                                <Label htmlFor="storeName">Nombre de la Tienda</Label>
+                                <Input id="storeName" value={localSettings.storeName} onChange={handleSettingsChange} placeholder="Mi Tienda Increíble" />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="store-address">Dirección</Label>
-                                <Input id="store-address" placeholder="Calle Falsa 123" />
+                                <Label htmlFor="storeAddress">Dirección</Label>
+                                <Input id="storeAddress" value={localSettings.storeAddress} onChange={handleSettingsChange} placeholder="Calle Falsa 123" />
                             </div>
                              <div className="space-y-2">
-                                <Label htmlFor="store-phone">Teléfono</Label>
-                                <Input id="store-phone" placeholder="+1 (555) 123-4567" />
+                                <Label htmlFor="storePhone">Teléfono</Label>
+                                <Input id="storePhone" value={localSettings.storePhone} onChange={handleSettingsChange} placeholder="+1 (555) 123-4567" />
                             </div>
                              <div className="space-y-2">
-                                <Label htmlFor="store-slogan">Slogan o Mensaje para el Ticket</Label>
-                                <Input id="store-slogan" placeholder="¡Gracias por tu compra!" />
+                                <Label htmlFor="storeSlogan">Slogan o Mensaje para el Ticket</Label>
+                                <Input id="storeSlogan" value={localSettings.storeSlogan} onChange={handleSettingsChange} placeholder="¡Gracias por tu compra!" />
                             </div>
                         </div>
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                             <div className="space-y-2">
-                                <Label htmlFor="tax-1">Impuesto 1 (%)</Label>
-                                <Input id="tax-1" type="number" placeholder="Ej: 16" defaultValue="16" />
+                                <Label htmlFor="tax1">Impuesto 1 (%)</Label>
+                                <Input id="tax1" type="number" value={localSettings.tax1} onChange={handleNumberSettingsChange} placeholder="Ej: 16" />
                                 <CardDescription>Impuesto general sobre las ventas (IVA).</CardDescription>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="tax-2">Impuesto 2 (%)</Label>
-                                <Input id="tax-2" type="number" placeholder="Ej: 5" defaultValue="0"/>
+                                <Label htmlFor="tax2">Impuesto 2 (%)</Label>
+                                <Input id="tax2" type="number" value={localSettings.tax2} onChange={handleNumberSettingsChange} placeholder="Ej: 5" />
                                  <CardDescription>Impuesto especial o selectivo.</CardDescription>
                             </div>
                         </div>
-                        <Button className="bg-primary hover:bg-primary/90 mt-4">Guardar Cambios</Button>
+                        <Button className="bg-primary hover:bg-primary/90 mt-4" onClick={saveStoreSettings}>Guardar Cambios</Button>
                     </CardContent>
                 </Card>
 
@@ -300,5 +318,3 @@ export default function SettingsPage() {
         </Dialog>
     );
 }
-
-    

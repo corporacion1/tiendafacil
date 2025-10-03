@@ -6,35 +6,50 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import type { CartItem, Customer } from "@/lib/types";
+import { useSettings } from "@/contexts/settings-context";
 
 interface TicketPreviewProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   cartItems: CartItem[];
-  subtotal: number;
-  taxes: number;
-  total: number;
-  storeName: string;
   customer: Customer | null;
   saleId?: string | null;
-  storeSlogan?: string;
 }
 
 export function TicketPreview({
   isOpen,
   onOpenChange,
   cartItems,
-  subtotal,
-  taxes,
-  total,
-  storeName,
   customer,
   saleId,
-  storeSlogan,
 }: TicketPreviewProps) {
   const ticketRef = useRef<HTMLDivElement>(null);
+  const { settings } = useSettings();
 
   const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
+
+  const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+
+  const calculateTaxes = () => {
+    let tax1Amount = 0;
+    let tax2Amount = 0;
+
+    cartItems.forEach(item => {
+      const itemSubtotal = item.price * item.quantity;
+      if (item.product.tax1 && settings.tax1 > 0) {
+        tax1Amount += itemSubtotal * (settings.tax1 / 100);
+      }
+      if (item.product.tax2 && settings.tax2 > 0) {
+        tax2Amount += itemSubtotal * (settings.tax2 / 100);
+      }
+    });
+
+    return { tax1Amount, tax2Amount, totalTaxes: tax1Amount + tax2Amount };
+  };
+  
+  const { tax1Amount, tax2Amount, totalTaxes } = calculateTaxes();
+  const total = subtotal + totalTaxes;
+
 
   const handlePrint = () => {
     const printContent = ticketRef.current;
@@ -141,9 +156,9 @@ export function TicketPreview({
             <div className="overflow-y-auto p-2 border rounded-md bg-gray-50 dark:bg-gray-800">
             <div ref={ticketRef} className="ticket font-mono" style={{ fontFamily: "'Inconsolata', monospace", width: '100%', color: '#000', backgroundColor: '#fff', padding: '5px' }}>
                 <div className="header" style={{ textAlign: 'center' }}>
-                <h1 style={{ fontSize: '16px', margin: '0', fontWeight: 'bold' }}>{storeName}</h1>
-                <p style={{ margin: '2px 0', fontSize: '10px' }}>Calle Falsa 123</p>
-                <p style={{ margin: '2px 0', fontSize: '10px' }}>Tel: +1 (555) 123-4567</p>
+                <h1 style={{ fontSize: '16px', margin: '0', fontWeight: 'bold' }}>{settings.storeName}</h1>
+                <p style={{ margin: '2px 0', fontSize: '10px' }}>{settings.storeAddress}</p>
+                <p style={{ margin: '2px 0', fontSize: '10px' }}>Tel: {settings.storePhone}</p>
                 <p style={{ margin: '2px 0', fontSize: '10px' }}>{new Date().toLocaleString()}</p>
                 {saleId && <p style={{ margin: '2px 0', fontSize: '10px', fontWeight: 'bold' }}>CONTROL #: {saleId}</p>}
                 </div>
@@ -185,10 +200,18 @@ export function TicketPreview({
                             <div>Subtotal:</div>
                             <div>${subtotal.toFixed(2)}</div>
                         </div>
-                        <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <div>Impuestos (13%):</div>
-                            <div>${taxes.toFixed(2)}</div>
-                        </div>
+                        {settings.tax1 > 0 && tax1Amount > 0 && (
+                          <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <div>Impuesto ({settings.tax1}%):</div>
+                              <div>${tax1Amount.toFixed(2)}</div>
+                          </div>
+                        )}
+                        {settings.tax2 > 0 && tax2Amount > 0 && (
+                          <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <div>Impuesto ({settings.tax2}%):</div>
+                              <div>${tax2Amount.toFixed(2)}</div>
+                          </div>
+                        )}
                         <div className="total-line grand-total" style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px', marginTop: '5px' }}>
                             <div>TOTAL:</div>
                             <div>${total.toFixed(2)}</div>
@@ -198,7 +221,7 @@ export function TicketPreview({
                 )}
                 
                 <div className="footer" style={{ textAlign: 'center', marginTop: '10px', fontSize: '10px' }}>
-                <p>{storeSlogan || '¡Gracias por tu compra!'}</p>
+                <p>{settings.storeSlogan || '¡Gracias por tu compra!'}</p>
                 </div>
             </div>
             </div>
