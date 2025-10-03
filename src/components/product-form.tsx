@@ -34,7 +34,7 @@ const productSchema = z.object({
   category: z.string(),
 });
 
-type ProductFormValues = Omit<Product, 'status'> & { status: boolean };
+type ProductFormValues = z.infer<typeof productSchema>;
 
 interface ProductFormProps {
     product?: Product;
@@ -49,7 +49,7 @@ const getRandomPlaceholder = () => {
 
 export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const form = useForm<ProductFormValues>({
-    resolver: zodResolver(productSchema.omit({ status: true }).extend({ status: z.boolean() })),
+    resolver: zodResolver(productSchema),
     defaultValues: {
       id: product?.id || `prod-${Date.now()}`,
       name: product?.name || "",
@@ -64,7 +64,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       warehouse: product?.warehouse || "",
       tax1: product?.tax1 ?? true,
       tax2: product?.tax2 ?? false,
-      status: product ? product.status === 'active' : true,
+      status: product ? product.status : 'active',
       imageUrl: product?.imageUrl || "",
       imageHint: product?.imageHint || "product placeholder",
       category: product?.category || "Uncategorized",
@@ -80,7 +80,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
   useEffect(() => {
       const calculateProfit = (price: number, cost: number) => {
-          if (cost > 0 && price > 0) {
+          if (cost > 0 && price > cost) {
               return (((price - cost) / cost) * 100).toFixed(2);
           }
           return '0.00';
@@ -120,7 +120,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     
     const productData: Product = {
       ...data,
-      status: data.status ? 'active' : 'inactive',
       imageUrl: finalImageUrl,
       imageHint: finalImageHint,
     };
@@ -139,7 +138,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
              stock: 0,
              description: "",
              imageUrl: "",
-             status: true,
+             status: 'active',
         });
     }
   };
@@ -376,7 +375,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             <FormField
                 control={form.control}
                 name="status"
-                render={({ field }) => (
+                render={({ field: { onChange, value, ...rest } }) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
                             <FormLabel className="text-base">Estado</FormLabel>
@@ -386,8 +385,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                         </div>
                         <FormControl>
                             <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
+                            checked={value === 'active'}
+                            onCheckedChange={(checked) => onChange(checked ? 'active' : 'inactive')}
+                            {...rest}
                             />
                         </FormControl>
                     </FormItem>
