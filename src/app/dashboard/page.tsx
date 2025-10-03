@@ -1,3 +1,4 @@
+
 "use client"
 import { ArrowUpRight, DollarSign, Users, Package } from "lucide-react";
 import Link from "next/link";
@@ -117,7 +118,7 @@ export default function Dashboard() {
                       borderColor: 'hsl(var(--border))',
                     }}
                   />
-                  <Bar dataKey="sales" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="sales" radius={[4, 4, 0, 0]} className="fill-primary" />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>

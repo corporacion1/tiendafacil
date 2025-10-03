@@ -21,12 +21,18 @@ export let mockInventoryMovements: InventoryMovement[] = [
 ];
 
 export const monthlySalesData = [
-    { month: "Jan", sales: Math.floor(Math.random() * 5000) + 1000 },
-    { month: "Feb", sales: Math.floor(Math.random() * 5000) + 1000 },
-    { month: "Mar", sales: Math.floor(Math.random() * 5000) + 1000 },
-    { month: "Apr", sales: Math.floor(Math.random() * 5000) + 1000 },
-    { month: "May", sales: Math.floor(Math.random() * 5000) + 1000 },
-    { month: "Jun", sales: Math.floor(Math.random() * 5000) + 1000 },
+  { month: "Jan", sales: Math.floor(Math.random() * 5000) + 1000 },
+  { month: "Feb", sales: Math.floor(Math.random() * 5000) + 1000 },
+  { month: "Mar", sales: Math.floor(Math.random() * 5000) + 1000 },
+  { month: "Apr", sales: Math.floor(Math.random() * 5000) + 1000 },
+  { month: "May", sales: Math.floor(Math.random() * 5000) + 1000 },
+  { month: "Jun", sales: Math.floor(Math.random() * 5000) + 1000 },
+  { month: "Jul", sales: Math.floor(Math.random() * 5000) + 1000 },
+  { month: "Aug", sales: Math.floor(Math.random() * 5000) + 1000 },
+  { month: "Sep", sales: Math.floor(Math.random() * 5000) + 1000 },
+  { month: "Oct", sales: Math.floor(Math.random() * 5000) + 1000 },
+  { month: "Nov", sales: Math.floor(Math.random() * 5000) + 1000 },
+  { month: "Dec", sales: Math.floor(Math.random() * 5000) + 1000 },
 ];
 
 export const categorySalesData = [
