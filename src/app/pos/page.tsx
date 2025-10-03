@@ -2,7 +2,7 @@
 "use client"
 import { useState } from "react";
 import Image from "next/image"
-import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn } from "lucide-react"
+import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -47,20 +47,20 @@ export default function POSPage() {
 
   const addToCart = (product: Product) => {
     setCartItems(prevItems => {
-      const existingItem = prevItems.find(item => item.product.id === product.id);
+      const existingItem = prevItems.find(item => item.product.id === product.id && item.price === product.price);
       if (existingItem) {
         return prevItems.map(item =>
-          item.product.id === product.id
+          item.product.id === product.id && item.price === product.price
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       }
-      return [...prevItems, { product, quantity: 1 }];
+      return [...prevItems, { product, quantity: 1, price: product.price }];
     });
   };
 
-  const removeFromCart = (productId: string) => {
-    setCartItems(prevItems => prevItems.filter(item => item.product.id !== productId));
+  const removeFromCart = (productId: string, price: number) => {
+    setCartItems(prevItems => prevItems.filter(item => !(item.product.id === productId && item.price === price)));
      toast({
       title: "Producto Eliminado",
       description: "El producto ha sido eliminado del carrito.",
@@ -75,21 +75,38 @@ export default function POSPage() {
     });
   };
 
-  const updateQuantity = (productId: string, newQuantity: number) => {
+  const updateQuantity = (productId: string, price: number, newQuantity: number) => {
     if (newQuantity <= 0) {
-      removeFromCart(productId);
+      removeFromCart(productId, price);
     } else {
       setCartItems(prevItems =>
         prevItems.map(item =>
-          item.product.id === productId
+          item.product.id === productId && item.price === price
             ? { ...item, quantity: newQuantity }
             : item
         )
       );
     }
   };
+  
+  const toggleWholesalePrice = (productId: string, currentPrice: number) => {
+    setCartItems(prevItems => 
+        prevItems.map(item => {
+            if (item.product.id === productId && item.price === currentPrice) {
+                const isRetail = item.price === item.product.price;
+                const newPrice = isRetail ? item.product.wholesalePrice : item.product.price;
+                toast({
+                    title: "Precio Actualizado",
+                    description: `Precio de "${item.product.name}" cambiado a ${isRetail ? 'mayorista' : 'detal'}.`
+                });
+                return { ...item, price: newPrice };
+            }
+            return item;
+        })
+    );
+  };
 
-  const subtotal = cartItems.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
+  const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const taxes = subtotal * 0.13; // Example 13% tax
   const total = subtotal + taxes;
 
@@ -111,7 +128,7 @@ export default function POSPage() {
             productId: item.product.id,
             productName: item.product.name,
             quantity: item.quantity,
-            price: item.product.price
+            price: item.price
         })),
         total: total,
         date: new Date().toISOString(),
@@ -356,42 +373,46 @@ export default function POSPage() {
                         <p className="text-sm">Agrega productos para comenzar una venta.</p>
                     </div>
                 ) : (
-                    cartItems.map(item => (
-                         <div key={item.product.id} className="flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                            <Image alt={item.product.name} className="w-12 h-12 rounded-md object-cover" src={item.product.imageUrl} width={48} height={48} />
-                            <div>
+                    cartItems.map((item, index) => (
+                        <div key={`${item.product.id}-${index}`} className="flex justify-between items-center gap-2">
+                            <div className="flex-grow">
                                 <p className="font-medium text-sm">{item.product.name}</p>
-                                <p className="text-xs text-muted-foreground">${item.product.price.toFixed(2)}</p>
+                                <p className={cn("text-xs", item.price === item.product.wholesalePrice ? "text-accent-foreground font-semibold" : "text-muted-foreground")}>
+                                    ${item.price.toFixed(2)}
+                                </p>
                             </div>
-                            </div>
-                             <Input
+                            <Input
                                 type="number"
                                 value={item.quantity}
-                                onChange={(e) => updateQuantity(item.product.id, parseInt(e.target.value, 10) || 1)}
+                                onChange={(e) => updateQuantity(item.product.id, item.price, parseInt(e.target.value, 10) || 1)}
                                 className="h-8 w-16"
                                 min="1"
                             />
-                            <div className="text-right font-semibold">${(item.product.price * item.quantity).toFixed(2)}</div>
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
-                                        <X className="h-4 w-4" />
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                    <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        Esto eliminará "{item.product.name}" de tu carrito.
-                                    </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => removeFromCart(item.product.id)}>Eliminar</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
+                            <div className="text-right font-semibold w-20">${(item.price * item.quantity).toFixed(2)}</div>
+                            <div className="flex items-center">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-accent-foreground" onClick={() => toggleWholesalePrice(item.product.id, item.price)}>
+                                    <Tags className={cn("h-4 w-4", item.price === item.product.wholesalePrice && "text-accent-foreground")} />
+                                </Button>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                        <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Esto eliminará "{item.product.name}" de tu carrito.
+                                        </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => removeFromCart(item.product.id, item.price)}>Eliminar</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </div>
                         </div>
                     ))
                 )}
@@ -545,3 +566,5 @@ export default function POSPage() {
   </Dialog>
   );
 }
+
+    
