@@ -74,7 +74,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const handleSubmit = (data: ProductFormValues) => {
     const placeholder = getRandomPlaceholder();
     
-    // Check if the image URL is empty and assign a placeholder if it is.
     const imageUrl = data.imageUrl ? data.imageUrl : placeholder.imageUrl;
     const imageHint = data.imageUrl ? data.imageHint : placeholder.imageHint;
 
@@ -85,15 +84,13 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       imageHint: imageHint,
     };
     
-    // If it's an existing product, just submit.
     if (product) {
       onSubmit(productData);
       return;
     }
 
-    // If it's a new product, submit and then maybe reset the form.
     const result = onSubmit(productData);
-    if (result === true) { // Only reset if onSubmit returns true (for creation form)
+    if (result === true) {
         form.reset({
             ...form.getValues(),
              id: `prod-${Date.now()}`,
@@ -189,7 +186,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                         <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Selecciona una familia" />
-                            </SelectTrigger>
+                            </Trigger>
                         </FormControl>
                         <SelectContent>
                             {initialFamilies.map(family => <SelectItem key={family.id} value={family.name}>{family.name}</SelectItem>)}
@@ -209,7 +206,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                         <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Selecciona un almacén" />
-                            </SelectTrigger>
+                            </Trigger>
                         </FormControl>
                         <SelectContent>
                             {initialWarehouses.map(warehouse => <SelectItem key={warehouse.id} value={warehouse.name}>{warehouse.name}</SelectItem>)}
@@ -355,7 +352,3 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     </Form>
   );
 }
-    
-
-    
-    
