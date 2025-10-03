@@ -1,6 +1,7 @@
+
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from "@/hooks/use-toast";
 
 interface SecurityContextType {
@@ -15,11 +16,26 @@ interface SecurityContextType {
 const SecurityContext = createContext<SecurityContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'tienda_facil_pin';
+const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 export const SecurityProvider = ({ children }: { children: React.ReactNode }) => {
   const [storedPin, setStoredPin] = useState<string | null>(null);
   const [isLocked, setIsLocked] = useState(true);
   const { toast } = useToast();
+  const inactivityTimer = useRef<NodeJS.Timeout>();
+
+  const lockApp = useCallback(() => {
+    if (storedPin) {
+      setIsLocked(true);
+    }
+  }, [storedPin]);
+
+  const resetInactivityTimer = useCallback(() => {
+    if (inactivityTimer.current) {
+        clearTimeout(inactivityTimer.current);
+    }
+    inactivityTimer.current = setTimeout(lockApp, INACTIVITY_TIMEOUT);
+  }, [lockApp]);
 
   useEffect(() => {
     try {
@@ -35,10 +51,27 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
       setIsLocked(false);
     }
   }, []);
+  
+  useEffect(() => {
+    if (!isLocked && storedPin) {
+      const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+      events.forEach(event => window.addEventListener(event, resetInactivityTimer));
+      resetInactivityTimer();
+
+      return () => {
+        events.forEach(event => window.removeEventListener(event, resetInactivityTimer));
+        if (inactivityTimer.current) {
+            clearTimeout(inactivityTimer.current);
+        }
+      };
+    }
+  }, [isLocked, storedPin, resetInactivityTimer]);
+
 
   const unlockApp = useCallback((pin: string) => {
     if (pin === storedPin) {
       setIsLocked(false);
+      resetInactivityTimer();
       toast({
         title: "Desbloqueado",
         description: "Bienvenido de nuevo.",
@@ -50,15 +83,17 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
         description: "El PIN que ingresaste es incorrecto. Inténtalo de nuevo.",
       });
     }
-  }, [storedPin, toast]);
-
-  const lockApp = useCallback(() => {
-    if (storedPin) {
-      setIsLocked(true);
-    }
-  }, [storedPin]);
+  }, [storedPin, toast, resetInactivityTimer]);
 
   const setPin = useCallback((newPin: string) => {
+    if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
+        toast({
+            variant: "destructive",
+            title: "PIN inválido",
+            description: "El PIN debe contener exactamente 4 dígitos numéricos."
+        });
+        return;
+    }
     try {
       localStorage.setItem(STORAGE_KEY, newPin);
       setStoredPin(newPin);
@@ -82,6 +117,9 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
       localStorage.removeItem(STORAGE_KEY);
       setStoredPin(null);
       setIsLocked(false);
+       if (inactivityTimer.current) {
+            clearTimeout(inactivityTimer.current);
+        }
       toast({
         title: "PIN de seguridad eliminado",
         description: "La aplicación ya no se bloqueará.",
