@@ -81,7 +81,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
   useEffect(() => {
       const calculateProfit = (price: number, cost: number) => {
-          if (cost > 0) {
+          if (cost > 0 && price > 0) {
               return (((price - cost) / cost) * 100).toFixed(2);
           }
           return '0.00';
@@ -110,21 +110,24 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
 
   const handleSubmit = (data: ProductFormValues) => {
-    const placeholder = getRandomPlaceholder();
-    
-    const imageUrl = data.imageUrl || placeholder.imageUrl;
-    const imageHint = data.imageUrl ? data.imageHint : placeholder.imageHint;
+    let finalImageUrl = data.imageUrl;
+    let finalImageHint = data.imageHint;
 
+    if (!finalImageUrl || form.getFieldState('imageUrl').invalid) {
+        const placeholder = getRandomPlaceholder();
+        finalImageUrl = placeholder.imageUrl;
+        finalImageHint = placeholder.imageHint;
+    }
+    
     const productData: Product = {
       ...data,
       status: data.status ? 'active' : 'inactive',
-      imageUrl: imageUrl,
-      imageHint: imageHint,
+      imageUrl: finalImageUrl,
+      imageHint: finalImageHint,
     };
     
     const result = onSubmit(productData);
 
-    // Si es un producto nuevo y el envío fue exitoso, resetea el formulario
     if (!product && result === true) {
         form.reset({
             ...form.getValues(),
@@ -255,6 +258,19 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <FormField
             control={form.control}
+            name="cost"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Costo de Compra</FormLabel>
+                <FormControl>
+                  <Input type="number" step="0.01" placeholder="0.00" {...form.register('cost', { valueAsNumber: true })} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
             name="price"
             render={({ field }) => (
               <FormItem>
@@ -289,19 +305,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                   />
                 </FormControl>
                 <FormDescription>Utilidad: <span className="font-semibold">{wholesaleProfit}%</span></FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="cost"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Costo de Compra</FormLabel>
-                <FormControl>
-                  <Input type="number" step="0.01" placeholder="0.00" {...form.register('cost', { valueAsNumber: true })} />
-                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
