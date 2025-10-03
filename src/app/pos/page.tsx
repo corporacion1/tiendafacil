@@ -2,7 +2,7 @@
 "use client"
 import { useState } from "react";
 import Image from "next/image"
-import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check } from "lucide-react"
+import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -41,6 +41,8 @@ export default function POSPage() {
   const [paymentMethod, setPaymentMethod] = useState<string>('efectivo');
   const [lastSale, setLastSale] = useState<Sale | null>(null);
   
+  const [productDetails, setProductDetails] = useState<Product | null>(null);
+
   const selectedCustomer = customers.find(c => c.id === selectedCustomerId) ?? null;
 
   const addToCart = (product: Product) => {
@@ -184,7 +186,7 @@ export default function POSPage() {
   );
 
   return (
-    <>
+    <Dialog onOpenChange={(open) => !open && setProductDetails(null)}>
     <div className="grid flex-1 auto-rows-max gap-4 md:grid-cols-3 lg:gap-8">
       <div className="grid auto-rows-max items-start gap-4 md:col-span-2 lg:gap-8">
         <Card>
@@ -201,8 +203,16 @@ export default function POSPage() {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {filteredProducts.map((product) => (
-                <Card key={product.id} className="overflow-hidden cursor-pointer hover:border-primary transition-colors" onClick={() => addToCart(product)}>
+                <Card key={product.id} className="overflow-hidden group">
                   <div className="relative">
+                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        <Button size="sm" onClick={() => addToCart(product)}>Agregar</Button>
+                        <DialogTrigger asChild>
+                            <Button size="icon" variant="ghost" className="absolute top-1 right-1 h-7 w-7 text-white" onClick={() => setProductDetails(product)}>
+                                <ZoomIn className="h-5 w-5" />
+                            </Button>
+                        </DialogTrigger>
+                    </div>
                     <Image
                       alt={product.name}
                       className="aspect-square w-full object-cover"
@@ -211,7 +221,7 @@ export default function POSPage() {
                       width="150"
                       data-ai-hint={product.imageHint}
                     />
-                    <div className="absolute top-2 right-2 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded">
+                    <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded">
                       ${product.price.toFixed(2)}
                     </div>
                   </div>
@@ -475,6 +485,50 @@ export default function POSPage() {
         </Card>
       </div>
     </div>
+    
+    <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+            <DialogTitle>{productDetails?.name}</DialogTitle>
+            <DialogDescription>SKU: {productDetails?.sku}</DialogDescription>
+        </DialogHeader>
+        {productDetails && (
+            <div className="grid gap-4">
+                 <div className="relative aspect-square w-full">
+                    <Image src={productDetails.imageUrl} alt={productDetails.name} fill className="object-cover rounded-md" />
+                 </div>
+                 <div className="grid gap-2">
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Disponibilidad:</span>
+                        <span className="font-semibold">{productDetails.stock} unidades</span>
+                    </div>
+                     <Separator />
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Precio Detal:</span>
+                        <span className="font-semibold">${productDetails.price.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Precio Mayor:</span>
+                        <span className="font-semibold">${productDetails.wholesalePrice.toFixed(2)}</span>
+                    </div>
+                 </div>
+            </div>
+        )}
+        <DialogFooter>
+            <DialogClose asChild>
+                <Button variant="secondary">Cerrar</Button>
+            </DialogClose>
+            <Button onClick={() => {
+                if(productDetails) {
+                    addToCart(productDetails);
+                    setProductDetails(null);
+                    toast({title: `"${productDetails.name}" agregado al carrito`})
+                }
+            }}>
+                Agregar al Carrito
+            </Button>
+        </DialogFooter>
+    </DialogContent>
+    
     {(cartItems.length > 0 || lastSale) && (
       <TicketPreview
         isOpen={isPrintPreviewOpen}
@@ -488,8 +542,6 @@ export default function POSPage() {
         saleId={lastSale?.id}
       />
     )}
-  </>
+  </Dialog>
   );
 }
-
-    
