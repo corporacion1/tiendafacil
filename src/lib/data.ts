@@ -3,6 +3,27 @@
 import type { Product, InventoryMovement, Sale, Unit, Family, Warehouse, Customer, Purchase } from '@/lib/types';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
+export const initialUnits: Unit[] = [
+    { id: 'u1', name: 'Pieza' },
+    { id: 'u2', name: 'Kg' },
+    { id: 'u3', name: 'Litro' },
+    { id: 'u4', name: 'Caja' },
+];
+
+export const initialFamilies: Family[] = [
+    { id: 'f1', name: 'Electrónica' },
+    { id: 'f2', name: 'Computadoras' },
+    { id: 'f3', name: 'Periféricos' },
+    { id: 'f4', name: 'Monitores' },
+    { id: 'f5', name: 'Accesorios' },
+];
+
+export const initialWarehouses: Warehouse[] = [
+    { id: 'w1', name: 'Principal' },
+    { id: 'w2', name: 'Secundario' },
+    { id: 'w3', name: 'Bodega Central' },
+];
+
 export const mockProducts: Product[] = [
   { id: '1', name: 'Laptop Pro 15"', sku: 'LP15-001', stock: 25, price: 1200, wholesalePrice: 1100, cost: 800, category: 'Electronics', status: 'active', imageUrl: PlaceHolderImages[0].imageUrl, imageHint: PlaceHolderImages[0].imageHint, tax1: true, tax2: true, unit: 'Pieza', family: 'Computadoras', warehouse: 'Principal', description: 'Potente laptop para profesionales.' },
   { id: '2', name: 'Wireless Mouse', sku: 'WM-002', stock: 150, price: 25, wholesalePrice: 20, cost: 10, category: 'Accessories', status: 'active', imageUrl: PlaceHolderImages[1].imageUrl, imageHint: PlaceHolderImages[1].imageHint, tax1: true, tax2: false, unit: 'Pieza', family: 'Periféricos', warehouse: 'Principal', description: 'Mouse inalámbrico ergonómico.' },
@@ -131,23 +152,3 @@ export const initialCustomers: Customer[] = [
     { id: 'janesmith', name: 'Jane Smith', phone: '555-5678', address: '456 Oak Ave' }
 ];
 
-export const initialUnits: Unit[] = [
-    { id: 'u1', name: 'Pieza' },
-    { id: 'u2', name: 'Kg' },
-    { id: 'u3', name: 'Litro' },
-    { id: 'u4', name: 'Caja' },
-];
-
-export const initialFamilies: Family[] = [
-    { id: 'f1', name: 'Electrónica' },
-    { id: 'f2', name: 'Computadoras' },
-    { id: 'f3', name: 'Periféricos' },
-    { id: 'f4', name: 'Monitores' },
-    { id: 'f5', name: 'Accesorios' },
-];
-
-export const initialWarehouses: Warehouse[] = [
-    { id: 'w1', name: 'Principal' },
-    { id: 'w2', name: 'Secundario' },
-    { id: 'w3', name: 'Bodega Central' },
-];

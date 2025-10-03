@@ -92,24 +92,3 @@ export type Warehouse = {
     id: string;
     name: string;
 };
-
-export const initialUnits: Unit[] = [
-    { id: 'u1', name: 'Pieza' },
-    { id: 'u2', name: 'Kg' },
-    { id: 'u3', name: 'Litro' },
-    { id: 'u4', name: 'Caja' },
-];
-
-export const initialFamilies: Family[] = [
-    { id: 'f1', name: 'Electrónica' },
-    { id: 'f2', name: 'Computadoras' },
-    { id: 'f3', name: 'Periféricos' },
-    { id: 'f4', name: 'Monitores' },
-    { id: 'f5', name: 'Accesorios' },
-];
-
-export const initialWarehouses: Warehouse[] = [
-    { id: 'w1', name: 'Principal' },
-    { id: 'w2', name: 'Secundario' },
-    { id: 'w3', name: 'Bodega Central' },
-];
