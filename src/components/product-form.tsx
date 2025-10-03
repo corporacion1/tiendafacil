@@ -74,7 +74,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const handleSubmit = (data: ProductFormValues) => {
     const productData: Product = {
       ...data,
-      category: data.family || "Uncategorized"
     };
     
     const result = onSubmit(productData);
@@ -343,5 +342,3 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     </Form>
   );
 }
-
-    
