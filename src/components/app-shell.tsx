@@ -24,10 +24,18 @@ function MainApp({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!isMounted) return;
-    
-    if (previousPathname.current === '/dashboard' && pathname !== '/dashboard' && hasPin) {
+    if (!isMounted || !hasPin) return;
+
+    const fromPosToDashboard = previousPathname.current === '/pos' && pathname === '/dashboard';
+    const navigatingAwayFromNonPos = previousPathname.current !== '/pos' && pathname !== previousPathname.current && pathname !== '/pos';
+
+    if (fromPosToDashboard) {
       lockApp();
+    } else if (navigatingAwayFromNonPos) {
+       // Only lock if we are not on the dashboard already and navigating away
+      if (previousPathname.current !== '/dashboard' || (previousPathname.current === '/dashboard' && pathname !== '/pos')) {
+         if (pathname !== '/dashboard') lockApp();
+      }
     }
     
     previousPathname.current = pathname;

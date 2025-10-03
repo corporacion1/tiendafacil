@@ -29,8 +29,16 @@ export function SiteSidebar() {
   const posNavItems = [
     { href: "/dashboard", label: "Dashboard", icon: Home }
   ];
+  
+  const getNavItems = () => {
+    if (pathname === '/pos') {
+      return posNavItems;
+    }
+    // Filter out POS from the main nav list as it's a special route, but keep it for the sidebar icon
+    return navItems;
+  }
 
-  const currentNavItems = pathname === '/pos' ? posNavItems : navItems;
+  const currentNavItems = getNavItems();
 
   return (
     <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
@@ -62,24 +70,26 @@ export function SiteSidebar() {
         ))}
         </TooltipProvider>
       </nav>
-      <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
-        <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Link
-              href="/settings"
-              className={cn("flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
-                 pathname === "/settings" && "bg-accent text-accent-foreground"
-              )}
-            >
-              <Settings className="h-5 w-5" />
-              <span className="sr-only">Configuración</span>
-            </Link>
-          </TooltipTrigger>
-          <TooltipContent side="right">Configuración</TooltipContent>
-        </Tooltip>
-        </TooltipProvider>
-      </nav>
+      {pathname !== '/pos' && (
+        <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
+          <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link
+                href="/settings"
+                className={cn("flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
+                  pathname === "/settings" && "bg-accent text-accent-foreground"
+                )}
+              >
+                <Settings className="h-5 w-5" />
+                <span className="sr-only">Configuración</span>
+              </Link>
+            </TooltipTrigger>
+            <TooltipContent side="right">Configuración</TooltipContent>
+          </Tooltip>
+          </TooltipProvider>
+        </nav>
+      )}
     </aside>
   );
 }

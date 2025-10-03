@@ -25,7 +25,15 @@ export function SiteHeader() {
     { href: "/dashboard", label: "Dashboard", icon: Home }
   ];
 
-  const currentNavItems = pathname === '/pos' ? posNavItems : navItems;
+  const getNavItems = () => {
+    if (pathname === '/pos') {
+      return posNavItems;
+    }
+    // Filter out POS from the main nav list as it's a special route
+    return navItems.filter(item => item.href !== '/pos');
+  }
+
+  const currentNavItems = getNavItems();
 
 
   return (
@@ -56,13 +64,15 @@ export function SiteHeader() {
                 {item.label}
               </Link>
             ))}
-            <Link
-              href="/settings"
-              className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
-            >
-              <Settings className="h-5 w-5" />
-              Configuración
-            </Link>
+             {pathname !== '/pos' && (
+                <Link
+                    href="/settings"
+                    className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+                    >
+                    <Settings className="h-5 w-5" />
+                    Configuración
+                </Link>
+            )}
           </nav>
         </SheetContent>
       </Sheet>
