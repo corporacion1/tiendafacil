@@ -32,10 +32,15 @@ export default function PurchasesPage() {
   };
 
   const updateQuantity = (productId: string, quantity: number) => {
-    if (quantity <= 0) {
+    if (isNaN(quantity) || quantity < 0) {
+      quantity = 0;
+    }
+    
+    if (quantity === 0) {
       removeProduct(productId);
       return;
     }
+
     setPurchaseItems((prevItems) =>
       prevItems.map((item) =>
         item.product.id === productId ? { ...item, quantity } : item
