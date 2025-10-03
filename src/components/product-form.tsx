@@ -104,6 +104,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   };
 
   return (
+    <div>Este es un formulario de producto simplificado.</div>
+    /*
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -374,7 +376,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         </div>
       </form>
     </Form>
+    */
   );
 }
-
-    
