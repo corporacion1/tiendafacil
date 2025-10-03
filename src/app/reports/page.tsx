@@ -1,8 +1,9 @@
 
 "use client"
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { File, MoreHorizontal, Search } from "lucide-react";
+import { format, subDays, startOfWeek, startOfMonth, startOfYear } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -43,12 +44,19 @@ import { TicketPreview } from "@/components/ticket-preview";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+
+
+type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
 
 export default function ReportsPage() {
     const [selectedSaleDetails, setSelectedSaleDetails] = useState<Sale | null>(null);
     const [saleForTicket, setSaleForTicket] = useState<Sale | null>(null);
     const [isTicketPreviewOpen, setIsTicketPreviewOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
+    const [activeTab, setActiveTab] = useState("sales");
+    const [timeRange, setTimeRange] = useState<TimeRange>(null);
+    const { toast } = useToast();
 
     const handleViewDetails = (sale: Sale) => {
         setSelectedSaleDetails(sale);
@@ -57,6 +65,14 @@ export default function ReportsPage() {
     const handlePrintTicket = (sale: Sale) => {
         setSaleForTicket(sale);
         setIsTicketPreviewOpen(true);
+    }
+    
+    const handleExport = () => {
+        toast({
+            title: "Exportación Iniciada",
+            description: `Se están exportando los datos del reporte de ${activeTab}.`,
+        });
+        // En una aplicación real, aquí se generaría y descargaría el archivo (CSV, PDF, etc.)
     }
 
     const getTicketCartItems = (sale: Sale | null): CartItem[] => {
@@ -74,45 +90,85 @@ export default function ReportsPage() {
     
     const getTicketCustomer = (sale: Sale | null): Customer | null => {
         if (!sale) return null;
-        return initialCustomers.find(c => c.name === sale.customerName) || { id: 'unknown', name: sale.customerName };
+        return initialCustomers.find(c => c.name === sale.customerName) || { id: 'unknown', name: sale.customerName, phone: '', address: '' };
     }
     
-    const filteredProducts = mockProducts.filter(p => 
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (p.description && p.description.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    const dateFilteredData = useMemo(() => {
+        const now = new Date();
+        let startDate: Date | null = null;
 
-    const filteredMovements = mockInventoryMovements.filter(m =>
-      m.productName.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+        if (timeRange === 'day') startDate = subDays(now, 1);
+        if (timeRange === 'week') startDate = startOfWeek(now);
+        if (timeRange === 'month') startDate = startOfMonth(now);
+        if (timeRange === 'year') startDate = startOfYear(now);
+        
+        const filterByDate = (items: { date: string }[]) => {
+            if (!startDate) return items;
+            return items.filter(item => new Date(item.date) >= startDate!);
+        };
+
+        return {
+            sales: filterByDate(mockSales),
+            purchases: filterByDate(mockPurchases),
+            movements: filterByDate(mockInventoryMovements),
+        };
+    }, [timeRange]);
+
+    const filteredSales = useMemo(() => {
+        return dateFilteredData.sales.filter(sale =>
+            sale.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            sale.customerName.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [dateFilteredData.sales, searchTerm]);
+
+    const filteredPurchases = useMemo(() => {
+        return dateFilteredData.purchases.filter(purchase =>
+            purchase.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            purchase.supplier.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [dateFilteredData.purchases, searchTerm]);
+
+    const filteredMovements = useMemo(() => {
+        return dateFilteredData.movements.filter(movement =>
+            movement.productName.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [dateFilteredData.movements, searchTerm]);
+
+    const filteredProducts = useMemo(() => {
+        return mockProducts.filter(p => 
+            p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (p.description && p.description.toLowerCase().includes(searchTerm.toLowerCase()))
+        );
+    }, [searchTerm]);
+
 
   return (
     <>
-    <Tabs defaultValue="sales">
-      <div className="flex items-center mb-4">
+    <Tabs defaultValue="sales" onValueChange={setActiveTab}>
+      <div className="flex items-center mb-4 flex-wrap gap-2">
         <TabsList>
           <TabsTrigger value="sales">Ventas</TabsTrigger>
           <TabsTrigger value="purchases">Compras</TabsTrigger>
           <TabsTrigger value="movements">Movimientos</TabsTrigger>
           <TabsTrigger value="inventory">Inventario</TabsTrigger>
         </TabsList>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex-grow flex justify-end items-center gap-2 flex-wrap">
             <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                     type="search"
-                    placeholder="Buscar por SKU, Nombre..."
-                    className="pl-8 sm:w-[300px]"
+                    placeholder="Buscar..."
+                    className="pl-8 sm:w-[250px] md:w-[300px]"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
             </div>
-            <Button size="sm" variant="outline">Día</Button>
-            <Button size="sm" variant="outline">Semana</Button>
-            <Button size="sm" variant="outline">Mes</Button>
-            <Button size="sm" variant="outline">Año</Button>
-            <Button size="sm" variant="outline" className="h-8 gap-1">
+            <Button size="sm" variant={timeRange === 'day' ? 'default': 'outline'} onClick={() => setTimeRange(t => t === 'day' ? null : 'day')}>Día</Button>
+            <Button size="sm" variant={timeRange === 'week' ? 'default': 'outline'} onClick={() => setTimeRange(t => t === 'week' ? null : 'week')}>Semana</Button>
+            <Button size="sm" variant={timeRange === 'month' ? 'default': 'outline'} onClick={() => setTimeRange(t => t === 'month' ? null : 'month')}>Mes</Button>
+            <Button size="sm" variant={timeRange === 'year' ? 'default': 'outline'} onClick={() => setTimeRange(t => t === 'year' ? null : 'year')}>Año</Button>
+            <Button size="sm" variant="outline" className="h-8 gap-1" onClick={handleExport}>
                 <File className="h-3.5 w-3.5" />
                 <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                 Exportar
@@ -141,7 +197,7 @@ export default function ReportsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mockSales.map((sale) => (
+                {filteredSales.map((sale) => (
                   <TableRow key={sale.id}>
                     <TableCell className="font-medium">{sale.id}</TableCell>
                     <TableCell>{sale.customerName}</TableCell>
@@ -187,7 +243,7 @@ export default function ReportsPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {mockPurchases.map((purchase) => (
+                        {filteredPurchases.map((purchase) => (
                             <TableRow key={purchase.id}>
                                 <TableCell className="font-medium">{purchase.id}</TableCell>
                                 <TableCell>{purchase.supplier}</TableCell>
