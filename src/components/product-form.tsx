@@ -13,6 +13,7 @@ import type { Product } from "@/lib/types";
 import { initialFamilies, initialUnits, initialWarehouses } from "@/lib/data";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
+import { useState, useEffect } from "react";
 
 const productSchema = z.object({
   id: z.string(),
@@ -20,7 +21,7 @@ const productSchema = z.object({
   sku: z.string().min(3, "El SKU debe tener al menos 3 caracteres."),
   price: z.coerce.number().positive("El precio debe ser un número positivo."),
   wholesalePrice: z.coerce.number().positive("El precio mayor debe ser un número positivo."),
-  cost: z.coerce.number().positive("El costo debe ser un número positivo."),
+  cost: z.coerce.number().min(0, "El costo debe ser un número no negativo."),
   stock: z.coerce.number().min(0, "El stock no puede ser negativo."),
   description: z.string().optional(),
   unit: z.string().optional(),
@@ -70,6 +71,43 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       category: product?.category || "Uncategorized",
     },
   });
+
+  const [retailProfit, setRetailProfit] = useState<string>('0.00');
+  const [wholesaleProfit, setWholesaleProfit] = useState<string>('0.00');
+
+  const cost = form.watch('cost');
+  const price = form.watch('price');
+  const wholesalePrice = form.watch('wholesalePrice');
+
+  useEffect(() => {
+      const calculateProfit = (price: number, cost: number) => {
+          if (cost > 0) {
+              return (((price - cost) / cost) * 100).toFixed(2);
+          }
+          return '0.00';
+      };
+      setRetailProfit(calculateProfit(price, cost));
+      setWholesaleProfit(calculateProfit(wholesalePrice, cost));
+  }, [price, wholesalePrice, cost]);
+
+  const handlePriceChange = (value: string, fieldName: 'price' | 'wholesalePrice') => {
+      const costValue = form.getValues('cost');
+      if (value.includes('%')) {
+          const percentage = parseFloat(value.replace(/[^0-9.]/g, ''));
+          if (!isNaN(percentage) && costValue > 0) {
+              const newPrice = costValue * (1 + percentage / 100);
+              form.setValue(fieldName, parseFloat(newPrice.toFixed(2)));
+          }
+      } else {
+          const numericValue = parseFloat(value);
+          if (!isNaN(numericValue)) {
+              form.setValue(fieldName, numericValue);
+          } else {
+              form.setValue(fieldName, 0);
+          }
+      }
+  };
+
 
   const handleSubmit = (data: ProductFormValues) => {
     const placeholder = getRandomPlaceholder();
@@ -222,8 +260,15 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
               <FormItem>
                 <FormLabel>Precio Detal</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                   <Input 
+                    type="text" 
+                    placeholder="0.00 o 50%" 
+                    value={field.value} 
+                    onChange={(e) => handlePriceChange(e.target.value, 'price')} 
+                    onBlur={field.onBlur}
+                   />
                 </FormControl>
+                 <FormDescription>Utilidad: <span className="font-semibold">{retailProfit}%</span></FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -235,8 +280,15 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
               <FormItem>
                 <FormLabel>Precio Mayor</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                  <Input 
+                    type="text" 
+                    placeholder="0.00 o 30%" 
+                    value={field.value} 
+                    onChange={(e) => handlePriceChange(e.target.value, 'wholesalePrice')} 
+                    onBlur={field.onBlur}
+                  />
                 </FormControl>
+                <FormDescription>Utilidad: <span className="font-semibold">{wholesaleProfit}%</span></FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -248,7 +300,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
               <FormItem>
                 <FormLabel>Costo de Compra</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                  <Input type="number" step="0.01" placeholder="0.00" {...form.register('cost', { valueAsNumber: true })} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -261,9 +313,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
               <FormItem>
                 <FormLabel>Stock Actual</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="0" {...field} readOnly={!!product} />
+                  <Input type="number" placeholder="0" {...field} readOnly />
                 </FormControl>
-                {product && <FormDescription>El stock se gestiona desde "Mover Inventario".</FormDescription>}
+                <FormDescription>Se gestiona desde "Mover Inventario".</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -350,3 +402,4 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     </Form>
   );
 }
+
