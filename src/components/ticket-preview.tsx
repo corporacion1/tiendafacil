@@ -17,6 +17,7 @@ interface TicketPreviewProps {
   storeName: string;
   customer: Customer | null;
   saleId?: string | null;
+  storeSlogan?: string;
 }
 
 export function TicketPreview({
@@ -29,6 +30,7 @@ export function TicketPreview({
   storeName,
   customer,
   saleId,
+  storeSlogan,
 }: TicketPreviewProps) {
   const ticketRef = useRef<HTMLDivElement>(null);
 
@@ -196,7 +198,7 @@ export function TicketPreview({
                 )}
                 
                 <div className="footer" style={{ textAlign: 'center', marginTop: '10px', fontSize: '10px' }}>
-                <p>¡Gracias por tu compra!</p>
+                <p>{storeSlogan || '¡Gracias por tu compra!'}</p>
                 </div>
             </div>
             </div>
@@ -217,5 +219,3 @@ export function TicketPreview({
     </Dialog>
   );
 }
-
-    

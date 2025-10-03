@@ -149,7 +149,7 @@ export default function SettingsPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Datos del Comercio</CardTitle>
-                        <CardDescription>Configura la información de tu tienda.</CardDescription>
+                        <CardDescription>Configura la información de tu tienda que aparecerá en los tickets.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
@@ -163,6 +163,10 @@ export default function SettingsPage() {
                         <div className="space-y-2">
                             <Label htmlFor="store-phone">Teléfono</Label>
                             <Input id="store-phone" placeholder="+1 (555) 123-4567" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="store-slogan">Slogan o Mensaje para el Ticket</Label>
+                            <Input id="store-slogan" placeholder="¡Gracias por tu compra!" />
                         </div>
                         <Button className="bg-primary hover:bg-primary/90">Guardar Cambios</Button>
                     </CardContent>
@@ -283,4 +287,3 @@ export default function SettingsPage() {
     );
 }
 
-    

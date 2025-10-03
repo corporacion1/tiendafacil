@@ -1,7 +1,7 @@
 
 "use client"
 import { useState, useEffect } from "react";
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Image from "next/image"
 import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags } from "lucide-react"
 
@@ -20,6 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useSecurity } from "@/contexts/security-context";
 
 const generateSaleId = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -47,6 +48,7 @@ export default function POSPage() {
   const [lastSale, setLastSale] = useState<Sale | null>(null);
   
   const [productDetails, setProductDetails] = useState<Product | null>(null);
+  const [storeSlogan, setStoreSlogan] = useState("¡Gracias por tu compra!");
 
 
   const selectedCustomer = customers.find(c => c.id === selectedCustomerId) ?? null;
@@ -589,6 +591,7 @@ export default function POSPage() {
         storeName="TIENDA FACIL WEB"
         customer={selectedCustomer}
         saleId={lastSale?.id}
+        storeSlogan={storeSlogan}
       />
     )}
   </Dialog>
