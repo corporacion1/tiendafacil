@@ -151,4 +151,3 @@ export const initialCustomers: Customer[] = [
     { id: 'johndoe', name: 'John Doe', phone: '555-1234', address: '123 Fake St' },
     { id: 'janesmith', name: 'Jane Smith', phone: '555-5678', address: '456 Oak Ave' }
 ];
-
