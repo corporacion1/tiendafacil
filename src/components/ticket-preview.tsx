@@ -122,7 +122,7 @@ export function TicketPreview({
     }
   };
 
-  const displayCartItems = cartItems.length > 0;
+  const displayCartItems = cartItems && cartItems.length > 0;
   const displayInfo = displayCartItems || saleId;
 
 
@@ -143,7 +143,7 @@ export function TicketPreview({
                 <p style={{ margin: '2px 0', fontSize: '10px' }}>Calle Falsa 123</p>
                 <p style={{ margin: '2px 0', fontSize: '10px' }}>Tel: +1 (555) 123-4567</p>
                 <p style={{ margin: '2px 0', fontSize: '10px' }}>{new Date().toLocaleString()}</p>
-                {saleId && <p style={{ margin: '2px 0', fontSize: '10px', fontWeight: 'bold' }}>Venta ID: {saleId}</p>}
+                {saleId && <p style={{ margin: '2px 0', fontSize: '10px', fontWeight: 'bold' }}>CONTROL #: {saleId}</p>}
                 </div>
                 
                 {customer && (
@@ -162,10 +162,10 @@ export function TicketPreview({
                 <div key={item.product.id} className="item" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', lineHeight: '1.4' }}>
                     <div className="name-col" style={{ width: '70%' }}>
                     <span className="name">{item.product.name}</span>
-                    <span className="price-per-unit" style={{ fontSize: '9px' }}>{item.quantity} x ${item.product.price.toFixed(2)}</span>
+                    <span className="price-per-unit" style={{ fontSize: '9px' }}>{item.quantity} x ${item.price.toFixed(2)}</span>
                     </div>
                     <div className="price-col" style={{ width: '30%', textAlign: 'right' }}>
-                    ${(item.product.price * item.quantity).toFixed(2)}
+                    ${(item.price * item.quantity).toFixed(2)}
                     </div>
                 </div>
                 ))}

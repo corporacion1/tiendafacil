@@ -25,6 +25,15 @@ const initialCustomers: Customer[] = [
     { id: 'johndoe', name: 'John Doe', phone: '555-1234', address: '123 Fake St' }
 ];
 
+const generateSaleId = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 8; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
 export default function POSPage() {
   const { toast } = useToast();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -125,7 +134,7 @@ export default function POSPage() {
       return;
     }
 
-    const saleId = `SALE-${Date.now()}`;
+    const saleId = generateSaleId();
     const newSale: Sale = {
         id: saleId,
         customerName: selectedCustomer?.name ?? 'Cliente Eventual',
@@ -148,7 +157,7 @@ export default function POSPage() {
 
     toast({
       title: "Venta Procesada",
-      description: `La venta ${saleId} ha sido registrada exitosamente.`,
+      description: `La venta con control #${saleId} ha sido registrada.`,
     });
     
     setCartItems([]);
@@ -503,7 +512,7 @@ export default function POSPage() {
                 </DialogContent>
             </Dialog>
 
-            <Button className="w-full" variant="outline" size="lg" onClick={() => setIsPrintPreviewOpen(true)} disabled={cartItems.length === 0}>
+            <Button className="w-full" variant="outline" size="lg" onClick={() => setIsPrintPreviewOpen(true)} disabled={cartItems.length === 0 && !lastSale}>
               <Printer className="mr-2 h-4 w-4" />
               Imprimir Ticket
             </Button>
@@ -559,10 +568,10 @@ export default function POSPage() {
       <TicketPreview
         isOpen={isPrintPreviewOpen}
         onOpenChange={setIsPrintPreviewOpen}
-        cartItems={cartItems}
-        subtotal={subtotal}
-        taxes={taxes}
-        total={total}
+        cartItems={lastSale && lastSale.items.map(item => ({ product: mockProducts.find(p => p.id === item.productId)!, quantity: item.quantity, price: item.price })) || cartItems}
+        subtotal={lastSale?.total ? lastSale.total / 1.13 : subtotal}
+        taxes={lastSale?.total ? lastSale.total - (lastSale.total / 1.13) : taxes}
+        total={lastSale?.total || total}
         storeName="TIENDA FACIL WEB"
         customer={selectedCustomer}
         saleId={lastSale?.id}
