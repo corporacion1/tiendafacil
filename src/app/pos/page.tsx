@@ -90,15 +90,20 @@ export default function POSPage() {
   };
   
   const toggleWholesalePrice = (productId: string, currentPrice: number) => {
+    const itemToUpdate = cartItems.find(item => item.product.id === productId && item.price === currentPrice);
+    if (!itemToUpdate) return;
+  
+    const isRetail = itemToUpdate.price === itemToUpdate.product.price;
+    const newPrice = isRetail ? itemToUpdate.product.wholesalePrice : itemToUpdate.product.price;
+  
+    toast({
+        title: "Precio Actualizado",
+        description: `Precio de "${itemToUpdate.product.name}" cambiado a ${isRetail ? 'mayorista' : 'detal'}.`
+    });
+
     setCartItems(prevItems => 
         prevItems.map(item => {
             if (item.product.id === productId && item.price === currentPrice) {
-                const isRetail = item.price === item.product.price;
-                const newPrice = isRetail ? item.product.wholesalePrice : item.product.price;
-                toast({
-                    title: "Precio Actualizado",
-                    description: `Precio de "${item.product.name}" cambiado a ${isRetail ? 'mayorista' : 'detal'}.`
-                });
                 return { ...item, price: newPrice };
             }
             return item;
