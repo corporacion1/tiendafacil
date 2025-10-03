@@ -20,7 +20,7 @@ const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 export const SecurityProvider = ({ children }: { children: React.ReactNode }) => {
   const [storedPin, setStoredPin] = useState<string | null>(null);
-  const [isLocked, setIsLocked] = useState(false);
+  const [isLocked, setIsLocked] = useState(true); // Start locked by default to be safe
   const { toast } = useToast();
   const inactivityTimer = useRef<NodeJS.Timeout>();
   const [isMounted, setIsMounted] = useState(false);
@@ -31,13 +31,17 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
       let pinFromStorage = localStorage.getItem(STORAGE_KEY);
       if (pinFromStorage) {
         setStoredPin(pinFromStorage);
+        // Lock app on initial load if there is a pin
+        setIsLocked(true);
       } else {
         const defaultPin = "1234";
         localStorage.setItem(STORAGE_KEY, defaultPin);
         setStoredPin(defaultPin);
+        setIsLocked(true);
       }
     } catch (error) {
       console.error("Could not access localStorage", error);
+      setIsLocked(false); // If localStorage fails, unlock the app
     }
   }, []);
 
@@ -132,7 +136,7 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
   }, [toast]);
 
   const value = {
-    isLocked: isMounted && isLocked,
+    isLocked: !isMounted ? true : isLocked, // Render locked state on server and on initial client render
     unlockApp,
     lockApp,
     setPin,
@@ -154,3 +158,4 @@ export const useSecurity = (): SecurityContextType => {
   }
   return context;
 };
+

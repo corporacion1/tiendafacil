@@ -34,7 +34,7 @@ function MainApp({ children }: { children: React.ReactNode }) {
   }, [pathname, lockApp, hasPin, isMounted]);
 
   if (!isMounted) {
-    return null; // or a loading spinner
+    return <PinModal />; // Render PinModal on server and initial client render
   }
 
   if (isLocked) {
