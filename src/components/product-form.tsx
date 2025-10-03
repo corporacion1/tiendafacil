@@ -80,8 +80,16 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       imageUrl: data.imageUrl || placeholder.imageUrl,
       imageHint: data.imageHint || placeholder.imageHint,
     };
+    
+    // If it's an existing product, just submit.
+    if (product) {
+      onSubmit(productData);
+      return;
+    }
+
+    // If it's a new product, submit and then maybe reset the form.
     const result = onSubmit(productData);
-    if (result) {
+    if (result === true) { // Only reset if onSubmit returns true (for creation form)
         form.reset({
             ...form.getValues(),
              id: `prod-${Date.now()}`,
@@ -348,5 +356,4 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     </Form>
   );
 }
-
     
