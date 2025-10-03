@@ -66,13 +66,81 @@ export default function ReportsPage() {
         setSaleForTicket(sale);
         setIsTicketPreviewOpen(true);
     }
+
+    const exportToCsv = (filename: string, rows: object[]) => {
+        if (!rows || rows.length === 0) {
+            toast({
+                variant: "destructive",
+                title: "No hay datos para exportar",
+                description: "La tabla actual está vacía.",
+            });
+            return;
+        }
+        
+        const processRow = (row: object): string[] => Object.values(row).map(value => {
+            if (value === null || value === undefined) return '';
+            const stringValue = String(value);
+            // Handle complex objects if necessary, here we just stringify them
+            if (typeof value === 'object' && value !== null) return `"${JSON.stringify(value).replace(/"/g, '""')}"`;
+            // Escape double quotes and wrap in double quotes if it contains commas or newlines
+            if (stringValue.includes(',') || stringValue.includes('\n') || stringValue.includes('"')) {
+                return `"${stringValue.replace(/"/g, '""')}"`;
+            }
+            return stringValue;
+        });
+
+        const headers = Object.keys(rows[0]);
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => processRow(row).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        toast({
+            title: "Exportación completada",
+            description: `${filename} ha sido descargado.`,
+        });
+    };
     
     const handleExport = () => {
-        toast({
-            title: "Exportación Iniciada",
-            description: `Se están exportando los datos del reporte de ${activeTab}.`,
-        });
-        // En una aplicación real, aquí se generaría y descargaría el archivo (CSV, PDF, etc.)
+        const date = new Date().toISOString().split('T')[0];
+        let dataToExport: object[] = [];
+        let filename = `${activeTab}-report-${date}.csv`;
+
+        switch (activeTab) {
+            case 'sales':
+                dataToExport = filteredSales;
+                break;
+            case 'purchases':
+                dataToExport = filteredPurchases;
+                break;
+            case 'movements':
+                dataToExport = filteredMovements;
+                break;
+            case 'inventory':
+                dataToExport = filteredProducts.map(p => ({
+                    sku: p.sku,
+                    nombre: p.name,
+                    stock: p.stock,
+                    costo: p.cost,
+                    precio_detal: p.price,
+                    valor_inventario: (p.stock * p.cost)
+                }));
+                break;
+        }
+
+        exportToCsv(filename, dataToExport);
     }
 
     const getTicketCartItems = (sale: Sale | null): CartItem[] => {
@@ -135,12 +203,13 @@ export default function ReportsPage() {
     }, [dateFilteredData.movements, searchTerm]);
 
     const filteredProducts = useMemo(() => {
-        return mockProducts.filter(p => 
+        const inventoryProducts = timeRange ? mockProducts : mockProducts;
+        return inventoryProducts.filter(p => 
             p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (p.description && p.description.toLowerCase().includes(searchTerm.toLowerCase()))
         );
-    }, [searchTerm]);
+    }, [searchTerm, timeRange]);
 
 
   return (
