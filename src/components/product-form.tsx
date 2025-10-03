@@ -261,8 +261,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
               <FormItem>
                 <FormLabel>Stock Actual</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="0" {...field} />
+                  <Input type="number" placeholder="0" {...field} readOnly={!!product} />
                 </FormControl>
+                {product && <FormDescription>El stock se gestiona desde "Mover Inventario".</FormDescription>}
                 <FormMessage />
               </FormItem>
             )}
