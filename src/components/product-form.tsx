@@ -333,9 +333,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             />
         </div>
         <div className="flex justify-end gap-2">
-            <Button variant="outline" type="button" onClick={product ? onCancel : () => form.reset()}>
+            {onCancel && <Button variant="outline" type="button" onClick={onCancel}>
                 Cancelar
-            </Button>
+            </Button>}
             <Button type="submit" className="bg-primary hover:bg-primary/90">{product ? "Guardar Cambios" : "Crear Producto"}</Button>
         </div>
       </form>
