@@ -34,6 +34,12 @@ export type InventoryMovement = {
   date: string;
 };
 
+export type Payment = {
+    id: string;
+    amount: number;
+    date: string;
+}
+
 export type Sale = {
   id: string;
   customerName: string;
@@ -47,6 +53,9 @@ export type Sale = {
   date: string;
   transactionType: 'contado' | 'credito';
   paymentMethod?: string;
+  status: 'paid' | 'unpaid';
+  paidAmount: number;
+  payments?: Payment[];
 };
 
 export type Purchase = {
@@ -104,7 +113,3 @@ export const initialWarehouses: Warehouse[] = [
     { id: 'w2', name: 'Secundario' },
     { id: 'w3', name: 'Bodega Central' },
 ];
-
-    
-
-    

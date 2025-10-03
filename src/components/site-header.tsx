@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Boxes, FileText, Home, PackagePlus, PanelLeft, Settings, ShoppingCart, Store } from "lucide-react";
+import { Boxes, FileText, Home, PackagePlus, PanelLeft, Settings, ShoppingCart, Store, CreditCard } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./theme-toggle";
@@ -17,6 +17,7 @@ export function SiteHeader() {
     { href: "/products", label: "Productos", icon: PackagePlus },
     { href: "/pos", label: "Punto de Venta", icon: ShoppingCart },
     { href: "/purchases", label: "Compras", icon: Store },
+    { href: "/credits", label: "Créditos", icon: CreditCard },
     { href: "/reports", label: "Reportes", icon: FileText },
   ];
 

@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Boxes, FileText, Home, PackagePlus, Settings, ShoppingCart, Store, PanelLeft } from "lucide-react";
+import { Boxes, FileText, Home, PackagePlus, Settings, ShoppingCart, Store, CreditCard } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -12,7 +12,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Button } from "./ui/button";
 
 export function SiteSidebar() {
   const pathname = usePathname();
@@ -23,6 +22,7 @@ export function SiteSidebar() {
     { href: "/products", label: "Productos", icon: PackagePlus },
     { href: "/pos", label: "Punto de Venta", icon: ShoppingCart },
     { href: "/purchases", label: "Compras", icon: Store },
+    { href: "/credits", label: "Créditos", icon: CreditCard },
     { href: "/reports", label: "Reportes", icon: FileText },
   ];
 
