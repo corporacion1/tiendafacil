@@ -4,6 +4,7 @@
 import { ThemeProvider } from "@/components/theme-provider";
 import { SecurityProvider, useSecurity } from "@/contexts/security-context";
 import { SettingsProvider } from "@/contexts/settings-context";
+import { ProductProvider } from "@/contexts/product-context";
 import { PinModal } from "@/components/pin-modal";
 import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
@@ -58,8 +59,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <SecurityProvider>
           <SettingsProvider>
-            <MainApp>{children}</MainApp>
-            <Toaster />
+            <ProductProvider>
+              <MainApp>{children}</MainApp>
+              <Toaster />
+            </ProductProvider>
           </SettingsProvider>
         </SecurityProvider>
     </ThemeProvider>

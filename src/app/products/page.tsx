@@ -3,15 +3,16 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { mockProducts } from "@/lib/data";
 import { ProductForm } from "@/components/product-form";
 import type { Product } from "@/lib/types";
+import { useProducts } from "@/contexts/product-context";
 
 export default function ProductsPage() {
   const { toast } = useToast();
+  const { products, addProduct } = useProducts();
 
   function onSubmit(data: Product) {
-    const existingProduct = mockProducts.find(product => product.sku.toLowerCase() === data.sku.toLowerCase());
+    const existingProduct = products.find(product => product.sku.toLowerCase() === data.sku.toLowerCase());
 
     if (existingProduct) {
       toast({
@@ -22,8 +23,7 @@ export default function ProductsPage() {
       return; // Stop the submission
     }
     
-    // Here you would typically add the new product to your state/database
-    console.log("New product created:", data);
+    addProduct(data);
     
     toast({
       title: "Producto Creado",
@@ -47,4 +47,3 @@ export default function ProductsPage() {
     </Card>
   );
 }
-

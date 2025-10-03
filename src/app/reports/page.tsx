@@ -38,7 +38,7 @@ import {
     DialogClose,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { mockSales, mockProducts, initialCustomers, mockInventoryMovements, mockPurchases } from "@/lib/data";
+import { mockSales, initialCustomers, mockInventoryMovements, mockPurchases } from "@/lib/data";
 import { Sale, CartItem, Customer, Product, InventoryMovement, Purchase } from "@/lib/types";
 import { TicketPreview } from "@/components/ticket-preview";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -46,12 +46,14 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/settings-context";
+import { useProducts } from "@/contexts/product-context";
 
 
 type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
 
 export default function ReportsPage() {
     const { settings } = useSettings();
+    const { products } = useProducts();
     const [selectedSaleDetails, setSelectedSaleDetails] = useState<Sale | null>(null);
     const [saleForTicket, setSaleForTicket] = useState<Sale | null>(null);
     const [isTicketPreviewOpen, setIsTicketPreviewOpen] = useState(false);
@@ -148,7 +150,7 @@ export default function ReportsPage() {
     const getTicketCartItems = (sale: Sale | null): CartItem[] => {
         if (!sale) return [];
         return sale.items.map(item => {
-            const product = mockProducts.find(p => p.id === item.productId);
+            const product = products.find(p => p.id === item.productId);
             const fallbackProduct = { id: item.productId, name: item.productName, price: item.price, stock: 0, category: '', cost: 0, imageHint: '', imageUrl: '', sku: '', status: 'inactive' as 'inactive', tax1: false, tax2: false, wholesalePrice: item.price };
             return {
                 product: product || fallbackProduct,
@@ -205,13 +207,13 @@ export default function ReportsPage() {
     }, [dateFilteredData.movements, searchTerm]);
 
     const filteredProducts = useMemo(() => {
-        const inventoryProducts = timeRange ? mockProducts : mockProducts;
+        const inventoryProducts = timeRange ? products : products;
         return inventoryProducts.filter(p => 
             p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (p.description && p.description.toLowerCase().includes(searchTerm.toLowerCase()))
         );
-    }, [searchTerm, timeRange]);
+    }, [products, searchTerm, timeRange]);
 
     const calculateTaxesForSale = (sale: Sale) => {
         let tax1Amount = 0;
@@ -223,7 +225,7 @@ export default function ReportsPage() {
         // which taxes were applied to each item at the time of sale.
         // For now, we recalculate based on current product flags.
         sale.items.forEach(item => {
-            const product = mockProducts.find(p => p.id === item.productId);
+            const product = products.find(p => p.id === item.productId);
             if (product) {
                 const itemSubtotal = item.price * item.quantity;
                 if(product.tax1 && settings.tax1 > 0) {

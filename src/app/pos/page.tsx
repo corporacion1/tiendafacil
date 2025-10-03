@@ -10,7 +10,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { mockProducts, initialCustomers, mockSales, mockInventoryMovements } from "@/lib/data"
+import { initialCustomers, mockSales, mockInventoryMovements } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
+import { useProducts } from "@/contexts/product-context";
 
 const generateSaleId = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -35,6 +36,7 @@ const generateSaleId = () => {
 export default function POSPage() {
   const { toast } = useToast();
   const { settings } = useSettings();
+  const { products, updateProduct } = useProducts();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
@@ -171,9 +173,9 @@ export default function POSPage() {
     mockSales.unshift(newSale);
 
     cartItems.forEach(item => {
-        const productIndex = mockProducts.findIndex(p => p.id === item.product.id);
-        if (productIndex !== -1) {
-            mockProducts[productIndex].stock -= item.quantity;
+        const product = products.find(p => p.id === item.product.id);
+        if (product) {
+            updateProduct(product.id, { ...product, stock: product.stock - item.quantity });
         }
         
         const movement: InventoryMovement = {
@@ -241,7 +243,7 @@ export default function POSPage() {
     });
   };
 
-  const filteredProducts = mockProducts.filter(
+  const filteredProducts = products.filter(
     (product) =>
       product.status === 'active' &&
       (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -608,7 +610,7 @@ export default function POSPage() {
       <TicketPreview
         isOpen={isPrintPreviewOpen}
         onOpenChange={setIsPrintPreviewOpen}
-        cartItems={lastSale ? lastSale.items.map(item => ({ product: mockProducts.find(p => p.id === item.productId)!, quantity: item.quantity, price: item.price })) : cartItems}
+        cartItems={lastSale ? lastSale.items.map(item => ({ product: products.find(p => p.id === item.productId)!, quantity: item.quantity, price: item.price })) : cartItems}
         saleId={lastSale?.id}
         customer={selectedCustomer}
       />

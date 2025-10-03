@@ -3,7 +3,7 @@
 
 import { useState, useMemo } from "react";
 import Image from "next/image";
-import { File, ListFilter, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X } from "lucide-react";
+import { File, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { mockProducts, mockInventoryMovements, mockSales } from "@/lib/data";
+import { mockInventoryMovements, mockSales } from "@/lib/data";
 import type { Product, InventoryMovement } from "@/lib/types";
 import {
   Command,
@@ -33,11 +33,12 @@ import {
 } from "@/components/ui/popover"
 import { cn } from "@/lib/utils";
 import { ProductForm } from "@/components/product-form";
+import { useProducts } from "@/contexts/product-context";
 
 
 export default function InventoryPage() {
   const { toast } = useToast();
-  const [products, setProducts] = useState<Product[]>(mockProducts);
+  const { products, setProducts, updateProduct } = useProducts();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -51,12 +52,13 @@ export default function InventoryPage() {
   };
 
   const handleUpdateProduct = (updatedProduct: Product) => {
-    setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+    updateProduct(updatedProduct.id, updatedProduct);
     toast({
         title: "Producto Actualizado",
         description: `El producto "${updatedProduct.name}" ha sido actualizado.`,
     });
     setProductToEdit(null); // Close the dialog
+    return true; // Indicate success for form reset if needed
   };
   
   const handleDelete = (productId: string) => {
