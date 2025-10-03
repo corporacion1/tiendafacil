@@ -39,7 +39,11 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
 
   useEffect(() => {
     try {
-      const pinFromStorage = localStorage.getItem(STORAGE_KEY);
+      let pinFromStorage = localStorage.getItem(STORAGE_KEY);
+      if (!pinFromStorage) {
+          pinFromStorage = "1234";
+          localStorage.setItem(STORAGE_KEY, pinFromStorage);
+      }
       setStoredPin(pinFromStorage);
       if (pinFromStorage) {
         setIsLocked(true);
