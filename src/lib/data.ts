@@ -3,7 +3,7 @@
 import type { Product, InventoryMovement, Sale, Unit, Family, Warehouse, Customer, Purchase } from '@/lib/types';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
-export const mockProducts: Product[] = [
+export let mockProducts: Product[] = [
   { id: '1', name: 'Laptop Pro 15"', sku: 'LP15-001', stock: 25, price: 1200, wholesalePrice: 1100, cost: 800, category: 'Electronics', status: 'active', imageUrl: PlaceHolderImages[0].imageUrl, imageHint: PlaceHolderImages[0].imageHint, tax1: true, tax2: false, unit: 'Pieza', family: 'Computadoras', warehouse: 'Principal', description: 'Potente laptop para profesionales.' },
   { id: '2', name: 'Wireless Mouse', sku: 'WM-002', stock: 150, price: 25, wholesalePrice: 20, cost: 10, category: 'Accessories', status: 'active', imageUrl: PlaceHolderImages[1].imageUrl, imageHint: PlaceHolderImages[1].imageHint, tax1: true, tax2: false, unit: 'Pieza', family: 'Periféricos', warehouse: 'Principal', description: 'Mouse inalámbrico ergonómico.' },
   { id: '3', name: 'Mechanical Keyboard', sku: 'MK-003', stock: 75, price: 80, wholesalePrice: 70, cost: 45, category: 'Accessories', status: 'active', imageUrl: PlaceHolderImages[2].imageUrl, imageHint: PlaceHolderImages[2].imageHint, tax1: true, tax2: false, unit: 'Pieza', family: 'Periféricos', warehouse: 'Principal', description: 'Teclado mecánico con luces RGB.' },
@@ -12,7 +12,7 @@ export const mockProducts: Product[] = [
   { id: '6', name: 'Webcam HD 1080p', sku: 'WHD-006', stock: 80, price: 60, wholesalePrice: 50, cost: 35, category: 'Peripherals', status: 'inactive', imageUrl: PlaceHolderImages[5].imageUrl, imageHint: PlaceHolderImages[5].imageHint, tax1: true, tax2: false, unit: 'Pieza', family: 'Periféricos', warehouse: 'Secundario', description: 'Webcam de alta definición.' },
 ];
 
-export const mockInventoryMovements: InventoryMovement[] = [
+export let mockInventoryMovements: InventoryMovement[] = [
   { id: '1', productName: 'Laptop Pro 15"', type: 'purchase', quantity: 10, date: '2023-10-26' },
   { id: '2', productName: 'Wireless Mouse', type: 'sale', quantity: -2, date: '2023-10-26' },
   { id: '3', productName: 'Mechanical Keyboard', type: 'sale', quantity: -1, date: '2023-10-25' },
@@ -36,7 +36,7 @@ export const categorySalesData = [
   { category: 'Peripherals', sales: 278, fill: 'var(--color-peripherals)' },
 ];
 
-export const mockSales: Sale[] = [
+export let mockSales: Sale[] = [
     {
         id: 'SALE001',
         customerName: 'Cliente Eventual',
@@ -61,7 +61,7 @@ export const mockSales: Sale[] = [
     }
 ];
 
-export const mockPurchases: Purchase[] = [
+export let mockPurchases: Purchase[] = [
     {
         id: 'PURCH001',
         supplier: 'TechSupplier Inc.',

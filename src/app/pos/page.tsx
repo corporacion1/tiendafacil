@@ -9,11 +9,11 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { mockProducts, initialCustomers } from "@/lib/data"
+import { mockProducts, initialCustomers, mockSales, mockInventoryMovements } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import type { Product, CartItem, Customer, Sale } from "@/lib/types";
+import type { Product, CartItem, Customer, Sale, InventoryMovement } from "@/lib/types";
 import { TicketPreview } from "@/components/ticket-preview";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -145,11 +145,28 @@ const toggleWholesalePrice = (productId: string, currentPrice: number) => {
         paymentMethod: transactionType === 'contado' ? paymentMethod : undefined,
     }
     
+    // Add sale to mock data
+    mockSales.unshift(newSale);
+
+    // Update product stock and create inventory movements
+    cartItems.forEach(item => {
+        const productIndex = mockProducts.findIndex(p => p.id === item.product.id);
+        if (productIndex !== -1) {
+            mockProducts[productIndex].stock -= item.quantity;
+        }
+        
+        const movement: InventoryMovement = {
+            id: `mov-${Date.now()}-${item.product.id}`,
+            productName: item.product.name,
+            type: 'sale',
+            quantity: -item.quantity,
+            date: newSale.date,
+        };
+        mockInventoryMovements.unshift(movement);
+    });
+
     setLastSale(newSale);
-    // Here you would typically save the `newSale` object to your database.
-    console.log("Processing sale:", newSale);
-
-
+    
     toast({
       title: "Venta Procesada",
       description: `La venta con control #${saleId} ha sido registrada.`,
@@ -575,5 +592,3 @@ const toggleWholesalePrice = (productId: string, currentPrice: number) => {
   </Dialog>
   );
 }
-
-    
