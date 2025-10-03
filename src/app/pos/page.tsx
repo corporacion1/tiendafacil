@@ -13,11 +13,13 @@ import { mockProducts } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import type { Product, CartItem } from "@/lib/types";
+import { TicketPreview } from "@/components/ticket-preview";
 
 export default function POSPage() {
   const { toast } = useToast();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
 
   const addToCart = (product: Product) => {
     setCartItems(prevItems => {
@@ -67,15 +69,6 @@ export default function POSPage() {
   const taxes = subtotal * 0.13; // Example 13% tax
   const total = subtotal + taxes;
 
-  const handlePrint = () => {
-    toast({
-      title: "Imprimiendo Ticket...",
-      description: "Tu ticket se está generando.",
-    })
-    // In a real app, this would trigger a print dialog for a formatted receipt.
-    // window.print(); 
-  }
-
   const handleProcessSale = () => {
      if (cartItems.length === 0) {
       toast({
@@ -100,6 +93,7 @@ export default function POSPage() {
   );
 
   return (
+    <>
     <div className="grid flex-1 auto-rows-max gap-4 md:grid-cols-3 lg:gap-8">
       <div className="grid auto-rows-max items-start gap-4 md:col-span-2 lg:gap-8">
         <Card>
@@ -251,7 +245,7 @@ export default function POSPage() {
             <Button className="w-full bg-primary hover:bg-primary/90" size="lg" onClick={handleProcessSale} disabled={cartItems.length === 0}>
               Procesar Venta
             </Button>
-            <Button className="w-full" variant="outline" size="lg" onClick={handlePrint} disabled={cartItems.length === 0}>
+            <Button className="w-full" variant="outline" size="lg" onClick={() => setIsPrintPreviewOpen(true)} disabled={cartItems.length === 0}>
               <Printer className="mr-2 h-4 w-4" />
               Imprimir Ticket
             </Button>
@@ -259,5 +253,17 @@ export default function POSPage() {
         </Card>
       </div>
     </div>
+    {cartItems.length > 0 && (
+      <TicketPreview
+        isOpen={isPrintPreviewOpen}
+        onOpenChange={setIsPrintPreviewOpen}
+        cartItems={cartItems}
+        subtotal={subtotal}
+        taxes={taxes}
+        total={total}
+        storeName="TIENDA FACIL WEB"
+      />
+    )}
+  </>
   );
 }
