@@ -2,13 +2,12 @@
 "use client"
 import { useState } from "react";
 import Image from "next/image"
-import { PlusCircle, Printer, X, ShoppingCart, Trash2 } from "lucide-react"
+import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { mockProducts } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
@@ -16,10 +15,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import type { Product, CartItem, Customer } from "@/lib/types";
 import { TicketPreview } from "@/components/ticket-preview";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 const initialCustomers: Customer[] = [
     { id: 'eventual', name: 'Cliente Eventual' },
-    { id: 'johndoe', name: 'John Doe' }
+    { id: 'johndoe', name: 'John Doe', phone: '555-1234', address: '123 Fake St' }
 ];
 
 export default function POSPage() {
@@ -28,10 +30,12 @@ export default function POSPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
-  const [selectedCustomer, setSelectedCustomer] = useState<string>('eventual');
-  const [newCustomerName, setNewCustomerName] = useState("");
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('eventual');
+  const [newCustomer, setNewCustomer] = useState({ id: '', name: '', phone: '', address: '' });
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
-
+  const [isCustomerSearchOpen, setIsCustomerSearchOpen] = useState(false);
+  
+  const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
 
   const addToCart = (product: Product) => {
     setCartItems(prevItems => {
@@ -98,7 +102,7 @@ export default function POSPage() {
   }
 
   const handleAddNewCustomer = () => {
-    if (newCustomerName.trim() === "") {
+    if (newCustomer.name.trim() === "") {
         toast({
             variant: "destructive",
             title: "Nombre inválido",
@@ -106,17 +110,33 @@ export default function POSPage() {
         });
         return;
     }
-    const newCustomer: Customer = {
-        id: (customers.length + 1).toString(),
-        name: newCustomerName,
+    
+    // Use timestamp for a more unique ID
+    const newId = newCustomer.id.trim() || `cust-${Date.now()}`;
+
+    if (customers.some(c => c.id === newId)) {
+       toast({
+            variant: "destructive",
+            title: "ID Duplicado",
+            description: "Ya existe un cliente con ese ID. Por favor, elige otro.",
+        });
+        return;
+    }
+
+    const customerToAdd: Customer = {
+        id: newId,
+        name: newCustomer.name,
+        phone: newCustomer.phone,
+        address: newCustomer.address,
     };
-    setCustomers(prev => [...prev, newCustomer]);
-    setSelectedCustomer(newCustomer.id);
-    setNewCustomerName("");
+
+    setCustomers(prev => [...prev, customerToAdd]);
+    setSelectedCustomerId(customerToAdd.id);
+    setNewCustomer({ id: '', name: '', phone: '', address: '' });
     setIsCustomerDialogOpen(false);
     toast({
         title: "Cliente Agregado",
-        description: `El cliente "${newCustomer.name}" ha sido agregado y seleccionado.`,
+        description: `El cliente "${customerToAdd.name}" ha sido agregado y seleccionado.`,
     });
   };
 
@@ -198,16 +218,48 @@ export default function POSPage() {
             <div className="space-y-2">
                 <Label htmlFor="customer">Cliente</Label>
                 <div className="flex gap-2">
-                    <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
-                        <SelectTrigger id="customer">
-                        <SelectValue placeholder="Seleccionar cliente" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {customers.map(customer => (
-                                <SelectItem key={customer.id} value={customer.id}>{customer.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <Popover open={isCustomerSearchOpen} onOpenChange={setIsCustomerSearchOpen}>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={isCustomerSearchOpen}
+                                className="w-full justify-between"
+                            >
+                                {selectedCustomer ? selectedCustomer.name : "Seleccionar cliente..."}
+                                <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                            <Command>
+                                <CommandInput placeholder="Buscar cliente..." />
+                                <CommandList>
+                                    <CommandEmpty>No se encontraron clientes.</CommandEmpty>
+                                    <CommandGroup>
+                                        {customers.map((customer) => (
+                                            <CommandItem
+                                                key={customer.id}
+                                                value={customer.name}
+                                                onSelect={() => {
+                                                    setSelectedCustomerId(customer.id);
+                                                    setIsCustomerSearchOpen(false);
+                                                }}
+                                            >
+                                                <Check
+                                                    className={cn(
+                                                        "mr-2 h-4 w-4",
+                                                        selectedCustomerId === customer.id ? "opacity-100" : "opacity-0"
+                                                    )}
+                                                />
+                                                {customer.name}
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
+
                     <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
                         <DialogTrigger asChild>
                             <Button variant="outline" size="icon">
@@ -218,18 +270,25 @@ export default function POSPage() {
                             <DialogHeader>
                                 <DialogTitle>Agregar Nuevo Cliente</DialogTitle>
                                 <DialogDescription>
-                                    Ingresa el nombre del nuevo cliente.
+                                    Completa el formulario para agregar un nuevo cliente.
                                 </DialogDescription>
                             </DialogHeader>
-                            <div className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="new-customer-name">Nombre del Cliente</Label>
-                                    <Input 
-                                        id="new-customer-name" 
-                                        value={newCustomerName}
-                                        onChange={(e) => setNewCustomerName(e.target.value)}
-                                        placeholder="Ej: Jane Doe"
-                                    />
+                            <div className="grid gap-4 py-4">
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="new-customer-id" className="text-right">ID (Opcional)</Label>
+                                    <Input id="new-customer-id" value={newCustomer.id} onChange={(e) => setNewCustomer(prev => ({ ...prev, id: e.target.value }))} className="col-span-3" placeholder="Identificación fiscal, etc." />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="new-customer-name" className="text-right">Nombre*</Label>
+                                    <Input id="new-customer-name" value={newCustomer.name} onChange={(e) => setNewCustomer(prev => ({ ...prev, name: e.target.value }))} className="col-span-3" placeholder="Ej: Jane Doe" required />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="new-customer-phone" className="text-right">Teléfono</Label>
+                                    <Input id="new-customer-phone" value={newCustomer.phone} onChange={(e) => setNewCustomer(prev => ({ ...prev, phone: e.target.value }))} className="col-span-3" />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="new-customer-address" className="text-right">Dirección</Label>
+                                    <Input id="new-customer-address" value={newCustomer.address} onChange={(e) => setNewCustomer(prev => ({ ...prev, address: e.target.value }))} className="col-span-3" />
                                 </div>
                             </div>
                             <DialogFooter>
