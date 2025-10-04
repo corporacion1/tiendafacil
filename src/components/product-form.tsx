@@ -15,6 +15,7 @@ import type { Product } from "@/lib/types";
 import { initialFamilies, initialUnits, initialWarehouses } from "@/lib/data";
 import { useProducts } from "@/contexts/product-context";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 const productSchema = z.object({
   id: z.string(),
@@ -270,6 +271,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                     {...field}
                    />
                 </FormControl>
+                 <FormDescription className={cn(parseFloat(retailProfitPercentage) > 0 ? "text-green-600 font-semibold" : "")}>
+                    Margen de Ganancia: {retailProfitPercentage}%
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -283,21 +287,13 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                 <FormControl>
                   <Input type="number" step="0.01" placeholder="0.00" {...field} />
                 </FormControl>
+                <FormDescription className={cn(parseFloat(wholesaleProfitPercentage) > 0 ? "text-green-600 font-semibold" : "")}>
+                    Margen de Ganancia: {wholesaleProfitPercentage}%
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
           />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 text-sm text-muted-foreground">
-            <div>
-                <span className="font-medium text-foreground">Margen de Ganancia (Detal): </span>
-                <span className={parseFloat(retailProfitPercentage) > 0 ? "text-green-600 font-semibold" : ""}>{retailProfitPercentage}%</span>
-            </div>
-            <div>
-                <span className="font-medium text-foreground">Margen de Ganancia (Mayor): </span>
-                <span className={parseFloat(wholesaleProfitPercentage) > 0 ? "text-green-600 font-semibold" : ""}>{wholesaleProfitPercentage}%</span>
-            </div>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
