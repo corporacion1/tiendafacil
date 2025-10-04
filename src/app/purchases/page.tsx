@@ -189,6 +189,58 @@ export default function PurchasesPage() {
 
   return (
     <div className="grid flex-1 auto-rows-max gap-4 md:grid-cols-3 lg:gap-8">
+      <div className="grid auto-rows-max items-start gap-4 md:col-span-2 lg:gap-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Productos para Compra</CardTitle>
+            <div className="mt-4 flex gap-4">
+              <Input
+                placeholder="Buscar por nombre o SKU..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="flex-grow"
+              />
+               <Select value={selectedFamily} onValueChange={setSelectedFamily}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filtrar por familia" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las familias</SelectItem>
+                  {initialFamilies.map(family => (
+                    <SelectItem key={family.id} value={family.name}>
+                      {family.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredProducts.map((product) => (
+                <Card key={product.id} className="overflow-hidden group cursor-pointer" onClick={() => addProductToPurchase(product)}>
+                  <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative">
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        <Button size="sm">Agregar</Button>
+                    </div>
+                     {product.imageUrl ? (
+                        <Image src={product.imageUrl} alt={product.name} fill sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw" className="object-cover transition-transform group-hover:scale-105" data-ai-hint={product.imageHint} />
+                        ) : (
+                        <Package className="w-12 h-12 text-muted-foreground" />
+                    )}
+                    <div className="absolute top-2 left-2 bg-secondary text-secondary-foreground text-xs font-bold px-2 py-1 rounded">
+                      Costo: {settings.primaryCurrencySymbol}{product.cost.toFixed(2)}
+                    </div>
+                  </CardContent>
+                  <CardFooter className="p-2 bg-background/80 backdrop-blur-sm">
+                    <h3 className="text-sm font-medium truncate">{product.name}</h3>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
       <div className="grid auto-rows-max items-start gap-4 lg:col-span-1 lg:gap-8">
         <Card>
           <CardHeader className="flex flex-row justify-between items-center">
@@ -384,58 +436,6 @@ export default function PurchasesPage() {
                 Procesar Compra
             </Button>
           </CardFooter>
-        </Card>
-      </div>
-       <div className="grid auto-rows-max items-start gap-4 md:col-span-2 lg:gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Productos para Compra</CardTitle>
-            <div className="mt-4 flex gap-4">
-              <Input
-                placeholder="Buscar por nombre o SKU..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-grow"
-              />
-               <Select value={selectedFamily} onValueChange={setSelectedFamily}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filtrar por familia" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas las familias</SelectItem>
-                  {initialFamilies.map(family => (
-                    <SelectItem key={family.id} value={family.name}>
-                      {family.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredProducts.map((product) => (
-                <Card key={product.id} className="overflow-hidden group cursor-pointer" onClick={() => addProductToPurchase(product)}>
-                  <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative">
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                        <Button size="sm">Agregar</Button>
-                    </div>
-                     {product.imageUrl ? (
-                        <Image src={product.imageUrl} alt={product.name} fill sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw" className="object-cover transition-transform group-hover:scale-105" data-ai-hint={product.imageHint} />
-                        ) : (
-                        <Package className="w-12 h-12 text-muted-foreground" />
-                    )}
-                    <div className="absolute top-2 left-2 bg-secondary text-secondary-foreground text-xs font-bold px-2 py-1 rounded">
-                      Costo: {settings.primaryCurrencySymbol}{product.cost.toFixed(2)}
-                    </div>
-                  </CardContent>
-                  <CardFooter className="p-2 bg-background/80 backdrop-blur-sm">
-                    <h3 className="text-sm font-medium truncate">{product.name}</h3>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          </CardContent>
         </Card>
       </div>
     </div>
