@@ -1,6 +1,6 @@
 
 "use client"
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { usePathname, useRouter } from 'next/navigation';
 import Image from "next/image";
 import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package } from "lucide-react"
@@ -10,7 +10,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { initialCustomers, mockSales, mockInventoryMovements } from "@/lib/data"
+import { initialCustomers, mockSales, mockInventoryMovements, initialFamilies } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
@@ -23,6 +23,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
 import { useProducts } from "@/contexts/product-context";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const generateSaleId = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -39,6 +40,7 @@ export default function POSPage() {
   const { products, updateProduct } = useProducts();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedFamily, setSelectedFamily] = useState<string>("all");
   const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
   const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('eventual');
@@ -255,12 +257,27 @@ export default function POSPage() {
     });
   };
 
-  const filteredProducts = products.filter(
-    (product) =>
-      product.status === 'active' &&
-      (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.sku.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredProducts = useMemo(() => {
+    const saleCounts = mockSales.reduce((acc, sale) => {
+      sale.items.forEach(item => {
+        acc[item.productId] = (acc[item.productId] || 0) + 1;
+      });
+      return acc;
+    }, {} as Record<string, number>);
+
+    return products
+      .filter(product =>
+        product.status === 'active' &&
+        (selectedFamily === 'all' || product.family === selectedFamily) &&
+        (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          product.sku.toLowerCase().includes(searchTerm.toLowerCase()))
+      )
+      .sort((a, b) => {
+        const salesA = saleCounts[a.id] || 0;
+        const salesB = saleCounts[b.id] || 0;
+        return salesB - salesA;
+      });
+  }, [products, searchTerm, selectedFamily]);
 
   return (
     <Dialog onOpenChange={(open) => !open && setProductDetails(null)}>
@@ -269,12 +286,26 @@ export default function POSPage() {
         <Card>
           <CardHeader>
             <CardTitle>Productos</CardTitle>
-            <div className="mt-4">
+            <div className="mt-4 flex gap-4">
               <Input
                 placeholder="Buscar por nombre o SKU..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                className="flex-grow"
               />
+               <Select value={selectedFamily} onValueChange={setSelectedFamily}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filtrar por familia" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las familias</SelectItem>
+                  {initialFamilies.map(family => (
+                    <SelectItem key={family.id} value={family.name}>
+                      {family.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </CardHeader>
           <CardContent>
