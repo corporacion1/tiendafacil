@@ -3,7 +3,7 @@
 
 import { useState, useMemo } from "react";
 import Image from "next/image";
-import { File, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X, Package } from "lucide-react";
+import { File, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X, Package, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,8 +45,13 @@ export default function InventoryPage() {
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   
-  const [open, setOpen] = useState(false)
-  const [selectedProductCombo, setSelectedProductCombo] = useState<Product | null>(null)
+  const [isProductComboboxOpen, setIsProductComboboxOpen] = useState(false)
+  
+  // State for the inventory movement form
+  const [movementProduct, setMovementProduct] = useState<Product | null>(null);
+  const [movementType, setMovementType] = useState<'purchase' | 'sale' | 'adjustment' | ''>('');
+  const [movementQuantity, setMovementQuantity] = useState<number>(0);
+  const [movementResponsible, setMovementResponsible] = useState('');
 
 
   const handleEdit = (product: Product) => {
@@ -91,11 +96,63 @@ export default function InventoryPage() {
     setProductToDelete(null);
   };
 
+  const resetMovementForm = () => {
+      setMovementProduct(null);
+      setMovementType('');
+      setMovementQuantity(0);
+      setMovementResponsible('');
+  }
+
   const handleMoveInventory = () => {
+    if (!movementProduct || !movementType || movementQuantity <= 0) {
+      toast({
+        variant: "destructive",
+        title: "Datos incompletos",
+        description: "Por favor, selecciona un producto, tipo de movimiento y una cantidad válida.",
+      });
+      return;
+    }
+
+    const currentStock = movementProduct.stock;
+    let newStock = currentStock;
+
+    switch (movementType) {
+      case 'purchase': // Entrada
+        newStock += movementQuantity;
+        break;
+      case 'sale': // Salida
+        if (currentStock < movementQuantity) {
+          toast({
+            variant: "destructive",
+            title: "Stock insuficiente",
+            description: `No puedes sacar ${movementQuantity} unidades. Stock actual: ${currentStock}.`,
+          });
+          return;
+        }
+        newStock -= movementQuantity;
+        break;
+      case 'adjustment': // Ajuste (puede ser positivo o negativo, aquí lo manejamos como un reemplazo)
+        newStock = movementQuantity; // O podrías tener un campo separado para el tipo de ajuste
+        break;
+    }
+    
+    updateProduct(movementProduct.id, { stock: newStock });
+
+    const newMovement: InventoryMovement = {
+        id: `mov-${Date.now()}-${movementProduct.id}`,
+        productName: movementProduct.name,
+        type: movementType,
+        quantity: movementType === 'sale' ? -movementQuantity : movementQuantity,
+        date: new Date().toISOString(),
+    };
+    mockInventoryMovements.unshift(newMovement);
+
     toast({
         title: "Movimiento Registrado",
-        description: "El movimiento de inventario ha sido registrado exitosamente.",
+        description: `El stock de "${movementProduct.name}" ha sido actualizado a ${newStock}.`,
     });
+    
+    resetMovementForm();
   };
   
   const getMovementLabel = (type: 'sale' | 'purchase' | 'adjustment') => {
@@ -152,16 +209,16 @@ export default function InventoryPage() {
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
                         <Label htmlFor="product">Producto</Label>
-                        <Popover open={open} onOpenChange={setOpen}>
+                        <Popover open={isProductComboboxOpen} onOpenChange={setIsProductComboboxOpen}>
                             <PopoverTrigger asChild>
                                 <Button
                                 variant="outline"
                                 role="combobox"
-                                aria-expanded={open}
+                                aria-expanded={isProductComboboxOpen}
                                 className="w-full justify-between"
                                 >
-                                {selectedProductCombo
-                                    ? selectedProductCombo.name
+                                {movementProduct
+                                    ? movementProduct.name
                                     : "Selecciona un producto..."}
                                 <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
@@ -178,13 +235,13 @@ export default function InventoryPage() {
                                                 value={product.name}
                                                 onSelect={(currentValue) => {
                                                     const product = products.find(p => p.name.toLowerCase() === currentValue.toLowerCase());
-                                                    setSelectedProductCombo(product || null);
-                                                    setOpen(false)
+                                                    setMovementProduct(product || null);
+                                                    setIsProductComboboxOpen(false)
                                                 }}
                                                 >
-                                                <X className={cn(
+                                                <Check className={cn(
                                                     "mr-2 h-4 w-4",
-                                                    selectedProductCombo?.id === product.id ? "opacity-100" : "opacity-0"
+                                                    movementProduct?.id === product.id ? "opacity-100" : "opacity-0"
                                                 )} />
                                                 {product.name}
                                                 </CommandItem>
@@ -197,29 +254,29 @@ export default function InventoryPage() {
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="type">Tipo de Movimiento</Label>
-                         <Select>
+                         <Select value={movementType} onValueChange={(value: 'purchase' | 'sale' | 'adjustment') => setMovementType(value)}>
                             <SelectTrigger id="type">
                                 <SelectValue placeholder="Selecciona un tipo" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="purchase">Entrada (Compra)</SelectItem>
                                 <SelectItem value="sale">Salida (Venta)</SelectItem>
-                                <SelectItem value="adjustment">Ajuste</SelectItem>
+                                <SelectItem value="adjustment">Ajuste (Reemplaza stock)</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
                      <div className="space-y-2">
                         <Label htmlFor="quantity">Cantidad</Label>
-                        <Input id="quantity" type="number" placeholder="0" />
+                        <Input id="quantity" type="number" placeholder="0" value={movementQuantity || ''} onChange={(e) => setMovementQuantity(parseInt(e.target.value) || 0)} />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="responsable">Responsable</Label>
-                        <Input id="responsable" type="text" placeholder="Nombre del responsable" required />
+                        <Input id="responsable" type="text" placeholder="Nombre del responsable" value={movementResponsible} onChange={e => setMovementResponsible(e.target.value)} required />
                     </div>
                 </div>
                 <DialogFooter>
                     <DialogClose asChild>
-                        <Button variant="outline">Cancelar</Button>
+                        <Button variant="outline" onClick={resetMovementForm}>Cancelar</Button>
                     </DialogClose>
                     <DialogClose asChild>
                         <Button onClick={handleMoveInventory}>Registrar Movimiento</Button>
@@ -318,7 +375,7 @@ export default function InventoryPage() {
                           <DropdownMenuItem onSelect={() => handleEdit(product)}>Editar</DropdownMenuItem>
                           <DropdownMenuItem onSelect={() => handleViewMovements(product)}>Ver Movimientos</DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive" onSelect={() => setProductToDelete(product)}>
+                           <DropdownMenuItem className="text-destructive" onSelect={() => setProductToDelete(product)}>
                             Eliminar
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -425,3 +482,5 @@ export default function InventoryPage() {
     </>
   );
 }
+
+    
