@@ -22,39 +22,40 @@ const ProductContext = createContext<ProductContextType | undefined>(undefined);
 export const ProductProvider = ({ children }: { children: React.ReactNode }) => {
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
+  const storeId = "test-store"; // Placeholder
 
   const productsQuery = useMemoFirebase(() => {
-      if (!firestore || !user || isUserLoading) return null;
-      return collection(firestore, 'products');
-  }, [firestore, user, isUserLoading]);
+      if (!firestore || !user || isUserLoading || !storeId) return null;
+      return collection(firestore, 'stores', storeId, 'products');
+  }, [firestore, user, isUserLoading, storeId]);
 
   const { data: products, isLoading } = useCollection<Product>(productsQuery);
 
   const addProduct = async (productData: Omit<Product, 'id'>) => {
-    if (!firestore) {
-      console.error("Firestore is not initialized");
+    if (!firestore || !storeId) {
+      console.error("Firestore or storeId not available");
       return;
     }
-    const productsCollection = collection(firestore, 'products');
+    const productsCollection = collection(firestore, 'stores', storeId, 'products');
     const docRef = await addDocumentNonBlocking(productsCollection, productData);
     return docRef?.id;
   };
 
   const updateProduct = async (productId: string, updatedProductData: Partial<Omit<Product, 'id'>>) => {
-    if (!firestore) {
-      console.error("Firestore is not initialized");
+    if (!firestore || !storeId) {
+      console.error("Firestore or storeId not available");
       return;
     }
-    const productDoc = doc(firestore, 'products', productId);
+    const productDoc = doc(firestore, 'stores', storeId, 'products', productId);
     await updateDocumentNonBlocking(productDoc, updatedProductData);
   };
 
   const deleteProduct = async (productId: string) => {
-     if (!firestore) {
-      console.error("Firestore is not initialized");
+     if (!firestore || !storeId) {
+      console.error("Firestore or storeId not available");
       return;
     }
-    const productDoc = doc(firestore, 'products', productId);
+    const productDoc = doc(firestore, 'stores', storeId, 'products', productId);
     await deleteDocumentNonBlocking(productDoc);
   }
 

@@ -20,30 +20,31 @@ const UnitsContext = createContext<UnitsContextType | undefined>(undefined);
 export const UnitsProvider = ({ children }: { children: React.ReactNode }) => {
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
+  const storeId = "test-store"; // Placeholder
 
   const unitsQuery = useMemoFirebase(() => {
-      if (!firestore || !user || isUserLoading) return null;
-      return collection(firestore, 'units');
-  }, [firestore, user, isUserLoading]);
+      if (!firestore || !user || isUserLoading || !storeId) return null;
+      return collection(firestore, 'stores', storeId, 'units');
+  }, [firestore, user, isUserLoading, storeId]);
 
   const { data: units, isLoading } = useCollection<Unit>(unitsQuery);
 
   const addUnit = async (unitData: Omit<Unit, 'id'>) => {
-    if (!firestore) return;
-    const unitsCollection = collection(firestore, 'units');
+    if (!firestore || !storeId) return;
+    const unitsCollection = collection(firestore, 'stores', storeId, 'units');
     const docRef = await addDocumentNonBlocking(unitsCollection, unitData);
     return docRef?.id;
   };
 
   const updateUnit = async (unitId: string, updatedUnitData: Partial<Unit>) => {
-    if (!firestore) return;
-    const unitDoc = doc(firestore, 'units', unitId);
+    if (!firestore || !storeId) return;
+    const unitDoc = doc(firestore, 'stores', storeId, 'units', unitId);
     await updateDocumentNonBlocking(unitDoc, updatedUnitData);
   };
 
   const deleteUnit = async (unitId: string) => {
-    if (!firestore) return;
-    const unitDoc = doc(firestore, 'units', unitId);
+    if (!firestore || !storeId) return;
+    const unitDoc = doc(firestore, 'stores', storeId, 'units', unitId);
     await deleteDocumentNonBlocking(unitDoc);
   }
 
@@ -69,5 +70,3 @@ export const useUnits = (): UnitsContextType => {
   }
   return context;
 };
-
-    

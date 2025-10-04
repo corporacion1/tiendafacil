@@ -21,30 +21,31 @@ const FamiliesContext = createContext<FamiliesContextType | undefined>(undefined
 export const FamiliesProvider = ({ children }: { children: React.ReactNode }) => {
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
+  const storeId = "test-store"; // Placeholder
 
   const familiesQuery = useMemoFirebase(() => {
-      if (!firestore || !user || isUserLoading) return null;
-      return collection(firestore, 'families');
-  }, [firestore, user, isUserLoading]);
+      if (!firestore || !user || isUserLoading || !storeId) return null;
+      return collection(firestore, 'stores', storeId, 'families');
+  }, [firestore, user, isUserLoading, storeId]);
 
   const { data: families, isLoading } = useCollection<Family>(familiesQuery);
   
   const addFamily = async (familyData: Omit<Family, 'id'>) => {
-    if (!firestore) return;
-    const familiesCollection = collection(firestore, 'families');
+    if (!firestore || !storeId) return;
+    const familiesCollection = collection(firestore, 'stores', storeId, 'families');
     const docRef = await addDocumentNonBlocking(familiesCollection, familyData);
     return docRef?.id;
   };
 
   const updateFamily = async (familyId: string, updatedFamilyData: Partial<Family>) => {
-    if (!firestore) return;
-    const familyDoc = doc(firestore, 'families', familyId);
+    if (!firestore || !storeId) return;
+    const familyDoc = doc(firestore, 'stores', storeId, 'families', familyId);
     await updateDocumentNonBlocking(familyDoc, updatedFamilyData);
   };
 
   const deleteFamily = async (familyId: string) => {
-    if (!firestore) return;
-    const familyDoc = doc(firestore, 'families', familyId);
+    if (!firestore || !storeId) return;
+    const familyDoc = doc(firestore, 'stores', storeId, 'families', familyId);
     await deleteDocumentNonBlocking(familyDoc);
   }
 
@@ -70,5 +71,3 @@ export const useFamilies = (): FamiliesContextType => {
   }
   return context;
 };
-
-    

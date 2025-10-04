@@ -19,20 +19,21 @@ const SalesContext = createContext<SalesContextType | undefined>(undefined);
 export const SalesProvider = ({ children }: { children: React.ReactNode }) => {
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
+  const storeId = "test-store"; // Placeholder
 
   const salesQuery = useMemoFirebase(() => {
-      if (!firestore || !user || isUserLoading) return null;
-      return collection(firestore, 'sales');
-  }, [firestore, user, isUserLoading]);
+      if (!firestore || !user || isUserLoading || !storeId) return null;
+      return collection(firestore, 'stores', storeId, 'sales');
+  }, [firestore, user, isUserLoading, storeId]);
 
   const { data: sales, isLoading } = useCollection<Sale>(salesQuery);
 
   const addSale = async (saleData: Omit<Sale, 'id'>) => {
-    if (!firestore) {
-      console.error("Firestore is not initialized");
+    if (!firestore || !storeId) {
+      console.error("Firestore or storeId not available");
       return;
     }
-    const salesCollection = collection(firestore, 'sales');
+    const salesCollection = collection(firestore, 'stores', storeId, 'sales');
     const docRef = await addDocumentNonBlocking(salesCollection, saleData);
     return docRef?.id;
   };

@@ -20,30 +20,31 @@ const WarehousesContext = createContext<WarehousesContextType | undefined>(undef
 export const WarehousesProvider = ({ children }: { children: React.ReactNode }) => {
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
+  const storeId = "test-store"; // Placeholder
 
   const warehousesQuery = useMemoFirebase(() => {
-      if (!firestore || !user || isUserLoading) return null;
-      return collection(firestore, 'warehouses');
-  }, [firestore, user, isUserLoading]);
+      if (!firestore || !user || isUserLoading || !storeId) return null;
+      return collection(firestore, 'stores', storeId, 'warehouses');
+  }, [firestore, user, isUserLoading, storeId]);
 
   const { data: warehouses, isLoading } = useCollection<Warehouse>(warehousesQuery);
   
   const addWarehouse = async (warehouseData: Omit<Warehouse, 'id'>) => {
-    if (!firestore) return;
-    const warehousesCollection = collection(firestore, 'warehouses');
+    if (!firestore || !storeId) return;
+    const warehousesCollection = collection(firestore, 'stores', storeId, 'warehouses');
     const docRef = await addDocumentNonBlocking(warehousesCollection, warehouseData);
     return docRef?.id;
   };
 
   const updateWarehouse = async (warehouseId: string, updatedWarehouseData: Partial<Warehouse>) => {
-    if (!firestore) return;
-    const warehouseDoc = doc(firestore, 'warehouses', warehouseId);
+    if (!firestore || !storeId) return;
+    const warehouseDoc = doc(firestore, 'stores', storeId, 'warehouses', warehouseId);
     await updateDocumentNonBlocking(warehouseDoc, updatedWarehouseData);
   };
 
   const deleteWarehouse = async (warehouseId: string) => {
-    if (!firestore) return;
-    const warehouseDoc = doc(firestore, 'warehouses', warehouseId);
+    if (!firestore || !storeId) return;
+    const warehouseDoc = doc(firestore, 'stores', storeId, 'warehouses', warehouseId);
     await deleteDocumentNonBlocking(warehouseDoc);
   }
 
@@ -69,5 +70,3 @@ export const useWarehouses = (): WarehousesContextType => {
   }
   return context;
 };
-
-    

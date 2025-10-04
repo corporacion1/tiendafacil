@@ -326,46 +326,17 @@
         "name"
       ]
     },
-    "StoreConfiguration": {
+    "Store": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "StoreConfiguration",
+      "title": "Store",
       "type": "object",
-      "description": "Configuration settings for the store, including security pin.",
+      "description": "Represents a single tenant store in the system.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the StoreConfiguration entity. Should only be one record."
-        },
-        "storeName": {
-          "type": "string",
-          "description": "Name of the store."
-        },
-        "address": {
-          "type": "string",
-          "description": "Address of the store."
-        },
-        "securityPin": {
-          "type": "string",
-          "description": "Security PIN to protect the application (HASHED)."
-        },
-        "currency": {
-          "type": "string",
-          "description": "Currency used by the store (e.g., USD, EUR)."
-        },
-        "printHeader": {
-          "type": "string",
-          "description": "Custom header to print on receipts."
-        },
-        "printFooter": {
-          "type": "string",
-          "description": "Custom footer to print on receipts."
-        }
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "ownerId": { "type": "string", "description": "The UID of the user who owns this store."}
       },
-      "required": [
-        "id",
-        "storeName",
-        "currency"
-      ]
+      "required": ["id", "name", "ownerId"]
     },
     "User": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -490,129 +461,139 @@
   "firestore": {
     "structure": [
       {
-        "path": "/products/{productId}",
-        "definition": {
-          "entityName": "Product",
-          "schema": { "$ref": "#/backend/entities/Product" }
-        }
-      },
-      {
-        "path": "/units/{unitId}",
-        "definition": {
-          "entityName": "Unit",
-          "schema": { "$ref": "#/backend/entities/Unit" }
-        }
-      },
-      {
-        "path": "/families/{familyId}",
-        "definition": {
-          "entityName": "Family",
-          "schema": { "$ref": "#/backend/entities/Family" }
-        }
-      },
-      {
-        "path": "/warehouses/{warehouseId}",
-        "definition": {
-          "entityName": "Warehouse",
-          "schema": { "$ref": "#/backend/entities/Warehouse" }
-        }
-      },
-      {
-        "path": "/tax_types/{taxTypeId}",
-        "definition": {
-          "entityName": "TaxType",
-          "schema": { "$ref": "#/backend/entities/TaxType" }
-        }
-      },
-      {
-        "path": "/inventory_movements/{inventoryMovementId}",
-        "definition": {
-          "entityName": "InventoryMovement",
-          "schema": { "$ref": "#/backend/entities/InventoryMovement" }
-        }
-      },
-      {
-        "path": "/sales/{saleId}",
-        "definition": {
-          "entityName": "Sale",
-          "schema": { "$ref": "#/backend/entities/Sale" }
-        }
-      },
-      {
-        "path": "/sales/{saleId}/sale_items/{saleItemId}",
-        "definition": {
-          "entityName": "SaleItem",
-          "schema": { "$ref": "#/backend/entities/SaleItem" }
-        }
-      },
-      {
-        "path": "/purchases/{purchaseId}",
-        "definition": {
-          "entityName": "Purchase",
-          "schema": { "$ref": "#/backend/entities/Purchase" }
-        }
-      },
-      {
-        "path": "/purchases/{purchaseId}/purchase_items/{purchaseItemId}",
-        "definition": {
-          "entityName": "PurchaseItem",
-          "schema": { "$ref": "#/backend/entities/PurchaseItem" }
-        }
-      },
-      {
-        "path": "/suppliers/{supplierId}",
-        "definition": {
-          "entityName": "Supplier",
-          "schema": { "$ref": "#/backend/entities/Supplier" }
-        }
-      },
-      {
-        "path": "/customers/{customerId}",
-        "definition": {
-          "entityName": "Customer",
-          "schema": { "$ref": "#/backend/entities/Customer" }
-        }
-      },
-      {
-        "path": "/store_configuration/{storeConfigurationId}",
-        "definition": {
-          "entityName": "StoreConfiguration",
-          "schema": { "$ref": "#/backend/entities/StoreConfiguration" }
-        }
-      },
-      {
         "path": "/users/{userId}",
         "definition": {
           "entityName": "User",
-          "schema": { "$ref": "#/backend/entities/User" }
+          "schema": { "$ref": "#/backend/entities/User" },
+          "description": "Global user profiles."
         }
       },
       {
-        "path": "/roles_admin/{userId}",
+        "path": "/stores/{storeId}",
         "definition": {
-          "entityName": "User",
-          "schema": { "$ref": "#/backend/entities/User" }
+          "entityName": "Store",
+          "schema": { "$ref": "#/backend/entities/Store" },
+          "description": "Root collection for all tenant stores."
         }
       },
       {
-        "path": "/currency_rates/{currencyRateId}",
+        "path": "/stores/{storeId}/products/{productId}",
+        "definition": {
+          "entityName": "Product",
+          "schema": { "$ref": "#/backend/entities/Product" },
+          "description": "Products for a specific store."
+        }
+      },
+      {
+        "path": "/stores/{storeId}/units/{unitId}",
+        "definition": {
+          "entityName": "Unit",
+          "schema": { "$ref": "#/backend/entities/Unit" },
+          "description": "Units of measure for a specific store."
+        }
+      },
+      {
+        "path": "/stores/{storeId}/families/{familyId}",
+        "definition": {
+          "entityName": "Family",
+          "schema": { "$ref": "#/backend/entities/Family" },
+          "description": "Product families for a specific store."
+        }
+      },
+      {
+        "path": "/stores/{storeId}/warehouses/{warehouseId}",
+        "definition": {
+          "entityName": "Warehouse",
+          "schema": { "$ref": "#/backend/entities/Warehouse" },
+          "description": "Warehouses for a specific store."
+        }
+      },
+      {
+        "path": "/stores/{storeId}/tax_types/{taxTypeId}",
+        "definition": {
+          "entityName": "TaxType",
+          "schema": { "$ref": "#/backend/entities/TaxType" },
+          "description": "Tax types for a specific store."
+        }
+      },
+      {
+        "path": "/stores/{storeId}/inventory_movements/{inventoryMovementId}",
+        "definition": {
+          "entityName": "InventoryMovement",
+          "schema": { "$ref": "#/backend/entities/InventoryMovement" },
+          "description": "Inventory movements for a specific store."
+        }
+      },
+      {
+        "path": "/stores/{storeId}/sales/{saleId}",
+        "definition": {
+          "entityName": "Sale",
+          "schema": { "$ref": "#/backend/entities/Sale" },
+          "description": "Sales records for a specific store."
+        }
+      },
+      {
+        "path": "/stores/{storeId}/sales/{saleId}/sale_items/{saleItemId}",
+        "definition": {
+          "entityName": "SaleItem",
+          "schema": { "$ref": "#/backend/entities/SaleItem" },
+          "description": "Items within a sale for a specific store."
+        }
+      },
+      {
+        "path": "/stores/{storeId}/purchases/{purchaseId}",
+        "definition": {
+          "entityName": "Purchase",
+          "schema": { "$ref": "#/backend/entities/Purchase" },
+          "description": "Purchase records for a specific store."
+        }
+      },
+      {
+        "path": "/stores/{storeId}/purchases/{purchaseId}/purchase_items/{purchaseItemId}",
+        "definition": {
+          "entityName": "PurchaseItem",
+          "schema": { "$ref": "#/backend/entities/PurchaseItem" },
+          "description": "Items within a purchase for a specific store."
+        }
+      },
+      {
+        "path": "/stores/{storeId}/suppliers/{supplierId}",
+        "definition": {
+          "entityName": "Supplier",
+          "schema": { "$ref": "#/backend/entities/Supplier" },
+          "description": "Suppliers for a specific store."
+        }
+      },
+      {
+        "path": "/stores/{storeId}/customers/{customerId}",
+        "definition": {
+          "entityName": "Customer",
+          "schema": { "$ref": "#/backend/entities/Customer" },
+          "description": "Customers for a specific store."
+        }
+      },
+      {
+        "path": "/stores/{storeId}/currency_rates/{currencyRateId}",
         "definition": {
           "entityName": "CurrencyRate",
-          "schema": { "$ref": "#/backend/entities/CurrencyRate" }
+          "schema": { "$ref": "#/backend/entities/CurrencyRate" },
+          "description": "Currency exchange rates for a specific store."
         }
       },
       {
-        "path": "/chats/{chatId}",
+        "path": "/stores/{storeId}/chats/{chatId}",
         "definition": {
             "entityName": "Chat",
-            "schema": { "$ref": "#/backend/entities/Chat" }
+            "schema": { "$ref": "#/backend/entities/Chat" },
+            "description": "Chat conversations for a specific store."
         }
       },
       {
-        "path": "/chats/{chatId}/messages/{messageId}",
+        "path": "/stores/{storeId}/chats/{chatId}/messages/{messageId}",
         "definition": {
             "entityName": "ChatMessage",
-            "schema": { "$ref": "#/backend/entities/ChatMessage" }
+            "schema": { "$ref": "#/backend/entities/ChatMessage" },
+            "description": "Messages within a chat for a specific store."
         }
       }
     ]

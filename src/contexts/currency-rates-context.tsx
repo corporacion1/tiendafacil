@@ -18,17 +18,18 @@ const CurrencyRatesContext = createContext<CurrencyRatesContextType | undefined>
 export const CurrencyRatesProvider = ({ children }: { children: React.ReactNode }) => {
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
+  const storeId = "test-store"; // Placeholder
 
   const ratesQuery = useMemoFirebase(() => {
-    if (!firestore || !user || isUserLoading) return null;
-    return query(collection(firestore, 'currency_rates'), orderBy('date', 'desc'), limit(50));
-  }, [firestore, user, isUserLoading]);
+    if (!firestore || !user || isUserLoading || !storeId) return null;
+    return query(collection(firestore, 'stores', storeId, 'currency_rates'), orderBy('date', 'desc'), limit(50));
+  }, [firestore, user, isUserLoading, storeId]);
 
   const { data: currencyRates, isLoading } = useCollection<CurrencyRate>(ratesQuery);
 
   const addRate = async (rateData: { rate: number, date: Timestamp }) => {
-    if (!firestore) return;
-    const ratesCollection = collection(firestore, 'currency_rates');
+    if (!firestore || !storeId) return;
+    const ratesCollection = collection(firestore, 'stores', storeId, 'currency_rates');
     const docRef = await addDocumentNonBlocking(ratesCollection, rateData);
     return docRef?.id;
   };
@@ -53,5 +54,3 @@ export const useCurrencyRates = (): CurrencyRatesContextType => {
   }
   return context;
 };
-
-    

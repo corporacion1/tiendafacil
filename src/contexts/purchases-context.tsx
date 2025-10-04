@@ -16,11 +16,12 @@ const PurchasesContext = createContext<PurchasesContextType | undefined>(undefin
 export const PurchasesProvider = ({ children }: { children: React.ReactNode }) => {
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
+  const storeId = "test-store"; // Placeholder
 
   const purchasesQuery = useMemoFirebase(() => {
-      if (!firestore || !user || isUserLoading) return null;
-      return collection(firestore, 'purchases');
-  }, [firestore, user, isUserLoading]);
+      if (!firestore || !user || isUserLoading || !storeId) return null;
+      return collection(firestore, 'stores', storeId, 'purchases');
+  }, [firestore, user, isUserLoading, storeId]);
 
   const { data: purchases, isLoading } = useCollection<Purchase>(purchasesQuery);
 
