@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ProductForm } from "@/components/product-form";
 import type { Product } from "@/lib/types";
 import { useProducts } from "@/contexts/product-context";
+import { AlertDialog } from "@/components/ui/alert-dialog";
 
 export default function ProductsPage() {
   const { toast } = useToast();
@@ -20,7 +21,7 @@ export default function ProductsPage() {
         title: "SKU Duplicado",
         description: `Ya existe un producto con el SKU "${data.sku}". Por favor, usa un SKU diferente.`,
       });
-      return; // Stop the submission
+      return false; // Stop the submission
     }
     
     addProduct(data);
@@ -42,7 +43,9 @@ export default function ProductsPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ProductForm onSubmit={onSubmit} />
+        <AlertDialog>
+            <ProductForm onSubmit={onSubmit} />
+        </AlertDialog>
       </CardContent>
     </Card>
   );

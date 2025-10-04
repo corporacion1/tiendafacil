@@ -16,6 +16,7 @@ import { initialFamilies, initialUnits, initialWarehouses } from "@/lib/data";
 import { useProducts } from "@/contexts/product-context";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
 
 const productSchema = z.object({
   id: z.string(),
@@ -24,7 +25,7 @@ const productSchema = z.object({
   price: z.coerce.number().min(0, "El precio no puede ser negativo."),
   wholesalePrice: z.coerce.number().min(0, "El precio mayorista no puede ser negativo."),
   cost: z.coerce.number().min(0, "El costo no puede ser negativo."),
-  stock: z.coerce.number().min(0, "El stock no puede ser negativo."),
+  stock: z.coerce.number().int().min(0, "El stock no puede ser negativo."),
   status: z.enum(["active", "inactive"]),
   tax1: z.boolean(),
   tax2: z.boolean(),
@@ -40,7 +41,7 @@ type ProductFormValues = z.infer<typeof productSchema>;
 
 interface ProductFormProps {
     product?: Product;
-    onSubmit: (data: Product) => boolean | void;
+    onSubmit: (data: Product) => boolean | void | Promise<boolean | void>;
     onCancel?: () => void;
 }
 
@@ -130,8 +131,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const retailProfitPercentage = calculateProfit(watchedPrice, watchedCost);
   const wholesaleProfitPercentage = calculateProfit(watchedWholesalePrice, watchedCost);
 
-  const handleSubmit = (data: ProductFormValues) => {
-    const result = onSubmit(data);
+  const handleSubmit = async (data: ProductFormValues) => {
+    const result = await onSubmit(data);
     if (!product && result === true) {
       form.reset(getInitialValues());
     }
@@ -139,7 +140,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-6">
+      <form onSubmit={(e) => e.preventDefault()} className="grid gap-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <FormField
             control={form.control}
@@ -173,7 +174,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             )}
           />
         </div>
-
+        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <FormField
                 control={form.control}
@@ -368,12 +369,29 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
               />
           </div>
         )}
+        
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>¿Confirmar Cambios?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    ¿Estás seguro de que quieres {product ? 'guardar los cambios en' : 'crear'} este producto?
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={form.handleSubmit(handleSubmit)}>
+                    Confirmar
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
 
         <div className="flex justify-end gap-2">
             {onCancel && <Button variant="outline" type="button" onClick={onCancel}>
                 Cancelar
             </Button>}
-            <Button type="submit" className="bg-primary hover:bg-primary/90">{product ? "Guardar Cambios" : "Crear Producto"}</Button>
+            <AlertDialogTrigger asChild>
+                <Button type="button" className="bg-primary hover:bg-primary/90">{product ? "Guardar Cambios" : "Crear Producto"}</Button>
+            </AlertDialogTrigger>
         </div>
       </form>
     </Form>

@@ -11,7 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -406,13 +406,15 @@ export default function InventoryPage() {
                 </DialogDescription>
             </DialogHeader>
             <div className="max-h-[80vh] overflow-y-auto p-1">
-                {productToEdit && (
-                    <ProductForm 
-                        product={productToEdit}
-                        onSubmit={handleUpdateProduct}
-                        onCancel={() => setProductToEdit(null)}
-                    />
-                )}
+                <AlertDialog>
+                    {productToEdit && (
+                        <ProductForm 
+                            product={productToEdit}
+                            onSubmit={handleUpdateProduct}
+                            onCancel={() => setProductToEdit(null)}
+                        />
+                    )}
+                </AlertDialog>
             </div>
         </DialogContent>
     </Dialog>
@@ -482,5 +484,3 @@ export default function InventoryPage() {
     </>
   );
 }
-
-    
