@@ -107,15 +107,37 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | undefined>(product?.imageUrl);
 
+  const [displayValues, setDisplayValues] = useState({
+    cost: (getInitialValues(product).cost * activeRate).toFixed(2),
+    price: (getInitialValues(product).price * activeRate).toFixed(2),
+    wholesalePrice: (getInitialValues(product).wholesalePrice * activeRate).toFixed(2),
+  });
+
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: getInitialValues(product),
   });
   
   useEffect(() => {
-      form.reset(getInitialValues(product));
+      const initialValues = getInitialValues(product);
+      form.reset(initialValues);
       setImagePreview(product?.imageUrl);
-  }, [product, form]);
+      setDisplayValues({
+        cost: (initialValues.cost * activeRate).toFixed(2),
+        price: (initialValues.price * activeRate).toFixed(2),
+        wholesalePrice: (initialValues.wholesalePrice * activeRate).toFixed(2),
+      });
+  }, [product, form, activeRate]);
+
+  const handleCurrencyInputChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'cost' | 'price' | 'wholesalePrice') => {
+      const displayValue = e.target.value;
+      setDisplayValues(prev => ({ ...prev, [fieldName]: displayValue }));
+
+      const valueAsNumber = parseFloat(displayValue);
+      if (!isNaN(valueAsNumber)) {
+        form.setValue(fieldName, valueAsNumber / activeRate, { shouldValidate: true, shouldDirty: true });
+      }
+  };
   
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -132,7 +154,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
     setIsUploading(true);
     const { id: toastId, update } = toast({ title: 'Subiendo imagen...', description: 'Por favor, espera.' });
-    console.log('[DEBUG] Iniciando subida de imagen:', file.name);
 
     const storage = getStorage(firebaseApp);
     const storageRef = ref(storage, `products/${Date.now()}-${file.name}`);
@@ -141,15 +162,13 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         const snapshot = await uploadBytes(storageRef, file);
         const downloadURL = await getDownloadURL(snapshot.ref);
         
-        console.log('[DEBUG] Subida exitosa. URL de descarga:', downloadURL);
-
         form.setValue('imageUrl', downloadURL, { shouldValidate: true });
         setImagePreview(downloadURL);
 
         update({ id: toastId, title: 'Imagen subida', description: 'La imagen del producto ha sido actualizada.' });
 
     } catch (error) {
-        console.error("[DEBUG] Error en la subida de imagen:", error);
+        console.error("Error en la subida de imagen:", error);
         update({ id: toastId, variant: 'destructive', title: 'Error al subir la imagen', description: 'Hubo un problema al subir tu imagen. Revisa la consola para más detalles.' });
     } finally {
         setIsUploading(false);
@@ -159,13 +178,11 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
   const handleSkuBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const sku = e.target.value;
-    // Don't validate if SKU is empty or if we are editing and SKU hasn't changed
     if (!sku || (product && product.sku.toLowerCase() === sku.toLowerCase())) {
         form.clearErrors("sku");
         return;
     }
   
-    // Validate only if SKU is different from the original product's SKU during an edit
     if (product && product.sku.toLowerCase() === sku.toLowerCase()) {
       return;
     }
@@ -199,6 +216,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     if (!product && result === true) {
       form.reset(getInitialValues());
       setImagePreview(undefined);
+      setDisplayValues({ cost: '0.00', price: '0.00', wholesalePrice: '0.00' });
     }
   };
 
@@ -337,11 +355,17 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             <FormField
               control={form.control}
               name="cost"
-              render={({ field }) => (
+              render={() => (
                 <FormItem>
                   <FormLabel>Costo ({activeSymbol})</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" placeholder="0.00" {...field} value={(field.value ? field.value * activeRate : 0).toFixed(2) || ''} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate || 0)} />
+                    <Input 
+                      type="number" 
+                      step="0.01" 
+                      placeholder="0.00" 
+                      value={displayValues.cost}
+                      onChange={(e) => handleCurrencyInputChange(e, 'cost')}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -350,16 +374,16 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             <FormField
               control={form.control}
               name="price"
-              render={({ field }) => (
+              render={() => (
                 <FormItem>
                   <FormLabel>Precio Detal ({activeSymbol})</FormLabel>
                   <FormControl>
-                    <Input 
+                     <Input 
                       type="number" 
-                      step="0.01"
-                      placeholder="0.00"
-                      {...field}
-                       value={(field.value ? field.value * activeRate : 0).toFixed(2) || ''} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate || 0)}
+                      step="0.01" 
+                      placeholder="0.00" 
+                      value={displayValues.price}
+                      onChange={(e) => handleCurrencyInputChange(e, 'price')}
                     />
                   </FormControl>
                   <FormDescription className={cn(parseFloat(retailProfitPercentage) > 0 ? "text-green-600 font-semibold" : "")}>
@@ -372,11 +396,17 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             <FormField
               control={form.control}
               name="wholesalePrice"
-              render={({ field }) => (
+              render={() => (
                 <FormItem>
                   <FormLabel>Precio Mayor ({activeSymbol})</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" placeholder="0.00" {...field}  value={(field.value ? field.value * activeRate : 0).toFixed(2) || ''} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate || 0)} />
+                     <Input 
+                      type="number" 
+                      step="0.01" 
+                      placeholder="0.00" 
+                      value={displayValues.wholesalePrice}
+                      onChange={(e) => handleCurrencyInputChange(e, 'wholesalePrice')}
+                    />
                   </FormControl>
                   <FormDescription className={cn(parseFloat(wholesaleProfitPercentage) > 0 ? "text-green-600 font-semibold" : "")}>
                       Margen de Ganancia: {wholesaleProfitPercentage}%
@@ -487,5 +517,3 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     </AlertDialog>
   );
 }
-
-    
