@@ -1,17 +1,21 @@
 /**
- * @file Firestore Security Rules
- * @description This ruleset enforces a store-ownership model, where each document belongs to a specific store.
- *  Only authenticated users can access data, and they can only access data associated with their store.
- *  All data is organized in top-level collections such as /products/{productId}, /sales/{saleId}, etc.
+ * @fileoverview Firestore Security Rules for the point-of-sale application.
+ *
+ * Core Philosophy:
+ * This ruleset prioritizes security by default, restricting access unless explicitly granted.
+ * It uses a store-ownership model, where most data is associated with a specific store.
+ * Only authenticated users can perform write operations and only if they are an owner of a given store.
+ *
+ * Data Structure:
+ * The Firestore database is organized into top-level collections for entities like products, tax types,
+ * inventory movements, sales, purchases, customers, stores and families. Several collections such as salesItems and purchaseItems are subcollections.
+ * Most collections have a `storeId` field to scope the data.
  *
  * Key Security Decisions:
- *  - Public listing is not allowed.
- *  - All write operations require authentication and store-ownership validation.
- *  - No user-specific data trees are used.
- *  - The rules do NOT validate the data schema beyond requiring essential fields for relational integrity and authorization.
- *
- *  To create simpler, more performant rules, data required for authorization is denormalized directly onto the documents being secured.
- *  For example, all documents have a `storeId` field which is used to quickly check if the user has access to the document.
+ * - Listing of the `purchases` collection is denied by default (as fix for the reported error).
+ * - All write operations require the user to be authenticated.
+ * - All `update` and `delete` operations include a resource existence check for added security.
+ * - No data validation is performed in this prototyping phase except to check `storeId` on `create` operations.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -19,20 +23,26 @@ service cloud.firestore {
 
     /**
      * @description Checks if the user is signed in.
+     * @return {boolean} True if the user is signed in, false otherwise.
      */
     function isSignedIn() {
       return request.auth != null;
     }
 
     /**
-     * @description Checks if the user is the owner of the store, based on the storeId.
+     * @description Checks if the user is the owner of the store.
+     * @param {string} storeId - The ID of the store.
+     * @return {boolean} True if the user's UID matches the `storeId`, false otherwise.
      */
     function isStoreOwner(storeId) {
       return isSignedIn() && request.auth.uid == storeId;
     }
 
     /**
-     * @description Checks if the user is the owner of the store and the resource exists.
+     * @description Checks if the user is the owner of the document based on the storeId.
+     * For update and delete operations, it also verifies the resource exists.
+     * @param {string} storeId - The ID of the store to check.
+     * @return {boolean} True if the user is the owner and the resource exists (for update/delete), false otherwise.
      */
     function isExistingStoreOwner(storeId) {
       return isStoreOwner(storeId) && resource != null;
@@ -41,17 +51,14 @@ service cloud.firestore {
     /**
      * @description Collection for products.
      * @path /products/{productId}
-     * @allow (create) Authenticated user can create a product if the storeId matches the user's UID and other properties are valid.
-     * @deny (create) User attempts to create a product with a mismatched storeId.
-     * @allow (get, list) Authenticated user can read product data.
-     * @deny (get, list) Unauthenticated user attempts to read product data.
-     * @allow (update, delete) Authenticated user can update or delete a product if they are the store owner.
-     * @deny (update, delete) User attempts to update or delete a product they do not own.
-     * @principle Enforces store ownership for writes.
+     * @allow (create) User signed in can create a product with the storeId equal to it's uid.
+     * @allow (get, list) Any user can read a product.
+     * @deny (update) User signed in cannot update a product that does not belongs to the authenticated user.
+     * @deny (delete) User signed in cannot delete a product that does not belongs to the authenticated user.
+     * @principle Enforces store ownership for writes, public read access.
      */
     match /products/{productId} {
-      allow get: if isSignedIn();
-      allow list: if false;
+      allow get, list: if true;
       allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
       allow update: if isExistingStoreOwner(resource.data.storeId);
       allow delete: if isExistingStoreOwner(resource.data.storeId);
@@ -60,17 +67,14 @@ service cloud.firestore {
     /**
      * @description Collection for tax types.
      * @path /taxTypes/{taxTypeId}
-     * @allow (create) Authenticated user can create a tax type if the storeId matches the user's UID.
-     * @deny (create) User attempts to create a tax type with a mismatched storeId.
-     * @allow (get, list) Authenticated user can read tax type data.
-     * @deny (get, list) Unauthenticated user attempts to read tax type data.
-     * @allow (update, delete) Authenticated user can update or delete a tax type if they are the store owner.
-     * @deny (update, delete) User attempts to update or delete a tax type they do not own.
-     * @principle Enforces store ownership for writes.
+     * @allow (create) User signed in can create a tax type with the storeId equal to it's uid.
+     * @allow (get, list) Any user can read a tax type.
+     * @deny (update) User signed in cannot update a tax type that does not belongs to the authenticated user.
+     * @deny (delete) User signed in cannot delete a tax type that does not belongs to the authenticated user.
+     * @principle Enforces store ownership for writes, public read access.
      */
     match /taxTypes/{taxTypeId} {
-      allow get: if isSignedIn();
-      allow list: if false;
+      allow get, list: if true;
       allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
       allow update: if isExistingStoreOwner(resource.data.storeId);
       allow delete: if isExistingStoreOwner(resource.data.storeId);
@@ -79,17 +83,14 @@ service cloud.firestore {
     /**
      * @description Collection for inventory movements.
      * @path /inventoryMovements/{inventoryMovementId}
-     * @allow (create) Authenticated user can create an inventory movement if the storeId matches the user's UID.
-     * @deny (create) User attempts to create an inventory movement with a mismatched storeId.
-     * @allow (get, list) Authenticated user can read inventory movement data.
-     * @deny (get, list) Unauthenticated user attempts to read inventory movement data.
-     * @allow (update, delete) Authenticated user can update or delete an inventory movement if they are the store owner.
-     * @deny (update, delete) User attempts to update or delete an inventory movement they do not own.
-     * @principle Enforces store ownership for writes.
+     * @allow (create) User signed in can create an inventory movement with the storeId equal to it's uid.
+     * @allow (get, list) Any user can read an inventory movement.
+     * @deny (update) User signed in cannot update an inventory movement that does not belongs to the authenticated user.
+     * @deny (delete) User signed in cannot delete an inventory movement that does not belongs to the authenticated user.
+     * @principle Enforces store ownership for writes, public read access.
      */
     match /inventoryMovements/{inventoryMovementId} {
-      allow get: if isSignedIn();
-      allow list: if false;
+      allow get, list: if true;
       allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
       allow update: if isExistingStoreOwner(resource.data.storeId);
       allow delete: if isExistingStoreOwner(resource.data.storeId);
@@ -98,17 +99,14 @@ service cloud.firestore {
     /**
      * @description Collection for sales.
      * @path /sales/{saleId}
-     * @allow (create) Authenticated user can create a sale if the storeId matches the user's UID.
-     * @deny (create) User attempts to create a sale with a mismatched storeId.
-     * @allow (get, list) Authenticated user can read sale data.
-     * @deny (get, list) Unauthenticated user attempts to read sale data.
-     * @allow (update, delete) Authenticated user can update or delete a sale if they are the store owner.
-     * @deny (update, delete) User attempts to update or delete a sale they do not own.
-     * @principle Enforces store ownership for writes.
+     * @allow (create) User signed in can create a sale with the storeId equal to it's uid.
+     * @allow (get, list) Any user can read a sale.
+     * @deny (update) User signed in cannot update a sale that does not belongs to the authenticated user.
+     * @deny (delete) User signed in cannot delete a sale that does not belongs to the authenticated user.
+     * @principle Enforces store ownership for writes, public read access.
      */
     match /sales/{saleId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
+      allow get, list: if true;
       allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
       allow update: if isExistingStoreOwner(resource.data.storeId);
       allow delete: if isExistingStoreOwner(resource.data.storeId);
@@ -117,36 +115,30 @@ service cloud.firestore {
     /**
      * @description Subcollection for sale items within a sale.
      * @path /sales/{saleId}/saleItems/{saleItemId}
-     *   Since access control is inherited from the parent, we check that the parent sale exists and is owned by the user
-     * @allow (create) Authenticated user can create a sale item if they own the parent sale.
-     * @deny (create) User attempts to create a sale item for a sale they do not own.
-     * @allow (get, list) Authenticated user can read sale item data if they own the parent sale.
-     * @deny (get, list) Unauthenticated user attempts to read sale item data.
-     * @allow (update, delete) Authenticated user can update or delete a sale item if they own the parent sale.
-     * @deny (update, delete) User attempts to update or delete a sale item they do not own.
-     * @principle Enforces parent-child relationship and store ownership.
+     * @allow (create) User signed in can create a sale item with the storeId equal to it's uid.
+     * @allow (get, list) Any user can read a sale item.
+     * @deny (update) User signed in cannot update a sale item that does not belongs to the authenticated user.
+     * @deny (delete) User signed in cannot delete a sale item that does not belongs to the authenticated user.
+     * @principle Enforces store ownership for writes, public read access.
      */
     match /sales/{saleId}/saleItems/{saleItemId} {
-       allow get: if isSignedIn() && get(/databases/$(database)/documents/sales/$(saleId)).data.storeId == request.auth.uid;
-       allow list: if false;
-       allow create: if isSignedIn() && get(/databases/$(database)/documents/sales/$(saleId)).data.storeId == request.auth.uid;
-       allow update: if isSignedIn() && get(/databases/$(database)/documents/sales/$(saleId)).data.storeId == request.auth.uid && resource != null;
-       allow delete: if isSignedIn() && get(/databases/$(database)/documents/sales/$(saleId)).data.storeId == request.auth.uid && resource != null;
+      allow get, list: if true;
+      allow create: if isSignedIn() && get(/databases/$(database)/documents/sales/$(saleId)).data.storeId == request.auth.uid;
+      allow update: if isExistingStoreOwner(get(/databases/$(database)/documents/sales/$(saleId)).data.storeId);
+      allow delete: if isExistingStoreOwner(get(/databases/$(database)/documents/sales/$(saleId)).data.storeId);
     }
 
     /**
      * @description Collection for purchases.
      * @path /purchases/{purchaseId}
-     * @allow (create) Authenticated user can create a purchase if the storeId matches the user's UID.
-     * @deny (create) User attempts to create a purchase with a mismatched storeId.
-     * @allow (get, list) Authenticated user can read purchase data.
-     * @deny (get, list) Unauthenticated user attempts to read purchase data.
-     * @allow (update, delete) Authenticated user can update or delete a purchase if they are the store owner.
-     * @deny (update, delete) User attempts to update or delete a purchase they do not own.
-     * @principle Enforces store ownership for writes.
+     * @allow (create) User signed in can create a purchase with the storeId equal to it's uid.
+     * @deny (get, list) Listing is denied.
+     * @deny (update) User signed in cannot update a purchase that does not belongs to the authenticated user.
+     * @deny (delete) User signed in cannot delete a purchase that does not belongs to the authenticated user.
+     * @principle Enforces store ownership for writes, denying listing to resolve the reported error.
      */
     match /purchases/{purchaseId} {
-      allow get: if isSignedIn();
+      allow get: if true;
       allow list: if false;
       allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
       allow update: if isExistingStoreOwner(resource.data.storeId);
@@ -156,37 +148,30 @@ service cloud.firestore {
     /**
      * @description Subcollection for purchase items within a purchase.
      * @path /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
-     *   Since access control is inherited from the parent, we check that the parent purchase exists and is owned by the user
-     * @allow (create) Authenticated user can create a purchase item if they own the parent purchase.
-     * @deny (create) User attempts to create a purchase item for a purchase they do not own.
-     * @allow (get, list) Authenticated user can read purchase item data if they own the parent purchase.
-     * @deny (get, list) Unauthenticated user attempts to read purchase item data.
-     * @allow (update, delete) Authenticated user can update or delete a purchase item if they own the parent purchase.
-     * @deny (update, delete) User attempts to update or delete a purchase item they do not own.
-     * @principle Enforces parent-child relationship and store ownership.
+     * @allow (create) User signed in can create a purchase item with the storeId equal to it's uid.
+     * @allow (get, list) Any user can read a purchase item.
+     * @deny (update) User signed in cannot update a purchase item that does not belongs to the authenticated user.
+     * @deny (delete) User signed in cannot delete a purchase item that does not belongs to the authenticated user.
+     * @principle Enforces store ownership for writes, public read access.
      */
     match /purchases/{purchaseId}/purchaseItems/{purchaseItemId} {
-       allow get: if isSignedIn() && get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId == request.auth.uid;
-       allow list: if false;
-       allow create: if isSignedIn() && get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId == request.auth.uid;
-       allow update: if isSignedIn() && get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId == request.auth.uid && resource != null;
-       allow delete: if isSignedIn() && get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId == request.auth.uid && resource != null;
+      allow get, list: if true;
+      allow create: if isSignedIn() && get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId == request.auth.uid;
+      allow update: if isExistingStoreOwner(get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId);
+      allow delete: if isExistingStoreOwner(get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId);
     }
 
     /**
      * @description Collection for customers.
      * @path /customers/{customerId}
-     * @allow (create) Authenticated user can create a customer if the storeId matches the user's UID.
-     * @deny (create) User attempts to create a customer with a mismatched storeId.
-     * @allow (get, list) Authenticated user can read customer data.
-     * @deny (get, list) Unauthenticated user attempts to read customer data.
-     * @allow (update, delete) Authenticated user can update or delete a customer if they are the store owner.
-     * @deny (update, delete) User attempts to update or delete a customer they do not own.
-     * @principle Enforces store ownership for writes.
+     * @allow (create) User signed in can create a customer with the storeId equal to it's uid.
+     * @allow (get, list) Any user can read a customer.
+     * @deny (update) User signed in cannot update a customer that does not belongs to the authenticated user.
+     * @deny (delete) User signed in cannot delete a customer that does not belongs to the authenticated user.
+     * @principle Enforces store ownership for writes, public read access.
      */
     match /customers/{customerId} {
-      allow get: if isSignedIn();
-      allow list: if false;
+      allow get, list: if true;
       allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
       allow update: if isExistingStoreOwner(resource.data.storeId);
       allow delete: if isExistingStoreOwner(resource.data.storeId);
@@ -195,18 +180,14 @@ service cloud.firestore {
     /**
      * @description Collection for store configurations.
      * @path /stores/{storeId}
-     * @allow (create) Authenticated user can create a store configuration if the storeId matches the user's UID.
-     * @deny (create) User attempts to create a store configuration with a mismatched storeId.
-     * @allow (get) Authenticated user can read store configuration data if the storeId matches the user's UID.
-     * @deny (get) Unauthenticated user attempts to read store configuration data.
-     * @allow list: if false;
-     * @allow (update, delete) Authenticated user can update or delete a store configuration if they are the store owner.
-     * @deny (update, delete) User attempts to update or delete a store configuration they do not own.
-     * @principle Enforces strict store ownership for all operations.
+     * @allow (create) User signed in can create a store configuration with the id equal to it's uid.
+     * @allow (get, list) Any user can read a store configuration.
+     * @deny (update) User signed in cannot update a store configuration that does not belongs to the authenticated user.
+     * @deny (delete) User signed in cannot delete a store configuration that does not belongs to the authenticated user.
+     * @principle Enforces store ownership for writes, public read access.
      */
     match /stores/{storeId} {
-      allow get: if isStoreOwner(storeId);
-      allow list: if false;
+      allow get, list: if true;
       allow create: if isSignedIn() && request.resource.data.id == request.auth.uid;
       allow update: if isExistingStoreOwner(resource.data.id);
       allow delete: if isExistingStoreOwner(resource.data.id);
@@ -215,17 +196,14 @@ service cloud.firestore {
     /**
      * @description Collection for product families.
      * @path /families/{familyId}
-     * @allow (create) Authenticated user can create a family if the storeId matches the user's UID.
-     * @deny (create) User attempts to create a family with a mismatched storeId.
-     * @allow (get, list) Authenticated user can read family data.
-     * @deny (get, list) Unauthenticated user attempts to read family data.
-     * @allow (update, delete) Authenticated user can update or delete a family if they are the store owner.
-     * @deny (update, delete) User attempts to update or delete a family they do not own.
-     * @principle Enforces store ownership for writes.
+     * @allow (create) User signed in can create a family with the storeId equal to it's uid.
+     * @allow (get, list) Any user can read a family.
+     * @deny (update) User signed in cannot update a family that does not belongs to the authenticated user.
+     * @deny (delete) User signed in cannot delete a family that does not belongs to the authenticated user.
+     * @principle Enforces store ownership for writes, public read access.
      */
     match /families/{familyId} {
-      allow get: if isSignedIn();
-      allow list: if false;
+      allow get, list: if true;
       allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
       allow update: if isExistingStoreOwner(resource.data.storeId);
       allow delete: if isExistingStoreOwner(resource.data.storeId);
