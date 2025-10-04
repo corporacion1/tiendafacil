@@ -4,14 +4,14 @@
 import React, { createContext, useContext, useCallback, useMemo } from 'react';
 import type { Product } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, where, query, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, query, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 
 interface ProductContextType {
   products: Product[];
   isLoading: boolean;
-  addProduct: (product: Omit<Product, 'id' | 'storeId'>) => Promise<string | undefined>;
-  updateProduct: (productId: string, updatedProduct: Partial<Omit<Product, 'id' | 'storeId'>>) => Promise<void>;
+  addProduct: (product: Omit<Product, 'id'>) => Promise<string | undefined>;
+  updateProduct: (productId: string, updatedProduct: Partial<Omit<Product, 'id'>>) => Promise<void>;
   deleteProduct: (productId: string) => Promise<void>;
   getProductById: (productId: string) => Product | undefined;
 }
@@ -21,26 +21,25 @@ const ProductContext = createContext<ProductContextType | undefined>(undefined);
 export const ProductProvider = ({ children }: { children: React.ReactNode }) => {
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
-  const storeId = "test-store";
 
   const productsQuery = useMemoFirebase(() => {
       if (!firestore || !user || isUserLoading) return null;
-      return query(collection(firestore, 'products'), where("storeId", "==", storeId));
+      return query(collection(firestore, 'products'));
   }, [firestore, user, isUserLoading]);
 
   const { data: products, isLoading } = useCollection<Product>(productsQuery);
 
-  const addProduct = async (productData: Omit<Product, 'id' | 'storeId'>) => {
+  const addProduct = async (productData: Omit<Product, 'id'>) => {
     if (!firestore || !user) {
       console.error("Firestore or user not available");
       return;
     }
     const productsCollection = collection(firestore, 'products');
-    const docRef = await addDoc(productsCollection, { ...productData, storeId });
+    const docRef = await addDoc(productsCollection, productData);
     return docRef?.id;
   };
 
-  const updateProduct = async (productId: string, updatedProductData: Partial<Omit<Product, 'id' | 'storeId'>>) => {
+  const updateProduct = async (productId: string, updatedProductData: Partial<Omit<Product, 'id'>>) => {
     if (!firestore || !user) {
       console.error("Firestore or user not available");
       return;

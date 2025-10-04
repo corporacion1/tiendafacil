@@ -4,12 +4,12 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import type { CurrencyRate } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, addDoc, query, orderBy, limit, Timestamp, where } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, limit, Timestamp } from 'firebase/firestore';
 
 interface CurrencyRatesContextType {
   currencyRates: CurrencyRate[];
   isLoading: boolean;
-  addRate: (rate: Omit<CurrencyRate, 'id' | 'storeId'>) => Promise<string | undefined>;
+  addRate: (rate: Omit<CurrencyRate, 'id'>) => Promise<string | undefined>;
 }
 
 const CurrencyRatesContext = createContext<CurrencyRatesContextType | undefined>(undefined);
@@ -17,19 +17,18 @@ const CurrencyRatesContext = createContext<CurrencyRatesContextType | undefined>
 export const CurrencyRatesProvider = ({ children }: { children: React.ReactNode }) => {
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
-  const storeId = "test-store";
 
   const ratesQuery = useMemoFirebase(() => {
     if (!firestore || !user || isUserLoading) return null;
-    return query(collection(firestore, 'currency_rates'), where("storeId", "==", storeId), orderBy('date', 'desc'), limit(50));
+    return query(collection(firestore, 'currency_rates'), orderBy('date', 'desc'), limit(50));
   }, [firestore, user, isUserLoading]);
 
   const { data: currencyRates, isLoading } = useCollection<CurrencyRate>(ratesQuery);
 
-  const addRate = async (rateData: Omit<CurrencyRate, 'id' | 'storeId'>) => {
+  const addRate = async (rateData: Omit<CurrencyRate, 'id'>) => {
     if (!firestore || !user) return;
     const ratesCollection = collection(firestore, 'currency_rates');
-    const docRef = await addDoc(ratesCollection, { ...rateData, storeId });
+    const docRef = await addDoc(ratesCollection, rateData);
     return docRef?.id;
   };
 

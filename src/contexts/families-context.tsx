@@ -4,12 +4,12 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import type { Family } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc, where, query } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, query } from 'firebase/firestore';
 
 interface FamiliesContextType {
   families: Family[];
   isLoading: boolean;
-  addFamily: (family: Omit<Family, 'id' | 'storeId'>) => Promise<string | undefined>;
+  addFamily: (family: Omit<Family, 'id'>) => Promise<string | undefined>;
   updateFamily: (familyId: string, updatedFamily: Partial<Family>) => Promise<void>;
   deleteFamily: (familyId: string) => Promise<void>;
 }
@@ -19,19 +19,18 @@ const FamiliesContext = createContext<FamiliesContextType | undefined>(undefined
 export const FamiliesProvider = ({ children }: { children: React.ReactNode }) => {
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
-  const storeId = "test-store";
 
   const familiesQuery = useMemoFirebase(() => {
       if (!firestore || !user || isUserLoading) return null;
-      return query(collection(firestore, 'families'), where("storeId", "==", storeId));
+      return query(collection(firestore, 'families'));
   }, [firestore, user, isUserLoading]);
 
   const { data: families, isLoading } = useCollection<Family>(familiesQuery);
   
-  const addFamily = async (familyData: Omit<Family, 'id' | 'storeId'>) => {
+  const addFamily = async (familyData: Omit<Family, 'id'>) => {
     if (!firestore || !user) return;
     const familiesCollection = collection(firestore, 'families');
-    const docRef = await addDoc(familiesCollection, { ...familyData, storeId });
+    const docRef = await addDoc(familiesCollection, familyData);
     return docRef?.id;
   };
 

@@ -4,12 +4,12 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import type { Unit } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc, where, query } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, query } from 'firebase/firestore';
 
 interface UnitsContextType {
   units: Unit[];
   isLoading: boolean;
-  addUnit: (unit: Omit<Unit, 'id' | 'storeId'>) => Promise<string | undefined>;
+  addUnit: (unit: Omit<Unit, 'id'>) => Promise<string | undefined>;
   updateUnit: (unitId: string, updatedUnit: Partial<Unit>) => Promise<void>;
   deleteUnit: (unitId: string) => Promise<void>;
 }
@@ -19,19 +19,18 @@ const UnitsContext = createContext<UnitsContextType | undefined>(undefined);
 export const UnitsProvider = ({ children }: { children: React.ReactNode }) => {
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
-  const storeId = "test-store";
 
   const unitsQuery = useMemoFirebase(() => {
       if (!firestore || !user || isUserLoading) return null;
-      return query(collection(firestore, 'units'), where("storeId", "==", storeId));
+      return query(collection(firestore, 'units'));
   }, [firestore, user, isUserLoading]);
 
   const { data: units, isLoading } = useCollection<Unit>(unitsQuery);
 
-  const addUnit = async (unitData: Omit<Unit, 'id' | 'storeId'>) => {
+  const addUnit = async (unitData: Omit<Unit, 'id'>) => {
     if (!firestore || !user) return;
     const unitsCollection = collection(firestore, 'units');
-    const docRef = await addDoc(unitsCollection, { ...unitData, storeId });
+    const docRef = await addDoc(unitsCollection, unitData);
     return docRef?.id;
   };
 
