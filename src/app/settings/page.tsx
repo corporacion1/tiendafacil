@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -284,6 +284,9 @@ export default function SettingsPage() {
                             </div>
                         </div>
                     </CardContent>
+                    <CardFooter className="flex justify-end">
+                        <Button className="bg-primary hover:bg-primary/90" onClick={saveAllSettings}>Guardar Toda la Configuración</Button>
+                    </CardFooter>
                 </Card>
 
                 {/* Currency Management Card */}
@@ -358,11 +361,6 @@ export default function SettingsPage() {
 
                     </CardContent>
                 </Card>
-
-                <div className="flex justify-end">
-                    <Button className="bg-primary hover:bg-primary/90 mt-4" onClick={saveAllSettings}>Guardar Toda la Configuración</Button>
-                </div>
-
 
                 {/* Management Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -502,3 +500,5 @@ export default function SettingsPage() {
         </Dialog>
     );
 }
+
+    
