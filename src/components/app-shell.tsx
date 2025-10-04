@@ -51,7 +51,7 @@ function MainApp({ children }: { children: React.ReactNode }) {
   }
 
   if (!user && pathname !== '/login') {
-      redirect('/login');
+      return <div className="flex h-screen w-full items-center justify-center"><p>Redirigiendo al login...</p></div>;
   }
 
   if (pathname === '/login') {
