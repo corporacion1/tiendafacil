@@ -127,4 +127,3 @@ export const useUser = (): UserHookResult => {
   const { user, isUserLoading, userError } = context;
   return { user, isUserLoading, userError };
 };
-

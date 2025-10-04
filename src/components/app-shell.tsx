@@ -1,4 +1,3 @@
-
 "use client";
 
 import { PinModal } from "@/components/pin-modal";
@@ -6,10 +5,18 @@ import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { Footer } from "@/components/ui/footer";
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useRef } from 'react';
-import { useUser } from "@/firebase";
-import { useSecurity } from "@/contexts/security-context";
-
+import { useEffect, useRef, useState } from 'react';
+import { useSecurity, SecurityProvider } from "@/contexts/security-context";
+import { FirebaseProvider, initializeFirebase, useUser } from "@/firebase";
+import { onAuthStateChanged, User } from "firebase/auth";
+import { SettingsProvider } from "@/contexts/settings-context";
+import { ProductProvider } from "@/contexts/product-context";
+import { SalesProvider } from "@/contexts/sales-context";
+import { PurchasesProvider } from "@/contexts/purchases-context";
+import { UnitsProvider } from "@/contexts/units-context";
+import { FamiliesProvider } from "@/contexts/families-context";
+import { WarehousesProvider } from "@/contexts/warehouses-context";
+import { CurrencyRatesProvider } from "@/contexts/currency-rates-context";
 
 function MainApp({ children }: { children: React.ReactNode }) {
   const { isLocked, lockApp, hasPin } = useSecurity();
@@ -19,8 +26,6 @@ function MainApp({ children }: { children: React.ReactNode }) {
   const previousPathname = useRef(pathname);
 
   useEffect(() => {
-    // If auth is no longer loading, and we don't have a user,
-    // and we are NOT on the login page, then redirect to login.
     if (!isUserLoading && !user && pathname !== '/login') {
       router.replace('/login');
     }
@@ -37,11 +42,9 @@ function MainApp({ children }: { children: React.ReactNode }) {
   }, [pathname, lockApp, hasPin]);
   
   if (isUserLoading) {
-    // This state should now be handled by FirebaseClientProvider
-    // but we keep it as a safeguard.
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
-          <p>Verificando sesión...</p>
+          <p>Cargando aplicación...</p>
       </div>
     );
   }
@@ -50,10 +53,13 @@ function MainApp({ children }: { children: React.ReactNode }) {
       return <>{children}</>;
   }
   
-  // After loading, if there's still no user, we shouldn't render the shell.
-  // The redirect in the useEffect above should handle this.
   if (!user) {
-    return null; 
+    // This case should be handled by the redirect, but as a fallback, show loading.
+    return (
+        <div className="flex min-h-screen w-full items-center justify-center bg-background">
+            <p>Verificando sesión...</p>
+        </div>
+    );
   }
 
   if (isLocked) {
@@ -75,5 +81,44 @@ function MainApp({ children }: { children: React.ReactNode }) {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  return <MainApp>{children}</MainApp>;
+  const { firebaseApp, auth, firestore } = initializeFirebase();
+  const [user, setUser] = useState<User | null>(null);
+  const [isUserLoading, setIsUserLoading] = useState(true);
+  const [userError, setUserError] = useState<Error | null>(null);
+
+  useEffect(() => {
+      const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+          setUser(firebaseUser);
+          setIsUserLoading(false);
+      }, (error) => {
+          setUserError(error);
+          setIsUserLoading(false);
+      });
+
+      return () => unsubscribe();
+  }, [auth]);
+  
+  return (
+    <FirebaseProvider value={{ firebaseApp, auth, firestore, user, isUserLoading, userError }}>
+        <SecurityProvider>
+            <CurrencyRatesProvider>
+              <SettingsProvider>
+                <ProductProvider>
+                  <SalesProvider>
+                    <PurchasesProvider>
+                      <UnitsProvider>
+                        <FamiliesProvider>
+                          <WarehousesProvider>
+                            <MainApp>{children}</MainApp>
+                          </WarehousesProvider>
+                        </FamiliesProvider>
+                      </UnitsProvider>
+                    </PurchasesProvider>
+                  </SalesProvider>
+                </ProductProvider>
+              </SettingsProvider>
+            </CurrencyRatesProvider>
+        </SecurityProvider>
+    </FirebaseProvider>
+  )
 }

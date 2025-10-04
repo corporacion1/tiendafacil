@@ -1,18 +1,7 @@
-
 import type { Metadata } from 'next';
 import './globals.css';
 import { AppShell } from '@/components/app-shell';
 import { ThemeProvider } from "@/components/theme-provider";
-import { SecurityProvider } from "@/contexts/security-context";
-import { SettingsProvider } from "@/contexts/settings-context";
-import { ProductProvider } from "@/contexts/product-context";
-import { SalesProvider } from "@/contexts/sales-context";
-import { PurchasesProvider } from "@/contexts/purchases-context";
-import { UnitsProvider } from "@/contexts/units-context";
-import { FamiliesProvider } from "@/contexts/families-context";
-import { WarehousesProvider } from "@/contexts/warehouses-context";
-import { CurrencyRatesProvider } from "@/contexts/currency-rates-context";
-import { FirebaseClientProvider } from "@/firebase";
 import { Toaster } from "@/components/ui/toaster";
 
 
@@ -37,28 +26,10 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <FirebaseClientProvider>
-            <SecurityProvider>
-              <CurrencyRatesProvider>
-                <SettingsProvider>
-                  <ProductProvider>
-                    <SalesProvider>
-                      <PurchasesProvider>
-                        <UnitsProvider>
-                          <FamiliesProvider>
-                            <WarehousesProvider>
-                              <AppShell>{children}</AppShell>
-                              <Toaster />
-                            </WarehousesProvider>
-                          </FamiliesProvider>
-                        </UnitsProvider>
-                      </PurchasesProvider>
-                    </SalesProvider>
-                  </ProductProvider>
-                </SettingsProvider>
-              </CurrencyRatesProvider>
-            </SecurityProvider>
-          </FirebaseClientProvider>
+            <AppShell>
+                {children}
+            </AppShell>
+            <Toaster />
         </ThemeProvider>
       </body>
     </html>
