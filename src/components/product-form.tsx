@@ -117,6 +117,15 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const watchedWholesalePrice = useWatch({ control: form.control, name: 'wholesalePrice' });
   const watchedImageUrl = useWatch({ control: form.control, name: 'imageUrl' });
 
+  // Transform Dropbox URL for direct image access
+  const displayImageUrl = useMemo(() => {
+    if (watchedImageUrl && watchedImageUrl.includes("www.dropbox.com")) {
+      return watchedImageUrl.replace("?dl=0", "?raw=1");
+    }
+    return watchedImageUrl;
+  }, [watchedImageUrl]);
+
+
   useEffect(() => {
     const initialValues = getInitialValues(product);
     form.reset(initialValues);
@@ -132,7 +141,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     const newPrice = form.getValues('price') * activeRate;
     const newWholesalePrice = form.getValues('wholesalePrice') * activeRate;
     
-    // Only update if the display value is not currently being edited, to avoid conflicts
     if (document.activeElement?.id !== 'cost') {
          setDisplayValues(prev => ({...prev, cost: newCost.toFixed(2)}));
     }
@@ -158,10 +166,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       if (!isNaN(valueAsNumber)) {
           const valueInPrimaryCurrency = valueAsNumber / activeRate;
           form.setValue(fieldName, valueInPrimaryCurrency, { shouldValidate: true, shouldDirty: true });
-          // Format the display value back to 2 decimal places after blur
           setDisplayValues(prev => ({ ...prev, [fieldName]: valueAsNumber.toFixed(2)}));
       } else {
-          // If input is invalid, revert to the last valid value from the form state
           const lastValidValue = form.getValues(fieldName) * activeRate;
           setDisplayValues(prev => ({...prev, [fieldName]: lastValidValue.toFixed(2)}));
       }
@@ -215,16 +221,15 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                  <FormItem>
                      <FormLabel>Imagen del Producto</FormLabel>
                      <div className="mt-2 aspect-square rounded-md border border-dashed flex items-center justify-center relative bg-muted overflow-hidden">
-                        {watchedImageUrl ? (
+                        {displayImageUrl ? (
                           <Image 
-                            src={watchedImageUrl} 
+                            src={displayImageUrl} 
                             alt="Vista previa del producto" 
                             fill
                             sizes="300px"
                             className="object-cover"
                             onError={() => {
                                 // If the image fails to load, we can clear the value or show a placeholder
-                                // For now, we just let the browser show the broken image icon
                             }}
                           />
                         ) : (
@@ -519,5 +524,3 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     </AlertDialog>
   );
 }
-
-    
