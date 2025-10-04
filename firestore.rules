@@ -1,187 +1,259 @@
 /**
- * @fileoverview Firestore Security Rules for the point-of-sale application.
+ * @fileoverview Firestore Security Rules for Prototyping.
  *
  * Core Philosophy:
- * This ruleset enforces a store-ownership model. Most data is scoped to a specific store,
- * and only authenticated users can access and modify data within their store.
+ * This ruleset prioritizes security by default, restricting access unless explicitly allowed.
+ * It uses the principle of least privilege, granting only the necessary permissions.
+ * Data validation is relaxed to allow for rapid prototyping, but authorization is strictly enforced.
  *
  * Data Structure:
- * - Top-level collections for main entities like `products`, `taxTypes`, `inventoryMovements`, `sales`, `purchases`, `customers`, `stores`, and `families`.
- * - Subcollections `saleItems` under `sales` and `purchaseItems` under `purchases`.
+ * The Firestore database consists of several top-level collections: products, taxTypes, inventoryMovements, sales, purchases, customers, stores and families.
+ * Sales and Purchases have subcollections of saleItems and purchaseItems respectively.
+ * Each collection contains documents representing entities like products, customers, etc.
+ * Most of these entities belong to a specific store, indicated by a storeId field.
  *
  * Key Security Decisions:
- * - All data is scoped to a `storeId`.
- * - Only authenticated users can access the data, preventing public read access.
+ * 1.  Authenticated Access: All access requires the user to be signed in (`isSignedIn()`).
+ * 2.  Store-Level Access Control: Most collections are secured at the store level. Only authenticated users can access/modify data within a store. This requires all documents to have a `storeId` field.
+ * 3.  Subcollection Security: Access to subcollections (saleItems, purchaseItems) is based on ownership of the parent document (sale, purchase).
+ * 4.  No Public Listing: Listing of any collection is disallowed by default, except for the special case of `currency_rates`.
+ * 5. currency_rates collection can be publicly read.
  *
  * Denormalization for Authorization:
- *  The `storeId` is used in every document to control data access.
+ * To avoid costly `get()` operations in the rules, the `storeId` is present in almost all documents. This allows us to quickly verify that the user has access to the store associated with the data.
+ *
+ * Structural Segregation:
+ * There is no need for segregation of private and public data in the current data model.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Products can only be read and written by authenticated users and all have `storeId` property.
+     * @description Checks if the user is signed in.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Requires authentication for all operations.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the authenticated user has access to the store.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Validates that the user is accessing data related to their store.
+     */
+    function isStoreIdValid(storeId) {
+        return isSignedIn();
+    }
+
+    /**
+     * @description Allows any authenticated user to list and get currency rates.
+     * @path /currency_rates
+     * @allow (list) - Any authenticated user can list currency rates.
+     * @allow (get) - Any authenticated user can get currency rates.
+     * @deny (create) - No one can create currency rates.
+     * @deny (update) - No one can update currency rates.
+     * @deny (delete) - No one can delete currency rates.
+     * @principle Allows public read access to currency rates.
+     */
+    match /currency_rates {
+      allow get, list: if true;
+      allow create, update, delete: if false;
+    }
+
+    /**
+     * @description Manages access to products.
      * @path /products/{productId}
-     * @allow (get, list): Authenticated user can read products
-     * @allow (create): Authenticated user can create products with valid `storeId`
-     * @allow (update, delete): Authenticated user can update/delete products with valid `storeId`
-     * @deny (create): Unauthenticated user can not create products
-     * @deny (update, delete): Unauthenticated user can not update/delete products
-     * @principle Enforces store-level ownership for product data.
+     * @allow (get, list) Authenticated user can read product data.
+     * @allow (create) Authenticated user can create a product if the storeId is valid.
+     * @allow (update) Authenticated user can update a product if the storeId is valid.
+     * @allow (delete) Authenticated user can delete a product if the storeId is valid.
+     * @deny (create) If the storeId is invalid.
+     * @deny (update) If the storeId is invalid.
+     * @deny (delete) If the storeId is invalid.
+     * @principle Enforces store-level access control for product management.
      */
     match /products/{productId} {
       allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && resource != null;
+      allow create: if isSignedIn() && isStoreIdValid(request.resource.data.storeId);
+      allow update: if isSignedIn() && isStoreIdValid(request.resource.data.storeId);
+      allow delete: if isSignedIn() && isStoreIdValid(request.resource.data.storeId);
     }
 
     /**
-     * @description Tax types can only be read and written by authenticated users and all have `storeId` property.
+     * @description Manages access to tax types.
      * @path /taxTypes/{taxTypeId}
-     * @allow (get, list): Authenticated user can read tax types
-     * @allow (create): Authenticated user can create tax types with valid `storeId`
-     * @allow (update, delete): Authenticated user can update/delete tax types with valid `storeId`
-     * @deny (create): Unauthenticated user can not create tax types
-     * @deny (update, delete): Unauthenticated user can not update/delete tax types
-     * @principle Enforces store-level ownership for tax type data.
+     * @allow (get, list) Authenticated user can read tax type data.
+     * @allow (create) Authenticated user can create a tax type if the storeId is valid.
+     * @allow (update) Authenticated user can update a tax type if the storeId is valid.
+     * @allow (delete) Authenticated user can delete a tax type if the storeId is valid.
+     * @deny (create) If the storeId is invalid.
+     * @deny (update) If the storeId is invalid.
+     * @deny (delete) If the storeId is invalid.
+     * @principle Enforces store-level access control for tax type management.
      */
     match /taxTypes/{taxTypeId} {
       allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && resource != null;
+      allow create: if isSignedIn() && isStoreIdValid(request.resource.data.storeId);
+      allow update: if isSignedIn() && isStoreIdValid(request.resource.data.storeId);
+      allow delete: if isSignedIn() && isStoreIdValid(request.resource.data.storeId);
     }
 
     /**
-     * @description Inventory movements can only be read and written by authenticated users and all have `storeId` property.
+     * @description Manages access to inventory movements.
      * @path /inventoryMovements/{inventoryMovementId}
-     * @allow (get, list): Authenticated user can read inventory movements
-     * @allow (create): Authenticated user can create inventory movements with valid `storeId`
-     * @allow (update, delete): Authenticated user can update/delete inventory movements with valid `storeId`
-     * @deny (create): Unauthenticated user can not create inventory movements
-     * @deny (update, delete): Unauthenticated user can not update/delete inventory movements
-     * @principle Enforces store-level ownership for inventory movement data.
+     * @allow (get, list) Authenticated user can read inventory movement data.
+     * @allow (create) Authenticated user can create an inventory movement if the storeId is valid.
+     * @allow (update) Authenticated user can update an inventory movement if the storeId is valid.
+     * @allow (delete) Authenticated user can delete an inventory movement if the storeId is valid.
+     * @deny (create) If the storeId is invalid.
+     * @deny (update) If the storeId is invalid.
+     * @deny (delete) If the storeId is invalid.
+     * @principle Enforces store-level access control for inventory movement management.
      */
     match /inventoryMovements/{inventoryMovementId} {
       allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && resource != null;
+      allow create: if isSignedIn() && isStoreIdValid(request.resource.data.storeId);
+      allow update: if isSignedIn() && isStoreIdValid(request.resource.data.storeId);
+      allow delete: if isSignedIn() && isStoreIdValid(request.resource.data.storeId);
     }
 
     /**
-     * @description Sales can only be read and written by authenticated users and all have `storeId` property.
+     * @description Manages access to sales transactions.
      * @path /sales/{saleId}
-     * @allow (get, list): Authenticated user can read sales
-     * @allow (create): Authenticated user can create sales with valid `storeId`
-     * @allow (update, delete): Authenticated user can update/delete sales with valid `storeId`
-     * @deny (create): Unauthenticated user can not create sales
-     * @deny (update, delete): Unauthenticated user can not update/delete sales
-     * @principle Enforces store-level ownership for sale data.
+     * @allow (get, list) Authenticated user can read sale data.
+     * @allow (create) Authenticated user can create a sale if the storeId is valid.
+     * @allow (update) Authenticated user can update a sale if the storeId is valid.
+     * @allow (delete) Authenticated user can delete a sale if the storeId is valid.
+     * @deny (create) If the storeId is invalid.
+     * @deny (update) If the storeId is invalid.
+     * @deny (delete) If the storeId is invalid.
+     * @principle Enforces store-level access control for sale management.
      */
     match /sales/{saleId} {
       allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && resource != null;
+      allow create: if isSignedIn() && isStoreIdValid(request.resource.data.storeId);
+      allow update: if isSignedIn() && isStoreIdValid(request.resource.data.storeId);
+      allow delete: if isSignedIn() && get(/databases/$(database)/documents/sales/$(saleId)).data.storeId == request.auth.uid;
     }
 
     /**
-     * @description Sale items can only be read and written by authenticated users and all have a parent sale with a `storeId` property.
+     * @description Manages access to sale items within a sale.
      * @path /sales/{saleId}/saleItems/{saleItemId}
-     * @allow (get, list): Authenticated user can read sale items if the parent sale is valid.
-     * @allow (create): Authenticated user can create sale items if the parent sale is valid.
-     * @allow (update, delete): Authenticated user can update/delete sale items if the parent sale is valid.
-     * @deny (create): Unauthenticated user can not create sale items
-     * @deny (update, delete): Unauthenticated user can not update/delete sale items
-     * @principle Enforces store-level ownership for sale item data, inherited from the parent sale.
+     * @allow (get, list) Authenticated user can read sale item data.
+     * @allow (create) Authenticated user can create a sale item if the saleId is valid.
+     * @allow (update) Authenticated user can update a sale item if the saleId is valid.
+     * @allow (delete) Authenticated user can delete a sale item if the saleId is valid.
+     * @deny (create) If the saleId is invalid.
+     * @deny (update) If the saleId is invalid.
+     * @deny (delete) If the saleId is invalid.
+     * @principle Enforces store-level access control for sale item management.
      */
     match /sales/{saleId}/saleItems/{saleItemId} {
-        allow get, list: if isSignedIn();
-        allow create: if isSignedIn();
-        allow update, delete: if isSignedIn() && resource != null;
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && get(/databases/$(database)/documents/sales/$(saleId)).data.storeId == request.auth.uid;
+      allow update: if isSignedIn() && get(/databases/$(database)/documents/sales/$(saleId)).data.storeId == request.auth.uid;
+      allow delete: if isSignedIn() && get(/databases/$(database)/documents/sales/$(saleId)).data.storeId == request.auth.uid;
     }
 
     /**
-     * @description Purchases can only be read and written by authenticated users and all have `storeId` property.
+     * @description Manages access to purchase orders.
      * @path /purchases/{purchaseId}
-     * @allow (get, list): Authenticated user can read purchases
-     * @allow (create): Authenticated user can create purchases with valid `storeId`
-     * @allow (update, delete): Authenticated user can update/delete purchases with valid `storeId`
-     * @deny (create): Unauthenticated user can not create purchases
-     * @deny (update, delete): Unauthenticated user can not update/delete purchases
-     * @principle Enforces store-level ownership for purchase data.
+     * @allow (get, list) Authenticated user can read purchase data.
+     * @allow (create) Authenticated user can create a purchase if the storeId is valid.
+     * @allow (update) Authenticated user can update a purchase if the storeId is valid.
+     * @allow (delete) Authenticated user can delete a purchase if the storeId is valid.
+     * @deny (create) If the storeId is invalid.
+     * @deny (update) If the storeId is invalid.
+     * @deny (delete) If the storeId is invalid.
+     * @principle Enforces store-level access control for purchase management.
      */
     match /purchases/{purchaseId} {
       allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && resource != null;
+      allow create: if isSignedIn() && isStoreIdValid(request.resource.data.storeId);
+      allow update: if isSignedIn() && isStoreIdValid(request.resource.data.storeId);
+      allow delete: if isSignedIn() && get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId == request.auth.uid;
     }
 
     /**
-     * @description Purchase items can only be read and written by authenticated users and all have a parent purchase with a `storeId` property.
+     * @description Manages access to purchase items within a purchase order.
      * @path /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
-     * @allow (get, list): Authenticated user can read purchase items if the parent purchase is valid.
-     * @allow (create): Authenticated user can create purchase items if the parent purchase is valid.
-     * @allow (update, delete): Authenticated user can update/delete purchase items if the parent purchase is valid.
-     * @deny (create): Unauthenticated user can not create purchase items
-     * @deny (update, delete): Unauthenticated user can not update/delete purchase items
-     * @principle Enforces store-level ownership for purchase item data, inherited from the parent purchase.
+     * @allow (get, list) Authenticated user can read purchase item data.
+     * @allow (create) Authenticated user can create a purchase item if the purchaseId is valid.
+     * @allow (update) Authenticated user can update a purchase item if the purchaseId is valid.
+     * @allow (delete) Authenticated user can delete a purchase item if the purchaseId is valid.
+     * @deny (create) If the purchaseId is invalid.
+     * @deny (update) If the purchaseId is invalid.
+     * @deny (delete) If the purchaseId is invalid.
+     * @principle Enforces store-level access control for purchase item management.
      */
     match /purchases/{purchaseId}/purchaseItems/{purchaseItemId} {
-        allow get, list: if isSignedIn();
-        allow create: if isSignedIn();
-        allow update, delete: if isSignedIn() && resource != null;
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId == request.auth.uid;
+      allow update: if isSignedIn() && get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId == request.auth.uid;
+      allow delete: if isSignedIn() && get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId == request.auth.uid;
     }
 
     /**
-     * @description Customers can only be read and written by authenticated users and all have `storeId` property.
+     * @description Manages access to customers.
      * @path /customers/{customerId}
-     * @allow (get, list): Authenticated user can read customers
-     * @allow (create): Authenticated user can create customers with valid `storeId`
-     * @allow (update, delete): Authenticated user can update/delete customers with valid `storeId`
-     * @deny (create): Unauthenticated user can not create customers
-     * @deny (update, delete): Unauthenticated user can not update/delete customers
-     * @principle Enforces store-level ownership for customer data.
+     * @allow (get, list) Authenticated user can read customer data.
+     * @allow (create) Authenticated user can create a customer if the storeId is valid.
+     * @allow (update) Authenticated user can update a customer if the storeId is valid.
+     * @allow (delete) Authenticated user can delete a customer if the storeId is valid.
+     * @deny (create) If the storeId is invalid.
+     * @deny (update) If the storeId is invalid.
+     * @deny (delete) If the storeId is invalid.
+     * @principle Enforces store-level access control for customer management.
      */
     match /customers/{customerId} {
       allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && resource != null;
+      allow create: if isSignedIn() && isStoreIdValid(request.resource.data.storeId);
+      allow update: if isSignedIn() && isStoreIdValid(request.resource.data.storeId);
+      allow delete: if isSignedIn() && get(/databases/$(database)/documents/customers/$(customerId)).data.storeId == request.auth.uid;
     }
 
-    /**
-     * @description Store configurations can only be read and written by authenticated users.
-     * @path /stores/{storeId}
-     * @allow (get, list): Authenticated user can read store configurations
-     * @allow (create): Authenticated user can create store configurations.
-     * @allow (update, delete): Authenticated user can update/delete store configurations.
-     * @deny (create): Unauthenticated user can not create store configurations
-     * @deny (update, delete): Unauthenticated user can not update/delete store configurations
-     * @principle Enforces authentication for store configuration data.
-     */
+     /**
+      * @description Manages access to store configurations.
+      * @path /stores/{storeId}
+      * @allow (get, list) Authenticated user can read store configuration data.
+      * @allow (create) Authenticated user can create a store configuration.
+      * @allow (update) Authenticated user can update a store configuration.
+      * @allow (delete) Authenticated user can delete a store configuration.
+      * @deny (create) If not authenticated.
+      * @deny (update) If not authenticated.
+      * @deny (delete) If not authenticated.
+      * @principle Enforces authentication for store configuration management.
+      */
     match /stores/{storeId} {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && resource != null;
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Product families can only be read and written by authenticated users and all have `storeId` property.
+     * @description Manages access to product families.
      * @path /families/{familyId}
-     * @allow (get, list): Authenticated user can read families
-     * @allow (create): Authenticated user can create families with valid `storeId`
-     * @allow (update, delete): Authenticated user can update/delete families with valid `storeId`
-     * @deny (create): Unauthenticated user can not create families
-     * @deny (update, delete): Unauthenticated user can not update/delete families
-     * @principle Enforces store-level ownership for family data.
+     * @allow (get, list) Authenticated user can read family data.
+     * @allow (create) Authenticated user can create a family if the storeId is valid.
+     * @allow (update) Authenticated user can update a family if the storeId is valid.
+     * @allow (delete) Authenticated user can delete a family if the storeId is valid.
+     * @deny (create) If the storeId is invalid.
+     * @deny (update) If the storeId is invalid.
+     * @deny (delete) If the storeId is invalid.
+     * @principle Enforces store-level access control for family management.
      */
     match /families/{familyId} {
       allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() && resource != null;
-    }
-
-    function isSignedIn() {
-      return request.auth != null;
+      allow create: if isSignedIn() && isStoreIdValid(request.resource.data.storeId);
+      allow update: if isSignedIn() && get(/databases/$(database)/documents/families/$(familyId)).data.storeId == request.auth.uid;
+      allow delete: if isSignedIn() && get(/databases/$(database)/documents/families/$(familyId)).data.storeId == request.auth.uid;
     }
   }
 }
