@@ -3,7 +3,7 @@
 
 import { useEffect } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, redirect } from 'next/navigation';
 import { FcGoogle } from 'react-icons/fc';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 
@@ -18,11 +18,19 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (!isUserLoading && user) {
-      router.replace('/dashboard');
-    }
-  }, [user, isUserLoading, router]);
+  if (isUserLoading) {
+    return (
+        <div className="flex min-h-screen w-full items-center justify-center">
+            <p>Cargando...</p>
+        </div>
+    );
+  }
+  
+  // If user is already logged in, redirect them to dashboard
+  if (user) {
+      redirect('/dashboard');
+  }
+
 
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
@@ -43,14 +51,6 @@ export default function LoginPage() {
     }
   };
   
-  if (isUserLoading || (!isUserLoading && user)) {
-    return (
-        <div className="flex min-h-screen w-full items-center justify-center">
-            <p>Cargando...</p>
-        </div>
-    );
-  }
-
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-muted/40">
       <Card className="w-full max-w-sm">
@@ -71,5 +71,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-    
