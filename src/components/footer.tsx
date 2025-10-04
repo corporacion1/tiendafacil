@@ -2,14 +2,6 @@
 import { Instagram, Facebook, Twitter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const TikTokIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-        <path d="M21 7.5a4.5 4.5 0 0 1-4.5 4.5H12v7.5a3 3 0 0 1-6 0" />
-        <path d="M16.5 3a4.5 4.5 0 0 1 4.5 4.5" />
-    </svg>
-);
-
-
 const socialLinks = [
   {
     name: "Instagram",
@@ -26,11 +18,6 @@ const socialLinks = [
     icon: Twitter,
     url: "https://x.com/corporacion1plus",
   },
-  {
-    name: "TikTok",
-    icon: TikTokIcon,
-    url: "https://www.tiktok.com/@corporacion1plus",
-  }
 ];
 
 export function Footer() {
