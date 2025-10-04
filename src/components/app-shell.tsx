@@ -1,3 +1,4 @@
+
 "use client";
 
 import { PinModal } from "@/components/pin-modal";
@@ -5,10 +6,9 @@ import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { Footer } from "@/components/ui/footer";
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSecurity, SecurityProvider } from "@/contexts/security-context";
 import { FirebaseProvider, initializeFirebase, useUser } from "@/firebase";
-import { onAuthStateChanged, User } from "firebase/auth";
 import { SettingsProvider } from "@/contexts/settings-context";
 import { ProductProvider } from "@/contexts/product-context";
 import { SalesProvider } from "@/contexts/sales-context";
@@ -82,42 +82,27 @@ function MainApp({ children }: { children: React.ReactNode }) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { firebaseApp, auth, firestore } = initializeFirebase();
-  const [user, setUser] = useState<User | null>(null);
-  const [isUserLoading, setIsUserLoading] = useState(true);
-  const [userError, setUserError] = useState<Error | null>(null);
-
-  useEffect(() => {
-      const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-          setUser(firebaseUser);
-          setIsUserLoading(false);
-      }, (error) => {
-          setUserError(error);
-          setIsUserLoading(false);
-      });
-
-      return () => unsubscribe();
-  }, [auth]);
   
   return (
-    <FirebaseProvider value={{ firebaseApp, auth, firestore, user, isUserLoading, userError }}>
+    <FirebaseProvider firebaseApp={firebaseApp} auth={auth} firestore={firestore}>
         <SecurityProvider>
-            <CurrencyRatesProvider>
-              <SettingsProvider>
-                <ProductProvider>
-                  <SalesProvider>
-                    <PurchasesProvider>
-                      <UnitsProvider>
-                        <FamiliesProvider>
-                          <WarehousesProvider>
-                            <MainApp>{children}</MainApp>
-                          </WarehousesProvider>
-                        </FamiliesProvider>
-                      </UnitsProvider>
-                    </PurchasesProvider>
-                  </SalesProvider>
-                </ProductProvider>
-              </SettingsProvider>
-            </CurrencyRatesProvider>
+          <CurrencyRatesProvider>
+            <SettingsProvider>
+              <ProductProvider>
+                <SalesProvider>
+                  <PurchasesProvider>
+                    <UnitsProvider>
+                      <FamiliesProvider>
+                        <WarehousesProvider>
+                          <MainApp>{children}</MainApp>
+                        </WarehousesProvider>
+                      </FamiliesProvider>
+                    </UnitsProvider>
+                  </PurchasesProvider>
+                </SalesProvider>
+              </ProductProvider>
+            </SettingsProvider>
+          </CurrencyRatesProvider>
         </SecurityProvider>
     </FirebaseProvider>
   )
