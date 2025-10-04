@@ -4,6 +4,15 @@ import { AppShell } from '@/components/app-shell';
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase';
+import { SecurityProvider } from '@/contexts/security-context';
+import { SettingsProvider } from '@/contexts/settings-context';
+import { ProductProvider } from '@/contexts/product-context';
+import { SalesProvider } from '@/contexts/sales-context';
+import { PurchasesProvider } from '@/contexts/purchases-context';
+import { UnitsProvider } from '@/contexts/units-context';
+import { FamiliesProvider } from '@/contexts/families-context';
+import { WarehousesProvider } from '@/contexts/warehouses-context';
+import { CurrencyRatesProvider } from '@/contexts/currency-rates-context';
 
 
 export const metadata: Metadata = {
@@ -27,12 +36,30 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            <FirebaseClientProvider>
-                <AppShell>
-                    {children}
-                </AppShell>
-            </FirebaseClientProvider>
-            <Toaster />
+          <FirebaseClientProvider>
+            <SecurityProvider>
+              <CurrencyRatesProvider>
+                <SettingsProvider>
+                  <ProductProvider>
+                    <SalesProvider>
+                      <PurchasesProvider>
+                        <UnitsProvider>
+                          <FamiliesProvider>
+                            <WarehousesProvider>
+                              <AppShell>
+                                  {children}
+                              </AppShell>
+                            </WarehousesProvider>
+                          </FamiliesProvider>
+                        </UnitsProvider>
+                      </PurchasesProvider>
+                    </SalesProvider>
+                  </ProductProvider>
+                </SettingsProvider>
+              </CurrencyRatesProvider>
+            </SecurityProvider>
+          </FirebaseClientProvider>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

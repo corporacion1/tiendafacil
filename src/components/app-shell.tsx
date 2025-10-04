@@ -7,18 +7,10 @@ import { SiteHeader } from "@/components/site-header";
 import { Footer } from "@/components/ui/footer";
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
-import { useSecurity, SecurityProvider } from "@/contexts/security-context";
+import { useSecurity } from "@/contexts/security-context";
 import { useUser } from '@/firebase';
-import { SettingsProvider } from "@/contexts/settings-context";
-import { ProductProvider } from "@/contexts/product-context";
-import { SalesProvider } from "@/contexts/sales-context";
-import { PurchasesProvider } from "@/contexts/purchases-context";
-import { UnitsProvider } from "@/contexts/units-context";
-import { FamiliesProvider } from "@/contexts/families-context";
-import { WarehousesProvider } from "@/contexts/warehouses-context";
-import { CurrencyRatesProvider } from "@/contexts/currency-rates-context";
 
-function MainApp({ children }: { children: React.ReactNode }) {
+export function AppShell({ children }: { children: React.ReactNode }) {
   const { isLocked, lockApp, hasPin } = useSecurity();
   const { user, isUserLoading } = useUser();
   const pathname = usePathname();
@@ -78,28 +70,4 @@ function MainApp({ children }: { children: React.ReactNode }) {
       </div>
     </div>
   );
-}
-
-export function AppShell({ children }: { children: React.ReactNode }) {
-  return (
-    <SecurityProvider>
-      <CurrencyRatesProvider>
-        <SettingsProvider>
-          <ProductProvider>
-            <SalesProvider>
-              <PurchasesProvider>
-                <UnitsProvider>
-                  <FamiliesProvider>
-                    <WarehousesProvider>
-                      <MainApp>{children}</MainApp>
-                    </WarehousesProvider>
-                  </FamiliesProvider>
-                </UnitsProvider>
-              </PurchasesProvider>
-            </SalesProvider>
-          </ProductProvider>
-        </SettingsProvider>
-      </CurrencyRatesProvider>
-    </SecurityProvider>
-  )
 }
