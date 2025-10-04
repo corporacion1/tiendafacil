@@ -12,11 +12,22 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { 
+    Sidebar, 
+    SidebarProvider, 
+    SidebarTrigger, 
+    SidebarContent, 
+    SidebarHeader, 
+    SidebarMenu, 
+    SidebarMenuItem,
+    SidebarMenuButton,
+    SidebarFooter,
+    useSidebar,
+} from "@/components/ui/sidebar";
 
-export function SiteSidebar() {
-  const pathname = usePathname();
+export const SiteSidebarProvider = SidebarProvider;
 
-  const navItems = [
+const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: Home },
     { href: "/inventory", label: "Inventario", icon: Boxes },
     { href: "/products", label: "Productos", icon: PackagePlus },
@@ -24,7 +35,14 @@ export function SiteSidebar() {
     { href: "/purchases", label: "Compras", icon: Store },
     { href: "/credits", label: "Créditos", icon: CreditCard },
     { href: "/reports", label: "Reportes", icon: FileText },
-  ];
+];
+
+const settingsNav = { href: "/settings", label: "Configuración", icon: Settings };
+
+
+export function SiteSidebar() {
+  const pathname = usePathname();
+  const { state } = useSidebar();
 
   const posNavItems = [
     { href: "/dashboard", label: "Dashboard", icon: Home }
@@ -34,62 +52,68 @@ export function SiteSidebar() {
     if (pathname === '/pos') {
       return posNavItems;
     }
-    // Filter out POS from the main nav list as it's a special route, but keep it for the sidebar icon
     return navItems;
   }
 
   const currentNavItems = getNavItems();
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
-      <nav className="flex flex-col items-center gap-4 px-2 sm:py-5">
-        <Link
-          href="/"
-          className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
-        >
-          <Store className="h-4 w-4 transition-all group-hover:scale-110" />
-          <span className="sr-only">Tienda Facil</span>
-        </Link>
-        <TooltipProvider>
-        {currentNavItems.map((item) => (
-          <Tooltip key={item.href}>
-            <TooltipTrigger asChild>
-              <Link
-                href={item.href}
-                className={cn(
-                  "flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
-                  pathname === item.href && "bg-accent text-accent-foreground"
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                <span className="sr-only">{item.label}</span>
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent side="right">{item.label}</TooltipContent>
-          </Tooltip>
-        ))}
-        </TooltipProvider>
-      </nav>
-      {pathname !== '/pos' && (
-        <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
-          <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Link
-                href="/settings"
-                className={cn("flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground md:h-8 md:w-8",
-                  pathname === "/settings" && "bg-accent text-accent-foreground"
-                )}
-              >
-                <Settings className="h-5 w-5" />
-                <span className="sr-only">Configuración</span>
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent side="right">Configuración</TooltipContent>
-          </Tooltip>
-          </TooltipProvider>
-        </nav>
-      )}
-    </aside>
+    <Sidebar>
+        <SidebarContent>
+            <SidebarHeader>
+                <SidebarTrigger asChild>
+                    <Link
+                        href="#"
+                        className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
+                        >
+                        <Store className="h-4 w-4 transition-all group-hover:scale-110" />
+                        <span className="sr-only">Tienda Facil</span>
+                    </Link>
+                </SidebarTrigger>
+                <span className={cn(
+                    "text-lg font-semibold text-foreground",
+                    state === 'collapsed' && 'hidden'
+                )}>
+                    Tienda Facil
+                </span>
+            </SidebarHeader>
+
+            <SidebarMenu>
+                {currentNavItems.map((item) => (
+                    <SidebarMenuItem key={item.href}>
+                         <SidebarMenuButton 
+                            asChild 
+                            isActive={pathname === item.href}
+                            tooltip={item.label}
+                        >
+                            <Link href={item.href}>
+                                <item.icon className="h-5 w-5" />
+                                <span>{item.label}</span>
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                ))}
+            </SidebarMenu>
+        </SidebarContent>
+
+        {pathname !== '/pos' && (
+            <SidebarFooter>
+                <SidebarMenu>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton 
+                            asChild 
+                            isActive={pathname === settingsNav.href}
+                            tooltip={settingsNav.label}
+                        >
+                            <Link href={settingsNav.href}>
+                                <settingsNav.icon className="h-5 w-5" />
+                                <span>{settingsNav.label}</span>
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                </SidebarMenu>
+            </SidebarFooter>
+        )}
+    </Sidebar>
   );
 }
