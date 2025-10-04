@@ -101,7 +101,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
   const handleSkuBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const sku = e.target.value;
-    // Don't validate if SKU is empty or if we are editing and the SKU hasn't changed
     if (!sku || (product && product.sku.toLowerCase() === sku.toLowerCase())) {
         form.clearErrors("sku");
         return;
@@ -296,43 +295,45 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
           />
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <FormField
-                control={form.control}
-                name="stock"
-                render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Stock Actual</FormLabel>
-                    <FormControl>
-                    <Input type="number" placeholder="0" {...field} readOnly={!!product} />
-                    </FormControl>
-                    <FormDescription>El stock se modifica con movimientos de inventario.</FormDescription>
-                    <FormMessage />
-                </FormItem>
-                )}
-            />
-            <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Estado</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                            <SelectTrigger>
-                            <SelectValue placeholder="Selecciona un estado" />
-                            </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                            <SelectItem value="active">Activo</SelectItem>
-                            <SelectItem value="inactive">Inactivo</SelectItem>
-                        </SelectContent>
-                        </Select>
-                        <FormMessage />
-                    </FormItem>
-                )}
-            />
-        </div>
+        {product && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <FormField
+                  control={form.control}
+                  name="stock"
+                  render={({ field }) => (
+                  <FormItem>
+                      <FormLabel>Stock Actual</FormLabel>
+                      <FormControl>
+                      <Input type="number" placeholder="0" {...field} readOnly />
+                      </FormControl>
+                      <FormDescription>El stock se modifica con movimientos de inventario.</FormDescription>
+                      <FormMessage />
+                  </FormItem>
+                  )}
+              />
+              <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                      <FormItem>
+                          <FormLabel>Estado</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                              <SelectTrigger>
+                              <SelectValue placeholder="Selecciona un estado" />
+                              </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                              <SelectItem value="active">Activo</SelectItem>
+                              <SelectItem value="inactive">Inactivo</SelectItem>
+                          </SelectContent>
+                          </Select>
+                          <FormMessage />
+                      </FormItem>
+                  )}
+              />
+          </div>
+        )}
 
         <div className="space-y-4">
             <FormLabel>Impuestos</FormLabel>
