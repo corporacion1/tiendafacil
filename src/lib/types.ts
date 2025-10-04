@@ -57,20 +57,32 @@ export type Sale = {
   payments?: Payment[];
 };
 
+export type PurchaseItem = {
+  productId: string;
+  productName: string;
+  quantity: number;
+  cost: number;
+};
+
 export type Purchase = {
     id: string;
-    supplier: string;
-    items: {
-        productId: string;
-        productName: string;
-        quantity: number;
-        cost: number;
-    }[];
+    supplierId: string;
+    supplierName: string;
+    items: PurchaseItem[];
     total: number;
     date: string;
+    documentNumber?: string;
+    responsible?: string;
 };
 
 export type Customer = {
+    id: string;
+    name: string;
+    phone?: string;
+    address?: string;
+}
+
+export type Supplier = {
     id: string;
     name: string;
     phone?: string;

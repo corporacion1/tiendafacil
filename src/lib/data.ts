@@ -1,6 +1,6 @@
 
 
-import type { Product, InventoryMovement, Sale, Unit, Family, Warehouse, Customer, Purchase } from '@/lib/types';
+import type { Product, InventoryMovement, Sale, Unit, Family, Warehouse, Customer, Purchase, Supplier } from '@/lib/types';
 
 export const initialUnits: Unit[] = [
     { id: 'u1', name: 'Pieza' },
@@ -125,23 +125,29 @@ export let mockSales: Sale[] = [
 export let mockPurchases: Purchase[] = [
     {
         id: 'PURCH001',
-        supplier: 'TechSupplier Inc.',
+        supplierId: 'sup-1',
+        supplierName: 'TechSupplier Inc.',
         items: [
             { productId: '1', productName: 'Laptop Pro 15"', quantity: 10, cost: 800 },
             { productId: '4', productName: '4K 27" Monitor', quantity: 15, cost: 250 },
         ],
         total: (10 * 800) + (15 * 250),
-        date: '2023-10-25'
+        date: '2023-10-25',
+        documentNumber: 'INV-TS-001',
+        responsible: 'Admin'
     },
     {
         id: 'PURCH002',
-        supplier: 'AccessoryWorld',
+        supplierId: 'sup-2',
+        supplierName: 'AccessoryWorld',
         items: [
              { productId: '2', productName: 'Wireless Mouse', quantity: 100, cost: 10 },
              { productId: '3', productName: 'Mechanical Keyboard', quantity: 50, cost: 45 },
         ],
         total: (100 * 10) + (50 * 45),
-        date: '2023-10-22'
+        date: '2023-10-22',
+        documentNumber: 'INV-AW-005',
+        responsible: 'Admin'
     }
 ];
 
@@ -149,4 +155,10 @@ export const initialCustomers: Customer[] = [
     { id: 'eventual', name: 'Cliente Eventual' },
     { id: 'johndoe', name: 'John Doe', phone: '555-1234', address: '123 Fake St' },
     { id: 'janesmith', name: 'Jane Smith', phone: '555-5678', address: '456 Oak Ave' }
+];
+
+export const initialSuppliers: Supplier[] = [
+    { id: 'sup-1', name: 'TechSupplier Inc.', phone: '111-222-3333', address: '789 Tech Rd' },
+    { id: 'sup-2', name: 'AccessoryWorld', phone: '444-555-6666', address: '101 Peripherals Ave' },
+    { id: 'sup-3', name: 'PC Parts Direct', phone: '777-888-9999', address: '202 Component Dr' },
 ];

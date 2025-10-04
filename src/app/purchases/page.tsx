@@ -1,167 +1,368 @@
+
 "use client"
-import { useState } from "react";
-import { PackagePlus, PlusCircle, Trash2, X } from "lucide-react";
+import { useState, useMemo } from "react";
+import Image from "next/image";
+import { Package, PackagePlus, PlusCircle, Trash2, ArrowUpDown, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { mockProducts } from "@/lib/data";
-import type { Product } from "@/lib/types";
+import { useProducts } from "@/contexts/product-context";
+import type { Product, PurchaseItem, Supplier, Purchase, InventoryMovement } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
+import { initialSuppliers, mockPurchases, mockInventoryMovements } from "@/lib/data";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
-type PurchaseItem = {
-  product: Product;
-  quantity: number;
-};
+
+const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
 
 export default function PurchasesPage() {
-  const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
+  const { products, updateProduct } = useProducts();
   const { toast } = useToast();
+  
+  const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  const [suppliers, setSuppliers] = useState<Supplier[]>(initialSuppliers);
+  const [selectedSupplierId, setSelectedSupplierId] = useState<string>('');
+  const [isSupplierSearchOpen, setIsSupplierSearchOpen] = useState(false);
+  const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
+  const [newSupplier, setNewSupplier] = useState({ id: '', name: '', phone: '', address: '' });
+  
+  const [documentNumber, setDocumentNumber] = useState('');
+  const [responsible, setResponsible] = useState('');
+
+  const selectedSupplier = suppliers.find(s => s.id === selectedSupplierId) ?? null;
+
+  const filteredProducts = useMemo(() => {
+    return products.filter(product =>
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.sku.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [products, searchTerm]);
 
   const addProductToPurchase = (product: Product) => {
     setPurchaseItems((prevItems) => {
-      const existingItem = prevItems.find((item) => item.product.id === product.id);
+      const existingItem = prevItems.find((item) => item.productId === product.id);
       if (existingItem) {
         return prevItems.map((item) =>
-          item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+          item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
-      return [...prevItems, { product, quantity: 1 }];
+      return [...prevItems, { productId: product.id, productName: product.name, quantity: 1, cost: product.cost }];
     });
   };
-
+  
   const updateQuantity = (productId: string, quantity: number) => {
-    if (isNaN(quantity) || quantity < 0) {
-      quantity = 0;
-    }
-    
-    if (quantity === 0) {
+    if (isNaN(quantity) || quantity <= 0) {
       removeProduct(productId);
       return;
     }
-
     setPurchaseItems((prevItems) =>
       prevItems.map((item) =>
-        item.product.id === productId ? { ...item, quantity } : item
+        item.productId === productId ? { ...item, quantity } : item
       )
     );
   };
   
   const removeProduct = (productId: string) => {
-    setPurchaseItems((prevItems) => prevItems.filter((item) => item.product.id !== productId));
+    setPurchaseItems((prevItems) => prevItems.filter((item) => item.productId !== productId));
   };
   
-  const totalCost = purchaseItems.reduce((acc, item) => acc + item.product.cost * item.quantity, 0);
-
-  const handleProcessPurchase = () => {
-    if (purchaseItems.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No hay productos en la orden de compra.",
-      });
-      return;
-    }
-    toast({
-      title: "Compra Procesada",
-      description: "La orden de compra ha sido registrada.",
-    });
+  const clearPurchase = () => {
     setPurchaseItems([]);
+    toast({
+        title: "Orden de Compra Vaciada",
+        description: "Todos los productos han sido eliminados de la orden.",
+    });
   };
 
+  const totalCost = purchaseItems.reduce((acc, item) => acc + item.cost * item.quantity, 0);
+
+  const handleAddNewSupplier = () => {
+    if (newSupplier.name.trim() === "") {
+        toast({ variant: "destructive", title: "Nombre inválido" });
+        return;
+    }
+    const newId = newSupplier.id.trim() || `sup-${Date.now()}`;
+    if (suppliers.some(s => s.id === newId)) {
+       toast({ variant: "destructive", title: "ID Duplicado" });
+        return;
+    }
+    const supplierToAdd: Supplier = { id: newId, name: newSupplier.name, phone: newSupplier.phone, address: newSupplier.address };
+    setSuppliers(prev => [...prev, supplierToAdd]);
+    setSelectedSupplierId(supplierToAdd.id);
+    setNewSupplier({ id: '', name: '', phone: '', address: '' });
+    setIsSupplierDialogOpen(false);
+    toast({ title: "Proveedor Agregado", description: `El proveedor "${supplierToAdd.name}" ha sido agregado.` });
+  };
+  
+  const handleProcessPurchase = () => {
+    if (purchaseItems.length === 0) {
+      toast({ variant: "destructive", title: "Orden vacía", description: "Agrega productos para procesar la compra." });
+      return;
+    }
+    if (!selectedSupplier) {
+      toast({ variant: "destructive", title: "Proveedor no seleccionado", description: "Por favor, selecciona un proveedor." });
+      return;
+    }
+    if (!responsible.trim()) {
+        toast({ variant: "destructive", title: "Falta responsable", description: "Por favor, ingresa el nombre del responsable de la compra." });
+        return;
+    }
+
+    const purchaseId = generatePurchaseId();
+    const newPurchase: Purchase = {
+        id: purchaseId,
+        supplierId: selectedSupplier.id,
+        supplierName: selectedSupplier.name,
+        items: purchaseItems,
+        total: totalCost,
+        date: new Date().toISOString(),
+        documentNumber: documentNumber,
+        responsible: responsible,
+    };
+    
+    mockPurchases.unshift(newPurchase);
+
+    // Update stock and create inventory movements
+    purchaseItems.forEach(item => {
+        const product = products.find(p => p.id === item.productId);
+        if (product) {
+            updateProduct(product.id, { stock: product.stock + item.quantity });
+            const movement: InventoryMovement = {
+                id: `mov-purch-${Date.now()}-${item.productId}`,
+                productName: item.productName,
+                type: 'purchase',
+                quantity: item.quantity,
+                date: newPurchase.date,
+            };
+            mockInventoryMovements.unshift(movement);
+        }
+    });
+
+    toast({ title: "Compra Procesada", description: `La compra con ID #${purchaseId} ha sido registrada.` });
+    
+    // Reset state
+    setPurchaseItems([]);
+    setSelectedSupplierId('');
+    setDocumentNumber('');
+    setResponsible('');
+  };
+
+
   return (
-    <div className="grid gap-4 md:grid-cols-[1fr_350px] lg:gap-8">
-      <div className="grid auto-rows-max items-start gap-4 lg:gap-8">
+    <div className="grid flex-1 auto-rows-max gap-4 md:grid-cols-3 lg:gap-8">
+      <div className="grid auto-rows-max items-start gap-4 md:col-span-2 lg:gap-8">
         <Card>
           <CardHeader>
-            <CardTitle>Nueva Compra</CardTitle>
-            <CardDescription>
-              Busca productos y agrégalos a la orden de compra.
-            </CardDescription>
+            <CardTitle>Productos para Compra</CardTitle>
+            <div className="mt-4">
+              <Input
+                placeholder="Buscar por nombre o SKU..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full"
+              />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="supplier">Proveedor</Label>
-                <Input id="supplier" placeholder="Nombre del proveedor" />
-              </div>
-              <div>
-                <Label htmlFor="search-product">Buscar Producto</Label>
-                <Input id="search-product" placeholder="Escribe para buscar..." />
-              </div>
-            </div>
-            <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {mockProducts.map(product => (
-                    <Card key={product.id} className="cursor-pointer" onClick={() => addProductToPurchase(product)}>
-                        <CardHeader className="p-2">
-                            <p className="text-sm font-medium truncate">{product.name}</p>
-                        </CardHeader>
-                        <CardContent className="p-2 pt-0">
-                            <p className="text-xs text-muted-foreground">Stock: {product.stock}</p>
-                        </CardContent>
-                    </Card>
-                ))}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {filteredProducts.map((product) => (
+                <Card key={product.id} className="overflow-hidden group cursor-pointer" onClick={() => addProductToPurchase(product)}>
+                  <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative">
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        <Button size="sm">Agregar</Button>
+                    </div>
+                     {product.imageUrl ? (
+                        <Image src={product.imageUrl} alt={product.name} fill sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw" className="object-cover transition-transform group-hover:scale-105" data-ai-hint={product.imageHint} />
+                        ) : (
+                        <Package className="w-12 h-12 text-muted-foreground" />
+                    )}
+                    <div className="absolute top-2 left-2 bg-secondary text-secondary-foreground text-xs font-bold px-2 py-1 rounded">
+                      Costo: ${product.cost.toFixed(2)}
+                    </div>
+                  </CardContent>
+                  <CardFooter className="p-2 bg-background/80 backdrop-blur-sm">
+                    <h3 className="text-sm font-medium truncate">{product.name}</h3>
+                  </CardFooter>
+                </Card>
+              ))}
             </div>
           </CardContent>
         </Card>
       </div>
-
-      <Card className="sticky top-6">
-        <CardHeader>
-          <CardTitle>Orden de Compra</CardTitle>
-        </CardHeader>
-        <CardContent className="flex-1 overflow-auto">
-          {purchaseItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-center text-muted-foreground h-full p-8">
-              <PackagePlus className="h-12 w-12 mb-4" />
-              <p>Tu orden de compra está vacía.</p>
-              <p className="text-sm">Agrega productos para comenzar.</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Producto</TableHead>
-                  <TableHead className="w-[80px]">Cant.</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {purchaseItems.map((item) => (
-                  <TableRow key={item.product.id}>
-                    <TableCell className="font-medium">{item.product.name}</TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) => updateQuantity(item.product.id, parseInt(e.target.value))}
-                        className="h-8 w-16"
-                      />
-                    </TableCell>
-                    <TableCell>
-                        <Button variant="ghost" size="icon" onClick={() => removeProduct(item.product.id)}>
-                            <Trash2 className="h-4 w-4 text-destructive"/>
+      <div className="grid auto-rows-max items-start gap-4 lg:gap-8">
+        <Card>
+          <CardHeader className="flex flex-row justify-between items-center">
+            <CardTitle>Orden de Compra</CardTitle>
+            {purchaseItems.length > 0 && (
+                 <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm">
+                            <Trash2 className="mr-2 h-4 w-4" /> Vaciar
                         </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-        {purchaseItems.length > 0 && (
-        <CardContent>
-            <div className="flex justify-between font-bold text-lg mt-4 border-t pt-4">
-                <span>Total</span>
-                <span>${totalCost.toFixed(2)}</span>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                        <AlertDialogTitle>¿Vaciar la orden?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Esto eliminará todos los productos. ¿Estás seguro?
+                        </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={clearPurchase}>Sí, vaciar</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            )}
+          </CardHeader>
+          <CardContent className="space-y-4">
+             <div className="space-y-2">
+                <Label htmlFor="supplier">Proveedor</Label>
+                <div className="flex gap-2">
+                    <Popover open={isSupplierSearchOpen} onOpenChange={setIsSupplierSearchOpen}>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" role="combobox" className="w-full justify-between">
+                                {selectedSupplier ? selectedSupplier.name : "Seleccionar proveedor..."}
+                                <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                            <Command>
+                                <CommandInput placeholder="Buscar proveedor..." />
+                                <CommandList>
+                                    <CommandEmpty>No se encontraron proveedores.</CommandEmpty>
+                                    <CommandGroup>
+                                        {suppliers.map((supplier) => (
+                                            <CommandItem
+                                                key={supplier.id}
+                                                value={supplier.name}
+                                                onSelect={() => { setSelectedSupplierId(supplier.id); setIsSupplierSearchOpen(false); }}
+                                            >
+                                                <Check className={cn("mr-2 h-4 w-4", selectedSupplierId === supplier.id ? "opacity-100" : "opacity-0")} />
+                                                {supplier.name}
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
+
+                    <Dialog open={isSupplierDialogOpen} onOpenChange={setIsSupplierDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" size="icon">
+                                <PlusCircle className="h-4 w-4" />
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Agregar Nuevo Proveedor</DialogTitle>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="new-supplier-id" className="text-right">ID (Opcional)</Label>
+                                    <Input id="new-supplier-id" value={newSupplier.id} onChange={(e) => setNewSupplier(prev => ({ ...prev, id: e.target.value }))} className="col-span-3" placeholder="ID Fiscal o RIF" />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="new-supplier-name" className="text-right">Nombre*</Label>
+                                    <Input id="new-supplier-name" value={newSupplier.name} onChange={(e) => setNewSupplier(prev => ({ ...prev, name: e.target.value }))} className="col-span-3" required />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="new-supplier-phone" className="text-right">Teléfono</Label>
+                                    <Input id="new-supplier-phone" value={newSupplier.phone} onChange={(e) => setNewSupplier(prev => ({ ...prev, phone: e.target.value }))} className="col-span-3" />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                    <Label htmlFor="new-supplier-address" className="text-right">Dirección</Label>
+                                    <Input id="new-supplier-address" value={newSupplier.address} onChange={(e) => setNewSupplier(prev => ({ ...prev, address: e.target.value }))} className="col-span-3" />
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
+                                <Button onClick={handleAddNewSupplier}>Guardar Proveedor</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
-            <Button className="w-full mt-4 bg-primary hover:bg-primary/90" onClick={handleProcessPurchase}>
+
+            <div className="space-y-2">
+                <Label htmlFor="document-number">Número de Documento</Label>
+                <Input id="document-number" value={documentNumber} onChange={(e) => setDocumentNumber(e.target.value)} placeholder="Ej: FACT-00123" />
+            </div>
+
+            <div className="space-y-2">
+                <Label htmlFor="responsible">Responsable</Label>
+                <Input id="responsible" value={responsible} onChange={(e) => setResponsible(e.target.value)} placeholder="Nombre del comprador" required/>
+            </div>
+            
+            <Separator />
+
+            <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
+                {purchaseItems.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-8">
+                        <PackagePlus className="h-12 w-12 mb-4" />
+                        <p>Tu orden de compra está vacía.</p>
+                        <p className="text-sm">Agrega productos para comenzar.</p>
+                    </div>
+                ) : (
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                            <TableHead>Producto</TableHead>
+                            <TableHead className="w-[80px]">Cant.</TableHead>
+                            <TableHead className="w-[50px]"></TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {purchaseItems.map((item) => (
+                            <TableRow key={item.productId}>
+                                <TableCell className="font-medium">{item.productName}</TableCell>
+                                <TableCell>
+                                <Input
+                                    type="number"
+                                    value={item.quantity}
+                                    onChange={(e) => updateQuantity(item.productId, parseInt(e.target.value))}
+                                    className="h-8 w-16"
+                                    min="1"
+                                />
+                                </TableCell>
+                                <TableCell>
+                                    <Button variant="ghost" size="icon" onClick={() => removeProduct(item.productId)}>
+                                        <Trash2 className="h-4 w-4 text-destructive"/>
+                                    </Button>
+                                </TableCell>
+                            </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                )}
+            </div>
+             {purchaseItems.length > 0 && (
+                <>
+                    <Separator />
+                    <div className="flex justify-between font-bold text-lg">
+                        <span>Total</span>
+                        <span>${totalCost.toFixed(2)}</span>
+                    </div>
+                </>
+            )}
+          </CardContent>
+          <CardFooter>
+            <Button className="w-full bg-primary hover:bg-primary/90" size="lg" onClick={handleProcessPurchase} disabled={purchaseItems.length === 0}>
                 Procesar Compra
             </Button>
-        </CardContent>
-        )}
-      </Card>
+          </CardFooter>
+        </Card>
+      </div>
     </div>
   );
 }
