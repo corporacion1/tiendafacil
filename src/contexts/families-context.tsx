@@ -21,7 +21,7 @@ export const FamiliesProvider = ({ children }: { children: React.ReactNode }) =>
   const { user, isUserLoading } = useUser();
 
   const familiesQuery = useMemoFirebase(() => {
-      if (!firestore || !user || isUserLoading) return null;
+      if (!firestore || isUserLoading || !user) return null;
       return query(collection(firestore, 'families'));
   }, [firestore, user, isUserLoading]);
 

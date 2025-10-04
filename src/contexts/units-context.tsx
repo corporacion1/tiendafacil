@@ -21,7 +21,7 @@ export const UnitsProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, isUserLoading } = useUser();
 
   const unitsQuery = useMemoFirebase(() => {
-      if (!firestore || !user || isUserLoading) return null;
+      if (!firestore || isUserLoading || !user) return null;
       return query(collection(firestore, 'units'));
   }, [firestore, user, isUserLoading]);
 
