@@ -79,6 +79,7 @@ export default function InventoryPage() {
             title: "Eliminación Bloqueada",
             description: "Este producto no se puede eliminar porque tiene ventas asociadas. Para mantener la integridad de los reportes, considere cambiar su estado a 'Inactivo'.",
         });
+        setProductToDelete(null);
         return;
     }
     
@@ -96,13 +97,22 @@ export default function InventoryPage() {
         description: "El movimiento de inventario ha sido registrado exitosamente.",
     });
   };
+  
+  const getMovementLabel = (type: 'sale' | 'purchase' | 'adjustment') => {
+    switch (type) {
+        case 'sale': return 'Salida';
+        case 'purchase': return 'Entrada';
+        case 'adjustment': return 'Ajuste';
+        default: return type;
+    }
+  };
 
   const productMovements = selectedProduct ? mockInventoryMovements.filter(m => m.productName === selectedProduct.name) : [];
 
   const filteredProducts = useMemo(() => {
     return products.filter(product =>
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.sku.toLowerCase().includes(searchTerm.toLowerCase())
+      (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [products, searchTerm]);
 
@@ -391,7 +401,7 @@ export default function InventoryPage() {
                           <TableCell>{new Date(movement.date).toLocaleDateString()}</TableCell>
                           <TableCell>
                               <Badge variant={movement.type === "sale" ? "destructive" : movement.type === "purchase" ? "secondary" : "outline"}>
-                                  {movement.type}
+                                  {getMovementLabel(movement.type)}
                               </Badge>
                           </TableCell>
                           <TableCell className="text-right">{movement.quantity}</TableCell>
@@ -415,7 +425,3 @@ export default function InventoryPage() {
     </>
   );
 }
-
-
-
-    
