@@ -120,7 +120,15 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   // Transform Dropbox URL for direct image access
   const displayImageUrl = useMemo(() => {
     if (watchedImageUrl && watchedImageUrl.includes("www.dropbox.com")) {
-      return watchedImageUrl.replace("?dl=0", "?raw=1");
+      let url = new URL(watchedImageUrl);
+      // Replace dl=0 with raw=1, or add raw=1 if no params exist
+      if (url.searchParams.has('dl')) {
+        url.searchParams.set('dl', '0'); // First reset just in case
+        url.search = url.search.replace('dl=0', 'raw=1');
+      } else if (!url.searchParams.has('raw')) {
+        url.searchParams.append('raw', '1');
+      }
+      return url.toString();
     }
     return watchedImageUrl;
   }, [watchedImageUrl]);
