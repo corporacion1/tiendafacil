@@ -329,7 +329,7 @@ export default function SettingsPage() {
                                 <h4 className="font-medium">Registrar Tasa ({localSettings.secondaryCurrencyName})</h4>
                                 <div className="space-y-2">
                                     <Label htmlFor="newRate">Tasa de Cambio Actual</Label>
-                                    <Input id="newRate" type="number" step="0.000001" value={newRate || ''} onChange={(e) => setNewRate(parseFloat(e.target.value) || 0)} placeholder={currencyRates[0]?.rate.toFixed(6) || "0.00"} />
+                                    <Input id="newRate" type="number" step="0.000001" value={newRate || ''} onChange={(e) => setNewRate(parseFloat(e.target.value) || 0)} placeholder={currencyRates[0]?.rate.toFixed(6) || "0.000000"} />
                                 </div>
                                 <Button onClick={handleSaveNewRate}>Guardar Tasa</Button>
                             </div>

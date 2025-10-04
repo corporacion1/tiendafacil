@@ -107,7 +107,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | undefined>(product?.imageUrl);
 
-  // State to hold the string value for display in the inputs
   const [displayValues, setDisplayValues] = useState({
     cost: product ? (product.cost * activeRate).toFixed(2) : '0.00',
     price: product ? (product.price * activeRate).toFixed(2) : '0.00',
@@ -123,7 +122,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const watchedPrice = useWatch({ control: form.control, name: 'price' });
   const watchedWholesalePrice = useWatch({ control: form.control, name: 'wholesalePrice' });
 
-  // Update form and display values when product prop changes
   useEffect(() => {
     const initialValues = getInitialValues(product);
     form.reset(initialValues);
@@ -135,7 +133,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     });
   }, [product, form, activeRate]);
 
-  // Update display values when currency rate changes
   useEffect(() => {
     setDisplayValues({
       cost: (watchedCost * activeRate).toFixed(2),
@@ -146,7 +143,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
   const handleDisplayValueChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'cost' | 'price' | 'wholesalePrice') => {
       const { value } = e.target;
-      // Allow user to type freely
       setDisplayValues(prev => ({ ...prev, [fieldName]: value }));
   };
 
@@ -155,14 +151,10 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       const valueAsNumber = parseFloat(displayValue);
       
       if (!isNaN(valueAsNumber)) {
-          // Convert the entered value (which is in the active currency) to the primary currency
           const valueInPrimaryCurrency = valueAsNumber / activeRate;
           form.setValue(fieldName, valueInPrimaryCurrency, { shouldValidate: true, shouldDirty: true });
-          
-          // Re-format the display value to 2 decimal places
           setDisplayValues(prev => ({ ...prev, [fieldName]: valueAsNumber.toFixed(2)}));
       } else {
-          // If input is invalid, reset to the last known valid state from the form
           const lastValidValue = form.getValues(fieldName) * activeRate;
           setDisplayValues(prev => ({...prev, [fieldName]: lastValidValue.toFixed(2)}));
       }
@@ -191,14 +183,18 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         const snapshot = await uploadBytes(storageRef, file);
         const downloadURL = await getDownloadURL(snapshot.ref);
         
-        form.setValue('imageUrl', downloadURL, { shouldValidate: true });
+        form.setValue('imageUrl', downloadURL, { shouldValidate: true, shouldDirty: true });
         setImagePreview(downloadURL);
 
         update({ id: toastId, title: 'Imagen subida', description: 'La imagen del producto ha sido actualizada.' });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error en la subida de imagen:", error);
-        update({ id: toastId, variant: 'destructive', title: 'Error al subir la imagen', description: 'Hubo un problema al subir tu imagen. Revisa la consola para más detalles.' });
+        let description = 'Hubo un problema al subir tu imagen. Revisa la consola para más detalles.';
+        if (error.code === 'storage/unauthorized') {
+            description = 'No tienes permiso para subir archivos. Asegúrate de que las reglas de Storage estén bien configuradas y tu plan de Firebase lo permita en esta región.';
+        }
+        update({ id: toastId, variant: 'destructive', title: 'Error al subir la imagen', description });
     } finally {
         setIsUploading(false);
     }
@@ -384,8 +380,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                   <FormLabel>Costo ({activeSymbol})</FormLabel>
                   <FormControl>
                     <Input 
-                      type="number" 
-                      step="0.01" 
+                      type="text" 
                       placeholder="0.00" 
                       value={displayValues.cost}
                       onChange={(e) => handleDisplayValueChange(e, 'cost')}
@@ -404,8 +399,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                   <FormLabel>Precio Detal ({activeSymbol})</FormLabel>
                   <FormControl>
                      <Input 
-                      type="number" 
-                      step="0.01" 
+                      type="text" 
                       placeholder="0.00" 
                       value={displayValues.price}
                       onChange={(e) => handleDisplayValueChange(e, 'price')}
@@ -427,8 +421,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                   <FormLabel>Precio Mayor ({activeSymbol})</FormLabel>
                   <FormControl>
                      <Input 
-                      type="number" 
-                      step="0.01" 
+                      type="text" 
                       placeholder="0.00" 
                       value={displayValues.wholesalePrice}
                       onChange={(e) => handleDisplayValueChange(e, 'wholesalePrice')}
