@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -83,8 +82,8 @@ const calculateProfit = (price: number, cost: number): string => {
 export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
-    defaultValues: getInitialValues(product),
-    ...(product && { values: getInitialValues(product) }) 
+    defaultValues: getInitialValues(),
+    ...(product && { values: getInitialValues(product) })
   });
   
   const handleSubmit = (data: ProductFormValues) => {
@@ -368,5 +367,3 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     </Form>
   );
 }
-
-    
