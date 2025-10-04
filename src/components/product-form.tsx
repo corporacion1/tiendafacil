@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -108,9 +107,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const [imagePreview, setImagePreview] = useState<string | undefined>(product?.imageUrl);
 
   const [displayValues, setDisplayValues] = useState({
-    cost: product ? (product.cost * activeRate).toFixed(2) : '0.00',
-    price: product ? (product.price * activeRate).toFixed(2) : '0.00',
-    wholesalePrice: product ? (product.wholesalePrice * activeRate).toFixed(2) : '0.00',
+    cost: product ? (product.cost * activeRate).toFixed(6) : '0.00',
+    price: product ? (product.price * activeRate).toFixed(6) : '0.00',
+    wholesalePrice: product ? (product.wholesalePrice * activeRate).toFixed(6) : '0.00',
   });
 
   const form = useForm<ProductFormValues>({
@@ -128,9 +127,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       setImagePreview(product?.imageUrl);
        if (product) {
         setDisplayValues({
-            cost: (product.cost * activeRate).toFixed(2),
-            price: (product.price * activeRate).toFixed(2),
-            wholesalePrice: (product.wholesalePrice * activeRate).toFixed(2),
+            cost: (product.cost * activeRate).toFixed(6),
+            price: (product.price * activeRate).toFixed(6),
+            wholesalePrice: (product.wholesalePrice * activeRate).toFixed(6),
         });
        } else {
          setDisplayValues({ cost: '0.00', price: '0.00', wholesalePrice: '0.00' });
@@ -139,9 +138,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
   useEffect(() => {
     setDisplayValues({
-      cost: (watchedCost * activeRate).toFixed(2),
-      price: (watchedPrice * activeRate).toFixed(2),
-      wholesalePrice: (watchedWholesalePrice * activeRate).toFixed(2),
+      cost: (watchedCost * activeRate).toFixed(6),
+      price: (watchedPrice * activeRate).toFixed(6),
+      wholesalePrice: (watchedWholesalePrice * activeRate).toFixed(6),
     });
   }, [activeRate, watchedCost, watchedPrice, watchedWholesalePrice]);
 
@@ -372,7 +371,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                   <FormControl>
                     <Input 
                       type="number" 
-                      step="0.01" 
+                      step="0.000001" 
                       placeholder="0.00" 
                       value={displayValues.cost}
                       onChange={(e) => handleCurrencyInputChange(e, 'cost')}
@@ -391,7 +390,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                   <FormControl>
                      <Input 
                       type="number" 
-                      step="0.01" 
+                      step="0.000001" 
                       placeholder="0.00" 
                       value={displayValues.price}
                       onChange={(e) => handleCurrencyInputChange(e, 'price')}
@@ -413,7 +412,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                   <FormControl>
                      <Input 
                       type="number" 
-                      step="0.01" 
+                      step="0.000001" 
                       placeholder="0.00" 
                       value={displayValues.wholesalePrice}
                       onChange={(e) => handleCurrencyInputChange(e, 'wholesalePrice')}

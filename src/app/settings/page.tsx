@@ -130,7 +130,7 @@ export default function SettingsPage() {
 
         toast({
             title: 'Tasa de Cambio Guardada',
-            description: `Nueva tasa de ${newRate.toFixed(2)} para ${localSettings.secondaryCurrencyName} ha sido registrada.`,
+            description: `Nueva tasa de ${newRate.toFixed(6)} para ${localSettings.secondaryCurrencyName} ha sido registrada.`,
         });
     };
 
@@ -329,7 +329,7 @@ export default function SettingsPage() {
                                 <h4 className="font-medium">Registrar Tasa ({localSettings.secondaryCurrencyName})</h4>
                                 <div className="space-y-2">
                                     <Label htmlFor="newRate">Tasa de Cambio Actual</Label>
-                                    <Input id="newRate" type="number" value={newRate || ''} onChange={(e) => setNewRate(parseFloat(e.target.value) || 0)} placeholder={currencyRates[0]?.rate.toFixed(2) || "0.00"} />
+                                    <Input id="newRate" type="number" step="0.000001" value={newRate || ''} onChange={(e) => setNewRate(parseFloat(e.target.value) || 0)} placeholder={currencyRates[0]?.rate.toFixed(6) || "0.00"} />
                                 </div>
                                 <Button onClick={handleSaveNewRate}>Guardar Tasa</Button>
                             </div>
@@ -347,7 +347,7 @@ export default function SettingsPage() {
                                             {currencyRates.length > 0 ? currencyRates.map(rate => (
                                                 <TableRow key={rate.id}>
                                                     <TableCell>{format(typeof rate.date === 'string' ? parseISO(rate.date) : (rate.date as Timestamp).toDate(), "dd/MM/yy HH:mm")}</TableCell>
-                                                    <TableCell className="text-right font-mono">{`${rate.rate.toFixed(2)} ${localSettings.secondaryCurrencySymbol}`}</TableCell>
+                                                    <TableCell className="text-right font-mono">{`${rate.rate.toFixed(6)} ${localSettings.secondaryCurrencySymbol}`}</TableCell>
                                                 </TableRow>
                                             )) : (
                                                 <TableRow>
@@ -460,5 +460,3 @@ export default function SettingsPage() {
         </Dialog>
     );
 }
-
-    

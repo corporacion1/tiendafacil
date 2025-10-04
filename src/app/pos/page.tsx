@@ -1,5 +1,4 @@
 
-
 "use client"
 import { useState, useEffect, useMemo } from "react";
 import { usePathname, useRouter } from 'next/navigation';
@@ -317,7 +316,7 @@ export default function POSPage() {
                         <Package className="w-12 h-12 text-muted-foreground" />
                     )}
                     <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded">
-                      {activeSymbol}{(product.price * activeRate).toFixed(2)}
+                      {activeSymbol}{(product.price * activeRate).toFixed(6)}
                     </div>
                   </CardContent>
                   <CardFooter className="p-2 bg-background/80 backdrop-blur-sm">
@@ -456,7 +455,7 @@ export default function POSPage() {
                             <div className="flex-grow">
                                 <p className="font-medium text-sm">{item.product.name}</p>
                                 <p className={cn("text-xs", item.price === item.product.wholesalePrice ? "text-accent-foreground font-semibold" : "text-muted-foreground")}>
-                                    {activeSymbol}{(item.price * activeRate).toFixed(2)}
+                                    {activeSymbol}{(item.price * activeRate).toFixed(6)}
                                 </p>
                             </div>
                             <Input
@@ -466,7 +465,7 @@ export default function POSPage() {
                                 className="h-8 w-16"
                                 min="1"
                             />
-                            <div className="text-right font-semibold w-20">{activeSymbol}{(item.price * item.quantity * activeRate).toFixed(2)}</div>
+                            <div className="text-right font-semibold w-20">{activeSymbol}{(item.price * item.quantity * activeRate).toFixed(6)}</div>
                             <div className="flex items-center">
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-accent-foreground" onClick={() => toggleWholesalePrice(item.product.id, item.price)}>
                                     <Tags className={cn("h-4 w-4", item.price === item.product.wholesalePrice && "text-accent-foreground")} />
@@ -501,23 +500,23 @@ export default function POSPage() {
                     <div className="space-y-2">
                     <div className="flex justify-between">
                         <span>Subtotal</span>
-                        <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
+                        <span>{activeSymbol}{(subtotal * activeRate).toFixed(6)}</span>
                     </div>
                      {settings.tax1 > 0 && (
                         <div className="flex justify-between">
                             <span>Impuesto {settings.tax1}%</span>
-                            <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</span>
+                            <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(6)}</span>
                         </div>
                     )}
                     {settings.tax2 > 0 && (
                         <div className="flex justify-between">
                             <span>Impuesto {settings.tax2}%</span>
-                            <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
+                            <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(6)}</span>
                         </div>
                     )}
                     <div className="flex justify-between font-semibold text-lg">
                         <span>Total</span>
-                        <span>{activeSymbol}{(total * activeRate).toFixed(2)}</span>
+                        <span>{activeSymbol}{(total * activeRate).toFixed(6)}</span>
                     </div>
                     </div>
                 </>
@@ -622,11 +621,11 @@ export default function POSPage() {
                      <Separator />
                     <div className="flex justify-between">
                         <span className="text-muted-foreground">Precio Detal:</span>
-                        <span className="font-semibold">{activeSymbol}{(productDetails.price * activeRate).toFixed(2)}</span>
+                        <span className="font-semibold">{activeSymbol}{(productDetails.price * activeRate).toFixed(6)}</span>
                     </div>
                     <div className="flex justify-between">
                         <span className="text-muted-foreground">Precio Mayor:</span>
-                        <span className="font-semibold">{activeSymbol}{(productDetails.wholesalePrice * activeRate).toFixed(2)}</span>
+                        <span className="font-semibold">{activeSymbol}{(productDetails.wholesalePrice * activeRate).toFixed(6)}</span>
                     </div>
                  </div>
             </div>

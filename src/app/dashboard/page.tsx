@@ -214,7 +214,7 @@ export default function Dashboard() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{activeSymbol}{(totalRevenue * activeRate).toFixed(2)}</div>
+              <div className="text-2xl font-bold">{activeSymbol}{(totalRevenue * activeRate).toFixed(6)}</div>
             </CardContent>
           </Card>
           <Card>
@@ -225,7 +225,7 @@ export default function Dashboard() {
               <ShoppingBag className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{activeSymbol}{(totalPurchases * activeRate).toFixed(2)}</div>
+              <div className="text-2xl font-bold">{activeSymbol}{(totalPurchases * activeRate).toFixed(6)}</div>
             </CardContent>
           </Card>
           <Card>
@@ -298,5 +298,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-    
