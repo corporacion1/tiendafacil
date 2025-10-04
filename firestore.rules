@@ -2,31 +2,19 @@
  * @fileoverview Firestore Security Rules for Prototyping.
  *
  * Core Philosophy:
- * This ruleset is in prototyping mode. It prioritizes strong authorization and
- * allows flexible data shapes for rapid iteration.  Schema validation is
- * limited to critical relational integrity checks.
+ * This ruleset prioritizes secure authorization while offering data shape flexibility for rapid prototyping.
+ * All write operations are strictly controlled, while read operations are more permissive to enable quicker data exploration.
  *
  * Data Structure:
- * The Firestore database consists of several top-level collections, including:
- * /products/{productId}
- * /taxTypes/{taxTypeId}
- * /inventoryMovements/{inventoryMovementId}
- * /sales/{saleId}
- * /sales/{saleId}/saleItems/{saleItemId}
- * /purchases/{purchaseId}
- * /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
- * /customers/{customerId}
- * /stores/{storeId}
- * /families/{familyId}
+ * The Firestore database consists of several top-level collections: `products`, `taxTypes`, `inventoryMovements`, `sales`, `purchases`, `customers`, `stores`, and `families`.
+ * There are subcollections under `sales` and `purchases` for `saleItems` and `purchaseItems` respectively.
  *
  * Key Security Decisions:
- * - All write operations require a valid authenticated user.
- * - No listing of the entire database is allowed.
- * - Data validation is relaxed except for fields required for authorization
- *   (e.g., creatorId) or relational integrity (e.g., id).
- * - It is assumed that all entities have a `storeId` and only users
- *   belonging to that `storeId` can create/modify/delete entities. This is not
- *   explicitly stated in the data model but it is a reasonable assumption.
+ * - All write operations require authentication and ownership.
+ * - Listing all documents of a specific collection is generally allowed for authenticated users unless explicitly denied.
+ *
+ * Denormalization for Authorization:
+ * Assuming that all top-level collections have a storeId which can be used for authorization.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -34,195 +22,173 @@ service cloud.firestore {
 
     /**
      * @description Checks if the user is signed in.
+     * @return {boolean} True if the user is signed in, false otherwise.
      */
     function isSignedIn() {
       return request.auth != null;
     }
 
     /**
-     * @description Checks if the user is the owner, based on the storeId field.
+     * @description Allows only signed-in users.
+     * @return {boolean} True if the user is signed in, false otherwise.
      */
-    function isOwner(storeId) {
-      return isSignedIn() && request.auth.uid == storeId;
+    function onlySignedInUsers() {
+      return isSignedIn();
     }
 
     /**
-     * @description Checks if the user is the owner and the resource exists.
+     * @description Checks if the authenticated user's UID matches the provided userId.
+     * @param {string} userId - The user ID to compare against the authenticated user's UID.
+     * @return {boolean} True if the user IDs match, false otherwise.
      */
-    function isExistingOwner(storeId) {
-      return isOwner(storeId) && resource != null;
+    function isOwner(userId) {
+        return request.auth.uid == userId;
     }
 
     /**
-     * @description Collection for products.
+     * @description Checks if the document exists and the user is the owner.
+     * @param {string} userId - The user ID to compare against the authenticated user's UID.
+     * @return {boolean} True if the user IDs match and the resource exists, false otherwise.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && exists(resource);
+    }
+
+    /**
+     * @description Checks if the user is the owner of the document based on the 'userId' field.
+     * @return {boolean} True if the user is the owner, false otherwise.
+     */
+    function isDocumentOwner() {
+      return isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    /**
+     * @description Checks if the user is the owner of the document being created based on the 'userId' field.
+     * @return {boolean} True if the user is the owner, false otherwise.
+     */
+    function isCreatingDocumentOwner() {
+      return isSignedIn() && request.resource.data.userId == request.auth.uid;
+    }
+    
+    /**
+     * @description Rules for the /products collection.
      * @path /products/{productId}
-     * @allow (create) User with storeId 'store123' can create a product with storeId 'store123'.
-     * @deny (create) User with storeId 'store123' cannot create a product with storeId 'store456'.
-     * @allow (get, list) Any signed-in user can read any product.
-     * @deny (update, delete) Non-owners cannot update or delete products.
-     * @principle Enforces store ownership for writes; allows public reads.
      */
     match /products/{productId} {
       allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.storeId;
-      allow update: if isSignedIn() && request.auth.uid == request.resource.data.storeId;
-      allow delete: if isSignedIn() && request.auth.uid == resource.data.storeId;
+      allow create: if isSignedIn() && isCreatingDocumentOwner();
+      allow update: if isSignedIn() && isDocumentOwner();
+      allow delete: if isSignedIn() && isDocumentOwner();
     }
 
     /**
-     * @description Collection for tax types.
+     * @description Rules for the /taxTypes collection.
      * @path /taxTypes/{taxTypeId}
-     * @allow (create) User with storeId 'store123' can create a tax type with storeId 'store123'.
-     * @deny (create) User with storeId 'store123' cannot create a tax type with storeId 'store456'.
-     * @allow (get, list) Any signed-in user can read any tax type.
-     * @deny (update, delete) Non-owners cannot update or delete tax types.
-     * @principle Enforces store ownership for writes; allows public reads.
      */
     match /taxTypes/{taxTypeId} {
       allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.storeId;
-      allow update: if isSignedIn() && request.auth.uid == request.resource.data.storeId;
-      allow delete: if isSignedIn() && request.auth.uid == resource.data.storeId;
+      allow create: if isSignedIn() && isCreatingDocumentOwner();
+      allow update: if isSignedIn() && isDocumentOwner();
+      allow delete: if isSignedIn() && isDocumentOwner();
     }
 
     /**
-     * @description Collection for inventory movements.
+     * @description Rules for the /inventoryMovements collection.
      * @path /inventoryMovements/{inventoryMovementId}
-     * @allow (create) User with storeId 'store123' can create an inventory movement with storeId 'store123'.
-     * @deny (create) User with storeId 'store123' cannot create an inventory movement with storeId 'store456'.
-     * @allow (get, list) Any signed-in user can read any inventory movement.
-     * @deny (update, delete) Non-owners cannot update or delete inventory movements.
-     * @principle Enforces store ownership for writes; allows public reads.
      */
     match /inventoryMovements/{inventoryMovementId} {
       allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.storeId;
-      allow update: if isSignedIn() && request.auth.uid == request.resource.data.storeId;
-      allow delete: if isSignedIn() && request.auth.uid == resource.data.storeId;
+      allow create: if isSignedIn() && isCreatingDocumentOwner();
+      allow update: if isSignedIn() && isDocumentOwner();
+      allow delete: if isSignedIn() && isDocumentOwner();
     }
 
     /**
-     * @description Collection for sales.
+     * @description Rules for the /sales collection.
      * @path /sales/{saleId}
-     * @allow (create) User with storeId 'store123' can create a sale with storeId 'store123'.
-     * @deny (create) User with storeId 'store123' cannot create a sale with storeId 'store456'.
-     * @allow (get, list) Any signed-in user can read any sale.
-     * @deny (update, delete) Non-owners cannot update or delete sales.
-     * @principle Enforces store ownership for writes; allows public reads.
      */
     match /sales/{saleId} {
       allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.storeId;
-      allow update: if isSignedIn() && request.auth.uid == request.resource.data.storeId;
-      allow delete: if isSignedIn() && request.auth.uid == resource.data.storeId;
+      allow create: if isSignedIn() && isCreatingDocumentOwner();
+      allow update: if isSignedIn() && isDocumentOwner();
+      allow delete: if isSignedIn() && isDocumentOwner();
+
+      /**
+       * @description Rules for the /sales/{saleId}/saleItems subcollection.
+       * @path /sales/{saleId}/saleItems/{saleItemId}
+       */
+      match /sales/{saleId}/saleItems/{saleItemId} {
+        allow get, list: if isSignedIn();
+        allow create: if isSignedIn() && isCreatingDocumentOwner();
+        allow update: if isSignedIn() && isDocumentOwner();
+        allow delete: if isSignedIn() && isDocumentOwner();
+      }
     }
 
     /**
-     * @description Subcollection for sale items within a sale.
-     * @path /sales/{saleId}/saleItems/{saleItemId}
-     * @allow (create) User with storeId 'store123' can create a sale item under sale with storeId 'store123'.
-     * @deny (create) User with storeId 'store123' cannot create a sale item under sale with storeId 'store456'.
-     * @allow (get, list) Any signed-in user can read any sale item.
-     * @deny (update, delete) Non-owners cannot update or delete sale items.
-     * @principle Enforces store ownership for writes; allows public reads.
-     */
-    match /sales/{saleId}/saleItems/{saleItemId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && request.auth.uid == get(/databases/$(database)/documents/sales/$(saleId)).data.storeId;
-      allow update: if isSignedIn() && request.auth.uid == get(/databases/$(database)/documents/sales/$(saleId)).data.storeId;
-      allow delete: if isSignedIn() && request.auth.uid == get(/databases/$(database)/documents/sales/$(saleId)).data.storeId;
-    }
-
-    /**
-     * @description Collection for purchases.
+     * @description Rules for the /purchases collection.
      * @path /purchases/{purchaseId}
-     * @allow (create) User with storeId 'store123' can create a purchase with storeId 'store123'.
-     * @deny (create) User with storeId 'store123' cannot create a purchase with storeId 'store456'.
-     * @allow (get, list) Any signed-in user can read any purchase.
-     * @deny (update, delete) Non-owners cannot update or delete purchases.
-     * @principle Enforces store ownership for writes; allows public reads.
      */
     match /purchases/{purchaseId} {
       allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.storeId;
-      allow update: if isSignedIn() && request.auth.uid == request.resource.data.storeId;
-      allow delete: if isSignedIn() && request.auth.uid == resource.data.storeId;
+      allow create: if isSignedIn() && isCreatingDocumentOwner();
+      allow update: if isSignedIn() && isDocumentOwner();
+      allow delete: if isSignedIn() && isDocumentOwner();
+
+      /**
+       * @description Rules for the /purchases/{purchaseId}/purchaseItems subcollection.
+       * @path /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
+       */
+      match /purchases/{purchaseId}/purchaseItems/{purchaseItemId} {
+        allow get, list: if isSignedIn();
+        allow create: if isSignedIn() && isCreatingDocumentOwner();
+        allow update: if isSignedIn() && isDocumentOwner();
+        allow delete: if isSignedIn() && isDocumentOwner();
+      }
     }
 
     /**
-     * @description Subcollection for purchase items within a purchase.
-     * @path /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
-     * @allow (create) User with storeId 'store123' can create a purchase item under purchase with storeId 'store123'.
-     * @deny (create) User with storeId 'store123' cannot create a purchase item under purchase with storeId 'store456'.
-     * @allow (get, list) Any signed-in user can read any purchase item.
-     * @deny (update, delete) Non-owners cannot update or delete purchase items.
-     * @principle Enforces store ownership for writes; allows public reads.
-     */
-    match /purchases/{purchaseId}/purchaseItems/{purchaseItemId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && request.auth.uid == get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId;
-      allow update: if isSignedIn() && request.auth.uid == get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId;
-      allow delete: if isSignedIn() && request.auth.uid == get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId;
-    }
-
-    /**
-     * @description Collection for customers.
+     * @description Rules for the /customers collection.
      * @path /customers/{customerId}
-     * @allow (create) User with storeId 'store123' can create a customer with storeId 'store123'.
-     * @deny (create) User with storeId 'store123' cannot create a customer with storeId 'store456'.
-     * @allow (get, list) Any signed-in user can read any customer.
-     * @deny (update, delete) Non-owners cannot update or delete customers.
-     * @principle Enforces store ownership for writes; allows public reads.
      */
     match /customers/{customerId} {
       allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.storeId;
-      allow update: if isSignedIn() && request.auth.uid == request.resource.data.storeId;
-      allow delete: if isSignedIn() && request.auth.uid == resource.data.storeId;
+      allow create: if isSignedIn() && isCreatingDocumentOwner();
+      allow update: if isSignedIn() && isDocumentOwner();
+      allow delete: if isSignedIn() && isDocumentOwner();
     }
 
     /**
-     * @description Collection for store configurations.
+     * @description Rules for the /stores collection.
      * @path /stores/{storeId}
-     * @allow (create) User with storeId 'store123' can create a store configuration with storeId 'store123'.
-     * @deny (create) User with storeId 'store123' cannot create a store configuration with storeId 'store456'.
-     * @allow (get, list) Any signed-in user can read any store configuration.
-     * @deny (update, delete) Non-owners cannot update or delete store configurations.
-     * @principle Enforces store ownership for writes; allows public reads.
      */
     match /stores/{storeId} {
       allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.storeId;
-      allow update: if isSignedIn() && request.auth.uid == request.resource.data.storeId;
-      allow delete: if isSignedIn() && request.auth.uid == resource.data.storeId;
+      allow create: if isSignedIn() && isCreatingDocumentOwner();
+      allow update: if isSignedIn() && isDocumentOwner();
+      allow delete: if isSignedIn() && isDocumentOwner();
     }
 
     /**
-     * @description Collection for product families.
+     * @description Rules for the /families collection.
      * @path /families/{familyId}
-     * @allow (create) User with storeId 'store123' can create a family with storeId 'store123'.
-     * @deny (create) User with storeId 'store123' cannot create a family with storeId 'store456'.
-     * @allow (get, list) Any signed-in user can read any family.
-     * @deny (update, delete) Non-owners cannot update or delete families.
-     * @principle Enforces store ownership for writes; allows public reads.
      */
     match /families/{familyId} {
       allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.storeId;
-      allow update: if isSignedIn() && request.auth.uid == request.resource.data.storeId;
-      allow delete: if isSignedIn() && request.auth.uid == resource.data.storeId;
+      allow create: if isSignedIn() && isCreatingDocumentOwner();
+      allow update: if isSignedIn() && isDocumentOwner();
+      allow delete: if isSignedIn() && isDocumentOwner();
     }
-    
-     /**
-      * @description Currency rates collection.
-      * @path /currency_rates
-      * @allow (get, list) Any signed-in user can read any currency rate.
-      * @deny (create, update, delete) No one can create, update, or delete currency rates.
-      * @principle Public read-only collection.
-      */
-    match /currency_rates/{currencyRateId} {
+
+    /**
+     * @description Rules for the /units collection.
+     * @path /units
+     */
+    match /units/{unitId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if false;
+      allow create: if isSignedIn() && isCreatingDocumentOwner();
+      allow update: if isSignedIn() && isDocumentOwner();
+      allow delete: if isSignedIn() && isDocumentOwner();
     }
   }
 }

@@ -3,6 +3,7 @@ import './globals.css';
 import { AppShell } from '@/components/app-shell';
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
+import { FirebaseClientProvider } from '@/firebase';
 
 
 export const metadata: Metadata = {
@@ -26,9 +27,11 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            <AppShell>
-                {children}
-            </AppShell>
+            <FirebaseClientProvider>
+                <AppShell>
+                    {children}
+                </AppShell>
+            </FirebaseClientProvider>
             <Toaster />
         </ThemeProvider>
       </body>

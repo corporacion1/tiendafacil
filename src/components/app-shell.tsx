@@ -8,7 +8,7 @@ import { Footer } from "@/components/ui/footer";
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import { useSecurity, SecurityProvider } from "@/contexts/security-context";
-import { FirebaseProvider, initializeFirebase, useUser } from "@/firebase";
+import { useUser } from '@/firebase';
 import { SettingsProvider } from "@/contexts/settings-context";
 import { ProductProvider } from "@/contexts/product-context";
 import { SalesProvider } from "@/contexts/sales-context";
@@ -81,29 +81,25 @@ function MainApp({ children }: { children: React.ReactNode }) {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { firebaseApp, auth, firestore } = initializeFirebase();
-  
   return (
-    <FirebaseProvider firebaseApp={firebaseApp} auth={auth} firestore={firestore}>
-        <SecurityProvider>
-          <CurrencyRatesProvider>
-            <SettingsProvider>
-              <ProductProvider>
-                <SalesProvider>
-                  <PurchasesProvider>
-                    <UnitsProvider>
-                      <FamiliesProvider>
-                        <WarehousesProvider>
-                          <MainApp>{children}</MainApp>
-                        </WarehousesProvider>
-                      </FamiliesProvider>
-                    </UnitsProvider>
-                  </PurchasesProvider>
-                </SalesProvider>
-              </ProductProvider>
-            </SettingsProvider>
-          </CurrencyRatesProvider>
-        </SecurityProvider>
-    </FirebaseProvider>
+    <SecurityProvider>
+      <CurrencyRatesProvider>
+        <SettingsProvider>
+          <ProductProvider>
+            <SalesProvider>
+              <PurchasesProvider>
+                <UnitsProvider>
+                  <FamiliesProvider>
+                    <WarehousesProvider>
+                      <MainApp>{children}</MainApp>
+                    </WarehousesProvider>
+                  </FamiliesProvider>
+                </UnitsProvider>
+              </PurchasesProvider>
+            </SalesProvider>
+          </ProductProvider>
+        </SettingsProvider>
+      </CurrencyRatesProvider>
+    </SecurityProvider>
   )
 }
