@@ -35,6 +35,56 @@ const generateSaleId = () => {
     return result;
 }
 
+const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
+    const { activeSymbol, activeRate } = useSettings();
+    const displayImageUrl = useMemo(() => {
+        if (product.imageUrl && product.imageUrl.includes("www.dropbox.com")) {
+            let url = new URL(product.imageUrl);
+            if (url.searchParams.has('dl')) {
+                url.searchParams.set('raw', '1');
+                url.searchParams.delete('dl');
+            } else if (!url.searchParams.has('raw')) {
+                url.searchParams.append('raw', '1');
+            }
+            return url.toString();
+        }
+        return product.imageUrl;
+    }, [product.imageUrl]);
+
+    return (
+        <Card className="overflow-hidden group">
+            <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative">
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                    <Button size="sm" onClick={() => onAddToCart(product)}>Agregar</Button>
+                    <DialogTrigger asChild>
+                        <Button size="icon" variant="ghost" className="absolute top-1 right-1 h-7 w-7 text-white" onClick={() => onShowDetails(product)}>
+                            <ZoomIn className="h-5 w-5" />
+                        </Button>
+                    </DialogTrigger>
+                </div>
+                {displayImageUrl ? (
+                    <Image
+                        src={displayImageUrl}
+                        alt={product.name}
+                        fill
+                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
+                        className="object-cover transition-transform group-hover:scale-105"
+                        data-ai-hint={product.imageHint}
+                    />
+                ) : (
+                    <Package className="w-12 h-12 text-muted-foreground" />
+                )}
+                <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded">
+                    {activeSymbol}{(product.price * activeRate).toFixed(2)}
+                </div>
+            </CardContent>
+            <CardFooter className="p-2 bg-background/80 backdrop-blur-sm">
+                <h3 className="text-sm font-medium truncate">{product.name}</h3>
+            </CardFooter>
+        </Card>
+    );
+}
+
 export default function POSPage() {
   const { toast } = useToast();
   const { settings, activeSymbol, activeRate } = useSettings();
@@ -260,6 +310,20 @@ export default function POSPage() {
           (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase())))
       );
   }, [products, searchTerm, selectedFamily]);
+  
+  const productDetailsImageUrl = useMemo(() => {
+    if (productDetails?.imageUrl && productDetails.imageUrl.includes("www.dropbox.com")) {
+        let url = new URL(productDetails.imageUrl);
+        if (url.searchParams.has('dl')) {
+            url.searchParams.set('raw', '1');
+            url.searchParams.delete('dl');
+        } else if (!url.searchParams.has('raw')) {
+            url.searchParams.append('raw', '1');
+        }
+        return url.toString();
+    }
+    return productDetails?.imageUrl;
+  }, [productDetails]);
 
   return (
     <Dialog onOpenChange={(open) => !open && setProductDetails(null)}>
@@ -293,36 +357,12 @@ export default function POSPage() {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {filteredProducts.map((product) => (
-                <Card key={product.id} className="overflow-hidden group">
-                  <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative">
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                        <Button size="sm" onClick={() => addToCart(product)}>Agregar</Button>
-                        <DialogTrigger asChild>
-                            <Button size="icon" variant="ghost" className="absolute top-1 right-1 h-7 w-7 text-white" onClick={() => setProductDetails(product)}>
-                                <ZoomIn className="h-5 w-5" />
-                            </Button>
-                        </DialogTrigger>
-                    </div>
-                     {product.imageUrl ? (
-                        <Image
-                            src={product.imageUrl}
-                            alt={product.name}
-                            fill
-                            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
-                            className="object-cover transition-transform group-hover:scale-105"
-                            data-ai-hint={product.imageHint}
-                        />
-                        ) : (
-                        <Package className="w-12 h-12 text-muted-foreground" />
-                    )}
-                    <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded">
-                      {activeSymbol}{(product.price * activeRate).toFixed(2)}
-                    </div>
-                  </CardContent>
-                  <CardFooter className="p-2 bg-background/80 backdrop-blur-sm">
-                    <h3 className="text-sm font-medium truncate">{product.name}</h3>
-                  </CardFooter>
-                </Card>
+                <ProductCard 
+                    key={product.id} 
+                    product={product} 
+                    onAddToCart={addToCart}
+                    onShowDetails={setProductDetails}
+                />
               ))}
             </div>
           </CardContent>
@@ -600,9 +640,9 @@ export default function POSPage() {
         {productDetails && (
             <div className="grid gap-4">
                  <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
-                    {productDetails.imageUrl ? (
+                    {productDetailsImageUrl ? (
                         <Image
-                            src={productDetails.imageUrl}
+                            src={productDetailsImageUrl}
                             alt={productDetails.name}
                             fill
                             sizes="300px"
