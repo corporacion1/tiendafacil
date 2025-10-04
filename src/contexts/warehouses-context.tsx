@@ -21,7 +21,7 @@ export const WarehousesProvider = ({ children }: { children: React.ReactNode }) 
   const { user, isUserLoading } = useUser();
 
   const warehousesQuery = useMemoFirebase(() => {
-      if (!firestore || isUserLoading || !user) return null;
+      if (isUserLoading || !user) return null;
       return query(collection(firestore, 'warehouses'));
   }, [firestore, user, isUserLoading]);
 

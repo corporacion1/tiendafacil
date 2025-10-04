@@ -19,7 +19,7 @@ export const CurrencyRatesProvider = ({ children }: { children: React.ReactNode 
   const { user, isUserLoading } = useUser();
 
   const ratesQuery = useMemoFirebase(() => {
-    if (!firestore || isUserLoading || !user) return null;
+    if (isUserLoading || !user) return null;
     return query(collection(firestore, 'currency_rates'), orderBy('date', 'desc'), limit(50));
   }, [firestore, user, isUserLoading]);
 
