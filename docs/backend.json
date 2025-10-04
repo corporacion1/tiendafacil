@@ -396,7 +396,7 @@
   "auth": {
     "providers": [
       "password",
-      "anonymous"
+      "google.com"
     ]
   },
   "firestore": {
@@ -605,3 +605,4 @@
     "reasoning": "The Firestore data structure is designed to ensure security, scalability, and ease of debugging, following the principles of Authorization Independence, Clarity of Intent, DBAC (Database-Based Access Control), and QAPs (Rules are not Filters). The structure facilitates secure `list` operations and enforces data integrity.\n\n**Authorization Independence:**\n\n*   No `get()` calls are necessary in security rules due to denormalization.\n\n**Structural Segregation:**\n\n*   Data with different access needs are stored in separate collections.\n\n**Access Modeling:**\n\n*   Path-based ownership is used for user-owned data.\n*   A dedicated collection `roles_admin` is used for global roles (DBAC).\n\nTo prevent code injection through image uploads, Firebase Storage security rules should be implemented to validate file types and metadata. This aspect is outside the scope of Firestore structure but is crucial for overall application security. Additionally, input validation and sanitization should be performed on the backend before writing data to Firestore, and on the frontend before sending the data to the backend.\n\nSince only one email must be superuser, this logic will be implemented in the Firebase Functions, triggering a function every time a new user is created. This trigger will look for a specific email and update the field `isSuperUser` to true, otherwise, it will be false."
   }
 }
+    

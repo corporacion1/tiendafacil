@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
@@ -79,15 +80,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     const unsubscribe = onAuthStateChanged(
       auth,
       (firebaseUser) => { // Auth state determined
-        if (!firebaseUser) {
-          // If no user is logged in, sign in anonymously.
-          signInAnonymously(auth).catch((error) => {
-             console.error("FirebaseProvider: Anonymous sign-in error:", error);
-             setUserAuthState({ user: null, isUserLoading: false, userError: error });
-          });
-        } else {
-          setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
-        }
+        setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
       },
       (error) => { // Auth listener error
         console.error("FirebaseProvider: onAuthStateChanged error:", error);
@@ -182,3 +175,5 @@ export const useUser = (): UserHookResult => { // Renamed from useAuthUser
   const { user, isUserLoading, userError } = useFirebase(); // Leverages the main hook
   return { user, isUserLoading, userError };
 };
+
+    

@@ -11,15 +11,24 @@ import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { Footer } from "@/components/ui/footer";
 import { Toaster } from "@/components/ui/toaster";
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { FirebaseClientProvider } from "@/firebase";
+import { FirebaseClientProvider, useUser } from "@/firebase";
 
 
 function MainApp({ children }: { children: React.ReactNode }) {
   const { isLocked, lockApp, hasPin } = useSecurity();
+  const { user, isUserLoading } = useUser();
   const pathname = usePathname();
+  const router = useRouter();
   const previousPathname = useRef(pathname);
+
+  useEffect(() => {
+    // If loading, do nothing. If not loading and no user, redirect to login unless already there.
+    if (!isUserLoading && !user && pathname !== '/login') {
+      router.replace('/login');
+    }
+  }, [user, isUserLoading, pathname, router]);
 
   useEffect(() => {
     if (!hasPin) return;
@@ -31,6 +40,14 @@ function MainApp({ children }: { children: React.ReactNode }) {
     
     previousPathname.current = pathname;
   }, [pathname, lockApp, hasPin]);
+  
+  if (isUserLoading || (!user && pathname !== '/login')) {
+     return <div className="flex h-screen w-full items-center justify-center"><p>Cargando...</p></div>;
+  }
+
+  if (pathname === '/login') {
+      return <>{children}</>;
+  }
 
   if (isLocked) {
       return <PinModal />;
@@ -68,3 +85,5 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </ThemeProvider>
   );
 }
+
+    
