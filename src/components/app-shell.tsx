@@ -35,34 +35,35 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     previousPathname.current = pathname;
   }, [pathname, lockApp, hasPin]);
   
-  if (isUserLoading || (!user && pathname !== '/login')) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-          <p>Cargando aplicación...</p>
-      </div>
-    );
-  }
-  
+  // Render login page without the shell
   if (pathname === '/login') {
       return <>{children}</>;
   }
 
+  // If locked, only show PIN modal
   if (isLocked) {
       return <PinModal />;
   }
 
+  // Main application shell
   return (
-    <ProvidersWrapper>
-      <div className="flex min-h-screen w-full flex-col bg-muted/40">
-        <SiteSidebar />
-        <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-          <SiteHeader />
-          <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
+    <div className="flex min-h-screen w-full flex-col bg-muted/40">
+      <SiteSidebar />
+      <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+        <SiteHeader />
+        <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
+          {isUserLoading || !user ? (
+            <div className="flex w-full items-center justify-center pt-20">
+              <p>Cargando aplicación...</p>
+            </div>
+          ) : (
+            <ProvidersWrapper>
               {children}
-          </main>
-          <Footer />
-        </div>
+            </ProvidersWrapper>
+          )}
+        </main>
+        <Footer />
       </div>
-    </ProvidersWrapper>
+    </div>
   );
 }
