@@ -425,6 +425,32 @@
         "name": { "type": "string" }
       },
       "required": ["id", "name"]
+    },
+    "CurrencyRate": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CurrencyRate",
+      "type": "object",
+      "description": "Represents a currency exchange rate at a specific point in time.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the CurrencyRate entity."
+        },
+        "rate": {
+          "type": "number",
+          "description": "The exchange rate value."
+        },
+        "date": {
+          "type": "string",
+          "description": "The timestamp when the rate was recorded.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "rate",
+        "date"
+      ]
     }
   },
   "auth": {
@@ -538,6 +564,13 @@
         "definition": {
           "entityName": "User",
           "schema": { "$ref": "#/backend/entities/User" }
+        }
+      },
+      {
+        "path": "/currency_rates/{currencyRateId}",
+        "definition": {
+          "entityName": "CurrencyRate",
+          "schema": { "$ref": "#/backend/entities/CurrencyRate" }
         }
       }
     ]

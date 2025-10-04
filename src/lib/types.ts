@@ -28,7 +28,7 @@ export type CartItem = {
 
 export type InventoryMovement = {
   id: string;
-  productId: string;
+  productId?: string;
   productName: string;
   type: 'sale' | 'purchase' | 'adjustment';
   quantity: number;
@@ -111,7 +111,7 @@ export type Warehouse = {
 export type CurrencyRate = {
     id: string;
     rate: number;
-    date: string;
+    date: Timestamp | string;
 };
 
 export type Store = {
@@ -119,3 +119,5 @@ export type Store = {
     name: string;
     status: 'active' | 'inactive';
 };
+
+    

@@ -22,6 +22,8 @@ import { useProducts } from "@/contexts/product-context";
 import { useUnits } from "@/contexts/units-context";
 import { useFamilies } from "@/contexts/families-context";
 import { useWarehouses } from "@/contexts/warehouses-context";
+import { useCurrencyRates } from "@/contexts/currency-rates-context";
+import { Timestamp } from "firebase/firestore";
 
 
 function ChangePinDialog() {
@@ -78,7 +80,7 @@ function ChangePinDialog() {
 
 export default function SettingsPage() {
     const { hasPin, setPin, removePin } = useSecurity();
-    const { settings, setSettings, currencyRates, setCurrencyRates } = useSettings();
+    const { settings, setSettings } = useSettings();
     const [localSettings, setLocalSettings] = useState(settings);
     const [newPin, setNewPin] = useState('');
     const [confirmPin, setConfirmPin] = useState('');
@@ -88,6 +90,7 @@ export default function SettingsPage() {
     const { units, addUnit, updateUnit, deleteUnit } = useUnits();
     const { families, addFamily, updateFamily, deleteFamily } = useFamilies();
     const { warehouses, addWarehouse, updateWarehouse, deleteWarehouse } = useWarehouses();
+    const { currencyRates, addRate } = useCurrencyRates();
     const [newRate, setNewRate] = useState<number>(0);
 
     const [editingItem, setEditingItem] = useState<{type: 'unit' | 'family' | 'warehouse', data: any} | null>(null);
@@ -108,7 +111,7 @@ export default function SettingsPage() {
         toast({ title: "Configuración guardada", description: "Toda la configuración ha sido actualizada." });
     };
 
-    const handleSaveNewRate = () => {
+    const handleSaveNewRate = async () => {
         if(newRate <= 0) {
             toast({
                 variant: 'destructive',
@@ -118,13 +121,11 @@ export default function SettingsPage() {
             return;
         }
 
-        const newRateEntry: CurrencyRate = {
-            id: `rate-${Date.now()}`,
+        await addRate({
             rate: newRate,
-            date: new Date().toISOString(),
-        };
+            date: Timestamp.now(),
+        });
 
-        setCurrencyRates(prev => [newRateEntry, ...prev]);
         setNewRate(0);
 
         toast({
@@ -345,7 +346,7 @@ export default function SettingsPage() {
                                         <TableBody>
                                             {currencyRates.length > 0 ? currencyRates.map(rate => (
                                                 <TableRow key={rate.id}>
-                                                    <TableCell>{format(parseISO(rate.date), "dd/MM/yy HH:mm")}</TableCell>
+                                                    <TableCell>{format(typeof rate.date === 'string' ? parseISO(rate.date) : (rate.date as Timestamp).toDate(), "dd/MM/yy HH:mm")}</TableCell>
                                                     <TableCell className="text-right font-mono">{`${rate.rate.toFixed(2)} ${localSettings.secondaryCurrencySymbol}`}</TableCell>
                                                 </TableRow>
                                             )) : (

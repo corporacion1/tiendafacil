@@ -10,6 +10,7 @@ import { PurchasesProvider } from "@/contexts/purchases-context";
 import { UnitsProvider } from "@/contexts/units-context";
 import { FamiliesProvider } from "@/contexts/families-context";
 import { WarehousesProvider } from "@/contexts/warehouses-context";
+import { CurrencyRatesProvider } from "@/contexts/currency-rates-context";
 import { PinModal } from "@/components/pin-modal";
 import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
@@ -76,22 +77,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
       <FirebaseClientProvider>
         <SecurityProvider>
-          <SettingsProvider>
-            <ProductProvider>
-              <SalesProvider>
-                <PurchasesProvider>
-                  <UnitsProvider>
-                    <FamiliesProvider>
-                      <WarehousesProvider>
-                        <MainApp>{children}</MainApp>
-                        <Toaster />
-                      </WarehousesProvider>
-                    </FamiliesProvider>
-                  </UnitsProvider>
-                </PurchasesProvider>
-              </SalesProvider>
-            </ProductProvider>
-          </SettingsProvider>
+          <CurrencyRatesProvider>
+            <SettingsProvider>
+              <ProductProvider>
+                <SalesProvider>
+                  <PurchasesProvider>
+                    <UnitsProvider>
+                      <FamiliesProvider>
+                        <WarehousesProvider>
+                          <MainApp>{children}</MainApp>
+                          <Toaster />
+                        </WarehousesProvider>
+                      </FamiliesProvider>
+                    </UnitsProvider>
+                  </PurchasesProvider>
+                </SalesProvider>
+              </ProductProvider>
+            </SettingsProvider>
+          </CurrencyRatesProvider>
         </SecurityProvider>
       </FirebaseClientProvider>
     </ThemeProvider>

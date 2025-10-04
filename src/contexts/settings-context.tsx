@@ -3,8 +3,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
-import { mockCurrencyRates } from '@/lib/data';
 import type { CurrencyRate } from '@/lib/types';
+import { useCurrencyRates } from './currency-rates-context';
 
 export interface Settings {
     storeName: string;
@@ -30,7 +30,6 @@ interface SettingsContextType {
   activeSymbol: string;
   activeRate: number;
   currencyRates: CurrencyRate[];
-  setCurrencyRates: React.Dispatch<React.SetStateAction<CurrencyRate[]>>;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -53,7 +52,7 @@ const defaultSettings: Settings = {
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
   const [settings, setSettings] = useState<Settings>(defaultSettings);
-  const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>(mockCurrencyRates);
+  const { currencyRates } = useCurrencyRates();
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   const { toast } = useToast();
 
@@ -106,7 +105,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const activeRate = activeCurrency === 'primary' ? 1 : (currencyRates[0]?.rate || 1);
 
   return (
-    <SettingsContext.Provider value={{ settings, setSettings: handleSetSettings, displayCurrency, toggleDisplayCurrency, activeCurrency, activeSymbol, activeRate, currencyRates, setCurrencyRates }}>
+    <SettingsContext.Provider value={{ settings, setSettings: handleSetSettings, displayCurrency, toggleDisplayCurrency, activeCurrency, activeSymbol, activeRate, currencyRates }}>
       {children}
     </SettingsContext.Provider>
   );
@@ -119,3 +118,5 @@ export const useSettings = (): SettingsContextType => {
   }
   return context;
 };
+
+    

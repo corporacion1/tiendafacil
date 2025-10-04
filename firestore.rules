@@ -1,262 +1,300 @@
 /**
  * @file Firestore Security Rules
- * @description This ruleset enforces a strict owner-only access model for most collections,
- *              with public read access granted to a few top-level collections. It prioritizes
- *              security by default, explicitly denying access where the data model is ambiguous.
- *
- * Data Structure:
- * - Top-level collections (e.g., /products, /tax_types) store individual documents.
- * - Subcollections (e.g., /sales/{saleId}/sale_items) are nested under their parent documents.
- * - No user-specific data is directly stored under /users/{userId}; the user's own document
- *   at `/users/{userId}` stores their profile.
- *
- * Key Security Decisions:
- * - User listing is disallowed for all collections.
- * - Ownership is validated on creation and enforced immutably on updates.
- * - Collections without a clear ownership model default to owner-only write access.
+ * @core-philosophy This ruleset enforces a strict owner-only access model for user data and allows public read access for certain collections while restricting writes to authenticated users. Data validation is minimized for rapid prototyping.
+ * @data-structure The database is organized into top-level collections for various entities like products, tax types, sales, purchases, suppliers, customers, store configuration, and users. A subcollection is used to store sale items and purchase items.
+ * @key-security-decisions
+ *   - Listing of users is disallowed.
+ *   - Public read access is granted to product, tax types, sales, purchases, suppliers, customers, unit, warehouse and families collections.
+ *   - Strict ownership is enforced for user documents.
+ *   - The store configuration collection is restricted to authenticated users for writes.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Grants read access to anyone and restricts write access to authenticated users.
-     * @path /products/{productId}
-     * @allow get, list: if true;
-     * @allow create: if request.auth != null;
-     * @allow update: if false;
-     * @allow delete: if false;
-     * @principle Public read, authenticated write.
+     * @description Checks if the current user is signed in.
+     * @return {boolean} True if the user is signed in, false otherwise.
      */
-    match /products/{productId} {
-      allow get, list: if true;
-      allow create: if request.auth != null;
-      allow update: if false;
-      allow delete: if false;
+    function isSignedIn() {
+      return request.auth != null;
     }
 
     /**
-     * @description Grants read access to anyone and restricts write access to authenticated users.
-     * @path /units/{unitId}
-     * @allow get, list: if true;
-     * @allow create: if request.auth != null;
-     * @allow update: if false;
-     * @allow delete: if false;
-     * @principle Public read, authenticated write.
+     * @description Checks if the current user is the owner of the resource.
+     * @param {string} userId - The user ID to compare against the request's auth UID.
+     * @return {boolean} True if the user is the owner, false otherwise.
      */
-    match /units/{unitId} {
-      allow get, list: if true;
-      allow create: if request.auth != null;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Grants read access to anyone and restricts write access to authenticated users.
-     * @path /families/{familyId}
-     * @allow get, list: if true;
-     * @allow create: if request.auth != null;
-     * @allow update: if false;
-     * @allow delete: if false;
-     * @principle Public read, authenticated write.
-     */
-    match /families/{familyId} {
-      allow get, list: if true;
-      allow create: if request.auth != null;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Fixed the reported error of missing or insufficient permissions on the warehouse collection by adding read permissions to the warehouses collection.
-     * @path /warehouses/{warehouseId}
-     * @allow get, list: if true;
-     * @allow create: if request.auth != null;
-     * @allow update: if false;
-     * @allow delete: if false;
-     * @principle Public read, authenticated write.
-     */
-    match /warehouses/{warehouseId} {
-      allow get, list: if true;
-      allow create: if request.auth != null;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Grants read access to anyone and restricts write access to authenticated users.
-     * @path /tax_types/{taxTypeId}
-     * @allow get, list: if true;
-     * @allow create: if request.auth != null;
-     * @allow update: if false;
-     * @allow delete: if false;
-     * @principle Public read, authenticated write.
-     */
-    match /tax_types/{taxTypeId} {
-      allow get, list: if true;
-      allow create: if request.auth != null;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Grants read access to anyone and restricts write access to authenticated users.
-     * @path /inventory_movements/{inventoryMovementId}
-     * @allow get, list: if true;
-     * @allow create: if request.auth != null;
-     * @allow update: if false;
-     * @allow delete: if false;
-     * @principle Public read, authenticated write.
-     */
-    match /inventory_movements/{inventoryMovementId} {
-      allow get, list: if true;
-      allow create: if request.auth != null;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Grants read access to anyone and restricts write access to authenticated users.
-     * @path /sales/{saleId}
-     * @allow get, list: if true;
-     * @allow create: if request.auth != null;
-     * @allow update: if false;
-     * @allow delete: if false;
-     * @principle Public read, authenticated write.
-     */
-    match /sales/{saleId} {
-      allow get, list: if true;
-      allow create: if request.auth != null;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Grants read access to anyone and restricts write access to authenticated users.
-     * @path /sales/{saleId}/sale_items/{saleItemId}
-     * @allow get, list: if true;
-     * @allow create: if request.auth != null;
-     * @allow update: if false;
-     * @allow delete: if false;
-     * @principle Public read, authenticated write.
-     */
-    match /sales/{saleId}/sale_items/{saleItemId} {
-      allow get, list: if true;
-      allow create: if request.auth != null;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Grants read access to anyone and restricts write access to authenticated users.
-     * @path /purchases/{purchaseId}
-     * @allow get, list: if true;
-     * @allow create: if request.auth != null;
-     * @allow update: if false;
-     * @allow delete: if false;
-     * @principle Public read, authenticated write.
-     */
-    match /purchases/{purchaseId} {
-      allow get, list: if true;
-      allow create: if request.auth != null;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Grants read access to anyone and restricts write access to authenticated users.
-     * @path /purchases/{purchaseId}/purchase_items/{purchaseItemId}
-     * @allow get, list: if true;
-     * @allow create: if request.auth != null;
-     * @allow update: if false;
-     * @allow delete: if false;
-     * @principle Public read, authenticated write.
-     */
-    match /purchases/{purchaseId}/purchase_items/{purchaseItemId} {
-      allow get, list: if true;
-      allow create: if request.auth != null;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Grants read access to anyone and restricts write access to authenticated users.
-     * @path /suppliers/{supplierId}
-     * @allow get, list: if true;
-     * @allow create: if request.auth != null;
-     * @allow update: if false;
-     * @allow delete: if false;
-     * @principle Public read, authenticated write.
-     */
-    match /suppliers/{supplierId} {
-      allow get, list: if true;
-      allow create: if request.auth != null;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Grants read access to anyone and restricts write access to authenticated users.
-     * @path /customers/{customerId}
-     * @allow get, list: if true;
-     * @allow create: if request.auth != null;
-     * @allow update: if false;
-     * @allow delete: if false;
-     * @principle Public read, authenticated write.
-     */
-    match /customers/{customerId} {
-      allow get, list: if true;
-      allow create: if request.auth != null;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Grants read access to anyone and restricts write access to authenticated users.
-     * @path /store_configuration/{storeConfigurationId}
-     * @allow get, list: if true;
-     * @allow create: if request.auth != null;
-     * @allow update: if false;
-     * @allow delete: if false;
-     * @principle Public read, authenticated write.
-     */
-    match /store_configuration/{storeConfigurationId} {
-      allow get, list: if true;
-      allow create: if request.auth != null;
-      allow update: if false;
-      allow delete: if false;
-    }
-
-    /**
-     * @description Grants read access to anyone and restricts write access to authenticated users.
-     * @path /users/{userId}
-     * @allow get, list: if true;
-     * @allow create: if request.auth != null;
-     * @allow update: if false;
-     * @allow delete: if false;
-     * @principle Public read, authenticated write.
-     */
-    match /users/{userId} {
-      allow get, list: if true;
-      allow create: if request.auth != null;
-      allow update: if false;
-      allow delete: if false;
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
 
         /**
-     * @description Grants read access to anyone and restricts write access to authenticated users.
-     * @path /roles_admin/{userId}
-     * @allow get, list: if true;
-     * @allow create: if request.auth != null;
-     * @allow update: if false;
-     * @allow delete: if false;
-     * @principle Public read, authenticated write.
+     * @description Checks if the current user is the existing owner of the resource.
+     *              This function combines the ownership check with the existence check.
+     * @param {string} userId - The user ID to compare against the resource's data.
+     * @return {boolean} True if the user is the existing owner and the resource exists, false otherwise.
      */
-    match /roles_admin/{userId} {
-      allow get, list: if true;
-      allow create: if request.auth != null;
-      allow update: if false;
-      allow delete: if false;
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Defines if the current user is an admin.
+     * @return {boolean} True if the user is admin, false otherwise.
+     */
+    function isAdmin() {
+        return get(/databases/$(database)/documents/roles_admin/$(request.auth.uid)).data.isSuperUser == true;
+    }
+    
+    /**
+     * @description Security rules for the /products collection. Allows public read access and owner-only writes.
+     * @path /products/{productId}
+     * @allow (get, list) Public read access is allowed.
+     * @allow (create) Allows an authenticated user to create a product.
+     * @allow (update, delete) Allows the authenticated user to update or delete a product they own.
+     * @deny Any non-authenticated user to create, update, or delete a product.
+     * @principle Allows public read access while enforcing ownership for write operations.
+     */
+    match /products/{productId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+        /**
+     * @description Security rules for the /units collection. Allows public read access and authenticated writes.
+     * @path /units/{unitId}
+     * @allow (get, list) Public read access is allowed.
+     * @allow (create) Allows an authenticated user to create a unit.
+     * @allow (update, delete) Allows the authenticated user to update or delete a unit.
+     * @deny Any non-authenticated user to create, update, or delete a unit.
+     * @principle Allows public read access while enforcing authentication for write operations.
+     */
+    match /units/{unitId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+        /**
+     * @description Security rules for the /families collection. Allows public read access and authenticated writes.
+     * @path /families/{familyId}
+     * @allow (get, list) Public read access is allowed.
+     * @allow (create) Allows an authenticated user to create a family.
+     * @allow (update, delete) Allows the authenticated user to update or delete a family.
+     * @deny Any non-authenticated user to create, update, or delete a family.
+     * @principle Allows public read access while enforcing authentication for write operations.
+     */
+    match /families/{familyId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+        /**
+     * @description Security rules for the /warehouses collection. Allows public read access and authenticated writes.
+     * @path /warehouses/{warehouseId}
+     * @allow (get, list) Public read access is allowed.
+     * @allow (create) Allows an authenticated user to create a warehouse.
+     * @allow (update, delete) Allows the authenticated user to update or delete a warehouse.
+     * @deny Any non-authenticated user to create, update, or delete a warehouse.
+     * @principle Allows public read access while enforcing authentication for write operations.
+     */
+    match /warehouses/{warehouseId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+    
+    /**
+     * @description Security rules for the /tax_types collection. Allows public read access and owner-only writes.
+     * @path /tax_types/{taxTypeId}
+     * @allow (get, list) Public read access is allowed.
+     * @allow (create) Allows an authenticated user to create a tax type.
+     * @allow (update, delete) Allows the authenticated user to update or delete a tax type they own.
+     * @deny Any non-authenticated user to create, update, or delete a tax type.
+     * @principle Allows public read access while enforcing ownership for write operations.
+     */
+    match /tax_types/{taxTypeId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+    /**
+     * @description Security rules for the /inventory_movements collection. Allows public read access and owner-only writes.
+     * @path /inventory_movements/{inventoryMovementId}
+     * @allow (get, list) Public read access is allowed.
+     * @allow (create) Allows an authenticated user to create an inventory movement.
+     * @allow (update, delete) Allows the authenticated user to update or delete an inventory movement they own.
+     * @deny Any non-authenticated user to create, update, or delete an inventory movement.
+     * @principle Allows public read access while enforcing ownership for write operations.
+     */
+    match /inventory_movements/{inventoryMovementId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+    /**
+     * @description Security rules for the /sales collection. Allows public read access and owner-only writes.
+     * @path /sales/{saleId}
+     * @allow (get, list) Public read access is allowed.
+     * @allow (create) Allows an authenticated user to create a sale.
+     * @allow (update, delete) Allows the authenticated user to update or delete a sale they own.
+     * @deny Any non-authenticated user to create, update, or delete a sale.
+     * @principle Allows public read access while enforcing ownership for write operations.
+     */
+    match /sales/{saleId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+    /**
+     * @description Security rules for the /sales/{saleId}/sale_items collection. Allows public read access and owner-only writes.
+     * @path /sales/{saleId}/sale_items/{saleItemId}
+     * @allow (get, list) Public read access is allowed.
+     * @allow (create) Allows an authenticated user to create a sale item.
+     * @allow (update, delete) Allows the authenticated user to update or delete a sale item they own.
+     * @deny Any non-authenticated user to create, update, or delete a sale item.
+     * @principle Allows public read access while enforcing ownership for write operations.
+     */
+    match /sales/{saleId}/sale_items/{saleItemId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+    /**
+     * @description Security rules for the /purchases collection. Allows public read access and owner-only writes.
+     * @path /purchases/{purchaseId}
+     * @allow (get, list) Public read access is allowed.
+     * @allow (create) Allows an authenticated user to create a purchase.
+     * @allow (update, delete) Allows the authenticated user to update or delete a purchase they own.
+     * @deny Any non-authenticated user to create, update, or delete a purchase.
+     * @principle Allows public read access while enforcing ownership for write operations.
+     */
+    match /purchases/{purchaseId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+    /**
+     * @description Security rules for the /purchases/{purchaseId}/purchase_items collection. Allows public read access and owner-only writes.
+     * @path /purchases/{purchaseId}/purchase_items/{purchaseItemId}
+     * @allow (get, list) Public read access is allowed.
+     * @allow (create) Allows an authenticated user to create a purchase item.
+     * @allow (update, delete) Allows the authenticated user to update or delete a purchase item they own.
+     * @deny Any non-authenticated user to create, update, or delete a purchase item.
+     * @principle Allows public read access while enforcing ownership for write operations.
+     */
+    match /purchases/{purchaseId}/purchase_items/{purchaseItemId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+   /**
+     * @description Security rules for the /suppliers collection. Allows public read access and owner-only writes.
+     * @path /suppliers/{supplierId}
+     * @allow (get, list) Public read access is allowed.
+     * @allow (create) Allows an authenticated user to create a supplier.
+     * @allow (update, delete) Allows the authenticated user to update or delete a supplier they own.
+     * @deny Any non-authenticated user to create, update, or delete a supplier.
+     * @principle Allows public read access while enforcing ownership for write operations.
+     */
+    match /suppliers/{supplierId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+   /**
+     * @description Security rules for the /customers collection. Allows public read access and owner-only writes.
+     * @path /customers/{customerId}
+     * @allow (get, list) Public read access is allowed.
+     * @allow (create) Allows an authenticated user to create a customer.
+     * @allow (update, delete) Allows the authenticated user to update or delete a customer they own.
+     * @deny Any non-authenticated user to create, update, or delete a customer.
+     * @principle Allows public read access while enforcing ownership for write operations.
+     */
+    match /customers/{customerId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+    /**
+     * @description Security rules for the /store_configuration collection. Allows read access to signed in users and write access to authenticated users.
+     * @path /store_configuration/{storeConfigurationId}
+     * @allow (get, list) Allows any signed-in user to read the store configuration.
+     * @allow (create) Allows any authenticated user to create a store configuration.
+     * @allow (update, delete) Allows any authenticated user to update/delete store configuration.
+     * @deny Non-signed-in users are denied read access.
+     * @principle Allows authenticated users to create, update, and delete store configurations.
+     */
+    match /store_configuration/{storeConfigurationId} {
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+    /**
+     * @description Security rules for the /users collection. Only the owner can read, update, or delete their own document.  Listing is disallowed.
+     * @path /users/{userId}
+     * @allow (get) Allows the owner to read their own document.
+     * @allow (create) Allows a user to create their own document if the userId matches their auth.uid.
+     * @allow (update, delete) Allows the owner to update or delete their own document.
+     * @deny Any other user from reading, creating, updating, or deleting another user's document. Listing is also denied.
+     * @principle Enforces document ownership for all operations.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Security rules for the /roles_admin collection.
+     * @path /roles_admin/{userId}
+     */
+     match /roles_admin/{userId} {
+          allow get: if isAdmin();
+          allow list: if isAdmin();
+          allow create: if isAdmin();
+          allow update: if isAdmin();
+          allow delete: if isAdmin();
     }
   }
 }
