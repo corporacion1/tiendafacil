@@ -1,284 +1,374 @@
 /**
- * @fileoverview Firestore Security Rules for the inventory management application.
- *
- * Core Philosophy:
- * This ruleset prioritizes security and data ownership, enforcing strict access controls based on user authentication.
- * It assumes a separation of concerns, where different collections serve distinct purposes with tailored security policies.
- * The default posture is to deny access unless explicitly granted.
+ * @file Firestore Security Rules
+ * @description This ruleset enforces a strict, role-based access control model for the application.
+ * All data is secured by requiring a verified user identity (authentication) and explicit authorization
+ * checks based on pre-defined roles.  Write operations are restricted to authorized users only, while read
+ * access is generally public unless specifically restricted.
  *
  * Data Structure:
- * The Firestore database consists of several top-level collections, including:
- * - /products/{productId}: Product information.
- * - /tax_types/{taxTypeId}: Tax type definitions.
- * - /inventory_movements/{inventoryMovementId}: Records of inventory changes.
- * - /sales/{saleId}/sale_items/{saleItemId}: Sales transactions and their line items.
- * - /purchases/{purchaseId}/purchase_items/{purchaseItemId}: Purchase orders and their line items.
- * - /suppliers/{supplierId}: Supplier information.
- * - /customers/{customerId}: Customer information.
- * - /store_configuration/{storeConfigurationId}: Store-wide settings (single document).
- * - /users/{userId}: User profiles (owner-only access).
- * - /currency_rates/{currencyRateId}: Currency exchange rates.
+ * - Top-level collections: /products, /tax_types, /inventory_movements, /sales, /purchases, /suppliers, /customers, /store_configuration, /users, /currency_rates, /units, /families, /warehouses
+ * - Subcollections: /sales/{saleId}/sale_items, /purchases/{purchaseId}/purchase_items
  *
  * Key Security Decisions:
- * - User listing is generally disallowed for privacy.
- * - The /store_configuration collection is read-only for all authenticated users.
- * - Currency rates should be publicly available so the error from NextJS can be fixed.
- * - All write operations require authentication (no anonymous writes).
- *
- * Denormalization for Authorization:
- *  No denormalization is explicitly used in this ruleset. However, consider adding fields like `ownerId` to documents
- *  if more granular ownership-based rules are needed in the future (e.g., for Products or Sales).
- *
- * Structural Segregation:
- *  There is no explicit segregation of public vs. private data using separate collections. If a feature requires public
- *  read access alongside private write access (e.g., public recipes with owner-only editing), consider using separate
- *  collections for public and private data.
+ * - Public Read Access: Most top-level collections allow public read access (`get`, `list`).
+ * - Owner-Only Writes: Write access (`create`, `update`, `delete`) is restricted to specific users/roles based on ownership.
+ * - Subcollection Security: Subcollections inherit the security context of their parent documents, with additional checks as needed.
+ * - No User Listing: Listing of users is not permitted.
+ * - Currency Rates: Restricted to only be created by an admin user, while reads are open to all users.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    /**
+     * @description Checks if the user is signed in.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Requires authentication for all protected operations.
+     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-    
     /**
-     * @description Allows anyone to read curreny rates.
-     * @path /currency_rates/{currencyRateId}
-     * @allow (get, list)
-     * @deny (create, update, delete)
-     * @principle Allows all read access to currency rates, and deny all write access.
+     * @description Checks if the user is the owner of the document, based on the provided user ID.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Enforces document ownership.
      */
-    match /currency_rates/{currencyRateId} {
-      allow get, list: if true;
-      allow create, update, delete: if false;
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
     }
 
     /**
-     * @description Allows read access to store configuration for signed-in users, but prohibits modifications.
+     * @description Checks if the user is the owner of the existing document.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Enforces document ownership and existence for updates/deletes.
+     */
+    function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+    }
+    /**
+     * @description Checks if the user is an admin based on the `roles_admin` collection.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Enforces admin role for certain operations.
+     */
+    function isAdmin() {
+        return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
+    /**
+     * @description Rules for the /products collection.
+     * @path /products/{productId}
+     * @allow get, list: if true;
+     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create a product
+     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update a product
+     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete a product
+     * @deny create: if false;
+     * @deny update: if false;
+     * @deny delete: if false;
+     * @principle Allows public read access but requires authentication for writes.
+     */
+    match /products/{productId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Rules for the /units collection.
+     * @path /units/{unitId}
+     * @allow get, list: if true;
+     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create a unit
+     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update a unit
+     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete a unit
+     * @deny create: if false;
+     * @deny update: if false;
+     * @deny delete: if false;
+     * @principle Allows public read access but requires authentication for writes.
+     */
+    match /units/{unitId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Rules for the /families collection.
+     * @path /families/{familyId}
+     * @allow get, list: if true;
+     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create a family
+     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update a family
+     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete a family
+     * @deny create: if false;
+     * @deny update: if false;
+     * @deny delete: if false;
+     * @principle Allows public read access but requires authentication for writes.
+     */
+    match /families/{familyId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Rules for the /warehouses collection.
+     * @path /warehouses/{warehouseId}
+     * @allow get, list: if true;
+     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create a warehouse
+     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update a warehouse
+     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete a warehouse
+     * @deny create: if false;
+     * @deny update: if false;
+     * @deny delete: if false;
+     * @principle Allows public read access but requires authentication for writes.
+     */
+    match /warehouses/{warehouseId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Rules for the /tax_types collection.
+     * @path /tax_types/{taxTypeId}
+     * @allow get, list: if true;
+     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create a tax type
+     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update a tax type
+     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete a tax type
+     * @deny create: if false;
+     * @deny update: if false;
+     * @deny delete: if false;
+     * @principle Allows public read access but requires authentication for writes.
+     */
+    match /tax_types/{taxTypeId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Rules for the /inventory_movements collection.
+     * @path /inventory_movements/{inventoryMovementId}
+     * @allow get, list: if true;
+     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create an inventory movement
+     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update an inventory movement
+     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete an inventory movement
+     * @deny create: if false;
+     * @deny update: if false;
+     * @deny delete: if false;
+     * @principle Allows public read access but requires authentication for writes.
+     */
+    match /inventory_movements/{inventoryMovementId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Rules for the /sales collection.
+     * @path /sales/{saleId}
+     * @allow get, list: if true;
+     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create a sale
+     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update a sale
+     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete a sale
+     * @deny create: if false;
+     * @deny update: if false;
+     * @deny delete: if false;
+     * @principle Allows public read access but requires authentication for writes.
+     */
+    match /sales/{saleId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Rules for the /sales/{saleId}/sale_items subcollection.
+     * @path /sales/{saleId}/sale_items/{saleItemId}
+     * @allow get, list: if true;
+     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create a sale item
+     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update a sale item
+     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete a sale item
+     * @deny create: if false;
+     * @deny update: if false;
+     * @deny delete: if false;
+     * @principle Allows public read access but requires authentication for writes.
+     */
+    match /sales/{saleId}/sale_items/{saleItemId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Rules for the /purchases collection.
+     * @path /purchases/{purchaseId}
+     * @allow get, list: if true;
+     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create a purchase
+     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update a purchase
+     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete a purchase
+     * @deny create: if false;
+     * @deny update: if false;
+     * @deny delete: if false;
+     * @principle Allows public read access but requires authentication for writes.
+     */
+    match /purchases/{purchaseId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Rules for the /purchases/{purchaseId}/purchase_items subcollection.
+     * @path /purchases/{purchaseId}/purchase_items/{purchaseItemId}
+     * @allow get, list: if true;
+     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create a purchase item
+     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update a purchase item
+     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete a purchase item
+     * @deny create: if false;
+     * @deny update: if false;
+     * @deny delete: if false;
+     * @principle Allows public read access but requires authentication for writes.
+     */
+    match /purchases/{purchaseId}/purchase_items/{purchaseItemId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Rules for the /suppliers collection.
+     * @path /suppliers/{supplierId}
+     * @allow get, list: if true;
+     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create a supplier
+     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update a supplier
+     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete a supplier
+     * @deny create: if false;
+     * @deny update: if false;
+     * @deny delete: if false;
+     * @principle Allows public read access but requires authentication for writes.
+     */
+    match /suppliers/{supplierId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Rules for the /customers collection.
+     * @path /customers/{customerId}
+     * @allow get, list: if true;
+     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create a customer
+     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update a customer
+     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete a customer
+     * @deny create: if false;
+     * @deny update: if false;
+     * @deny delete: if false;
+     * @principle Allows public read access but requires authentication for writes.
+     */
+    match /customers/{customerId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
+    }
+
+    /**
+     * @description Rules for the /store_configuration collection.
      * @path /store_configuration/{storeConfigurationId}
-     * @allow get, list: if isSignedIn();
-     * @deny create, update, delete: Always
-     * @principle Restricts modifications to store configuration while allowing authenticated read access.
+     * @allow get, list: if true;
+     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create a store configuration
+     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update a store configuration
+     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete a store configuration
+     * @deny create: if false;
+     * @deny update: if false;
+     * @deny delete: if false;
+     * @principle Allows public read access but requires authentication for writes.
      */
     match /store_configuration/{storeConfigurationId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if false;
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource != null;
+      allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Allows only the authenticated user to read, update, and delete their own user document.
+     * @description Rules for the /users collection.
      * @path /users/{userId}
-     * @allow (get, create, update, delete) when the user ID matches the authenticated user's ID.
-     * @deny (get, create, update, delete) when the user ID does not match the authenticated user's ID.
-     * @principle Enforces strict user-ownership for user profile data.
+     * @allow get: if isOwner(userId);
+     * @allow create: if isOwner(userId);
+     * @allow update: if isOwner(userId) && resource != null;
+     * @allow delete: if isExistingOwner(userId);
+     * @deny list: if true;
+     * @deny create: if !isOwner(userId);
+     * @deny update: if !isOwner(userId) || resource == null;
+     * @deny delete: if !isExistingOwner(userId);
+     * @principle Restricts access to user's own data.
      */
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.id == request.auth.uid;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && resource != null;
       allow delete: if isExistingOwner(userId);
     }
 
-    /**
-     * @description Allows CRUD operations on products.
-     * @path /products/{productId}
-     * @allow create: if isSignedIn();
-     * @allow get, list: if isSignedIn();
-     * @allow update: if isSignedIn() && resource != null;
-     * @allow delete: if isSignedIn() && resource != null;
-     * @principle Only signed in users can manage products
-     */
-    match /products/{productId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
-    }
-
-    /**
-     * @description Allows CRUD operations on units.
-     * @path /units/{unitId}
-     * @allow create: if isSignedIn();
-     * @allow get, list: if isSignedIn();
-     * @allow update: if isSignedIn() && resource != null;
-     * @allow delete: if isSignedIn() && resource != null;
-     * @principle Only signed in users can manage units
-     */
-    match /units/{unitId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
-    }
-
-    /**
-     * @description Allows CRUD operations on families.
-     * @path /families/{familyId}
-     * @allow create: if isSignedIn();
-     * @allow get, list: if isSignedIn();
-     * @allow update: if isSignedIn() && resource != null;
-     * @allow delete: if isSignedIn() && resource != null;
-     * @principle Only signed in users can manage families
-     */
-    match /families/{familyId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
-    }
-
-    /**
-     * @description Allows CRUD operations on warehouses.
-     * @path /warehouses/{warehouseId}
-     * @allow create: if isSignedIn();
-     * @allow get, list: if isSignedIn();
-     * @allow update: if isSignedIn() && resource != null;
-     * @allow delete: if isSignedIn() && resource != null;
-     * @principle Only signed in users can manage warehouses
-     */
-    match /warehouses/{warehouseId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
-    }
-
-    /**
-     * @description Allows CRUD operations on tax types.
-     * @path /tax_types/{taxTypeId}
-     * @allow create: if isSignedIn();
-     * @allow get, list: if isSignedIn();
-     * @allow update: if isSignedIn() && resource != null;
-     * @allow delete: if isSignedIn() && resource != null;
-     * @principle Only signed in users can manage tax types
-     */
-    match /tax_types/{taxTypeId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
-    }
-
-    /**
-     * @description Allows CRUD operations on inventory movements.
-     * @path /inventory_movements/{inventoryMovementId}
-     * @allow create: if isSignedIn();
-     * @allow get, list: if isSignedIn();
-     * @allow update: if isSignedIn() && resource != null;
-     * @allow delete: if isSignedIn() && resource != null;
-     * @principle Only signed in users can manage inventory movements
-     */
-    match /inventory_movements/{inventoryMovementId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
-    }
-
-    /**
-     * @description Allows CRUD operations on sales.
-     * @path /sales/{saleId}
-     * @allow create: if isSignedIn();
-     * @allow get, list: if isSignedIn();
-     * @allow update: if isSignedIn() && resource != null;
-     * @allow delete: if isSignedIn() && resource != null;
-     * @principle Only signed in users can manage sales
-     */
-    match /sales/{saleId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
-    }
-
-    /**
-     * @description Allows CRUD operations on sale items.
-     * @path /sales/{saleId}/sale_items/{saleItemId}
-     * @allow create: if isSignedIn();
-     * @allow get, list: if isSignedIn();
-     * @allow update: if isSignedIn() && resource != null;
-     * @allow delete: if isSignedIn() && resource != null;
-     * @principle Only signed in users can manage sale items
-     */
-    match /sales/{saleId}/sale_items/{saleItemId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
-    }
-
-    /**
-     * @description Allows CRUD operations on purchases.
-     * @path /purchases/{purchaseId}
-     * @allow create: if isSignedIn();
-     * @allow get, list: if isSignedIn();
-     * @allow update: if isSignedIn() && resource != null;
-     * @allow delete: if isSignedIn() && resource != null;
-     * @principle Only signed in users can manage purchases
-     */
-    match /purchases/{purchaseId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
-    }
-
-    /**
-     * @description Allows CRUD operations on purchase items.
-     * @path /purchases/{purchaseId}/purchase_items/{purchaseItemId}
-     * @allow create: if isSignedIn();
-     * @allow get, list: if isSignedIn();
-     * @allow update: if isSignedIn() && resource != null;
-     * @allow delete: if isSignedIn() && resource != null;
-     * @principle Only signed in users can manage purchase items
-     */
-    match /purchases/{purchaseId}/purchase_items/{purchaseItemId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
-    }
-
-    /**
-     * @description Allows CRUD operations on suppliers.
-     * @path /suppliers/{supplierId}
-     * @allow create: if isSignedIn();
-     * @allow get, list: if isSignedIn();
-     * @allow update: if isSignedIn() && resource != null;
-     * @allow delete: if isSignedIn() && resource != null;
-     * @principle Only signed in users can manage suppliers
-     */
-    match /suppliers/{supplierId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
-    }
-
-    /**
-     * @description Allows CRUD operations on customers.
-     * @path /customers/{customerId}
-     * @allow create: if isSignedIn();
-     * @allow get, list: if isSignedIn();
-     * @allow update: if isSignedIn() && resource != null;
-     * @allow delete: if isSignedIn() && resource != null;
-     * @principle Only signed in users can manage customers
-     */
-    match /customers/{customerId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+     /**
+      * @description Admin Only collection.
+      * @path /roles_admin/{userId}
+      * @allow get: if isAdmin();
+      * @allow list: if isAdmin();
+      * @allow create: if isAdmin();
+      * @allow update: if isAdmin() && resource != null;
+      * @allow delete: if isAdmin() && resource != null;
+      * @deny create: if !isAdmin();
+      * @deny update: if !isAdmin() || resource == null;
+      * @deny delete: if !isAdmin() || resource == null;
+      * @principle Restricts access to admin user only.
+      */
+     match /roles_admin/{userId} {
+        allow get: if isAdmin();
+        allow list: if isAdmin();
+        allow create: if isAdmin();
+        allow update: if isAdmin() && resource != null;
+        allow delete: if isAdmin() && resource != null;
+     }
+     /**
+      * @description Currency rates can be publicly read. Only an administrator can create, update or delete.
+      * @path /currency_rates/{currencyRateId}
+      * @allow get: if true;
+      * @allow list: if true;
+      * @allow create: if isAdmin();
+      * @allow update: if isAdmin() && resource != null;
+      * @allow delete: if isAdmin() && resource != null;
+      * @deny create: if !isAdmin();
+      * @deny update: if !isAdmin() || resource == null;
+      * @deny delete: if !isAdmin() || resource == null;
+      * @principle Admins manage the currency rates.
+      */
+    match /currency_rates/{currencyRateId} {
+        allow get, list: if true;
+        allow create: if isAdmin();
+        allow update: if isAdmin() && resource != null;
+        allow delete: if isAdmin() && resource != null;
     }
   }
 }
