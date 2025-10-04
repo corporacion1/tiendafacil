@@ -140,12 +140,12 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <FormField
             control={form.control}
             name="sku"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="md:col-span-1">
                 <FormLabel>SKU (Código)</FormLabel>
                 <FormControl>
                   <Input 
@@ -163,7 +163,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             control={form.control}
             name="name"
             render={({ field }) => (
-              <FormItem>
+              <FormItem className="md:col-span-2">
                 <FormLabel>Nombre del Producto</FormLabel>
                 <FormControl>
                   <Input placeholder="Ej: Laptop Pro" {...field} />
