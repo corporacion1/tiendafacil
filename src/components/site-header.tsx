@@ -72,8 +72,7 @@ export function SiteHeader() {
             </SheetContent>
         </Sheet>
         <div className="hidden items-center gap-2 md:flex">
-            <Image src="/logo.png" width={28} height={28} alt="Tienda Facil Logo" />
-            <span className="font-semibold text-lg">Tienda Facil</span>
+            <Image src="/logo.png" width={32} height={32} alt="TF" />
         </div>
       <div className="relative ml-auto flex items-center gap-2 md:grow-0">
         <Button variant="ghost" size="icon" onClick={toggleDisplayCurrency} aria-label="Cambiar moneda">

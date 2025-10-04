@@ -9,6 +9,7 @@ import { SalesProvider } from "@/contexts/sales-context";
 import { PinModal } from "@/components/pin-modal";
 import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
+import { Footer } from "@/components/ui/footer";
 import { Toaster } from "@/components/ui/toaster";
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
@@ -43,6 +44,7 @@ function MainApp({ children }: { children: React.ReactNode }) {
         <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
             {children}
         </main>
+        <Footer />
       </div>
     </div>
   );
