@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useCallback, useMemo } from 'react';
 import type { Product } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, query, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, query, addDoc, updateDoc, deleteDoc, where } from 'firebase/firestore';
 
 
 interface ProductContextType {
@@ -21,11 +21,12 @@ const ProductContext = createContext<ProductContextType | undefined>(undefined);
 export const ProductProvider = ({ children }: { children: React.ReactNode }) => {
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
+  const storeId = "test-store";
 
   const productsQuery = useMemoFirebase(() => {
       if (!firestore || !user || isUserLoading) return null;
-      return query(collection(firestore, 'products'));
-  }, [firestore, user, isUserLoading]);
+      return query(collection(firestore, 'products'), where('storeId', '==', storeId));
+  }, [firestore, user, isUserLoading, storeId]);
 
   const { data: products, isLoading } = useCollection<Product>(productsQuery);
 
@@ -35,7 +36,7 @@ export const ProductProvider = ({ children }: { children: React.ReactNode }) => 
       return;
     }
     const productsCollection = collection(firestore, 'products');
-    const docRef = await addDoc(productsCollection, productData);
+    const docRef = await addDoc(productsCollection, { ...productData, storeId });
     return docRef?.id;
   };
 

@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useProducts } from "@/contexts/product-context";
 import type { Product, PurchaseItem, Supplier, Purchase, InventoryMovement } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { initialSuppliers, mockPurchases, mockInventoryMovements, initialFamilies } from "@/lib/data";
+import { initialSuppliers, initialFamilies } from "@/lib/data";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
@@ -20,6 +20,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings } from "@/contexts/settings-context";
+import { usePurchases } from "@/contexts/purchases-context";
+import { mockInventoryMovements } from "@/lib/data";
 
 
 const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
@@ -42,6 +44,7 @@ export default function PurchasesPage() {
   const { products, updateProduct } = useProducts();
   const { toast } = useToast();
   const { settings, activeSymbol, activeRate } = useSettings();
+  const { addPurchase } = usePurchases();
   
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -152,7 +155,7 @@ export default function PurchasesPage() {
     toast({ title: "Proveedor Agregado", description: `El proveedor "${supplierToAdd.name}" ha sido agregado.` });
   };
   
-  const handleProcessPurchase = () => {
+  const handleProcessPurchase = async () => {
     if (purchaseItems.length === 0) {
       toast({ variant: "destructive", title: "Orden vacía", description: "Agrega productos para procesar la compra." });
       return;
@@ -167,8 +170,7 @@ export default function PurchasesPage() {
     }
 
     const purchaseId = generatePurchaseId();
-    const newPurchase: Purchase = {
-        id: purchaseId,
+    const newPurchase: Omit<Purchase, 'id'> = {
         supplierId: selectedSupplier.id,
         supplierName: selectedSupplier.name,
         items: purchaseItems,
@@ -176,15 +178,16 @@ export default function PurchasesPage() {
         date: new Date().toISOString(),
         documentNumber: documentNumber,
         responsible: responsible,
+        storeId: 'test-store', // Hardcoded for now
     };
     
-    mockPurchases.unshift(newPurchase);
+    await addPurchase(newPurchase);
 
     // Update stock and create inventory movements
-    purchaseItems.forEach(item => {
+    for (const item of purchaseItems) {
         const product = products.find(p => p.id === item.productId);
         if (product) {
-            updateProduct(product.id, { stock: product.stock + item.quantity, cost: item.cost }); // Also update the product's default cost
+            await updateProduct(product.id, { ...product, stock: product.stock + item.quantity, cost: item.cost }); // Also update the product's default cost
             const movement: InventoryMovement = {
                 id: `mov-purch-${Date.now()}-${item.productId}`,
                 productName: item.productName,
@@ -192,9 +195,11 @@ export default function PurchasesPage() {
                 quantity: item.quantity,
                 date: newPurchase.date,
             };
+            // This needs to be persisted in Firestore as well.
+            // For now, it's just a local mock update.
             mockInventoryMovements.unshift(movement);
         }
-    });
+    }
 
     toast({ title: "Compra Procesada", description: `La compra con ID #${purchaseId} ha sido registrada.` });
     

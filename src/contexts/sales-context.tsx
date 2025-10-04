@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import type { Sale } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, addDoc, query } from 'firebase/firestore';
+import { collection, addDoc, query, where } from 'firebase/firestore';
 
 
 interface SalesContextType {
@@ -18,11 +18,12 @@ const SalesContext = createContext<SalesContextType | undefined>(undefined);
 export const SalesProvider = ({ children }: { children: React.ReactNode }) => {
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
+  const storeId = "test-store";
 
   const salesQuery = useMemoFirebase(() => {
       if (!firestore || !user || isUserLoading) return null;
-      return query(collection(firestore, 'sales'));
-  }, [firestore, user, isUserLoading]);
+      return query(collection(firestore, 'sales'), where('storeId', '==', storeId));
+  }, [firestore, user, isUserLoading, storeId]);
 
   const { data: sales, isLoading } = useCollection<Sale>(salesQuery);
 
@@ -32,7 +33,7 @@ export const SalesProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
     const salesCollection = collection(firestore, 'sales');
-    const docRef = await addDoc(salesCollection, saleData);
+    const docRef = await addDoc(salesCollection, { ...saleData, storeId });
     return docRef?.id;
   };
 
