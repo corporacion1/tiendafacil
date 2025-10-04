@@ -97,7 +97,7 @@ export function SiteHeader() {
             </SheetContent>
         </Sheet>
         <div className="hidden items-center gap-2 md:flex">
-            <Image src="https://www.dropbox.com/scl/fi/kuewv83r2uycd7zg6eahk/tienda_facil_logo-off.png?rlkey=hr4mnu9gdwm38zkj1jqhs96ln&st=mpfq8mii&raw=1" width={64} height={64} alt="TF" />
+            <Image src="https://www.dropbox.com/scl/fi/kuewv83r2uycd7zg6eahk/tienda_facil_logo-off.png?rlkey=hr4mnu9gdwm38zkj1jqhs96ln&st=mpfq8mii&raw=1" width={80} height={80} alt="TF" />
         </div>
       <div className="relative ml-auto flex items-center gap-2 md:grow-0">
         <TooltipProvider>
