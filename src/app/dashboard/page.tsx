@@ -15,7 +15,7 @@ import {
   Legend,
   CartesianGrid
 } from "recharts";
-import { subDays, parseISO, format } from "date-fns";
+import { subDays, parseISO, format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -40,32 +40,38 @@ import { useSales } from "@/contexts/sales-context";
 import { usePurchases } from "@/contexts/purchases-context";
 import { InventoryMovement } from "@/lib/types";
 
-type TimeFilter = '3d' | '7d' | '30d' | null;
+type TimeFilter = 'day' | 'week' | 'month';
 
 export default function Dashboard() {
   const { products, isLoading: productsLoading } = useProducts();
   const { sales, isLoading: salesLoading } = useSales();
   const { purchases, isLoading: purchasesLoading } = usePurchases();
   const { activeSymbol, activeRate } = useSettings();
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('7d');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
 
   const filteredData = useMemo(() => {
-    if (!timeFilter) {
-      return { sales, purchases };
+    const now = new Date();
+    let startDate: Date;
+
+    switch (timeFilter) {
+        case 'day':
+            startDate = subDays(now, 1);
+            break;
+        case 'week':
+            startDate = subDays(now, 7);
+            break;
+        case 'month':
+            startDate = subDays(now, 30);
+            break;
+        default:
+            startDate = subDays(now, 7);
     }
-    const getDays = () => {
-      switch (timeFilter) {
-        case '3d': return 3;
-        case '7d': return 7;
-        case '30d': return 30;
-        default: return Infinity;
-      }
-    };
-    const days = getDays();
-    const cutoffDate = subDays(new Date(), days);
+    
+    const cutoffDate = startDate;
 
     const filterByDate = <T extends { date: string | { toDate: () => Date } }>(items: T[]) => {
         return items.filter(item => {
+            if (!item.date) return false;
             const itemDate = typeof item.date === 'string' ? parseISO(item.date) : (item.date as any).toDate();
             return itemDate >= cutoffDate;
         });
@@ -101,33 +107,38 @@ export default function Dashboard() {
   
   const chartData = useMemo(() => {
     const dataByDate: { [key: string]: { date: string, sales: number, profit: number } } = {};
-    const dateFormat = timeFilter === '30d' ? 'dd-MMM' : 'eee dd';
+    const dateFormat = timeFilter === 'month' ? 'dd-MMM' : 'eee dd';
 
     filteredSales.forEach(sale => {
-      const saleDate = typeof sale.date === 'string' ? parseISO(sale.date) : (sale.date as any).toDate();
-      const dateKey = format(saleDate, 'yyyy-MM-dd');
+        if (!sale.date) return;
+        const saleDate = typeof sale.date === 'string' ? parseISO(sale.date) : (sale.date as any).toDate();
+        const dateKey = format(saleDate, 'yyyy-MM-dd');
       
-      if (!dataByDate[dateKey]) {
-          dataByDate[dateKey] = { date: format(saleDate, dateFormat), sales: 0, profit: 0 };
-      }
-      
-      let costOfGoods = 0;
-      sale.items.forEach(item => {
-        const product = products.find(p => p.id === item.productId);
-        if (product) {
-          costOfGoods += product.cost * item.quantity;
+        if (!dataByDate[dateKey]) {
+            dataByDate[dateKey] = { date: format(saleDate, dateFormat), sales: 0, profit: 0 };
         }
-      });
       
-      dataByDate[dateKey].sales += sale.total;
-      dataByDate[dateKey].profit += (sale.total - costOfGoods);
+        let costOfGoods = 0;
+        sale.items.forEach(item => {
+            const product = products.find(p => p.id === item.productId);
+            if (product) {
+                costOfGoods += product.cost * item.quantity;
+            }
+        });
+      
+        dataByDate[dateKey].sales += sale.total;
+        dataByDate[dateKey].profit += (sale.total - costOfGoods);
     });
+    
+    // Sort keys to ensure the chart is in chronological order
+    const sortedKeys = Object.keys(dataByDate).sort();
+    const sortedData = sortedKeys.map(key => dataByDate[key]);
 
-    return Object.values(dataByDate).map(d => ({
+    return sortedData.map(d => ({
         ...d,
         sales: d.sales * activeRate,
         profit: d.profit * activeRate,
-    })).sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+    }));
   }, [filteredSales, products, activeRate, timeFilter]);
 
   const getMovementLabel = (type: 'sale' | 'purchase' | 'adjustment') => {
@@ -155,9 +166,9 @@ export default function Dashboard() {
               <div className="flex justify-between items-center">
                 <CardTitle>Rendimiento</CardTitle>
                 <div className="flex justify-end gap-2">
-                  <Button variant={timeFilter === '3d' ? 'default' : 'outline'} size="sm" onClick={() => setTimeFilter('3d')}>3 días</Button>
-                  <Button variant={timeFilter === '7d' ? 'default' : 'outline'} size="sm" onClick={() => setTimeFilter('7d')}>7 días</Button>
-                  <Button variant={timeFilter === '30d' ? 'default' : 'outline'} size="sm" onClick={() => setTimeFilter('30d')}>30 días</Button>
+                  <Button variant={timeFilter === 'day' ? 'default' : 'outline'} size="sm" onClick={() => setTimeFilter('day')}>Diario</Button>
+                  <Button variant={timeFilter === 'week' ? 'default' : 'outline'} size="sm" onClick={() => setTimeFilter('week')}>Semanal</Button>
+                  <Button variant={timeFilter === 'month' ? 'default' : 'outline'} size="sm" onClick={() => setTimeFilter('month')}>Mensual</Button>
                 </div>
               </div>
             </CardHeader>
@@ -287,3 +298,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
+    
