@@ -1,4 +1,5 @@
 
+
 "use client"
 import { useState, useMemo } from "react";
 import Image from "next/image";
@@ -188,59 +189,7 @@ export default function PurchasesPage() {
 
   return (
     <div className="grid flex-1 auto-rows-max gap-4 md:grid-cols-3 lg:gap-8">
-      <div className="grid auto-rows-max items-start gap-4 md:col-span-2 lg:gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Productos para Compra</CardTitle>
-            <div className="mt-4 flex gap-4">
-              <Input
-                placeholder="Buscar por nombre o SKU..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-grow"
-              />
-               <Select value={selectedFamily} onValueChange={setSelectedFamily}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filtrar por familia" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas las familias</SelectItem>
-                  {initialFamilies.map(family => (
-                    <SelectItem key={family.id} value={family.name}>
-                      {family.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {filteredProducts.map((product) => (
-                <Card key={product.id} className="overflow-hidden group cursor-pointer" onClick={() => addProductToPurchase(product)}>
-                  <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative">
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                        <Button size="sm">Agregar</Button>
-                    </div>
-                     {product.imageUrl ? (
-                        <Image src={product.imageUrl} alt={product.name} fill sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw" className="object-cover transition-transform group-hover:scale-105" data-ai-hint={product.imageHint} />
-                        ) : (
-                        <Package className="w-12 h-12 text-muted-foreground" />
-                    )}
-                    <div className="absolute top-2 left-2 bg-secondary text-secondary-foreground text-xs font-bold px-2 py-1 rounded">
-                      Costo: ${product.cost.toFixed(2)}
-                    </div>
-                  </CardContent>
-                  <CardFooter className="p-2 bg-background/80 backdrop-blur-sm">
-                    <h3 className="text-sm font-medium truncate">{product.name}</h3>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-      <div className="grid auto-rows-max items-start gap-4 lg:gap-8">
+      <div className="grid auto-rows-max items-start gap-4 lg:col-span-1 lg:gap-8">
         <Card>
           <CardHeader className="flex flex-row justify-between items-center">
             <CardTitle>Orden de Compra</CardTitle>
@@ -389,7 +338,7 @@ export default function PurchasesPage() {
                                     min="0"
                                 />
                                 </TableCell>
-                                <TableCell className="text-right font-mono text-xs">${(item.cost * item.quantity).toFixed(2)}</TableCell>
+                                <TableCell className="text-right font-mono text-xs">{settings.primaryCurrencySymbol}{(item.cost * item.quantity).toFixed(2)}</TableCell>
                                 <TableCell>
                                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeProduct(item.productId)}>
                                         <Trash2 className="h-4 w-4 text-destructive"/>
@@ -407,24 +356,24 @@ export default function PurchasesPage() {
                     <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
                             <span>Subtotal</span>
-                            <span>${subtotal.toFixed(2)}</span>
+                            <span>{settings.primaryCurrencySymbol}{subtotal.toFixed(2)}</span>
                         </div>
                         {settings.tax1 > 0 && tax1Amount > 0 && (
                             <div className="flex justify-between">
                                 <span>Impuesto {settings.tax1}%</span>
-                                <span>${tax1Amount.toFixed(2)}</span>
+                                <span>{settings.primaryCurrencySymbol}{tax1Amount.toFixed(2)}</span>
                             </div>
                         )}
                         {settings.tax2 > 0 && tax2Amount > 0 && (
                             <div className="flex justify-between">
                                 <span>Impuesto {settings.tax2}%</span>
-                                <span>${tax2Amount.toFixed(2)}</span>
+                                <span>{settings.primaryCurrencySymbol}{tax2Amount.toFixed(2)}</span>
                             </div>
                         )}
                         <Separator />
                         <div className="flex justify-between font-bold text-lg">
                             <span>Total</span>
-                            <span>${totalCost.toFixed(2)}</span>
+                            <span>{settings.primaryCurrencySymbol}{totalCost.toFixed(2)}</span>
                         </div>
                     </div>
                 </>
@@ -435,6 +384,58 @@ export default function PurchasesPage() {
                 Procesar Compra
             </Button>
           </CardFooter>
+        </Card>
+      </div>
+       <div className="grid auto-rows-max items-start gap-4 md:col-span-2 lg:gap-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Productos para Compra</CardTitle>
+            <div className="mt-4 flex gap-4">
+              <Input
+                placeholder="Buscar por nombre o SKU..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="flex-grow"
+              />
+               <Select value={selectedFamily} onValueChange={setSelectedFamily}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filtrar por familia" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las familias</SelectItem>
+                  {initialFamilies.map(family => (
+                    <SelectItem key={family.id} value={family.name}>
+                      {family.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredProducts.map((product) => (
+                <Card key={product.id} className="overflow-hidden group cursor-pointer" onClick={() => addProductToPurchase(product)}>
+                  <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative">
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        <Button size="sm">Agregar</Button>
+                    </div>
+                     {product.imageUrl ? (
+                        <Image src={product.imageUrl} alt={product.name} fill sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw" className="object-cover transition-transform group-hover:scale-105" data-ai-hint={product.imageHint} />
+                        ) : (
+                        <Package className="w-12 h-12 text-muted-foreground" />
+                    )}
+                    <div className="absolute top-2 left-2 bg-secondary text-secondary-foreground text-xs font-bold px-2 py-1 rounded">
+                      Costo: {settings.primaryCurrencySymbol}{product.cost.toFixed(2)}
+                    </div>
+                  </CardContent>
+                  <CardFooter className="p-2 bg-background/80 backdrop-blur-sm">
+                    <h3 className="text-sm font-medium truncate">{product.name}</h3>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
         </Card>
       </div>
     </div>

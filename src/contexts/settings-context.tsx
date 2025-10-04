@@ -4,14 +4,17 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
 
-interface Settings {
+export interface Settings {
     storeName: string;
     storeAddress: string;
     storePhone: string;
     storeSlogan: string;
     tax1: number;
     tax2: number;
-    secondaryCurrency: string;
+    primaryCurrencyName: string;
+    primaryCurrencySymbol: string;
+    secondaryCurrencyName: string;
+    secondaryCurrencySymbol: string;
 }
 
 interface SettingsContextType {
@@ -30,7 +33,10 @@ const defaultSettings: Settings = {
     storeSlogan: '¡Gracias por tu compra!',
     tax1: 16,
     tax2: 0,
-    secondaryCurrency: 'USD',
+    primaryCurrencyName: 'Bolívares',
+    primaryCurrencySymbol: 'Bs.',
+    secondaryCurrencyName: 'Dólares',
+    secondaryCurrencySymbol: '$',
 };
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {

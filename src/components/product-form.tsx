@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useEffect } from "react";
@@ -17,6 +18,7 @@ import { useProducts } from "@/contexts/product-context";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
+import { useSettings } from "@/contexts/settings-context";
 
 const productSchema = z.object({
   id: z.string(),
@@ -89,6 +91,7 @@ const calculateProfit = (price: number, cost: number): string => {
 
 export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const { products } = useProducts();
+  const { settings } = useSettings();
   const { toast } = useToast();
 
   const form = useForm<ProductFormValues>({
@@ -249,7 +252,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             name="cost"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Costo</FormLabel>
+                <FormLabel>Costo ({settings.primaryCurrencySymbol})</FormLabel>
                 <FormControl>
                   <Input type="number" step="0.01" placeholder="0.00" {...field} />
                 </FormControl>
@@ -262,7 +265,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             name="price"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Precio Detal</FormLabel>
+                <FormLabel>Precio Detal ({settings.primaryCurrencySymbol})</FormLabel>
                 <FormControl>
                    <Input 
                     type="number" 
@@ -283,7 +286,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             name="wholesalePrice"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Precio Mayor</FormLabel>
+                <FormLabel>Precio Mayor ({settings.primaryCurrencySymbol})</FormLabel>
                 <FormControl>
                   <Input type="number" step="0.01" placeholder="0.00" {...field} />
                 </FormControl>
@@ -296,78 +299,79 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
           />
         </div>
         
-        <div className="space-y-4">
-            <FormLabel>Impuestos</FormLabel>
-            <div className="grid grid-cols-2 gap-4">
-                 <FormField
+        {product && (
+          <>
+             <div className="space-y-4">
+                <FormLabel>Impuestos</FormLabel>
+                <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                        control={form.control}
+                        name="tax1"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                <div className="space-y-0.5">
+                                    <FormLabel>Impuesto 1 (IVA)</FormLabel>
+                                </div>
+                                <FormControl>
+                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                </FormControl>
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="tax2"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                <div className="space-y-0.5">
+                                    <FormLabel>Impuesto 2 (Especial)</FormLabel>
+                                </div>
+                                <FormControl>
+                                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                </FormControl>
+                            </FormItem>
+                        )}
+                    />
+                </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
                     control={form.control}
-                    name="tax1"
+                    name="stock"
                     render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                            <div className="space-y-0.5">
-                                <FormLabel>Impuesto 1 (IVA)</FormLabel>
-                            </div>
-                            <FormControl>
-                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
-                        </FormItem>
+                    <FormItem>
+                        <FormLabel>Stock Actual</FormLabel>
+                        <FormControl>
+                        <Input type="number" placeholder="0" {...field} readOnly />
+                        </FormControl>
+                        <FormDescription>El stock se modifica con movimientos de inventario.</FormDescription>
+                        <FormMessage />
+                    </FormItem>
                     )}
                 />
-                 <FormField
+                <FormField
                     control={form.control}
-                    name="tax2"
+                    name="status"
                     render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                            <div className="space-y-0.5">
-                                <FormLabel>Impuesto 2 (Especial)</FormLabel>
-                            </div>
+                        <FormItem>
+                            <FormLabel>Estado</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
-                                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                <SelectTrigger>
+                                <SelectValue placeholder="Selecciona un estado" />
+                                </SelectTrigger>
                             </FormControl>
+                            <SelectContent>
+                                <SelectItem value="active">Activo</SelectItem>
+                                <SelectItem value="inactive">Inactivo</SelectItem>
+                            </SelectContent>
+                            </Select>
+                            <FormMessage />
                         </FormItem>
                     )}
                 />
             </div>
-        </div>
-
-        {product && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                  control={form.control}
-                  name="stock"
-                  render={({ field }) => (
-                  <FormItem>
-                      <FormLabel>Stock Actual</FormLabel>
-                      <FormControl>
-                      <Input type="number" placeholder="0" {...field} readOnly />
-                      </FormControl>
-                      <FormDescription>El stock se modifica con movimientos de inventario.</FormDescription>
-                      <FormMessage />
-                  </FormItem>
-                  )}
-              />
-              <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                      <FormItem>
-                          <FormLabel>Estado</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                              <SelectTrigger>
-                              <SelectValue placeholder="Selecciona un estado" />
-                              </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                              <SelectItem value="active">Activo</SelectItem>
-                              <SelectItem value="inactive">Inactivo</SelectItem>
-                          </SelectContent>
-                          </Select>
-                          <FormMessage />
-                      </FormItem>
-                  )}
-              />
-          </div>
+          </>
         )}
         
         <AlertDialogContent>

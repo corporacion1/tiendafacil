@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import { useState, useMemo } from "react";
@@ -127,7 +128,14 @@ export default function ReportsPage() {
                 dataToExport = filteredSales;
                 break;
             case 'purchases':
-                dataToExport = filteredPurchases;
+                dataToExport = filteredPurchases.map(p => ({
+                  id: p.id,
+                  proveedor: p.supplierName,
+                  fecha: p.date,
+                  total: p.total,
+                  documento: p.documentNumber,
+                  responsable: p.responsible
+                }));
                 break;
             case 'movements':
                 dataToExport = filteredMovements;
@@ -196,7 +204,7 @@ export default function ReportsPage() {
     const filteredPurchases = useMemo(() => {
         return dateFilteredData.purchases.filter(purchase =>
             purchase.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            purchase.supplier.toLowerCase().includes(searchTerm.toLowerCase())
+            purchase.supplierName.toLowerCase().includes(searchTerm.toLowerCase())
         );
     }, [dateFilteredData.purchases, searchTerm]);
 
@@ -304,7 +312,7 @@ export default function ReportsPage() {
                     <TableCell className="font-medium">{sale.id}</TableCell>
                     <TableCell>{sale.customerName}</TableCell>
                     <TableCell className="hidden md:table-cell">{new Date(sale.date).toLocaleDateString()}</TableCell>
-                    <TableCell className="text-right">${sale.total.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{settings.primaryCurrencySymbol}{sale.total.toFixed(2)}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -348,9 +356,9 @@ export default function ReportsPage() {
                         {filteredPurchases.map((purchase) => (
                             <TableRow key={purchase.id}>
                                 <TableCell className="font-medium">{purchase.id}</TableCell>
-                                <TableCell>{purchase.supplier}</TableCell>
+                                <TableCell>{purchase.supplierName}</TableCell>
                                 <TableCell className="hidden md:table-cell">{new Date(purchase.date).toLocaleDateString()}</TableCell>
-                                <TableCell className="text-right">${purchase.total.toFixed(2)}</TableCell>
+                                <TableCell className="text-right">{settings.primaryCurrencySymbol}{purchase.total.toFixed(2)}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
@@ -418,9 +426,9 @@ export default function ReportsPage() {
                                 <TableCell className="font-mono">{product.sku}</TableCell>
                                 <TableCell>{product.name}</TableCell>
                                 <TableCell>{product.stock}</TableCell>
-                                <TableCell className="text-right">${product.cost.toFixed(2)}</TableCell>
-                                <TableCell className="text-right">${product.price.toFixed(2)}</TableCell>
-                                <TableCell className="text-right font-medium">${(product.stock * product.cost).toFixed(2)}</TableCell>
+                                <TableCell className="text-right">{settings.primaryCurrencySymbol}{product.cost.toFixed(2)}</TableCell>
+                                <TableCell className="text-right">{settings.primaryCurrencySymbol}{product.price.toFixed(2)}</TableCell>
+                                <TableCell className="text-right font-medium">{settings.primaryCurrencySymbol}{(product.stock * product.cost).toFixed(2)}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
@@ -454,8 +462,8 @@ export default function ReportsPage() {
                             <TableRow key={index}>
                                 <TableCell>{item.productName}</TableCell>
                                 <TableCell>{item.quantity}</TableCell>
-                                <TableCell className="text-right">${item.price.toFixed(2)}</TableCell>
-                                <TableCell className="text-right">${(item.quantity * item.price).toFixed(2)}</TableCell>
+                                <TableCell className="text-right">{settings.primaryCurrencySymbol}{item.price.toFixed(2)}</TableCell>
+                                <TableCell className="text-right">{settings.primaryCurrencySymbol}{(item.quantity * item.price).toFixed(2)}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
@@ -467,24 +475,24 @@ export default function ReportsPage() {
                     <div className="mt-4 space-y-2 border-t pt-4">
                         <div className="flex justify-between">
                             <span>Subtotal:</span>
-                            <span>${subtotal.toFixed(2)}</span>
+                            <span>{settings.primaryCurrencySymbol}{subtotal.toFixed(2)}</span>
                         </div>
                         {settings.tax1 > 0 && tax1Amount > 0 && (
                             <div className="flex justify-between">
                                 <span>Impuestos ({settings.tax1}%):</span>
-                                <span>${tax1Amount.toFixed(2)}</span>
+                                <span>{settings.primaryCurrencySymbol}{tax1Amount.toFixed(2)}</span>
                             </div>
                         )}
                         {settings.tax2 > 0 && tax2Amount > 0 && (
                             <div className="flex justify-between">
                                 <span>Impuestos ({settings.tax2}%):</span>
-                                <span>${tax2Amount.toFixed(2)}</span>
+                                <span>{settings.primaryCurrencySymbol}{tax2Amount.toFixed(2)}</span>
                             </div>
                         )}
                         <Separator />
                         <div className="flex justify-between font-bold text-lg">
                             <span>Total General:</span>
-                            <span>${selectedSaleDetails.total.toFixed(2)}</span>
+                            <span>{settings.primaryCurrencySymbol}{selectedSaleDetails.total.toFixed(2)}</span>
                         </div>
                     </div>
                 )

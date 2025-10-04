@@ -1,4 +1,5 @@
 
+
 "use client"
 import { useState, useMemo } from "react";
 import { ArrowUpRight, DollarSign, Users, Package } from "lucide-react";
@@ -36,11 +37,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { mockSales, mockInventoryMovements } from "@/lib/data";
 import { useProducts } from "@/contexts/product-context";
+import { useSettings } from "@/contexts/settings-context";
 
 type TimeFilter = '3d' | '7d' | '30d' | null;
 
 export default function Dashboard() {
   const { products } = useProducts();
+  const { settings } = useSettings();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>(null);
 
   const filteredData = useMemo(() => {
@@ -111,7 +114,7 @@ export default function Dashboard() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">$45,231.89</div>
+              <div className="text-2xl font-bold">{settings.primaryCurrencySymbol}45,231.89</div>
               <p className="text-xs text-muted-foreground">
                 +20.1% from last month
               </p>
@@ -186,7 +189,7 @@ export default function Dashboard() {
                         fontSize={12}
                         tickLine={false}
                         axisLine={false}
-                        tickFormatter={(value) => `$${value}`}
+                        tickFormatter={(value) => `${settings.primaryCurrencySymbol}${value}`}
                     />
                     <Tooltip
                         contentStyle={{
@@ -222,7 +225,7 @@ export default function Dashboard() {
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(value) => `$${value}`}
+                    tickFormatter={(value) => `${settings.primaryCurrencySymbol}${value}`}
                   />
                   <Tooltip
                     contentStyle={{

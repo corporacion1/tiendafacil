@@ -17,6 +17,7 @@ import { Unit, Family, Warehouse, CurrencyRate } from "@/lib/types";
 import { Pencil, PlusCircle, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
+import { Separator } from "@/components/ui/separator";
 
 
 export default function SettingsPage() {
@@ -46,9 +47,9 @@ export default function SettingsPage() {
         setLocalSettings(prev => ({ ...prev, [id]: parseFloat(value) || 0 }));
     };
 
-    const saveStoreSettings = () => {
+    const saveAllSettings = () => {
         setSettings(localSettings);
-        toast({ title: "Configuración guardada", description: "La información del comercio ha sido actualizada." });
+        toast({ title: "Configuración guardada", description: "Toda la configuración ha sido actualizada." });
     };
 
     const handleSaveNewRate = () => {
@@ -69,11 +70,10 @@ export default function SettingsPage() {
 
         setCurrencyRates(prev => [newRateEntry, ...prev]);
         setNewRate(0);
-        saveStoreSettings();
 
         toast({
             title: 'Tasa de Cambio Guardada',
-            description: `Nueva tasa de ${newRate.toFixed(2)} para ${localSettings.secondaryCurrency} ha sido registrada.`,
+            description: `Nueva tasa de ${newRate.toFixed(2)} para ${localSettings.secondaryCurrencyName} ha sido registrada.`,
         });
     };
 
@@ -230,55 +230,85 @@ export default function SettingsPage() {
                                  <CardDescription>Impuesto especial o selectivo.</CardDescription>
                             </div>
                         </div>
-                        <Button className="bg-primary hover:bg-primary/90 mt-4" onClick={saveStoreSettings}>Guardar Cambios de Tienda</Button>
                     </CardContent>
                 </Card>
 
                 {/* Currency Management Card */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Gestión de Moneda Secundaria</CardTitle>
-                        <CardDescription>Define una moneda secundaria y registra su tasa de cambio.</CardDescription>
+                        <CardTitle>Gestión de Monedas y Tasa de Cambio</CardTitle>
+                        <CardDescription>Define tus monedas y registra la tasa de cambio de la secundaria.</CardDescription>
                     </CardHeader>
-                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="secondaryCurrency">Nombre de la Moneda (ej. USD)</Label>
-                                <Input id="secondaryCurrency" value={localSettings.secondaryCurrency} onChange={handleSettingsChange} placeholder="USD" />
+                    <CardContent className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                             <div className="space-y-4 p-4 border rounded-lg">
+                                <h3 className="font-semibold text-lg">Moneda Principal</h3>
+                                <div className="space-y-2">
+                                    <Label htmlFor="primaryCurrencyName">Nombre de la Moneda</Label>
+                                    <Input id="primaryCurrencyName" value={localSettings.primaryCurrencyName} onChange={handleSettingsChange} placeholder="Bolívar" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="primaryCurrencySymbol">Símbolo</Label>
+                                    <Input id="primaryCurrencySymbol" value={localSettings.primaryCurrencySymbol} onChange={handleSettingsChange} placeholder="Bs." />
+                                </div>
                             </div>
-                             <div className="space-y-2">
-                                <Label htmlFor="newRate">Tasa de Cambio Actual</Label>
-                                <Input id="newRate" type="number" value={newRate || ''} onChange={(e) => setNewRate(parseFloat(e.target.value) || 0)} placeholder="0.00" />
+                            <div className="space-y-4 p-4 border rounded-lg">
+                                <h3 className="font-semibold text-lg">Moneda Secundaria</h3>
+                                <div className="space-y-2">
+                                    <Label htmlFor="secondaryCurrencyName">Nombre de la Moneda</Label>
+                                    <Input id="secondaryCurrencyName" value={localSettings.secondaryCurrencyName} onChange={handleSettingsChange} placeholder="USD" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="secondaryCurrencySymbol">Símbolo</Label>
+                                    <Input id="secondaryCurrencySymbol" value={localSettings.secondaryCurrencySymbol} onChange={handleSettingsChange} placeholder="$" />
+                                </div>
                             </div>
-                             <Button onClick={handleSaveNewRate}>Guardar Tasa</Button>
                         </div>
-                        <div className="space-y-4">
-                            <h4 className="font-medium">Historial de Tasas</h4>
-                            <div className="border rounded-md max-h-48 overflow-y-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Fecha</TableHead>
-                                            <TableHead className="text-right">Tasa</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {currencyRates.length > 0 ? currencyRates.map(rate => (
-                                            <TableRow key={rate.id}>
-                                                <TableCell>{format(parseISO(rate.date), "dd/MM/yy HH:mm")}</TableCell>
-                                                <TableCell className="text-right font-mono">{rate.rate.toFixed(2)}</TableCell>
-                                            </TableRow>
-                                        )) : (
+
+                        <Separator />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-4">
+                                <h4 className="font-medium">Registrar Tasa ({localSettings.secondaryCurrencyName})</h4>
+                                <div className="space-y-2">
+                                    <Label htmlFor="newRate">Tasa de Cambio Actual</Label>
+                                    <Input id="newRate" type="number" value={newRate || ''} onChange={(e) => setNewRate(parseFloat(e.target.value) || 0)} placeholder="0.00" />
+                                </div>
+                                <Button onClick={handleSaveNewRate}>Guardar Tasa</Button>
+                            </div>
+                            <div className="space-y-4">
+                                <h4 className="font-medium">Historial de Tasas</h4>
+                                <div className="border rounded-md max-h-48 overflow-y-auto">
+                                    <Table>
+                                        <TableHeader>
                                             <TableRow>
-                                                <TableCell colSpan={2} className="text-center text-muted-foreground">No hay tasas registradas.</TableCell>
+                                                <TableHead>Fecha</TableHead>
+                                                <TableHead className="text-right">Tasa</TableHead>
                                             </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {currencyRates.length > 0 ? currencyRates.map(rate => (
+                                                <TableRow key={rate.id}>
+                                                    <TableCell>{format(parseISO(rate.date), "dd/MM/yy HH:mm")}</TableCell>
+                                                    <TableCell className="text-right font-mono">{rate.rate.toFixed(2)}</TableCell>
+                                                </TableRow>
+                                            )) : (
+                                                <TableRow>
+                                                    <TableCell colSpan={2} className="text-center text-muted-foreground">No hay tasas registradas.</TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
                             </div>
                         </div>
+
                     </CardContent>
                 </Card>
+
+                <div className="flex justify-end">
+                    <Button className="bg-primary hover:bg-primary/90 mt-4" onClick={saveAllSettings}>Guardar Toda la Configuración</Button>
+                </div>
 
 
                 {/* Management Cards */}

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useRef } from "react";
@@ -182,10 +183,10 @@ export function TicketPreview({
                 <div key={item.product.id} className="item" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', lineHeight: '1.4' }}>
                     <div className="name-col" style={{ width: '70%' }}>
                     <span className="name">{item.product.name}</span>
-                    <span className="price-per-unit" style={{ fontSize: '9px' }}>{item.quantity} x ${item.price.toFixed(2)}</span>
+                    <span className="price-per-unit" style={{ fontSize: '9px' }}>{item.quantity} x {settings.primaryCurrencySymbol}{item.price.toFixed(2)}</span>
                     </div>
                     <div className="price-col" style={{ width: '30%', textAlign: 'right' }}>
-                    ${(item.price * item.quantity).toFixed(2)}
+                    {settings.primaryCurrencySymbol}{(item.price * item.quantity).toFixed(2)}
                     </div>
                 </div>
                 ))}
@@ -201,23 +202,23 @@ export function TicketPreview({
                         <div className="separator" style={{ borderTop: '1px dotted #ccc', margin: '2px 0' }}></div>
                         <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <div>Subtotal:</div>
-                            <div>${subtotal.toFixed(2)}</div>
+                            <div>{settings.primaryCurrencySymbol}{subtotal.toFixed(2)}</div>
                         </div>
                         {settings.tax1 > 0 && tax1Amount > 0 && (
                           <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}>
                               <div>Impuesto ({settings.tax1}%):</div>
-                              <div>${tax1Amount.toFixed(2)}</div>
+                              <div>{settings.primaryCurrencySymbol}{tax1Amount.toFixed(2)}</div>
                           </div>
                         )}
                         {settings.tax2 > 0 && tax2Amount > 0 && (
                           <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}>
                               <div>Impuesto ({settings.tax2}%):</div>
-                              <div>${tax2Amount.toFixed(2)}</div>
+                              <div>{settings.primaryCurrencySymbol}{tax2Amount.toFixed(2)}</div>
                           </div>
                         )}
                         <div className="total-line grand-total" style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px', marginTop: '5px' }}>
                             <div>TOTAL:</div>
-                            <div>${total.toFixed(2)}</div>
+                            <div>{settings.primaryCurrencySymbol}{total.toFixed(2)}</div>
                         </div>
                     </div>
                   </>

@@ -34,11 +34,13 @@ import {
 import { cn } from "@/lib/utils";
 import { ProductForm } from "@/components/product-form";
 import { useProducts } from "@/contexts/product-context";
+import { useSettings } from "@/contexts/settings-context";
 
 
 export default function InventoryPage() {
   const { toast } = useToast();
   const { products, setProducts, updateProduct } = useProducts();
+  const { settings } = useSettings();
   const [isMovementsDialogOpen, setIsMovementsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
@@ -354,10 +356,10 @@ export default function InventoryPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      ${product.price.toFixed(2)}
+                      {settings.primaryCurrencySymbol}{product.price.toFixed(2)}
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      ${product.wholesalePrice.toFixed(2)}
+                      {settings.primaryCurrencySymbol}{product.wholesalePrice.toFixed(2)}
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
                       {product.stock}

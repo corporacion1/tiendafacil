@@ -1,4 +1,5 @@
 
+
 "use client"
 import { useState, useEffect, useMemo } from "react";
 import { usePathname, useRouter } from 'next/navigation';
@@ -334,7 +335,7 @@ export default function POSPage() {
                         <Package className="w-12 h-12 text-muted-foreground" />
                     )}
                     <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded">
-                      ${product.price.toFixed(2)}
+                      {settings.primaryCurrencySymbol}{product.price.toFixed(2)}
                     </div>
                   </CardContent>
                   <CardFooter className="p-2 bg-background/80 backdrop-blur-sm">
@@ -473,7 +474,7 @@ export default function POSPage() {
                             <div className="flex-grow">
                                 <p className="font-medium text-sm">{item.product.name}</p>
                                 <p className={cn("text-xs", item.price === item.product.wholesalePrice ? "text-accent-foreground font-semibold" : "text-muted-foreground")}>
-                                    ${item.price.toFixed(2)}
+                                    {settings.primaryCurrencySymbol}{item.price.toFixed(2)}
                                 </p>
                             </div>
                             <Input
@@ -483,7 +484,7 @@ export default function POSPage() {
                                 className="h-8 w-16"
                                 min="1"
                             />
-                            <div className="text-right font-semibold w-20">${(item.price * item.quantity).toFixed(2)}</div>
+                            <div className="text-right font-semibold w-20">{settings.primaryCurrencySymbol}{(item.price * item.quantity).toFixed(2)}</div>
                             <div className="flex items-center">
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-accent-foreground" onClick={() => toggleWholesalePrice(item.product.id, item.price)}>
                                     <Tags className={cn("h-4 w-4", item.price === item.product.wholesalePrice && "text-accent-foreground")} />
@@ -518,23 +519,23 @@ export default function POSPage() {
                     <div className="space-y-2">
                     <div className="flex justify-between">
                         <span>Subtotal</span>
-                        <span>${subtotal.toFixed(2)}</span>
+                        <span>{settings.primaryCurrencySymbol}{subtotal.toFixed(2)}</span>
                     </div>
                      {settings.tax1 > 0 && (
                         <div className="flex justify-between">
                             <span>Impuesto {settings.tax1}%</span>
-                            <span>${tax1Amount.toFixed(2)}</span>
+                            <span>{settings.primaryCurrencySymbol}{tax1Amount.toFixed(2)}</span>
                         </div>
                     )}
                     {settings.tax2 > 0 && (
                         <div className="flex justify-between">
                             <span>Impuesto {settings.tax2}%</span>
-                            <span>${tax2Amount.toFixed(2)}</span>
+                            <span>{settings.primaryCurrencySymbol}{tax2Amount.toFixed(2)}</span>
                         </div>
                     )}
                     <div className="flex justify-between font-semibold text-lg">
                         <span>Total</span>
-                        <span>${total.toFixed(2)}</span>
+                        <span>{settings.primaryCurrencySymbol}{total.toFixed(2)}</span>
                     </div>
                     </div>
                 </>
@@ -639,11 +640,11 @@ export default function POSPage() {
                      <Separator />
                     <div className="flex justify-between">
                         <span className="text-muted-foreground">Precio Detal:</span>
-                        <span className="font-semibold">${productDetails.price.toFixed(2)}</span>
+                        <span className="font-semibold">{settings.primaryCurrencySymbol}{productDetails.price.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                         <span className="text-muted-foreground">Precio Mayor:</span>
-                        <span className="font-semibold">${productDetails.wholesalePrice.toFixed(2)}</span>
+                        <span className="font-semibold">{settings.primaryCurrencySymbol}{productDetails.wholesalePrice.toFixed(2)}</span>
                     </div>
                  </div>
             </div>
