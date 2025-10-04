@@ -1,414 +1,441 @@
-/**
- * @fileoverview Firestore Security Rules for Prototyping.
- *
- * Core Philosophy:
- * This ruleset enforces a multi-tenant data model where each store owns its data.
- * Stores are owned by a specific user, and only that user can manage the store's data,
- * including products, sales, purchases, and other related entities. User profiles
- * are globally accessible but only writable by the user themselves.
- *
- * Data Structure:
- * - /users/{userId}: User profiles, accessible only by the user.
- * - /stores/{storeId}: Stores, owned by a specific user (ownerId).
- * - /stores/{storeId}/...: All data related to a specific store is nested under its root.
- *
- * Key Security Decisions:
- * - Strict user-ownership for stores and their data.
- * - No public listing of stores or user profiles.
- * - Superuser functionality is not yet implemented.
- *
- * Denormalization for Authorization:
- * - The 'Store' entity MUST contain an 'ownerId' field that matches the UID of the store's owner.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows users to read and write their own user profile.
+     * @description Allows only the authenticated user to read/write their own user document.
      * @path /users/{userId}
-     * @allow (get, create, update, delete) User with matching userId.
-     * @deny (get, create, update, delete) User with non-matching userId.
+     * @allow (create) if request.auth.uid == userId
+     * @allow (get, update, delete) if request.auth.uid == userId && resource != null
+     * @deny (create) if request.auth.uid != userId
+     * @deny (get, update, delete) if request.auth.uid != userId
      * @principle Enforces document ownership for user profiles.
      */
     match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
       function isOwner(userId) {
         return request.auth.uid == userId;
       }
       function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
+          return isOwner(userId) && resource != null;
       }
-      allow get: if isSignedIn() && isOwner(userId);
+
+      allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isSignedIn() && isOwner(userId);
+      allow create: if isOwner(userId);
       allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Allows store owners to read and manage their stores.
+     * @description Allows store owners to manage their stores.
      * @path /stores/{storeId}
-     * @allow (get, list) Store owners can read their stores.
-     * @allow (create, update, delete) Store owners can manage their stores if the ownerId matches.
-     * @deny (create, update, delete) if the ownerId does not match authenticated user.
-     * @principle Enforces store ownership for all operations.
+     * @allow (create) if request.auth.uid == request.resource.data.ownerId
+     * @allow (get, list, update, delete) if resource.data.ownerId == request.auth.uid && resource != null
+     * @deny (create, get, list, update, delete) if resource.data.ownerId != request.auth.uid
+     * @principle Enforces store ownership for all store-related operations.
      */
     match /stores/{storeId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner(storeId) {
-        return request.auth.uid == get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId;
-      }
-      function isStoreOwner() {
-        return request.auth.uid == resource.data.ownerId;
-      }
-        allow get: if isSignedIn() && isOwner(storeId);
-        allow list: if false;
-        allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-        allow update: if isSignedIn() && isStoreOwner();
-        allow delete: if isSignedIn() && isStoreOwner();
+        function isStoreOwner(storeId) {
+          return resource.data.ownerId == request.auth.uid;
+        }
+        function isCreatingStoreAsOwner(storeId) {
+          return request.auth.uid == request.resource.data.ownerId;
+        }
+        function isExistingStoreOwner(storeId) {
+            return resource.data.ownerId == request.auth.uid && resource != null;
+        }
 
+        allow get: if isExistingStoreOwner(storeId);
+        allow list: if false; // Listing stores is not allowed.
+        allow create: if request.auth.uid == request.resource.data.ownerId;
+        allow update: if isExistingStoreOwner(storeId);
+        allow delete: if isExistingStoreOwner(storeId);
 
       /**
        * @description Allows store owners to manage products within their store.
        * @path /stores/{storeId}/products/{productId}
-       * @allow (get, list) Store owner can read products.
-       * @allow (create, update, delete) Store owner can create, update, or delete products.
-       * @deny (create, update, delete) Non store owner cannot create, update, or delete products.
+       * @allow (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid
+       * @deny (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId != request.auth.uid
        * @principle Enforces store ownership for product management.
        */
       match /products/{productId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-        function isOwner(storeId) {
-          return request.auth.uid == get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId;
-        }
-        allow get: if isSignedIn() && isOwner(storeId);
-        allow list: if isSignedIn() && isOwner(storeId);
-        allow create: if isSignedIn() && isOwner(storeId);
-        allow update: if isSignedIn() && isOwner(storeId);
-        allow delete: if isSignedIn() && isOwner(storeId);
+          function getStoreRef() {
+            return get(/databases/$(database)/documents/stores/$(storeId));
+          }
+          function isStoreOwnerFromParent(storeId) {
+            return getStoreRef().data.ownerId == request.auth.uid;
+          }
+          function isExistingStoreOwnerFromParent(storeId) {
+              return getStoreRef().data.ownerId == request.auth.uid && resource != null;
+          }
+
+          allow get: if isExistingStoreOwnerFromParent($storeId);
+          allow list: if isExistingStoreOwnerFromParent($storeId);
+          allow create: if isExistingStoreOwnerFromParent($storeId);
+          allow update: if isExistingStoreOwnerFromParent($storeId);
+          allow delete: if isExistingStoreOwnerFromParent($storeId);
       }
 
       /**
        * @description Allows store owners to manage units within their store.
        * @path /stores/{storeId}/units/{unitId}
-       * @allow (get, list) Store owner can read units.
-       * @allow (create, update, delete) Store owner can create, update, or delete units.
-       * @deny (create, update, delete) Non store owner cannot create, update, or delete units.
+       * @allow (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid
+       * @deny (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId != request.auth.uid
        * @principle Enforces store ownership for unit management.
        */
       match /units/{unitId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-        function isOwner(storeId) {
-          return request.auth.uid == get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId;
-        }
-        allow get: if isSignedIn() && isOwner(storeId);
-        allow list: if isSignedIn() && isOwner(storeId);
-        allow create: if isSignedIn() && isOwner(storeId);
-        allow update: if isSignedIn() && isOwner(storeId);
-        allow delete: if isSignedIn() && isOwner(storeId);
+          function getStoreRef() {
+            return get(/databases/$(database)/documents/stores/$(storeId));
+          }
+          let $storeId = parent_paths()[1];
+          function isStoreOwnerFromParent(storeId) {
+            return getStoreRef().data.ownerId == request.auth.uid;
+          }
+          function isExistingStoreOwnerFromParent(storeId) {
+              return getStoreRef().data.ownerId == request.auth.uid && resource != null;
+          }
+
+          allow get: if isExistingStoreOwnerFromParent($storeId);
+          allow list: if isExistingStoreOwnerFromParent($storeId);
+          allow create: if isExistingStoreOwnerFromParent($storeId);
+          allow update: if isExistingStoreOwnerFromParent($storeId);
+          allow delete: if isExistingStoreOwnerFromParent($storeId);
       }
 
       /**
        * @description Allows store owners to manage families within their store.
        * @path /stores/{storeId}/families/{familyId}
-       * @allow (get, list) Store owner can read families.
-       * @allow (create, update, delete) Store owner can create, update, or delete families.
-       * @deny (create, update, delete) Non store owner cannot create, update, or delete families.
+       * @allow (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid
+       * @deny (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId != request.auth.uid
        * @principle Enforces store ownership for family management.
        */
       match /families/{familyId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-        function isOwner(storeId) {
-          return request.auth.uid == get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId;
-        }
-        allow get: if isSignedIn() && isOwner(storeId);
-        allow list: if isSignedIn() && isOwner(storeId);
-        allow create: if isSignedIn() && isOwner(storeId);
-        allow update: if isSignedIn() && isOwner(storeId);
-        allow delete: if isSignedIn() && isOwner(storeId);
+          function getStoreRef() {
+            return get(/databases/$(database)/documents/stores/$(storeId));
+          }
+          let $storeId = parent_paths()[1];
+          function isStoreOwnerFromParent(storeId) {
+            return getStoreRef().data.ownerId == request.auth.uid;
+          }
+          function isExistingStoreOwnerFromParent(storeId) {
+              return getStoreRef().data.ownerId == request.auth.uid && resource != null;
+          }
+
+          allow get: if isExistingStoreOwnerFromParent($storeId);
+          allow list: if isExistingStoreOwnerFromParent($storeId);
+          allow create: if isExistingStoreOwnerFromParent($storeId);
+          allow update: if isExistingStoreOwnerFromParent($storeId);
+          allow delete: if isExistingStoreOwnerFromParent($storeId);
       }
 
       /**
        * @description Allows store owners to manage warehouses within their store.
        * @path /stores/{storeId}/warehouses/{warehouseId}
-       * @allow (get, list) Store owner can read warehouses.
-       * @allow (create, update, delete) Store owner can create, update, or delete warehouses.
-       * @deny (create, update, delete) Non store owner cannot create, update, or delete warehouses.
+       * @allow (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid
+       * @deny (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId != request.auth.uid
        * @principle Enforces store ownership for warehouse management.
        */
       match /warehouses/{warehouseId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-        function isOwner(storeId) {
-          return request.auth.uid == get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId;
-        }
-        allow get: if isSignedIn() && isOwner(storeId);
-        allow list: if isSignedIn() && isOwner(storeId);
-        allow create: if isSignedIn() && isOwner(storeId);
-        allow update: if isSignedIn() && isOwner(storeId);
-        allow delete: if isSignedIn() && isOwner(storeId);
+          function getStoreRef() {
+            return get(/databases/$(database)/documents/stores/$(storeId));
+          }
+          let $storeId = parent_paths()[1];
+          function isStoreOwnerFromParent(storeId) {
+            return getStoreRef().data.ownerId == request.auth.uid;
+          }
+          function isExistingStoreOwnerFromParent(storeId) {
+              return getStoreRef().data.ownerId == request.auth.uid && resource != null;
+          }
+
+          allow get: if isExistingStoreOwnerFromParent($storeId);
+          allow list: if isExistingStoreOwnerFromParent($storeId);
+          allow create: if isExistingStoreOwnerFromParent($storeId);
+          allow update: if isExistingStoreOwnerFromParent($storeId);
+          allow delete: if isExistingStoreOwnerFromParent($storeId);
       }
 
       /**
        * @description Allows store owners to manage tax types within their store.
        * @path /stores/{storeId}/tax_types/{taxTypeId}
-       * @allow (get, list) Store owner can read tax types.
-       * @allow (create, update, delete) Store owner can create, update, or delete tax types.
-       * @deny (create, update, delete) Non store owner cannot create, update, or delete tax types.
+       * @allow (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid
+       * @deny (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId != request.auth.uid
        * @principle Enforces store ownership for tax type management.
        */
       match /tax_types/{taxTypeId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-        function isOwner(storeId) {
-          return request.auth.uid == get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId;
-        }
-        allow get: if isSignedIn() && isOwner(storeId);
-        allow list: if isSignedIn() && isOwner(storeId);
-        allow create: if isSignedIn() && isOwner(storeId);
-        allow update: if isSignedIn() && isOwner(storeId);
-        allow delete: if isSignedIn() && isOwner(storeId);
+          function getStoreRef() {
+            return get(/databases/$(database)/documents/stores/$(storeId));
+          }
+          let $storeId = parent_paths()[1];
+          function isStoreOwnerFromParent(storeId) {
+            return getStoreRef().data.ownerId == request.auth.uid;
+          }
+          function isExistingStoreOwnerFromParent(storeId) {
+              return getStoreRef().data.ownerId == request.auth.uid && resource != null;
+          }
+
+          allow get: if isExistingStoreOwnerFromParent($storeId);
+          allow list: if isExistingStoreOwnerFromParent($storeId);
+          allow create: if isExistingStoreOwnerFromParent($storeId);
+          allow update: if isExistingStoreOwnerFromParent($storeId);
+          allow delete: if isExistingStoreOwnerFromParent($storeId);
       }
 
       /**
        * @description Allows store owners to manage inventory movements within their store.
        * @path /stores/{storeId}/inventory_movements/{inventoryMovementId}
-       * @allow (get, list) Store owner can read inventory movements.
-       * @allow (create, update, delete) Store owner can create, update, or delete inventory movements.
-       * @deny (create, update, delete) Non store owner cannot create, update, or delete inventory movements.
+       * @allow (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid
+       * @deny (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId != request.auth.uid
        * @principle Enforces store ownership for inventory movement management.
        */
       match /inventory_movements/{inventoryMovementId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-        function isOwner(storeId) {
-          return request.auth.uid == get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId;
-        }
-        allow get: if isSignedIn() && isOwner(storeId);
-        allow list: if isSignedIn() && isOwner(storeId);
-        allow create: if isSignedIn() && isOwner(storeId);
-        allow update: if isSignedIn() && isOwner(storeId);
-        allow delete: if isSignedIn() && isOwner(storeId);
+          function getStoreRef() {
+            return get(/databases/$(database)/documents/stores/$(storeId));
+          }
+          let $storeId = parent_paths()[1];
+          function isStoreOwnerFromParent(storeId) {
+            return getStoreRef().data.ownerId == request.auth.uid;
+          }
+          function isExistingStoreOwnerFromParent(storeId) {
+              return getStoreRef().data.ownerId == request.auth.uid && resource != null;
+          }
+
+          allow get: if isExistingStoreOwnerFromParent($storeId);
+          allow list: if isExistingStoreOwnerFromParent($storeId);
+          allow create: if isExistingStoreOwnerFromParent($storeId);
+          allow update: if isExistingStoreOwnerFromParent($storeId);
+          allow delete: if isExistingStoreOwnerFromParent($storeId);
       }
 
       /**
        * @description Allows store owners to manage sales records within their store.
        * @path /stores/{storeId}/sales/{saleId}
-       * @allow (get, list) Store owner can read sales records.
-       * @allow (create, update, delete) Store owner can create, update, or delete sales records.
-       * @deny (create, update, delete) Non store owner cannot create, update, or delete sales records.
+       * @allow (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid
+       * @deny (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId != request.auth.uid
        * @principle Enforces store ownership for sales record management.
        */
       match /sales/{saleId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-        function isOwner(storeId) {
-          return request.auth.uid == get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId;
-        }
-        allow get: if isSignedIn() && isOwner(storeId);
-        allow list: if isSignedIn() && isOwner(storeId);
-        allow create: if isSignedIn() && isOwner(storeId);
-        allow update: if isSignedIn() && isOwner(storeId);
-        allow delete: if isSignedIn() && isOwner(storeId);
+          function getStoreRef() {
+            return get(/databases/$(database)/documents/stores/$(storeId));
+          }
+          let $storeId = parent_paths()[1];
+          function isStoreOwnerFromParent(storeId) {
+            return getStoreRef().data.ownerId == request.auth.uid;
+          }
+          function isExistingStoreOwnerFromParent(storeId) {
+              return getStoreRef().data.ownerId == request.auth.uid && resource != null;
+          }
 
-        /**
-         * @description Allows store owners to manage sale items within a sale record.
-         * @path /stores/{storeId}/sales/{saleId}/sale_items/{saleItemId}
-         * @allow (get, list) Store owner can read sale items.
-         * @allow (create, update, delete) Store owner can create, update, or delete sale items.
-         * @deny (create, update, delete) Non store owner cannot create, update, or delete sale items.
-         * @principle Enforces store ownership for sale item management.
-         */
-        match /sale_items/{saleItemId} {
-          function isSignedIn() {
-            return request.auth != null;
+          allow get: if isExistingStoreOwnerFromParent($storeId);
+          allow list: if isExistingStoreOwnerFromParent($storeId);
+          allow create: if isExistingStoreOwnerFromParent($storeId);
+          allow update: if isExistingStoreOwnerFromParent($storeId);
+          allow delete: if isExistingStoreOwnerFromParent($storeId);
+
+          /**
+           * @description Allows store owners to manage sale items within a sale for their store.
+           * @path /stores/{storeId}/sales/{saleId}/sale_items/{saleItemId}
+           * @allow (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid
+           * @deny (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId != request.auth.uid
+           */
+          match /sale_items/{saleItemId} {
+              function getStoreRef() {
+                return get(/databases/$(database)/documents/stores/$(storeId));
+              }
+              let $storeId = parent_paths()[3];
+              function isStoreOwnerFromParent(storeId) {
+                return getStoreRef().data.ownerId == request.auth.uid;
+              }
+              function isExistingStoreOwnerFromParent(storeId) {
+                  return getStoreRef().data.ownerId == request.auth.uid && resource != null;
+              }
+
+              allow get: if isExistingStoreOwnerFromParent($storeId);
+              allow list: if isExistingStoreOwnerFromParent($storeId);
+              allow create: if isExistingStoreOwnerFromParent($storeId);
+              allow update: if isExistingStoreOwnerFromParent($storeId);
+              allow delete: if isExistingStoreOwnerFromParent($storeId);
           }
-          function isOwner(storeId) {
-            return request.auth.uid == get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId;
-          }
-          allow get: if isSignedIn() && isOwner(storeId);
-          allow list: if isSignedIn() && isOwner(storeId);
-          allow create: if isSignedIn() && isOwner(storeId);
-          allow update: if isSignedIn() && isOwner(storeId);
-          allow delete: if isSignedIn() && isOwner(storeId);
-        }
       }
 
       /**
-       * @description Allows store owners to manage purchase records within their store.
+       * @description Allows store owners to manage purchases within their store.
        * @path /stores/{storeId}/purchases/{purchaseId}
-       * @allow (get, list) Store owner can read purchase records.
-       * @allow (create, update, delete) Store owner can create, update, or delete purchase records.
-       * @deny (create, update, delete) Non store owner cannot create, update, or delete purchase records.
-       * @principle Enforces store ownership for purchase record management.
+       * @allow (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid
+       * @deny (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId != request.auth.uid
+       * @principle Enforces store ownership for purchase management.
        */
       match /purchases/{purchaseId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-        function isOwner(storeId) {
-          return request.auth.uid == get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId;
-        }
-        allow get: if isSignedIn() && isOwner(storeId);
-        allow list: if isSignedIn() && isOwner(storeId);
-        allow create: if isSignedIn() && isOwner(storeId);
-        allow update: if isSignedIn() && isOwner(storeId);
-        allow delete: if isSignedIn() && isOwner(storeId);
+          function getStoreRef() {
+            return get(/databases/$(database)/documents/stores/$(storeId));
+          }
+          let $storeId = parent_paths()[1];
+          function isStoreOwnerFromParent(storeId) {
+            return getStoreRef().data.ownerId == request.auth.uid;
+          }
+          function isExistingStoreOwnerFromParent(storeId) {
+              return getStoreRef().data.ownerId == request.auth.uid && resource != null;
+          }
 
-        /**
-         * @description Allows store owners to manage purchase items within a purchase record.
-         * @path /stores/{storeId}/purchases/{purchaseId}/purchase_items/{purchaseItemId}
-         * @allow (get, list) Store owner can read purchase items.
-         * @allow (create, update, delete) Store owner can create, update, or delete purchase items.
-         * @deny (create, update, delete) Non store owner cannot create, update, or delete purchase items.
-         * @principle Enforces store ownership for purchase item management.
-         */
-        match /purchase_items/{purchaseItemId} {
-          function isSignedIn() {
-            return request.auth != null;
+          allow get: if isExistingStoreOwnerFromParent($storeId);
+          allow list: if isExistingStoreOwnerFromParent($storeId);
+          allow create: if isExistingStoreOwnerFromParent($storeId);
+          allow update: if isExistingStoreOwnerFromParent($storeId);
+          allow delete: if isExistingStoreOwnerFromParent($storeId);
+
+          /**
+           * @description Allows store owners to manage purchase items within a purchase for their store.
+           * @path /stores/{storeId}/purchases/{purchaseId}/purchase_items/{purchaseItemId}
+           * @allow (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid
+           * @deny (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId != request.auth.uid
+           * @principle Enforces store ownership for purchase item management.
+           */
+          match /purchase_items/{purchaseItemId} {
+              function getStoreRef() {
+                return get(/databases/$(database)/documents/stores/$(storeId));
+              }
+              let $storeId = parent_paths()[3];
+              function isStoreOwnerFromParent(storeId) {
+                return getStoreRef().data.ownerId == request.auth.uid;
+              }
+              function isExistingStoreOwnerFromParent(storeId) {
+                  return getStoreRef().data.ownerId == request.auth.uid && resource != null;
+              }
+
+              allow get: if isExistingStoreOwnerFromParent($storeId);
+              allow list: if isExistingStoreOwnerFromParent($storeId);
+              allow create: if isExistingStoreOwnerFromParent($storeId);
+              allow update: if isExistingStoreOwnerFromParent($storeId);
+              allow delete: if isExistingStoreOwnerFromParent($storeId);
           }
-          function isOwner(storeId) {
-            return request.auth.uid == get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId;
-          }
-          allow get: if isSignedIn() && isOwner(storeId);
-          allow list: if isSignedIn() && isOwner(storeId);
-          allow create: if isSignedIn() && isOwner(storeId);
-          allow update: if isSignedIn() && isOwner(storeId);
-          allow delete: if isSignedIn() && isOwner(storeId);
-        }
       }
 
       /**
        * @description Allows store owners to manage suppliers within their store.
        * @path /stores/{storeId}/suppliers/{supplierId}
-       * @allow (get, list) Store owner can read suppliers.
-       * @allow (create, update, delete) Store owner can create, update, or delete suppliers.
-       * @deny (create, update, delete) Non store owner cannot create, update, or delete suppliers.
+       * @allow (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid
+       * @deny (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId != request.auth.uid
        * @principle Enforces store ownership for supplier management.
        */
       match /suppliers/{supplierId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-        function isOwner(storeId) {
-          return request.auth.uid == get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId;
-        }
-        allow get: if isSignedIn() && isOwner(storeId);
-        allow list: if isSignedIn() && isOwner(storeId);
-        allow create: if isSignedIn() && isOwner(storeId);
-        allow update: if isSignedIn() && isOwner(storeId);
-        allow delete: if isSignedIn() && isOwner(storeId);
+          function getStoreRef() {
+            return get(/databases/$(database)/documents/stores/$(storeId));
+          }
+          let $storeId = parent_paths()[1];
+          function isStoreOwnerFromParent(storeId) {
+            return getStoreRef().data.ownerId == request.auth.uid;
+          }
+          function isExistingStoreOwnerFromParent(storeId) {
+              return getStoreRef().data.ownerId == request.auth.uid && resource != null;
+          }
+
+          allow get: if isExistingStoreOwnerFromParent($storeId);
+          allow list: if isExistingStoreOwnerFromParent($storeId);
+          allow create: if isExistingStoreOwnerFromParent($storeId);
+          allow update: if isExistingStoreOwnerFromParent($storeId);
+          allow delete: if isExistingStoreOwnerFromParent($storeId);
       }
 
       /**
        * @description Allows store owners to manage customers within their store.
        * @path /stores/{storeId}/customers/{customerId}
-       * @allow (get, list) Store owner can read customers.
-       * @allow (create, update, delete) Store owner can create, update, or delete customers.
-       * @deny (create, update, delete) Non store owner cannot create, update, or delete customers.
+       * @allow (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid
+       * @deny (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId != request.auth.uid
        * @principle Enforces store ownership for customer management.
        */
       match /customers/{customerId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-        function isOwner(storeId) {
-          return request.auth.uid == get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId;
-        }
-        allow get: if isSignedIn() && isOwner(storeId);
-        allow list: if isSignedIn() && isOwner(storeId);
-        allow create: if isSignedIn() && isOwner(storeId);
-        allow update: if isSignedIn() && isOwner(storeId);
-        allow delete: if isSignedIn() && isOwner(storeId);
+          function getStoreRef() {
+            return get(/databases/$(database)/documents/stores/$(storeId));
+          }
+          let $storeId = parent_paths()[1];
+          function isStoreOwnerFromParent(storeId) {
+            return getStoreRef().data.ownerId == request.auth.uid;
+          }
+          function isExistingStoreOwnerFromParent(storeId) {
+              return getStoreRef().data.ownerId == request.auth.uid && resource != null;
+          }
+
+          allow get: if isExistingStoreOwnerFromParent($storeId);
+          allow list: if isExistingStoreOwnerFromParent($storeId);
+          allow create: if isExistingStoreOwnerFromParent($storeId);
+          allow update: if isExistingStoreOwnerFromParent($storeId);
+          allow delete: if isExistingStoreOwnerFromParent($storeId);
       }
 
       /**
        * @description Allows store owners to manage currency rates within their store.
        * @path /stores/{storeId}/currency_rates/{currencyRateId}
-       * @allow (get, list) Store owner can read currency rates.
-       * @allow (create, update, delete) Store owner can create, update, or delete currency rates.
-       * @deny (create, update, delete) Non store owner cannot create, update, or delete currency rates.
+       * @allow (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid
+       * @deny (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId != request.auth.uid
        * @principle Enforces store ownership for currency rate management.
        */
       match /currency_rates/{currencyRateId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-        function isOwner(storeId) {
-          return request.auth.uid == get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId;
-        }
-        allow get: if isSignedIn() && isOwner(storeId);
-        allow list: if isSignedIn() && isOwner(storeId);
-        allow create: if isSignedIn() && isOwner(storeId);
-        allow update: if isSignedIn() && isOwner(storeId);
-        allow delete: if isSignedIn() && isOwner(storeId);
+          function getStoreRef() {
+            return get(/databases/$(database)/documents/stores/$(storeId));
+          }
+          let $storeId = parent_paths()[1];
+          function isStoreOwnerFromParent(storeId) {
+            return getStoreRef().data.ownerId == request.auth.uid;
+          }
+          function isExistingStoreOwnerFromParent(storeId) {
+              return getStoreRef().data.ownerId == request.auth.uid && resource != null;
+          }
+
+          allow get: if isExistingStoreOwnerFromParent($storeId);
+          allow list: if isExistingStoreOwnerFromParent($storeId);
+          allow create: if isExistingStoreOwnerFromParent($storeId);
+          allow update: if isExistingStoreOwnerFromParent($storeId);
+          allow delete: if isExistingStoreOwnerFromParent($storeId);
       }
 
-       /**
-         * @description Allows participants in a chat to read and write messages.
-         * @path /stores/{storeId}/chats/{chatId}
-         * @allow (get, list) Participants can read chat details.
-         * @allow (create, update, delete) Participants can manage chat details.
-         * @deny (create, update, delete) Non-participants cannot manage chat details.
-         * @principle Enforces chat participation for access.
-         */
-        match /chats/{chatId} {
-          function isSignedIn() {
-            return request.auth != null;
+      /**
+       * @description Allows store owners to manage chats within their store.
+       * @path /stores/{storeId}/chats/{chatId}
+       * @allow (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid
+       * @deny (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId != request.auth.uid
+       */
+      match /chats/{chatId} {
+          function getStoreRef() {
+            return get(/databases/$(database)/documents/stores/$(storeId));
           }
-          function isParticipant(chatId) {
-            return request.auth.uid in get(/databases/$(database)/documents/stores/$(storeId)/chats/$(chatId)).data.participants;
+          let $storeId = parent_paths()[1];
+          function isStoreOwnerFromParent(storeId) {
+            return getStoreRef().data.ownerId == request.auth.uid;
           }
-          function isStoreOwner(storeId) {
-            return request.auth.uid == get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId;
+          function isExistingStoreOwnerFromParent(storeId) {
+              return getStoreRef().data.ownerId == request.auth.uid && resource != null;
           }
-          allow get: if isSignedIn() && isParticipant(chatId) || isStoreOwner(storeId);
-          allow list: if isSignedIn() && isStoreOwner(storeId);
-          allow create: if isSignedIn() && isStoreOwner(storeId);
-          allow update: if isSignedIn() && isStoreOwner(storeId);
-          allow delete: if isSignedIn() && isStoreOwner(storeId);
+
+          allow get: if isExistingStoreOwnerFromParent($storeId);
+          allow list: if isExistingStoreOwnerFromParent($storeId);
+          allow create: if isExistingStoreOwnerFromParent($storeId);
+          allow update: if isExistingStoreOwnerFromParent($storeId);
+          allow delete: if isExistingStoreOwnerFromParent($storeId);
 
           /**
-           * @description Allows participants to manage chat messages.
+           * @description Allows store owners to manage chat messages within a chat for their store.
            * @path /stores/{storeId}/chats/{chatId}/messages/{messageId}
-           * @allow (get, list) Participants can read chat messages.
-           * @allow (create, update, delete) Participants can create, update, and delete chat messages.
-           * @deny (create, update, delete) Non-participants cannot create, update, or delete chat messages.
-           * @principle Enforces chat participation for message access.
+           * @allow (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid
+           * @deny (get, list, create, update, delete) if get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId != request.auth.uid
            */
           match /messages/{messageId} {
-            function isSignedIn() {
-              return request.auth != null;
-            }
-           function isParticipant(chatId) {
-              return request.auth.uid in get(/databases/$(database)/documents/stores/$(storeId)/chats/$(chatId)).data.participants;
-            }
-            function isStoreOwner(storeId) {
-              return request.auth.uid == get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId;
-            }
+              function getStoreRef() {
+                return get(/databases/$(database)/documents/stores/$(storeId));
+              }
+              let $storeId = parent_paths()[3];
+              function isStoreOwnerFromParent(storeId) {
+                return getStoreRef().data.ownerId == request.auth.uid;
+              }
+              function isExistingStoreOwnerFromParent(storeId) {
+                  return getStoreRef().data.ownerId == request.auth.uid && resource != null;
+              }
 
-            allow get: if isSignedIn() && isParticipant(chatId) || isStoreOwner(storeId);
-            allow list: if isSignedIn() && isParticipant(chatId) || isStoreOwner(storeId);
-            allow create: if isSignedIn() && isParticipant(chatId) || isStoreOwner(storeId);
-            allow update: if isSignedIn() && isParticipant(chatId) || isStoreOwner(storeId);
-            allow delete: if isSignedIn() && isParticipant(chatId) || isStoreOwner(storeId);
+              allow get: if isExistingStoreOwnerFromParent($storeId);
+              allow list: if isExistingStoreOwnerFromParent($storeId);
+              allow create: if isExistingStoreOwnerFromParent($storeId);
+              allow update: if isExistingStoreOwnerFromParent($storeId);
+              allow delete: if isExistingStoreOwnerFromParent($storeId);
           }
-        }
+      }
     }
   }
 }
