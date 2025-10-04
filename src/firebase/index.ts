@@ -1,4 +1,3 @@
-
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
@@ -11,8 +10,11 @@ export function initializeFirebase() {
   // Always initialize with the explicit config to ensure consistency across all environments and prevent stale instances.
   const appName = 'default';
   try {
-      return getSdks(getApp(appName));
+      // This will throw if the app is not initialized.
+      const app = getApp(appName);
+      return getSdks(app);
   } catch (e) {
+      // Initialize the app if it's not already.
       const firebaseApp = initializeApp(firebaseConfig, appName);
       return getSdks(firebaseApp);
   }

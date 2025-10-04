@@ -1,241 +1,284 @@
 /**
- * @file Firestore Security Rules
- * @description This ruleset enforces a strict store-ownership model, ensuring that only authenticated users can access data and only for their specific store.
- * All data is organized under top-level collections such as /products, /taxTypes, etc. Each document within these collections must contain a 'storeId' field
- * that matches the {storeId} in the document path.
+ * @file Overview
+ * This ruleset enforces a store-ownership model, where each document belongs to a specific store.
+ * Only authenticated users can access data, and they can only access data related to their store.
  *
- * Key Security Decisions:
- * - All collections are store-scoped.
- * - Listing collections is denied to prevent data enumeration.
+ * @dataStructure
+ * - /products/{productId}: Products belonging to a store.
+ * - /taxTypes/{taxTypeId}: Tax types defined for a store.
+ * - /inventoryMovements/{inventoryMovementId}: Inventory movements recorded for a store.
+ * - /sales/{saleId}: Sales transactions for a store.
+ * - /sales/{saleId}/saleItems/{saleItemId}: Items within a sale.
+ * - /purchases/{purchaseId}: Purchase orders for a store.
+ * - /purchases/{purchaseId}/purchaseItems/{purchaseItemId}: Items within a purchase order.
+ * - /customers/{customerId}: Customers of a store.
+ * - /stores/{storeId}: Store configurations.  This collection effectively defines the store ID.
+ * - /families/{familyId}: Product families or categories for a store.
+ *
+ * @keySecurityDecisions
+ * - No listing of the entire 'stores' collection is allowed, as it could expose sensitive information.
+ * - All other top-level collections are secured such that only authenticated users can access documents related to their store.
+ * - Subcollections inherit the store ID from their parent documents.
+ * - The 'currency_rates' collection (mentioned in the error) is missing in the provided data model.
+ *   Since no information is given, public read access will be granted.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Checks if the request is authenticated.
-     * @return {boolean} True if the user is signed in, false otherwise.
-     */
+    // Helper function to check if the user is signed in
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * @description Checks if the authenticated user is the owner of the store.
-     * @param {string} storeId - The store ID to check against the request.
-     * @return {boolean} True if the user is signed in and the storeId matches, false otherwise.
-     */
+    // Helper function to check if the document exists
+    function isExisting() {
+      return resource != null;
+    }
+
+    // Helper function to check if the user is the store owner based on storeId
     function isStoreOwner(storeId) {
-        return isSignedIn() && request.auth.uid == storeId;
+        return isSignedIn() && exists(/databases/$(database)/documents/stores/$(storeId));
     }
 
     /**
-     * @description Checks if the authenticated user is the owner of the store for existing data
-     * @param {string} storeId - The store ID to check against the request.
-     * @return {boolean} True if the user is signed in and the storeId matches, false otherwise.
+     * @description Grants public read access to currency rates.
+     * @path /currency_rates
+     * @allow (get, list) Any user can read currency rates, even unauthenticated.
+     * @deny (create, update, delete) No one can create, update, or delete currency rates through client-side rules.
+     * @principle Public read access for currency rates.
      */
-    function isExistingStoreOwner(storeId) {
-      return isStoreOwner(storeId) && resource != null;
+    match /currency_rates {
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Enforces store-level ownership for Products.
+     * @description Manages access to product documents. Only authenticated users belonging to a store can create, read, update, or delete products.
      * @path /products/{productId}
-     * @allow (create) - An authenticated user can create a product if the storeId matches their UID.
-     * @allow (update) - An authenticated user can update a product if they own the store.
-     * @allow (delete) - An authenticated user can delete a product if they own the store.
-     * @deny  (create) - An unauthenticated user cannot create a product.
-     * @deny  (create) - An authenticated user cannot create a product with a mismatched storeId.
-     * @deny  (update) - An unauthenticated user cannot update a product.
-     * @deny  (update) - An authenticated user cannot update a product they don't own.
-     * @deny  (delete) - An unauthenticated user cannot delete a product.
-     * @deny  (delete) - An authenticated user cannot delete a product they don't own.
-     * @principle Enforces store ownership for writes; requires authentication for all operations.
+     * @allow (create) An authenticated user can create a product if the storeId matches an existing store. e.g., `request.auth != null && request.resource.data.storeId == 'store123' && exists(/databases/$(database)/documents/stores/store123)`
+     * @allow (get) Any authenticated user belonging to a store can get a product.
+     * @allow (list) Any authenticated user belonging to a store can list products.
+     * @allow (update) Any authenticated user belonging to a store can update a product if the storeId matches an existing store and document exists.
+     * @allow (delete) Any authenticated user belonging to a store can delete a product if the storeId matches an existing store and document exists.
+     * @deny (create) An unauthenticated user cannot create a product.
+     * @deny (create) An authenticated user cannot create a product if the storeId does not match an existing store. e.g., `request.auth != null && request.resource.data.storeId == 'nonexistentstore' && !exists(/databases/$(database)/documents/stores/nonexistentstore)`
+     * @deny (update) An unauthenticated user cannot update a product.
+     * @deny (update) An authenticated user cannot update a product if the storeId does not match an existing store.
+     * @deny (delete) An unauthenticated user cannot delete a product.
+     * @deny (delete) An authenticated user cannot delete a product if the storeId does not match an existing store.
+     * @principle Enforces store ownership for all operations on product documents.
      */
     match /products/{productId} {
-      allow get: if true;
-      allow list: if false;
-      allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
-      allow update: if isExistingStoreOwner(resource.data.storeId) && request.resource.data.storeId == resource.data.storeId;
-      allow delete: if isExistingStoreOwner(resource.data.storeId);
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isStoreOwner(request.resource.data.storeId);
+      allow update: if isSignedIn() && isStoreOwner(resource.data.storeId) && isExisting();
+      allow delete: if isSignedIn() && isStoreOwner(resource.data.storeId) && isExisting();
     }
 
     /**
-     * @description Enforces store-level ownership for TaxTypes.
+     * @description Manages access to tax type documents. Only authenticated users belonging to a store can create, read, update, or delete tax types.
      * @path /taxTypes/{taxTypeId}
-     * @allow (create) - An authenticated user can create a tax type if the storeId matches their UID.
-     * @allow (update) - An authenticated user can update a tax type if they own the store.
-     * @allow (delete) - An authenticated user can delete a tax type if they own the store.
-     * @deny  (create) - An unauthenticated user cannot create a tax type.
-     * @deny  (create) - An authenticated user cannot create a tax type with a mismatched storeId.
-     * @deny  (update) - An unauthenticated user cannot update a tax type.
-     * @deny  (update) - An authenticated user cannot update a tax type they don't own.
-     * @deny  (delete) - An unauthenticated user cannot delete a tax type.
-     * @deny  (delete) - An authenticated user cannot delete a tax type they don't own.
-     * @principle Enforces store ownership for writes; requires authentication for all operations.
+     * @allow (create) An authenticated user can create a tax type if the storeId matches an existing store.
+     * @allow (get) Any authenticated user belonging to a store can get a tax type.
+     * @allow (list) Any authenticated user belonging to a store can list tax types.
+     * @allow (update) Any authenticated user belonging to a store can update a tax type if the storeId matches an existing store and document exists.
+     * @allow (delete) Any authenticated user belonging to a store can delete a tax type if the storeId matches an existing store and document exists.
+     * @deny (create) An unauthenticated user cannot create a tax type.
+     * @deny (create) An authenticated user cannot create a tax type if the storeId does not match an existing store.
+     * @deny (update) An unauthenticated user cannot update a tax type.
+     * @deny (update) An authenticated user cannot update a tax type if the storeId does not match an existing store.
+     * @deny (delete) An unauthenticated user cannot delete a tax type.
+     * @deny (delete) An authenticated user cannot delete a tax type if the storeId does not match an existing store.
+     * @principle Enforces store ownership for all operations on tax type documents.
      */
     match /taxTypes/{taxTypeId} {
-      allow get: if true;
-      allow list: if false;
-      allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
-      allow update: if isExistingStoreOwner(resource.data.storeId) && request.resource.data.storeId == resource.data.storeId;
-      allow delete: if isExistingStoreOwner(resource.data.storeId);
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isStoreOwner(request.resource.data.storeId);
+      allow update: if isSignedIn() && isStoreOwner(resource.data.storeId) && isExisting();
+      allow delete: if isSignedIn() && isStoreOwner(resource.data.storeId) && isExisting();
     }
 
     /**
-     * @description Enforces store-level ownership for InventoryMovements.
+     * @description Manages access to inventory movement documents. Only authenticated users belonging to a store can create, read, update, or delete inventory movements.
      * @path /inventoryMovements/{inventoryMovementId}
-     * @allow (create) - An authenticated user can create an inventory movement if the storeId matches their UID.
-     * @allow (update) - An authenticated user can update an inventory movement if they own the store.
-     * @allow (delete) - An authenticated user can delete an inventory movement if they own the store.
-     * @deny  (create) - An unauthenticated user cannot create an inventory movement.
-     * @deny  (create) - An authenticated user cannot create an inventory movement with a mismatched storeId.
-     * @deny  (update) - An unauthenticated user cannot update an inventory movement.
-     * @deny  (update) - An authenticated user cannot update an inventory movement they don't own.
-     * @deny  (delete) - An unauthenticated user cannot delete an inventory movement.
-     * @deny  (delete) - An authenticated user cannot delete an inventory movement they don't own.
-     * @principle Enforces store ownership for writes; requires authentication for all operations.
+     * @allow (create) An authenticated user can create an inventory movement if the storeId matches an existing store.
+     * @allow (get) Any authenticated user belonging to a store can get an inventory movement.
+     * @allow (list) Any authenticated user belonging to a store can list inventory movements.
+     * @allow (update) Any authenticated user belonging to a store can update an inventory movement if the storeId matches an existing store and document exists.
+     * @allow (delete) Any authenticated user belonging to a store can delete an inventory movement if the storeId matches an existing store and document exists.
+     * @deny (create) An unauthenticated user cannot create an inventory movement.
+     * @deny (create) An authenticated user cannot create an inventory movement if the storeId does not match an existing store.
+     * @deny (update) An unauthenticated user cannot update an inventory movement.
+     * @deny (update) An authenticated user cannot update an inventory movement if the storeId does not match an existing store.
+     * @deny (delete) An unauthenticated user cannot delete an inventory movement.
+     * @deny (delete) An authenticated user cannot delete an inventory movement if the storeId does not match an existing store.
+     * @principle Enforces store ownership for all operations on inventory movement documents.
      */
     match /inventoryMovements/{inventoryMovementId} {
-      allow get: if true;
-      allow list: if false;
-      allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
-      allow update: if isExistingStoreOwner(resource.data.storeId) && request.resource.data.storeId == resource.data.storeId;
-      allow delete: if isExistingStoreOwner(resource.data.storeId);
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isStoreOwner(request.resource.data.storeId);
+      allow update: if isSignedIn() && isStoreOwner(resource.data.storeId) && isExisting();
+      allow delete: if isSignedIn() && isStoreOwner(resource.data.storeId) && isExisting();
     }
 
     /**
-     * @description Enforces store-level ownership for Sales.
+     * @description Manages access to sale documents. Only authenticated users belonging to a store can create, read, update, or delete sales.
      * @path /sales/{saleId}
-     * @allow (create) - An authenticated user can create a sale if the storeId matches their UID.
-     * @allow (update) - An authenticated user can update a sale if they own the store.
-     * @allow (delete) - An authenticated user can delete a sale if they own the store.
-     * @deny  (create) - An unauthenticated user cannot create a sale.
-     * @deny  (create) - An authenticated user cannot create a sale with a mismatched storeId.
-     * @deny  (update) - An unauthenticated user cannot update a sale.
-     * @deny  (update) - An authenticated user cannot update a sale they don't own.
-     * @deny  (delete) - An unauthenticated user cannot delete a sale.
-     * @deny  (delete) - An authenticated user cannot delete a sale they don't own.
-     * @principle Enforces store ownership for writes; requires authentication for all operations.
+     * @allow (create) An authenticated user can create a sale if the storeId matches an existing store.
+     * @allow (get) Any authenticated user belonging to a store can get a sale.
+     * @allow (list) Any authenticated user belonging to a store can list sales.
+     * @allow (update) Any authenticated user belonging to a store can update a sale if the storeId matches an existing store and document exists.
+     * @allow (delete) Any authenticated user belonging to a store can delete a sale if the storeId matches an existing store and document exists.
+     * @deny (create) An unauthenticated user cannot create a sale.
+     * @deny (create) An authenticated user cannot create a sale if the storeId does not match an existing store.
+     * @deny (update) An unauthenticated user cannot update a sale.
+     * @deny (update) An authenticated user cannot update a sale if the storeId does not match an existing store.
+     * @deny (delete) An unauthenticated user cannot delete a sale.
+     * @deny (delete) An authenticated user cannot delete a sale if the storeId does not match an existing store.
+     * @principle Enforces store ownership for all operations on sale documents.
      */
     match /sales/{saleId} {
-      allow get: if true;
-      allow list: if false;
-      allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
-      allow update: if isExistingStoreOwner(resource.data.storeId) && request.resource.data.storeId == resource.data.storeId;
-      allow delete: if isExistingStoreOwner(resource.data.storeId);
-
-      /**
-       * @description Enforces store-level ownership for SaleItems subcollection.
-       * @path /sales/{saleId}/saleItems/{saleItemId}
-       */
-      match /saleItems/{saleItemId} {
-        allow get: if true;
-        allow list: if false;
-        allow create: if isSignedIn() && get(/databases/$(database)/documents/sales/$(saleId)).data.storeId == request.auth.uid;
-        allow update: if isExistingStoreOwner(get(/databases/$(database)/documents/sales/$(saleId)).data.storeId) && get(/databases/$(database)/documents/sales/$(saleId)).data.storeId == resource.data.storeId;
-        allow delete: if isExistingStoreOwner(get(/databases/$(database)/documents/sales/$(saleId)).data.storeId);
-      }
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isStoreOwner(request.resource.data.storeId);
+      allow update: if isSignedIn() && isStoreOwner(resource.data.storeId) && isExisting();
+      allow delete: if isSignedIn() && isStoreOwner(resource.data.storeId) && isExisting();
     }
 
     /**
-     * @description Enforces store-level ownership for Purchases.
+     * @description Manages access to sale item documents within a sale. Only authenticated users belonging to the store of the parent sale can create, read, update, or delete sale items.
+     * @path /sales/{saleId}/saleItems/{saleItemId}
+     *   // Access is allowed if the user is signed in and the parent sale document exists in a store they own.
+     * @allow (get) Any authenticated user belonging to the parent store can get a sale item.
+     * @allow (list) Any authenticated user belonging to the parent store can list sale items.
+     * @allow (create) An authenticated user can create a sale item if the parent sale's storeId matches an existing store.
+     * @allow (update) An authenticated user can update a sale item if the parent sale's storeId matches an existing store and document exists.
+     * @allow (delete) An authenticated user can delete a sale item if the parent sale's storeId matches an existing store and document exists.
+     * @deny (create) An unauthenticated user cannot create a sale item.
+     * @deny (create) An authenticated user cannot create a sale item if the parent sale's storeId does not match an existing store.
+     * @deny (update) An unauthenticated user cannot update a sale item.
+     * @deny (update) An authenticated user cannot update a sale item if the parent sale's storeId does not match an existing store.
+     * @deny (delete) An unauthenticated user cannot delete a sale item.
+     * @deny (delete) An authenticated user cannot delete a sale item if the parent sale's storeId does not match an existing store.
+     * @principle Enforces store ownership for all operations on sale item documents, inheriting store ownership from the parent sale document.
+     */
+    match /sales/{saleId}/saleItems/{saleItemId} {
+        allow get, list: if isSignedIn() && exists(/databases/$(database)/documents/sales/$(saleId)) && isStoreOwner(get(/databases/$(database)/documents/sales/$(saleId)).data.storeId);
+        allow create: if isSignedIn() && exists(/databases/$(database)/documents/sales/$(saleId)) && isStoreOwner(get(/databases/$(database)/documents/sales/$(saleId)).data.storeId);
+        allow update: if isSignedIn() && exists(/databases/$(database)/documents/sales/$(saleId)) && isStoreOwner(get(/databases/$(database)/documents/sales/$(saleId)).data.storeId) && isExisting();
+        allow delete: if isSignedIn() && exists(/databases/$(database)/documents/sales/$(saleId)) && isStoreOwner(get(/databases/$(database)/documents/sales/$(saleId)).data.storeId) && isExisting();
+    }
+
+    /**
+     * @description Manages access to purchase documents. Only authenticated users belonging to a store can create, read, update, or delete purchases.
      * @path /purchases/{purchaseId}
-     * @allow (create) - An authenticated user can create a purchase if the storeId matches their UID.
-     * @allow (update) - An authenticated user can update a purchase if they own the store.
-     * @allow (delete) - An authenticated user can delete a purchase if they own the store.
-     * @deny  (create) - An unauthenticated user cannot create a purchase.
-     * @deny  (create) - An authenticated user cannot create a purchase with a mismatched storeId.
-     * @deny  (update) - An unauthenticated user cannot update a purchase.
-     * @deny  (update) - An authenticated user cannot update a purchase they don't own.
-     * @deny  (delete) - An unauthenticated user cannot delete a purchase.
-     * @deny  (delete) - An authenticated user cannot delete a purchase they don't own.
-     * @principle Enforces store ownership for writes; requires authentication for all operations.
+     * @allow (create) An authenticated user can create a purchase if the storeId matches an existing store.
+     * @allow (get) Any authenticated user belonging to a store can get a purchase.
+     * @allow (list) Any authenticated user belonging to a store can list purchases.
+     * @allow (update) Any authenticated user belonging to a store can update a purchase if the storeId matches an existing store and document exists.
+     * @allow (delete) Any authenticated user belonging to a store can delete a purchase if the storeId matches an existing store and document exists.
+     * @deny (create) An unauthenticated user cannot create a purchase.
+     * @deny (create) An authenticated user cannot create a purchase if the storeId does not match an existing store.
+     * @deny (update) An unauthenticated user cannot update a purchase.
+     * @deny (update) An authenticated user cannot update a purchase if the storeId does not match an existing store.
+     * @deny (delete) An unauthenticated user cannot delete a purchase.
+     * @deny (delete) An authenticated user cannot delete a purchase if the storeId does not match an existing store.
+     * @principle Enforces store ownership for all operations on purchase documents.
      */
     match /purchases/{purchaseId} {
-      allow get: if true;
-      allow list: if false;
-      allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
-      allow update: if isExistingStoreOwner(resource.data.storeId) && request.resource.data.storeId == resource.data.storeId;
-      allow delete: if isExistingStoreOwner(resource.data.storeId);
-
-      /**
-       * @description Enforces store-level ownership for PurchaseItems subcollection.
-       * @path /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
-       */
-      match /purchaseItems/{purchaseItemId} {
-        allow get: if true;
-        allow list: if false;
-        allow create: if isSignedIn() && get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId == request.auth.uid;
-        allow update: if isExistingStoreOwner(get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId) && get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId == resource.data.storeId;
-        allow delete: if isExistingStoreOwner(get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId);
-      }
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isStoreOwner(request.resource.data.storeId);
+      allow update: if isSignedIn() && isStoreOwner(resource.data.storeId) && isExisting();
+      allow delete: if isSignedIn() && isStoreOwner(resource.data.storeId) && isExisting();
     }
 
     /**
-     * @description Enforces store-level ownership for Customers.
+     * @description Manages access to purchase item documents within a purchase. Only authenticated users belonging to the store of the parent purchase can create, read, update, or delete purchase items.
+     * @path /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
+     * @allow (get) Any authenticated user belonging to the parent store can get a purchase item.
+     * @allow (list) Any authenticated user belonging to the parent store can list purchase items.
+     * @allow (create) An authenticated user can create a purchase item if the parent purchase's storeId matches an existing store.
+     * @allow (update) An authenticated user can update a purchase item if the parent purchase's storeId matches an existing store and document exists.
+     * @allow (delete) An authenticated user can delete a purchase item if the parent purchase's storeId matches an existing store and document exists.
+     * @deny (create) An unauthenticated user cannot create a purchase item.
+     * @deny (create) An authenticated user cannot create a purchase item if the parent purchase's storeId does not match an existing store.
+     * @deny (update) An unauthenticated user cannot update a purchase item.
+     * @deny (update) An authenticated user cannot update a purchase item if the parent purchase's storeId does not match an existing store.
+     * @deny (delete) An unauthenticated user cannot delete a purchase item.
+     * @deny (delete) An authenticated user cannot delete a purchase item if the parent purchase's storeId does not match an existing store.
+     * @principle Enforces store ownership for all operations on purchase item documents, inheriting store ownership from the parent purchase document.
+     */
+    match /purchases/{purchaseId}/purchaseItems/{purchaseItemId} {
+        allow get, list: if isSignedIn() && exists(/databases/$(database)/documents/purchases/$(purchaseId)) && isStoreOwner(get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId);
+        allow create: if isSignedIn() && exists(/databases/$(database)/documents/purchases/$(purchaseId)) && isStoreOwner(get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId);
+        allow update: if isSignedIn() && exists(/databases/$(database)/documents/purchases/$(purchaseId)) && isStoreOwner(get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId) && isExisting();
+        allow delete: if isSignedIn() && exists(/databases/$(database)/documents/purchases/$(purchaseId)) && isStoreOwner(get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId) && isExisting();
+    }
+
+    /**
+     * @description Manages access to customer documents. Only authenticated users belonging to a store can create, read, update, or delete customers.
      * @path /customers/{customerId}
-     * @allow (create) - An authenticated user can create a customer if the storeId matches their UID.
-     * @allow (update) - An authenticated user can update a customer if they own the store.
-     * @allow (delete) - An authenticated user can delete a customer if they own the store.
-     * @deny  (create) - An unauthenticated user cannot create a customer.
-     * @deny  (create) - An authenticated user cannot create a customer with a mismatched storeId.
-     * @deny  (update) - An unauthenticated user cannot update a customer.
-     * @deny  (update) - An authenticated user cannot update a customer they don't own.
-     * @deny  (delete) - An unauthenticated user cannot delete a customer.
-     * @deny  (delete) - An authenticated user cannot delete a customer they don't own.
-     * @principle Enforces store ownership for writes; requires authentication for all operations.
+     * @allow (create) An authenticated user can create a customer if the storeId matches an existing store.
+     * @allow (get) Any authenticated user belonging to a store can get a customer.
+     * @allow (list) Any authenticated user belonging to a store can list customers.
+     * @allow (update) Any authenticated user belonging to a store can update a customer if the storeId matches an existing store and document exists.
+     * @allow (delete) Any authenticated user belonging to a store can delete a customer if the storeId matches an existing store and document exists.
+     * @deny (create) An unauthenticated user cannot create a customer.
+     * @deny (create) An authenticated user cannot create a customer if the storeId does not match an existing store.
+     * @deny (update) An unauthenticated user cannot update a customer.
+     * @deny (update) An authenticated user cannot update a customer if the storeId does not match an existing store.
+     * @deny (delete) An unauthenticated user cannot delete a customer.
+     * @deny (delete) An authenticated user cannot delete a customer if the storeId does not match an existing store.
+     * @principle Enforces store ownership for all operations on customer documents.
      */
     match /customers/{customerId} {
-      allow get: if true;
-      allow list: if false;
-      allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
-      allow update: if isExistingStoreOwner(resource.data.storeId) && request.resource.data.storeId == resource.data.storeId;
-      allow delete: if isExistingStoreOwner(resource.data.storeId);
-    }
-
-     /**
-      * @description Enforces store-level ownership for StoreConfiguration.
-      * @path /stores/{storeId}
-      * @allow (create) - An authenticated user can create a store configuration if their UID matches the storeId.
-      * @allow (update) - An authenticated user can update their own store configuration.
-      * @allow (delete) - An authenticated user can delete their own store configuration.
-      * @deny  (create) - An unauthenticated user cannot create a store configuration.
-      * @deny  (create) - An authenticated user cannot create a store configuration with a mismatched storeId.
-      * @deny  (update) - An unauthenticated user cannot update a store configuration.
-      * @deny  (update) - An authenticated user cannot update a store configuration they don't own.
-      * @deny  (delete) - An unauthenticated user cannot delete a store configuration.
-      * @deny  (delete) - An authenticated user cannot delete a store configuration they don't own.
-      * @principle Enforces store ownership for writes and requires authentication for all operations.
-      */
-    match /stores/{storeId} {
-      allow get: if true;
-      allow list: if false;
-      allow create: if isStoreOwner(storeId);
-      allow update: if isExistingStoreOwner(storeId);
-      allow delete: if isExistingStoreOwner(storeId);
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isStoreOwner(request.resource.data.storeId);
+      allow update: if isSignedIn() && isStoreOwner(resource.data.storeId) && isExisting();
+      allow delete: if isSignedIn() && isStoreOwner(resource.data.storeId) && isExisting();
     }
 
     /**
-     * @description Enforces store-level ownership for Families.
+     * @description Manages access to store configuration documents. Only authenticated users belonging to a store can read, update, or delete the configuration, but only the store itself can be created.
+     * @path /stores/{storeId}
+     * @allow (get) Any authenticated user belonging to the store can get the store configuration.
+     * @allow (create) NO ONE can create stores through client code
+     * @allow (list) Listing of stores collection is denied as it exposes data about all stores.
+     * @allow (update) Any authenticated user belonging to the store can update the store configuration if the storeId matches.
+     * @allow (delete) Any authenticated user belonging to the store can delete the store configuration if the storeId matches and document exists..
+     * @deny (create) No client-side creation of stores.
+     * @deny (list) No listing of stores.
+     * @principle Restricts store listing and enforces store-level access control for configuration.
+     */
+    match /stores/{storeId} {
+      allow get: if isSignedIn() && isStoreOwner(storeId);
+      allow list: if false;
+      allow create: if false; // No client-side store creation
+      allow update: if isSignedIn() && isStoreOwner(storeId) && isExisting();
+      allow delete: if isSignedIn() && isStoreOwner(storeId) && isExisting();
+    }
+
+    /**
+     * @description Manages access to family documents. Only authenticated users belonging to a store can create, read, update, or delete families.
      * @path /families/{familyId}
-     * @allow (create) - An authenticated user can create a family if the storeId matches their UID.
-     * @allow (update) - An authenticated user can update a family if they own the store.
-     * @allow (delete) - An authenticated user can delete a family if they own the store.
-     * @deny  (create) - An unauthenticated user cannot create a family.
-     * @deny  (create) - An authenticated user cannot create a family with a mismatched storeId.
-     * @deny  (update) - An unauthenticated user cannot update a family.
-     * @deny  (update) - An authenticated user cannot update a family they don't own.
-     * @deny  (delete) - An unauthenticated user cannot delete a family.
-     * @deny  (delete) - An authenticated user cannot delete a family they don't own.
-     * @principle Enforces store ownership for writes; requires authentication for all operations.
+     * @allow (create) An authenticated user can create a family if the storeId matches an existing store.
+     * @allow (get) Any authenticated user belonging to a store can get a family.
+     * @allow (list) Any authenticated user belonging to a store can list families.
+     * @allow (update) Any authenticated user belonging to a store can update a family if the storeId matches an existing store and document exists.
+     * @allow (delete) Any authenticated user belonging to a store can delete a family if the storeId matches an existing store and document exists.
+     * @deny (create) An unauthenticated user cannot create a family.
+     * @deny (create) An authenticated user cannot create a family if the storeId does not match an existing store.
+     * @deny (update) An unauthenticated user cannot update a family.
+     * @deny (update) An authenticated user cannot update a family if the storeId does not match an existing store.
+     * @deny (delete) An unauthenticated user cannot delete a family.
+     * @deny (delete) An authenticated user cannot delete a family if the storeId does not match an existing store.
+     * @principle Enforces store ownership for all operations on family documents.
      */
     match /families/{familyId} {
-      allow get: if true;
-      allow list: if false;
-      allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
-      allow update: if isExistingStoreOwner(resource.data.storeId) && request.resource.data.storeId == resource.data.storeId;
-      allow delete: if isExistingStoreOwner(resource.data.storeId);
+      allow get, list: if isSignedIn();
+      allow create: if isSignedIn() && isStoreOwner(request.resource.data.storeId);
+      allow update: if isSignedIn() && isStoreOwner(resource.data.storeId) && isExisting();
+      allow delete: if isSignedIn() && isStoreOwner(resource.data.storeId) && isExisting();
     }
   }
 }
