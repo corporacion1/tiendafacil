@@ -31,6 +31,37 @@ export default function LoginPage() {
     }
   }, [user, isUserLoading, router]);
 
+  const handleAuthError = (error: any, providerName: string) => {
+    console.error(`Error during ${providerName} auth:`, error);
+    let description = 'Ocurrió un error inesperado. Por favor, intenta de nuevo.';
+
+    switch (error.code) {
+      case 'auth/operation-not-allowed':
+        description = `El inicio de sesión con ${providerName} no está habilitado. Por favor, actívalo en la Consola de Firebase > Authentication > Sign-in method.`;
+        break;
+      case 'auth/email-already-in-use':
+        description = 'Este correo electrónico ya está registrado. Intenta iniciar sesión.';
+        break;
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+      case 'auth/invalid-credential':
+        description = 'El correo electrónico o la contraseña son incorrectos.';
+        break;
+      case 'auth/weak-password':
+        description = 'La contraseña es demasiado débil. Debe tener al menos 6 caracteres.';
+        break;
+      case 'auth/invalid-email':
+        description = 'El formato del correo electrónico no es válido.';
+        break;
+    }
+    
+    toast({
+      variant: 'destructive',
+      title: 'Error de Autenticación',
+      description: description,
+    });
+  };
+
   const handleGoogleSignIn = async () => {
     if (!auth) return;
     try {
@@ -42,14 +73,7 @@ export default function LoginPage() {
       });
       router.replace('/dashboard');
     } catch (error: any) {
-      console.error("Error during Google sign-in:", error);
-      toast({
-        variant: 'destructive',
-        title: 'Error de Autenticación',
-        description: error.code === 'auth/operation-not-allowed'
-          ? 'El inicio de sesión con Google no está habilitado. Actívalo en la consola de Firebase.'
-          : 'Ocurrió un error inesperado al intentar ingresar con Google.',
-      });
+      handleAuthError(error, "Google");
     }
   };
 
@@ -79,31 +103,7 @@ export default function LoginPage() {
         }
         router.replace('/dashboard');
     } catch (error: any) {
-        console.error(`Error during email ${isSignUp ? 'sign-up' : 'sign-in'}:`, error);
-        
-        let description = 'Ocurrió un error inesperado. Por favor, intenta de nuevo.';
-        switch(error.code) {
-            case 'auth/email-already-in-use':
-                description = 'Este correo electrónico ya está registrado. Intenta iniciar sesión.';
-                break;
-            case 'auth/user-not-found':
-            case 'auth/wrong-password':
-            case 'auth/invalid-credential':
-                description = 'El correo electrónico o la contraseña son incorrectos.';
-                break;
-            case 'auth/weak-password':
-                description = 'La contraseña es demasiado débil. Debe tener al menos 6 caracteres.';
-                break;
-            case 'auth/invalid-email':
-                description = 'El formato del correo electrónico no es válido.';
-                break;
-        }
-
-        toast({
-            variant: 'destructive',
-            title: isSignUp ? 'Error al Registrarse' : 'Error de Autenticación',
-            description: description,
-        });
+        handleAuthError(error, isSignUp ? "Email/Contraseña (Registro)" : "Email/Contraseña");
     }
   };
 
