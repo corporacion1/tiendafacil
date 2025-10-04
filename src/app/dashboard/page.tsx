@@ -1,7 +1,7 @@
 
 "use client"
 import { useState, useMemo } from "react";
-import { ArrowUpRight, DollarSign, Users, Package, ShoppingBag } from "lucide-react";
+import { ArrowUpRight, DollarSign, Users, Package, ShoppingBag, ArrowLeft, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import {
   Bar,
@@ -15,7 +15,7 @@ import {
   Legend,
   CartesianGrid
 } from "recharts";
-import { subDays, parseISO, format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { subDays, parseISO, format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -39,6 +39,7 @@ import { useSettings } from "@/contexts/settings-context";
 import { useSales } from "@/contexts/sales-context";
 import { usePurchases } from "@/contexts/purchases-context";
 import { InventoryMovement } from "@/lib/types";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 
 type TimeFilter = 'day' | 'week' | 'month';
 
@@ -106,7 +107,7 @@ export default function Dashboard() {
   }, [filteredSales]);
   
   const chartData = useMemo(() => {
-    const dataByDate: { [key: string]: { date: string, sales: number, profit: number } } = {};
+    const dataByDate: { [key: string]: { date: string, sales: number, profit: number, unitsSold: number, unitsPurchased: number } } = {};
     const dateFormat = timeFilter === 'month' ? 'dd-MMM' : 'eee dd';
 
     filteredSales.forEach(sale => {
@@ -115,19 +116,39 @@ export default function Dashboard() {
         const dateKey = format(saleDate, 'yyyy-MM-dd');
       
         if (!dataByDate[dateKey]) {
-            dataByDate[dateKey] = { date: format(saleDate, dateFormat), sales: 0, profit: 0 };
+            dataByDate[dateKey] = { date: format(saleDate, dateFormat), sales: 0, profit: 0, unitsSold: 0, unitsPurchased: 0 };
         }
       
         let costOfGoods = 0;
+        let totalUnitsSold = 0;
         sale.items.forEach(item => {
             const product = products.find(p => p.id === item.productId);
             if (product) {
                 costOfGoods += product.cost * item.quantity;
             }
+            totalUnitsSold += item.quantity;
         });
       
         dataByDate[dateKey].sales += sale.total;
         dataByDate[dateKey].profit += (sale.total - costOfGoods);
+        dataByDate[dateKey].unitsSold += totalUnitsSold;
+    });
+
+    filteredPurchases.forEach(purchase => {
+        if(!purchase.date) return;
+        const purchaseDate = typeof purchase.date === 'string' ? parseISO(purchase.date) : (purchase.date as any).toDate();
+        const dateKey = format(purchaseDate, 'yyyy-MM-dd');
+
+        if (!dataByDate[dateKey]) {
+            dataByDate[dateKey] = { date: format(purchaseDate, dateFormat), sales: 0, profit: 0, unitsSold: 0, unitsPurchased: 0 };
+        }
+        
+        let totalUnitsPurchased = 0;
+        purchase.items.forEach(item => {
+            totalUnitsPurchased += item.quantity;
+        });
+        
+        dataByDate[dateKey].unitsPurchased += totalUnitsPurchased;
     });
     
     // Sort keys to ensure the chart is in chronological order
@@ -136,10 +157,10 @@ export default function Dashboard() {
 
     return sortedData.map(d => ({
         ...d,
-        sales: d.sales * activeRate,
-        profit: d.profit * activeRate,
+        sales: parseFloat((d.sales * activeRate).toFixed(2)),
+        profit: parseFloat((d.profit * activeRate).toFixed(2)),
     }));
-  }, [filteredSales, products, activeRate, timeFilter]);
+  }, [filteredSales, filteredPurchases, products, activeRate, timeFilter]);
 
   const getMovementLabel = (type: 'sale' | 'purchase' | 'adjustment') => {
     switch (type) {
@@ -162,48 +183,93 @@ export default function Dashboard() {
     <div className="flex min-h-screen w-full flex-col">
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <Card className="xl:col-span-3">
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle>Rendimiento</CardTitle>
-                <div className="flex justify-end gap-2">
-                  <Button variant={timeFilter === 'day' ? 'default' : 'outline'} size="sm" onClick={() => setTimeFilter('day')}>Diario</Button>
-                  <Button variant={timeFilter === 'week' ? 'default' : 'outline'} size="sm" onClick={() => setTimeFilter('week')}>Semanal</Button>
-                  <Button variant={timeFilter === 'month' ? 'default' : 'outline'} size="sm" onClick={() => setTimeFilter('month')}>Mensual</Button>
-                </div>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <CardTitle>Visión General</CardTitle>
+              <div className="flex justify-end gap-2">
+                <Button variant={timeFilter === 'day' ? 'default' : 'outline'} size="sm" onClick={() => setTimeFilter('day')}>Diario</Button>
+                <Button variant={timeFilter === 'week' ? 'default' : 'outline'} size="sm" onClick={() => setTimeFilter('week')}>Semanal</Button>
+                <Button variant={timeFilter === 'month' ? 'default' : 'outline'} size="sm" onClick={() => setTimeFilter('month')}>Mensual</Button>
               </div>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={350}>
-                <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                        dataKey="date"
-                        stroke="#888888"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                    />
-                    <YAxis
-                        stroke="#888888"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(value) => `${activeSymbol}${value.toFixed(0)}`}
-                    />
-                    <Tooltip
-                        contentStyle={{
-                        backgroundColor: 'hsl(var(--background))',
-                        borderColor: 'hsl(var(--border))',
-                        }}
-                         formatter={(value: number) => `${activeSymbol}${value.toFixed(2)}`}
-                    />
-                    <Legend />
-                    <Line type="monotone" dataKey="sales" name="Ventas" stroke="hsl(var(--primary))" strokeWidth={2} />
-                    <Line type="monotone" dataKey="profit" name="Utilidad Bruta" stroke="hsl(var(--chart-3))" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Carousel className="w-full" opts={{ loop: true }}>
+              <CarouselContent>
+                <CarouselItem>
+                  <div className="p-1">
+                    <h3 className="text-lg font-semibold mb-4 text-center">Rendimiento Financiero</h3>
+                    <ResponsiveContainer width="100%" height={350}>
+                      <LineChart data={chartData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                              dataKey="date"
+                              stroke="#888888"
+                              fontSize={12}
+                              tickLine={false}
+                              axisLine={false}
+                          />
+                          <YAxis
+                              stroke="#888888"
+                              fontSize={12}
+                              tickLine={false}
+                              axisLine={false}
+                              tickFormatter={(value) => `${activeSymbol}${value.toFixed(0)}`}
+                          />
+                          <Tooltip
+                              contentStyle={{
+                              backgroundColor: 'hsl(var(--background))',
+                              borderColor: 'hsl(var(--border))',
+                              }}
+                                formatter={(value: number) => `${activeSymbol}${value.toFixed(2)}`}
+                          />
+                          <Legend />
+                          <Line type="monotone" dataKey="sales" name="Ventas" stroke="hsl(var(--chart-1))" strokeWidth={2} />
+                          <Line type="monotone" dataKey="profit" name="Utilidad Bruta" stroke="hsl(var(--chart-3))" strokeWidth={2} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CarouselItem>
+                <CarouselItem>
+                   <div className="p-1">
+                    <h3 className="text-lg font-semibold mb-4 text-center">Movimientos de Inventario (Unidades)</h3>
+                    <ResponsiveContainer width="100%" height={350}>
+                      <BarChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="date"
+                          stroke="#888888"
+                          fontSize={12}
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <YAxis
+                          stroke="#888888"
+                          fontSize={12}
+                          tickLine={false}
+                          axisLine={false}
+                          tickFormatter={(value) => `${value}`}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--background))',
+                            borderColor: 'hsl(var(--border))',
+                          }}
+                          formatter={(value: number, name: string) => [`${value} unidades`, name === 'unitsSold' ? 'Salidas (Venta)' : 'Entradas (Compra)']}
+                        />
+                        <Legend />
+                        <Bar dataKey="unitsPurchased" name="Entradas (Compra)" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="unitsSold" name="Salidas (Venta)" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CarouselItem>
+              </CarouselContent>
+              <CarouselPrevious className="absolute left-[-50px] top-1/2 -translate-y-1/2" />
+              <CarouselNext className="absolute right-[-50px] top-1/2 -translate-y-1/2" />
+            </Carousel>
+          </CardContent>
+        </Card>
 
         <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
           <Card>
@@ -298,3 +364,4 @@ export default function Dashboard() {
     </div>
   );
 }
+
