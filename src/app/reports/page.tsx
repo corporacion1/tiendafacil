@@ -53,7 +53,7 @@ import { useProducts } from "@/contexts/product-context";
 type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
 
 export default function ReportsPage() {
-    const { settings } = useSettings();
+    const { settings, activeSymbol, activeRate } = useSettings();
     const { products } = useProducts();
     const [selectedSaleDetails, setSelectedSaleDetails] = useState<Sale | null>(null);
     const [saleForTicket, setSaleForTicket] = useState<Sale | null>(null);
@@ -125,14 +125,21 @@ export default function ReportsPage() {
 
         switch (activeTab) {
             case 'sales':
-                dataToExport = filteredSales;
+                dataToExport = filteredSales.map(s => ({
+                    id: s.id,
+                    cliente: s.customerName,
+                    fecha: s.date,
+                    total: (s.total * activeRate).toFixed(2),
+                    tipo: s.transactionType,
+                    estado: s.status
+                }));
                 break;
             case 'purchases':
                 dataToExport = filteredPurchases.map(p => ({
                   id: p.id,
                   proveedor: p.supplierName,
                   fecha: p.date,
-                  total: p.total,
+                  total: (p.total * activeRate).toFixed(2),
                   documento: p.documentNumber,
                   responsable: p.responsible
                 }));
@@ -145,9 +152,9 @@ export default function ReportsPage() {
                     sku: p.sku,
                     nombre: p.name,
                     stock: p.stock,
-                    costo: p.cost,
-                    precio_detal: p.price,
-                    valor_inventario: (p.stock * p.cost)
+                    costo: (p.cost * activeRate).toFixed(2),
+                    precio_detal: (p.price * activeRate).toFixed(2),
+                    valor_inventario: (p.stock * p.cost * activeRate).toFixed(2)
                 }));
                 break;
         }
@@ -312,7 +319,7 @@ export default function ReportsPage() {
                     <TableCell className="font-medium">{sale.id}</TableCell>
                     <TableCell>{sale.customerName}</TableCell>
                     <TableCell className="hidden md:table-cell">{new Date(sale.date).toLocaleDateString()}</TableCell>
-                    <TableCell className="text-right">{settings.primaryCurrencySymbol}{sale.total.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{activeSymbol}{(sale.total * activeRate).toFixed(2)}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -358,7 +365,7 @@ export default function ReportsPage() {
                                 <TableCell className="font-medium">{purchase.id}</TableCell>
                                 <TableCell>{purchase.supplierName}</TableCell>
                                 <TableCell className="hidden md:table-cell">{new Date(purchase.date).toLocaleDateString()}</TableCell>
-                                <TableCell className="text-right">{settings.primaryCurrencySymbol}{purchase.total.toFixed(2)}</TableCell>
+                                <TableCell className="text-right">{activeSymbol}{(purchase.total * activeRate).toFixed(2)}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
@@ -426,9 +433,9 @@ export default function ReportsPage() {
                                 <TableCell className="font-mono">{product.sku}</TableCell>
                                 <TableCell>{product.name}</TableCell>
                                 <TableCell>{product.stock}</TableCell>
-                                <TableCell className="text-right">{settings.primaryCurrencySymbol}{product.cost.toFixed(2)}</TableCell>
-                                <TableCell className="text-right">{settings.primaryCurrencySymbol}{product.price.toFixed(2)}</TableCell>
-                                <TableCell className="text-right font-medium">{settings.primaryCurrencySymbol}{(product.stock * product.cost).toFixed(2)}</TableCell>
+                                <TableCell className="text-right">{activeSymbol}{(product.cost * activeRate).toFixed(2)}</TableCell>
+                                <TableCell className="text-right">{activeSymbol}{(product.price * activeRate).toFixed(2)}</TableCell>
+                                <TableCell className="text-right font-medium">{activeSymbol}{(product.stock * product.cost * activeRate).toFixed(2)}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
@@ -462,8 +469,8 @@ export default function ReportsPage() {
                             <TableRow key={index}>
                                 <TableCell>{item.productName}</TableCell>
                                 <TableCell>{item.quantity}</TableCell>
-                                <TableCell className="text-right">{settings.primaryCurrencySymbol}{item.price.toFixed(2)}</TableCell>
-                                <TableCell className="text-right">{settings.primaryCurrencySymbol}{(item.quantity * item.price).toFixed(2)}</TableCell>
+                                <TableCell className="text-right">{activeSymbol}{(item.price * activeRate).toFixed(2)}</TableCell>
+                                <TableCell className="text-right">{activeSymbol}{(item.quantity * item.price * activeRate).toFixed(2)}</TableCell>
                             </TableRow>
                         ))}
                     </TableBody>
@@ -475,24 +482,24 @@ export default function ReportsPage() {
                     <div className="mt-4 space-y-2 border-t pt-4">
                         <div className="flex justify-between">
                             <span>Subtotal:</span>
-                            <span>{settings.primaryCurrencySymbol}{subtotal.toFixed(2)}</span>
+                            <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
                         </div>
                         {settings.tax1 > 0 && tax1Amount > 0 && (
                             <div className="flex justify-between">
                                 <span>Impuestos ({settings.tax1}%):</span>
-                                <span>{settings.primaryCurrencySymbol}{tax1Amount.toFixed(2)}</span>
+                                <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</span>
                             </div>
                         )}
                         {settings.tax2 > 0 && tax2Amount > 0 && (
                             <div className="flex justify-between">
                                 <span>Impuestos ({settings.tax2}%):</span>
-                                <span>{settings.primaryCurrencySymbol}{tax2Amount.toFixed(2)}</span>
+                                <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
                             </div>
                         )}
                         <Separator />
                         <div className="flex justify-between font-bold text-lg">
                             <span>Total General:</span>
-                            <span>{settings.primaryCurrencySymbol}{selectedSaleDetails.total.toFixed(2)}</span>
+                            <span>{activeSymbol}{(selectedSaleDetails.total * activeRate).toFixed(2)}</span>
                         </div>
                     </div>
                 )
