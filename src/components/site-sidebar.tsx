@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Image from "next/image";
 import { Boxes, FileText, Home, PackagePlus, Settings, ShoppingCart, Store, CreditCard } from "lucide-react";
 import {
   Tooltip,
@@ -48,7 +49,7 @@ export function SiteSidebar() {
                 href="#"
                 className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
             >
-                <Store className="h-4 w-4 transition-all group-hover:scale-110" />
+                <Image src="/logo.png" width={24} height={24} alt="Tienda Facil Logo" />
                 <span className="sr-only">Tienda Facil</span>
             </Link>
 

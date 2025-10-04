@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Image from "next/image";
 import { Boxes, FileText, Home, PackagePlus, PanelLeft, Settings, ShoppingCart, Store, CreditCard, Coins } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -47,7 +48,7 @@ export function SiteHeader() {
                   href="#"
                   className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
                 >
-                  <Store className="h-5 w-5 transition-all group-hover:scale-110" />
+                  <Image src="/logo.png" width={28} height={28} alt="Tienda Facil Logo" />
                   <span className="sr-only">Tienda Facil</span>
                 </Link>
                 {navItems.map((item) => (
