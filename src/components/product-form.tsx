@@ -333,7 +333,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                 <FormItem>
                   <FormLabel>Costo ({activeSymbol})</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" placeholder="0.00" {...field} value={field.value * activeRate} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate)} />
+                    <Input type="number" step="0.01" placeholder="0.00" {...field} value={((field.value || 0) * activeRate).toFixed(2) || ''} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate || 0)} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -351,7 +351,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                       step="0.01"
                       placeholder="0.00"
                       {...field}
-                       value={field.value * activeRate} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate)}
+                       value={((field.value || 0) * activeRate).toFixed(2) || ''} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate || 0)}
                     />
                   </FormControl>
                   <FormDescription className={cn(parseFloat(retailProfitPercentage) > 0 ? "text-green-600 font-semibold" : "")}>
@@ -368,7 +368,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                 <FormItem>
                   <FormLabel>Precio Mayor ({activeSymbol})</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" placeholder="0.00" {...field}  value={field.value * activeRate} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate)} />
+                    <Input type="number" step="0.01" placeholder="0.00" {...field}  value={((field.value || 0) * activeRate).toFixed(2) || ''} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate || 0)} />
                   </FormControl>
                   <FormDescription className={cn(parseFloat(wholesaleProfitPercentage) > 0 ? "text-green-600 font-semibold" : "")}>
                       Margen de Ganancia: {wholesaleProfitPercentage}%
