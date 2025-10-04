@@ -132,6 +132,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
     setIsUploading(true);
     const { id: toastId, update } = toast({ title: 'Subiendo imagen...', description: 'Por favor, espera.' });
+    console.log('[DEBUG] Iniciando subida de imagen:', file.name);
 
     const storage = getStorage(firebaseApp);
     const storageRef = ref(storage, `products/${Date.now()}-${file.name}`);
@@ -140,14 +141,16 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         const snapshot = await uploadBytes(storageRef, file);
         const downloadURL = await getDownloadURL(snapshot.ref);
         
+        console.log('[DEBUG] Subida exitosa. URL de descarga:', downloadURL);
+
         form.setValue('imageUrl', downloadURL, { shouldValidate: true });
         setImagePreview(downloadURL);
 
         update({ id: toastId, title: 'Imagen subida', description: 'La imagen del producto ha sido actualizada.' });
 
     } catch (error) {
-        console.error("Image upload error:", error);
-        update({ id: toastId, variant: 'destructive', title: 'Error al subir la imagen', description: 'Hubo un problema al subir tu imagen. Inténtalo de nuevo.' });
+        console.error("[DEBUG] Error en la subida de imagen:", error);
+        update({ id: toastId, variant: 'destructive', title: 'Error al subir la imagen', description: 'Hubo un problema al subir tu imagen. Revisa la consola para más detalles.' });
     } finally {
         setIsUploading(false);
     }
@@ -338,7 +341,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                 <FormItem>
                   <FormLabel>Costo ({activeSymbol})</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" placeholder="0.00" {...field} value={field.value ? (field.value * activeRate).toFixed(2) : ''} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate || 0)} />
+                    <Input type="number" step="0.01" placeholder="0.00" {...field} value={(field.value ? field.value * activeRate : 0).toFixed(2) || ''} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate || 0)} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -356,7 +359,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                       step="0.01"
                       placeholder="0.00"
                       {...field}
-                       value={field.value ? (field.value * activeRate).toFixed(2) : ''} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate || 0)}
+                       value={(field.value ? field.value * activeRate : 0).toFixed(2) || ''} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate || 0)}
                     />
                   </FormControl>
                   <FormDescription className={cn(parseFloat(retailProfitPercentage) > 0 ? "text-green-600 font-semibold" : "")}>
@@ -373,7 +376,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                 <FormItem>
                   <FormLabel>Precio Mayor ({activeSymbol})</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" placeholder="0.00" {...field}  value={field.value ? (field.value * activeRate).toFixed(2) : ''} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate || 0)} />
+                    <Input type="number" step="0.01" placeholder="0.00" {...field}  value={(field.value ? field.value * activeRate : 0).toFixed(2) || ''} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate || 0)} />
                   </FormControl>
                   <FormDescription className={cn(parseFloat(wholesaleProfitPercentage) > 0 ? "text-green-600 font-semibold" : "")}>
                       Margen de Ganancia: {wholesaleProfitPercentage}%
