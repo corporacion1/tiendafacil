@@ -1,6 +1,9 @@
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { AppShell } from '@/components/app-shell';
+import { FirebaseClientProvider } from '@/firebase';
+
 
 export const metadata: Metadata = {
   title: 'TIENDA FACIL WEB',
@@ -21,7 +24,9 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
-        <AppShell>{children}</AppShell>
+        <FirebaseClientProvider>
+          <AppShell>{children}</AppShell>
+        </FirebaseClientProvider>
       </body>
     </html>
   );

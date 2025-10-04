@@ -1,46 +1,78 @@
+
 "use client"
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import type { Product } from '@/lib/types';
-import { mockProducts as initialProducts } from '@/lib/data';
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, doc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { setDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+
 
 interface ProductContextType {
   products: Product[];
-  setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
-  addProduct: (product: Product) => void;
-  updateProduct: (productId: string, updatedProduct: Partial<Product>) => void;
+  isLoading: boolean;
+  addProduct: (product: Omit<Product, 'id'>) => Promise<string | void>;
+  updateProduct: (productId: string, updatedProduct: Partial<Product>) => Promise<void>;
+  deleteProduct: (productId: string) => Promise<void>;
   getProductById: (productId: string) => Product | undefined;
 }
 
 const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
 export const ProductProvider = ({ children }: { children: React.ReactNode }) => {
-  const [products, setProducts] = useState<Product[]>([]);
+  const { firestore } = useFirebase();
 
-  useEffect(() => {
-    // Load initial products only once on mount
-    setProducts(initialProducts);
-  }, []);
+  const productsQuery = useMemoFirebase(() => {
+      if (!firestore) return null;
+      return collection(firestore, 'products');
+  }, [firestore]);
 
-  const addProduct = (product: Product) => {
-    setProducts(prev => [product, ...prev]);
+  const { data: products, isLoading } = useCollection<Product>(productsQuery);
+
+  const addProduct = async (productData: Omit<Product, 'id'>) => {
+    if (!firestore) {
+      console.error("Firestore is not initialized");
+      return;
+    }
+    const productsCollection = collection(firestore, 'products');
+    const docRef = await addDocumentNonBlocking(productsCollection, productData);
+    return docRef?.id;
   };
 
-  const updateProduct = (productId: string, updatedProductData: Partial<Product>) => {
-    setProducts(prev => 
-      prev.map(p => 
-        p.id === productId ? { ...p, ...updatedProductData } : p
-      )
-    );
-  };
-  
-  const getProductById = (productId: string) => {
-    return products.find(p => p.id === productId);
+  const updateProduct = async (productId: string, updatedProductData: Partial<Product>) => {
+    if (!firestore) {
+      console.error("Firestore is not initialized");
+      return;
+    }
+    const productDoc = doc(firestore, 'products', productId);
+    await updateDocumentNonBlocking(productDoc, updatedProductData);
   };
 
+  const deleteProduct = async (productId: string) => {
+     if (!firestore) {
+      console.error("Firestore is not initialized");
+      return;
+    }
+    const productDoc = doc(firestore, 'products', productId);
+    await deleteDocumentNonBlocking(productDoc);
+  }
+
+  const getProductById = useCallback((productId: string) => {
+    return products?.find(p => p.id === productId);
+  }, [products]);
+
+
+  const contextValue = {
+    products: products || [],
+    isLoading,
+    addProduct,
+    updateProduct,
+    deleteProduct,
+    getProductById,
+  };
 
   return (
-    <ProductContext.Provider value={{ products, setProducts, addProduct, updateProduct, getProductById }}>
+    <ProductContext.Provider value={contextValue}>
       {children}
     </ProductContext.Provider>
   );

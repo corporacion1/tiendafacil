@@ -11,7 +11,7 @@ export default function ProductsPage() {
   const { toast } = useToast();
   const { products, addProduct } = useProducts();
 
-  function onSubmit(data: Product) {
+  async function onSubmit(data: Omit<Product, 'id'>) {
     const existingProduct = products.find(product => product.sku.toLowerCase() === data.sku.toLowerCase());
 
     if (existingProduct) {
@@ -23,7 +23,7 @@ export default function ProductsPage() {
       return false; // Stop the submission
     }
     
-    addProduct(data);
+    await addProduct(data);
     
     toast({
       title: "Producto Creado",

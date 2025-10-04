@@ -1,5 +1,5 @@
 
-
+import { Timestamp } from 'firebase/firestore';
 
 export type Product = {
   id: string;
@@ -28,20 +28,23 @@ export type CartItem = {
 
 export type InventoryMovement = {
   id: string;
+  productId: string;
   productName: string;
   type: 'sale' | 'purchase' | 'adjustment';
   quantity: number;
-  date: string;
+  date: Timestamp | string; // Support both for optimistic updates
+  responsible?: string;
 };
 
 export type Payment = {
     id: string;
     amount: number;
-    date: string;
+    date: Timestamp | string;
 }
 
 export type Sale = {
   id: string;
+  customerId: string;
   customerName: string;
   items: {
     productId: string;
@@ -50,7 +53,7 @@ export type Sale = {
     price: number;
   }[];
   total: number;
-  date: string;
+  date: Timestamp | string;
   transactionType: 'contado' | 'credito';
   paymentMethod?: string;
   status: 'paid' | 'unpaid';
@@ -71,7 +74,7 @@ export type Purchase = {
     supplierName: string;
     items: PurchaseItem[];
     total: number;
-    date: string;
+    date: Timestamp | string;
     documentNumber?: string;
     responsible?: string;
 };
@@ -109,4 +112,10 @@ export type CurrencyRate = {
     id: string;
     rate: number;
     date: string;
+};
+
+export type Store = {
+    id: string;
+    name: string;
+    status: 'active' | 'inactive';
 };
