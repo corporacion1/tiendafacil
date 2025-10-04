@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -74,7 +73,7 @@ const getInitialValues = (product?: Product): ProductFormValues => {
 
 const calculateProfit = (price: number, cost: number): string => {
   if (cost > 0 && price > cost) {
-    const profit = (((price - cost) / cost) * 100);
+    const profit = ((price - cost) / cost) * 100;
     return profit.toFixed(2);
   }
   return '0.00';
