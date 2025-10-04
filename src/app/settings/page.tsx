@@ -20,6 +20,52 @@ import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
 
 
+function ChangePinDialog() {
+    const { changePin } = useSecurity();
+    const [oldPin, setOldPin] = useState('');
+    const [newPin, setNewPin] = useState('');
+    const [isOpen, setIsOpen] = useState(false);
+    
+    const handleChangePin = () => {
+        const success = changePin(oldPin, newPin);
+        if (success) {
+            setOldPin('');
+            setNewPin('');
+            setIsOpen(false);
+        }
+    }
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+                <Button variant="outline">Cambiar PIN</Button>
+            </DialogTrigger>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Cambiar PIN de Seguridad</DialogTitle>
+                    <DialogDescription>
+                        Ingresa tu PIN actual y el nuevo PIN para actualizarlo.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="old-pin">PIN Actual</Label>
+                        <Input id="old-pin" type="password" value={oldPin} onChange={(e) => setOldPin(e.target.value)} maxLength={4} placeholder="****" />
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="new-pin-change">Nuevo PIN (4 dígitos)</Label>
+                        <Input id="new-pin-change" type="password" value={newPin} onChange={(e) => setNewPin(e.target.value)} maxLength={4} placeholder="****" />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
+                    <Button onClick={handleChangePin}>Guardar Cambios</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
 export default function SettingsPage() {
     const { hasPin, setPin, removePin } = useSecurity();
     const { settings, setSettings } = useSettings();
@@ -245,22 +291,22 @@ export default function SettingsPage() {
                                 <h3 className="font-semibold text-lg">Moneda Principal</h3>
                                 <div className="space-y-2">
                                     <Label htmlFor="primaryCurrencyName">Nombre de la Moneda</Label>
-                                    <Input id="primaryCurrencyName" value={localSettings.primaryCurrencyName} onChange={handleSettingsChange} placeholder="Bolívar" />
+                                    <Input id="primaryCurrencyName" value={localSettings.primaryCurrencyName} onChange={handleSettingsChange} placeholder="Dólar" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="primaryCurrencySymbol">Símbolo</Label>
-                                    <Input id="primaryCurrencySymbol" value={localSettings.primaryCurrencySymbol} onChange={handleSettingsChange} placeholder="Bs." />
+                                    <Input id="primaryCurrencySymbol" value={localSettings.primaryCurrencySymbol} onChange={handleSettingsChange} placeholder="$" />
                                 </div>
                             </div>
                             <div className="space-y-4 p-4 border rounded-lg">
                                 <h3 className="font-semibold text-lg">Moneda Secundaria</h3>
                                 <div className="space-y-2">
                                     <Label htmlFor="secondaryCurrencyName">Nombre de la Moneda</Label>
-                                    <Input id="secondaryCurrencyName" value={localSettings.secondaryCurrencyName} onChange={handleSettingsChange} placeholder="USD" />
+                                    <Input id="secondaryCurrencyName" value={localSettings.secondaryCurrencyName} onChange={handleSettingsChange} placeholder="Bolívares" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="secondaryCurrencySymbol">Símbolo</Label>
-                                    <Input id="secondaryCurrencySymbol" value={localSettings.secondaryCurrencySymbol} onChange={handleSettingsChange} placeholder="$" />
+                                    <Input id="secondaryCurrencySymbol" value={localSettings.secondaryCurrencySymbol} onChange={handleSettingsChange} placeholder="Bs." />
                                 </div>
                             </div>
                         </div>
@@ -331,16 +377,34 @@ export default function SettingsPage() {
                                     {hasPin ? 'PIN de seguridad está activo.' : 'No hay PIN de seguridad configurado.'}
                                 </p>
                             </div>
-                            <Switch checked={hasPin} onCheckedChange={(checked) => !checked && removePin()} />
+                             <div className="flex items-center gap-4">
+                                {hasPin && <ChangePinDialog />}
+                                <Switch checked={hasPin} onCheckedChange={(checked) => { if (!checked) { removePin() } else if (!hasPin) { document.getElementById('new-pin-trigger')?.click() } }} />
+                            </div>
                         </div>
                         {!hasPin && (
-                            <div className="flex items-end gap-2">
-                                <div className="flex-1 space-y-2">
-                                    <Label htmlFor="new-pin">Nuevo PIN (4 dígitos)</Label>
-                                    <Input id="new-pin" type="password" value={newPin} onChange={(e) => setNewPin(e.target.value)} maxLength={4} placeholder="****" />
-                                </div>
-                                <Button onClick={() => setPin(newPin)}>Establecer PIN</Button>
-                            </div>
+                             <Dialog>
+                                <DialogTrigger asChild>
+                                    <Button id="new-pin-trigger" className="hidden">Establecer PIN</Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Establecer Nuevo PIN</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="flex-1 space-y-2 py-4">
+                                        <Label htmlFor="new-pin">Nuevo PIN (4 dígitos)</Label>
+                                        <Input id="new-pin" type="password" value={newPin} onChange={(e) => setNewPin(e.target.value)} maxLength={4} placeholder="****" />
+                                    </div>
+                                    <DialogFooter>
+                                        <DialogClose asChild>
+                                            <Button variant="outline">Cancelar</Button>
+                                        </DialogClose>
+                                        <DialogClose asChild>
+                                            <Button onClick={() => setPin(newPin)}>Establecer PIN</Button>
+                                        </DialogClose>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
                         )}
                     </CardContent>
                 </Card>
@@ -425,5 +489,3 @@ export default function SettingsPage() {
         </Dialog>
     );
 }
-
-    

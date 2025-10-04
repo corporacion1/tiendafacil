@@ -1,7 +1,7 @@
 
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useToast } from "@/hooks/use-toast";
 
 interface SecurityContextType {
@@ -11,6 +11,7 @@ interface SecurityContextType {
   setPin: (newPin: string) => void;
   hasPin: boolean;
   removePin: () => void;
+  changePin: (oldPin: string, newPin: string) => boolean;
 }
 
 const SecurityContext = createContext<SecurityContextType | undefined>(undefined);
@@ -88,6 +89,43 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, [toast]);
 
+  const changePin = useCallback((oldPin: string, newPin: string) => {
+    if (oldPin !== storedPin) {
+      toast({
+        variant: "destructive",
+        title: "PIN Actual Incorrecto",
+        description: "El PIN actual que ingresaste no es correcto.",
+      });
+      return false;
+    }
+    if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
+      toast({
+        variant: "destructive",
+        title: "PIN Nuevo Inválido",
+        description: "El nuevo PIN debe contener exactamente 4 dígitos numéricos.",
+      });
+      return false;
+    }
+    try {
+      localStorage.setItem(STORAGE_KEY, newPin);
+      setStoredPin(newPin);
+      setIsLocked(true); // Re-lock the app for security
+      toast({
+        title: "PIN Cambiado Exitosamente",
+        description: "Tu PIN de seguridad ha sido actualizado. Por favor, desbloquea la app con tu nuevo PIN.",
+      });
+      return true;
+    } catch (error) {
+       console.error("Could not access localStorage", error);
+       toast({
+         variant: "destructive",
+         title: "Error",
+         description: "No se pudo guardar el nuevo PIN.",
+       });
+       return false;
+    }
+  }, [storedPin, toast]);
+
   const removePin = useCallback(() => {
     try {
       localStorage.removeItem(STORAGE_KEY);
@@ -109,6 +147,7 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
     setPin,
     hasPin: !!storedPin,
     removePin,
+    changePin,
   };
 
   return (
