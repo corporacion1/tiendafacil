@@ -11,11 +11,9 @@ interface FirebaseClientProviderProps {
 }
 
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
-  // Initialize Firebase services here, and they will be stable for the lifetime of the provider.
   const { firebaseApp, auth, firestore } = useMemo(() => initializeFirebase(), []);
-
   const [user, setUser] = useState<User | null>(null);
-  const [isUserLoading, setIsUserLoading] = useState(true); // Start loading until the first auth check is complete.
+  const [isUserLoading, setIsUserLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
@@ -23,19 +21,18 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
       auth,
       (firebaseUser) => {
         setUser(firebaseUser);
-        setIsUserLoading(false); // Auth check is complete.
+        setIsUserLoading(false);
       },
       (error) => {
         console.error("FirebaseClientProvider: onAuthStateChanged error:", error);
         setError(error);
-        setIsUserLoading(false); // Auth check failed, but is complete.
+        setIsUserLoading(false);
       }
     );
 
-    return () => unsubscribe(); // Cleanup subscription on unmount.
-  }, [auth]); // The effect depends on the auth instance, which is stable.
+    return () => unsubscribe();
+  }, [auth]);
 
-  // The context value is memoized and only recalculates when its dependencies change.
   const contextValue = useMemo((): FirebaseContextState => ({
     firebaseApp,
     firestore,
@@ -45,15 +42,8 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
     userError: error,
   }), [firebaseApp, firestore, auth, user, isUserLoading, error]);
 
-
-  if (isUserLoading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <p>Cargando aplicación...</p>
-      </div>
-    );
-  }
-  
+  // Pass the calculated value to the provider, which then renders children.
+  // The logic to show a loading screen is now handled by the consumer (`MainApp`).
   return (
     <FirebaseProvider value={contextValue}>
       {children}

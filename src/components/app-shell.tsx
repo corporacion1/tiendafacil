@@ -1,39 +1,30 @@
 
 "use client";
 
-import { ThemeProvider } from "@/components/theme-provider";
-import { SecurityProvider, useSecurity } from "@/contexts/security-context";
-import { SettingsProvider } from "@/contexts/settings-context";
-import { ProductProvider } from "@/contexts/product-context";
-import { SalesProvider } from "@/contexts/sales-context";
-import { PurchasesProvider } from "@/contexts/purchases-context";
-import { UnitsProvider } from "@/contexts/units-context";
-import { FamiliesProvider } from "@/contexts/families-context";
-import { WarehousesProvider } from "@/contexts/warehouses-context";
-import { CurrencyRatesProvider } from "@/contexts/currency-rates-context";
 import { PinModal } from "@/components/pin-modal";
 import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { Footer } from "@/components/ui/footer";
-import { Toaster } from "@/components/ui/toaster";
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
-import { FirebaseClientProvider, useUser } from "@/firebase";
+import { useUser } from "@/firebase";
+import { useSecurity } from "@/contexts/security-context";
 
 
 function MainApp({ children }: { children: React.ReactNode }) {
   const { isLocked, lockApp, hasPin } = useSecurity();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const pathname = usePathname();
   const router = useRouter();
   const previousPathname = useRef(pathname);
 
   useEffect(() => {
-    // If there's no user and we're not on the login page, redirect there.
-    if (!user && pathname !== '/login') {
+    // If the user data is not loading and there's no user,
+    // and we are not already on the login page, redirect to login.
+    if (!isUserLoading && !user && pathname !== '/login') {
       router.replace('/login');
     }
-  }, [user, pathname, router]);
+  }, [user, isUserLoading, pathname, router]);
 
   useEffect(() => {
     if (!hasPin) return;
@@ -45,13 +36,20 @@ function MainApp({ children }: { children: React.ReactNode }) {
     previousPathname.current = pathname;
   }, [pathname, lockApp, hasPin]);
   
+  if (isUserLoading) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+          <p>Cargando aplicación...</p>
+      </div>
+    );
+  }
+  
   if (pathname === '/login') {
       return <>{children}</>;
   }
   
-  // After the initial loading in FirebaseClientProvider, if there's no user,
-  // the useEffect above will trigger a redirect. We can render nothing or a minimal
-  // placeholder while the redirect happens to avoid flashing content.
+  // This should not be reached if there is no user, due to the redirect.
+  // But as a safeguard, we can return null.
   if (!user) {
     return null; 
   }
@@ -75,30 +73,5 @@ function MainApp({ children }: { children: React.ReactNode }) {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <FirebaseClientProvider>
-        <SecurityProvider>
-          <CurrencyRatesProvider>
-            <SettingsProvider>
-              <ProductProvider>
-                <SalesProvider>
-                  <PurchasesProvider>
-                    <UnitsProvider>
-                      <FamiliesProvider>
-                        <WarehousesProvider>
-                          <MainApp>{children}</MainApp>
-                          <Toaster />
-                        </WarehousesProvider>
-                      </FamiliesProvider>
-                    </UnitsProvider>
-                  </PurchasesProvider>
-                </SalesProvider>
-              </ProductProvider>
-            </SettingsProvider>
-          </CurrencyRatesProvider>
-        </SecurityProvider>
-      </FirebaseClientProvider>
-    </ThemeProvider>
-  );
+  return <MainApp>{children}</MainApp>;
 }
