@@ -13,6 +13,8 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type { Product } from "@/lib/types";
 import { initialFamilies, initialUnits, initialWarehouses } from "@/lib/data";
+import { useProducts } from "@/contexts/product-context";
+import { useToast } from "@/hooks/use-toast";
 
 const productSchema = z.object({
   id: z.string(),
@@ -84,6 +86,9 @@ const calculateProfit = (price: number, cost: number): string => {
 
 
 export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
+  const { products } = useProducts();
+  const { toast } = useToast();
+
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: getInitialValues(product),
@@ -92,6 +97,31 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   useEffect(() => {
       form.reset(getInitialValues(product));
   }, [product, form]);
+
+  const handleSkuBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const sku = e.target.value;
+    // Don't validate if SKU is empty or if we are editing and the SKU hasn't changed
+    if (!sku || (product && product.sku.toLowerCase() === sku.toLowerCase())) {
+        form.clearErrors("sku");
+        return;
+    }
+
+    const existingProduct = products.find(p => p.sku.toLowerCase() === sku.toLowerCase());
+    if (existingProduct) {
+        toast({
+            variant: "destructive",
+            title: "SKU Duplicado",
+            description: `El SKU "${sku}" ya está en uso por el producto "${existingProduct.name}".`,
+        });
+        form.setError("sku", {
+            type: "manual",
+            message: "Este SKU ya existe. Por favor, usa uno diferente."
+        });
+    } else {
+        form.clearErrors("sku");
+    }
+  };
+
 
   const watchedPrice = useWatch({ control: form.control, name: 'price' });
   const watchedWholesalePrice = useWatch({ control: form.control, name: 'wholesalePrice' });
@@ -118,7 +148,12 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
               <FormItem>
                 <FormLabel>SKU (Código)</FormLabel>
                 <FormControl>
-                  <Input placeholder="Ej: LP-001" {...field} disabled={!!product} />
+                  <Input 
+                    placeholder="Ej: LP-001" 
+                    {...field} 
+                    disabled={!!product} 
+                    onBlur={handleSkuBlur}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -254,14 +289,14 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 text-sm text-muted-foreground">
             <div>
-                <span className="font-medium">Margen de Ganancia (Detal): </span>
-                <span className={parseFloat(retailProfitPercentage) > 0 ? "text-green-600 font-semibold" : "text-muted-foreground"}>{retailProfitPercentage}%</span>
+                <span className="font-medium text-foreground">Margen de Ganancia (Detal): </span>
+                <span className={parseFloat(retailProfitPercentage) > 0 ? "text-green-600 font-semibold" : ""}>{retailProfitPercentage}%</span>
             </div>
             <div>
-                <span className="font-medium">Margen de Ganancia (Mayor): </span>
-                <span className={parseFloat(wholesaleProfitPercentage) > 0 ? "text-green-600 font-semibold" : "text-muted-foreground"}>{wholesaleProfitPercentage}%</span>
+                <span className="font-medium text-foreground">Margen de Ganancia (Mayor): </span>
+                <span className={parseFloat(wholesaleProfitPercentage) > 0 ? "text-green-600 font-semibold" : ""}>{wholesaleProfitPercentage}%</span>
             </div>
         </div>
         
