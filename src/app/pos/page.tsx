@@ -169,6 +169,7 @@ export default function POSPage() {
     const saleId = generateSaleId();
     const newSale: Sale = {
         id: saleId,
+        customerId: selectedCustomer?.id ?? 'eventual',
         customerName: selectedCustomer?.name ?? 'Cliente Eventual',
         items: cartItems.map(item => ({
             productId: item.product.id,

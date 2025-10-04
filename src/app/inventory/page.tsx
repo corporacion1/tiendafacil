@@ -66,9 +66,10 @@ export default function InventoryPage() {
   };
 
 
-  const handleUpdateProduct = async (data: Omit<Product, 'id'> & { id?: string }) => {
+  async function handleUpdateProduct(data: Omit<Product, 'id'> & { id?: string }) {
     if (!data.id) return false;
 
+    // The data from the form is already complete, just remove the id before sending to update
     const { id, ...updateData } = data;
 
     await updateProduct(id, updateData);
@@ -80,7 +81,7 @@ export default function InventoryPage() {
     
     setProductToEdit(null); // Close the dialog
     return true; // Indicate success for form reset if needed
-  };
+  }
   
   const handleDelete = (productId: string) => {
      // Check if product is in any sale
@@ -346,8 +347,8 @@ export default function InventoryPage() {
                             src={product.imageUrl}
                             alt={product.name}
                             fill
-                            className="object-cover"
                             sizes="40px"
+                            className="object-cover"
                             data-ai-hint={product.imageHint}
                           />
                         ) : (

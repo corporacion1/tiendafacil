@@ -8,6 +8,7 @@ import { z } from "zod";
 import Image from "next/image";
 import { Upload, Package } from "lucide-react";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { FirebaseApp } from "firebase/app";
 
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -24,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
 import { useSettings } from "@/contexts/settings-context";
-import { useFirebase } from "@/firebase";
+import { useFirebaseApp } from "@/firebase";
 
 const productSchema = z.object({
   id: z.string().optional(),
@@ -67,6 +68,7 @@ const getInitialValues = (product?: Product): ProductFormValues => {
         };
     }
     return {
+      id: '',
       name: "",
       sku: "",
       price: 0,
@@ -100,7 +102,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const { families } = useFamilies();
   const { warehouses } = useWarehouses();
   const { activeSymbol, activeRate } = useSettings();
-  const { firebaseApp } = useFirebase();
+  const firebaseApp = useFirebaseApp();
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | undefined>(product?.imageUrl);
@@ -129,7 +131,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     }
 
     setIsUploading(true);
-    toast({ title: 'Subiendo imagen...' });
+    const { id: toastId, update } = toast({ title: 'Subiendo imagen...', description: 'Por favor, espera.' });
 
     const storage = getStorage(firebaseApp);
     const storageRef = ref(storage, `products/${Date.now()}-${file.name}`);
@@ -141,17 +143,11 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         form.setValue('imageUrl', downloadURL, { shouldValidate: true });
         setImagePreview(downloadURL);
 
-        toast({
-            title: 'Imagen subida',
-            description: 'La imagen del producto ha sido actualizada.',
-        });
+        update({ id: toastId, title: 'Imagen subida', description: 'La imagen del producto ha sido actualizada.' });
+
     } catch (error) {
         console.error("Image upload error:", error);
-        toast({
-            variant: 'destructive',
-            title: 'Error al subir la imagen',
-            description: 'Hubo un problema al subir tu imagen. Inténtalo de nuevo.',
-        });
+        update({ id: toastId, variant: 'destructive', title: 'Error al subir la imagen', description: 'Hubo un problema al subir tu imagen. Inténtalo de nuevo.' });
     } finally {
         setIsUploading(false);
     }
@@ -342,7 +338,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                 <FormItem>
                   <FormLabel>Costo ({activeSymbol})</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" placeholder="0.00" {...field} value={Number.isNaN(field.value) ? '' : (field.value * activeRate).toFixed(2)} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate || 0)} />
+                    <Input type="number" step="0.01" placeholder="0.00" {...field} value={field.value ? (field.value * activeRate).toFixed(2) : ''} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate || 0)} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -360,7 +356,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                       step="0.01"
                       placeholder="0.00"
                       {...field}
-                       value={Number.isNaN(field.value) ? '' : (field.value * activeRate).toFixed(2)} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate || 0)}
+                       value={field.value ? (field.value * activeRate).toFixed(2) : ''} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate || 0)}
                     />
                   </FormControl>
                   <FormDescription className={cn(parseFloat(retailProfitPercentage) > 0 ? "text-green-600 font-semibold" : "")}>
@@ -377,7 +373,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                 <FormItem>
                   <FormLabel>Precio Mayor ({activeSymbol})</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" placeholder="0.00" {...field}  value={Number.isNaN(field.value) ? '' : (field.value * activeRate).toFixed(2)} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate || 0)} />
+                    <Input type="number" step="0.01" placeholder="0.00" {...field}  value={field.value ? (field.value * activeRate).toFixed(2) : ''} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate || 0)} />
                   </FormControl>
                   <FormDescription className={cn(parseFloat(wholesaleProfitPercentage) > 0 ? "text-green-600 font-semibold" : "")}>
                       Margen de Ganancia: {wholesaleProfitPercentage}%
