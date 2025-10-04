@@ -66,7 +66,7 @@ const getInitialValues = (product?: Product): ProductFormValues => {
         };
     }
     return {
-      id: undefined,
+      id: '', // Set to empty string for new products
       name: "",
       sku: "",
       price: 0,

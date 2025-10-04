@@ -23,7 +23,10 @@ export default function ProductsPage() {
       return false; // Stop the submission
     }
     
-    await addProduct(data);
+    // Explicitly remove id field before adding, as addDoc generates it.
+    const { id, ...productData } = data as any;
+    
+    await addProduct(productData);
     
     toast({
       title: "Producto Creado",
