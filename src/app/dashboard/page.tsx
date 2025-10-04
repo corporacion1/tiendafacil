@@ -15,7 +15,7 @@ import {
   Legend,
   CartesianGrid
 } from "recharts";
-import { subDays } from "date-fns";
+import { subDays, parseISO } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -34,20 +34,22 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { mockSales, mockInventoryMovements } from "@/lib/data";
 import { useProducts } from "@/contexts/product-context";
 import { useSettings } from "@/contexts/settings-context";
+import { useSales } from "@/contexts/sales-context";
+import { InventoryMovement } from "@/lib/types";
 
 type TimeFilter = '3d' | '7d' | '30d' | null;
 
 export default function Dashboard() {
-  const { products } = useProducts();
+  const { products, isLoading: productsLoading } = useProducts();
+  const { sales, isLoading: salesLoading } = useSales();
   const { activeSymbol, activeRate } = useSettings();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>(null);
 
-  const filteredData = useMemo(() => {
+  const filteredSales = useMemo(() => {
     if (!timeFilter) {
-      return { sales: mockSales, movements: mockInventoryMovements };
+      return sales;
     }
     const getDays = () => {
       switch (timeFilter) {
@@ -60,11 +62,31 @@ export default function Dashboard() {
     const days = getDays();
     const cutoffDate = subDays(new Date(), days);
 
-    const sales = mockSales.filter(s => new Date(s.date) >= cutoffDate);
-    const movements = mockInventoryMovements.filter(m => new Date(m.date) >= cutoffDate);
-    
-    return { sales, movements };
-  }, [timeFilter]);
+    return sales.filter(s => {
+      const saleDate = typeof s.date === 'string' ? parseISO(s.date) : (s.date as any).toDate();
+      return saleDate >= cutoffDate;
+    });
+  }, [timeFilter, sales]);
+
+  const recentMovements = useMemo(() => {
+    const movements: Omit<InventoryMovement, 'id' | 'productId' >[] = [];
+    filteredSales.forEach(sale => {
+      sale.items.forEach(item => {
+        movements.push({
+          productName: item.productName,
+          type: 'sale',
+          quantity: -item.quantity,
+          date: sale.date,
+        });
+      });
+    });
+    // We would also add purchases and adjustments here if we had those contexts
+    return movements.sort((a, b) => {
+        const dateA = typeof a.date === 'string' ? parseISO(a.date) : (a.date as any).toDate();
+        const dateB = typeof b.date === 'string' ? parseISO(b.date) : (b.date as any).toDate();
+        return dateB.getTime() - dateA.getTime();
+    });
+  }, [filteredSales]);
   
   const monthlyChartData = useMemo(() => {
     const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -74,8 +96,9 @@ export default function Dashboard() {
         dataByMonth[i] = { month: monthNames[i], sales: 0, profit: 0 };
     }
 
-    filteredData.sales.forEach(sale => {
-        const month = new Date(sale.date).getMonth();
+    filteredSales.forEach(sale => {
+        const saleDate = typeof sale.date === 'string' ? parseISO(sale.date) : (sale.date as any).toDate();
+        const month = saleDate.getMonth();
         let costOfGoods = 0;
         
         sale.items.forEach(item => {
@@ -94,7 +117,7 @@ export default function Dashboard() {
       sales: monthData.sales * activeRate,
       profit: monthData.profit * activeRate,
     }));
-  }, [filteredData.sales, products, activeRate]);
+  }, [filteredSales, products, activeRate]);
 
   const getMovementLabel = (type: 'sale' | 'purchase' | 'adjustment') => {
     switch (type) {
@@ -104,6 +127,13 @@ export default function Dashboard() {
         default: return type;
     }
   };
+
+  const totalRevenue = useMemo(() => filteredSales.reduce((acc, s) => acc + s.total, 0), [filteredSales]);
+  const activeProducts = useMemo(() => products.filter(p => p.status === 'active').length, [products]);
+
+  if (productsLoading || salesLoading) {
+    return <div>Cargando dashboard...</div>
+  }
 
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -117,10 +147,7 @@ export default function Dashboard() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{activeSymbol}{(45231.89 * activeRate).toFixed(2)}</div>
-              <p className="text-xs text-muted-foreground">
-                +20.1% from last month
-              </p>
+              <div className="text-2xl font-bold">{activeSymbol}{(totalRevenue * activeRate).toFixed(2)}</div>
             </CardContent>
           </Card>
           <Card>
@@ -133,7 +160,7 @@ export default function Dashboard() {
             <CardContent>
               <div className="text-2xl font-bold">+2350</div>
               <p className="text-xs text-muted-foreground">
-                +180.1% from last month
+                Dato estático
               </p>
             </CardContent>
           </Card>
@@ -143,10 +170,7 @@ export default function Dashboard() {
               <Package className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">+12,234</div>
-              <p className="text-xs text-muted-foreground">
-                +19% from last month
-              </p>
+              <div className="text-2xl font-bold">+{filteredSales.length}</div>
             </CardContent>
           </Card>
           <Card>
@@ -157,10 +181,7 @@ export default function Dashboard() {
               <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">573</div>
-              <p className="text-xs text-muted-foreground">
-                +201 since last hour
-              </p>
+              <div className="text-2xl font-bold">{activeProducts}</div>
             </CardContent>
           </Card>
         </div>
@@ -210,39 +231,6 @@ export default function Dashboard() {
           </Card>
         </div>
         <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
-          <Card className="xl:col-span-2 hidden">
-            <CardHeader>
-              <CardTitle>Ventas Mensuales</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={monthlyChartData}>
-                  <XAxis
-                    dataKey="month"
-                    stroke="#888888"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis
-                    stroke="#888888"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(value) => `${activeSymbol}${value}`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--background))',
-                      borderColor: 'hsl(var(--border))',
-                    }}
-                    formatter={(value: number) => `${activeSymbol}${value.toFixed(2)}`}
-                  />
-                  <Bar dataKey="sales" radius={[4, 4, 0, 0]} className="fill-primary" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
           <Card className="w-full xl:col-span-3">
             <CardHeader className="flex flex-row items-center">
               <div className="grid gap-2">
@@ -268,8 +256,8 @@ export default function Dashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredData.movements.slice(0, 5).map((movement) => (
-                    <TableRow key={movement.id}>
+                  {recentMovements.slice(0, 5).map((movement, index) => (
+                    <TableRow key={index}>
                       <TableCell>
                         <div className="font-medium">{movement.productName}</div>
                       </TableCell>
