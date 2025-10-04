@@ -73,7 +73,8 @@ const getInitialValues = (product?: Product): ProductFormValues => {
 
 const calculateProfit = (price: number, cost: number): string => {
   if (cost > 0 && price > cost) {
-    return (((price - cost) / cost) * 100).toFixed(2);
+    const profit = (((price - cost) / cost) * 100).toFixed(2);
+    return profit;
   }
   return '0.00';
 };
@@ -83,7 +84,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: getInitialValues(),
-    ...(product && { values: getInitialValues(product) })
+    values: product ? getInitialValues(product) : undefined,
   });
   
   const handleSubmit = (data: ProductFormValues) => {
