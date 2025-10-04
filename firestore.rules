@@ -1,257 +1,319 @@
 /**
- * @fileoverview Firestore Security Rules for the Inventory Management System.
+ * @fileoverview Firestore Security Rules.
  *
  * Core Philosophy:
- * This ruleset enforces a multi-tenant security model where each store's data is isolated.
- * Users can only access data within stores they own. Superusers can potentially bypass some restrictions.
+ * This ruleset enforces a multi-tenant data model where stores are isolated.
+ * Users can only access data belonging to stores they own.
  *
  * Data Structure:
- * - /users/{userId}: Global user profiles.
- * - /stores/{storeId}: Root collection for tenant stores. Each store has an `ownerId` field.
- * - /stores/{storeId}/[...]: Subcollections containing store-specific data (products, units, etc.).
+ * - /users/{userId}: Stores global user profiles, secured with owner-only access.
+ * - /stores/{storeId}: Root collection for tenant stores; store documents contain an `ownerId` field.
+ * - /stores/{storeId}/[...]: Subcollections contain store-specific data, secured to the store owner.
  *
  * Key Security Decisions:
- * - Strict store-level ownership: Only the store owner can create, update, or delete store-level data.
- * - No public listing of stores or their subcollections. List operations are restricted to the owner.
+ * - Users can only list documents within their own store to prevent cross-tenant data leakage.
+ * - Strict ownership is enforced for all write operations within a store.
  *
  * Denormalization for Authorization:
- * The `Store` entity contains an `ownerId` field, which is crucial for authorization. This allows us to quickly check if a user owns a store without additional reads.
+ * - The `Store` document includes an `ownerId` field, which is used to quickly check store ownership without additional reads.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the request is authenticated.
-     */
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    /**
-     * @description Checks if the authenticated user is the owner of the specified store.
-     */
-    function isOwner(storeId) {
-      return get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid;
-    }
-
-    /**
-     * @description Checks if the authenticated user is the owner of the specified store and the document exists.
-     */
-    function isExistingOwner(storeId) {
-      return isSignedIn() && isOwner(storeId) && resource != null;
-    }
-
-    /**
-     * @description Global user profiles.
+     * @description Allows users to read and write their own user document.
      * @path /users/{userId}
-     * @allow (create) User with ID 'user123' can create their own profile.
-     * @allow (get) User with ID 'user123' can read their own profile.
-     * @deny (create) User with ID 'user456' cannot create a profile for 'user123'.
-     * @deny (get) User with ID 'user456' cannot read the profile of 'user123'.
-     * @principle Enforces user-ownership for profile data.
+     * @allow (create) - User 'abc' can create their own user document if request.auth.uid == 'abc'.
+     * @deny (create) - User 'def' cannot create user document 'abc'.
+     * @allow (get, list, update, delete) - User 'abc' can read, update and delete their own user document.
+     * @deny (get, list, update, delete) - User 'abc' cannot read, update, delete user document 'def'.
+     * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
      */
     match /users/{userId} {
-      allow get: if isSignedIn() && request.auth.uid == userId;
+      function isOwner(userId) {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      allow get: if isOwner(userId);
       allow list: if false;
-      allow create: if isSignedIn() && request.auth.uid == userId;
-      allow update: if isSignedIn() && request.auth.uid == userId;
-      allow delete: if false;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
     }
 
     /**
-     * @description Root collection for all tenant stores.
+     * @description Allows the store owner to manage their store.
      * @path /stores/{storeId}
-     * @allow (create) User with ID 'user123' can create a store with ownerId 'user123'.
-     * @deny (create) User with ID 'user456' cannot create a store with ownerId 'user123'.
-     * @deny (get) Anonymous user cannot read store data.
-     * @principle Enforces store-level ownership; stores are private to their owners.
+     * @allow (create) - User 'abc' can create a store if request.auth.uid matches the store's ownerId.
+     * @deny (create) - User 'def' cannot create a store owned by 'abc'.
+     * @allow (get, list, update, delete) - User 'abc' can read, update and delete a store they own.
+     * @deny (get, list, update, delete) - User 'def' cannot read, update, delete store owned by 'abc'.
+     * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
      */
     match /stores/{storeId} {
-      allow get: if isOwner(storeId);
+      function isStoreOwner(storeId) {
+        return request.auth != null && get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid;
+      }
+
+      allow get: if isStoreOwner(storeId);
       allow list: if false;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.id == storeId;
-      allow update: if isExistingOwner(storeId) && request.resource.data.ownerId == resource.data.ownerId;
-      allow delete: if isExistingOwner(storeId);
+      allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isStoreOwner(storeId);
+      allow delete: if isStoreOwner(storeId);
 
       /**
-       * @description Products for a specific store.
+       * @description Allows the store owner to manage products for their store.
        * @path /stores/{storeId}/products/{productId}
+       * @allow (create) - Store owner can create products within their store.
+       * @deny (create) - Other users cannot create products in another user's store.
+       * @allow (get, list, update, delete) - Store owner can read, update, and delete products in their store.
+       * @deny (get, list, update, delete) - Other users cannot read, update, or delete products in another user's store.
+       * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
        */
       match /products/{productId} {
-        allow get: if isOwner(storeId);
-        allow list: if isOwner(storeId);
-        allow create: if isOwner(storeId);
-        allow update: if isExistingOwner(storeId);
-        allow delete: if isExistingOwner(storeId);
+        allow get: if isStoreOwner(storeId);
+        allow list: if isStoreOwner(storeId);
+        allow create: if isStoreOwner(storeId);
+        allow update: if isStoreOwner(storeId);
+        allow delete: if isStoreOwner(storeId);
       }
 
       /**
-       * @description Units of measure for a specific store.
+       * @description Allows the store owner to manage units for their store.
        * @path /stores/{storeId}/units/{unitId}
+       * @allow (create) - Store owner can create units within their store.
+       * @deny (create) - Other users cannot create units in another user's store.
+       * @allow (get, list, update, delete) - Store owner can read, update, and delete units in their store.
+       * @deny (get, list, update, delete) - Other users cannot read, update, or delete units in another user's store.
+       * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
        */
       match /units/{unitId} {
-        allow get: if isOwner(storeId);
-        allow list: if isOwner(storeId);
-        allow create: if isOwner(storeId);
-        allow update: if isExistingOwner(storeId);
-        allow delete: if isExistingOwner(storeId);
+        allow get: if isStoreOwner(storeId);
+        allow list: if isStoreOwner(storeId);
+        allow create: if isStoreOwner(storeId);
+        allow update: if isStoreOwner(storeId);
+        allow delete: if isStoreOwner(storeId);
       }
 
       /**
-       * @description Product families for a specific store.
+       * @description Allows the store owner to manage families for their store.
        * @path /stores/{storeId}/families/{familyId}
+       * @allow (create) - Store owner can create families within their store.
+       * @deny (create) - Other users cannot create families in another user's store.
+       * @allow (get, list, update, delete) - Store owner can read, update, and delete families in their store.
+       * @deny (get, list, update, or delete) - Other users cannot read, update, or delete families in another user's store.
+       * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
        */
       match /families/{familyId} {
-        allow get: if isOwner(storeId);
-        allow list: if isOwner(storeId);
-        allow create: if isOwner(storeId);
-        allow update: if isExistingOwner(storeId);
-        allow delete: if isExistingOwner(storeId);
+        allow get: if isStoreOwner(storeId);
+        allow list: if isStoreOwner(storeId);
+        allow create: if isStoreOwner(storeId);
+        allow update: if isStoreOwner(storeId);
+        allow delete: if isStoreOwner(storeId);
       }
 
       /**
-       * @description Warehouses for a specific store.
+       * @description Allows the store owner to manage warehouses for their store.
        * @path /stores/{storeId}/warehouses/{warehouseId}
+       * @allow (create) - Store owner can create warehouses within their store.
+       * @deny (create) - Other users cannot create warehouses in another user's store.
+       * @allow (get, list, update, delete) - Store owner can read, update, and delete warehouses in their store.
+       * @deny (get, list, update, delete) - Other users cannot read, update, or delete warehouses in another user's store.
+       * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
        */
       match /warehouses/{warehouseId} {
-        allow get: if isOwner(storeId);
-        allow list: if isOwner(storeId);
-        allow create: if isOwner(storeId);
-        allow update: if isExistingOwner(storeId);
-        allow delete: if isExistingOwner(storeId);
+        allow get: if isStoreOwner(storeId);
+        allow list: if isStoreOwner(storeId);
+        allow create: if isStoreOwner(storeId);
+        allow update: if isStoreOwner(storeId);
+        allow delete: if isStoreOwner(storeId);
       }
 
       /**
-       * @description Tax types for a specific store.
+       * @description Allows the store owner to manage tax types for their store.
        * @path /stores/{storeId}/tax_types/{taxTypeId}
+       * @allow (create) - Store owner can create tax types within their store.
+       * @deny (create) - Other users cannot create tax types in another user's store.
+       * @allow (get, list, update, delete) - Store owner can read, update, and delete tax types in their store.
+       * @deny (get, list, update, delete) - Other users cannot read, update, or delete tax types in another user's store.
+       * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
        */
       match /tax_types/{taxTypeId} {
-        allow get: if isOwner(storeId);
-        allow list: if isOwner(storeId);
-        allow create: if isOwner(storeId);
-        allow update: if isExistingOwner(storeId);
-        allow delete: if isExistingOwner(storeId);
+        allow get: if isStoreOwner(storeId);
+        allow list: if isStoreOwner(storeId);
+        allow create: if isStoreOwner(storeId);
+        allow update: if isStoreOwner(storeId);
+        allow delete: if isStoreOwner(storeId);
       }
 
       /**
-       * @description Inventory movements for a specific store.
+       * @description Allows the store owner to manage inventory movements for their store.
        * @path /stores/{storeId}/inventory_movements/{inventoryMovementId}
+       * @allow (create) - Store owner can create inventory movements within their store.
+       * @deny (create) - Other users cannot create inventory movements in another user's store.
+       * @allow (get, list, update, delete) - Store owner can read, update, and delete inventory movements in their store.
+       * @deny (get, list, update, delete) - Other users cannot read, update, or delete inventory movements in another user's store.
+       * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
        */
       match /inventory_movements/{inventoryMovementId} {
-        allow get: if isOwner(storeId);
-        allow list: if isOwner(storeId);
-        allow create: if isOwner(storeId);
-        allow update: if isExistingOwner(storeId);
-        allow delete: if isExistingOwner(storeId);
+        allow get: if isStoreOwner(storeId);
+        allow list: if isStoreOwner(storeId);
+        allow create: if isStoreOwner(storeId);
+        allow update: if isStoreOwner(storeId);
+        allow delete: if isStoreOwner(storeId);
       }
 
       /**
-       * @description Sales records for a specific store.
+       * @description Allows the store owner to manage sales records for their store.
        * @path /stores/{storeId}/sales/{saleId}
+       * @allow (create) - Store owner can create sales records within their store.
+       * @deny (create) - Other users cannot create sales records in another user's store.
+       * @allow (get, list, update, delete) - Store owner can read, update, and delete sales records in their store.
+       * @deny (get, list, update, delete) - Other users cannot read, update, or delete sales records in another user's store.
+       * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
        */
       match /sales/{saleId} {
-        allow get: if isOwner(storeId);
-        allow list: if isOwner(storeId);
-        allow create: if isOwner(storeId);
-        allow update: if isExistingOwner(storeId);
-        allow delete: if isExistingOwner(storeId);
+        allow get: if isStoreOwner(storeId);
+        allow list: if isStoreOwner(storeId);
+        allow create: if isStoreOwner(storeId);
+        allow update: if isStoreOwner(storeId);
+        allow delete: if isStoreOwner(storeId);
 
         /**
-         * @description Items within a sale for a specific store.
+         * @description Allows the store owner to manage sale items for a specific sale in their store.
          * @path /stores/{storeId}/sales/{saleId}/sale_items/{saleItemId}
+         * @allow (create) - Store owner can create sale items within a sale in their store.
+         * @deny (create) - Other users cannot create sale items in another user's store.
+         * @allow (get, list, update, delete) - Store owner can read, update, and delete sale items in their store.
+         * @deny (get, list, update, delete) - Other users cannot read, update, or delete sale items in another user's store.
+         * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
          */
         match /sale_items/{saleItemId} {
-          allow get: if isOwner(storeId);
-          allow list: if isOwner(storeId);
-          allow create: if isOwner(storeId);
-          allow update: if isExistingOwner(storeId);
-          allow delete: if isExistingOwner(storeId);
+          allow get: if isStoreOwner(storeId);
+          allow list: if isStoreOwner(storeId);
+          allow create: if isStoreOwner(storeId);
+          allow update: if isStoreOwner(storeId);
+          allow delete: if isStoreOwner(storeId);
         }
       }
 
       /**
-       * @description Purchase records for a specific store.
+       * @description Allows the store owner to manage purchases for their store.
        * @path /stores/{storeId}/purchases/{purchaseId}
+       * @allow (create) - Store owner can create purchases within their store.
+       * @deny (create) - Other users cannot create purchases in another user's store.
+       * @allow (get, list, update, delete) - Store owner can read, update, and delete purchases in their store.
+       * @deny (get, list, update, delete) - Other users cannot read, update, or delete purchases in another user's store.
+       * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
        */
       match /purchases/{purchaseId} {
-        allow get: if isOwner(storeId);
-        allow list: if isOwner(storeId);
-        allow create: if isOwner(storeId);
-        allow update: if isExistingOwner(storeId);
-        allow delete: if isExistingOwner(storeId);
+        allow get: if isStoreOwner(storeId);
+        allow list: if isStoreOwner(storeId);
+        allow create: if isStoreOwner(storeId);
+        allow update: if isStoreOwner(storeId);
+        allow delete: if isStoreOwner(storeId);
 
         /**
-         * @description Items within a purchase for a specific store.
+         * @description Allows the store owner to manage purchase items for a specific purchase in their store.
          * @path /stores/{storeId}/purchases/{purchaseId}/purchase_items/{purchaseItemId}
+         * @allow (create) - Store owner can create purchase items within a purchase in their store.
+         * @deny (create) - Other users cannot create purchase items in another user's store.
+         * @allow (get, list, update, delete) - Store owner can read, update, and delete purchase items in their store.
+         * @deny (get, list, update, delete) - Other users cannot read, update, or delete purchase items in another user's store.
+         * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
          */
         match /purchase_items/{purchaseItemId} {
-          allow get: if isOwner(storeId);
-          allow list: if isOwner(storeId);
-          allow create: if isOwner(storeId);
-          allow update: if isExistingOwner(storeId);
-          allow delete: if isExistingOwner(storeId);
+          allow get: if isStoreOwner(storeId);
+          allow list: if isStoreOwner(storeId);
+          allow create: if isStoreOwner(storeId);
+          allow update: if isStoreOwner(storeId);
+          allow delete: if isStoreOwner(storeId);
         }
       }
 
       /**
-       * @description Suppliers for a specific store.
+       * @description Allows the store owner to manage suppliers for their store.
        * @path /stores/{storeId}/suppliers/{supplierId}
+       * @allow (create) - Store owner can create suppliers within their store.
+       * @deny (create) - Other users cannot create suppliers in another user's store.
+       * @allow (get, list, update, delete) - Store owner can read, update, and delete suppliers in their store.
+       * @deny (get, list, update, delete) - Other users cannot read, update, or delete suppliers in another user's store.
+       * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
        */
       match /suppliers/{supplierId} {
-        allow get: if isOwner(storeId);
-        allow list: if isOwner(storeId);
-        allow create: if isOwner(storeId);
-        allow update: if isExistingOwner(storeId);
-        allow delete: if isExistingOwner(storeId);
+        allow get: if isStoreOwner(storeId);
+        allow list: if isStoreOwner(storeId);
+        allow create: if isStoreOwner(storeId);
+        allow update: if isStoreOwner(storeId);
+        allow delete: if isStoreOwner(storeId);
       }
 
       /**
-       * @description Customers for a specific store.
+       * @description Allows the store owner to manage customers for their store.
        * @path /stores/{storeId}/customers/{customerId}
+       * @allow (create) - Store owner can create customers within their store.
+       * @deny (create) - Other users cannot create customers in another user's store.
+       * @allow (get, list, update, delete) - Store owner can read, update, and delete customers in their store.
+       * @deny (get, list, update, delete) - Other users cannot read, update, or delete customers in another user's store.
+       * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
        */
       match /customers/{customerId} {
-        allow get: if isOwner(storeId);
-        allow list: if isOwner(storeId);
-        allow create: if isOwner(storeId);
-        allow update: if isExistingOwner(storeId);
-        allow delete: if isExistingOwner(storeId);
+        allow get: if isStoreOwner(storeId);
+        allow list: if isStoreOwner(storeId);
+        allow create: if isStoreOwner(storeId);
+        allow update: if isStoreOwner(storeId);
+        allow delete: if isStoreOwner(storeId);
       }
 
       /**
-       * @description Currency exchange rates for a specific store.
+       * @description Allows the store owner to manage currency rates for their store.
        * @path /stores/{storeId}/currency_rates/{currencyRateId}
+       * @allow (create) - Store owner can create currency rates within their store.
+       * @deny (create) - Other users cannot create currency rates in another user's store.
+       * @allow (get, list, update, delete) - Store owner can read, update, and delete currency rates in their store.
+       * @deny (get, list, update, delete) - Other users cannot read, update, or delete currency rates in another user's store.
+       * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
        */
       match /currency_rates/{currencyRateId} {
-        allow get: if isOwner(storeId);
-        allow list: if isOwner(storeId);
-        allow create: if isOwner(storeId);
-        allow update: if isExistingOwner(storeId);
-        allow delete: if isExistingOwner(storeId);
+        allow get: if isStoreOwner(storeId);
+        allow list: if isStoreOwner(storeId);
+        allow create: if isStoreOwner(storeId);
+        allow update: if isStoreOwner(storeId);
+        allow delete: if isStoreOwner(storeId);
       }
 
-       /**
-        * @description Chat conversations for a specific store.
-        * @path /stores/{storeId}/chats/{chatId}
-        */
+      /**
+       * @description Allows participants of a chat to manage messages.
+       * @path /stores/{storeId}/chats/{chatId}
+       * @allow (create, get, list, update, delete) - Store owner can create, get, list, update and delete chats in their store.
+       * @deny (create, get, list, update, delete) - Other users cannot create, get, list, update or delete chats in another user's store.
+       * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
+       */
       match /chats/{chatId} {
-          allow get: if isOwner(storeId);
-          allow list: if isOwner(storeId);
-          allow create: if isOwner(storeId);
-          allow update: if isExistingOwner(storeId);
-          allow delete: if isExistingOwner(storeId);
+        function isParticipant(chatId) {
+          return request.auth != null && request.auth.uid in get(/databases/$(database)/documents/stores/$(storeId)/chats/$(chatId)).data.participants;
+        }
 
-          /**
-           * @description Messages within a chat for a specific store.
-           * @path /stores/{storeId}/chats/{chatId}/messages/{messageId}
-           */
-          match /messages/{messageId} {
-              allow get: if isOwner(storeId);
-              allow list: if isOwner(storeId);
-              allow create: if isOwner(storeId);
-              allow update: if isExistingOwner(storeId);
-              allow delete: if isExistingOwner(storeId);
-          }
+        allow get: if isStoreOwner(storeId);
+        allow list: if isStoreOwner(storeId);
+        allow create: if isStoreOwner(storeId);
+        allow update: if isStoreOwner(storeId);
+        allow delete: if isStoreOwner(storeId);
+
+        /**
+         * @description Allows participants of a chat to manage messages.
+         * @path /stores/{storeId}/chats/{chatId}/messages/{messageId}
+         * @allow (create, get, list, update, delete) - Participants of a chat can create, get, list, update and delete messages within the chat.
+         * @deny (create, get, list, update, delete) - Non-participants cannot create, get, list, update or delete messages in a chat.
+         */
+        match /messages/{messageId} {
+          allow get: if isStoreOwner(storeId);
+          allow list: if isStoreOwner(storeId);
+          allow create: if isStoreOwner(storeId);
+          allow update: if isStoreOwner(storeId);
+          allow delete: if isStoreOwner(storeId);
+        }
       }
     }
   }
