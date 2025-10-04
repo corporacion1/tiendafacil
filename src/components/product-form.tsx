@@ -94,8 +94,11 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   }, [product, form]);
 
   const watchedPrice = useWatch({ control: form.control, name: 'price' });
+  const watchedWholesalePrice = useWatch({ control: form.control, name: 'wholesalePrice' });
   const watchedCost = useWatch({ control: form.control, name: 'cost' });
-  const profitPercentage = calculateProfit(watchedPrice, watchedCost);
+  
+  const retailProfitPercentage = calculateProfit(watchedPrice, watchedCost);
+  const wholesaleProfitPercentage = calculateProfit(watchedWholesalePrice, watchedCost);
 
   const handleSubmit = (data: ProductFormValues) => {
     const result = onSubmit(data);
@@ -136,6 +139,74 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             )}
           />
         </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <FormField
+                control={form.control}
+                name="unit"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Unidad de Medida</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                                <SelectTrigger><SelectValue placeholder="Selecciona una unidad" /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {initialUnits.map(u => <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </FormItem>
+                )}
+            />
+            <FormField
+                control={form.control}
+                name="family"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Familia</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                                <SelectTrigger><SelectValue placeholder="Selecciona una familia" /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {initialFamilies.map(f => <SelectItem key={f.id} value={f.name}>{f.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </FormItem>
+                )}
+            />
+             <FormField
+                control={form.control}
+                name="warehouse"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Almacén</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                                <SelectTrigger><SelectValue placeholder="Selecciona un almacén" /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                 {initialWarehouses.map(w => <SelectItem key={w.id} value={w.name}>{w.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </FormItem>
+                )}
+            />
+        </div>
+
+        <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Descripción</FormLabel>
+                <FormControl>
+                  <Textarea placeholder="Describe el producto" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+        />
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <FormField
@@ -184,9 +255,15 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
           />
         </div>
 
-         <div className="text-sm">
-            <span className="font-medium">Margen de Ganancia (Detal): </span>
-            <span className={parseFloat(profitPercentage) > 0 ? "text-green-600 font-semibold" : "text-muted-foreground"}>{profitPercentage}%</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 text-sm">
+            <div>
+                <span className="font-medium">Margen de Ganancia (Detal): </span>
+                <span className={parseFloat(retailProfitPercentage) > 0 ? "text-green-600 font-semibold" : "text-muted-foreground"}>{retailProfitPercentage}%</span>
+            </div>
+            <div>
+                <span className="font-medium">Margen de Ganancia (Mayor): </span>
+                <span className={parseFloat(wholesaleProfitPercentage) > 0 ? "text-green-600 font-semibold" : "text-muted-foreground"}>{wholesaleProfitPercentage}%</span>
+            </div>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -261,74 +338,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <FormField
-                control={form.control}
-                name="unit"
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Unidad de Medida</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                                <SelectTrigger><SelectValue placeholder="Selecciona una unidad" /></SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                {initialUnits.map(u => <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </FormItem>
-                )}
-            />
-            <FormField
-                control={form.control}
-                name="family"
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Familia</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                                <SelectTrigger><SelectValue placeholder="Selecciona una familia" /></SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                {initialFamilies.map(f => <SelectItem key={f.id} value={f.name}>{f.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </FormItem>
-                )}
-            />
-             <FormField
-                control={form.control}
-                name="warehouse"
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Almacén</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                                <SelectTrigger><SelectValue placeholder="Selecciona un almacén" /></SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                 {initialWarehouses.map(w => <SelectItem key={w.id} value={w.name}>{w.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </FormItem>
-                )}
-            />
-        </div>
-
-        <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Descripción</FormLabel>
-                <FormControl>
-                  <Textarea placeholder="Describe el producto" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-        />
-
         <div className="flex justify-end gap-2">
             {onCancel && <Button variant="outline" type="button" onClick={onCancel}>
                 Cancelar
@@ -339,4 +348,3 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     </Form>
   );
 }
-
