@@ -16,7 +16,7 @@ import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { Footer } from "@/components/ui/footer";
 import { Toaster } from "@/components/ui/toaster";
-import { usePathname, useRouter, redirect } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import { FirebaseClientProvider, useUser } from "@/firebase";
 
@@ -46,7 +46,7 @@ function MainApp({ children }: { children: React.ReactNode }) {
     previousPathname.current = pathname;
   }, [pathname, lockApp, hasPin]);
   
-  if (isUserLoading) {
+  if (isUserLoading && pathname !== '/login') {
      return <div className="flex h-screen w-full items-center justify-center"><p>Cargando...</p></div>;
   }
 
