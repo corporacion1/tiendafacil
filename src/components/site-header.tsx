@@ -31,7 +31,11 @@ const settingsNav = { href: "/settings", label: "Configuración", icon: Settings
 
 export function SiteHeader() {
   const pathname = usePathname();
-  const { activeSymbol, toggleDisplayCurrency } = useSettings();
+  const { settings, activeSymbol, activeCurrency, toggleDisplayCurrency } = useSettings();
+
+  const inactiveSymbol = activeCurrency === 'primary' 
+    ? settings.secondaryCurrencySymbol 
+    : settings.primaryCurrencySymbol;
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
@@ -75,11 +79,23 @@ export function SiteHeader() {
             <Image src="/logo.png" width={32} height={32} alt="TF" />
         </div>
       <div className="relative ml-auto flex items-center gap-2 md:grow-0">
-        <Button variant="ghost" size="icon" onClick={toggleDisplayCurrency} aria-label="Cambiar moneda">
-            <Coins className="h-5 w-5" />
-            <span className="absolute bottom-0 right-0 text-xs font-bold leading-none">{activeSymbol}</span>
-        </Button>
-        <ThemeToggle />
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" onClick={toggleDisplayCurrency} aria-label="Cambiar moneda">
+                  <span className="font-bold">{inactiveSymbol}</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Cambiar a {activeCurrency === 'primary' ? settings.secondaryCurrencyName : settings.primaryCurrencyName}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        <div className="relative">
+          <ThemeToggle />
+          <span className="absolute -bottom-2 right-0 text-xs font-bold leading-none">{activeSymbol}</span>
+        </div>
       </div>
     </header>
   );
