@@ -44,7 +44,7 @@ function MainApp({ children }: { children: React.ReactNode }) {
     previousPathname.current = pathname;
   }, [pathname, lockApp, hasPin]);
   
-  if (isUserLoading) {
+  if (isUserLoading && pathname !== '/login') {
     return <div className="flex h-screen w-full items-center justify-center"><p>Cargando aplicación...</p></div>;
   }
 
@@ -53,9 +53,6 @@ function MainApp({ children }: { children: React.ReactNode }) {
   }
   
   if (!user) {
-    // This case should be handled by the redirect effect, but as a fallback,
-    // we prevent rendering the main app layout for a non-logged-in user
-    // outside of the login page.
     return null;
   }
 
