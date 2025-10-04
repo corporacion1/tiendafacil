@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -73,8 +74,8 @@ const getInitialValues = (product?: Product): ProductFormValues => {
 
 const calculateProfit = (price: number, cost: number): string => {
   if (cost > 0 && price > cost) {
-    const profit = (((price - cost) / cost) * 100).toFixed(2);
-    return profit;
+    const profit = (((price - cost) / cost) * 100);
+    return profit.toFixed(2);
   }
   return '0.00';
 };
@@ -83,13 +84,18 @@ const calculateProfit = (price: number, cost: number): string => {
 export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
-    defaultValues: getInitialValues(),
-    values: product ? getInitialValues(product) : undefined,
+    defaultValues: getInitialValues(product),
+    resetOptions: {
+      keepDirtyValues: false,
+    },
   });
+
+  if (product && form.getValues('id') !== product.id) {
+    form.reset(getInitialValues(product));
+  }
   
   const handleSubmit = (data: ProductFormValues) => {
-    const productData: Product = { ...data };
-    const result = onSubmit(productData);
+    const result = onSubmit(data);
     if (!product && result === true) {
       form.reset(getInitialValues());
     }
@@ -339,7 +345,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             <FormField
                 control={form.control}
                 name="status"
-                render={({ field: { onChange, value, ...rest } }) => (
+                render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                         <div className="space-y-0.5">
                             <FormLabel className="text-base">Estado</FormLabel>
@@ -349,9 +355,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                         </div>
                         <FormControl>
                             <Switch
-                            checked={value === 'active'}
-                            onCheckedChange={(checked) => onChange(checked ? 'active' : 'inactive')}
-                            {...rest}
+                            checked={field.value === 'active'}
+                            onCheckedChange={(checked) => field.onChange(checked ? 'active' : 'inactive')}
                             />
                         </FormControl>
                     </FormItem>
