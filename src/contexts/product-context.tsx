@@ -1,18 +1,18 @@
 
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useCallback } from 'react';
 import type { Product } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { setDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
+import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 
 
 interface ProductContextType {
   products: Product[];
   isLoading: boolean;
   addProduct: (product: Omit<Product, 'id'>) => Promise<string | void>;
-  updateProduct: (productId: string, updatedProduct: Partial<Product>) => Promise<void>;
+  updateProduct: (productId: string, updatedProduct: Partial<Omit<Product, 'id'>>) => Promise<void>;
   deleteProduct: (productId: string) => Promise<void>;
   getProductById: (productId: string) => Product | undefined;
 }
@@ -40,7 +40,7 @@ export const ProductProvider = ({ children }: { children: React.ReactNode }) => 
     return docRef?.id;
   };
 
-  const updateProduct = async (productId: string, updatedProductData: Partial<Product>) => {
+  const updateProduct = async (productId: string, updatedProductData: Partial<Omit<Product, 'id'>>) => {
     if (!firestore) {
       console.error("Firestore is not initialized");
       return;

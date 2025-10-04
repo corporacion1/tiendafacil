@@ -39,7 +39,7 @@ import { useSettings } from "@/contexts/settings-context";
 
 export default function InventoryPage() {
   const { toast } = useToast();
-  const { products, setProducts, updateProduct } = useProducts();
+  const { products, updateProduct, deleteProduct } = useProducts();
   const { activeSymbol, activeRate } = useSettings();
   const [isMovementsDialogOpen, setIsMovementsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -66,12 +66,18 @@ export default function InventoryPage() {
   };
 
 
-  const handleUpdateProduct = (updatedProduct: Product) => {
-    updateProduct(updatedProduct.id, updatedProduct);
+  const handleUpdateProduct = async (data: Omit<Product, 'id'> & { id?: string }) => {
+    if (!data.id) return false;
+
+    const { id, ...updateData } = data;
+
+    await updateProduct(id, updateData);
+    
     toast({
         title: "Producto Actualizado",
-        description: `El producto "${updatedProduct.name}" ha sido actualizado.`,
+        description: `El producto "${data.name}" ha sido actualizado.`,
     });
+    
     setProductToEdit(null); // Close the dialog
     return true; // Indicate success for form reset if needed
   };
@@ -90,7 +96,7 @@ export default function InventoryPage() {
         return;
     }
     
-    setProducts(prev => prev.filter(p => p.id !== productId));
+    deleteProduct(productId);
     toast({
       title: "Producto Eliminado",
       description: "El producto ha sido eliminado del inventario.",

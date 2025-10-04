@@ -160,24 +160,30 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
   const handleSkuBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const sku = e.target.value;
+    // Don't validate if SKU is empty or if we are editing and SKU hasn't changed
     if (!sku || (product && product.sku.toLowerCase() === sku.toLowerCase())) {
         form.clearErrors("sku");
         return;
     }
-
+  
+    // Validate only if SKU is different from the original product's SKU during an edit
+    if (product && product.sku.toLowerCase() === sku.toLowerCase()) {
+      return;
+    }
+  
     const existingProduct = products.find(p => p.sku.toLowerCase() === sku.toLowerCase());
     if (existingProduct) {
-        toast({
-            variant: "destructive",
-            title: "SKU Duplicado",
-            description: `El SKU "${sku}" ya está en uso por el producto "${existingProduct.name}".`,
-        });
-        form.setError("sku", {
-            type: "manual",
-            message: "Este SKU ya existe. Por favor, usa uno diferente."
-        });
+      toast({
+        variant: "destructive",
+        title: "SKU Duplicado",
+        description: `El SKU "${sku}" ya está en uso por el producto "${existingProduct.name}".`,
+      });
+      form.setError("sku", {
+        type: "manual",
+        message: "Este SKU ya existe. Por favor, usa uno diferente."
+      });
     } else {
-        form.clearErrors("sku");
+      form.clearErrors("sku");
     }
   };
 
@@ -473,5 +479,3 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     </AlertDialog>
   );
 }
-
-    
