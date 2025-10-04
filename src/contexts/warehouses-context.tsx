@@ -5,12 +5,11 @@ import React, { createContext, useContext, useMemo } from 'react';
 import type { Warehouse } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, where, query } from 'firebase/firestore';
-import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 
 interface WarehousesContextType {
   warehouses: Warehouse[];
   isLoading: boolean;
-  addWarehouse: (warehouse: Omit<Warehouse, 'id' | 'storeId'>) => Promise<string | void>;
+  addWarehouse: (warehouse: Omit<Warehouse, 'id' | 'storeId'>) => Promise<string | undefined>;
   updateWarehouse: (warehouseId: string, updatedWarehouse: Partial<Warehouse>) => Promise<void>;
   deleteWarehouse: (warehouseId: string) => Promise<void>;
 }
@@ -32,20 +31,20 @@ export const WarehousesProvider = ({ children }: { children: React.ReactNode }) 
   const addWarehouse = async (warehouseData: Omit<Warehouse, 'id' | 'storeId'>) => {
     if (!firestore || !storeId) return;
     const warehousesCollection = collection(firestore, 'warehouses');
-    const docRef = await addDocumentNonBlocking(warehousesCollection, { ...warehouseData, storeId });
+    const docRef = await addDoc(warehousesCollection, { ...warehouseData, storeId });
     return docRef?.id;
   };
 
   const updateWarehouse = async (warehouseId: string, updatedWarehouseData: Partial<Warehouse>) => {
     if (!firestore || !storeId) return;
     const warehouseDoc = doc(firestore, 'warehouses', warehouseId);
-    await updateDocumentNonBlocking(warehouseDoc, updatedWarehouseData);
+    await updateDoc(warehouseDoc, updatedWarehouseData);
   };
 
   const deleteWarehouse = async (warehouseId: string) => {
     if (!firestore || !storeId) return;
     const warehouseDoc = doc(firestore, 'warehouses', warehouseId);
-    await deleteDocumentNonBlocking(warehouseDoc);
+    await deleteDoc(warehouseDoc);
   }
 
   const contextValue = {

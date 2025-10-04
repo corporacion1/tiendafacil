@@ -5,12 +5,11 @@ import React, { createContext, useContext, useMemo } from 'react';
 import type { CurrencyRate } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, addDoc, query, orderBy, limit, Timestamp, where } from 'firebase/firestore';
-import { addDocumentNonBlocking } from '@/firebase';
 
 interface CurrencyRatesContextType {
   currencyRates: CurrencyRate[];
   isLoading: boolean;
-  addRate: (rate: Omit<CurrencyRate, 'id' | 'storeId'>) => Promise<string | void>;
+  addRate: (rate: Omit<CurrencyRate, 'id' | 'storeId'>) => Promise<string | undefined>;
 }
 
 const CurrencyRatesContext = createContext<CurrencyRatesContextType | undefined>(undefined);
@@ -30,7 +29,7 @@ export const CurrencyRatesProvider = ({ children }: { children: React.ReactNode 
   const addRate = async (rateData: Omit<CurrencyRate, 'id' | 'storeId'>) => {
     if (!firestore || !storeId) return;
     const ratesCollection = collection(firestore, 'currency_rates');
-    const docRef = await addDocumentNonBlocking(ratesCollection, { ...rateData, storeId });
+    const docRef = await addDoc(ratesCollection, { ...rateData, storeId });
     return docRef?.id;
   };
 

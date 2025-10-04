@@ -5,13 +5,12 @@ import React, { createContext, useContext, useMemo } from 'react';
 import type { Sale } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, where, query } from 'firebase/firestore';
-import { addDocumentNonBlocking } from '@/firebase';
 
 
 interface SalesContextType {
   sales: Sale[];
   isLoading: boolean;
-  addSale: (sale: Omit<Sale, 'id' | 'storeId'>) => Promise<string | void>;
+  addSale: (sale: Omit<Sale, 'id' | 'storeId'>) => Promise<string | undefined>;
 }
 
 const SalesContext = createContext<SalesContextType | undefined>(undefined);
@@ -34,7 +33,7 @@ export const SalesProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
     const salesCollection = collection(firestore, 'sales');
-    const docRef = await addDocumentNonBlocking(salesCollection, { ...saleData, storeId });
+    const docRef = await addDoc(salesCollection, { ...saleData, storeId });
     return docRef?.id;
   };
 
