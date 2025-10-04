@@ -173,20 +173,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             )}
           />
         </div>
-        
-        <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Descripción</FormLabel>
-                <FormControl>
-                  <Textarea placeholder="Describe el producto" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-        />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <FormField
@@ -241,6 +227,20 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                 )}
             />
         </div>
+        
+        <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Descripción</FormLabel>
+                <FormControl>
+                  <Textarea placeholder="Describe el producto" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <FormField
@@ -295,8 +295,42 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
           />
         </div>
         
+        <div className="space-y-4">
+            <FormLabel>Impuestos</FormLabel>
+            <div className="grid grid-cols-2 gap-4">
+                 <FormField
+                    control={form.control}
+                    name="tax1"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <div className="space-y-0.5">
+                                <FormLabel>Impuesto 1 (IVA)</FormLabel>
+                            </div>
+                            <FormControl>
+                                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                        </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="tax2"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <div className="space-y-0.5">
+                                <FormLabel>Impuesto 2 (Especial)</FormLabel>
+                            </div>
+                            <FormControl>
+                                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                        </FormItem>
+                    )}
+                />
+            </div>
+        </div>
+
         {product && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                   control={form.control}
                   name="stock"
@@ -334,40 +368,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
               />
           </div>
         )}
-
-        <div className="space-y-4">
-            <FormLabel>Impuestos</FormLabel>
-            <div className="grid grid-cols-2 gap-4">
-                 <FormField
-                    control={form.control}
-                    name="tax1"
-                    render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                            <div className="space-y-0.5">
-                                <FormLabel>Impuesto 1 (IVA)</FormLabel>
-                            </div>
-                            <FormControl>
-                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
-                        </FormItem>
-                    )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="tax2"
-                    render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                            <div className="space-y-0.5">
-                                <FormLabel>Impuesto 2 (Especial)</FormLabel>
-                            </div>
-                            <FormControl>
-                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
-                        </FormItem>
-                    )}
-                />
-            </div>
-        </div>
 
         <div className="flex justify-end gap-2">
             {onCancel && <Button variant="outline" type="button" onClick={onCancel}>
