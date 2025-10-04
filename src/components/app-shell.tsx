@@ -6,6 +6,7 @@ import { SecurityProvider, useSecurity } from "@/contexts/security-context";
 import { SettingsProvider } from "@/contexts/settings-context";
 import { ProductProvider } from "@/contexts/product-context";
 import { SalesProvider } from "@/contexts/sales-context";
+import { PurchasesProvider } from "@/contexts/purchases-context";
 import { PinModal } from "@/components/pin-modal";
 import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
@@ -75,8 +76,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <SettingsProvider>
             <ProductProvider>
               <SalesProvider>
-                <MainApp>{children}</MainApp>
-                <Toaster />
+                <PurchasesProvider>
+                  <MainApp>{children}</MainApp>
+                  <Toaster />
+                </PurchasesProvider>
               </SalesProvider>
             </ProductProvider>
           </SettingsProvider>
@@ -85,5 +88,3 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </ThemeProvider>
   );
 }
-
-    
