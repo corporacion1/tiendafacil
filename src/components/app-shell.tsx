@@ -11,6 +11,7 @@ import { SiteHeader } from "@/components/site-header";
 import { Toaster } from "@/components/ui/toaster";
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { FirebaseClientProvider } from "@/firebase";
 
 
 function MainApp({ children }: { children: React.ReactNode }) {
@@ -49,6 +50,7 @@ function MainApp({ children }: { children: React.ReactNode }) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <FirebaseClientProvider>
         <SecurityProvider>
           <SettingsProvider>
             <ProductProvider>
@@ -57,6 +59,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </ProductProvider>
           </SettingsProvider>
         </SecurityProvider>
+      </FirebaseClientProvider>
     </ThemeProvider>
   );
 }

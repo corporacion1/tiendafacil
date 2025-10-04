@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import type { Product } from '@/lib/types';
-import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { setDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 
@@ -21,11 +21,12 @@ const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
 export const ProductProvider = ({ children }: { children: React.ReactNode }) => {
   const { firestore } = useFirebase();
+  const { user, isUserLoading } = useUser();
 
   const productsQuery = useMemoFirebase(() => {
-      if (!firestore) return null;
+      if (!firestore || !user || isUserLoading) return null;
       return collection(firestore, 'products');
-  }, [firestore]);
+  }, [firestore, user, isUserLoading]);
 
   const { data: products, isLoading } = useCollection<Product>(productsQuery);
 
@@ -58,13 +59,13 @@ export const ProductProvider = ({ children }: { children: React.ReactNode }) => 
   }
 
   const getProductById = useCallback((productId: string) => {
-    return products?.find(p => p.id === productId);
+    return (products || []).find(p => p.id === productId);
   }, [products]);
 
 
   const contextValue = {
     products: products || [],
-    isLoading,
+    isLoading: isLoading || isUserLoading,
     addProduct,
     updateProduct,
     deleteProduct,
@@ -85,3 +86,4 @@ export const useProducts = (): ProductContextType => {
   }
   return context;
 };
+
