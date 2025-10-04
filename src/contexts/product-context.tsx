@@ -5,12 +5,14 @@ import React, { createContext, useContext, useCallback, useMemo } from 'react';
 import type { Product } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, query, addDoc, updateDoc, deleteDoc, where } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 
 interface ProductContextType {
   products: Product[];
   isLoading: boolean;
-  addProduct: (product: Omit<Product, 'id'>) => Promise<string | undefined>;
+  addProduct: (product: Omit<Product, 'id' | 'storeId'>) => Promise<string | undefined>;
   updateProduct: (productId: string, updatedProduct: Partial<Omit<Product, 'id'>>) => Promise<void>;
   deleteProduct: (productId: string) => Promise<void>;
   getProductById: (productId: string) => Product | undefined;
@@ -30,14 +32,20 @@ export const ProductProvider = ({ children }: { children: React.ReactNode }) => 
 
   const { data: products, isLoading } = useCollection<Product>(productsQuery);
 
-  const addProduct = async (productData: Omit<Product, 'id'>) => {
+  const addProduct = async (productData: Omit<Product, 'id' | 'storeId'>) => {
     if (!firestore || !user) {
       console.error("Firestore or user not available");
       return;
     }
     const productsCollection = collection(firestore, 'products');
-    const docRef = await addDoc(productsCollection, { ...productData, storeId });
-    return docRef?.id;
+    try {
+        const docRef = await addDoc(productsCollection, { ...productData, storeId });
+        return docRef?.id;
+    } catch (error) {
+        console.error("Error adding product: ", error);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: productsCollection.path, operation: 'create', requestResourceData: { ...productData, storeId } }));
+        return undefined;
+    }
   };
 
   const updateProduct = async (productId: string, updatedProductData: Partial<Omit<Product, 'id'>>) => {
@@ -46,7 +54,12 @@ export const ProductProvider = ({ children }: { children: React.ReactNode }) => 
       return;
     }
     const productDoc = doc(firestore, 'products', productId);
-    await updateDoc(productDoc, updatedProductData);
+    try {
+        await updateDoc(productDoc, updatedProductData);
+    } catch (error) {
+        console.error("Error updating product: ", error);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: productDoc.path, operation: 'update', requestResourceData: updatedProductData }));
+    }
   };
 
   const deleteProduct = async (productId: string) => {
@@ -55,7 +68,12 @@ export const ProductProvider = ({ children }: { children: React.ReactNode }) => 
       return;
     }
     const productDoc = doc(firestore, 'products', productId);
-    await deleteDoc(productDoc);
+    try {
+        await deleteDoc(productDoc);
+    } catch (error) {
+        console.error("Error deleting product: ", error);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: productDoc.path, operation: 'delete' }));
+    }
   }
 
   const getProductById = useCallback((productId: string) => {

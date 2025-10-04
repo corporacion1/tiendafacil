@@ -7,6 +7,8 @@ import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase
 import { collection, query, addDoc, where } from 'firebase/firestore';
 import { useProducts } from './product-context';
 import { mockInventoryMovements } from '@/lib/data';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface PurchasesContextType {
   purchases: Purchase[];
@@ -35,29 +37,26 @@ export const PurchasesProvider = ({ children }: { children: React.ReactNode }) =
       return;
     }
     const purchasesCollection = collection(firestore, 'purchases');
-    const docRef = await addDoc(purchasesCollection, { ...purchaseData, storeId });
+    
+    let docRefId: string | undefined;
+    try {
+        const docRef = await addDoc(purchasesCollection, { ...purchaseData, storeId });
+        docRefId = docRef.id;
+    } catch (error) {
+        console.error("Error adding purchase: ", error);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: purchasesCollection.path, operation: 'create', requestResourceData: { ...purchaseData, storeId } }));
+        return undefined;
+    }
 
-    // Update stock and create inventory movements
     for (const item of purchaseData.items) {
         const product = products.find(p => p.id === item.productId);
         if (product) {
-            // Pass the entire product object to keep data integrity
-            await updateProduct(product.id, { 
-                ...product, 
-                stock: product.stock + item.quantity, 
-                cost: item.cost 
-            });
-            const movement = {
-                id: `mov-purch-${Date.now()}-${item.productId}`,
-                productName: item.productName,
-                type: 'purchase' as 'purchase',
-                quantity: item.quantity,
-                date: purchaseData.date,
-            };
-            mockInventoryMovements.unshift(movement);
+            const updatedStock = product.stock + item.quantity;
+            await updateProduct(product.id, { ...product, stock: updatedStock, cost: item.cost });
         }
     }
-    return docRef?.id;
+    
+    return docRefId;
   };
 
   const contextValue = {

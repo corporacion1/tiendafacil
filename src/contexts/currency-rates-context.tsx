@@ -5,6 +5,8 @@ import React, { createContext, useContext, useMemo } from 'react';
 import type { CurrencyRate } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, addDoc, query, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface CurrencyRatesContextType {
   currencyRates: CurrencyRate[];
@@ -28,11 +30,18 @@ export const CurrencyRatesProvider = ({ children }: { children: React.ReactNode 
   const addRate = async (rateData: Omit<CurrencyRate, 'id' | 'date'> & { date?: Timestamp }) => {
     if (!firestore || !user) return;
     const ratesCollection = collection(firestore, 'currency_rates');
-    const docRef = await addDoc(ratesCollection, {
+    const dataToSave = {
         ...rateData,
         date: rateData.date || Timestamp.now(),
-    });
-    return docRef?.id;
+    };
+    try {
+        const docRef = await addDoc(ratesCollection, dataToSave);
+        return docRef?.id;
+    } catch(error) {
+        console.error("Error adding currency rate: ", error);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: ratesCollection.path, operation: 'create', requestResourceData: dataToSave }));
+        return undefined;
+    }
   };
 
   const contextValue = {

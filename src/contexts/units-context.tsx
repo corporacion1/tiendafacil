@@ -5,6 +5,8 @@ import React, { createContext, useContext, useMemo } from 'react';
 import type { Unit } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, query } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface UnitsContextType {
   units: Unit[];
@@ -30,20 +32,36 @@ export const UnitsProvider = ({ children }: { children: React.ReactNode }) => {
   const addUnit = async (unitData: Omit<Unit, 'id'>) => {
     if (!firestore || !user) return;
     const unitsCollection = collection(firestore, 'units');
-    const docRef = await addDoc(unitsCollection, unitData);
-    return docRef?.id;
+    try {
+        const docRef = await addDoc(unitsCollection, unitData);
+        return docRef?.id;
+    } catch(error) {
+        console.error("Error adding unit: ", error);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: unitsCollection.path, operation: 'create', requestResourceData: unitData }));
+        return undefined;
+    }
   };
 
   const updateUnit = async (unitId: string, updatedUnitData: Partial<Omit<Unit, 'id'>>) => {
     if (!firestore || !user) return;
     const unitDoc = doc(firestore, 'units', unitId);
-    await updateDoc(unitDoc, updatedUnitData);
+    try {
+        await updateDoc(unitDoc, updatedUnitData);
+    } catch (error) {
+        console.error("Error updating unit: ", error);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: unitDoc.path, operation: 'update', requestResourceData: updatedUnitData }));
+    }
   };
 
   const deleteUnit = async (unitId: string) => {
     if (!firestore || !user) return;
     const unitDoc = doc(firestore, 'units', unitId);
-    await deleteDoc(unitDoc);
+    try {
+        await deleteDoc(unitDoc);
+    } catch (error) {
+        console.error("Error deleting unit: ", error);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: unitDoc.path, operation: 'delete' }));
+    }
   }
 
   const contextValue = {

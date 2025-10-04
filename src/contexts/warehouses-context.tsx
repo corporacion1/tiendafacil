@@ -5,6 +5,8 @@ import React, { createContext, useContext, useMemo } from 'react';
 import type { Warehouse } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, query } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface WarehousesContextType {
   warehouses: Warehouse[];
@@ -30,20 +32,36 @@ export const WarehousesProvider = ({ children }: { children: React.ReactNode }) 
   const addWarehouse = async (warehouseData: Omit<Warehouse, 'id'>) => {
     if (!firestore || !user) return;
     const warehousesCollection = collection(firestore, 'warehouses');
-    const docRef = await addDoc(warehousesCollection, warehouseData);
-    return docRef?.id;
+    try {
+        const docRef = await addDoc(warehousesCollection, warehouseData);
+        return docRef?.id;
+    } catch(error) {
+        console.error("Error adding warehouse: ", error);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: warehousesCollection.path, operation: 'create', requestResourceData: warehouseData }));
+        return undefined;
+    }
   };
 
   const updateWarehouse = async (warehouseId: string, updatedWarehouseData: Partial<Omit<Warehouse, 'id'>>) => {
     if (!firestore || !user) return;
     const warehouseDoc = doc(firestore, 'warehouses', warehouseId);
-    await updateDoc(warehouseDoc, updatedWarehouseData);
+    try {
+        await updateDoc(warehouseDoc, updatedWarehouseData);
+    } catch(error) {
+        console.error("Error updating warehouse: ", error);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: warehouseDoc.path, operation: 'update', requestResourceData: updatedWarehouseData }));
+    }
   };
 
   const deleteWarehouse = async (warehouseId: string) => {
     if (!firestore || !user) return;
     const warehouseDoc = doc(firestore, 'warehouses', warehouseId);
-    await deleteDoc(warehouseDoc);
+    try {
+        await deleteDoc(warehouseDoc);
+    } catch(error) {
+        console.error("Error deleting warehouse: ", error);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: warehouseDoc.path, operation: 'delete' }));
+    }
   }
 
   const contextValue = {
