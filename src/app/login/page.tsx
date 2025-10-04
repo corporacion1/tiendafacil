@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -29,55 +30,80 @@ export default function LoginPage() {
       router.replace('/dashboard');
     }
   }, [user, isUserLoading, router]);
-  
-  const handleAuthAction = async (action: 'google' | 'email') => {
+
+  const handleGoogleSignIn = async () => {
     if (!auth) return;
-    
     try {
-      if (action === 'google') {
-        const provider = new GoogleAuthProvider();
-        await signInWithPopup(auth, provider);
-      } else {
-        if (isSignUp) {
-          await createUserWithEmailAndPassword(auth, email, password);
-        } else {
-          await signInWithEmailAndPassword(auth, email, password);
-        }
-      }
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
       toast({
         title: 'Inicio de Sesión Exitoso',
         description: '¡Bienvenido de nuevo!',
       });
       router.replace('/dashboard');
     } catch (error: any) {
-       console.error(`Error during ${action} sign-in:`, error);
-      
-      let description = 'Ocurrió un error inesperado. Por favor, intenta de nuevo.';
-      if (error.code) {
-        switch(error.code) {
-          case 'auth/operation-not-allowed':
-            description = 'El inicio de sesión con Google no está habilitado en la configuración de Firebase. Por favor, actívalo en la consola.';
-            break;
-          case 'auth/email-already-in-use':
-            description = 'Este correo electrónico ya está registrado. Intenta iniciar sesión.';
-            break;
-          case 'auth/wrong-password':
-          case 'auth/user-not-found':
-            description = 'El correo electrónico o la contraseña son incorrectos.';
-            break;
-          case 'auth/weak-password':
-            description = 'La contraseña es demasiado débil. Debe tener al menos 6 caracteres.';
-            break;
-          default:
-            description = error.message;
-        }
-      }
-
+      console.error("Error during Google sign-in:", error);
       toast({
         variant: 'destructive',
         title: 'Error de Autenticación',
-        description: description,
+        description: error.code === 'auth/operation-not-allowed'
+          ? 'El inicio de sesión con Google no está habilitado. Actívalo en la consola de Firebase.'
+          : 'Ocurrió un error inesperado al intentar ingresar con Google.',
       });
+    }
+  };
+
+  const handleEmailAuth = async () => {
+    if (!auth || !email || !password) {
+        toast({
+            variant: "destructive",
+            title: "Campos incompletos",
+            description: "Por favor, ingresa tu correo y contraseña."
+        });
+        return;
+    }
+
+    try {
+        if (isSignUp) {
+            await createUserWithEmailAndPassword(auth, email, password);
+            toast({
+                title: '¡Cuenta Creada!',
+                description: 'Hemos creado tu cuenta. ¡Bienvenido!',
+            });
+        } else {
+            await signInWithEmailAndPassword(auth, email, password);
+            toast({
+                title: 'Inicio de Sesión Exitoso',
+                description: '¡Bienvenido de nuevo!',
+            });
+        }
+        router.replace('/dashboard');
+    } catch (error: any) {
+        console.error(`Error during email ${isSignUp ? 'sign-up' : 'sign-in'}:`, error);
+        
+        let description = 'Ocurrió un error inesperado. Por favor, intenta de nuevo.';
+        switch(error.code) {
+            case 'auth/email-already-in-use':
+                description = 'Este correo electrónico ya está registrado. Intenta iniciar sesión.';
+                break;
+            case 'auth/user-not-found':
+            case 'auth/wrong-password':
+            case 'auth/invalid-credential':
+                description = 'El correo electrónico o la contraseña son incorrectos.';
+                break;
+            case 'auth/weak-password':
+                description = 'La contraseña es demasiado débil. Debe tener al menos 6 caracteres.';
+                break;
+            case 'auth/invalid-email':
+                description = 'El formato del correo electrónico no es válido.';
+                break;
+        }
+
+        toast({
+            variant: 'destructive',
+            title: isSignUp ? 'Error al Registrarse' : 'Error de Autenticación',
+            description: description,
+        });
     }
   };
 
@@ -108,13 +134,13 @@ export default function LoginPage() {
                 <Label htmlFor="password">Contraseña</Label>
                 <Input id="password" type="password" placeholder="********" value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
-            <Button onClick={() => handleAuthAction('email')} className="w-full">
+            <Button onClick={handleEmailAuth} className="w-full">
                 {isSignUp ? 'Crear Cuenta' : 'Ingresar'}
             </Button>
             
             <Separator className="my-2" />
 
-            <Button variant="outline" onClick={() => handleAuthAction('google')} className="w-full">
+            <Button variant="outline" onClick={handleGoogleSignIn} className="w-full">
                 <FcGoogle className="mr-2 h-5 w-5" />
                 Ingresar con Google
             </Button>
