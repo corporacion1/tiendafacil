@@ -1,0 +1,201 @@
+/**
+ * @fileoverview Firestore Security Rules for the inventory management application.
+ *
+ * Core Philosophy:
+ * This ruleset employs a hybrid security model with path-based ownership for user data
+ * and Database-Based Access Control (DBAC) using a dedicated `roles_admin` collection for
+ * granting global administrative privileges.  The goal is to minimize `get()` calls and
+ * maximize the clarity of access control logic.
+ *
+ * Data Structure:
+ * - `/products/{productId}`: Stores product information. Access controlled by admin role.
+ * - `/tax_types/{taxTypeId}`: Stores tax type information. Access controlled by admin role.
+ * - `/inventory_movements/{inventoryMovementId}`: Stores inventory movement records. Access controlled by admin role.
+ * - `/sales/{saleId}`: Stores sale transaction records. Access controlled by admin role.
+ * - `/sales/{saleId}/sale_items/{saleItemId}`: Stores sale items within a sale. Access controlled by admin role.
+ * - `/purchases/{purchaseId}`: Stores purchase order records. Access controlled by admin role.
+ * - `/purchases/{purchaseId}/purchase_items/{purchaseItemId}`: Stores purchase items within a purchase. Access controlled by admin role.
+ * - `/suppliers/{supplierId}`: Stores supplier information. Access controlled by admin role.
+ * - `/customers/{customerId}`: Stores customer information. Access controlled by admin role.
+ * - `/store_configuration/{storeConfigurationId}`: Stores store configuration. Access controlled by admin role.
+ * - `/users/{userId}`: Stores user profile information. Owner can read/write their own profile; admin role needed for others.
+ * - `/roles_admin/{userId}`: Presence of a document grants the user admin privileges.
+ *
+ * Key Security Decisions:
+ * - No user listing is allowed for the `users` collection. Only the authenticated user can access their own profile.
+ * - All data is private by default, and access must be explicitly granted.
+ * - The rules do NOT perform extensive data validation, focusing primarily on authorization.
+ * -  Image upload validation will be handled by Firebase Storage rules (not included in this ruleset).
+ *
+ * Denormalization for Authorization:
+ * -  The `roles_admin` collection is used to grant admin roles. The presence of a document with the user's ID
+ *    in this collection grants admin privileges, avoiding the need for complex queries.
+ *
+ * Structural Segregation:
+ * - User profiles are stored in the `/users/{userId}` collection, separate from other data. Admin roles are maintained in the `/roles_admin/{userId}` collection.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Checks if the user is signed in.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the authenticated user's ID matches the provided userId.
+     */
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+     /**
+      * @description Checks if the user has admin privileges based on the existence of a document in the `roles_admin` collection.
+      */
+    function isAdmin() {
+      return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
+     /**
+      * @description Checks if the user is the owner of the existing document (used for updates/deletes).
+      */
+    function isExistingOwner(userId) {
+        return resource.data.userId == userId;
+    }
+
+    /**
+     * @description Manages access to product information.
+     */
+    match /products/{productId} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Manages access to tax type information.
+     */
+    match /tax_types/{taxTypeId} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Manages access to inventory movement records.
+     */
+    match /inventory_movements/{inventoryMovementId} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Manages access to sale transaction records.
+     */
+    match /sales/{saleId} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Manages access to items within a sale transaction.
+     */
+    match /sales/{saleId}/sale_items/{saleItemId} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Manages access to purchase order records.
+     */
+    match /purchases/{purchaseId} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Manages access to items within a purchase order.
+     */
+    match /purchases/{purchaseId}/purchase_items/{purchaseItemId} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Manages access to supplier information.
+     */
+    match /suppliers/{supplierId} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Manages access to customer information.
+     */
+    match /customers/{customerId} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Manages access to store configuration settings.
+     */
+    match /store_configuration/{storeConfigurationId} {
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Manages access to user profile information.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if false; // No listing allowed
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    /**
+     * @description Manages admin roles.  The existence of a document grants the role.
+     */
+    match /roles_admin/{userId} {
+      allow get: if isAdmin();
+      allow list: if false;
+      allow create: if isAdmin();
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+  }
+}
