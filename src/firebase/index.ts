@@ -2,20 +2,20 @@
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { initializeApp, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
-  if (getApps().length) {
-    return getSdks(getApp());
+  // Always initialize with the explicit config to ensure consistency across all environments and prevent stale instances.
+  const appName = 'default';
+  try {
+      return getSdks(getApp(appName));
+  } catch (e) {
+      const firebaseApp = initializeApp(firebaseConfig, appName);
+      return getSdks(firebaseApp);
   }
-
-  // Always initialize with the explicit config to ensure consistency
-  // across all environments.
-  const firebaseApp = initializeApp(firebaseConfig);
-  return getSdks(firebaseApp);
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
