@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Upload } from "lucide-react";
+import Image from "next/image";
+import { Upload, Package } from "lucide-react";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 import { Button } from "@/components/ui/button";
@@ -66,7 +67,6 @@ const getInitialValues = (product?: Product): ProductFormValues => {
         };
     }
     return {
-      id: '', // Set to empty string for new products
       name: "",
       sku: "",
       price: 0,
@@ -138,7 +138,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         const snapshot = await uploadBytes(storageRef, file);
         const downloadURL = await getDownloadURL(snapshot.ref);
         
-        form.setValue('imageUrl', downloadURL);
+        form.setValue('imageUrl', downloadURL, { shouldValidate: true });
         setImagePreview(downloadURL);
 
         toast({
@@ -211,8 +211,17 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
              <div className="md:col-span-1">
                  <FormLabel>Imagen del Producto</FormLabel>
                  <div className="mt-2 aspect-square rounded-md border border-dashed flex items-center justify-center relative bg-muted overflow-hidden">
-                    {imagePreview && <img src={imagePreview} alt="Vista previa" className="object-cover w-full h-full" />}
-                    {!imagePreview && <span className="text-sm text-muted-foreground">Sin imagen</span>}
+                    {imagePreview ? (
+                      <Image 
+                        src={imagePreview} 
+                        alt="Vista previa del producto" 
+                        fill
+                        sizes="300px"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <Package className="h-10 w-10 text-muted-foreground" />
+                    )}
 
                     <label htmlFor="image-upload" className="absolute inset-0 flex items-center justify-center bg-black/50 text-white opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
                         <Upload className="h-6 w-6 mr-2" />
@@ -333,7 +342,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                 <FormItem>
                   <FormLabel>Costo ({activeSymbol})</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" placeholder="0.00" {...field} value={((field.value || 0) * activeRate).toFixed(2) || ''} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate || 0)} />
+                    <Input type="number" step="0.01" placeholder="0.00" {...field} value={Number.isNaN(field.value) ? '' : (field.value * activeRate).toFixed(2)} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate || 0)} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -351,7 +360,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                       step="0.01"
                       placeholder="0.00"
                       {...field}
-                       value={((field.value || 0) * activeRate).toFixed(2) || ''} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate || 0)}
+                       value={Number.isNaN(field.value) ? '' : (field.value * activeRate).toFixed(2)} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate || 0)}
                     />
                   </FormControl>
                   <FormDescription className={cn(parseFloat(retailProfitPercentage) > 0 ? "text-green-600 font-semibold" : "")}>
@@ -368,7 +377,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                 <FormItem>
                   <FormLabel>Precio Mayor ({activeSymbol})</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" placeholder="0.00" {...field}  value={((field.value || 0) * activeRate).toFixed(2) || ''} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate || 0)} />
+                    <Input type="number" step="0.01" placeholder="0.00" {...field}  value={Number.isNaN(field.value) ? '' : (field.value * activeRate).toFixed(2)} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate || 0)} />
                   </FormControl>
                   <FormDescription className={cn(parseFloat(wholesaleProfitPercentage) > 0 ? "text-green-600 font-semibold" : "")}>
                       Margen de Ganancia: {wholesaleProfitPercentage}%
@@ -479,3 +488,5 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     </AlertDialog>
   );
 }
+
+    
