@@ -7,8 +7,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Image from "next/image";
 import { Upload, Package } from "lucide-react";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { FirebaseApp } from "firebase/app";
 
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -25,7 +23,6 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
 import { useSettings } from "@/contexts/settings-context";
-import { useFirebaseApp } from "@/firebase";
 
 const productSchema = z.object({
   id: z.string().optional(),
@@ -42,7 +39,7 @@ const productSchema = z.object({
   family: z.string().optional(),
   warehouse: z.string().optional(),
   description: z.string().optional(),
-  imageUrl: z.string().url().optional().or(z.literal('')),
+  imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
   imageHint: z.string().optional(),
 });
 
@@ -102,11 +99,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const { families } = useFamilies();
   const { warehouses } = useWarehouses();
   const { settings, activeSymbol, activeRate } = useSettings();
-  const firebaseApp = useFirebaseApp();
   const { toast } = useToast();
-  const [isUploading, setIsUploading] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | undefined>(product?.imageUrl);
-
+  
   const [displayValues, setDisplayValues] = useState({
     cost: product ? (product.cost * activeRate).toFixed(2) : '0.00',
     price: product ? (product.price * activeRate).toFixed(2) : '0.00',
@@ -121,11 +115,11 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const watchedCost = useWatch({ control: form.control, name: 'cost' });
   const watchedPrice = useWatch({ control: form.control, name: 'price' });
   const watchedWholesalePrice = useWatch({ control: form.control, name: 'wholesalePrice' });
+  const watchedImageUrl = useWatch({ control: form.control, name: 'imageUrl' });
 
   useEffect(() => {
     const initialValues = getInitialValues(product);
     form.reset(initialValues);
-    setImagePreview(product?.imageUrl);
     setDisplayValues({
         cost: product ? (product.cost * activeRate).toFixed(2) : '0.00',
         price: product ? (product.price * activeRate).toFixed(2) : '0.00',
@@ -134,12 +128,23 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   }, [product, form, activeRate]);
 
   useEffect(() => {
-    setDisplayValues({
-      cost: (watchedCost * activeRate).toFixed(2),
-      price: (watchedPrice * activeRate).toFixed(2),
-      wholesalePrice: (watchedWholesalePrice * activeRate).toFixed(2),
-    });
-  }, [activeRate, watchedCost, watchedPrice, watchedWholesalePrice]);
+    const newCost = form.getValues('cost') * activeRate;
+    const newPrice = form.getValues('price') * activeRate;
+    const newWholesalePrice = form.getValues('wholesalePrice') * activeRate;
+    
+    // Only update if the display value is not currently being edited, to avoid conflicts
+    if (document.activeElement?.id !== 'cost') {
+         setDisplayValues(prev => ({...prev, cost: newCost.toFixed(2)}));
+    }
+    if (document.activeElement?.id !== 'price') {
+         setDisplayValues(prev => ({...prev, price: newPrice.toFixed(2)}));
+    }
+     if (document.activeElement?.id !== 'wholesalePrice') {
+         setDisplayValues(prev => ({...prev, wholesalePrice: newWholesalePrice.toFixed(2)}));
+    }
+
+  }, [activeRate, form]);
+
 
   const handleDisplayValueChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'cost' | 'price' | 'wholesalePrice') => {
       const { value } = e.target;
@@ -153,51 +158,13 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       if (!isNaN(valueAsNumber)) {
           const valueInPrimaryCurrency = valueAsNumber / activeRate;
           form.setValue(fieldName, valueInPrimaryCurrency, { shouldValidate: true, shouldDirty: true });
+          // Format the display value back to 2 decimal places after blur
           setDisplayValues(prev => ({ ...prev, [fieldName]: valueAsNumber.toFixed(2)}));
       } else {
+          // If input is invalid, revert to the last valid value from the form state
           const lastValidValue = form.getValues(fieldName) * activeRate;
           setDisplayValues(prev => ({...prev, [fieldName]: lastValidValue.toFixed(2)}));
       }
-  };
-  
-  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !firebaseApp) return;
-
-    if (!file.type.startsWith('image/')) {
-        toast({
-            variant: 'destructive',
-            title: 'Archivo no válido',
-            description: 'Por favor, selecciona un archivo de imagen (JPEG, PNG, etc.).'
-        });
-        return;
-    }
-
-    setIsUploading(true);
-    const { id: toastId, update } = toast({ title: 'Subiendo imagen...', description: 'Por favor, espera.' });
-
-    const storage = getStorage(firebaseApp);
-    const storageRef = ref(storage, `products/${Date.now()}-${file.name}`);
-
-    try {
-        const snapshot = await uploadBytes(storageRef, file);
-        const downloadURL = await getDownloadURL(snapshot.ref);
-        
-        form.setValue('imageUrl', downloadURL, { shouldValidate: true, shouldDirty: true });
-        setImagePreview(downloadURL);
-
-        update({ id: toastId, title: 'Imagen subida', description: 'La imagen del producto ha sido actualizada.' });
-
-    } catch (error: any) {
-        console.error("Error en la subida de imagen:", error);
-        let description = 'Hubo un problema al subir tu imagen. Revisa la consola para más detalles.';
-        if (error.code === 'storage/unauthorized') {
-            description = 'No tienes permiso para subir archivos. Asegúrate de que las reglas de Storage estén bien configuradas y tu plan de Firebase lo permita en esta región.';
-        }
-        update({ id: toastId, variant: 'destructive', title: 'Error al subir la imagen', description });
-    } finally {
-        setIsUploading(false);
-    }
   };
 
 
@@ -235,7 +202,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     const result = await onSubmit(data);
     if (!product && result === true) {
       form.reset(getInitialValues());
-      setImagePreview(undefined);
       setDisplayValues({ cost: '0.00', price: '0.00', wholesalePrice: '0.00' });
     }
   };
@@ -245,27 +211,40 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       <Form {...form}>
         <form onSubmit={(e) => e.preventDefault()} className="grid gap-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-             <div className="md:col-span-1">
-                 <FormLabel>Imagen del Producto</FormLabel>
-                 <div className="mt-2 aspect-square rounded-md border border-dashed flex items-center justify-center relative bg-muted overflow-hidden">
-                    {imagePreview ? (
-                      <Image 
-                        src={imagePreview} 
-                        alt="Vista previa del producto" 
-                        fill
-                        sizes="300px"
-                        className="object-cover"
-                      />
-                    ) : (
-                      <Package className="h-10 w-10 text-muted-foreground" />
+             <div className="md:col-span-1 grid gap-4">
+                 <FormItem>
+                     <FormLabel>Imagen del Producto</FormLabel>
+                     <div className="mt-2 aspect-square rounded-md border border-dashed flex items-center justify-center relative bg-muted overflow-hidden">
+                        {watchedImageUrl ? (
+                          <Image 
+                            src={watchedImageUrl} 
+                            alt="Vista previa del producto" 
+                            fill
+                            sizes="300px"
+                            className="object-cover"
+                            onError={() => {
+                                // If the image fails to load, we can clear the value or show a placeholder
+                                // For now, we just let the browser show the broken image icon
+                            }}
+                          />
+                        ) : (
+                          <Package className="h-10 w-10 text-muted-foreground" />
+                        )}
+                     </div>
+                 </FormItem>
+                 <FormField
+                    control={form.control}
+                    name="imageUrl"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>URL de la Imagen</FormLabel>
+                            <FormControl>
+                                <Input placeholder="https://ejemplo.com/imagen.jpg" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
                     )}
-
-                    <label htmlFor="image-upload" className="absolute inset-0 flex items-center justify-center bg-black/50 text-white opacity-0 hover:opacity-100 transition-opacity cursor-pointer">
-                        <Upload className="h-6 w-6 mr-2" />
-                        {isUploading ? "Subiendo..." : "Cambiar"}
-                    </label>
-                    <Input id="image-upload" type="file" className="hidden" onChange={handleImageUpload} accept="image/*" disabled={isUploading} />
-                 </div>
+                 />
             </div>
             <div className="md:col-span-2 grid gap-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -380,6 +359,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                   <FormLabel>Costo ({activeSymbol})</FormLabel>
                   <FormControl>
                     <Input 
+                      id="cost"
                       type="text" 
                       placeholder="0.00" 
                       value={displayValues.cost}
@@ -399,6 +379,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                   <FormLabel>Precio Detal ({activeSymbol})</FormLabel>
                   <FormControl>
                      <Input 
+                      id="price"
                       type="text" 
                       placeholder="0.00" 
                       value={displayValues.price}
@@ -421,6 +402,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                   <FormLabel>Precio Mayor ({activeSymbol})</FormLabel>
                   <FormControl>
                      <Input 
+                      id="wholesalePrice"
                       type="text" 
                       placeholder="0.00" 
                       value={displayValues.wholesalePrice}
@@ -537,3 +519,5 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     </AlertDialog>
   );
 }
+
+    
