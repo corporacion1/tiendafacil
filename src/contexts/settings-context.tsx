@@ -33,10 +33,10 @@ const defaultSettings: Settings = {
     storeSlogan: '¡Gracias por tu compra!',
     tax1: 16,
     tax2: 0,
-    primaryCurrencyName: 'Bolívares',
-    primaryCurrencySymbol: 'Bs.',
-    secondaryCurrencyName: 'Dólares',
-    secondaryCurrencySymbol: '$',
+    primaryCurrencyName: 'Dólares',
+    primaryCurrencySymbol: '$',
+    secondaryCurrencyName: 'Bolívares',
+    secondaryCurrencySymbol: 'Bs.',
 };
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {

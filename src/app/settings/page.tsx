@@ -290,7 +290,7 @@ export default function SettingsPage() {
                                             {currencyRates.length > 0 ? currencyRates.map(rate => (
                                                 <TableRow key={rate.id}>
                                                     <TableCell>{format(parseISO(rate.date), "dd/MM/yy HH:mm")}</TableCell>
-                                                    <TableCell className="text-right font-mono">{rate.rate.toFixed(2)}</TableCell>
+                                                    <TableCell className="text-right font-mono">{`${rate.rate.toFixed(2)} ${localSettings.secondaryCurrencySymbol}`}</TableCell>
                                                 </TableRow>
                                             )) : (
                                                 <TableRow>
