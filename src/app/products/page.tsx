@@ -6,7 +6,6 @@ import { useToast } from "@/hooks/use-toast";
 import { ProductForm } from "@/components/product-form";
 import type { Product } from "@/lib/types";
 import { useProducts } from "@/contexts/product-context";
-import { AlertDialog } from "@/components/ui/alert-dialog";
 
 export default function ProductsPage() {
   const { toast } = useToast();
@@ -43,9 +42,7 @@ export default function ProductsPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <AlertDialog>
-            <ProductForm onSubmit={onSubmit} />
-        </AlertDialog>
+        <ProductForm onSubmit={onSubmit} />
       </CardContent>
     </Card>
   );

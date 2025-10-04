@@ -408,15 +408,13 @@ export default function InventoryPage() {
                 </DialogDescription>
             </DialogHeader>
             <div className="max-h-[80vh] overflow-y-auto p-1">
-                <AlertDialog>
-                    {productToEdit && (
-                        <ProductForm 
-                            product={productToEdit}
-                            onSubmit={handleUpdateProduct}
-                            onCancel={() => setProductToEdit(null)}
-                        />
-                    )}
-                </AlertDialog>
+                {productToEdit && (
+                    <ProductForm 
+                        product={productToEdit}
+                        onSubmit={handleUpdateProduct}
+                        onCancel={() => setProductToEdit(null)}
+                    />
+                )}
             </div>
         </DialogContent>
     </Dialog>
