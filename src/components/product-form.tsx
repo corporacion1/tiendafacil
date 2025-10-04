@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -106,10 +107,11 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | undefined>(product?.imageUrl);
 
+  // State to hold the string value for display in the inputs
   const [displayValues, setDisplayValues] = useState({
-    cost: product ? (product.cost * activeRate).toFixed(6) : '0.00',
-    price: product ? (product.price * activeRate).toFixed(6) : '0.00',
-    wholesalePrice: product ? (product.wholesalePrice * activeRate).toFixed(6) : '0.00',
+    cost: product ? (product.cost * activeRate).toFixed(2) : '0.00',
+    price: product ? (product.price * activeRate).toFixed(2) : '0.00',
+    wholesalePrice: product ? (product.wholesalePrice * activeRate).toFixed(2) : '0.00',
   });
 
   const form = useForm<ProductFormValues>({
@@ -121,36 +123,48 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const watchedPrice = useWatch({ control: form.control, name: 'price' });
   const watchedWholesalePrice = useWatch({ control: form.control, name: 'wholesalePrice' });
 
+  // Update form and display values when product prop changes
   useEffect(() => {
-      const initialValues = getInitialValues(product);
-      form.reset(initialValues);
-      setImagePreview(product?.imageUrl);
-       if (product) {
-        setDisplayValues({
-            cost: (product.cost * activeRate).toFixed(6),
-            price: (product.price * activeRate).toFixed(6),
-            wholesalePrice: (product.wholesalePrice * activeRate).toFixed(6),
-        });
-       } else {
-         setDisplayValues({ cost: '0.00', price: '0.00', wholesalePrice: '0.00' });
-      }
+    const initialValues = getInitialValues(product);
+    form.reset(initialValues);
+    setImagePreview(product?.imageUrl);
+    setDisplayValues({
+        cost: product ? (product.cost * activeRate).toFixed(2) : '0.00',
+        price: product ? (product.price * activeRate).toFixed(2) : '0.00',
+        wholesalePrice: product ? (product.wholesalePrice * activeRate).toFixed(2) : '0.00',
+    });
   }, [product, form, activeRate]);
 
+  // Update display values when currency rate changes
   useEffect(() => {
     setDisplayValues({
-      cost: (watchedCost * activeRate).toFixed(6),
-      price: (watchedPrice * activeRate).toFixed(6),
-      wholesalePrice: (watchedWholesalePrice * activeRate).toFixed(6),
+      cost: (watchedCost * activeRate).toFixed(2),
+      price: (watchedPrice * activeRate).toFixed(2),
+      wholesalePrice: (watchedWholesalePrice * activeRate).toFixed(2),
     });
   }, [activeRate, watchedCost, watchedPrice, watchedWholesalePrice]);
 
-  const handleCurrencyInputChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'cost' | 'price' | 'wholesalePrice') => {
-      const displayValue = e.target.value;
-      setDisplayValues(prev => ({ ...prev, [fieldName]: displayValue }));
+  const handleDisplayValueChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'cost' | 'price' | 'wholesalePrice') => {
+      const { value } = e.target;
+      // Allow user to type freely
+      setDisplayValues(prev => ({ ...prev, [fieldName]: value }));
+  };
 
+  const handleValueBlur = (e: React.FocusEvent<HTMLInputElement>, fieldName: 'cost' | 'price' | 'wholesalePrice') => {
+      const displayValue = e.target.value;
       const valueAsNumber = parseFloat(displayValue);
+      
       if (!isNaN(valueAsNumber)) {
-        form.setValue(fieldName, valueAsNumber / activeRate, { shouldValidate: true, shouldDirty: true });
+          // Convert the entered value (which is in the active currency) to the primary currency
+          const valueInPrimaryCurrency = valueAsNumber / activeRate;
+          form.setValue(fieldName, valueInPrimaryCurrency, { shouldValidate: true, shouldDirty: true });
+          
+          // Re-format the display value to 2 decimal places
+          setDisplayValues(prev => ({ ...prev, [fieldName]: valueAsNumber.toFixed(2)}));
+      } else {
+          // If input is invalid, reset to the last known valid state from the form
+          const lastValidValue = form.getValues(fieldName) * activeRate;
+          setDisplayValues(prev => ({...prev, [fieldName]: lastValidValue.toFixed(2)}));
       }
   };
   
@@ -365,63 +379,66 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             <FormField
               control={form.control}
               name="cost"
-              render={({ field }) => (
+              render={() => (
                 <FormItem>
                   <FormLabel>Costo ({activeSymbol})</FormLabel>
                   <FormControl>
                     <Input 
                       type="number" 
-                      step="0.000001" 
+                      step="0.01" 
                       placeholder="0.00" 
                       value={displayValues.cost}
-                      onChange={(e) => handleCurrencyInputChange(e, 'cost')}
+                      onChange={(e) => handleDisplayValueChange(e, 'cost')}
+                      onBlur={(e) => handleValueBlur(e, 'cost')}
                     />
                   </FormControl>
-                   <FormMessage />
+                   <FormMessage>{form.formState.errors.cost?.message}</FormMessage>
                 </FormItem>
               )}
             />
             <FormField
               control={form.control}
               name="price"
-              render={({ field }) => (
+              render={() => (
                 <FormItem>
                   <FormLabel>Precio Detal ({activeSymbol})</FormLabel>
                   <FormControl>
                      <Input 
                       type="number" 
-                      step="0.000001" 
+                      step="0.01" 
                       placeholder="0.00" 
                       value={displayValues.price}
-                      onChange={(e) => handleCurrencyInputChange(e, 'price')}
+                      onChange={(e) => handleDisplayValueChange(e, 'price')}
+                      onBlur={(e) => handleValueBlur(e, 'price')}
                     />
                   </FormControl>
                   <FormDescription className={cn(parseFloat(retailProfitPercentage) > 0 ? "text-green-600 font-semibold" : "")}>
                       Margen de Ganancia: {retailProfitPercentage}%
                   </FormDescription>
-                  <FormMessage />
+                  <FormMessage>{form.formState.errors.price?.message}</FormMessage>
                 </FormItem>
               )}
             />
             <FormField
               control={form.control}
               name="wholesalePrice"
-              render={({ field }) => (
+              render={() => (
                 <FormItem>
                   <FormLabel>Precio Mayor ({activeSymbol})</FormLabel>
                   <FormControl>
                      <Input 
                       type="number" 
-                      step="0.000001" 
+                      step="0.01" 
                       placeholder="0.00" 
                       value={displayValues.wholesalePrice}
-                      onChange={(e) => handleCurrencyInputChange(e, 'wholesalePrice')}
+                      onChange={(e) => handleDisplayValueChange(e, 'wholesalePrice')}
+                      onBlur={(e) => handleValueBlur(e, 'wholesalePrice')}
                     />
                   </FormControl>
                   <FormDescription className={cn(parseFloat(wholesaleProfitPercentage) > 0 ? "text-green-600 font-semibold" : "")}>
                       Margen de Ganancia: {wholesaleProfitPercentage}%
                   </FormDescription>
-                  <FormMessage />
+                  <FormMessage>{form.formState.errors.wholesalePrice?.message}</FormMessage>
                 </FormItem>
               )}
             />

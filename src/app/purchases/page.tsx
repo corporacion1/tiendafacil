@@ -234,7 +234,7 @@ export default function PurchasesPage() {
                         <Package className="w-12 h-12 text-muted-foreground" />
                     )}
                     <div className="absolute top-2 left-2 bg-secondary text-secondary-foreground text-xs font-bold px-2 py-1 rounded">
-                      Costo: {activeSymbol}{(product.cost * activeRate).toFixed(6)}
+                      Costo: {activeSymbol}{(product.cost * activeRate).toFixed(2)}
                     </div>
                   </CardContent>
                   <CardFooter className="p-2 bg-background/80 backdrop-blur-sm">
@@ -388,14 +388,14 @@ export default function PurchasesPage() {
                                 <TableCell>
                                 <Input
                                     type="number"
-                                    step="0.000001"
-                                    value={(item.cost * activeRate).toFixed(6)}
+                                    step="0.01"
+                                    value={(item.cost * activeRate).toFixed(2)}
                                     onChange={(e) => updateItem(item.productId, 'cost', parseFloat(e.target.value))}
                                     className="h-8 w-20"
                                     min="0"
                                 />
                                 </TableCell>
-                                <TableCell className="text-right font-mono text-xs">{activeSymbol}{(item.cost * item.quantity * activeRate).toFixed(6)}</TableCell>
+                                <TableCell className="text-right font-mono text-xs">{activeSymbol}{(item.cost * item.quantity * activeRate).toFixed(2)}</TableCell>
                                 <TableCell>
                                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeProduct(item.productId)}>
                                         <Trash2 className="h-4 w-4 text-destructive"/>
@@ -413,24 +413,24 @@ export default function PurchasesPage() {
                     <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
                             <span>Subtotal</span>
-                            <span>{activeSymbol}{(subtotal * activeRate).toFixed(6)}</span>
+                            <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
                         </div>
                         {settings.tax1 > 0 && tax1Amount > 0 && (
                             <div className="flex justify-between">
                                 <span>Impuesto {settings.tax1}%</span>
-                                <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(6)}</span>
+                                <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</span>
                             </div>
                         )}
                         {settings.tax2 > 0 && tax2Amount > 0 && (
                             <div className="flex justify-between">
                                 <span>Impuesto {settings.tax2}%</span>
-                                <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(6)}</span>
+                                <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
                             </div>
                         )}
                         <Separator />
                         <div className="flex justify-between font-bold text-lg">
                             <span>Total</span>
-                            <span>{activeSymbol}{(totalCost * activeRate).toFixed(6)}</span>
+                            <span>{activeSymbol}{(totalCost * activeRate).toFixed(2)}</span>
                         </div>
                     </div>
                 </>
