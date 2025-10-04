@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Product": {
@@ -391,6 +392,39 @@
         "email",
         "isSuperUser"
       ]
+    },
+    "Unit": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Unit",
+      "type": "object",
+      "description": "Represents a unit of measure for products.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "Family": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Family",
+      "type": "object",
+      "description": "Represents a product family for classification.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "Warehouse": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Warehouse",
+      "type": "object",
+      "description": "Represents a storage location.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["id", "name"]
     }
   },
   "auth": {
@@ -405,204 +439,109 @@
         "path": "/products/{productId}",
         "definition": {
           "entityName": "Product",
-          "schema": {
-            "$ref": "#/backend/entities/Product"
-          },
-          "description": "Stores product information.  Authorization based on roles defined outside this document.",
-          "params": [
-            {
-              "name": "productId",
-              "description": "Unique identifier for the product."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/Product" }
+        }
+      },
+      {
+        "path": "/units/{unitId}",
+        "definition": {
+          "entityName": "Unit",
+          "schema": { "$ref": "#/backend/entities/Unit" }
+        }
+      },
+      {
+        "path": "/families/{familyId}",
+        "definition": {
+          "entityName": "Family",
+          "schema": { "$ref": "#/backend/entities/Family" }
+        }
+      },
+      {
+        "path": "/warehouses/{warehouseId}",
+        "definition": {
+          "entityName": "Warehouse",
+          "schema": { "$ref": "#/backend/entities/Warehouse" }
         }
       },
       {
         "path": "/tax_types/{taxTypeId}",
         "definition": {
           "entityName": "TaxType",
-          "schema": {
-            "$ref": "#/backend/entities/TaxType"
-          },
-          "description": "Stores tax type information.",
-          "params": [
-            {
-              "name": "taxTypeId",
-              "description": "Unique identifier for the tax type."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/TaxType" }
         }
       },
       {
         "path": "/inventory_movements/{inventoryMovementId}",
         "definition": {
           "entityName": "InventoryMovement",
-          "schema": {
-            "$ref": "#/backend/entities/InventoryMovement"
-          },
-          "description": "Stores inventory movement records.",
-          "params": [
-            {
-              "name": "inventoryMovementId",
-              "description": "Unique identifier for the inventory movement."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/InventoryMovement" }
         }
       },
       {
         "path": "/sales/{saleId}",
         "definition": {
           "entityName": "Sale",
-          "schema": {
-            "$ref": "#/backend/entities/Sale"
-          },
-          "description": "Stores sale transaction records.",
-          "params": [
-            {
-              "name": "saleId",
-              "description": "Unique identifier for the sale."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/Sale" }
         }
       },
       {
         "path": "/sales/{saleId}/sale_items/{saleItemId}",
         "definition": {
           "entityName": "SaleItem",
-          "schema": {
-            "$ref": "#/backend/entities/SaleItem"
-          },
-          "description": "Stores items within a sale transaction.",
-          "params": [
-            {
-              "name": "saleId",
-              "description": "Unique identifier for the sale."
-            },
-            {
-              "name": "saleItemId",
-              "description": "Unique identifier for the sale item."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/SaleItem" }
         }
       },
       {
         "path": "/purchases/{purchaseId}",
         "definition": {
           "entityName": "Purchase",
-          "schema": {
-            "$ref": "#/backend/entities/Purchase"
-          },
-          "description": "Stores purchase order records.",
-          "params": [
-            {
-              "name": "purchaseId",
-              "description": "Unique identifier for the purchase."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/Purchase" }
         }
       },
       {
         "path": "/purchases/{purchaseId}/purchase_items/{purchaseItemId}",
         "definition": {
           "entityName": "PurchaseItem",
-          "schema": {
-            "$ref": "#/backend/entities/PurchaseItem"
-          },
-          "description": "Stores items within a purchase order.",
-          "params": [
-            {
-              "name": "purchaseId",
-              "description": "Unique identifier for the purchase."
-            },
-            {
-              "name": "purchaseItemId",
-              "description": "Unique identifier for the purchase item."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/PurchaseItem" }
         }
       },
       {
         "path": "/suppliers/{supplierId}",
         "definition": {
           "entityName": "Supplier",
-          "schema": {
-            "$ref": "#/backend/entities/Supplier"
-          },
-          "description": "Stores supplier information.",
-          "params": [
-            {
-              "name": "supplierId",
-              "description": "Unique identifier for the supplier."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/Supplier" }
         }
       },
       {
         "path": "/customers/{customerId}",
         "definition": {
           "entityName": "Customer",
-          "schema": {
-            "$ref": "#/backend/entities/Customer"
-          },
-          "description": "Stores customer information.",
-          "params": [
-            {
-              "name": "customerId",
-              "description": "Unique identifier for the customer."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/Customer" }
         }
       },
       {
         "path": "/store_configuration/{storeConfigurationId}",
         "definition": {
           "entityName": "StoreConfiguration",
-          "schema": {
-            "$ref": "#/backend/entities/StoreConfiguration"
-          },
-          "description": "Stores store configuration settings.  There should only be ONE document in this collection.",
-          "params": [
-            {
-              "name": "storeConfigurationId",
-              "description": "Unique identifier for the store configuration (should be a singleton ID)."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/StoreConfiguration" }
         }
       },
       {
         "path": "/users/{userId}",
         "definition": {
           "entityName": "User",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "Stores user information and roles. Includes 'isSuperUser' to define admin privileges.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "Unique identifier for the user."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/User" }
         }
       },
       {
         "path": "/roles_admin/{userId}",
         "definition": {
           "entityName": "User",
-          "schema": {
-            "$ref": "#/backend/entities/User"
-          },
-          "description": "Documents in this collection grant admin roles. Existence implies role.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The ID of the user who has the admin role."
-            }
-          ]
+          "schema": { "$ref": "#/backend/entities/User" }
         }
       }
-    ],
-    "reasoning": "The Firestore data structure is designed to ensure security, scalability, and ease of debugging, following the principles of Authorization Independence, Clarity of Intent, DBAC (Database-Based Access Control), and QAPs (Rules are not Filters). The structure facilitates secure `list` operations and enforces data integrity.\n\n**Authorization Independence:**\n\n*   No `get()` calls are necessary in security rules due to denormalization.\n\n**Structural Segregation:**\n\n*   Data with different access needs are stored in separate collections.\n\n**Access Modeling:**\n\n*   Path-based ownership is used for user-owned data.\n*   A dedicated collection `roles_admin` is used for global roles (DBAC).\n\nTo prevent code injection through image uploads, Firebase Storage security rules should be implemented to validate file types and metadata. This aspect is outside the scope of Firestore structure but is crucial for overall application security. Additionally, input validation and sanitization should be performed on the backend before writing data to Firestore, and on the frontend before sending the data to the backend.\n\nSince only one email must be superuser, this logic will be implemented in the Firebase Functions, triggering a function every time a new user is created. This trigger will look for a specific email and update the field `isSuperUser` to true, otherwise, it will be false."
+    ]
   }
 }
+
     

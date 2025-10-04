@@ -12,12 +12,16 @@ import { Switch } from "@/components/ui/switch";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { mockProducts, initialUnits, initialFamilies, initialWarehouses } from "@/lib/data";
-import { Unit, Family, Warehouse, CurrencyRate } from "@/lib/types";
+import { Unit, Family, Warehouse, CurrencyRate, Product } from "@/lib/types";
 import { Pencil, PlusCircle, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
+
+import { useProducts } from "@/contexts/product-context";
+import { useUnits } from "@/contexts/units-context";
+import { useFamilies } from "@/contexts/families-context";
+import { useWarehouses } from "@/contexts/warehouses-context";
 
 
 function ChangePinDialog() {
@@ -79,11 +83,11 @@ export default function SettingsPage() {
     const [newPin, setNewPin] = useState('');
     const [confirmPin, setConfirmPin] = useState('');
     const { toast } = useToast();
-
-    // State for CRUD operations
-    const [units, setUnits] = useState<Unit[]>(initialUnits);
-    const [families, setFamilies] = useState<Family[]>(initialFamilies);
-    const [warehouses, setWarehouses] = useState<Warehouse[]>(initialWarehouses);
+    
+    const { products } = useProducts();
+    const { units, addUnit, updateUnit, deleteUnit } = useUnits();
+    const { families, addFamily, updateFamily, deleteFamily } = useFamilies();
+    const { warehouses, addWarehouse, updateWarehouse, deleteWarehouse } = useWarehouses();
     const [newRate, setNewRate] = useState<number>(0);
 
     const [editingItem, setEditingItem] = useState<{type: 'unit' | 'family' | 'warehouse', data: any} | null>(null);
@@ -129,15 +133,12 @@ export default function SettingsPage() {
         });
     };
 
-    const handleActionWithToast = (title: string, description: string) => {
-        toast({ title, description });
-    }
-
     const isItemInUse = (type: 'unit' | 'family' | 'warehouse', id: string) => {
+        const item = (items: any[]) => items.find(i => i.id === id)?.name;
         switch(type) {
-            case 'unit': return mockProducts.some(p => p.unit === units.find(u => u.id === id)?.name);
-            case 'family': return mockProducts.some(p => p.family === families.find(f => f.id === id)?.name);
-            case 'warehouse': return mockProducts.some(p => p.warehouse === warehouses.find(w => w.id === id)?.name);
+            case 'unit': return products.some(p => p.unit === item(units));
+            case 'family': return products.some(p => p.family === item(families));
+            case 'warehouse': return products.some(p => p.warehouse === item(warehouses));
             default: return false;
         }
     };
@@ -153,31 +154,31 @@ export default function SettingsPage() {
         }
 
         switch(type) {
-            case 'unit': setUnits(prev => prev.filter(item => item.id !== id)); break;
-            case 'family': setFamilies(prev => prev.filter(item => item.id !== id)); break;
-            case 'warehouse': setWarehouses(prev => prev.filter(item => item.id !== id)); break;
+            case 'unit': deleteUnit(id); break;
+            case 'family': deleteFamily(id); break;
+            case 'warehouse': deleteWarehouse(id); break;
         }
 
         toast({ title: 'Elemento eliminado', description: 'El elemento ha sido eliminado correctamente.' });
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (editingItem) { // Editing existing item
             const { type, data } = editingItem;
             switch(type) {
-                case 'unit': setUnits(prev => prev.map(u => u.id === data.id ? data : u)); break;
-                case 'family': setFamilies(prev => prev.map(f => f.id === data.id ? data : f)); break;
-                case 'warehouse': setWarehouses(prev => prev.map(w => w.id === data.id ? data : w)); break;
+                case 'unit': await updateUnit(data.id, data); break;
+                case 'family': await updateFamily(data.id, data); break;
+                case 'warehouse': await updateWarehouse(data.id, data); break;
             }
             toast({ title: 'Elemento actualizado' });
             setEditingItem(null);
         } else if (newItem && newItem.name.trim() !== '') { // Adding new item
             const { type, name } = newItem;
-            const newEntry = { id: `id-${Date.now()}`, name };
+            const newEntry = { name };
              switch(type) {
-                case 'unit': setUnits(prev => [...prev, newEntry]); break;
-                case 'family': setFamilies(prev => [...prev, newEntry]); break;
-                case 'warehouse': setWarehouses(prev => [...prev, newEntry]); break;
+                case 'unit': await addUnit(newEntry); break;
+                case 'family': await addFamily(newEntry); break;
+                case 'warehouse': await addWarehouse(newEntry); break;
             }
             toast({ title: 'Elemento agregado' });
             setNewItem(null);

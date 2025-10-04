@@ -7,6 +7,9 @@ import { SettingsProvider } from "@/contexts/settings-context";
 import { ProductProvider } from "@/contexts/product-context";
 import { SalesProvider } from "@/contexts/sales-context";
 import { PurchasesProvider } from "@/contexts/purchases-context";
+import { UnitsProvider } from "@/contexts/units-context";
+import { FamiliesProvider } from "@/contexts/families-context";
+import { WarehousesProvider } from "@/contexts/warehouses-context";
 import { PinModal } from "@/components/pin-modal";
 import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
@@ -77,8 +80,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <ProductProvider>
               <SalesProvider>
                 <PurchasesProvider>
-                  <MainApp>{children}</MainApp>
-                  <Toaster />
+                  <UnitsProvider>
+                    <FamiliesProvider>
+                      <WarehousesProvider>
+                        <MainApp>{children}</MainApp>
+                        <Toaster />
+                      </WarehousesProvider>
+                    </FamiliesProvider>
+                  </UnitsProvider>
                 </PurchasesProvider>
               </SalesProvider>
             </ProductProvider>
@@ -88,3 +97,5 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </ThemeProvider>
   );
 }
+
+    
