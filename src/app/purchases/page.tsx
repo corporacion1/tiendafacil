@@ -11,13 +11,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useProducts } from "@/contexts/product-context";
 import type { Product, PurchaseItem, Supplier, Purchase, InventoryMovement } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { initialSuppliers, mockPurchases, mockInventoryMovements } from "@/lib/data";
+import { initialSuppliers, mockPurchases, mockInventoryMovements, initialFamilies } from "@/lib/data";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
 const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
@@ -28,6 +29,7 @@ export default function PurchasesPage() {
   
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedFamily, setSelectedFamily] = useState<string>("all");
   
   const [suppliers, setSuppliers] = useState<Supplier[]>(initialSuppliers);
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>('');
@@ -42,10 +44,11 @@ export default function PurchasesPage() {
 
   const filteredProducts = useMemo(() => {
     return products.filter(product =>
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.sku.toLowerCase().includes(searchTerm.toLowerCase())
+      (selectedFamily === 'all' || product.family === selectedFamily) &&
+      (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase())))
     );
-  }, [products, searchTerm]);
+  }, [products, searchTerm, selectedFamily]);
 
   const addProductToPurchase = (product: Product) => {
     setPurchaseItems((prevItems) => {
@@ -163,13 +166,26 @@ export default function PurchasesPage() {
         <Card>
           <CardHeader>
             <CardTitle>Productos para Compra</CardTitle>
-            <div className="mt-4">
+            <div className="mt-4 flex gap-4">
               <Input
                 placeholder="Buscar por nombre o SKU..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full"
+                className="flex-grow"
               />
+               <Select value={selectedFamily} onValueChange={setSelectedFamily}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filtrar por familia" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las familias</SelectItem>
+                  {initialFamilies.map(family => (
+                    <SelectItem key={family.id} value={family.name}>
+                      {family.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </CardHeader>
           <CardContent>
@@ -366,3 +382,5 @@ export default function PurchasesPage() {
     </div>
   );
 }
+
+    

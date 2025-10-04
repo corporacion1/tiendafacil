@@ -12,8 +12,8 @@ import { Switch } from "@/components/ui/switch";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { mockProducts } from "@/lib/data";
-import { Unit, Family, Warehouse, initialUnits, initialFamilies, initialWarehouses } from "@/lib/types";
+import { mockProducts, initialUnits, initialFamilies, initialWarehouses } from "@/lib/data";
+import { Unit, Family, Warehouse } from "@/lib/types";
 import { Pencil, PlusCircle, Trash2 } from "lucide-react";
 
 
