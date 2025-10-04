@@ -8,10 +8,10 @@ interface SecurityContextType {
   isLocked: boolean;
   unlockApp: (pin: string) => void;
   lockApp: () => void;
-  setPin: (newPin: string) => void;
+  setPin: (newPin: string, confirmPin: string) => void;
   hasPin: boolean;
   removePin: () => void;
-  changePin: (oldPin: string, newPin: string) => boolean;
+  changePin: (oldPin: string, newPin: string, confirmPin: string) => boolean;
 }
 
 const SecurityContext = createContext<SecurityContextType | undefined>(undefined);
@@ -62,12 +62,20 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, [storedPin, toast]);
 
-  const setPin = useCallback((newPin: string) => {
+  const setPin = useCallback((newPin: string, confirmPin: string) => {
     if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
         toast({
             variant: "destructive",
             title: "PIN inválido",
             description: "El PIN debe contener exactamente 4 dígitos numéricos."
+        });
+        return;
+    }
+    if (newPin !== confirmPin) {
+        toast({
+            variant: "destructive",
+            title: "Los PINES no coinciden",
+            description: "El nuevo PIN y su confirmación no son iguales."
         });
         return;
     }
@@ -89,7 +97,7 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, [toast]);
 
-  const changePin = useCallback((oldPin: string, newPin: string) => {
+  const changePin = useCallback((oldPin: string, newPin: string, confirmPin: string) => {
     if (oldPin !== storedPin) {
       toast({
         variant: "destructive",
@@ -105,6 +113,14 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
         description: "El nuevo PIN debe contener exactamente 4 dígitos numéricos.",
       });
       return false;
+    }
+     if (newPin !== confirmPin) {
+        toast({
+            variant: "destructive",
+            title: "Los PINES no coinciden",
+            description: "El nuevo PIN y su confirmación no son iguales."
+        });
+        return false;
     }
     try {
       localStorage.setItem(STORAGE_KEY, newPin);

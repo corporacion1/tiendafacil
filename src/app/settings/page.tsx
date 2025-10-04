@@ -24,13 +24,15 @@ function ChangePinDialog() {
     const { changePin } = useSecurity();
     const [oldPin, setOldPin] = useState('');
     const [newPin, setNewPin] = useState('');
+    const [confirmPin, setConfirmPin] = useState('');
     const [isOpen, setIsOpen] = useState(false);
     
     const handleChangePin = () => {
-        const success = changePin(oldPin, newPin);
+        const success = changePin(oldPin, newPin, confirmPin);
         if (success) {
             setOldPin('');
             setNewPin('');
+            setConfirmPin('');
             setIsOpen(false);
         }
     }
@@ -56,6 +58,10 @@ function ChangePinDialog() {
                         <Label htmlFor="new-pin-change">Nuevo PIN (4 dígitos)</Label>
                         <Input id="new-pin-change" type="password" value={newPin} onChange={(e) => setNewPin(e.target.value)} maxLength={4} placeholder="****" />
                     </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="confirm-pin-change">Confirmar Nuevo PIN</Label>
+                        <Input id="confirm-pin-change" type="password" value={confirmPin} onChange={(e) => setConfirmPin(e.target.value)} maxLength={4} placeholder="****" />
+                    </div>
                 </div>
                 <DialogFooter>
                     <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
@@ -71,6 +77,7 @@ export default function SettingsPage() {
     const { settings, setSettings } = useSettings();
     const [localSettings, setLocalSettings] = useState(settings);
     const [newPin, setNewPin] = useState('');
+    const [confirmPin, setConfirmPin] = useState('');
     const { toast } = useToast();
 
     // State for CRUD operations
@@ -391,16 +398,22 @@ export default function SettingsPage() {
                                     <DialogHeader>
                                         <DialogTitle>Establecer Nuevo PIN</DialogTitle>
                                     </DialogHeader>
-                                    <div className="flex-1 space-y-2 py-4">
-                                        <Label htmlFor="new-pin">Nuevo PIN (4 dígitos)</Label>
-                                        <Input id="new-pin" type="password" value={newPin} onChange={(e) => setNewPin(e.target.value)} maxLength={4} placeholder="****" />
+                                    <div className="space-y-4 py-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="new-pin">Nuevo PIN (4 dígitos)</Label>
+                                            <Input id="new-pin" type="password" value={newPin} onChange={(e) => setNewPin(e.target.value)} maxLength={4} placeholder="****" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="confirm-pin">Confirmar Nuevo PIN</Label>
+                                            <Input id="confirm-pin" type="password" value={confirmPin} onChange={(e) => setConfirmPin(e.target.value)} maxLength={4} placeholder="****" />
+                                        </div>
                                     </div>
                                     <DialogFooter>
                                         <DialogClose asChild>
                                             <Button variant="outline">Cancelar</Button>
                                         </DialogClose>
                                         <DialogClose asChild>
-                                            <Button onClick={() => setPin(newPin)}>Establecer PIN</Button>
+                                            <Button onClick={() => setPin(newPin, confirmPin)}>Establecer PIN</Button>
                                         </DialogClose>
                                     </DialogFooter>
                                 </DialogContent>
