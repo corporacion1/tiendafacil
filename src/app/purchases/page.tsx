@@ -62,14 +62,14 @@ export default function PurchasesPage() {
     });
   };
   
-  const updateQuantity = (productId: string, quantity: number) => {
-    if (isNaN(quantity) || quantity <= 0) {
-      removeProduct(productId);
-      return;
+  const updateItem = (productId: string, field: 'quantity' | 'cost', value: number) => {
+    if (field === 'quantity' && (isNaN(value) || value <= 0)) {
+        removeProduct(productId);
+        return;
     }
     setPurchaseItems((prevItems) =>
       prevItems.map((item) =>
-        item.productId === productId ? { ...item, quantity } : item
+        item.productId === productId ? { ...item, [field]: value } : item
       )
     );
   };
@@ -138,7 +138,7 @@ export default function PurchasesPage() {
     purchaseItems.forEach(item => {
         const product = products.find(p => p.id === item.productId);
         if (product) {
-            updateProduct(product.id, { stock: product.stock + item.quantity });
+            updateProduct(product.id, { stock: product.stock + item.quantity, cost: item.cost }); // Also update the product's default cost
             const movement: InventoryMovement = {
                 id: `mov-purch-${Date.now()}-${item.productId}`,
                 productName: item.productName,
@@ -334,25 +334,38 @@ export default function PurchasesPage() {
                         <TableHeader>
                             <TableRow>
                             <TableHead>Producto</TableHead>
-                            <TableHead className="w-[80px]">Cant.</TableHead>
-                            <TableHead className="w-[50px]"></TableHead>
+                            <TableHead className="w-[60px]">Cant.</TableHead>
+                            <TableHead className="w-[90px]">Costo</TableHead>
+                            <TableHead className="w-[90px] text-right">Subtotal</TableHead>
+                            <TableHead className="w-[40px]"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {purchaseItems.map((item) => (
                             <TableRow key={item.productId}>
-                                <TableCell className="font-medium">{item.productName}</TableCell>
+                                <TableCell className="font-medium text-xs">{item.productName}</TableCell>
                                 <TableCell>
                                 <Input
                                     type="number"
                                     value={item.quantity}
-                                    onChange={(e) => updateQuantity(item.productId, parseInt(e.target.value))}
-                                    className="h-8 w-16"
+                                    onChange={(e) => updateItem(item.productId, 'quantity', parseInt(e.target.value))}
+                                    className="h-8 w-14"
                                     min="1"
                                 />
                                 </TableCell>
                                 <TableCell>
-                                    <Button variant="ghost" size="icon" onClick={() => removeProduct(item.productId)}>
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={item.cost}
+                                    onChange={(e) => updateItem(item.productId, 'cost', parseFloat(e.target.value))}
+                                    className="h-8 w-20"
+                                    min="0"
+                                />
+                                </TableCell>
+                                <TableCell className="text-right font-mono text-xs">${(item.cost * item.quantity).toFixed(2)}</TableCell>
+                                <TableCell>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeProduct(item.productId)}>
                                         <Trash2 className="h-4 w-4 text-destructive"/>
                                     </Button>
                                 </TableCell>
@@ -382,5 +395,3 @@ export default function PurchasesPage() {
     </div>
   );
 }
-
-    
