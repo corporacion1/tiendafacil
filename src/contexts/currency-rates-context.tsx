@@ -33,6 +33,7 @@ export const CurrencyRatesProvider = ({ children }: { children: React.ReactNode 
     const dataToSave = {
         ...rateData,
         date: rateData.date || Timestamp.now(),
+        userId: user.uid, // Add userId for security rules
     };
     try {
         const docRef = await addDoc(ratesCollection, dataToSave);
