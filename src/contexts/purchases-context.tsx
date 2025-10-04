@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import type { Purchase } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { collection, where, query } from 'firebase/firestore';
 
 interface PurchasesContextType {
   purchases: Purchase[];
@@ -20,7 +20,7 @@ export const PurchasesProvider = ({ children }: { children: React.ReactNode }) =
 
   const purchasesQuery = useMemoFirebase(() => {
       if (!firestore || !user || isUserLoading || !storeId) return null;
-      return collection(firestore, 'stores', storeId, 'purchases');
+      return query(collection(firestore, 'purchases'), where("storeId", "==", storeId));
   }, [firestore, user, isUserLoading, storeId]);
 
   const { data: purchases, isLoading } = useCollection<Purchase>(purchasesQuery);

@@ -4,14 +4,14 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import type { Family } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, where, query } from 'firebase/firestore';
 import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 
 
 interface FamiliesContextType {
   families: Family[];
   isLoading: boolean;
-  addFamily: (family: Omit<Family, 'id'>) => Promise<string | void>;
+  addFamily: (family: Omit<Family, 'id' | 'storeId'>) => Promise<string | void>;
   updateFamily: (familyId: string, updatedFamily: Partial<Family>) => Promise<void>;
   deleteFamily: (familyId: string) => Promise<void>;
 }
@@ -25,27 +25,27 @@ export const FamiliesProvider = ({ children }: { children: React.ReactNode }) =>
 
   const familiesQuery = useMemoFirebase(() => {
       if (!firestore || !user || isUserLoading || !storeId) return null;
-      return collection(firestore, 'stores', storeId, 'families');
+      return query(collection(firestore, 'families'), where("storeId", "==", storeId));
   }, [firestore, user, isUserLoading, storeId]);
 
   const { data: families, isLoading } = useCollection<Family>(familiesQuery);
   
-  const addFamily = async (familyData: Omit<Family, 'id'>) => {
+  const addFamily = async (familyData: Omit<Family, 'id' | 'storeId'>) => {
     if (!firestore || !storeId) return;
-    const familiesCollection = collection(firestore, 'stores', storeId, 'families');
-    const docRef = await addDocumentNonBlocking(familiesCollection, familyData);
+    const familiesCollection = collection(firestore, 'families');
+    const docRef = await addDocumentNonBlocking(familiesCollection, { ...familyData, storeId });
     return docRef?.id;
   };
 
   const updateFamily = async (familyId: string, updatedFamilyData: Partial<Family>) => {
     if (!firestore || !storeId) return;
-    const familyDoc = doc(firestore, 'stores', storeId, 'families', familyId);
+    const familyDoc = doc(firestore, 'families', familyId);
     await updateDocumentNonBlocking(familyDoc, updatedFamilyData);
   };
 
   const deleteFamily = async (familyId: string) => {
     if (!firestore || !storeId) return;
-    const familyDoc = doc(firestore, 'stores', storeId, 'families', familyId);
+    const familyDoc = doc(firestore, 'families', familyId);
     await deleteDocumentNonBlocking(familyDoc);
   }
 

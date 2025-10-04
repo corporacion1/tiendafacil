@@ -3,6 +3,7 @@ import { Timestamp } from 'firebase/firestore';
 
 export type Product = {
   id: string;
+  storeId: string;
   name: string;
   sku: string;
   stock: number;
@@ -28,6 +29,7 @@ export type CartItem = {
 
 export type InventoryMovement = {
   id: string;
+  storeId: string;
   productId?: string;
   productName: string;
   type: 'sale' | 'purchase' | 'adjustment';
@@ -44,6 +46,7 @@ export type Payment = {
 
 export type Sale = {
   id: string;
+  storeId: string;
   customerId: string;
   customerName: string;
   items: {
@@ -70,6 +73,7 @@ export type PurchaseItem = {
 
 export type Purchase = {
     id: string;
+    storeId: string;
     supplierId: string;
     supplierName: string;
     items: PurchaseItem[];
@@ -81,6 +85,7 @@ export type Purchase = {
 
 export type Customer = {
     id: string;
+    storeId: string;
     name: string;
     phone?: string;
     address?: string;
@@ -88,6 +93,7 @@ export type Customer = {
 
 export type Supplier = {
     id: string;
+    storeId: string;
     name: string;
     phone?: string;
     address?: string;
@@ -95,21 +101,25 @@ export type Supplier = {
 
 export type Unit = {
     id: string;
+    storeId: string;
     name: string;
 };
 
 export type Family = {
     id: string;
+    storeId: string;
     name: string;
 };
 
 export type Warehouse = {
     id: string;
+    storeId: string;
     name: string;
 };
 
 export type CurrencyRate = {
     id: string;
+    storeId: string;
     rate: number;
     date: Timestamp | string;
 };

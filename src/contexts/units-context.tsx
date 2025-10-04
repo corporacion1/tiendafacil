@@ -4,13 +4,13 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import type { Unit } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, where, query } from 'firebase/firestore';
 import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 
 interface UnitsContextType {
   units: Unit[];
   isLoading: boolean;
-  addUnit: (unit: Omit<Unit, 'id'>) => Promise<string | void>;
+  addUnit: (unit: Omit<Unit, 'id' | 'storeId'>) => Promise<string | void>;
   updateUnit: (unitId: string, updatedUnit: Partial<Unit>) => Promise<void>;
   deleteUnit: (unitId: string) => Promise<void>;
 }
@@ -24,27 +24,27 @@ export const UnitsProvider = ({ children }: { children: React.ReactNode }) => {
 
   const unitsQuery = useMemoFirebase(() => {
       if (!firestore || !user || isUserLoading || !storeId) return null;
-      return collection(firestore, 'stores', storeId, 'units');
+      return query(collection(firestore, 'units'), where("storeId", "==", storeId));
   }, [firestore, user, isUserLoading, storeId]);
 
   const { data: units, isLoading } = useCollection<Unit>(unitsQuery);
 
-  const addUnit = async (unitData: Omit<Unit, 'id'>) => {
+  const addUnit = async (unitData: Omit<Unit, 'id' | 'storeId'>) => {
     if (!firestore || !storeId) return;
-    const unitsCollection = collection(firestore, 'stores', storeId, 'units');
-    const docRef = await addDocumentNonBlocking(unitsCollection, unitData);
+    const unitsCollection = collection(firestore, 'units');
+    const docRef = await addDocumentNonBlocking(unitsCollection, { ...unitData, storeId });
     return docRef?.id;
   };
 
   const updateUnit = async (unitId: string, updatedUnitData: Partial<Unit>) => {
     if (!firestore || !storeId) return;
-    const unitDoc = doc(firestore, 'stores', storeId, 'units', unitId);
+    const unitDoc = doc(firestore, 'units', unitId);
     await updateDocumentNonBlocking(unitDoc, updatedUnitData);
   };
 
   const deleteUnit = async (unitId: string) => {
     if (!firestore || !storeId) return;
-    const unitDoc = doc(firestore, 'stores', storeId, 'units', unitId);
+    const unitDoc = doc(firestore, 'units', unitId);
     await deleteDocumentNonBlocking(unitDoc);
   }
 
