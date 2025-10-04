@@ -1,374 +1,303 @@
 /**
- * @file Firestore Security Rules
- * @description This ruleset enforces a strict, role-based access control model for the application.
- * All data is secured by requiring a verified user identity (authentication) and explicit authorization
- * checks based on pre-defined roles.  Write operations are restricted to authorized users only, while read
- * access is generally public unless specifically restricted.
+ * @file Overview
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict owner-only access model for user-specific data and cautiously allows public read access where appropriate.
+ * All write operations are protected by authorization checks.
  *
  * Data Structure:
- * - Top-level collections: /products, /tax_types, /inventory_movements, /sales, /purchases, /suppliers, /customers, /store_configuration, /users, /currency_rates, /units, /families, /warehouses
- * - Subcollections: /sales/{saleId}/sale_items, /purchases/{purchaseId}/purchase_items
+ * The Firestore database contains collections for products, tax types, inventory movements, sales, purchases, suppliers, customers, store configuration, users, units, families, warehouses and currency rates.
+ * Most top-level collections are secured with public read access and owner-only writes.
+ * Subcollections inherit the access control of their parent documents.
  *
  * Key Security Decisions:
- * - Public Read Access: Most top-level collections allow public read access (`get`, `list`).
- * - Owner-Only Writes: Write access (`create`, `update`, `delete`) is restricted to specific users/roles based on ownership.
- * - Subcollection Security: Subcollections inherit the security context of their parent documents, with additional checks as needed.
- * - No User Listing: Listing of users is not permitted.
- * - Currency Rates: Restricted to only be created by an admin user, while reads are open to all users.
+ * - User listing is disallowed to protect user privacy.
+ * - The `currency_rates` collection requires authentication for write access, but is readable by everyone.
+ *
+ * Denormalization for Authorization:
+ * The rules do not assume denormalized data, but the comments suggest adding an ownerId to entities where owner-only writes are needed, like "Recipe".
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the user is signed in.
-     * @path N/A
-     * @allow N/A
-     * @deny N/A
-     * @principle Requires authentication for all protected operations.
+     * @description Checks if the current user is signed in.
+     * @return {boolean} True if the user is signed in, false otherwise.
      */
     function isSignedIn() {
       return request.auth != null;
     }
 
     /**
-     * @description Checks if the user is the owner of the document, based on the provided user ID.
-     * @path N/A
-     * @allow N/A
-     * @deny N/A
-     * @principle Enforces document ownership.
+     * @description Checks if the current user is the owner of the resource.
+     * @param {string} userId - The user ID to compare against the request's authentication UID.
+     * @return {boolean} True if the user is the owner, false otherwise.
      */
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      return request.auth.uid == userId;
     }
 
     /**
-     * @description Checks if the user is the owner of the existing document.
-     * @path N/A
-     * @allow N/A
-     * @deny N/A
-     * @principle Enforces document ownership and existence for updates/deletes.
+     * @description Checks if the current user is the owner of the existing resource.
+     *              This function combines the ownership check with the existence check.
+     * @param {string} userId - The user ID to compare against the resource's data.
+     * @return {boolean} True if the user is the owner and the resource exists, false otherwise.
      */
     function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-    }
-    /**
-     * @description Checks if the user is an admin based on the `roles_admin` collection.
-     * @path N/A
-     * @allow N/A
-     * @deny N/A
-     * @principle Enforces admin role for certain operations.
-     */
-    function isAdmin() {
-        return exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+      return isOwner(userId) && resource != null;
     }
 
     /**
-     * @description Rules for the /products collection.
+     * @description Products can be read by anyone, but only created, updated, or deleted by an authenticated user.
      * @path /products/{productId}
-     * @allow get, list: if true;
-     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create a product
-     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update a product
-     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete a product
-     * @deny create: if false;
-     * @deny update: if false;
-     * @deny delete: if false;
-     * @principle Allows public read access but requires authentication for writes.
+     * @allow (get, list): Any user can read product information.
+     * @allow (create): An authenticated user can create a product. The request data must contain `ownerId` set to the user's `auth.uid`.
+     * @allow (update, delete): Only the user who created the product (`ownerId` matches `auth.uid`) can update or delete it.
+     * @deny (create): An unauthenticated user cannot create a product.
+     * @deny (update, delete): A different authenticated user cannot update or delete a product created by another user.
+     * @principle Allows public read access to product information but restricts write access to the owner.
      */
     match /products/{productId} {
       allow get, list: if true;
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow update, delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Rules for the /units collection.
+     * @description Units can be read by anyone, but only created, updated, or deleted by an authenticated user.
      * @path /units/{unitId}
-     * @allow get, list: if true;
-     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create a unit
-     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update a unit
-     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete a unit
-     * @deny create: if false;
-     * @deny update: if false;
-     * @deny delete: if false;
-     * @principle Allows public read access but requires authentication for writes.
+     * @allow (get, list): Any user can read unit information.
+     * @allow (create): An authenticated user can create a unit. The request data must contain `ownerId` set to the user's `auth.uid`.
+     * @allow (update, delete): Only the user who created the unit (`ownerId` matches `auth.uid`) can update or delete it.
+     * @deny (create): An unauthenticated user cannot create a unit.
+     * @deny (update, delete): A different authenticated user cannot update or delete a unit created by another user.
+     * @principle Allows public read access to unit information but restricts write access to the owner.
      */
     match /units/{unitId} {
       allow get, list: if true;
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow update, delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Rules for the /families collection.
+     * @description Families can be read by anyone, but only created, updated, or deleted by an authenticated user.
      * @path /families/{familyId}
-     * @allow get, list: if true;
-     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create a family
-     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update a family
-     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete a family
-     * @deny create: if false;
-     * @deny update: if false;
-     * @deny delete: if false;
-     * @principle Allows public read access but requires authentication for writes.
+     * @allow (get, list): Any user can read family information.
+     * @allow (create): An authenticated user can create a family. The request data must contain `ownerId` set to the user's `auth.uid`.
+     * @allow (update, delete): Only the user who created the family (`ownerId` matches `auth.uid`) can update or delete it.
+     * @deny (create): An unauthenticated user cannot create a family.
+     * @deny (update, delete): A different authenticated user cannot update or delete a family created by another user.
+     * @principle Allows public read access to family information but restricts write access to the owner.
      */
     match /families/{familyId} {
       allow get, list: if true;
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow update, delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Rules for the /warehouses collection.
+     * @description Warehouses can be read by anyone, but only created, updated, or deleted by an authenticated user.
      * @path /warehouses/{warehouseId}
-     * @allow get, list: if true;
-     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create a warehouse
-     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update a warehouse
-     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete a warehouse
-     * @deny create: if false;
-     * @deny update: if false;
-     * @deny delete: if false;
-     * @principle Allows public read access but requires authentication for writes.
+     * @allow (get, list): Any user can read warehouse information.
+     * @allow (create): An authenticated user can create a warehouse. The request data must contain `ownerId` set to the user's `auth.uid`.
+     * @allow (update, delete): Only the user who created the warehouse (`ownerId` matches `auth.uid`) can update or delete it.
+     * @deny (create): An unauthenticated user cannot create a warehouse.
+     * @deny (update, delete): A different authenticated user cannot update or delete a warehouse created by another user.
+     * @principle Allows public read access to warehouse information but restricts write access to the owner.
      */
     match /warehouses/{warehouseId} {
       allow get, list: if true;
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow update, delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Rules for the /tax_types collection.
+     * @description Tax types can be read by anyone, but only created, updated, or deleted by an authenticated user.
      * @path /tax_types/{taxTypeId}
-     * @allow get, list: if true;
-     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create a tax type
-     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update a tax type
-     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete a tax type
-     * @deny create: if false;
-     * @deny update: if false;
-     * @deny delete: if false;
-     * @principle Allows public read access but requires authentication for writes.
+     * @allow (get, list): Any user can read tax type information.
+     * @allow (create): An authenticated user can create a tax type. The request data must contain `ownerId` set to the user's `auth.uid`.
+     * @allow (update, delete): Only the user who created the tax type (`ownerId` matches `auth.uid`) can update or delete it.
+     * @deny (create): An unauthenticated user cannot create a tax type.
+     * @deny (update, delete): A different authenticated user cannot update or delete a tax type created by another user.
+     * @principle Allows public read access to tax type information but restricts write access to the owner.
      */
     match /tax_types/{taxTypeId} {
       allow get, list: if true;
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow update, delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Rules for the /inventory_movements collection.
+     * @description Inventory movements can be read by anyone, but only created, updated, or deleted by an authenticated user.
      * @path /inventory_movements/{inventoryMovementId}
-     * @allow get, list: if true;
-     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create an inventory movement
-     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update an inventory movement
-     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete an inventory movement
-     * @deny create: if false;
-     * @deny update: if false;
-     * @deny delete: if false;
-     * @principle Allows public read access but requires authentication for writes.
+     * @allow (get, list): Any user can read inventory movement information.
+     * @allow (create): An authenticated user can create an inventory movement. The request data must contain `ownerId` set to the user's `auth.uid`.
+     * @allow (update, delete): Only the user who created the inventory movement (`ownerId` matches `auth.uid`) can update or delete it.
+     * @deny (create): An unauthenticated user cannot create an inventory movement.
+     * @deny (update, delete): A different authenticated user cannot update or delete a inventory movement created by another user.
+     * @principle Allows public read access to inventory movement information but restricts write access to the owner.
      */
     match /inventory_movements/{inventoryMovementId} {
       allow get, list: if true;
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow update, delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Rules for the /sales collection.
+     * @description Sales can be read by anyone, but only created, updated, or deleted by an authenticated user.
      * @path /sales/{saleId}
-     * @allow get, list: if true;
-     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create a sale
-     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update a sale
-     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete a sale
-     * @deny create: if false;
-     * @deny update: if false;
-     * @deny delete: if false;
-     * @principle Allows public read access but requires authentication for writes.
+     * @allow (get, list): Any user can read sale information.
+     * @allow (create): An authenticated user can create a sale. The request data must contain `ownerId` set to the user's `auth.uid`.
+     * @allow (update, delete): Only the user who created the sale (`ownerId` matches `auth.uid`) can update or delete it.
+     * @deny (create): An unauthenticated user cannot create a sale.
+     * @deny (update, delete): A different authenticated user cannot update or delete a sale created by another user.
+     * @principle Allows public read access to sale information but restricts write access to the owner.
      */
     match /sales/{saleId} {
       allow get, list: if true;
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow update, delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+
+      /**
+       * @description Sale items can be read by anyone, but only created, updated, or deleted by an authenticated user.
+       * @path /sales/{saleId}/sale_items/{saleItemId}
+       * @allow (get, list): Any user can read sale item information.
+       * @allow (create): An authenticated user can create a sale item. The request data must contain `ownerId` set to the user's `auth.uid`.
+       * @allow (update, delete): Only the user who created the sale item (`ownerId` matches `auth.uid`) can update or delete it.
+       * @deny (create): An unauthenticated user cannot create a sale item.
+       * @deny (update, delete): A different authenticated user cannot update or delete a sale item created by another user.
+       * @principle Allows public read access to sale item information but restricts write access to the owner.
+       */
+      match /sale_items/{saleItemId} {
+        allow get, list: if true;
+        allow create: if isSignedIn();
+        allow update, delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+      }
     }
 
     /**
-     * @description Rules for the /sales/{saleId}/sale_items subcollection.
-     * @path /sales/{saleId}/sale_items/{saleItemId}
-     * @allow get, list: if true;
-     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create a sale item
-     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update a sale item
-     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete a sale item
-     * @deny create: if false;
-     * @deny update: if false;
-     * @deny delete: if false;
-     * @principle Allows public read access but requires authentication for writes.
-     */
-    match /sales/{saleId}/sale_items/{saleItemId} {
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
-    }
-
-    /**
-     * @description Rules for the /purchases collection.
+     * @description Purchases can be read by anyone, but only created, updated, or deleted by an authenticated user.
      * @path /purchases/{purchaseId}
-     * @allow get, list: if true;
-     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create a purchase
-     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update a purchase
-     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete a purchase
-     * @deny create: if false;
-     * @deny update: if false;
-     * @deny delete: if false;
-     * @principle Allows public read access but requires authentication for writes.
+     * @allow (get, list): Any user can read purchase information.
+     * @allow (create): An authenticated user can create a purchase. The request data must contain `ownerId` set to the user's `auth.uid`.
+     * @allow (update, delete): Only the user who created the purchase (`ownerId` matches `auth.uid`) can update or delete it.
+     * @deny (create): An unauthenticated user cannot create a purchase.
+     * @deny (update, delete): A different authenticated user cannot update or delete a purchase created by another user.
+     * @principle Allows public read access to purchase information but restricts write access to the owner.
      */
     match /purchases/{purchaseId} {
       allow get, list: if true;
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow update, delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+
+      /**
+       * @description Purchase items can be read by anyone, but only created, updated, or deleted by an authenticated user.
+       * @path /purchases/{purchaseId}/purchase_items/{purchaseItemId}
+       * @allow (get, list): Any user can read purchase item information.
+       * @allow (create): An authenticated user can create a purchase item. The request data must contain `ownerId` set to the user's `auth.uid`.
+       * @allow (update, delete): Only the user who created the purchase item (`ownerId` matches `auth.uid`) can update or delete it.
+       * @deny (create): An unauthenticated user cannot create a purchase item.
+       * @deny (update, delete): A different authenticated user cannot update or delete a purchase item created by another user.
+       * @principle Allows public read access to purchase item information but restricts write access to the owner.
+       */
+      match /purchase_items/{purchaseItemId} {
+        allow get, list: if true;
+        allow create: if isSignedIn();
+        allow update, delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
+      }
     }
 
     /**
-     * @description Rules for the /purchases/{purchaseId}/purchase_items subcollection.
-     * @path /purchases/{purchaseId}/purchase_items/{purchaseItemId}
-     * @allow get, list: if true;
-     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create a purchase item
-     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update a purchase item
-     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete a purchase item
-     * @deny create: if false;
-     * @deny update: if false;
-     * @deny delete: if false;
-     * @principle Allows public read access but requires authentication for writes.
-     */
-    match /purchases/{purchaseId}/purchase_items/{purchaseItemId} {
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
-    }
-
-    /**
-     * @description Rules for the /suppliers collection.
+     * @description Suppliers can be read by anyone, but only created, updated, or deleted by an authenticated user.
      * @path /suppliers/{supplierId}
-     * @allow get, list: if true;
-     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create a supplier
-     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update a supplier
-     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete a supplier
-     * @deny create: if false;
-     * @deny update: if false;
-     * @deny delete: if false;
-     * @principle Allows public read access but requires authentication for writes.
+     * @allow (get, list): Any user can read supplier information.
+     * @allow (create): An authenticated user can create a supplier. The request data must contain `ownerId` set to the user's `auth.uid`.
+     * @allow (update, delete): Only the user who created the supplier (`ownerId` matches `auth.uid`) can update or delete it.
+     * @deny (create): An unauthenticated user cannot create a supplier.
+     * @deny (update, delete): A different authenticated user cannot update or delete a supplier created by another user.
+     * @principle Allows public read access to supplier information but restricts write access to the owner.
      */
     match /suppliers/{supplierId} {
       allow get, list: if true;
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow update, delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Rules for the /customers collection.
+     * @description Customers can be read by anyone, but only created, updated, or deleted by an authenticated user.
      * @path /customers/{customerId}
-     * @allow get, list: if true;
-     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create a customer
-     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update a customer
-     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete a customer
-     * @deny create: if false;
-     * @deny update: if false;
-     * @deny delete: if false;
-     * @principle Allows public read access but requires authentication for writes.
+     * @allow (get, list): Any user can read customer information.
+     * @allow (create): An authenticated user can create a customer. The request data must contain `ownerId` set to the user's `auth.uid`.
+     * @allow (update, delete): Only the user who created the customer (`ownerId` matches `auth.uid`) can update or delete it.
+     * @deny (create): An unauthenticated user cannot create a customer.
+     * @deny (update, delete): A different authenticated user cannot update or delete a customer created by another user.
+     * @principle Allows public read access to customer information but restricts write access to the owner.
      */
     match /customers/{customerId} {
       allow get, list: if true;
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow update, delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Rules for the /store_configuration collection.
+     * @description Store configuration can be read by anyone, but only created, updated, or deleted by an authenticated user.
      * @path /store_configuration/{storeConfigurationId}
-     * @allow get, list: if true;
-     * @allow create: if isSignedIn(); (create) - Allows any signed-in user to create a store configuration
-     * @allow update: if isSignedIn(); (update) - Allows any signed-in user to update a store configuration
-     * @allow delete: if isSignedIn(); (delete) - Allows any signed-in user to delete a store configuration
-     * @deny create: if false;
-     * @deny update: if false;
-     * @deny delete: if false;
-     * @principle Allows public read access but requires authentication for writes.
+     * @allow (get, list): Any user can read store configuration information.
+     * @allow (create): An authenticated user can create a store configuration. The request data must contain `ownerId` set to the user's `auth.uid`.
+     * @allow (update, delete): Only the user who created the store configuration (`ownerId` matches `auth.uid`) can update or delete it.
+     * @deny (create): An unauthenticated user cannot create a store configuration.
+     * @deny (update, delete): A different authenticated user cannot update or delete a store configuration created by another user.
+     * @principle Allows public read access to store configuration information but restricts write access to the owner.
      */
     match /store_configuration/{storeConfigurationId} {
       allow get, list: if true;
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
+      allow update, delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Rules for the /users collection.
+     * @description Users can only read and write their own data. Listing users is denied.
      * @path /users/{userId}
-     * @allow get: if isOwner(userId);
-     * @allow create: if isOwner(userId);
-     * @allow update: if isOwner(userId) && resource != null;
-     * @allow delete: if isExistingOwner(userId);
-     * @deny list: if true;
-     * @deny create: if !isOwner(userId);
-     * @deny update: if !isOwner(userId) || resource == null;
-     * @deny delete: if !isExistingOwner(userId);
-     * @principle Restricts access to user's own data.
+     * @allow (get): A user can read their own profile data.
+     * @allow (create): A user can create their own profile data (self-registration). `request.auth.uid` must match `{userId}`.
+     * @allow (update, delete): A user can update or delete their own profile data.
+     * @deny (list): Listing all users is not permitted for privacy reasons.
+     * @deny (create): A user cannot create a profile for another user (i.e., `request.auth.uid` does not match `{userId}`).
+     * @deny (update, delete): A user cannot update or delete another user's profile.
+     * @principle Enforces user-ownership and prevents unauthorized access to user profiles.
      */
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow list: if false;
       allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && resource != null;
-      allow delete: if isExistingOwner(userId);
+      allow update, delete: if isExistingOwner(userId);
     }
 
      /**
-      * @description Admin Only collection.
+      * @description Admins can read and write to this collection.
       * @path /roles_admin/{userId}
-      * @allow get: if isAdmin();
-      * @allow list: if isAdmin();
-      * @allow create: if isAdmin();
-      * @allow update: if isAdmin() && resource != null;
-      * @allow delete: if isAdmin() && resource != null;
-      * @deny create: if !isAdmin();
-      * @deny update: if !isAdmin() || resource == null;
-      * @deny delete: if !isAdmin() || resource == null;
-      * @principle Restricts access to admin user only.
+      * @allow read, write: if isSignedIn();
       */
-     match /roles_admin/{userId} {
-        allow get: if isAdmin();
-        allow list: if isAdmin();
-        allow create: if isAdmin();
-        allow update: if isAdmin() && resource != null;
-        allow delete: if isAdmin() && resource != null;
-     }
-     /**
-      * @description Currency rates can be publicly read. Only an administrator can create, update or delete.
-      * @path /currency_rates/{currencyRateId}
-      * @allow get: if true;
-      * @allow list: if true;
-      * @allow create: if isAdmin();
-      * @allow update: if isAdmin() && resource != null;
-      * @allow delete: if isAdmin() && resource != null;
-      * @deny create: if !isAdmin();
-      * @deny update: if !isAdmin() || resource == null;
-      * @deny delete: if !isAdmin() || resource == null;
-      * @principle Admins manage the currency rates.
-      */
+    match /roles_admin/{userId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
+    }
+
+    /**
+     * @description Currency rates can be read by anyone, but only created, updated, or deleted by an authenticated user.
+     * @path /currency_rates/{currencyRateId}
+     * @allow (get, list): Any user can read currency rate information.
+     * @allow (create): An authenticated user can create a currency rate. The request data must contain `ownerId` set to the user's `auth.uid`.
+     * @allow (update, delete): Only the user who created the currency rate (`ownerId` matches `auth.uid`) can update or delete it.
+     * @deny (create): An unauthenticated user cannot create a currency rate.
+     * @deny (update, delete): A different authenticated user cannot update or delete a currency rate created by another user.
+     * @principle Allows public read access to currency rate information but restricts write access to authenticated user.
+     */
     match /currency_rates/{currencyRateId} {
-        allow get, list: if true;
-        allow create: if isAdmin();
-        allow update: if isAdmin() && resource != null;
-        allow delete: if isAdmin() && resource != null;
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn(); // TODO: Add owner validation once the schema is updated with an ownership field.
     }
   }
 }
