@@ -120,7 +120,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                 <FormControl>
                   <Input placeholder="Ej: LP-001" {...field} disabled={!!product} />
                 </FormControl>
-                <FormDescription>El SKU es único y no se puede cambiar después de crear el producto.</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -140,6 +139,20 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
           />
         </div>
         
+        <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Descripción</FormLabel>
+                <FormControl>
+                  <Textarea placeholder="Describe el producto" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+        />
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <FormField
                 control={form.control}
@@ -194,20 +207,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             />
         </div>
 
-        <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Descripción</FormLabel>
-                <FormControl>
-                  <Textarea placeholder="Describe el producto" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-        />
-        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <FormField
             control={form.control}
