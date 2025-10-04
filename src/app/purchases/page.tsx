@@ -19,6 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSettings } from "@/contexts/settings-context";
 
 
 const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
@@ -26,6 +27,7 @@ const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
 export default function PurchasesPage() {
   const { products, updateProduct } = useProducts();
   const { toast } = useToast();
+  const { settings } = useSettings();
   
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -86,7 +88,31 @@ export default function PurchasesPage() {
     });
   };
 
-  const totalCost = purchaseItems.reduce((acc, item) => acc + item.cost * item.quantity, 0);
+  const subtotal = purchaseItems.reduce((acc, item) => acc + item.cost * item.quantity, 0);
+
+  const calculateTaxes = () => {
+    let tax1Amount = 0;
+    let tax2Amount = 0;
+    
+    purchaseItems.forEach(item => {
+        const product = products.find(p => p.id === item.productId);
+        if (product) {
+            const itemSubtotal = item.cost * item.quantity;
+            if(product.tax1 && settings.tax1 > 0) {
+                tax1Amount += itemSubtotal * (settings.tax1 / 100);
+            }
+            if(product.tax2 && settings.tax2 > 0) {
+                tax2Amount += itemSubtotal * (settings.tax2 / 100);
+            }
+        }
+    });
+
+    return { tax1Amount, tax2Amount, totalTaxes: tax1Amount + tax2Amount };
+  };
+
+  const { tax1Amount, tax2Amount, totalTaxes } = calculateTaxes();
+  const totalCost = subtotal + totalTaxes;
+
 
   const handleAddNewSupplier = () => {
     if (newSupplier.name.trim() === "") {
@@ -378,9 +404,28 @@ export default function PurchasesPage() {
              {purchaseItems.length > 0 && (
                 <>
                     <Separator />
-                    <div className="flex justify-between font-bold text-lg">
-                        <span>Total</span>
-                        <span>${totalCost.toFixed(2)}</span>
+                    <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                            <span>Subtotal</span>
+                            <span>${subtotal.toFixed(2)}</span>
+                        </div>
+                        {settings.tax1 > 0 && tax1Amount > 0 && (
+                            <div className="flex justify-between">
+                                <span>Impuesto {settings.tax1}%</span>
+                                <span>${tax1Amount.toFixed(2)}</span>
+                            </div>
+                        )}
+                        {settings.tax2 > 0 && tax2Amount > 0 && (
+                            <div className="flex justify-between">
+                                <span>Impuesto {settings.tax2}%</span>
+                                <span>${tax2Amount.toFixed(2)}</span>
+                            </div>
+                        )}
+                        <Separator />
+                        <div className="flex justify-between font-bold text-lg">
+                            <span>Total</span>
+                            <span>${totalCost.toFixed(2)}</span>
+                        </div>
                     </div>
                 </>
             )}
