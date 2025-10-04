@@ -4,12 +4,13 @@
 import { PinModal } from "@/components/pin-modal";
 import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
-import { Footer } from "@/components/ui/footer";
+import { Footer } from "@/components/footer";
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import { useSecurity } from "@/contexts/security-context";
 import { useUser } from '@/firebase';
-import { ProvidersWrapper } from "./ProvidersWrapper";
+import { ProvidersWrapper } from "./providers-wrapper";
+
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { isLocked, lockApp, hasPin } = useSecurity();
