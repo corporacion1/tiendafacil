@@ -30,9 +30,9 @@ export default function RootLayout({
          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <FirebaseClientProvider>
             <SecurityProvider>
-              <AppShell>
-                  {children}
-              </AppShell>
+                <AppShell>
+                    {children}
+                </AppShell>
             </SecurityProvider>
           </FirebaseClientProvider>
           <Toaster />
