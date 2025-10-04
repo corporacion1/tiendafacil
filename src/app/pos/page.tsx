@@ -605,8 +605,8 @@ export default function POSPage() {
                             src={productDetails.imageUrl}
                             alt={productDetails.name}
                             fill
-                            className="object-cover"
                             sizes="300px"
+                            className="object-cover"
                             data-ai-hint={productDetails.imageHint}
                         />
                         ) : (

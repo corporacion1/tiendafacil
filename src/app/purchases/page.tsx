@@ -295,7 +295,7 @@ export default function PurchasesPage() {
                                                 value={supplier.name}
                                                 onSelect={() => { setSelectedSupplierId(supplier.id); setIsSupplierSearchOpen(false); }}
                                             >
-                                                <Check className={cn("mr-2 h-4 w-4", selectedSupplierId === supplier.id ? "opacity-100" : "opacity-0")} />
+                                                <Check className={cn("mr-2 h-4 w-4", selectedSupplierId === supplier.id ? "opacity-100" : "opacity-0")}/>
                                                 {supplier.name}
                                             </CommandItem>
                                         ))}
