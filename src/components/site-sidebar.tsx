@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { Boxes, FileText, Home, PackagePlus, Settings, ShoppingCart, Store, CreditCard } from "lucide-react";
+import { Boxes, FileText, Home, PackagePlus, Settings, ShoppingCart, Store, CreditCard, MessageSquare } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -20,6 +20,7 @@ const navItems = [
     { href: "/purchases", label: "Compras", icon: Store },
     { href: "/credits", label: "Créditos", icon: CreditCard },
     { href: "/reports", label: "Reportes", icon: FileText },
+    { href: "/chat", label: "Chat", icon: MessageSquare },
 ];
 
 const settingsNav = { href: "/settings", label: "Configuración", icon: Settings };

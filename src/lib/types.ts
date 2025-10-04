@@ -120,4 +120,18 @@ export type Store = {
     status: 'active' | 'inactive';
 };
 
-    
+export type Chat = {
+    id: string;
+    participants: string[];
+    lastMessage?: string;
+    lastMessageTimestamp?: Timestamp | string;
+};
+
+export type ChatMessage = {
+    id: string;
+    chatId: string;
+    senderId: string;
+    senderName: string;
+    text: string;
+    timestamp: Timestamp | string;
+};
