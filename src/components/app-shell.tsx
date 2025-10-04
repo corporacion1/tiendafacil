@@ -29,7 +29,6 @@ function MainApp({ children }: { children: React.ReactNode }) {
   const previousPathname = useRef(pathname);
 
   useEffect(() => {
-    // If loading, do nothing. If not loading and no user, redirect to login unless already there.
     if (!isUserLoading && !user && pathname !== '/login') {
       router.replace('/login');
     }
@@ -38,7 +37,6 @@ function MainApp({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!hasPin) return;
 
-    // Lock the app only when navigating away from the POS page
     if (previousPathname.current === '/pos' && pathname !== '/pos') {
       lockApp();
     }
@@ -46,12 +44,8 @@ function MainApp({ children }: { children: React.ReactNode }) {
     previousPathname.current = pathname;
   }, [pathname, lockApp, hasPin]);
   
-  if (isUserLoading && pathname !== '/login') {
-     return <div className="flex h-screen w-full items-center justify-center"><p>Cargando...</p></div>;
-  }
-
   if (!user && pathname !== '/login') {
-      return <div className="flex h-screen w-full items-center justify-center"><p>Redirigiendo al login...</p></div>;
+      return null;
   }
 
   if (pathname === '/login') {
