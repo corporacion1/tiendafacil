@@ -11,6 +11,7 @@ interface Settings {
     storeSlogan: string;
     tax1: number;
     tax2: number;
+    secondaryCurrency: string;
 }
 
 interface SettingsContextType {
@@ -29,6 +30,7 @@ const defaultSettings: Settings = {
     storeSlogan: '¡Gracias por tu compra!',
     tax1: 16,
     tax2: 0,
+    secondaryCurrency: 'USD',
 };
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
@@ -39,7 +41,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     try {
       const storedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
       if (storedSettings) {
-        setSettings(JSON.parse(storedSettings));
+        // Merge stored settings with defaults to ensure all keys are present
+        const parsedSettings = JSON.parse(storedSettings);
+        setSettings(prev => ({ ...prev, ...parsedSettings }));
       } else {
         // If no settings are stored, store the default ones
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(defaultSettings));

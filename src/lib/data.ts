@@ -1,6 +1,6 @@
 
 
-import type { Product, InventoryMovement, Sale, Unit, Family, Warehouse, Customer, Purchase, Supplier } from '@/lib/types';
+import type { Product, InventoryMovement, Sale, Unit, Family, Warehouse, Customer, Purchase, Supplier, CurrencyRate } from '@/lib/types';
 
 export const initialUnits: Unit[] = [
     { id: 'u1', name: 'Pieza' },
@@ -161,4 +161,10 @@ export const initialSuppliers: Supplier[] = [
     { id: 'sup-1', name: 'TechSupplier Inc.', phone: '111-222-3333', address: '789 Tech Rd' },
     { id: 'sup-2', name: 'AccessoryWorld', phone: '444-555-6666', address: '101 Peripherals Ave' },
     { id: 'sup-3', name: 'PC Parts Direct', phone: '777-888-9999', address: '202 Component Dr' },
+];
+
+export let mockCurrencyRates: CurrencyRate[] = [
+    { id: 'rate-1', rate: 39.50, date: '2024-05-30T10:00:00Z' },
+    { id: 'rate-2', rate: 39.25, date: '2024-05-29T10:00:00Z' },
+    { id: 'rate-3', rate: 39.10, date: '2024-05-28T10:00:00Z' },
 ];

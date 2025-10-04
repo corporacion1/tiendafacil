@@ -103,3 +103,9 @@ export type Warehouse = {
     id: string;
     name: string;
 };
+
+export type CurrencyRate = {
+    id: string;
+    rate: number;
+    date: string;
+};
