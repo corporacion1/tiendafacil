@@ -37,7 +37,7 @@ export default function LoginPage() {
 
     switch (error.code) {
       case 'auth/operation-not-allowed':
-        description = `El inicio de sesión con ${providerName} no está habilitado. Por favor, actívalo en la Consola de Firebase > Authentication > Sign-in method.`;
+        description = `El inicio de sesión con ${providerName} no está habilitado. Ve a la Consola de Firebase -> Authentication -> Sign-in method y actívalo.`;
         break;
       case 'auth/email-already-in-use':
         description = 'Este correo electrónico ya está registrado. Intenta iniciar sesión.';
@@ -77,7 +77,8 @@ export default function LoginPage() {
     }
   };
 
-  const handleEmailAuth = async () => {
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!auth || !email || !password) {
         toast({
             variant: "destructive",
@@ -126,17 +127,19 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
-            <div className="grid gap-2">
-                <Label htmlFor="email">Correo Electrónico</Label>
-                <Input id="email" type="email" placeholder="tu@correo.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-            </div>
-            <div className="grid gap-2">
-                <Label htmlFor="password">Contraseña</Label>
-                <Input id="password" type="password" placeholder="********" value={password} onChange={(e) => setPassword(e.target.value)} />
-            </div>
-            <Button onClick={handleEmailAuth} className="w-full">
-                {isSignUp ? 'Crear Cuenta' : 'Ingresar'}
-            </Button>
+            <form onSubmit={handleEmailAuth} className="grid gap-4">
+                <div className="grid gap-2">
+                    <Label htmlFor="email">Correo Electrónico</Label>
+                    <Input id="email" type="email" placeholder="tu@correo.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="password">Contraseña</Label>
+                    <Input id="password" type="password" placeholder="********" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                </div>
+                <Button type="submit" className="w-full">
+                    {isSignUp ? 'Crear Cuenta' : 'Ingresar'}
+                </Button>
+            </form>
             
             <Separator className="my-2" />
 
