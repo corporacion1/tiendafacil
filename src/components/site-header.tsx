@@ -48,7 +48,7 @@ export function SiteHeader() {
                   href="#"
                   className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
                 >
-                  <Image src="/logo.png" width={28} height={28} alt="Tienda Facil Logo" />
+                  <Store className="h-5 w-5" />
                   <span className="sr-only">Tienda Facil</span>
                 </Link>
                 {navItems.map((item) => (
@@ -71,6 +71,10 @@ export function SiteHeader() {
               </nav>
             </SheetContent>
         </Sheet>
+        <div className="hidden items-center gap-2 md:flex">
+            <Image src="/logo.png" width={28} height={28} alt="Tienda Facil Logo" />
+            <span className="font-semibold text-lg">Tienda Facil</span>
+        </div>
       <div className="relative ml-auto flex items-center gap-2 md:grow-0">
         <Button variant="ghost" size="icon" onClick={toggleDisplayCurrency} aria-label="Cambiar moneda">
             <Coins className="h-5 w-5" />
