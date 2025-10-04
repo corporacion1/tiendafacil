@@ -19,30 +19,30 @@ const WarehousesContext = createContext<WarehousesContextType | undefined>(undef
 export const WarehousesProvider = ({ children }: { children: React.ReactNode }) => {
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
-  const storeId = "test-store"; // Placeholder
+  const storeId = "test-store";
 
   const warehousesQuery = useMemoFirebase(() => {
-      if (!firestore || !user || isUserLoading || !storeId) return null;
+      if (!firestore || !user || isUserLoading) return null;
       return query(collection(firestore, 'warehouses'), where("storeId", "==", storeId));
-  }, [firestore, user, isUserLoading, storeId]);
+  }, [firestore, user, isUserLoading]);
 
   const { data: warehouses, isLoading } = useCollection<Warehouse>(warehousesQuery);
   
   const addWarehouse = async (warehouseData: Omit<Warehouse, 'id' | 'storeId'>) => {
-    if (!firestore || !storeId) return;
+    if (!firestore || !user) return;
     const warehousesCollection = collection(firestore, 'warehouses');
     const docRef = await addDoc(warehousesCollection, { ...warehouseData, storeId });
     return docRef?.id;
   };
 
   const updateWarehouse = async (warehouseId: string, updatedWarehouseData: Partial<Warehouse>) => {
-    if (!firestore || !storeId) return;
+    if (!firestore || !user) return;
     const warehouseDoc = doc(firestore, 'warehouses', warehouseId);
     await updateDoc(warehouseDoc, updatedWarehouseData);
   };
 
   const deleteWarehouse = async (warehouseId: string) => {
-    if (!firestore || !storeId) return;
+    if (!firestore || !user) return;
     const warehouseDoc = doc(firestore, 'warehouses', warehouseId);
     await deleteDoc(warehouseDoc);
   }

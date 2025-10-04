@@ -19,30 +19,30 @@ const UnitsContext = createContext<UnitsContextType | undefined>(undefined);
 export const UnitsProvider = ({ children }: { children: React.ReactNode }) => {
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
-  const storeId = "test-store"; // Placeholder
+  const storeId = "test-store";
 
   const unitsQuery = useMemoFirebase(() => {
-      if (!firestore || !user || isUserLoading || !storeId) return null;
+      if (!firestore || !user || isUserLoading) return null;
       return query(collection(firestore, 'units'), where("storeId", "==", storeId));
-  }, [firestore, user, isUserLoading, storeId]);
+  }, [firestore, user, isUserLoading]);
 
   const { data: units, isLoading } = useCollection<Unit>(unitsQuery);
 
   const addUnit = async (unitData: Omit<Unit, 'id' | 'storeId'>) => {
-    if (!firestore || !storeId) return;
+    if (!firestore || !user) return;
     const unitsCollection = collection(firestore, 'units');
     const docRef = await addDoc(unitsCollection, { ...unitData, storeId });
     return docRef?.id;
   };
 
   const updateUnit = async (unitId: string, updatedUnitData: Partial<Unit>) => {
-    if (!firestore || !storeId) return;
+    if (!firestore || !user) return;
     const unitDoc = doc(firestore, 'units', unitId);
     await updateDoc(unitDoc, updatedUnitData);
   };
 
   const deleteUnit = async (unitId: string) => {
-    if (!firestore || !storeId) return;
+    if (!firestore || !user) return;
     const unitDoc = doc(firestore, 'units', unitId);
     await deleteDoc(unitDoc);
   }

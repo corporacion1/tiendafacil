@@ -21,18 +21,18 @@ const ProductContext = createContext<ProductContextType | undefined>(undefined);
 export const ProductProvider = ({ children }: { children: React.ReactNode }) => {
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
-  const storeId = "test-store"; // Placeholder
+  const storeId = "test-store";
 
   const productsQuery = useMemoFirebase(() => {
-      if (!firestore || !user || isUserLoading || !storeId) return null;
+      if (!firestore || !user || isUserLoading) return null;
       return query(collection(firestore, 'products'), where("storeId", "==", storeId));
-  }, [firestore, user, isUserLoading, storeId]);
+  }, [firestore, user, isUserLoading]);
 
   const { data: products, isLoading } = useCollection<Product>(productsQuery);
 
   const addProduct = async (productData: Omit<Product, 'id' | 'storeId'>) => {
-    if (!firestore || !storeId) {
-      console.error("Firestore or storeId not available");
+    if (!firestore || !user) {
+      console.error("Firestore or user not available");
       return;
     }
     const productsCollection = collection(firestore, 'products');
@@ -41,8 +41,8 @@ export const ProductProvider = ({ children }: { children: React.ReactNode }) => 
   };
 
   const updateProduct = async (productId: string, updatedProductData: Partial<Omit<Product, 'id' | 'storeId'>>) => {
-    if (!firestore || !storeId) {
-      console.error("Firestore or storeId not available");
+    if (!firestore || !user) {
+      console.error("Firestore or user not available");
       return;
     }
     const productDoc = doc(firestore, 'products', productId);
@@ -50,8 +50,8 @@ export const ProductProvider = ({ children }: { children: React.ReactNode }) => 
   };
 
   const deleteProduct = async (productId: string) => {
-     if (!firestore || !storeId) {
-      console.error("Firestore or storeId not available");
+     if (!firestore || !user) {
+      console.error("Firestore or user not available");
       return;
     }
     const productDoc = doc(firestore, 'products', productId);
