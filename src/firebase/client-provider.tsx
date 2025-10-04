@@ -1,44 +1,62 @@
 
 'use client';
 
-import React, { useMemo, type ReactNode } from 'react';
-import { FirebaseProvider, useUser as useUserFromProvider } from '@/firebase/provider'; // Renamed to avoid name clash
+import React, { useState, useEffect, useMemo, type ReactNode } from 'react';
+import { onAuthStateChanged, type User } from 'firebase/auth';
+import { FirebaseProvider, type FirebaseContextState } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
 
 interface FirebaseClientProviderProps {
   children: ReactNode;
 }
 
-// This is a wrapper component that will render its children only after Firebase auth is ready.
-const AuthReadyWrapper = ({ children }: { children: ReactNode }) => {
-    const { isUserLoading } = useUserFromProvider();
-    
-    if (isUserLoading) {
-        return (
-            <div className="flex h-screen w-full items-center justify-center bg-background">
-                <p>Cargando aplicación...</p>
-            </div>
-        );
-    }
-    
-    return <>{children}</>;
-};
-
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
-  const firebaseServices = useMemo(() => {
-    // Initialize Firebase on the client side, once per component mount.
-    return initializeFirebase();
-  }, []); // Empty dependency array ensures this runs only once on mount
+  // Initialize Firebase services here, and they will be stable for the lifetime of the provider.
+  const { firebaseApp, auth, firestore } = useMemo(() => initializeFirebase(), []);
 
+  const [user, setUser] = useState<User | null>(null);
+  const [isUserLoading, setIsUserLoading] = useState(true); // Start loading until the first auth check is complete.
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (firebaseUser) => {
+        setUser(firebaseUser);
+        setIsUserLoading(false); // Auth check is complete.
+      },
+      (error) => {
+        console.error("FirebaseClientProvider: onAuthStateChanged error:", error);
+        setError(error);
+        setIsUserLoading(false); // Auth check failed, but is complete.
+      }
+    );
+
+    return () => unsubscribe(); // Cleanup subscription on unmount.
+  }, [auth]); // The effect depends on the auth instance, which is stable.
+
+  // The context value is memoized and only recalculates when its dependencies change.
+  const contextValue = useMemo((): FirebaseContextState => ({
+    firebaseApp,
+    firestore,
+    auth,
+    user,
+    isUserLoading,
+    userError: error,
+  }), [firebaseApp, firestore, auth, user, isUserLoading, error]);
+
+
+  if (isUserLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <p>Cargando aplicación...</p>
+      </div>
+    );
+  }
+  
   return (
-    <FirebaseProvider
-      firebaseApp={firebaseServices.firebaseApp}
-      auth={firebaseServices.auth}
-      firestore={firebaseServices.firestore}
-    >
-      <AuthReadyWrapper>
-        {children}
-      </AuthReadyWrapper>
+    <FirebaseProvider value={contextValue}>
+      {children}
     </FirebaseProvider>
   );
 }
