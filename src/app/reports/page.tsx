@@ -28,6 +28,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableFooter,
 } from "@/components/ui/table";
 import {
     Dialog,
@@ -229,6 +230,22 @@ export default function ReportsPage() {
             (p.description && p.description.toLowerCase().includes(searchTerm.toLowerCase()))
         );
     }, [products, searchTerm, timeRange]);
+    
+    const salesTotal = useMemo(() => {
+        return filteredSales.reduce((acc, sale) => acc + sale.total, 0);
+    }, [filteredSales]);
+
+    const purchasesTotal = useMemo(() => {
+        return filteredPurchases.reduce((acc, purchase) => acc + purchase.total, 0);
+    }, [filteredPurchases]);
+    
+    const inventoryTotals = useMemo(() => {
+        return filteredProducts.reduce((acc, product) => {
+            acc.totalStock += product.stock;
+            acc.totalValue += product.stock * product.cost;
+            return acc;
+        }, { totalStock: 0, totalValue: 0 });
+    }, [filteredProducts]);
 
     const calculateTaxesForSale = (sale: Sale) => {
         let tax1Amount = 0;
@@ -338,6 +355,13 @@ export default function ReportsPage() {
                   </TableRow>
                 ))}
               </TableBody>
+               <TableFooter>
+                <TableRow>
+                  <TableCell colSpan={3} className="font-bold text-lg">Total General</TableCell>
+                  <TableCell className="text-right font-bold text-lg">{activeSymbol}{(salesTotal * activeRate).toFixed(2)}</TableCell>
+                  <TableCell></TableCell>
+                </TableRow>
+              </TableFooter>
             </Table>
           </CardContent>
         </Card>
@@ -369,6 +393,12 @@ export default function ReportsPage() {
                             </TableRow>
                         ))}
                     </TableBody>
+                    <TableFooter>
+                        <TableRow>
+                          <TableCell colSpan={3} className="font-bold text-lg">Total General</TableCell>
+                          <TableCell className="text-right font-bold text-lg">{activeSymbol}{(purchasesTotal * activeRate).toFixed(2)}</TableCell>
+                        </TableRow>
+                    </TableFooter>
                 </Table>
             </CardContent>
         </Card>
@@ -439,6 +469,14 @@ export default function ReportsPage() {
                             </TableRow>
                         ))}
                     </TableBody>
+                    <TableFooter>
+                        <TableRow>
+                            <TableCell colSpan={2} className="font-bold text-lg">Totales</TableCell>
+                            <TableCell className="font-bold text-lg">{inventoryTotals.totalStock}</TableCell>
+                            <TableCell colSpan={2}></TableCell>
+                            <TableCell className="text-right font-bold text-lg">{activeSymbol}{(inventoryTotals.totalValue * activeRate).toFixed(2)}</TableCell>
+                        </TableRow>
+                    </TableFooter>
                 </Table>
             </CardContent>
         </Card>
