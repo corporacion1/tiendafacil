@@ -421,50 +421,6 @@ export default function SettingsPage() {
                         )}
                     </CardContent>
                 </Card>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Gestión de Datos</CardTitle>
-                        <CardDescription>Acciones para inicializar o reiniciar los datos en tu hoja de cálculo.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="outline">Crear Tablas en Google Sheets</Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                <AlertDialogTitle>¿Crear tablas?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    Esta acción creará la estructura de tablas necesaria en tu hoja de Google Sheets si no existe. No afectará datos existentes.
-                                </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleActionWithToast("Tablas Creadas", "La estructura de tablas se ha verificado/creado.")}>Continuar</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="destructive">Reiniciar Todos los Datos</Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    ¡Peligro! Esta acción es irreversible y eliminará permanentemente todos los datos de tus tablas.
-                                </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleActionWithToast("Datos Reiniciados", "Todas las tablas han sido vaciadas.")}>Sí, reiniciar todo</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    </CardContent>
-                </Card>
             </div>
             
             <DialogContent>
@@ -502,3 +458,5 @@ export default function SettingsPage() {
         </Dialog>
     );
 }
+
+    
