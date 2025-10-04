@@ -1,21 +1,34 @@
 /**
- * @fileoverview Firestore Security Rules for the point-of-sale application.
+ * @fileoverview Firestore Security Rules for Prototyping.
  *
  * Core Philosophy:
- * This ruleset prioritizes security by default, restricting access unless explicitly granted.
- * It uses a store-ownership model, where most data is associated with a specific store.
- * Only authenticated users can perform write operations and only if they are an owner of a given store.
+ * This ruleset prioritizes security by default, restricting access unless explicitly allowed.
+ * It uses the principle of least privilege, granting only the necessary permissions.
+ * The ruleset assumes that all collections except `units` require authenticated users for write access.
+ * Public read access (get, list) is enabled for all top-level collections. This is suitable
+ * for data that is intended to be publicly viewable, such as product catalogs, but write access is restricted.
  *
  * Data Structure:
- * The Firestore database is organized into top-level collections for entities like products, tax types,
- * inventory movements, sales, purchases, customers, stores and families. Several collections such as salesItems and purchaseItems are subcollections.
- * Most collections have a `storeId` field to scope the data.
+ * The Firestore database consists of several top-level collections:
+ * - /products/{productId}
+ * - /taxTypes/{taxTypeId}
+ * - /inventoryMovements/{inventoryMovementId}
+ * - /sales/{saleId}
+ * - /sales/{saleId}/saleItems/{saleItemId}
+ * - /purchases/{purchaseId}
+ * - /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
+ * - /customers/{customerId}
+ * - /stores/{storeId}
+ * - /families/{familyId}
+ * - /units
  *
  * Key Security Decisions:
- * - Listing of the `purchases` collection is denied by default (as fix for the reported error).
- * - All write operations require the user to be authenticated.
- * - All `update` and `delete` operations include a resource existence check for added security.
- * - No data validation is performed in this prototyping phase except to check `storeId` on `create` operations.
+ * - Public Read Access: Read access (get, list) is generally open to all users, even unauthenticated ones.
+ *   This is intended for prototyping and assumes that the data in these collections is safe for public viewing.
+ * - Authentication Required for Writes: Write access (create, update, delete) requires the user to be authenticated.
+ *   This prevents anonymous users from modifying data.
+ * - No Schema Validation: The rules do NOT validate the data being written. This allows for rapid prototyping and
+ *   schema iteration. However, in a production environment, you should add schema validation to ensure data integrity.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -29,184 +42,168 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    /**
-     * @description Checks if the user is the owner of the store.
-     * @param {string} storeId - The ID of the store.
-     * @return {boolean} True if the user's UID matches the `storeId`, false otherwise.
-     */
-    function isStoreOwner(storeId) {
-      return isSignedIn() && request.auth.uid == storeId;
-    }
+    /***** Products Collection *****/
 
     /**
-     * @description Checks if the user is the owner of the document based on the storeId.
-     * For update and delete operations, it also verifies the resource exists.
-     * @param {string} storeId - The ID of the store to check.
-     * @return {boolean} True if the user is the owner and the resource exists (for update/delete), false otherwise.
-     */
-    function isExistingStoreOwner(storeId) {
-      return isStoreOwner(storeId) && resource != null;
-    }
-
-    /**
-     * @description Collection for products.
+     * @description Allows public read access to product information, but restricts write access to authenticated users.
      * @path /products/{productId}
-     * @allow (create) User signed in can create a product with the storeId equal to it's uid.
-     * @allow (get, list) Any user can read a product.
-     * @deny (update) User signed in cannot update a product that does not belongs to the authenticated user.
-     * @deny (delete) User signed in cannot delete a product that does not belongs to the authenticated user.
-     * @principle Enforces store ownership for writes, public read access.
+     * @allow (get, list) Allows anyone to read product information, even unauthenticated users.
+     * @allow (create, update, delete) Requires the user to be authenticated to modify product information.
+     * @deny (create, update, delete) Denies unauthenticated users from modifying product information.
+     * @principle Allows public read access to product information, while requiring authentication for write access.
      */
     match /products/{productId} {
       allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
-      allow update: if isExistingStoreOwner(resource.data.storeId);
-      allow delete: if isExistingStoreOwner(resource.data.storeId);
+      allow create, update, delete: if isSignedIn();
     }
 
+    /***** TaxTypes Collection *****/
+
     /**
-     * @description Collection for tax types.
+     * @description Allows public read access to tax type information, but restricts write access to authenticated users.
      * @path /taxTypes/{taxTypeId}
-     * @allow (create) User signed in can create a tax type with the storeId equal to it's uid.
-     * @allow (get, list) Any user can read a tax type.
-     * @deny (update) User signed in cannot update a tax type that does not belongs to the authenticated user.
-     * @deny (delete) User signed in cannot delete a tax type that does not belongs to the authenticated user.
-     * @principle Enforces store ownership for writes, public read access.
+     * @allow (get, list) Allows anyone to read tax type information, even unauthenticated users.
+     * @allow (create, update, delete) Requires the user to be authenticated to modify tax type information.
+     * @deny (create, update, delete) Denies unauthenticated users from modifying tax type information.
+     * @principle Allows public read access to tax type information, while requiring authentication for write access.
      */
     match /taxTypes/{taxTypeId} {
       allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
-      allow update: if isExistingStoreOwner(resource.data.storeId);
-      allow delete: if isExistingStoreOwner(resource.data.storeId);
+      allow create, update, delete: if isSignedIn();
     }
 
+    /***** InventoryMovements Collection *****/
+
     /**
-     * @description Collection for inventory movements.
+     * @description Allows public read access to inventory movement information, but restricts write access to authenticated users.
      * @path /inventoryMovements/{inventoryMovementId}
-     * @allow (create) User signed in can create an inventory movement with the storeId equal to it's uid.
-     * @allow (get, list) Any user can read an inventory movement.
-     * @deny (update) User signed in cannot update an inventory movement that does not belongs to the authenticated user.
-     * @deny (delete) User signed in cannot delete an inventory movement that does not belongs to the authenticated user.
-     * @principle Enforces store ownership for writes, public read access.
+     * @allow (get, list) Allows anyone to read inventory movement information, even unauthenticated users.
+     * @allow (create, update, delete) Requires the user to be authenticated to modify inventory movement information.
+     * @deny (create, update, delete) Denies unauthenticated users from modifying inventory movement information.
+     * @principle Allows public read access to inventory movement information, while requiring authentication for write access.
      */
     match /inventoryMovements/{inventoryMovementId} {
       allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
-      allow update: if isExistingStoreOwner(resource.data.storeId);
-      allow delete: if isExistingStoreOwner(resource.data.storeId);
+      allow create, update, delete: if isSignedIn();
     }
 
+    /***** Sales Collection *****/
+
     /**
-     * @description Collection for sales.
+     * @description Allows public read access to sales information, but restricts write access to authenticated users.
      * @path /sales/{saleId}
-     * @allow (create) User signed in can create a sale with the storeId equal to it's uid.
-     * @allow (get, list) Any user can read a sale.
-     * @deny (update) User signed in cannot update a sale that does not belongs to the authenticated user.
-     * @deny (delete) User signed in cannot delete a sale that does not belongs to the authenticated user.
-     * @principle Enforces store ownership for writes, public read access.
+     * @allow (get, list) Allows anyone to read sales information, even unauthenticated users.
+     * @allow (create, update, delete) Requires the user to be authenticated to modify sales information.
+     * @deny (create, update, delete) Denies unauthenticated users from modifying sales information.
+     * @principle Allows public read access to sales information, while requiring authentication for write access.
      */
     match /sales/{saleId} {
       allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
-      allow update: if isExistingStoreOwner(resource.data.storeId);
-      allow delete: if isExistingStoreOwner(resource.data.storeId);
+      allow create, update, delete: if isSignedIn();
     }
 
+    /***** SaleItems Subcollection *****/
+
     /**
-     * @description Subcollection for sale items within a sale.
+     * @description Allows public read access to sale item information, but restricts write access to authenticated users.
      * @path /sales/{saleId}/saleItems/{saleItemId}
-     * @allow (create) User signed in can create a sale item with the storeId equal to it's uid.
-     * @allow (get, list) Any user can read a sale item.
-     * @deny (update) User signed in cannot update a sale item that does not belongs to the authenticated user.
-     * @deny (delete) User signed in cannot delete a sale item that does not belongs to the authenticated user.
-     * @principle Enforces store ownership for writes, public read access.
+     * @allow (get, list) Allows anyone to read sale item information, even unauthenticated users.
+     * @allow (create, update, delete) Requires the user to be authenticated to modify sale item information.
+     * @deny (create, update, delete) Denies unauthenticated users from modifying sale item information.
+     * @principle Allows public read access to sale item information, while requiring authentication for write access.
      */
     match /sales/{saleId}/saleItems/{saleItemId} {
       allow get, list: if true;
-      allow create: if isSignedIn() && get(/databases/$(database)/documents/sales/$(saleId)).data.storeId == request.auth.uid;
-      allow update: if isExistingStoreOwner(get(/databases/$(database)/documents/sales/$(saleId)).data.storeId);
-      allow delete: if isExistingStoreOwner(get(/databases/$(database)/documents/sales/$(saleId)).data.storeId);
+      allow create, update, delete: if isSignedIn();
     }
 
+    /***** Purchases Collection *****/
+
     /**
-     * @description Collection for purchases.
+     * @description Allows public read access to purchase information, but restricts write access to authenticated users.
      * @path /purchases/{purchaseId}
-     * @allow (create) User signed in can create a purchase with the storeId equal to it's uid.
-     * @deny (get, list) Listing is denied.
-     * @deny (update) User signed in cannot update a purchase that does not belongs to the authenticated user.
-     * @deny (delete) User signed in cannot delete a purchase that does not belongs to the authenticated user.
-     * @principle Enforces store ownership for writes, denying listing to resolve the reported error.
+     * @allow (get, list) Allows anyone to read purchase information, even unauthenticated users.
+     * @allow (create, update, delete) Requires the user to be authenticated to modify purchase information.
+     * @deny (create, update, delete) Denies unauthenticated users from modifying purchase information.
+     * @principle Allows public read access to purchase information, while requiring authentication for write access.
      */
     match /purchases/{purchaseId} {
-      allow get: if true;
-      allow list: if false;
-      allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
-      allow update: if isExistingStoreOwner(resource.data.storeId);
-      allow delete: if isExistingStoreOwner(resource.data.storeId);
+      allow get, list: if true;
+      allow create, update, delete: if isSignedIn();
     }
 
+    /***** PurchaseItems Subcollection *****/
+
     /**
-     * @description Subcollection for purchase items within a purchase.
+     * @description Allows public read access to purchase item information, but restricts write access to authenticated users.
      * @path /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
-     * @allow (create) User signed in can create a purchase item with the storeId equal to it's uid.
-     * @allow (get, list) Any user can read a purchase item.
-     * @deny (update) User signed in cannot update a purchase item that does not belongs to the authenticated user.
-     * @deny (delete) User signed in cannot delete a purchase item that does not belongs to the authenticated user.
-     * @principle Enforces store ownership for writes, public read access.
+     * @allow (get, list) Allows anyone to read purchase item information, even unauthenticated users.
+     * @allow (create, update, delete) Requires the user to be authenticated to modify purchase item information.
+     * @deny (create, update, delete) Denies unauthenticated users from modifying purchase item information.
+     * @principle Allows public read access to purchase item information, while requiring authentication for write access.
      */
     match /purchases/{purchaseId}/purchaseItems/{purchaseItemId} {
       allow get, list: if true;
-      allow create: if isSignedIn() && get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId == request.auth.uid;
-      allow update: if isExistingStoreOwner(get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId);
-      allow delete: if isExistingStoreOwner(get(/databases/$(database)/documents/purchases/$(purchaseId)).data.storeId);
+      allow create, update, delete: if isSignedIn();
     }
 
+    /***** Customers Collection *****/
+
     /**
-     * @description Collection for customers.
+     * @description Allows public read access to customer information, but restricts write access to authenticated users.
      * @path /customers/{customerId}
-     * @allow (create) User signed in can create a customer with the storeId equal to it's uid.
-     * @allow (get, list) Any user can read a customer.
-     * @deny (update) User signed in cannot update a customer that does not belongs to the authenticated user.
-     * @deny (delete) User signed in cannot delete a customer that does not belongs to the authenticated user.
-     * @principle Enforces store ownership for writes, public read access.
+     * @allow (get, list) Allows anyone to read customer information, even unauthenticated users.
+     * @allow (create, update, delete) Requires the user to be authenticated to modify customer information.
+     * @deny (create, update, delete) Denies unauthenticated users from modifying customer information.
+     * @principle Allows public read access to customer information, while requiring authentication for write access.
      */
     match /customers/{customerId} {
       allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
-      allow update: if isExistingStoreOwner(resource.data.storeId);
-      allow delete: if isExistingStoreOwner(resource.data.storeId);
+      allow create, update, delete: if isSignedIn();
     }
 
+    /***** Stores Collection *****/
+
     /**
-     * @description Collection for store configurations.
+     * @description Allows public read access to store configuration information, but restricts write access to authenticated users.
      * @path /stores/{storeId}
-     * @allow (create) User signed in can create a store configuration with the id equal to it's uid.
-     * @allow (get, list) Any user can read a store configuration.
-     * @deny (update) User signed in cannot update a store configuration that does not belongs to the authenticated user.
-     * @deny (delete) User signed in cannot delete a store configuration that does not belongs to the authenticated user.
-     * @principle Enforces store ownership for writes, public read access.
+     * @allow (get, list) Allows anyone to read store configuration information, even unauthenticated users.
+     * @allow (create, update, delete) Requires the user to be authenticated to modify store configuration information.
+     * @deny (create, update, delete) Denies unauthenticated users from modifying store configuration information.
+     * @principle Allows public read access to store configuration information, while requiring authentication for write access.
      */
     match /stores/{storeId} {
       allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.id == request.auth.uid;
-      allow update: if isExistingStoreOwner(resource.data.id);
-      allow delete: if isExistingStoreOwner(resource.data.id);
+      allow create, update, delete: if isSignedIn();
     }
 
+    /***** Families Collection *****/
+
     /**
-     * @description Collection for product families.
+     * @description Allows public read access to family information, but restricts write access to authenticated users.
      * @path /families/{familyId}
-     * @allow (create) User signed in can create a family with the storeId equal to it's uid.
-     * @allow (get, list) Any user can read a family.
-     * @deny (update) User signed in cannot update a family that does not belongs to the authenticated user.
-     * @deny (delete) User signed in cannot delete a family that does not belongs to the authenticated user.
-     * @principle Enforces store ownership for writes, public read access.
+     * @allow (get, list) Allows anyone to read family information, even unauthenticated users.
+     * @allow (create, update, delete) Requires the user to be authenticated to modify family information.
+     * @deny (create, update, delete) Denies unauthenticated users from modifying family information.
+     * @principle Allows public read access to family information, while requiring authentication for write access.
      */
     match /families/{familyId} {
       allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
-      allow update: if isExistingStoreOwner(resource.data.storeId);
-      allow delete: if isExistingStoreOwner(resource.data.storeId);
+      allow create, update, delete: if isSignedIn();
+    }
+
+    /***** Units Collection *****/
+
+    /**
+     * @description Allows public read access to units information.  Write access is not enabled.
+     * @path /units
+     * @allow (get, list) Allows anyone to read units information, even unauthenticated users.
+     * @deny (create, update, delete) Denies all users from modifying units information.
+     * @principle Allows public read access to units information.
+     */
+    match /units {
+      allow get, list: if true;
+      allow create, update, delete: if false;
     }
   }
 }
