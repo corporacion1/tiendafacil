@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo, type ReactNode } from 'react';
@@ -11,41 +10,44 @@ interface FirebaseClientProviderProps {
 }
 
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
-  const { firebaseApp, auth, firestore } = useMemo(() => initializeFirebase(), []);
-  const [user, setUser] = useState<User | null>(null);
-  const [isUserLoading, setIsUserLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const [firebaseContext, setFirebaseContext] = useState<FirebaseContextState | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(
-      auth,
-      (firebaseUser) => {
-        setUser(firebaseUser);
-        setIsUserLoading(false);
-      },
-      (error) => {
-        console.error("FirebaseClientProvider: onAuthStateChanged error:", error);
-        setError(error);
-        setIsUserLoading(false);
-      }
-    );
+    const { firebaseApp, auth, firestore } = initializeFirebase();
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setFirebaseContext({
+        firebaseApp,
+        auth,
+        firestore,
+        user,
+        isUserLoading: false, // Auth state is now resolved
+        userError: null,
+      });
+    }, (error) => {
+       setFirebaseContext({
+        firebaseApp,
+        auth,
+        firestore,
+        user: null,
+        isUserLoading: false, // Auth state failed to resolve
+        userError: error,
+      });
+    });
 
     return () => unsubscribe();
-  }, [auth]);
+  }, []);
 
-  const contextValue = useMemo((): FirebaseContextState => ({
-    firebaseApp,
-    firestore,
-    auth,
-    user,
-    isUserLoading,
-    userError: error,
-  }), [firebaseApp, firestore, auth, user, isUserLoading, error]);
+  if (!firebaseContext) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <p>Cargando aplicación...</p>
+      </div>
+    );
+  }
 
-  // Pass the calculated value to the provider, which then renders children.
-  // The logic to show a loading screen is now handled by the consumer (`MainApp`).
   return (
-    <FirebaseProvider value={contextValue}>
+    <FirebaseProvider value={firebaseContext}>
       {children}
     </FirebaseProvider>
   );

@@ -19,8 +19,8 @@ function MainApp({ children }: { children: React.ReactNode }) {
   const previousPathname = useRef(pathname);
 
   useEffect(() => {
-    // If the user data is not loading and there's no user,
-    // and we are not already on the login page, redirect to login.
+    // If auth is no longer loading, and we don't have a user,
+    // and we are NOT on the login page, then redirect to login.
     if (!isUserLoading && !user && pathname !== '/login') {
       router.replace('/login');
     }
@@ -37,9 +37,11 @@ function MainApp({ children }: { children: React.ReactNode }) {
   }, [pathname, lockApp, hasPin]);
   
   if (isUserLoading) {
+    // This state should now be handled by FirebaseClientProvider
+    // but we keep it as a safeguard.
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
-          <p>Cargando aplicación...</p>
+          <p>Verificando sesión...</p>
       </div>
     );
   }
@@ -48,8 +50,8 @@ function MainApp({ children }: { children: React.ReactNode }) {
       return <>{children}</>;
   }
   
-  // This should not be reached if there is no user, due to the redirect.
-  // But as a safeguard, we can return null.
+  // After loading, if there's still no user, we shouldn't render the shell.
+  // The redirect in the useEffect above should handle this.
   if (!user) {
     return null; 
   }
