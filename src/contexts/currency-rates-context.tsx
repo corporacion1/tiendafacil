@@ -9,7 +9,7 @@ import { collection, addDoc, query, orderBy, limit, Timestamp } from 'firebase/f
 interface CurrencyRatesContextType {
   currencyRates: CurrencyRate[];
   isLoading: boolean;
-  addRate: (rate: Omit<CurrencyRate, 'id'>) => Promise<string | undefined>;
+  addRate: (rate: Omit<CurrencyRate, 'id' | 'date'> & { date?: Timestamp }) => Promise<string | undefined>;
 }
 
 const CurrencyRatesContext = createContext<CurrencyRatesContextType | undefined>(undefined);
@@ -25,10 +25,13 @@ export const CurrencyRatesProvider = ({ children }: { children: React.ReactNode 
 
   const { data: currencyRates, isLoading } = useCollection<CurrencyRate>(ratesQuery);
 
-  const addRate = async (rateData: Omit<CurrencyRate, 'id'>) => {
+  const addRate = async (rateData: Omit<CurrencyRate, 'id' | 'date'> & { date?: Timestamp }) => {
     if (!firestore || !user) return;
     const ratesCollection = collection(firestore, 'currency_rates');
-    const docRef = await addDoc(ratesCollection, rateData);
+    const docRef = await addDoc(ratesCollection, {
+        ...rateData,
+        date: rateData.date || Timestamp.now(),
+    });
     return docRef?.id;
   };
 

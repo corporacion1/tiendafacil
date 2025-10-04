@@ -10,7 +10,7 @@ interface WarehousesContextType {
   warehouses: Warehouse[];
   isLoading: boolean;
   addWarehouse: (warehouse: Omit<Warehouse, 'id'>) => Promise<string | undefined>;
-  updateWarehouse: (warehouseId: string, updatedWarehouse: Partial<Warehouse>) => Promise<void>;
+  updateWarehouse: (warehouseId: string, updatedWarehouse: Partial<Omit<Warehouse, 'id'>>) => Promise<void>;
   deleteWarehouse: (warehouseId: string) => Promise<void>;
 }
 
@@ -34,7 +34,7 @@ export const WarehousesProvider = ({ children }: { children: React.ReactNode }) 
     return docRef?.id;
   };
 
-  const updateWarehouse = async (warehouseId: string, updatedWarehouseData: Partial<Warehouse>) => {
+  const updateWarehouse = async (warehouseId: string, updatedWarehouseData: Partial<Omit<Warehouse, 'id'>>) => {
     if (!firestore || !user) return;
     const warehouseDoc = doc(firestore, 'warehouses', warehouseId);
     await updateDoc(warehouseDoc, updatedWarehouseData);

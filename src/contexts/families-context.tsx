@@ -10,7 +10,7 @@ interface FamiliesContextType {
   families: Family[];
   isLoading: boolean;
   addFamily: (family: Omit<Family, 'id'>) => Promise<string | undefined>;
-  updateFamily: (familyId: string, updatedFamily: Partial<Family>) => Promise<void>;
+  updateFamily: (familyId: string, updatedFamily: Partial<Omit<Family, 'id'>>) => Promise<void>;
   deleteFamily: (familyId: string) => Promise<void>;
 }
 
@@ -34,7 +34,7 @@ export const FamiliesProvider = ({ children }: { children: React.ReactNode }) =>
     return docRef?.id;
   };
 
-  const updateFamily = async (familyId: string, updatedFamilyData: Partial<Family>) => {
+  const updateFamily = async (familyId: string, updatedFamilyData: Partial<Omit<Family, 'id'>>) => {
     if (!firestore || !user) return;
     const familyDoc = doc(firestore, 'families', familyId);
     await updateDoc(familyDoc, updatedFamilyData);

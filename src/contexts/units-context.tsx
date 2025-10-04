@@ -10,7 +10,7 @@ interface UnitsContextType {
   units: Unit[];
   isLoading: boolean;
   addUnit: (unit: Omit<Unit, 'id'>) => Promise<string | undefined>;
-  updateUnit: (unitId: string, updatedUnit: Partial<Unit>) => Promise<void>;
+  updateUnit: (unitId: string, updatedUnit: Partial<Omit<Unit, 'id'>>) => Promise<void>;
   deleteUnit: (unitId: string) => Promise<void>;
 }
 
@@ -34,7 +34,7 @@ export const UnitsProvider = ({ children }: { children: React.ReactNode }) => {
     return docRef?.id;
   };
 
-  const updateUnit = async (unitId: string, updatedUnitData: Partial<Unit>) => {
+  const updateUnit = async (unitId: string, updatedUnitData: Partial<Omit<Unit, 'id'>>) => {
     if (!firestore || !user) return;
     const unitDoc = doc(firestore, 'units', unitId);
     await updateDoc(unitDoc, updatedUnitData);
