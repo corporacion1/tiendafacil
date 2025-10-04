@@ -11,7 +11,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { initialCustomers, mockSales, mockInventoryMovements, initialFamilies } from "@/lib/data"
+import { initialCustomers, initialFamilies } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
@@ -25,6 +25,7 @@ import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
 import { useProducts } from "@/contexts/product-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSales } from "@/contexts/sales-context";
 
 const generateSaleId = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -39,6 +40,7 @@ export default function POSPage() {
   const { toast } = useToast();
   const { settings, activeSymbol, activeRate } = useSettings();
   const { products, updateProduct } = useProducts();
+  const { addSale } = useSales();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFamily, setSelectedFamily] = useState<string>("all");
@@ -147,7 +149,7 @@ export default function POSPage() {
   const total = subtotal + totalTaxes;
 
 
-  const handleProcessSale = (andPrint: boolean) => {
+  const handleProcessSale = async (andPrint: boolean) => {
      if (cartItems.length === 0) {
       toast({
         variant: "destructive",
@@ -186,23 +188,14 @@ export default function POSPage() {
         payments: transactionType === 'credito' ? [] : undefined,
     }
     
-    mockSales.unshift(newSale);
+    await addSale(newSale);
 
-    cartItems.forEach(item => {
+    for (const item of cartItems) {
         const product = products.find(p => p.id === item.product.id);
         if (product) {
-            updateProduct(product.id, { ...product, stock: product.stock - item.quantity });
+            await updateProduct(product.id, { ...product, stock: product.stock - item.quantity });
         }
-        
-        const movement: InventoryMovement = {
-            id: `mov-${Date.now()}-${item.product.id}`,
-            productName: item.product.name,
-            type: 'sale',
-            quantity: -item.quantity,
-            date: newSale.date,
-        };
-        mockInventoryMovements.unshift(movement);
-    });
+    }
 
     setLastSale(newSale);
     
@@ -260,25 +253,13 @@ export default function POSPage() {
   };
 
   const filteredProducts = useMemo(() => {
-    const saleCounts = mockSales.reduce((acc, sale) => {
-      sale.items.forEach(item => {
-        acc[item.productId] = (acc[item.productId] || 0) + 1;
-      });
-      return acc;
-    }, {} as Record<string, number>);
-
     return products
       .filter(product =>
         product.status === 'active' &&
         (selectedFamily === 'all' || product.family === selectedFamily) &&
         (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          product.sku.toLowerCase().includes(searchTerm.toLowerCase()))
-      )
-      .sort((a, b) => {
-        const salesA = saleCounts[a.id] || 0;
-        const salesB = saleCounts[b.id] || 0;
-        return salesB - salesA;
-      });
+          (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase())))
+      );
   }, [products, searchTerm, selectedFamily]);
 
   return (
@@ -678,5 +659,3 @@ export default function POSPage() {
   </Dialog>
   );
 }
-
-    

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +25,12 @@ export default function ProductsPage() {
     }
     
     // Explicitly remove id field before adding, as addDoc generates it.
-    const { id, ...productData } = data as any;
+    const productData = { ...data };
+    delete (productData as any).id;
+
+    if ('id' in productData && (productData.id === undefined || productData.id === '')) {
+        delete (productData as any).id;
+    }
     
     await addProduct(productData);
     
