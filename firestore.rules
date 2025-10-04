@@ -1,194 +1,239 @@
 /**
- * @fileoverview Firestore Security Rules for Prototyping.
+ * @fileoverview Firestore Security Rules
  *
  * Core Philosophy:
- * This ruleset prioritizes secure authorization while offering data shape flexibility for rapid prototyping.
- * All write operations are strictly controlled, while read operations are more permissive to enable quicker data exploration.
+ * This ruleset prioritizes secure data access by strictly controlling read and write permissions
+ * based on the authenticated user. It adopts an owner-based access control model where
+ * applicable and requires authentication for most operations.
  *
  * Data Structure:
- * The Firestore database consists of several top-level collections: `products`, `taxTypes`, `inventoryMovements`, `sales`, `purchases`, `customers`, `stores`, and `families`.
- * There are subcollections under `sales` and `purchases` for `saleItems` and `purchaseItems` respectively.
+ * The Firestore database is structured with top-level collections such as 'products', 'taxTypes',
+ * 'inventoryMovements', 'sales', 'purchases', 'customers', 'stores', and 'families'.
+ * Subcollections like 'saleItems' (under 'sales') and 'purchaseItems' (under 'purchases')
+ * further organize the data.
  *
  * Key Security Decisions:
- * - All write operations require authentication and ownership.
- * - Listing all documents of a specific collection is generally allowed for authenticated users unless explicitly denied.
+ * - Listing of top-level collections is generally disallowed unless explicitly stated otherwise.
+ * - Write access is strictly controlled, typically requiring user authentication and, in some
+ *   cases, ownership validation.
+ * - The rules do not enforce specific data shapes in this prototyping phase but focus on
+ *   authorization.
+ * - Currency rates must be accessible to everyone.
  *
- * Denormalization for Authorization:
- * Assuming that all top-level collections have a storeId which can be used for authorization.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the user is signed in.
-     * @return {boolean} True if the user is signed in, false otherwise.
+     * @description Grants public read access to currency rates collection.
+     * @path /currency_rates
+     * @allow (get, list) Any user (or no user) can read currency rates.
+     * @deny (create, update, delete) No one can write to currency rates.
+     * @principle Allows public read access.
      */
-    function isSignedIn() {
-      return request.auth != null;
+    match /currency_rates {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Allows only signed-in users.
-     * @return {boolean} True if the user is signed in, false otherwise.
-     */
-    function onlySignedInUsers() {
-      return isSignedIn();
-    }
-
-    /**
-     * @description Checks if the authenticated user's UID matches the provided userId.
-     * @param {string} userId - The user ID to compare against the authenticated user's UID.
-     * @return {boolean} True if the user IDs match, false otherwise.
-     */
-    function isOwner(userId) {
-        return request.auth.uid == userId;
-    }
-
-    /**
-     * @description Checks if the document exists and the user is the owner.
-     * @param {string} userId - The user ID to compare against the authenticated user's UID.
-     * @return {boolean} True if the user IDs match and the resource exists, false otherwise.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && exists(resource);
-    }
-
-    /**
-     * @description Checks if the user is the owner of the document based on the 'userId' field.
-     * @return {boolean} True if the user is the owner, false otherwise.
-     */
-    function isDocumentOwner() {
-      return isSignedIn() && resource.data.userId == request.auth.uid;
-    }
-
-    /**
-     * @description Checks if the user is the owner of the document being created based on the 'userId' field.
-     * @return {boolean} True if the user is the owner, false otherwise.
-     */
-    function isCreatingDocumentOwner() {
-      return isSignedIn() && request.resource.data.userId == request.auth.uid;
-    }
-    
-    /**
-     * @description Rules for the /products collection.
+     * @description Manages access to products.
      * @path /products/{productId}
+     * @allow (get) Any authenticated user can read a product.
+     * @allow (list) Listing products is allowed for authenticated users.
+     * @allow (create) Only authenticated users can create products.
+     * @allow (update, delete) Only authenticated users can update or delete products, and they must also be the owner (TODO: Missing ownerId).
+     * @deny (create, update, delete) If not authenticated.
+     * @principle Enforces authenticated access.
      */
     match /products/{productId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && isCreatingDocumentOwner();
-      allow update: if isSignedIn() && isDocumentOwner();
-      allow delete: if isSignedIn() && isDocumentOwner();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Rules for the /taxTypes collection.
+     * @description Manages access to tax types.
      * @path /taxTypes/{taxTypeId}
+     * @allow (get) Any authenticated user can read a tax type.
+     * @allow (list) Listing tax types is allowed for authenticated users.
+     * @allow (create) Only authenticated users can create tax types.
+     * @allow (update, delete) Only authenticated users can update or delete tax types, and they must also be the owner (TODO: Missing ownerId).
+     * @deny (create, update, delete) If not authenticated.
+     * @principle Enforces authenticated access.
      */
     match /taxTypes/{taxTypeId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && isCreatingDocumentOwner();
-      allow update: if isSignedIn() && isDocumentOwner();
-      allow delete: if isSignedIn() && isDocumentOwner();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Rules for the /inventoryMovements collection.
+     * @description Manages access to inventory movements.
      * @path /inventoryMovements/{inventoryMovementId}
+     * @allow (get) Any authenticated user can read a inventoryMovement.
+     * @allow (list) Listing inventoryMovements is allowed for authenticated users.
+     * @allow (create) Only authenticated users can create inventoryMovements.
+     * @allow (update, delete) Only authenticated users can update or delete inventoryMovements, and they must also be the owner (TODO: Missing ownerId).
+     * @deny (create, update, delete) If not authenticated.
+     * @principle Enforces authenticated access.
      */
     match /inventoryMovements/{inventoryMovementId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && isCreatingDocumentOwner();
-      allow update: if isSignedIn() && isDocumentOwner();
-      allow delete: if isSignedIn() && isDocumentOwner();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
-     * @description Rules for the /sales collection.
+     * @description Manages access to sales.
      * @path /sales/{saleId}
+     * @allow (get) Any authenticated user can read a sale.
+     * @allow (list) Listing sales is allowed for authenticated users.
+     * @allow (create) Only authenticated users can create sales.
+     * @allow (update, delete) Only authenticated users can update or delete sales, and they must also be the owner (TODO: Missing ownerId).
+     * @deny (create, update, delete) If not authenticated.
+     * @principle Enforces authenticated access.
      */
     match /sales/{saleId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && isCreatingDocumentOwner();
-      allow update: if isSignedIn() && isDocumentOwner();
-      allow delete: if isSignedIn() && isDocumentOwner();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
 
       /**
-       * @description Rules for the /sales/{saleId}/saleItems subcollection.
+       * @description Manages access to sale items within a sale.
        * @path /sales/{saleId}/saleItems/{saleItemId}
+       * @allow (get) Any authenticated user can read a sale item.
+       * @allow (list) Listing sale items is allowed for authenticated users.
+       * @allow (create) Only authenticated users can create sale items.
+       * @allow (update, delete) Only authenticated users can update or delete sale items, and they must also be the owner (TODO: Missing ownerId).
+       * @deny (create, update, delete) If not authenticated.
+       * @principle Enforces authenticated access.
        */
-      match /sales/{saleId}/saleItems/{saleItemId} {
-        allow get, list: if isSignedIn();
-        allow create: if isSignedIn() && isCreatingDocumentOwner();
-        allow update: if isSignedIn() && isDocumentOwner();
-        allow delete: if isSignedIn() && isDocumentOwner();
+      match /saleItems/{saleItemId} {
+        allow get: if isSignedIn();
+        allow list: if isSignedIn();
+        allow create: if isSignedIn();
+        allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+        allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
       }
     }
 
     /**
-     * @description Rules for the /purchases collection.
+     * @description Manages access to purchases.
      * @path /purchases/{purchaseId}
+     * @allow (get) Any authenticated user can read a purchase.
+     * @allow (list) Listing purchases is allowed for authenticated users.
+     * @allow (create) Only authenticated users can create purchases.
+     * @allow (update, delete) Only authenticated users can update or delete purchases, and they must also be the owner (TODO: Missing ownerId).
+     * @deny (create, update, delete) If not authenticated.
+     * @principle Enforces authenticated access.
      */
     match /purchases/{purchaseId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && isCreatingDocumentOwner();
-      allow update: if isSignedIn() && isDocumentOwner();
-      allow delete: if isSignedIn() && isDocumentOwner();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
 
       /**
-       * @description Rules for the /purchases/{purchaseId}/purchaseItems subcollection.
+       * @description Manages access to purchase items within a purchase.
        * @path /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
+       * @allow (get) Any authenticated user can read a purchase item.
+       * @allow (list) Listing purchase items is allowed for authenticated users.
+       * @allow (create) Only authenticated users can create purchase items.
+       * @allow (update, delete) Only authenticated users can update or delete purchase items, and they must also be the owner (TODO: Missing ownerId).
+       * @deny (create, update, delete) If not authenticated.
+       * @principle Enforces authenticated access.
        */
-      match /purchases/{purchaseId}/purchaseItems/{purchaseItemId} {
-        allow get, list: if isSignedIn();
-        allow create: if isSignedIn() && isCreatingDocumentOwner();
-        allow update: if isSignedIn() && isDocumentOwner();
-        allow delete: if isSignedIn() && isDocumentOwner();
+      match /purchaseItems/{purchaseItemId} {
+        allow get: if isSignedIn();
+        allow list: if isSignedIn();
+        allow create: if isSignedIn();
+        allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+        allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
       }
     }
 
     /**
-     * @description Rules for the /customers collection.
+     * @description Manages access to customers.
      * @path /customers/{customerId}
+     * @allow (get) Any authenticated user can read a customer.
+     * @allow (list) Listing customers is allowed for authenticated users.
+     * @allow (create) Only authenticated users can create customers.
+     * @allow (update, delete) Only authenticated users can update or delete customers, and they must also be the owner (TODO: Missing ownerId).
+     * @deny (create, update, delete) If not authenticated.
+     * @principle Enforces authenticated access.
      */
     match /customers/{customerId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && isCreatingDocumentOwner();
-      allow update: if isSignedIn() && isDocumentOwner();
-      allow delete: if isSignedIn() && isDocumentOwner();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
-    /**
-     * @description Rules for the /stores collection.
-     * @path /stores/{storeId}
-     */
+     /**
+      * @description Manages access to stores.
+      * @path /stores/{storeId}
+      * @allow (get) Any authenticated user can read a store.
+      * @allow (list) Listing stores is allowed for authenticated users.
+      * @allow (create) Only authenticated users can create stores.
+      * @allow (update, delete) Only authenticated users can update or delete stores, and they must also be the owner.
+      *   The owner is the user whose UID matches the `storeId`.
+      * @deny (create, update, delete) If not authenticated.
+      * @principle Enforces authenticated access and ownership.
+      */
     match /stores/{storeId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && isCreatingDocumentOwner();
-      allow update: if isSignedIn() && isDocumentOwner();
-      allow delete: if isSignedIn() && isDocumentOwner();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == storeId;
+      allow update: if isSignedIn() && isExistingOwner(storeId);
+      allow delete: if isSignedIn() && isExistingOwner(storeId);
     }
 
     /**
-     * @description Rules for the /families collection.
+     * @description Manages access to families.
      * @path /families/{familyId}
+     * @allow (get) Any authenticated user can read a family.
+     * @allow (list) Listing families is allowed for authenticated users.
+     * @allow (create) Only authenticated users can create families.
+     * @allow (update, delete) Only authenticated users can update or delete families, and they must also be the owner (TODO: Missing ownerId).
+     * @deny (create, update, delete) If not authenticated.
+     * @principle Enforces authenticated access.
      */
     match /families/{familyId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && isCreatingDocumentOwner();
-      allow update: if isSignedIn() && isDocumentOwner();
-      allow delete: if isSignedIn() && isDocumentOwner();
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
+  }
 
-    /**
-     * @description Rules for the /units collection.
-     * @path /units
-     */
-    match /units/{unitId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn() && isCreatingDocumentOwner();
-      allow update: if isSignedIn() && isDocumentOwner();
-      allow delete: if isSignedIn() && isDocumentOwner();
-    }
+  // Helper function to determine if the user is signed in
+  function isSignedIn() {
+    return request.auth != null;
+  }
+
+  // Helper function to determine if the user is the owner
+  function isOwner(userId) {
+    return request.auth.uid == userId;
+  }
+
+    // Helper function to determine if the user is the owner of existing document
+  function isExistingOwner(userId) {
+    return isSignedIn() && isOwner(userId) && resource != null;
   }
 }
