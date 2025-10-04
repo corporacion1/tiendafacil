@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { mockProducts, initialUnits, initialFamilies, initialWarehouses, mockCurrencyRates } from "@/lib/data";
+import { mockProducts, initialUnits, initialFamilies, initialWarehouses } from "@/lib/data";
 import { Unit, Family, Warehouse, CurrencyRate } from "@/lib/types";
 import { Pencil, PlusCircle, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -74,7 +74,7 @@ function ChangePinDialog() {
 
 export default function SettingsPage() {
     const { hasPin, setPin, removePin } = useSecurity();
-    const { settings, setSettings } = useSettings();
+    const { settings, setSettings, currencyRates, setCurrencyRates } = useSettings();
     const [localSettings, setLocalSettings] = useState(settings);
     const [newPin, setNewPin] = useState('');
     const [confirmPin, setConfirmPin] = useState('');
@@ -84,7 +84,6 @@ export default function SettingsPage() {
     const [units, setUnits] = useState<Unit[]>(initialUnits);
     const [families, setFamilies] = useState<Family[]>(initialFamilies);
     const [warehouses, setWarehouses] = useState<Warehouse[]>(initialWarehouses);
-    const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>(mockCurrencyRates);
     const [newRate, setNewRate] = useState<number>(0);
 
     const [editingItem, setEditingItem] = useState<{type: 'unit' | 'family' | 'warehouse', data: any} | null>(null);
@@ -284,8 +283,8 @@ export default function SettingsPage() {
                             </div>
                         </div>
                     </CardContent>
-                    <CardFooter className="flex justify-end">
-                        <Button className="bg-primary hover:bg-primary/90" onClick={saveAllSettings}>Guardar Toda la Configuración</Button>
+                    <CardFooter className="border-t px-6 py-4 flex justify-end">
+                        <Button className="bg-primary hover:bg-primary/90" onClick={saveAllSettings}>Guardar Configuración</Button>
                     </CardFooter>
                 </Card>
 
@@ -360,6 +359,9 @@ export default function SettingsPage() {
                         </div>
 
                     </CardContent>
+                     <CardFooter className="border-t px-6 py-4 flex justify-end">
+                        <Button className="bg-primary hover:bg-primary/90" onClick={saveAllSettings}>Guardar Configuración de Monedas</Button>
+                    </CardFooter>
                 </Card>
 
                 {/* Management Cards */}
@@ -500,5 +502,3 @@ export default function SettingsPage() {
         </Dialog>
     );
 }
-
-    

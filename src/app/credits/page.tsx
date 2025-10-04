@@ -23,7 +23,7 @@ import { useSettings } from "@/contexts/settings-context";
 export default function CreditsPage() {
     const { toast } = useToast();
     const { products } = useProducts();
-    const { settings } = useSettings();
+    const { settings, activeSymbol, activeRate } = useSettings();
     const [sales, setSales] = useState<Sale[]>(mockSales);
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
@@ -116,9 +116,9 @@ export default function CreditsPage() {
                                     {sale.status === 'paid' ? 'Pagada' : 'Pendiente'}
                                 </Badge>
                             </TableCell>
-                            <TableCell className="text-right">{settings.primaryCurrencySymbol}{sale.total.toFixed(2)}</TableCell>
-                            <TableCell className="text-right">{settings.primaryCurrencySymbol}{(sale.paidAmount || 0).toFixed(2)}</TableCell>
-                            <TableCell className="text-right font-semibold">{settings.primaryCurrencySymbol}{balance.toFixed(2)}</TableCell>
+                            <TableCell className="text-right">{activeSymbol}{(sale.total * activeRate).toFixed(2)}</TableCell>
+                            <TableCell className="text-right">{activeSymbol}{((sale.paidAmount || 0) * activeRate).toFixed(2)}</TableCell>
+                            <TableCell className="text-right font-semibold">{activeSymbol}{(balance * activeRate).toFixed(2)}</TableCell>
                             <TableCell>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -209,7 +209,7 @@ export default function CreditsPage() {
                                         <TableRow key={index}>
                                             <TableCell>{item.productName}</TableCell>
                                             <TableCell>{item.quantity}</TableCell>
-                                            <TableCell className="text-right">{settings.primaryCurrencySymbol}{(item.quantity * item.price).toFixed(2)}</TableCell>
+                                            <TableCell className="text-right">{activeSymbol}{((item.quantity * item.price) * activeRate).toFixed(2)}</TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
@@ -217,7 +217,7 @@ export default function CreditsPage() {
                             <div className="mt-4 space-y-2 border-t pt-4">
                                  <div className="flex justify-between font-bold text-lg">
                                     <span>Total Venta:</span>
-                                    <span>{settings.primaryCurrencySymbol}{selectedSale?.total.toFixed(2)}</span>
+                                    <span>{activeSymbol}{selectedSale ? (selectedSale.total * activeRate).toFixed(2) : '0.00'}</span>
                                 </div>
                             </div>
                         </div>
@@ -234,7 +234,7 @@ export default function CreditsPage() {
                                     {selectedSale?.payments && selectedSale.payments.length > 0 ? selectedSale.payments.map(p => (
                                         <TableRow key={p.id}>
                                             <TableCell>{format(parseISO(p.date), "dd/MM/yyyy HH:mm")}</TableCell>
-                                            <TableCell className="text-right">{settings.primaryCurrencySymbol}{p.amount.toFixed(2)}</TableCell>
+                                            <TableCell className="text-right">{activeSymbol}{(p.amount * activeRate).toFixed(2)}</TableCell>
                                         </TableRow>
                                     )) : (
                                         <TableRow>
@@ -246,11 +246,11 @@ export default function CreditsPage() {
                             <div className="mt-4 space-y-2 border-t pt-4">
                                 <div className="flex justify-between">
                                     <span>Total Abonado:</span>
-                                    <span>{settings.primaryCurrencySymbol}{(selectedSale?.paidAmount || 0).toFixed(2)}</span>
+                                    <span>{activeSymbol}{( (selectedSale?.paidAmount || 0) * activeRate).toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between font-bold text-lg text-destructive">
                                     <span>Saldo Pendiente:</span>
-                                    <span>{settings.primaryCurrencySymbol}{selectedSale ? (selectedSale.total - (selectedSale.paidAmount || 0)).toFixed(2) : '0.00'}</span>
+                                    <span>{activeSymbol}{selectedSale ? ((selectedSale.total - (selectedSale.paidAmount || 0)) * activeRate).toFixed(2) : '0.00'}</span>
                                 </div>
                             </div>
                         </div>
@@ -280,10 +280,10 @@ export default function CreditsPage() {
                     <div className="space-y-4 py-4">
                         <div className="space-y-1">
                             <p className="font-medium">Cliente: {selectedSale?.customerName}</p>
-                             <p className="text-sm text-muted-foreground">Saldo actual: <span className="font-bold text-destructive">{settings.primaryCurrencySymbol}{selectedSale ? (selectedSale.total - (selectedSale.paidAmount || 0)).toFixed(2) : '0.00'}</span></p>
+                             <p className="text-sm text-muted-foreground">Saldo actual: <span className="font-bold text-destructive">{activeSymbol}{selectedSale ? ((selectedSale.total - (selectedSale.paidAmount || 0)) * activeRate).toFixed(2) : '0.00'}</span></p>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="payment-amount">Monto del Abono</Label>
+                            <Label htmlFor="payment-amount">Monto del Abono ({settings.primaryCurrencySymbol})</Label>
                             <Input
                                 id="payment-amount"
                                 type="number"

@@ -40,7 +40,7 @@ import { useSettings } from "@/contexts/settings-context";
 export default function InventoryPage() {
   const { toast } = useToast();
   const { products, setProducts, updateProduct } = useProducts();
-  const { settings } = useSettings();
+  const { activeSymbol, activeRate } = useSettings();
   const [isMovementsDialogOpen, setIsMovementsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
@@ -356,10 +356,10 @@ export default function InventoryPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      {settings.primaryCurrencySymbol}{product.price.toFixed(2)}
+                      {activeSymbol}{(product.price * activeRate).toFixed(2)}
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      {settings.primaryCurrencySymbol}{product.wholesalePrice.toFixed(2)}
+                      {activeSymbol}{(product.wholesalePrice * activeRate).toFixed(2)}
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
                       {product.stock}
@@ -399,25 +399,28 @@ export default function InventoryPage() {
     </Tabs>
 
     {/* Edit Product Dialog */}
-    <Dialog open={!!productToEdit} onOpenChange={(isOpen) => !isOpen && setProductToEdit(null)}>
-        <DialogContent className="sm:max-w-2xl">
-            <DialogHeader>
-                <DialogTitle>Editar Producto</DialogTitle>
-                <DialogDescription>
-                    Modifica los detalles del producto y guarda los cambios.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="max-h-[80vh] overflow-y-auto p-1">
-                {productToEdit && (
-                    <ProductForm 
-                        product={productToEdit}
-                        onSubmit={handleUpdateProduct}
-                        onCancel={() => setProductToEdit(null)}
-                    />
-                )}
-            </div>
-        </DialogContent>
-    </Dialog>
+    <AlertDialog>
+      <Dialog open={!!productToEdit} onOpenChange={(isOpen) => !isOpen && setProductToEdit(null)}>
+          <DialogContent className="sm:max-w-2xl">
+              <DialogHeader>
+                  <DialogTitle>Editar Producto</DialogTitle>
+                  <DialogDescription>
+                      Modifica los detalles del producto y guarda los cambios.
+                  </DialogDescription>
+              </DialogHeader>
+              <div className="max-h-[80vh] overflow-y-auto p-1">
+                  {productToEdit && (
+                      <ProductForm 
+                          product={productToEdit}
+                          onSubmit={handleUpdateProduct}
+                          onCancel={() => setProductToEdit(null)}
+                      />
+                  )}
+              </div>
+          </DialogContent>
+      </Dialog>
+    </AlertDialog>
+
 
     {/* Delete Product Alert */}
     <AlertDialog open={!!productToDelete} onOpenChange={(isOpen) => !isOpen && setProductToDelete(null)}>

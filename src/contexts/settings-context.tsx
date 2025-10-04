@@ -3,6 +3,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
+import { mockCurrencyRates } from '@/lib/data';
+import type { CurrencyRate } from '@/lib/types';
 
 export interface Settings {
     storeName: string;
@@ -17,14 +19,24 @@ export interface Settings {
     secondaryCurrencySymbol: string;
 }
 
+type DisplayCurrency = 'primary' | 'secondary';
+
 interface SettingsContextType {
   settings: Settings;
   setSettings: (settings: Settings) => void;
+  displayCurrency: DisplayCurrency;
+  toggleDisplayCurrency: () => void;
+  activeCurrency: 'primary' | 'secondary';
+  activeSymbol: string;
+  activeRate: number;
+  currencyRates: CurrencyRate[];
+  setCurrencyRates: React.Dispatch<React.SetStateAction<CurrencyRate[]>>;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 const SETTINGS_STORAGE_KEY = 'tienda_facil_settings';
+const CURRENCY_PREF_STORAGE_KEY = 'tienda_facil_currency_pref';
 
 const defaultSettings: Settings = {
     storeName: 'TIENDA FACIL WEB',
@@ -33,7 +45,7 @@ const defaultSettings: Settings = {
     storeSlogan: '¡Gracias por tu compra!',
     tax1: 16,
     tax2: 0,
-    primaryCurrencyName: 'Dólares',
+    primaryCurrencyName: 'Dólar',
     primaryCurrencySymbol: '$',
     secondaryCurrencyName: 'Bolívares',
     secondaryCurrencySymbol: 'Bs.',
@@ -41,19 +53,25 @@ const defaultSettings: Settings = {
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
   const [settings, setSettings] = useState<Settings>(defaultSettings);
+  const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>(mockCurrencyRates);
+  const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   const { toast } = useToast();
 
   useEffect(() => {
     try {
       const storedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
       if (storedSettings) {
-        // Merge stored settings with defaults to ensure all keys are present
         const parsedSettings = JSON.parse(storedSettings);
         setSettings(prev => ({ ...prev, ...parsedSettings }));
       } else {
-        // If no settings are stored, store the default ones
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(defaultSettings));
       }
+
+      const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY) as DisplayCurrency;
+      if(storedCurrencyPref && ['primary', 'secondary'].includes(storedCurrencyPref)) {
+        setDisplayCurrency(storedCurrencyPref);
+      }
+
     } catch (error) {
       console.error("Could not access localStorage for settings", error);
     }
@@ -73,8 +91,22 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   };
 
+  const toggleDisplayCurrency = () => {
+    const newPreference = displayCurrency === 'primary' ? 'secondary' : 'primary';
+    setDisplayCurrency(newPreference);
+     try {
+        localStorage.setItem(CURRENCY_PREF_STORAGE_KEY, newPreference);
+    } catch (error) {
+        console.error("Could not save currency preference to localStorage", error);
+    }
+  };
+
+  const activeCurrency = displayCurrency;
+  const activeSymbol = activeCurrency === 'primary' ? settings.primaryCurrencySymbol : settings.secondaryCurrencySymbol;
+  const activeRate = activeCurrency === 'primary' ? 1 : (currencyRates[0]?.rate || 1);
+
   return (
-    <SettingsContext.Provider value={{ settings, setSettings: handleSetSettings }}>
+    <SettingsContext.Provider value={{ settings, setSettings: handleSetSettings, displayCurrency, toggleDisplayCurrency, activeCurrency, activeSymbol, activeRate, currencyRates, setCurrencyRates }}>
       {children}
     </SettingsContext.Provider>
   );

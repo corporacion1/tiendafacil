@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useEffect } from "react";
@@ -91,7 +90,7 @@ const calculateProfit = (price: number, cost: number): string => {
 
 export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const { products } = useProducts();
-  const { settings } = useSettings();
+  const { activeSymbol, activeRate } = useSettings();
   const { toast } = useToast();
 
   const form = useForm<ProductFormValues>({
@@ -253,9 +252,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
               name="cost"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Costo ({settings.primaryCurrencySymbol})</FormLabel>
+                  <FormLabel>Costo ({activeSymbol})</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                    <Input type="number" step="0.01" placeholder="0.00" {...field} value={field.value * activeRate} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate)} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -266,13 +265,14 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
               name="price"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Precio Detal ({settings.primaryCurrencySymbol})</FormLabel>
+                  <FormLabel>Precio Detal ({activeSymbol})</FormLabel>
                   <FormControl>
                     <Input 
                       type="number" 
                       step="0.01"
                       placeholder="0.00"
                       {...field}
+                       value={field.value * activeRate} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate)}
                     />
                   </FormControl>
                   <FormDescription className={cn(parseFloat(retailProfitPercentage) > 0 ? "text-green-600 font-semibold" : "")}>
@@ -287,9 +287,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
               name="wholesalePrice"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Precio Mayor ({settings.primaryCurrencySymbol})</FormLabel>
+                  <FormLabel>Precio Mayor ({activeSymbol})</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                    <Input type="number" step="0.01" placeholder="0.00" {...field}  value={field.value * activeRate} onChange={e => field.onChange(parseFloat(e.target.value) / activeRate)} />
                   </FormControl>
                   <FormDescription className={cn(parseFloat(wholesaleProfitPercentage) > 0 ? "text-green-600 font-semibold" : "")}>
                       Margen de Ganancia: {wholesaleProfitPercentage}%

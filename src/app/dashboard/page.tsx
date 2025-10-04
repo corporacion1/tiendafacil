@@ -1,5 +1,4 @@
 
-
 "use client"
 import { useState, useMemo } from "react";
 import { ArrowUpRight, DollarSign, Users, Package } from "lucide-react";
@@ -43,7 +42,7 @@ type TimeFilter = '3d' | '7d' | '30d' | null;
 
 export default function Dashboard() {
   const { products } = useProducts();
-  const { settings } = useSettings();
+  const { activeSymbol, activeRate } = useSettings();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>(null);
 
   const filteredData = useMemo(() => {
@@ -90,8 +89,12 @@ export default function Dashboard() {
         dataByMonth[month].profit += (sale.total - costOfGoods);
     });
 
-    return Object.values(dataByMonth);
-  }, [filteredData.sales, products]);
+    return Object.values(dataByMonth).map(monthData => ({
+      ...monthData,
+      sales: monthData.sales * activeRate,
+      profit: monthData.profit * activeRate,
+    }));
+  }, [filteredData.sales, products, activeRate]);
 
   const getMovementLabel = (type: 'sale' | 'purchase' | 'adjustment') => {
     switch (type) {
@@ -114,7 +117,7 @@ export default function Dashboard() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{settings.primaryCurrencySymbol}45,231.89</div>
+              <div className="text-2xl font-bold">{activeSymbol}{(45231.89 * activeRate).toFixed(2)}</div>
               <p className="text-xs text-muted-foreground">
                 +20.1% from last month
               </p>
@@ -189,13 +192,14 @@ export default function Dashboard() {
                         fontSize={12}
                         tickLine={false}
                         axisLine={false}
-                        tickFormatter={(value) => `${settings.primaryCurrencySymbol}${value}`}
+                        tickFormatter={(value) => `${activeSymbol}${value.toFixed(0)}`}
                     />
                     <Tooltip
                         contentStyle={{
                         backgroundColor: 'hsl(var(--background))',
                         borderColor: 'hsl(var(--border))',
                         }}
+                         formatter={(value: number) => `${activeSymbol}${value.toFixed(2)}`}
                     />
                     <Legend />
                     <Line type="monotone" dataKey="sales" name="Ventas" stroke="hsl(var(--primary))" strokeWidth={2} />
@@ -225,13 +229,14 @@ export default function Dashboard() {
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(value) => `${settings.primaryCurrencySymbol}${value}`}
+                    tickFormatter={(value) => `${activeSymbol}${value}`}
                   />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: 'hsl(var(--background))',
                       borderColor: 'hsl(var(--border))',
                     }}
+                    formatter={(value: number) => `${activeSymbol}${value.toFixed(2)}`}
                   />
                   <Bar dataKey="sales" radius={[4, 4, 0, 0]} className="fill-primary" />
                 </BarChart>

@@ -3,13 +3,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Boxes, FileText, Home, PackagePlus, PanelLeft, Settings, ShoppingCart, Store, CreditCard } from "lucide-react";
+import { Boxes, FileText, Home, PackagePlus, PanelLeft, Settings, ShoppingCart, Store, CreditCard, Coins } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./theme-toggle";
+import { useSettings } from "@/contexts/settings-context";
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const { activeSymbol, toggleDisplayCurrency } = useSettings();
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: Home },
@@ -79,6 +81,10 @@ export function SiteHeader() {
       <div className="relative ml-auto flex-1 md:grow-0">
         <h1 className="text-lg font-semibold md:text-xl">TIENDA FACIL</h1>
       </div>
+       <Button variant="ghost" size="icon" onClick={toggleDisplayCurrency} aria-label="Cambiar moneda">
+            <Coins className="h-5 w-5" />
+            <span className="absolute bottom-0 right-0 text-xs font-bold leading-none">{activeSymbol}</span>
+        </Button>
       <ThemeToggle />
     </header>
   );
