@@ -31,10 +31,10 @@ const productSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, "El nombre es requerido."),
   sku: z.string().min(1, "El SKU es requerido."),
-  price: z.coerce.number().min(0, "El precio no puede ser negativo."),
-  wholesalePrice: z.coerce.number().min(0, "El precio mayorista no puede ser negativo."),
-  cost: z.coerce.number().min(0, "El costo no puede ser negativo."),
-  stock: z.coerce.number().int().min(0, "El stock no puede ser negativo."),
+  price: z.coerce.number().min(0, "El precio no puede ser negativo.").max(9999999999.99, "El monto es demasiado grande."),
+  wholesalePrice: z.coerce.number().min(0, "El precio mayorista no puede ser negativo.").max(9999999999.99, "El monto es demasiado grande."),
+  cost: z.coerce.number().min(0, "El costo no puede ser negativo.").max(9999999999.99, "El monto es demasiado grande."),
+  stock: z.coerce.number().int("El stock debe ser un número entero.").min(0, "El stock no puede ser negativo.").max(9999999999, "La cantidad es demasiado grande."),
   status: z.enum(["active", "inactive"]),
   tax1: z.boolean(),
   tax2: z.boolean(),
@@ -126,7 +126,16 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       const initialValues = getInitialValues(product);
       form.reset(initialValues);
       setImagePreview(product?.imageUrl);
-  }, [product, form]);
+       if (product) {
+        setDisplayValues({
+            cost: (product.cost * activeRate).toFixed(2),
+            price: (product.price * activeRate).toFixed(2),
+            wholesalePrice: (product.wholesalePrice * activeRate).toFixed(2),
+        });
+       } else {
+         setDisplayValues({ cost: '0.00', price: '0.00', wholesalePrice: '0.00' });
+      }
+  }, [product, form, activeRate]);
 
   useEffect(() => {
     setDisplayValues({
@@ -357,7 +366,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             <FormField
               control={form.control}
               name="cost"
-              render={() => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>Costo ({activeSymbol})</FormLabel>
                   <FormControl>
@@ -369,14 +378,14 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                       onChange={(e) => handleCurrencyInputChange(e, 'cost')}
                     />
                   </FormControl>
-                  <FormMessage />
+                   <FormMessage />
                 </FormItem>
               )}
             />
             <FormField
               control={form.control}
               name="price"
-              render={() => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>Precio Detal ({activeSymbol})</FormLabel>
                   <FormControl>
@@ -398,7 +407,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             <FormField
               control={form.control}
               name="wholesalePrice"
-              render={() => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>Precio Mayor ({activeSymbol})</FormLabel>
                   <FormControl>
@@ -461,7 +470,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                   <FormItem>
                       <FormLabel>Stock Inicial</FormLabel>
                       <FormControl>
-                      <Input type="number" placeholder="0" {...field} readOnly={!!product} />
+                      <Input type="number" placeholder="0" {...field} onChange={event => field.onChange(+event.target.value)} readOnly={!!product} />
                       </FormControl>
                       <FormDescription>{product ? "El stock se modifica con movimientos de inventario." : "Stock al momento de crear el producto."}</FormDescription>
                       <FormMessage />
