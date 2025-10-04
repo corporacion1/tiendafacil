@@ -299,9 +299,7 @@ export default function InventoryPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                           <DropdownMenuItem onSelect={() => handleEdit(product)}>Editar</DropdownMenuItem>
-                          <DialogTrigger asChild>
-                            <DropdownMenuItem onSelect={() => setSelectedProduct(product)}>Ver Movimientos</DropdownMenuItem>
-                          </DialogTrigger>
+                          <DropdownMenuItem onSelect={() => setSelectedProduct(product)}>Ver Movimientos</DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <AlertDialogTrigger asChild>
                             <DropdownMenuItem className="text-destructive" onSelect={() => setProductToDelete(product)}>
@@ -408,5 +406,3 @@ export default function InventoryPage() {
     </>
   );
 }
-
-    
