@@ -23,16 +23,17 @@ import { FirebaseClientProvider, useUser } from "@/firebase";
 
 function MainApp({ children }: { children: React.ReactNode }) {
   const { isLocked, lockApp, hasPin } = useSecurity();
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
   const pathname = usePathname();
   const router = useRouter();
   const previousPathname = useRef(pathname);
 
   useEffect(() => {
-    if (!isUserLoading && !user && pathname !== '/login') {
+    // If there's no user and we're not on the login page, redirect there.
+    if (!user && pathname !== '/login') {
       router.replace('/login');
     }
-  }, [user, isUserLoading, pathname, router]);
+  }, [user, pathname, router]);
 
   useEffect(() => {
     if (!hasPin) return;
@@ -44,16 +45,15 @@ function MainApp({ children }: { children: React.ReactNode }) {
     previousPathname.current = pathname;
   }, [pathname, lockApp, hasPin]);
   
-  if (isUserLoading && pathname !== '/login') {
-    return <div className="flex h-screen w-full items-center justify-center"><p>Cargando aplicación...</p></div>;
-  }
-
   if (pathname === '/login') {
       return <>{children}</>;
   }
   
+  // After the initial loading in FirebaseClientProvider, if there's no user,
+  // the useEffect above will trigger a redirect. We can render nothing or a minimal
+  // placeholder while the redirect happens to avoid flashing content.
   if (!user) {
-    return null;
+    return null; 
   }
 
   if (isLocked) {
