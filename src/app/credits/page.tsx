@@ -274,7 +274,7 @@ export default function CreditsPage() {
                     <DialogHeader>
                         <DialogTitle>Registrar Abono</DialogTitle>
                         <DialogDescription>
-                            Agrega un nuevo pago para la venta {selectedSale?.id}.
+                            Agrega un nuevo pago para la venta {selectedSale?.id}. El monto se registrará en tu moneda principal ({settings.primaryCurrencyName}).
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">

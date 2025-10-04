@@ -66,13 +66,19 @@ export default function PurchasesPage() {
   };
   
   const updateItem = (productId: string, field: 'quantity' | 'cost', value: number) => {
+    let valueInPrimaryCurrency = value;
+    if (field === 'cost') {
+        valueInPrimaryCurrency = value / activeRate;
+    }
+
     if (field === 'quantity' && (isNaN(value) || value <= 0)) {
         removeProduct(productId);
         return;
     }
+
     setPurchaseItems((prevItems) =>
       prevItems.map((item) =>
-        item.productId === productId ? { ...item, [field]: value } : item
+        item.productId === productId ? { ...item, [field]: valueInPrimaryCurrency } : item
       )
     );
   };
@@ -385,7 +391,7 @@ export default function PurchasesPage() {
                                     type="number"
                                     step="0.01"
                                     value={(item.cost * activeRate).toFixed(2)}
-                                    onChange={(e) => updateItem(item.productId, 'cost', parseFloat(e.target.value) / activeRate)}
+                                    onChange={(e) => updateItem(item.productId, 'cost', parseFloat(e.target.value))}
                                     className="h-8 w-20"
                                     min="0"
                                 />

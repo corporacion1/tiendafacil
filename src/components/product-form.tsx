@@ -101,16 +101,16 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const { units } = useUnits();
   const { families } = useFamilies();
   const { warehouses } = useWarehouses();
-  const { activeSymbol, activeRate } = useSettings();
+  const { settings, activeSymbol, activeRate } = useSettings();
   const firebaseApp = useFirebaseApp();
   const { toast } = useToast();
   const [isUploading, setIsUploading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | undefined>(product?.imageUrl);
 
   const [displayValues, setDisplayValues] = useState({
-    cost: (getInitialValues(product).cost * activeRate).toFixed(2),
-    price: (getInitialValues(product).price * activeRate).toFixed(2),
-    wholesalePrice: (getInitialValues(product).wholesalePrice * activeRate).toFixed(2),
+    cost: product ? (product.cost * activeRate).toFixed(2) : '0.00',
+    price: product ? (product.price * activeRate).toFixed(2) : '0.00',
+    wholesalePrice: product ? (product.wholesalePrice * activeRate).toFixed(2) : '0.00',
   });
 
   const form = useForm<ProductFormValues>({
@@ -118,16 +118,23 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     defaultValues: getInitialValues(product),
   });
   
+  const watchedCost = useWatch({ control: form.control, name: 'cost' });
+  const watchedPrice = useWatch({ control: form.control, name: 'price' });
+  const watchedWholesalePrice = useWatch({ control: form.control, name: 'wholesalePrice' });
+
   useEffect(() => {
       const initialValues = getInitialValues(product);
       form.reset(initialValues);
       setImagePreview(product?.imageUrl);
-      setDisplayValues({
-        cost: (initialValues.cost * activeRate).toFixed(2),
-        price: (initialValues.price * activeRate).toFixed(2),
-        wholesalePrice: (initialValues.wholesalePrice * activeRate).toFixed(2),
-      });
-  }, [product, form, activeRate]);
+  }, [product, form]);
+
+  useEffect(() => {
+    setDisplayValues({
+      cost: (watchedCost * activeRate).toFixed(2),
+      price: (watchedPrice * activeRate).toFixed(2),
+      wholesalePrice: (watchedWholesalePrice * activeRate).toFixed(2),
+    });
+  }, [activeRate, watchedCost, watchedPrice, watchedWholesalePrice]);
 
   const handleCurrencyInputChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'cost' | 'price' | 'wholesalePrice') => {
       const displayValue = e.target.value;
@@ -203,11 +210,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     }
   };
 
-
-  const watchedPrice = useWatch({ control: form.control, name: 'price' });
-  const watchedWholesalePrice = useWatch({ control: form.control, name: 'wholesalePrice' });
-  const watchedCost = useWatch({ control: form.control, name: 'cost' });
-  
   const retailProfitPercentage = calculateProfit(watchedPrice, watchedCost);
   const wholesaleProfitPercentage = calculateProfit(watchedWholesalePrice, watchedCost);
 
