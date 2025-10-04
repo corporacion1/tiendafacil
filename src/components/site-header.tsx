@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { Boxes, FileText, Home, PackagePlus, PanelLeft, Settings, ShoppingCart, Store, CreditCard, Coins } from "lucide-react";
+import { Boxes, FileText, Home, PackagePlus, PanelLeft, Settings, ShoppingCart, Store, CreditCard, Coins, UserCircle, LogOut } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,8 +13,17 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from "./theme-toggle";
 import { useSettings } from "@/contexts/settings-context";
+import { useAuth, useUser } from "@/firebase";
 
 const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: Home },
@@ -32,6 +41,14 @@ const settingsNav = { href: "/settings", label: "Configuración", icon: Settings
 export function SiteHeader() {
   const pathname = usePathname();
   const { settings, activeCurrency, toggleDisplayCurrency } = useSettings();
+  const { user } = useUser();
+  const auth = useAuth();
+
+  const handleSignOut = () => {
+    if (auth) {
+      auth.signOut();
+    }
+  }
 
   const inactiveSymbol = activeCurrency === 'primary' 
     ? settings.secondaryCurrencySymbol 
@@ -97,6 +114,27 @@ export function SiteHeader() {
         </TooltipProvider>
 
         <ThemeToggle />
+
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                    {user?.photoURL ? (
+                        <Image src={user.photoURL} width={32} height={32} alt="User" className="rounded-full" />
+                    ) : (
+                        <UserCircle className="h-6 w-6" />
+                    )}
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                <DropdownMenuLabel>{user?.displayName || user?.email || 'Mi Cuenta'}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={handleSignOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Cerrar Sesión
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+
       </div>
     </header>
   );
