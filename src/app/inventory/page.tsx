@@ -39,6 +39,7 @@ import { useProducts } from "@/contexts/product-context";
 export default function InventoryPage() {
   const { toast } = useToast();
   const { products, setProducts, updateProduct } = useProducts();
+  const [isMovementsDialogOpen, setIsMovementsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
@@ -51,6 +52,12 @@ export default function InventoryPage() {
   const handleEdit = (product: Product) => {
     setProductToEdit(product);
   };
+  
+  const handleViewMovements = (product: Product) => {
+    setSelectedProduct(product);
+    setIsMovementsDialogOpen(true);
+  };
+
 
   const handleUpdateProduct = (updatedProduct: Product) => {
     updateProduct(updatedProduct.id, updatedProduct);
@@ -299,7 +306,7 @@ export default function InventoryPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                           <DropdownMenuItem onSelect={() => handleEdit(product)}>Editar</DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => setSelectedProduct(product)}>Ver Movimientos</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handleViewMovements(product)}>Ver Movimientos</DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <AlertDialogTrigger asChild>
                             <DropdownMenuItem className="text-destructive" onSelect={() => setProductToDelete(product)}>
@@ -364,7 +371,7 @@ export default function InventoryPage() {
     </AlertDialog>
     
     {/* Movements Dialog */}
-    <Dialog open={!!selectedProduct} onOpenChange={(isOpen) => !isOpen && setSelectedProduct(null)}>
+    <Dialog open={isMovementsDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) { setSelectedProduct(null); } setIsMovementsDialogOpen(isOpen); }}>
       <DialogContent className="sm:max-w-lg">
           <DialogHeader>
               <DialogTitle>Movimientos de: {selectedProduct?.name}</DialogTitle>
@@ -381,7 +388,7 @@ export default function InventoryPage() {
                   </TableRow>
               </TableHeader>
               <TableBody>
-                  {productMovements.map((movement) => (
+                  {productMovements.length > 0 ? productMovements.map((movement) => (
                       <TableRow key={movement.id}>
                           <TableCell>{new Date(movement.date).toLocaleDateString()}</TableCell>
                           <TableCell>
@@ -391,7 +398,11 @@ export default function InventoryPage() {
                           </TableCell>
                           <TableCell className="text-right">{movement.quantity}</TableCell>
                       </TableRow>
-                  ))}
+                  )) : (
+                    <TableRow>
+                        <TableCell colSpan={3} className="text-center text-muted-foreground">No hay movimientos para este producto.</TableCell>
+                    </TableRow>
+                  )}
               </TableBody>
           </Table>
             <DialogFooter>
@@ -406,3 +417,4 @@ export default function InventoryPage() {
     </>
   );
 }
+
