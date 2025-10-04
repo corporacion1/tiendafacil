@@ -1,15 +1,14 @@
-
 {
   "entities": {
     "Product": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Product",
       "type": "object",
-      "description": "Represents a product in the inventory system.",
+      "description": "Represents a product in the inventory.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Product entity."
+          "description": "Unique identifier for the product."
         },
         "name": {
           "type": "string",
@@ -19,54 +18,41 @@
           "type": "string",
           "description": "Detailed description of the product."
         },
-        "sku": {
-          "type": "string",
-          "description": "Stock keeping unit; a unique identifier for inventory tracking."
-        },
         "price": {
           "type": "number",
-          "description": "Selling price of the product."
-        },
-        "cost": {
-          "type": "number",
-          "description": "Cost price of the product."
+          "description": "Price of the product."
         },
         "imageUrl": {
           "type": "string",
-          "description": "URL of the product image."
+          "description": "URL of the product image.",
+          "format": "uri"
         },
         "taxTypeId": {
           "type": "string",
           "description": "Reference to TaxType. (Relationship: TaxType 1:N Product)"
         },
-        "active": {
+        "isActive": {
           "type": "boolean",
-          "description": "Indicates if the product is active and available for sale."
-        },
-        "currentStock": {
-          "type": "number",
-          "description": "Current quantity of product on hand in inventory."
+          "description": "Indicates whether the product is active in the store."
         }
       },
       "required": [
         "id",
         "name",
         "price",
-        "cost",
         "taxTypeId",
-        "active",
-        "currentStock"
+        "isActive"
       ]
     },
     "TaxType": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "TaxType",
       "type": "object",
-      "description": "Represents a type of tax that can be applied to a product.",
+      "description": "Represents a tax type applicable to products.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the TaxType entity."
+          "description": "Unique identifier for the tax type."
         },
         "name": {
           "type": "string",
@@ -74,7 +60,7 @@
         },
         "rate": {
           "type": "number",
-          "description": "Tax rate as a decimal (e.g., 0.05 for 5%)."
+          "description": "Tax rate as a decimal (e.g., 0.10 for 10%)."
         }
       },
       "required": [
@@ -87,11 +73,11 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "InventoryMovement",
       "type": "object",
-      "description": "Represents a movement of inventory (e.g., stock addition, sale, write-off).",
+      "description": "Represents a movement of inventory (addition or removal).",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the InventoryMovement entity."
+          "description": "Unique identifier for the inventory movement."
         },
         "productId": {
           "type": "string",
@@ -99,28 +85,24 @@
         },
         "quantity": {
           "type": "number",
-          "description": "Quantity of the product moved."
+          "description": "Quantity of the product added or removed (positive or negative)."
         },
-        "movementType": {
-          "type": "string",
-          "description": "Type of inventory movement (e.g., 'IN', 'OUT', 'SALE')."
-        },
-        "timestamp": {
+        "movementDate": {
           "type": "string",
           "description": "Date and time of the inventory movement.",
           "format": "date-time"
         },
-        "description": {
+        "type": {
           "type": "string",
-          "description": "Optional details regarding inventory movement."
+          "description": "The type of inventory movement.  For example 'inbound' or 'outbound'"
         }
       },
       "required": [
         "id",
         "productId",
         "quantity",
-        "movementType",
-        "timestamp"
+        "movementDate",
+        "type"
       ]
     },
     "Sale": {
@@ -131,7 +113,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Sale entity."
+          "description": "Unique identifier for the sale transaction."
         },
         "customerId": {
           "type": "string",
@@ -145,18 +127,13 @@
         "totalAmount": {
           "type": "number",
           "description": "Total amount of the sale."
-        },
-        "paymentMethod": {
-          "type": "string",
-          "description": "Method of payment used for the sale (e.g., 'cash', 'credit', 'debit')."
         }
       },
       "required": [
         "id",
         "customerId",
         "saleDate",
-        "totalAmount",
-        "paymentMethod"
+        "totalAmount"
       ]
     },
     "SaleItem": {
@@ -167,7 +144,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the SaleItem entity."
+          "description": "Unique identifier for the sale item."
         },
         "saleId": {
           "type": "string",
@@ -179,11 +156,11 @@
         },
         "quantity": {
           "type": "number",
-          "description": "Quantity of the product sold in this sale item."
+          "description": "Quantity of the product sold."
         },
-        "price": {
+        "unitPrice": {
           "type": "number",
-          "description": "Selling price of the product for this sale item."
+          "description": "Price of the product at the time of the sale."
         }
       },
       "required": [
@@ -191,49 +168,44 @@
         "saleId",
         "productId",
         "quantity",
-        "price"
+        "unitPrice"
       ]
     },
     "Purchase": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Purchase",
       "type": "object",
-      "description": "Represents a purchase order or incoming stock.",
+      "description": "Represents a purchase order to replenish inventory.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Purchase entity."
+          "description": "Unique identifier for the purchase order."
         },
         "purchaseDate": {
           "type": "string",
-          "description": "Date and time of the purchase.",
+          "description": "Date and time of the purchase order.",
           "format": "date-time"
         },
         "totalAmount": {
           "type": "number",
-          "description": "Total amount of the purchase."
-        },
-        "supplierId": {
-          "type": "string",
-          "description": "Reference to Supplier. (Relationship: Supplier 1:N Purchase)"
+          "description": "Total amount of the purchase order."
         }
       },
       "required": [
         "id",
         "purchaseDate",
-        "totalAmount",
-        "supplierId"
+        "totalAmount"
       ]
     },
     "PurchaseItem": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "PurchaseItem",
       "type": "object",
-      "description": "Represents an item within a purchase.",
+      "description": "Represents an item within a purchase order.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the PurchaseItem entity."
+          "description": "Unique identifier for the purchase item."
         },
         "purchaseId": {
           "type": "string",
@@ -245,11 +217,11 @@
         },
         "quantity": {
           "type": "number",
-          "description": "Quantity of the product purchased in this purchase item."
+          "description": "Quantity of the product purchased."
         },
-        "price": {
+        "unitPrice": {
           "type": "number",
-          "description": "Purchase price of the product for this purchase item."
+          "description": "Price of the product at the time of the purchase."
         }
       },
       "required": [
@@ -257,51 +229,18 @@
         "purchaseId",
         "productId",
         "quantity",
-        "price"
-      ]
-    },
-    "Supplier": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Supplier",
-      "type": "object",
-      "description": "Represents a supplier from whom products are purchased.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Supplier entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "Name of the supplier."
-        },
-        "contactName": {
-          "type": "string",
-          "description": "Contact person at the supplier."
-        },
-        "contactEmail": {
-          "type": "string",
-          "description": "Email address of the supplier.",
-          "format": "email"
-        },
-        "contactPhone": {
-          "type": "string",
-          "description": "Phone number of the supplier."
-        }
-      },
-      "required": [
-        "id",
-        "name"
+        "unitPrice"
       ]
     },
     "Customer": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Customer",
       "type": "object",
-      "description": "Represents a customer who makes purchases.",
+      "description": "Represents a customer.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the Customer entity."
+          "description": "Unique identifier for the customer."
         },
         "name": {
           "type": "string",
@@ -315,10 +254,6 @@
         "phone": {
           "type": "string",
           "description": "Phone number of the customer."
-        },
-        "address": {
-          "type": "string",
-          "description": "Address of the customer."
         }
       },
       "required": [
@@ -326,276 +261,285 @@
         "name"
       ]
     },
-    "Store": {
+    "StoreConfiguration": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Store",
+      "title": "StoreConfiguration",
       "type": "object",
-      "description": "Represents a single tenant store in the system.",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "ownerId": { "type": "string", "description": "The UID of the user who owns this store."}
-      },
-      "required": ["id", "name", "ownerId"]
-    },
-    "User": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "User",
-      "type": "object",
-      "description": "Represents a user of the application.",
+      "description": "Represents the configuration settings for the store.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the User entity."
+          "description": "Unique identifier for the store configuration."
         },
-        "email": {
+        "storeName": {
           "type": "string",
-          "description": "Email address of the user.",
-          "format": "email"
+          "description": "Name of the store."
         },
-        "isSuperUser": {
-          "type": "boolean",
-          "description": "Indicates if the user is a super user and can administer stores."
+        "address": {
+          "type": "string",
+          "description": "Address of the store."
+        },
+        "securityPin": {
+          "type": "string",
+          "description": "Security PIN to protect access to the system."
+        },
+        "ticketConfiguration": {
+          "type": "string",
+          "description": "JSON to store ticket configuration, such as logo, additional text, etc."
         }
       },
       "required": [
         "id",
-        "email",
-        "isSuperUser"
+        "storeName",
+        "address"
       ]
-    },
-    "Unit": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Unit",
-      "type": "object",
-      "description": "Represents a unit of measure for products.",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" }
-      },
-      "required": ["id", "name"]
-    },
-    "Family": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Family",
-      "type": "object",
-      "description": "Represents a product family for classification.",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" }
-      },
-      "required": ["id", "name"]
-    },
-    "Warehouse": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Warehouse",
-      "type": "object",
-      "description": "Represents a storage location.",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" }
-      },
-      "required": ["id", "name"]
-    },
-    "CurrencyRate": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "CurrencyRate",
-      "type": "object",
-      "description": "Represents a currency exchange rate at a specific point in time.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the CurrencyRate entity."
-        },
-        "rate": {
-          "type": "number",
-          "description": "The exchange rate value."
-        },
-        "date": {
-          "type": "string",
-          "description": "The timestamp when the rate was recorded.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "rate",
-        "date"
-      ]
-    },
-    "Chat": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Chat",
-        "type": "object",
-        "description": "Represents a chat conversation between users.",
-        "properties": {
-            "id": { "type": "string" },
-            "participants": { "type": "array", "items": { "type": "string" } },
-            "lastMessage": { "type": "string" },
-            "lastMessageTimestamp": { "type": "string", "format": "date-time" }
-        },
-        "required": ["id", "participants"]
-    },
-    "ChatMessage": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ChatMessage",
-        "type": "object",
-        "description": "Represents a single message within a chat.",
-        "properties": {
-            "id": { "type": "string" },
-            "chatId": { "type": "string" },
-            "senderId": { "type": "string" },
-            "senderName": { "type": "string" },
-            "text": { "type": "string" },
-            "timestamp": { "type": "string", "format": "date-time" }
-        },
-        "required": ["id", "chatId", "senderId", "text", "timestamp"]
     }
   },
   "auth": {
     "providers": [
       "password",
-      "google.com"
+      "anonymous"
     ]
   },
   "firestore": {
     "structure": [
       {
+        "path": "/roles_admin/{userId}",
+        "definition": {
+          "entityName": "role",
+          "schema": {
+            "$ref": "#/backend/entities/role"
+          },
+          "description": "Collection to store admin roles. Existence of document grants admin access.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The ID of the user."
+            }
+          ]
+        }
+      },
+      {
         "path": "/users/{userId}",
         "definition": {
-          "entityName": "User",
-          "schema": { "$ref": "#/backend/entities/User" },
-          "description": "Global user profiles."
+          "entityName": "user",
+          "schema": {
+            "$ref": "#/backend/entities/user"
+          },
+          "description": "Collection for user-specific data (e.g., profile information).",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The ID of the user."
+            }
+          ]
         }
       },
       {
         "path": "/stores/{storeId}",
         "definition": {
-          "entityName": "Store",
-          "schema": { "$ref": "#/backend/entities/Store" },
-          "description": "Root collection for all tenant stores."
+          "entityName": "StoreConfiguration",
+          "schema": {
+            "$ref": "#/backend/entities/StoreConfiguration"
+          },
+          "description": "Collection for store configurations. Includes denormalized 'ownerId' for authorization independence.",
+          "params": [
+            {
+              "name": "storeId",
+              "description": "The ID of the store."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/stores/{storeId}/families/{familyId}",
+        "definition": {
+          "entityName": "family",
+          "schema": {
+            "$ref": "#/backend/entities/family"
+          },
+          "description": "Collection for families within a store. Includes denormalized 'ownerId' from store for authorization independence.",
+          "params": [
+            {
+              "name": "storeId",
+              "description": "The ID of the store."
+            },
+            {
+              "name": "familyId",
+              "description": "The ID of the family."
+            }
+          ]
         }
       },
       {
         "path": "/stores/{storeId}/products/{productId}",
         "definition": {
           "entityName": "Product",
-          "schema": { "$ref": "#/backend/entities/Product" },
-          "description": "Products for a specific store."
+          "schema": {
+            "$ref": "#/backend/entities/Product"
+          },
+          "description": "Collection for products within a store. Includes denormalized 'ownerId' from store for authorization independence.",
+          "params": [
+            {
+              "name": "storeId",
+              "description": "The ID of the store."
+            },
+            {
+              "name": "productId",
+              "description": "The ID of the product."
+            }
+          ]
         }
       },
       {
-        "path": "/stores/{storeId}/units/{unitId}",
-        "definition": {
-          "entityName": "Unit",
-          "schema": { "$ref": "#/backend/entities/Unit" },
-          "description": "Units of measure for a specific store."
-        }
-      },
-      {
-        "path": "/stores/{storeId}/families/{familyId}",
-        "definition": {
-          "entityName": "Family",
-          "schema": { "$ref": "#/backend/entities/Family" },
-          "description": "Product families for a specific store."
-        }
-      },
-      {
-        "path": "/stores/{storeId}/warehouses/{warehouseId}",
-        "definition": {
-          "entityName": "Warehouse",
-          "schema": { "$ref": "#/backend/entities/Warehouse" },
-          "description": "Warehouses for a specific store."
-        }
-      },
-      {
-        "path": "/stores/{storeId}/tax_types/{taxTypeId}",
+        "path": "/stores/{storeId}/taxTypes/{taxTypeId}",
         "definition": {
           "entityName": "TaxType",
-          "schema": { "$ref": "#/backend/entities/TaxType" },
-          "description": "Tax types for a specific store."
+          "schema": {
+            "$ref": "#/backend/entities/TaxType"
+          },
+          "description": "Collection for tax types within a store. Includes denormalized 'ownerId' from store for authorization independence.",
+          "params": [
+            {
+              "name": "storeId",
+              "description": "The ID of the store."
+            },
+            {
+              "name": "taxTypeId",
+              "description": "The ID of the tax type."
+            }
+          ]
         }
       },
       {
-        "path": "/stores/{storeId}/inventory_movements/{inventoryMovementId}",
+        "path": "/stores/{storeId}/inventoryMovements/{inventoryMovementId}",
         "definition": {
           "entityName": "InventoryMovement",
-          "schema": { "$ref": "#/backend/entities/InventoryMovement" },
-          "description": "Inventory movements for a specific store."
+          "schema": {
+            "$ref": "#/backend/entities/InventoryMovement"
+          },
+          "description": "Collection for inventory movements within a store. Includes denormalized 'ownerId' from store for authorization independence.",
+          "params": [
+            {
+              "name": "storeId",
+              "description": "The ID of the store."
+            },
+            {
+              "name": "inventoryMovementId",
+              "description": "The ID of the inventory movement."
+            }
+          ]
         }
       },
       {
         "path": "/stores/{storeId}/sales/{saleId}",
         "definition": {
           "entityName": "Sale",
-          "schema": { "$ref": "#/backend/entities/Sale" },
-          "description": "Sales records for a specific store."
+          "schema": {
+            "$ref": "#/backend/entities/Sale"
+          },
+          "description": "Collection for sales within a store. Includes denormalized 'ownerId' from store for authorization independence.",
+          "params": [
+            {
+              "name": "storeId",
+              "description": "The ID of the store."
+            },
+            {
+              "name": "saleId",
+              "description": "The ID of the sale."
+            }
+          ]
         }
       },
       {
-        "path": "/stores/{storeId}/sales/{saleId}/sale_items/{saleItemId}",
+        "path": "/stores/{storeId}/sales/{saleId}/saleItems/{saleItemId}",
         "definition": {
           "entityName": "SaleItem",
-          "schema": { "$ref": "#/backend/entities/SaleItem" },
-          "description": "Items within a sale for a specific store."
+          "schema": {
+            "$ref": "#/backend/entities/SaleItem"
+          },
+          "description": "Subcollection for sale items within a sale. Includes denormalized 'ownerId' from store for authorization independence.",
+          "params": [
+            {
+              "name": "storeId",
+              "description": "The ID of the store."
+            },
+            {
+              "name": "saleId",
+              "description": "The ID of the sale."
+            },
+            {
+              "name": "saleItemId",
+              "description": "The ID of the sale item."
+            }
+          ]
         }
       },
       {
         "path": "/stores/{storeId}/purchases/{purchaseId}",
         "definition": {
           "entityName": "Purchase",
-          "schema": { "$ref": "#/backend/entities/Purchase" },
-          "description": "Purchase records for a specific store."
+          "schema": {
+            "$ref": "#/backend/entities/Purchase"
+          },
+          "description": "Collection for purchases within a store. Includes denormalized 'ownerId' from store for authorization independence.",
+          "params": [
+            {
+              "name": "storeId",
+              "description": "The ID of the store."
+            },
+            {
+              "name": "purchaseId",
+              "description": "The ID of the purchase."
+            }
+          ]
         }
       },
       {
-        "path": "/stores/{storeId}/purchases/{purchaseId}/purchase_items/{purchaseItemId}",
+        "path": "/stores/{storeId}/purchases/{purchaseId}/purchaseItems/{purchaseItemId}",
         "definition": {
           "entityName": "PurchaseItem",
-          "schema": { "$ref": "#/backend/entities/PurchaseItem" },
-          "description": "Items within a purchase for a specific store."
-        }
-      },
-      {
-        "path": "/stores/{storeId}/suppliers/{supplierId}",
-        "definition": {
-          "entityName": "Supplier",
-          "schema": { "$ref": "#/backend/entities/Supplier" },
-          "description": "Suppliers for a specific store."
+          "schema": {
+            "$ref": "#/backend/entities/PurchaseItem"
+          },
+          "description": "Subcollection for purchase items within a purchase. Includes denormalized 'ownerId' from store for authorization independence.",
+          "params": [
+            {
+              "name": "storeId",
+              "description": "The ID of the store."
+            },
+            {
+              "name": "purchaseId",
+              "description": "The ID of the purchase."
+            },
+            {
+              "name": "purchaseItemId",
+              "description": "The ID of the purchase item."
+            }
+          ]
         }
       },
       {
         "path": "/stores/{storeId}/customers/{customerId}",
         "definition": {
           "entityName": "Customer",
-          "schema": { "$ref": "#/backend/entities/Customer" },
-          "description": "Customers for a specific store."
-        }
-      },
-      {
-        "path": "/stores/{storeId}/currency_rates/{currencyRateId}",
-        "definition": {
-          "entityName": "CurrencyRate",
-          "schema": { "$ref": "#/backend/entities/CurrencyRate" },
-          "description": "Currency exchange rates for a specific store."
-        }
-      },
-      {
-        "path": "/stores/{storeId}/chats/{chatId}",
-        "definition": {
-            "entityName": "Chat",
-            "schema": { "$ref": "#/backend/entities/Chat" },
-            "description": "Chat conversations for a specific store."
-        }
-      },
-      {
-        "path": "/stores/{storeId}/chats/{chatId}/messages/{messageId}",
-        "definition": {
-            "entityName": "ChatMessage",
-            "schema": { "$ref": "#/backend/entities/ChatMessage" },
-            "description": "Messages within a chat for a specific store."
+          "schema": {
+            "$ref": "#/backend/entities/Customer"
+          },
+          "description": "Collection for customers within a store. Includes denormalized 'ownerId' from store for authorization independence.",
+          "params": [
+            {
+              "name": "storeId",
+              "description": "The ID of the store."
+            },
+            {
+              "name": "customerId",
+              "description": "The ID of the customer."
+            }
+          ]
         }
       }
-    ]
+    ],
+    "reasoning": "Based on the provided error and the application's requirements, the user is experiencing a 'Missing or insufficient permissions' error while trying to `list` documents in the `/stores/test-store/families` collection. This indicates a problem with the Firestore Security Rules. To address this, and following the core design principles, the following structure is recommended:\n\n1.  **Authorization Independence:** The structure uses path-based ownership and denormalization to avoid `get()` calls in security rules. Specifically, the proposed structure assumes that the store and its associated data (families, products, tax types, etc.) are owned by a user or organization. We will store the `ownerId` of the store within the store document itself and any subcollections as required.\n\n2.  **Structural Segregation:** The structure separates data with different access requirements into distinct collections. User-specific data resides under `/users/{userId}`, and store-specific data resides under `/stores/{storeId}`.\n\n3.  **Access Modeling:**\n    *   **Ownership:** Stores are owned by users, so the `ownerId` is crucial for access control. Subcollections like `families`, `products`, etc. will inherit this ownership by storing the `ownerId` within each document, enabling authorization independence.\n    *   **Global Roles:** If the application requires admin roles, a dedicated `/roles_admin/{uid}` collection will be used.\n\n4.  **QAPs (Rules are not Filters):** The structure enables secure `list` operations by ensuring that all documents within a collection share the same security requirements. The `ownerId` field in the subcollections ensures that only the store owner can list the documents.  There is no mixing of access controlled documents within a collection.\n\n5.  **Invariants:** The structure supports invariants like ownership and timestamps by enforcing them through security rules.\n\nWith respect to the error, the data structure is set up to support filtering of data via `ownerId` instead of the `get()` which breaks atomic operations. This ensures that security rules are easier to debug and maintain."
   }
 }
