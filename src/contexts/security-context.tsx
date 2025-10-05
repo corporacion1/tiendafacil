@@ -14,7 +14,6 @@ interface SecurityContextType {
   changePin: (oldPin: string, newPin: string, confirmPin: string) => boolean;
   checkPin: (pin: string) => boolean;
   isPinLoading: boolean;
-  isMounted: boolean;
 }
 
 const SecurityContext = createContext<SecurityContextType | undefined>(undefined);
@@ -26,11 +25,9 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
   const [isLocked, setIsLocked] = useState(true); // Default to locked
   const [hasPin, setHasPin] = useState(false);
   const [isPinLoading, setIsPinLoading] = useState(true);
-  const [isMounted, setIsMounted] = useState(false); // To prevent hydration issues
   const { toast } = useToast();
 
   useEffect(() => {
-    setIsMounted(true);
     try {
       const pinFromStorage = localStorage.getItem(STORAGE_KEY);
       if (pinFromStorage) {
@@ -182,7 +179,6 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
     changePin,
     checkPin,
     isPinLoading,
-    isMounted
   };
 
   return (
