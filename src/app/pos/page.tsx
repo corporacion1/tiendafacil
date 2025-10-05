@@ -22,7 +22,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from "@/firebase";
 import { collection, addDoc, serverTimestamp, writeBatch, doc } from "firebase/firestore";
 import { initialFamilies } from "@/lib/data";
 
@@ -89,17 +89,18 @@ export default function POSPage() {
   const { toast } = useToast();
   const { settings, activeSymbol, activeRate } = useSettings();
   const firestore = useFirestore();
+  const { user } = useUser();
 
   const productsCollection = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !user) return null;
     return collection(firestore, "products");
-  }, [firestore]);
+  }, [firestore, user]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollection);
 
   const customersCollection = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !user) return null;
     return collection(firestore, "customers");
-  }, [firestore]);
+  }, [firestore, user]);
   const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollection);
   
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -741,3 +742,5 @@ export default function POSPage() {
   </Dialog>
   );
 }
+
+    

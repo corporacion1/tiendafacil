@@ -12,14 +12,14 @@ import type { Product, PurchaseItem, Supplier, Purchase, InventoryMovement, Fami
 import { useToast } from "@/hooks/use-toast";
 import { initialFamilies } from "@/lib/data";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/componentsui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings } from "@/contexts/settings-context";
-import { useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from "@/firebase";
 import { collection, addDoc, doc, writeBatch, serverTimestamp } from "firebase/firestore";
 
 const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
@@ -42,17 +42,18 @@ export default function PurchasesPage() {
   const { toast } = useToast();
   const { settings, activeSymbol, activeRate } = useSettings();
   const firestore = useFirestore();
+  const { user } = useUser();
 
   const productsCollection = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !user) return null;
     return collection(firestore, "products");
-  }, [firestore]);
+  }, [firestore, user]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollection);
 
   const suppliersCollection = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !user) return null;
     return collection(firestore, "suppliers");
-  }, [firestore]);
+  }, [firestore, user]);
   const { data: suppliers, isLoading: isLoadingSuppliers } = useCollection<Supplier>(suppliersCollection);
 
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
@@ -504,3 +505,5 @@ export default function PurchasesPage() {
     </div>
   );
 }
+
+    

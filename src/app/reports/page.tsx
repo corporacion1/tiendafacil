@@ -46,7 +46,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/settings-context";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, query, where, Timestamp } from "firebase/firestore";
 
 
@@ -55,6 +55,7 @@ type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
 export default function ReportsPage() {
     const { settings, activeSymbol, activeRate } = useSettings();
     const firestore = useFirestore();
+    const { user } = useUser();
     
     const [selectedSaleDetails, setSelectedSaleDetails] = useState<Sale | null>(null);
     const [saleForTicket, setSaleForTicket] = useState<Sale | null>(null);
@@ -65,15 +66,15 @@ export default function ReportsPage() {
     const { toast } = useToast();
     
     const productsQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
+        if (!firestore || !user) return null;
         return collection(firestore, 'products');
-    }, [firestore]);
+    }, [firestore, user]);
     const { data: products } = useCollection<Product>(productsQuery);
 
     const customersQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
+        if (!firestore || !user) return null;
         return collection(firestore, 'customers');
-    }, [firestore]);
+    }, [firestore, user]);
     const { data: customers } = useCollection<Customer>(customersQuery);
 
     const dateFilterQuery = useMemo(() => {
@@ -87,33 +88,33 @@ export default function ReportsPage() {
     }, [timeRange]);
 
     const salesQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
+        if (!firestore || !user) return null;
         const colRef = collection(firestore, 'sales');
         if (dateFilterQuery) {
             return query(colRef, where("date", ">=", dateFilterQuery));
         }
         return colRef;
-    }, [firestore, dateFilterQuery]);
+    }, [firestore, dateFilterQuery, user]);
     const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
 
     const purchasesQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
+        if (!firestore || !user) return null;
         const colRef = collection(firestore, 'purchases');
         if (dateFilterQuery) {
             return query(colRef, where("date", ">=", dateFilterQuery));
         }
         return colRef;
-    }, [firestore, dateFilterQuery]);
+    }, [firestore, dateFilterQuery, user]);
     const { data: purchasesData, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
     
     const movementsQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
+        if (!firestore || !user) return null;
         const colRef = collection(firestore, 'inventoryMovements');
         if (dateFilterQuery) {
             return query(colRef, where("date", ">=", dateFilterQuery));
         }
         return colRef;
-    }, [firestore, dateFilterQuery]);
+    }, [firestore, dateFilterQuery, user]);
     const { data: movementsData, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsQuery);
     
     const isLoading = isLoadingSales || isLoadingPurchases || isLoadingMovements;
@@ -599,3 +600,5 @@ export default function ReportsPage() {
     </>
   );
 }
+
+    

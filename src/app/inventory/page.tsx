@@ -33,7 +33,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ProductForm } from "@/components/product-form";
 import { useSettings } from "@/contexts/settings-context";
-import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from "@/firebase";
 import { collection, doc, updateDoc, deleteDoc, writeBatch, serverTimestamp, addDoc } from "firebase/firestore";
 import { format } from "date-fns";
 
@@ -55,23 +55,24 @@ const getDisplayImageUrl = (imageUrl?: string) => {
 export default function InventoryPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
+  const { user } = useUser();
 
   const productsCollection = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !user) return null;
     return collection(firestore, "products");
-  }, [firestore]);
+  }, [firestore, user]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollection);
 
   const salesCollection = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !user) return null;
     return collection(firestore, "sales");
-  }, [firestore]);
+  }, [firestore, user]);
   const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollection);
 
   const movementsCollection = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !user) return null;
     return collection(firestore, "inventoryMovements");
-  }, [firestore]);
+  }, [firestore, user]);
   const { data: inventoryMovements, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsCollection);
 
   const { activeSymbol, activeRate } = useSettings();
@@ -575,3 +576,5 @@ export default function InventoryPage() {
     </>
   );
 }
+
+    

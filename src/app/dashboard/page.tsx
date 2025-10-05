@@ -37,7 +37,7 @@ import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/contexts/settings-context";
 import { InventoryMovement, Product, Purchase, Sale } from "@/lib/types";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, query, where, Timestamp } from "firebase/firestore";
 
 type TimeFilter = 'day' | 'week' | 'month';
@@ -46,6 +46,7 @@ export default function Dashboard() {
   const { activeSymbol, activeRate } = useSettings();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
   const firestore = useFirestore();
+  const { user } = useUser();
 
   const cutoffDate = useMemo(() => {
     const now = new Date();
@@ -58,19 +59,19 @@ export default function Dashboard() {
   }, [timeFilter]);
 
   const salesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !user) return null;
     return query(collection(firestore, "sales"), where("date", ">=", Timestamp.fromDate(cutoffDate)));
-  }, [firestore, cutoffDate]);
+  }, [firestore, cutoffDate, user]);
 
   const purchasesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !user) return null;
     return query(collection(firestore, "purchases"), where("date", ">=", Timestamp.fromDate(cutoffDate)));
-  }, [firestore, cutoffDate]);
+  }, [firestore, cutoffDate, user]);
   
   const productsQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !user) return null;
     return collection(firestore, "products");
-  }, [firestore]);
+  }, [firestore, user]);
 
   const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
   const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
@@ -365,3 +366,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
+    

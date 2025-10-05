@@ -17,7 +17,7 @@ import { Pencil, PlusCircle, Trash2, AlertTriangle } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
-import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase";
 import { collection, getDocs, writeBatch } from "firebase/firestore";
 
 import { mockProducts, initialUnits as defaultUnits, initialFamilies as defaultFamilies, initialWarehouses as defaultWarehouses, mockCurrencyRates, factoryReset } from "@/lib/data";
@@ -115,6 +115,7 @@ export default function SettingsPage() {
     const { hasPin, setPin, removePin, checkPin } = useSecurity();
     const { settings, setSettings, currencyRates, setCurrencyRates } = useSettings();
     const firestore = useFirestore();
+    const { user } = useUser();
     
     const [localSettings, setLocalSettings] = useState(settings);
     const [localUnits, setLocalUnits] = useState(defaultUnits);
@@ -128,9 +129,9 @@ export default function SettingsPage() {
     const { toast } = useToast();
     
     const productsCollection = useMemoFirebase(() => {
-        if (!firestore) return null;
+        if (!firestore || !user) return null;
         return collection(firestore, "products");
-    }, [firestore]);
+    }, [firestore, user]);
     
     const { data: products } = useCollection<Product>(productsCollection);
 
@@ -755,5 +756,7 @@ export default function SettingsPage() {
         </div>
     );
 }
+
+    
 
     
