@@ -44,10 +44,11 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages]);
 
-  // Ensure chat rooms exist in Firestore
+  // Ensure chat rooms exist in Firestore, only after user is authenticated
   useEffect(() => {
-    if (!firestore) return;
+    if (!firestore || !user) return; // Wait for both firestore and user
     const ensureRooms = async () => {
+        console.log("User authenticated, ensuring chat rooms exist in Firestore.");
         for (const room of chatRooms) {
             const roomRef = doc(firestore, 'chats', room.id);
             // Use setDoc with merge to create without overwriting if it exists
@@ -55,7 +56,7 @@ export default function ChatPage() {
         }
     };
     ensureRooms();
-  }, [firestore]);
+  }, [firestore, user]); // Depend on both firestore and user
 
 
   const handleSendMessage = async (e: React.FormEvent) => {
