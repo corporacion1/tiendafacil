@@ -6,7 +6,6 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase';
 import { SecurityProvider } from '@/contexts/security-context';
-import { ProvidersWrapper } from '@/components/providers-wrapper';
 
 
 export const metadata: Metadata = {
@@ -32,11 +31,9 @@ export default function RootLayout({
          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <FirebaseClientProvider>
             <SecurityProvider>
-              <ProvidersWrapper>
-                <AppShell>
-                    {children}
-                </AppShell>
-              </ProvidersWrapper>
+              <AppShell>
+                  {children}
+              </AppShell>
             </SecurityProvider>
           </FirebaseClientProvider>
           <Toaster />
