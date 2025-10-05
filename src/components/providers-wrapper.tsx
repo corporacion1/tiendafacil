@@ -15,19 +15,19 @@ export function ProvidersWrapper({ children }: { children: React.ReactNode }) {
   return (
     <CurrencyRatesProvider>
       <SettingsProvider>
-        <ProductProvider>
-          <UnitsProvider>
-            <FamiliesProvider>
-              <WarehousesProvider>
-                  <SalesProvider>
-                    <PurchasesProvider>
-                      {children}
-                    </PurchasesProvider>
-                  </SalesProvider>
-              </WarehousesProvider>
-            </FamiliesProvider>
-          </UnitsProvider>
-        </ProductProvider>
+        <UnitsProvider>
+          <FamiliesProvider>
+            <WarehousesProvider>
+              <ProductProvider>
+                <SalesProvider>
+                  <PurchasesProvider>
+                    {children}
+                  </PurchasesProvider>
+                </SalesProvider>
+              </ProductProvider>
+            </WarehousesProvider>
+          </FamiliesProvider>
+        </UnitsProvider>
       </SettingsProvider>
     </CurrencyRatesProvider>
   );
