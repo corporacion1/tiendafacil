@@ -185,9 +185,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       form.reset(getInitialValues());
     }
   };
-  
-  const retailProfitPercentage = calculateProfit(watchedPrice, watchedCost);
-  const wholesaleProfitPercentage = calculateProfit(watchedWholesalePrice, watchedCost);
 
   return (
     <Form {...form}>
@@ -355,8 +352,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                   <FormControl>
                      <Input type="number" placeholder="0.00" {...field} />
                   </FormControl>
-                  <FormDescription className={cn(parseFloat(retailProfitPercentage) > 0 ? "text-green-600 font-semibold" : "")}>
-                      Margen de Ganancia: {retailProfitPercentage}%
+                  <FormDescription className={cn(parseFloat(calculateProfit(watchedPrice, watchedCost)) > 0 ? "text-green-600 font-semibold" : "")}>
+                      Margen de Ganancia: {calculateProfit(watchedPrice, watchedCost)}%
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -371,8 +368,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                   <FormControl>
                      <Input type="number" placeholder="0.00" {...field} />
                   </FormControl>
-                  <FormDescription className={cn(parseFloat(wholesaleProfitPercentage) > 0 ? "text-green-600 font-semibold" : "")}>
-                      Margen de Ganancia: {wholesaleProfitPercentage}%
+                   <FormDescription className={cn(parseFloat(calculateProfit(watchedWholesalePrice, watchedCost)) > 0 ? "text-green-600 font-semibold" : "")}>
+                      Margen de Ganancia: {calculateProfit(watchedWholesalePrice, watchedCost)}%
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -478,3 +475,5 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     </Form>
   );
 }
+
+    
