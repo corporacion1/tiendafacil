@@ -13,7 +13,6 @@ import { collection, addDoc, serverTimestamp, query, orderBy, Timestamp, doc, se
 import type { ChatMessage } from "@/lib/types";
 import { format } from "date-fns";
 
-// Static data for chat rooms
 const chatRooms = [
   { id: 'general', name: 'General', icon: MessageSquare },
   { id: 'support', name: 'Soporte Técnico', icon: HardHat },
@@ -27,14 +26,12 @@ export default function ChatPage() {
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Memoize the query to prevent re-renders, and wait for user and firestore.
   const messagesQuery = useMemoFirebase(() => {
-    // CRITICAL: We must wait for auth to resolve and a user to be present.
-    if (!firestore || isUserLoading || !user) return null;
+    if (!firestore || !user?.uid) return null;
     return query(collection(firestore, "chats", selectedRoom.id, "messages"), orderBy("timestamp", "asc"));
-  }, [firestore, selectedRoom.id, user, isUserLoading]);
+  }, [firestore, selectedRoom.id, user?.uid]);
 
-  const { data: messages, isLoading } = useCollection<ChatMessage>(messagesQuery);
+  const { data: messages, isLoading: isLoadingMessages } = useCollection<ChatMessage>(messagesQuery);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -44,19 +41,17 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages]);
 
-  // Ensure chat rooms exist in Firestore, only after user is authenticated
   useEffect(() => {
     if (user && firestore) {
       const ensureRooms = () => {
         for (const room of chatRooms) {
           const roomRef = doc(firestore, 'chats', room.id);
           const roomData = { name: room.name };
-          // Use setDoc with merge to create without overwriting if it exists
           setDoc(roomRef, roomData, { merge: true })
             .catch((serverError) => {
               const permissionError = new FirestorePermissionError({
                 path: roomRef.path,
-                operation: 'write', // 'write' covers create and merge
+                operation: 'write',
                 requestResourceData: roomData,
               });
               errorEmitter.emit('permission-error', permissionError);
@@ -66,7 +61,6 @@ export default function ChatPage() {
       ensureRooms();
     }
   }, [user, firestore]);
-
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,14 +77,14 @@ export default function ChatPage() {
     setNewMessage("");
 
     addDoc(messagesColRef, messageData)
-        .catch((serverError) => {
-            const permissionError = new FirestorePermissionError({
-                path: messagesColRef.path,
-                operation: 'create',
-                requestResourceData: messageData,
-            });
-            errorEmitter.emit('permission-error', permissionError);
-        });
+      .catch((serverError) => {
+          const permissionError = new FirestorePermissionError({
+              path: messagesColRef.path,
+              operation: 'create',
+              requestResourceData: messageData,
+          });
+          errorEmitter.emit('permission-error', permissionError);
+      });
   };
 
   const formatTimestamp = (timestamp: Timestamp | string | null | undefined) => {
@@ -98,7 +92,6 @@ export default function ChatPage() {
     if (timestamp instanceof Timestamp) {
       return format(timestamp.toDate(), "HH:mm");
     }
-    // Fallback for locally created optimistic updates, though serverTimestamp is preferred
     if (typeof timestamp === 'string') {
         try {
             return format(new Date(timestamp), "HH:mm");
@@ -109,6 +102,8 @@ export default function ChatPage() {
     return "";
   }
 
+  const isLoading = isUserLoading || isLoadingMessages;
+
   return (
     <Card className="h-[calc(100vh-120px)] flex flex-col">
       <CardHeader>
@@ -116,7 +111,6 @@ export default function ChatPage() {
       </CardHeader>
       <CardContent className="flex-grow grid grid-cols-1 md:grid-cols-4 gap-4 h-full p-0">
         
-        {/* Chat Rooms List */}
         <div className="col-span-1 border-r h-full flex flex-col">
             <div className="p-4 border-b">
                 <h3 className="text-lg font-semibold">Salas de Chat</h3>
@@ -138,23 +132,20 @@ export default function ChatPage() {
             </div>
         </div>
 
-        {/* Chat Area */}
         <div className="col-span-1 md:col-span-3 flex flex-col h-full">
-            {/* Chat Header */}
             <div className="p-4 border-b flex items-center gap-3">
                  <selectedRoom.icon className="h-6 w-6 text-primary" />
                 <h3 className="text-xl font-bold">{selectedRoom.name}</h3>
             </div>
 
-            {/* Messages Display */}
             <div className="flex-grow p-6 overflow-y-auto bg-slate-50 dark:bg-slate-900/50">
                 <div className="flex flex-col gap-4">
-                     {isLoading && <p className="text-center text-muted-foreground">Cargando mensajes...</p>}
+                     {isLoading && <p className="text-center text-muted-foreground">Cargando...</p>}
                      {!isLoading && messages && messages.map(msg => (
                         <div key={msg.id} className={cn("flex items-end gap-2", msg.senderId === user?.uid ? 'justify-end' : 'justify-start')}>
                            {msg.senderId !== user?.uid && (
                                 <Avatar className="h-8 w-8">
-                                    <AvatarFallback>{msg.senderName.charAt(0)}</AvatarFallback>
+                                    <AvatarFallback>{msg.senderName ? msg.senderName.charAt(0) : 'U'}</AvatarFallback>
                                 </Avatar>
                            )}
                             <div className={cn(
@@ -164,7 +155,7 @@ export default function ChatPage() {
                                 <p className="text-sm">{msg.text}</p>
                                 <p className="text-xs text-right mt-1 opacity-70">{formatTimestamp(msg.timestamp)}</p>
                             </div>
-                             {msg.senderId === user?.uid && (
+                             {msg.senderId === user?.uid && user && (
                                 <Avatar className="h-8 w-8">
                                     <AvatarFallback>{user.displayName ? user.displayName.charAt(0) : 'T'}</AvatarFallback>
                                 </Avatar>
@@ -180,7 +171,6 @@ export default function ChatPage() {
                 </div>
             </div>
 
-            {/* Message Input */}
             <div className="p-4 border-t bg-background">
                 <form onSubmit={handleSendMessage} className="flex items-center gap-2">
                     <Input
