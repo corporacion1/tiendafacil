@@ -118,7 +118,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     if (!watchedImageUrl) return '';
     try {
       const url = new URL(watchedImageUrl);
-      if (url.hostname === 'www.dropbox.com' && (url.searchParams.has('raw') || url.searchParams.has('dl'))) {
+      if (url.hostname === 'www.dropbox.com') {
         url.searchParams.set('raw', '1');
         url.searchParams.delete('dl');
         return url.toString();
