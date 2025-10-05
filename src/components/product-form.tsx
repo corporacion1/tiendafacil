@@ -144,28 +144,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     });
   }, [product, form, activeRate]);
 
-  useEffect(() => {
-    if (!activeRate) return;
-
-    const watchedFields = form.watch(["cost", "price", "wholesalePrice"]);
-
-    const newDisplayValues = {
-        cost: (watchedFields[0] * activeRate).toFixed(2),
-        price: (watchedFields[1] * activeRate).toFixed(2),
-        wholesalePrice: (watchedFields[2] * activeRate).toFixed(2),
-    };
-    
-    if (document.activeElement?.id !== 'cost') {
-         setDisplayValues(prev => ({...prev, cost: newDisplayValues.cost}));
-    }
-    if (document.activeElement?.id !== 'price') {
-         setDisplayValues(prev => ({...prev, price: newDisplayValues.price}));
-    }
-     if (document.activeElement?.id !== 'wholesalePrice') {
-         setDisplayValues(prev => ({...prev, wholesalePrice: newDisplayValues.wholesalePrice}));
-    }
-  }, [activeRate, form.watch()]); // Using form.watch() is okay if stable
-
 
   const handleDisplayValueChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'cost' | 'price' | 'wholesalePrice') => {
       const { value } = e.target;
