@@ -9,20 +9,18 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import { useSecurity } from "@/contexts/security-context";
 import { useUser } from '@/firebase';
-import { ProvidersWrapper } from "./providers-wrapper";
+import { AuthGuard } from "./auth-guard";
 
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { isLocked, lockApp, hasPin, isPinLoading, isMounted } = useSecurity();
+  const { isLocked, lockApp, hasPin, isMounted } = useSecurity();
   const { user, isUserLoading } = useUser();
   const pathname = usePathname();
   const router = useRouter();
   const previousPathname = useRef(pathname);
 
   useEffect(() => {
-    if (!isMounted) return; 
-
-    if (!isUserLoading && !user && pathname !== '/login') {
+    if (isMounted && !isUserLoading && !user && pathname !== '/login') {
       router.replace('/login');
     }
   }, [user, isUserLoading, pathname, router, isMounted]);
@@ -37,18 +35,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     previousPathname.current = pathname;
   }, [pathname, lockApp, hasPin, isMounted]);
   
-  const isLoading = isUserLoading || isPinLoading || !isMounted;
   
-  if (isLoading && pathname !== '/login') {
-      return (
+  if (pathname === '/login') {
+    return <>{children}</>;
+  }
+
+  if (!isMounted) {
+     return (
         <div className="flex min-h-screen w-full items-center justify-center bg-background">
             <p>Cargando aplicación...</p>
         </div>
       );
-  }
-  
-  if (pathname === '/login') {
-    return <>{children}</>;
   }
 
   if (isLocked) {
@@ -56,8 +53,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
   
   return (
-    <ProvidersWrapper>
-      <div className="flex min-h-screen w-full flex-col bg-muted/40">
+    <div className="flex min-h-screen w-full flex-col bg-muted/40">
+        <AuthGuard>
           <SiteSidebar />
           <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
               <SiteHeader />
@@ -66,7 +63,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </main>
               <Footer />
           </div>
-      </div>
-    </ProvidersWrapper>
+        </AuthGuard>
+    </div>
   );
 }
