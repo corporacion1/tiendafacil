@@ -68,3 +68,5 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     // Only when everything is ready, unlocked, and the user is confirmed, render the children.
     return <>{children}</>;
 }
+
+    
