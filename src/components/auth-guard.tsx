@@ -10,7 +10,7 @@ import { Logo } from "./logo";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
     const { user, isUserLoading } = useUser();
-    const { isPinLoading, lockApp, hasPin, isLocked } = useSecurity();
+    const { isPinLoading, lockApp, hasPin, isLocked, isSecurityReady } = useSecurity();
     const router = useRouter();
     const pathname = usePathname();
     const previousPathname = useRef(pathname);
@@ -41,7 +41,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
     // Until the component is mounted and auth/pin state is resolved, render the loading screen.
     // This guarantees that the server and initial client render are identical, preventing hydration errors.
-    if (!isMounted || isUserLoading || isPinLoading) {
+    if (!isMounted || isUserLoading || isPinLoading || !isSecurityReady) {
         return (
             <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
                 <Logo className="w-64 h-20" />
