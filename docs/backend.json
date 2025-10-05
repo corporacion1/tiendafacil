@@ -6,14 +6,23 @@
       "type": "object",
       "description": "Represents a product in the inventory.",
       "properties": {
-        "id": { "type": "string", "description": "Unique identifier for the product." },
         "name": { "type": "string", "description": "Name of the product." },
         "description": { "type": "string", "description": "Detailed description of the product." },
         "price": { "type": "number", "description": "Price of the product." },
+        "wholesalePrice": { "type": "number", "description": "Wholesale price of the product." },
+        "cost": { "type": "number", "description": "Cost of the product." },
+        "stock": { "type": "number", "description": "Available stock quantity." },
+        "sku": { "type": "string", "description": "Stock Keeping Unit." },
+        "status": { "type": "string", "enum": ["active", "inactive"], "description": "Status of the product." },
+        "tax1": { "type": "boolean" },
+        "tax2": { "type": "boolean" },
+        "unit": { "type": "string" },
+        "family": { "type": "string" },
+        "warehouse": { "type": "string" },
         "imageUrl": { "type": "string", "description": "URL of the product image.", "format": "uri" },
-        "isActive": { "type": "boolean", "description": "Indicates whether the product is active in the store." }
+        "imageHint": { "type": "string" }
       },
-      "required": ["id", "name", "price", "isActive"]
+      "required": ["name", "price", "wholesalePrice", "cost", "stock", "sku", "status", "tax1", "tax2"]
     },
     "Sale": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -58,5 +67,13 @@
   },
   "auth": {
     "providers": ["password", "anonymous"]
+  },
+  "firestore": {
+    "/products": {
+        "schema": {
+            "$ref": "#/entities/Product"
+        },
+        "description": "Collection of all products in the inventory."
+    }
   }
 }

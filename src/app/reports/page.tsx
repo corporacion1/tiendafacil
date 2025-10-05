@@ -47,14 +47,16 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/settings-context";
-import { useProducts } from "@/contexts/product-context";
+import { useCollection, useFirestore } from "@/firebase";
+import { collection } from "firebase/firestore";
 
 
 type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
 
 export default function ReportsPage() {
     const { settings, activeSymbol, activeRate } = useSettings();
-    const { products } = useProducts();
+    const firestore = useFirestore();
+    const { data: products } = useCollection<Product>(firestore ? collection(firestore, 'products') : null);
     const [selectedSaleDetails, setSelectedSaleDetails] = useState<Sale | null>(null);
     const [saleForTicket, setSaleForTicket] = useState<Sale | null>(null);
     const [isTicketPreviewOpen, setIsTicketPreviewOpen] = useState(false);
@@ -163,10 +165,10 @@ export default function ReportsPage() {
     }
 
     const getTicketCartItems = (sale: Sale | null): CartItem[] => {
-        if (!sale) return [];
+        if (!sale || !products) return [];
         return sale.items.map(item => {
             const product = products.find(p => p.id === item.productId);
-            const fallbackProduct: Product = { id: item.productId, name: item.productName, price: item.price, stock: 0, category: '', cost: 0, status: 'inactive', tax1: false, tax2: false, wholesalePrice: item.price };
+            const fallbackProduct: Product = { id: item.productId, name: item.productName, price: item.price, stock: 0, sku: '', cost: 0, status: 'inactive', tax1: false, tax2: false, wholesalePrice: item.price };
             return {
                 product: product || fallbackProduct,
                 quantity: item.quantity,
@@ -222,7 +224,7 @@ export default function ReportsPage() {
     }, [dateFilteredData.movements, searchTerm]);
 
     const filteredProducts = useMemo(() => {
-        const inventoryProducts = timeRange ? products : products;
+        const inventoryProducts = timeRange ? (products || []) : (products || []);
         return inventoryProducts.filter(p => 
             p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -256,6 +258,7 @@ export default function ReportsPage() {
         // which taxes were applied to each item at the time of sale.
         // For now, we recalculate based on current product flags.
         sale.items.forEach(item => {
+            if (!products) return;
             const product = products.find(p => p.id === item.productId);
             if (product) {
                 const itemSubtotal = item.price * item.quantity;
@@ -334,7 +337,7 @@ export default function ReportsPage() {
                   <TableRow key={sale.id}>
                     <TableCell className="font-medium">{sale.id}</TableCell>
                     <TableCell>{sale.customerName}</TableCell>
-                    <TableCell className="hidden md:table-cell">{new Date(sale.date).toLocaleDateString()}</TableCell>
+                    <TableCell className="hidden md:table-cell">{new Date(sale.date as string).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">{activeSymbol}{(sale.total * activeRate).toFixed(2)}</TableCell>
                     <TableCell>
                       <DropdownMenu>
@@ -387,7 +390,7 @@ export default function ReportsPage() {
                             <TableRow key={purchase.id}>
                                 <TableCell className="font-medium">{purchase.id}</TableCell>
                                 <TableCell>{purchase.supplierName}</TableCell>
-                                <TableCell className="hidden md:table-cell">{new Date(purchase.date).toLocaleDateString()}</TableCell>
+                                <TableCell className="hidden md:table-cell">{new Date(purchase.date as string).toLocaleDateString()}</TableCell>
                                 <TableCell className="text-right">{activeSymbol}{(purchase.total * activeRate).toFixed(2)}</TableCell>
                             </TableRow>
                         ))}
@@ -428,7 +431,7 @@ export default function ReportsPage() {
                                         {movement.type === 'sale' ? 'Salida' : movement.type === 'purchase' ? 'Entrada' : 'Ajuste'}
                                     </Badge>
                                 </TableCell>
-                                <TableCell className="hidden md:table-cell">{new Date(movement.date).toLocaleDateString()}</TableCell>
+                                <TableCell className="hidden md:table-cell">{new Date(movement.date as string).toLocaleDateString()}</TableCell>
                                 <TableCell className="text-right">{movement.quantity}</TableCell>
                             </TableRow>
                         ))}
@@ -488,7 +491,7 @@ export default function ReportsPage() {
             <DialogHeader>
                 <DialogTitle>Detalles de la Venta: {selectedSaleDetails?.id}</DialogTitle>
                 <DialogDescription>
-                   Cliente: {selectedSaleDetails?.customerName} | Fecha: {selectedSaleDetails ? new Date(selectedSaleDetails.date).toLocaleString() : ''}
+                   Cliente: {selectedSaleDetails?.customerName} | Fecha: {selectedSaleDetails ? new Date(selectedSaleDetails.date as string).toLocaleString() : ''}
                 </DialogDescription>
             </DialogHeader>
             <div className="max-h-[60vh] overflow-y-auto">

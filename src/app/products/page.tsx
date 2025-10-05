@@ -6,29 +6,42 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { ProductForm } from "@/components/product-form";
 import type { Product } from "@/lib/types";
-import { mockProducts } from "@/lib/data";
+import { collection, addDoc } from "firebase/firestore";
+import { useFirestore } from "@/firebase";
 
 export default function ProductsPage() {
   const { toast } = useToast();
-  const [products, setProducts] = useState(mockProducts);
+  const firestore = useFirestore();
 
-  function onSubmit(data: Omit<Product, 'id'>) {
-    // La validación de SKU duplicado ahora se maneja dentro de ProductForm.
-    // Esta función solo se ejecutará si la validación es exitosa.
+  async function onSubmit(data: Omit<Product, 'id'>) {
+    if (!firestore) {
+        toast({
+            variant: "destructive",
+            title: "Error de conexión",
+            description: "No se pudo conectar a la base de datos."
+        });
+        return false;
+    }
     
-    const newProduct: Product = {
-        ...data,
-        id: `prod-${Date.now()}` // Generate a simple unique ID
-    };
-
-    setProducts(prev => [...prev, newProduct]);
-    
-    toast({
-      title: "Producto Creado",
-      description: `El producto "${data.name}" ha sido creado exitosamente.`,
-    });
-    
-    return true; // Indica al formulario que la sumisión fue exitosa para que pueda reiniciarse.
+    try {
+        const productsCollection = collection(firestore, 'products');
+        await addDoc(productsCollection, data);
+        
+        toast({
+          title: "Producto Creado",
+          description: `El producto "${data.name}" ha sido creado exitosamente.`,
+        });
+        
+        return true; // Indica al formulario que la sumisión fue exitosa para que pueda reiniciarse.
+    } catch (error) {
+        console.error("Error creating product: ", error);
+        toast({
+          variant: "destructive",
+          title: "Error al crear",
+          description: "Ocurrió un problema al guardar el producto en la base de datos.",
+        });
+        return false;
+    }
   }
   
   return (

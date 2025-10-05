@@ -7,7 +7,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase';
 import { SecurityProvider } from '@/contexts/security-context';
 import { SettingsProvider } from '@/contexts/settings-context';
-import { useSettings } from '@/contexts/settings-context';
 
 export const metadata: Metadata = {
   title: 'TIENDA FACIL - Tu Comercio',

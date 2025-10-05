@@ -15,12 +15,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type { Product } from "@/lib/types";
-import { mockProducts, initialUnits, initialFamilies, initialWarehouses } from "@/lib/data";
+import { initialUnits, initialFamilies, initialWarehouses } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
 import { useSettings } from "@/contexts/settings-context";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { useFirestore, useCollection } from "@/firebase";
 
 const productSchema = z.object({
   id: z.string().optional(),
@@ -51,7 +53,6 @@ interface ProductFormProps {
 
 const getInitialValues = (product?: Product): ProductFormValues => {
     return product ? { ...product } : {
-        id: '',
         name: "",
         sku: "",
         price: 0,
@@ -82,6 +83,8 @@ const calculateProfit = (currentPrice: number, cost: number): string => {
 export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onCancel }) => {
   const { toast } = useToast();
   const { settings } = useSettings();
+  const firestore = useFirestore();
+  const { data: products } = useCollection<Product>(firestore ? collection(firestore, 'products') : null);
   
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -116,25 +119,27 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
 
   const handleSkuBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
     const sku = e.target.value;
-    if (!sku) return;
+    if (!sku || !firestore || !products) return;
 
+    // Check if the SKU has changed or if it's a new product
     if (!product || product.sku.toLowerCase() !== sku.toLowerCase()) {
-      const existingProduct = mockProducts.find(p => p.sku.toLowerCase() === sku.toLowerCase());
-      if (existingProduct) {
-        form.setError("sku", {
-          type: "manual",
-          message: `El SKU "${sku}" ya existe. Por favor, usa uno diferente.`
-        });
-        toast({
-          variant: "destructive",
-          title: "SKU Duplicado",
-          description: `El SKU "${sku}" ya está en uso por otro producto.`,
-        });
-      } else {
-        if(form.formState.errors.sku?.message?.includes("ya existe")) {
-          form.clearErrors("sku");
+        const existingProduct = products.find(p => p.sku.toLowerCase() === sku.toLowerCase());
+        if (existingProduct) {
+            form.setError("sku", {
+                type: "manual",
+                message: `El SKU "${sku}" ya existe. Por favor, usa uno diferente.`
+            });
+            toast({
+                variant: "destructive",
+                title: "SKU Duplicado",
+                description: `El SKU "${sku}" ya está en uso por otro producto.`,
+            });
+        } else {
+            // Clear error if it was previously set for duplication
+            if (form.formState.errors.sku?.message?.includes("ya existe")) {
+                form.clearErrors("sku");
+            }
         }
-      }
     }
   };
 

@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { mockProducts, mockInventoryMovements, mockSales } from "@/lib/data";
+import { mockInventoryMovements, mockSales } from "@/lib/data";
 import type { Product, InventoryMovement } from "@/lib/types";
 import {
   Command,
@@ -34,6 +34,8 @@ import {
 import { cn } from "@/lib/utils";
 import { ProductForm } from "@/components/product-form";
 import { useSettings } from "@/contexts/settings-context";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, doc, updateDoc, deleteDoc, query } from "firebase/firestore";
 
 
 const getDisplayImageUrl = (imageUrl?: string) => {
@@ -52,7 +54,15 @@ const getDisplayImageUrl = (imageUrl?: string) => {
 
 export default function InventoryPage() {
   const { toast } = useToast();
-  const [products, setProducts] = useState<Product[]>(mockProducts);
+  const firestore = useFirestore();
+
+  const productsCollection = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, "products");
+  }, [firestore]);
+
+  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollection);
+
   const { activeSymbol, activeRate } = useSettings();
   const [isMovementsDialogOpen, setIsMovementsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -79,10 +89,11 @@ export default function InventoryPage() {
   };
 
 
-  function handleUpdateProduct(data: Omit<Product, 'id'> & { id?: string }) {
-    if (!data.id) return false;
+  async function handleUpdateProduct(data: Omit<Product, 'id'> & { id?: string }) {
+    if (!data.id || !firestore) return false;
 
-    setProducts(prev => prev.map(p => p.id === data.id ? { ...p, ...data } as Product : p));
+    const docRef = doc(firestore, 'products', data.id);
+    await updateDoc(docRef, data);
     
     toast({
         title: "Producto Actualizado",
@@ -93,7 +104,7 @@ export default function InventoryPage() {
     return true; // Indicate success for form reset if needed
   }
   
-  const handleDelete = (productId: string) => {
+  const handleDelete = async (productId: string) => {
      // Check if product is in any sale
     const isProductInSale = mockSales.some(sale => sale.items.some(item => item.productId === productId));
 
@@ -107,7 +118,8 @@ export default function InventoryPage() {
         return;
     }
     
-    setProducts(prev => prev.filter(p => p.id !== productId));
+    if (!firestore) return;
+    await deleteDoc(doc(firestore, 'products', productId));
     toast({
       title: "Producto Eliminado",
       description: "El producto ha sido eliminado del inventario.",
@@ -122,8 +134,8 @@ export default function InventoryPage() {
       setMovementResponsible('');
   }
 
-  const handleMoveInventory = () => {
-    if (!movementProduct || !movementType || movementQuantity <= 0 || !movementResponsible.trim()) {
+  const handleMoveInventory = async () => {
+    if (!movementProduct || !movementType || movementQuantity <= 0 || !movementResponsible.trim() || !firestore) {
       toast({
         variant: "destructive",
         title: "Datos incompletos",
@@ -155,10 +167,10 @@ export default function InventoryPage() {
         break;
     }
     
-    setProducts(prevProducts => prevProducts.map(p => 
-        p.id === movementProduct.id ? { ...p, stock: newStock } : p
-    ));
+    const docRef = doc(firestore, 'products', movementProduct.id);
+    await updateDoc(docRef, { stock: newStock });
 
+    // This should also be a collection in firestore
     const newMovement: InventoryMovement = {
         id: `mov-${Date.now()}-${movementProduct.id}`,
         productName: movementProduct.name,
@@ -188,7 +200,7 @@ export default function InventoryPage() {
   const productMovements = selectedProduct ? mockInventoryMovements.filter(m => m.productName === selectedProduct.name) : [];
 
   const filteredProducts = useMemo(() => {
-    return products.filter(product =>
+    return (products || []).filter(product =>
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase()))
     );
@@ -252,12 +264,12 @@ export default function InventoryPage() {
                                     <CommandList>
                                         <CommandEmpty>No se encontraron productos.</CommandEmpty>
                                         <CommandGroup>
-                                            {products.map((product) => (
+                                            {(products || []).map((product) => (
                                                 <CommandItem
                                                 key={product.id}
                                                 value={product.name}
                                                 onSelect={(currentValue) => {
-                                                    const product = products.find(p => p.name.toLowerCase() === currentValue.toLowerCase());
+                                                    const product = (products || []).find(p => p.name.toLowerCase() === currentValue.toLowerCase());
                                                     setMovementProduct(product || null);
                                                     setIsProductComboboxOpen(false)
                                                 }}
@@ -333,6 +345,8 @@ export default function InventoryPage() {
             </div>
           </CardHeader>
           <CardContent>
+            {isLoadingProducts && <p>Cargando productos...</p>}
+            {!isLoadingProducts && (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -411,10 +425,11 @@ export default function InventoryPage() {
                 })}
               </TableBody>
             </Table>
+            )}
           </CardContent>
           <CardFooter>
             <div className="text-xs text-muted-foreground">
-              Mostrando <strong>1-{filteredProducts.length}</strong> de <strong>{products.length}</strong>{" "}
+              Mostrando <strong>1-{filteredProducts.length}</strong> de <strong>{products?.length || 0}</strong>{" "}
               productos
             </div>
           </CardFooter>
@@ -484,7 +499,7 @@ export default function InventoryPage() {
               <TableBody>
                   {productMovements.length > 0 ? productMovements.map((movement) => (
                       <TableRow key={movement.id}>
-                          <TableCell>{new Date(movement.date).toLocaleDateString()}</TableCell>
+                          <TableCell>{new Date(movement.date as string).toLocaleDateString()}</TableCell>
                           <TableCell>
                               <Badge variant={movement.type === "sale" ? "destructive" : movement.type === "purchase" ? "secondary" : "outline"}>
                                   {getMovementLabel(movement.type)}
