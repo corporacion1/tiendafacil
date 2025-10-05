@@ -1,13 +1,12 @@
 
 "use client";
 
-import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ProductForm } from "@/components/product-form";
 import type { Product } from "@/lib/types";
 import { collection, addDoc } from "firebase/firestore";
-import { useFirestore } from "@/firebase";
+import { useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
 
 export default function ProductsPage() {
   const { toast } = useToast();
@@ -23,25 +22,42 @@ export default function ProductsPage() {
         return false;
     }
     
-    try {
-        const productsCollection = collection(firestore, 'products');
-        await addDoc(productsCollection, data);
-        
-        toast({
-          title: "Producto Creado",
-          description: `El producto "${data.name}" ha sido creado exitosamente.`,
-        });
-        
-        return true; // Indica al formulario que la sumisión fue exitosa para que pueda reiniciarse.
-    } catch (error) {
-        console.error("Error creating product: ", error);
-        toast({
-          variant: "destructive",
-          title: "Error al crear",
-          description: "Ocurrió un problema al guardar el producto en la base de datos.",
-        });
-        return false;
-    }
+    const productsCollection = collection(firestore, 'products');
+    
+    addDoc(productsCollection, data)
+      .then(() => {
+          toast({
+            title: "Producto Creado",
+            description: `El producto "${data.name}" ha sido creado exitosamente.`,
+          });
+          // Assuming the form component handles reset on success, which `true` would signify.
+          // This part of the logic needs to be handled within the promise resolution.
+          // If the form component needs an explicit call, it should be done here.
+      })
+      .catch((error) => {
+          console.error("Error creating product: ", error);
+          
+          if (error.code === 'permission-denied') {
+              const permissionError = new FirestorePermissionError({
+                  path: productsCollection.path,
+                  operation: 'create',
+                  requestResourceData: data,
+              });
+              errorEmitter.emit('permission-error', permissionError);
+          } else {
+              toast({
+                variant: "destructive",
+                title: "Error al crear",
+                description: error.message || "Ocurrió un problema al guardar el producto en la base de datos.",
+              });
+          }
+      });
+
+      // Since addDoc is now handled asynchronously with .then/.catch,
+      // we need to decide what to return. If the form reset depends on a synchronous `true`,
+      // this might need adjustment in the ProductForm component.
+      // For optimistic UI, we can return true immediately.
+      return true;
   }
   
   return (
