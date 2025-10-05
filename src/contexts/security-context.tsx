@@ -12,6 +12,7 @@ interface SecurityContextType {
   hasPin: boolean;
   removePin: () => void;
   changePin: (oldPin: string, newPin: string, confirmPin: string) => boolean;
+  isPinLoading: boolean;
 }
 
 const SecurityContext = createContext<SecurityContextType | undefined>(undefined);
@@ -20,23 +21,29 @@ const STORAGE_KEY = 'tienda_facil_pin';
 
 export const SecurityProvider = ({ children }: { children: React.ReactNode }) => {
   const [storedPin, setStoredPin] = useState<string | null>(null);
-  const [isLocked, setIsLocked] = useState(true);
+  const [isLocked, setIsLocked] = useState(false);
+  const [hasPin, setHasPin] = useState(false);
+  const [isPinLoading, setIsPinLoading] = useState(true); // Start loading until we check storage
   const { toast } = useToast();
-  const [isMounted, setIsMounted] = useState(false);
+  
 
   useEffect(() => {
-    setIsMounted(true);
     try {
-      let pinFromStorage = localStorage.getItem(STORAGE_KEY);
+      const pinFromStorage = localStorage.getItem(STORAGE_KEY);
       if (pinFromStorage) {
         setStoredPin(pinFromStorage);
+        setHasPin(true);
         setIsLocked(true); 
       } else {
+        setHasPin(false);
         setIsLocked(false);
       }
     } catch (error) {
       console.error("Could not access localStorage", error);
       setIsLocked(false);
+      setHasPin(false);
+    } finally {
+        setIsPinLoading(false);
     }
   }, []);
   
@@ -82,6 +89,7 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
     try {
       localStorage.setItem(STORAGE_KEY, newPin);
       setStoredPin(newPin);
+      setHasPin(true);
       setIsLocked(true);
       toast({
         title: "PIN de seguridad establecido",
@@ -146,6 +154,7 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
     try {
       localStorage.removeItem(STORAGE_KEY);
       setStoredPin(null);
+      setHasPin(false);
       setIsLocked(false);
       toast({
         title: "PIN de seguridad eliminado",
@@ -157,13 +166,14 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
   }, [toast]);
 
   const value = {
-    isLocked: !isMounted ? true : (!!storedPin && isLocked),
+    isLocked,
     unlockApp,
     lockApp,
     setPin,
-    hasPin: !!storedPin,
+    hasPin,
     removePin,
     changePin,
+    isPinLoading,
   };
 
   return (

@@ -13,7 +13,7 @@ import { ProvidersWrapper } from "./providers-wrapper";
 
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { isLocked, lockApp, hasPin } = useSecurity();
+  const { isLocked, lockApp, hasPin, isPinLoading } = useSecurity();
   const { user, isUserLoading } = useUser();
   const pathname = usePathname();
   const router = useRouter();
@@ -39,11 +39,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (pathname === '/login') {
       return <>{children}</>;
   }
+  
+  const isLoading = isUserLoading || isPinLoading;
 
-  // If locked, only show PIN modal
+  if (isLoading) {
+    return (
+        <div className="flex min-h-screen w-full items-center justify-center bg-background">
+            <p>Cargando aplicación...</p>
+        </div>
+    );
+  }
+
   if (isLocked) {
       return <PinModal />;
   }
+  
 
   // Main application shell
   return (
@@ -52,15 +62,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
         <SiteHeader />
         <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-          {isUserLoading || !user ? (
-            <div className="flex w-full items-center justify-center pt-20">
-              <p>Cargando aplicación...</p>
-            </div>
-          ) : (
             <ProvidersWrapper>
               {children}
             </ProvidersWrapper>
-          )}
         </main>
         <Footer />
       </div>
