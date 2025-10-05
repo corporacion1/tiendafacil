@@ -62,25 +62,25 @@ export default function Dashboard() {
     if (!firestore || !user?.uid) return null;
     return query(collection(firestore, "sales"), where("date", ">=", Timestamp.fromDate(cutoffDate)));
   }, [firestore, cutoffDate, user?.uid]);
-  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
 
   const purchasesQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
     return query(collection(firestore, "purchases"), where("date", ">=", Timestamp.fromDate(cutoffDate)));
   }, [firestore, cutoffDate, user?.uid]);
-  const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
-
+  
   const productsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
     return collection(firestore, "products");
   }, [firestore, user?.uid]);
+
+  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
+  const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
 
   const filteredSales = sales || [];
   const filteredPurchases = purchases || [];
 
   const recentMovements = useMemo(() => {
-    if (isLoadingSales) return [];
     const movements: Omit<InventoryMovement, 'id'>[] = [];
     filteredSales.forEach(sale => {
       sale.items.forEach(item => {
@@ -98,16 +98,16 @@ export default function Dashboard() {
         const dateB = b.date instanceof Timestamp ? b.date.toMillis() : parseISO(b.date as string).getTime();
         return dateB - dateA;
     });
-  }, [filteredSales, isLoadingSales]);
+  }, [filteredSales]);
   
   const chartData = useMemo(() => {
-    if (isLoadingSales || isLoadingPurchases || isLoadingProducts) return [];
+    if (!sales || !purchases || !products) return [];
     const dataByDate: { [key: string]: { date: string, sales: number, profit: number, unitsSold: number, unitsPurchased: number } } = {};
     const dateFormat = timeFilter === 'month' ? 'dd-MMM' : 'eee dd';
     
     const getDate = (d: any) => d instanceof Timestamp ? d.toDate() : parseISO(d);
 
-    filteredSales.forEach(sale => {
+    sales.forEach(sale => {
         const saleDate = getDate(sale.date);
         const dateKey = format(saleDate, 'yyyy-MM-dd');
       
@@ -130,7 +130,7 @@ export default function Dashboard() {
         dataByDate[dateKey].unitsSold += totalUnitsSold;
     });
 
-    filteredPurchases.forEach(purchase => {
+    purchases.forEach(purchase => {
         const purchaseDate = getDate(purchase.date);
         const dateKey = format(purchaseDate, 'yyyy-MM-dd');
 
@@ -155,7 +155,7 @@ export default function Dashboard() {
         sales: parseFloat((d.sales * activeRate).toFixed(2)),
         profit: parseFloat((d.profit * activeRate).toFixed(2)),
     }));
-  }, [filteredSales, filteredPurchases, products, activeRate, timeFilter, isLoadingSales, isLoadingPurchases, isLoadingProducts]);
+  }, [sales, purchases, products, activeRate, timeFilter]);
 
   const getMovementLabel = (type: 'sale' | 'purchase' | 'adjustment') => {
     switch (type) {
@@ -366,5 +366,7 @@ export default function Dashboard() {
     </div>
   );
 }
+
+    
 
     
