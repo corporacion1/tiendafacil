@@ -13,16 +13,8 @@ export default function ProductsPage() {
   const [products, setProducts] = useState(mockProducts);
 
   function onSubmit(data: Omit<Product, 'id'>) {
-    const existingProduct = products.find(product => product.sku.toLowerCase() === data.sku.toLowerCase());
-
-    if (existingProduct) {
-      toast({
-        variant: "destructive",
-        title: "SKU Duplicado",
-        description: `Ya existe un producto con el SKU "${data.sku}". Por favor, usa un SKU diferente.`,
-      });
-      return false; // Stop the submission
-    }
+    // La validación de SKU duplicado ahora se maneja dentro de ProductForm.
+    // Esta función solo se ejecutará si la validación es exitosa.
     
     const newProduct: Product = {
         ...data,
@@ -36,7 +28,7 @@ export default function ProductsPage() {
       description: `El producto "${data.name}" ha sido creado exitosamente.`,
     });
     
-    return true; // Indicate success for form reset
+    return true; // Indica al formulario que la sumisión fue exitosa para que pueda reiniciarse.
   }
   
   return (
