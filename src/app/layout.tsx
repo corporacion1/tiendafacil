@@ -34,9 +34,9 @@ export default function RootLayout({
               <AppShell>
                   {children}
               </AppShell>
+              <Toaster />
             </SecurityProvider>
           </FirebaseClientProvider>
-          <Toaster />
         </ThemeProvider>
       </body>
     </html>

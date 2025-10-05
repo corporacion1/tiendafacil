@@ -23,7 +23,7 @@ export const SalesProvider = ({ children }: { children: React.ReactNode }) => {
   const storeId = "test-store";
 
   const salesQuery = useMemoFirebase(() => {
-      if (isUserLoading || !user) return null;
+      if (isUserLoading || !user || !firestore) return null;
       return query(collection(firestore, 'sales'), where('storeId', '==', storeId));
   }, [firestore, user, isUserLoading, storeId]);
 

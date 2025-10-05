@@ -25,7 +25,7 @@ export const PurchasesProvider = ({ children }: { children: React.ReactNode }) =
   const storeId = "test-store";
 
   const purchasesQuery = useMemoFirebase(() => {
-      if (isUserLoading || !user) return null;
+      if (isUserLoading || !user || !firestore) return null;
       return query(collection(firestore, 'purchases'), where('storeId', '==', storeId));
   }, [firestore, user, isUserLoading, storeId]);
 
