@@ -58,3 +58,4 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     // do we render the children.
     return <>{children}</>;
 }
+
