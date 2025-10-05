@@ -181,6 +181,24 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       }
   };
 
+  const handleImageUrlBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const url = e.target.value;
+    if (!url) {
+      return;
+    }
+
+    try {
+      new URL(url);
+      form.clearErrors("imageUrl");
+    } catch (_) {
+      toast({
+        variant: "destructive",
+        title: "URL Inválida",
+        description: "La URL que ingresaste no parece ser válida. Por favor, corrígela.",
+      });
+      form.setValue("imageUrl", "", { shouldDirty: true });
+    }
+  };
 
   const handleSkuBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const sku = e.target.value;
@@ -252,7 +270,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                         <FormItem>
                             <FormLabel>URL de la Imagen</FormLabel>
                             <FormControl>
-                                <Input placeholder="https://ejemplo.com/imagen.jpg" {...field} />
+                                <Input placeholder="https://ejemplo.com/imagen.jpg" {...field} onBlur={handleImageUrlBlur} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -333,7 +351,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                   render={({ field }) => (
                       <FormItem>
                           <FormLabel>Familia</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValuechange={field.onChange} defaultValue={field.value}>
                               <FormControl>
                                   <SelectTrigger><SelectValue placeholder="Selecciona una familia" /></SelectTrigger>
                               </FormControl>
@@ -509,7 +527,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                   Cancelar
               </Button>}
               <AlertDialogTrigger asChild>
-                  <Button type="button" className="bg-primary hover:bg-primary/90" disabled={!isDirty}>{product ? "Guardar Cambios" : "Crear Producto"}</Button>
+                  <Button type="button" disabled={!isDirty}>{product ? "Guardar Cambios" : "Crear Producto"}</Button>
               </AlertDialogTrigger>
           </div>
           <AlertDialogContent>
@@ -531,5 +549,3 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     </Form>
   );
 }
-
-    
