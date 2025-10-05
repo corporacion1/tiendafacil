@@ -3,7 +3,7 @@
 
 import { useUser } from "@/firebase";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Logo } from "./logo";
 import { useSecurity } from "@/contexts/security-context";
 import { PinModal } from "./pin-modal";
@@ -51,7 +51,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         );
     }
     
-    // Si no hay usuario (y ya no está cargando), muestra la carga hasta que redirija
+    // Si no hay usuario (y ya no está cargando), no renderiza nada mientras redirige.
     if (!user) {
          return (
             <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
