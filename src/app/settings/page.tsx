@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import { useState, useRef, useEffect } from "react";
@@ -165,6 +164,10 @@ export default function SettingsPage() {
         setLocalCurrencyRates(prev => [newRateEntry, ...prev]);
         setNewRate(0);
         setIsDirty(true);
+        toast({
+            title: "Tasa Guardada",
+            description: `La nueva tasa de ${newRate} ha sido registrada.`,
+        });
     };
 
     const isItemInUse = (type: 'unit' | 'family' | 'warehouse', id: string) => {
@@ -500,7 +503,23 @@ export default function SettingsPage() {
                                     placeholder={localCurrencyRates[0]?.rate.toFixed(6) || "0.000000"}
                                     className="flex-grow"
                                 />
-                                <Button onClick={handleSaveNewRate} disabled={newRate <= 0}>Guardar Tasa</Button>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button disabled={newRate <= 0}>Guardar Tasa</Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>¿Confirmar Nueva Tasa?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Estás a punto de guardar una nueva tasa de cambio de {newRate.toFixed(6)} {localSettings.secondaryCurrencySymbol}. ¿Estás seguro?
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                            <AlertDialogAction onClick={handleSaveNewRate}>Sí, guardar</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
                             </div>
                         </div>
                         <div className="space-y-4">
@@ -669,3 +688,5 @@ export default function SettingsPage() {
         </div>
     );
 }
+
+    
