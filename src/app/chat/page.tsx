@@ -41,27 +41,6 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages]);
 
-  useEffect(() => {
-    if (user && firestore) {
-      const ensureRooms = () => {
-        for (const room of chatRooms) {
-          const roomRef = doc(firestore, 'chats', room.id);
-          const roomData = { name: room.name };
-          setDoc(roomRef, roomData, { merge: true })
-            .catch((serverError) => {
-              const permissionError = new FirestorePermissionError({
-                path: roomRef.path,
-                operation: 'write',
-                requestResourceData: roomData,
-              });
-              errorEmitter.emit('permission-error', permissionError);
-            });
-        }
-      };
-      ensureRooms();
-    }
-  }, [user, firestore]);
-
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (newMessage.trim() === "" || !user || !firestore) return;
