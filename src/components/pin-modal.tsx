@@ -7,13 +7,27 @@ import { useSecurity } from '@/contexts/security-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 export function PinModal() {
   const [pin, setPin] = useState('');
   const { unlockApp } = useSecurity();
+  const { toast } = useToast();
 
   const handleUnlock = () => {
-    unlockApp(pin);
+    const success = unlockApp(pin);
+    if (success) {
+      toast({
+        title: "Desbloqueado",
+        description: "Bienvenido de nuevo.",
+      });
+    } else {
+      toast({
+        variant: "destructive",
+        title: "PIN incorrecto",
+        description: "El PIN que ingresaste es incorrecto. Inténtalo de nuevo.",
+      });
+    }
     setPin('');
   };
 

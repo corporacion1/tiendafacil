@@ -6,9 +6,9 @@ import { useToast } from "@/hooks/use-toast";
 
 interface SecurityContextType {
   isLocked: boolean;
-  unlockApp: (pin: string) => void;
+  unlockApp: (pin: string) => boolean;
   lockApp: () => void;
-  setPin: (newPin: string, confirmPin: string) => void;
+  setPin: (newPin: string, confirmPin: string) => boolean;
   hasPin: boolean;
   removePin: () => void;
   changePin: (oldPin: string, newPin: string, confirmPin: string) => boolean;
@@ -27,7 +27,6 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
   const [hasPin, setHasPin] = useState(false);
   const [isPinLoading, setIsPinLoading] = useState(true);
   const [isSecurityReady, setIsSecurityReady] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     try {
@@ -59,18 +58,10 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
   const unlockApp = useCallback((pin: string) => {
     if (pin === storedPin) {
       setIsLocked(false);
-      toast({
-        title: "Desbloqueado",
-        description: "Bienvenido de nuevo.",
-      });
-    } else {
-      toast({
-        variant: "destructive",
-        title: "PIN incorrecto",
-        description: "El PIN que ingresaste es incorrecto. Inténtalo de nuevo.",
-      });
+      return true;
     }
-  }, [storedPin, toast]);
+    return false;
+  }, [storedPin]);
 
   const checkPin = useCallback((pin: string) => {
     return pin === storedPin;
@@ -78,84 +69,38 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
 
   const setPin = useCallback((newPin: string, confirmPin: string) => {
     if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
-        toast({
-            variant: "destructive",
-            title: "PIN inválido",
-            description: "El PIN debe contener exactamente 4 dígitos numéricos."
-        });
-        return;
+      return false;
     }
     if (newPin !== confirmPin) {
-        toast({
-            variant: "destructive",
-            title: "Los PINES no coinciden",
-            description: "El nuevo PIN y su confirmación no son iguales."
-        });
-        return;
+      return false;
     }
     try {
       localStorage.setItem(STORAGE_KEY, newPin);
       setStoredPin(newPin);
       setHasPin(true);
       setIsLocked(true);
-      toast({
-        title: "PIN de seguridad establecido",
-        description: "La aplicación se bloqueará al iniciar o al salir del POS.",
-      });
+      return true;
     } catch (error) {
       console.error("Could not access localStorage", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo guardar el PIN.",
-      });
+      return false;
     }
-  }, [toast]);
+  }, []);
 
   const changePin = useCallback((oldPin: string, newPin: string, confirmPin: string) => {
-    if (oldPin !== storedPin) {
-      toast({
-        variant: "destructive",
-        title: "PIN Actual Incorrecto",
-        description: "El PIN actual que ingresaste no es correcto.",
-      });
-      return false;
-    }
-    if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
-      toast({
-        variant: "destructive",
-        title: "PIN Nuevo Inválido",
-        description: "El nuevo PIN debe contener exactamente 4 dígitos numéricos.",
-      });
-      return false;
-    }
-     if (newPin !== confirmPin) {
-        toast({
-            variant: "destructive",
-            title: "Los PINES no coinciden",
-            description: "El nuevo PIN y su confirmación no son iguales."
-        });
-        return false;
-    }
+    if (oldPin !== storedPin) return false;
+    if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) return false;
+    if (newPin !== confirmPin) return false;
+
     try {
       localStorage.setItem(STORAGE_KEY, newPin);
       setStoredPin(newPin);
-      setIsLocked(true); // Re-lock the app for security
-      toast({
-        title: "PIN Cambiado Exitosamente",
-        description: "Tu PIN de seguridad ha sido actualizado. Por favor, desbloquea la app con tu nuevo PIN.",
-      });
+      setIsLocked(true);
       return true;
     } catch (error) {
        console.error("Could not access localStorage", error);
-       toast({
-         variant: "destructive",
-         title: "Error",
-         description: "No se pudo guardar el nuevo PIN.",
-       });
        return false;
     }
-  }, [storedPin, toast]);
+  }, [storedPin]);
 
   const removePin = useCallback(() => {
     try {
@@ -163,14 +108,10 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
       setStoredPin(null);
       setHasPin(false);
       setIsLocked(false);
-      toast({
-        title: "PIN de seguridad eliminado",
-        description: "La aplicación ya no se bloqueará.",
-      });
     } catch (error) {
       console.error("Could not access localStorage", error);
     }
-  }, [toast]);
+  }, []);
 
   const value = {
     isLocked,

@@ -25,6 +25,7 @@ import { mockProducts, initialUnits as defaultUnits, initialFamilies as defaultF
 
 function ChangePinDialog() {
     const { changePin } = useSecurity();
+    const { toast } = useToast();
     const [oldPin, setOldPin] = useState('');
     const [newPin, setNewPin] = useState('');
     const [confirmPin, setConfirmPin] = useState('');
@@ -42,9 +43,36 @@ function ChangePinDialog() {
     }
     
     const handleChangePin = () => {
+        if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
+          toast({
+            variant: "destructive",
+            title: "PIN Nuevo Inválido",
+            description: "El nuevo PIN debe contener exactamente 4 dígitos numéricos.",
+          });
+          return;
+        }
+         if (newPin !== confirmPin) {
+            toast({
+                variant: "destructive",
+                title: "Los PINES no coinciden",
+                description: "El nuevo PIN y su confirmación no son iguales."
+            });
+            return;
+        }
+
         const success = changePin(oldPin, newPin, confirmPin);
         if (success) {
+            toast({
+              title: "PIN Cambiado Exitosamente",
+              description: "Tu PIN de seguridad ha sido actualizado. Por favor, desbloquea la app con tu nuevo PIN.",
+            });
             handleOnOpenChange(false);
+        } else {
+            toast({
+              variant: "destructive",
+              title: "PIN Actual Incorrecto",
+              description: "El PIN actual que ingresaste no es correcto.",
+            });
         }
     }
 
@@ -404,6 +432,45 @@ export default function SettingsPage() {
             </Card>
         );
     }
+    
+    const handleSetPin = () => {
+        if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
+            toast({
+                variant: "destructive",
+                title: "PIN inválido",
+                description: "El PIN debe contener exactamente 4 dígitos numéricos."
+            });
+            return;
+        }
+        if (newPin !== confirmPin) {
+            toast({
+                variant: "destructive",
+                title: "Los PINES no coinciden",
+                description: "El nuevo PIN y su confirmación no son iguales."
+            });
+            return;
+        }
+        if (setPin(newPin, confirmPin)) {
+             toast({
+                title: "PIN de seguridad establecido",
+                description: "La aplicación se bloqueará al iniciar o al salir del POS.",
+              });
+        } else {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "No se pudo guardar el PIN.",
+             });
+        }
+    };
+
+    const handleRemovePin = () => {
+        removePin();
+        toast({
+            title: "PIN de seguridad eliminado",
+            description: "La aplicación ya no se bloqueará.",
+        });
+    }
 
     return (
         <div className="grid gap-6">
@@ -570,7 +637,7 @@ export default function SettingsPage() {
                         </div>
                          <div className="flex items-center gap-4">
                             {hasPin && <ChangePinDialog />}
-                            <Switch checked={hasPin} onCheckedChange={(checked) => { if (!checked) { removePin() } else if (!hasPin) { document.getElementById('new-pin-trigger')?.click() } }} />
+                            <Switch checked={hasPin} onCheckedChange={(checked) => { if (!checked) { handleRemovePin() } else if (!hasPin) { document.getElementById('new-pin-trigger')?.click() } }} />
                         </div>
                     </div>
                     {!hasPin && (
@@ -597,7 +664,7 @@ export default function SettingsPage() {
                                         <Button variant="outline">Cancelar</Button>
                                     </DialogClose>
                                     <DialogClose asChild>
-                                        <Button onClick={() => setPin(newPin, confirmPin)} disabled={!newPin || newPin !== confirmPin || newPin.length !== 4}>Establecer PIN</Button>
+                                        <Button onClick={handleSetPin} disabled={!newPin || newPin !== confirmPin || newPin.length !== 4}>Establecer PIN</Button>
                                     </DialogClose>
                                 </DialogFooter>
                             </DialogContent>
