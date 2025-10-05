@@ -6,10 +6,11 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { ProvidersWrapper } from "./providers-wrapper";
 import { useSecurity } from "@/contexts/security-context";
+import { PinModal } from "./pin-modal";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
     const { user, isUserLoading } = useUser();
-    const { isPinLoading, lockApp, hasPin, isMounted } = useSecurity();
+    const { isPinLoading, lockApp, hasPin, isMounted, isLocked } = useSecurity();
     const router = useRouter();
     const pathname = usePathname();
     const previousPathname = useRef(pathname);
@@ -37,12 +38,15 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
     
     if (!user) {
-        // This will be briefly visible while router.replace() is running.
         return (
             <div className="flex min-h-screen w-full items-center justify-center bg-background">
                 <p>Redirigiendo...</p>
             </div>
         );
+    }
+
+    if (isLocked) {
+        return <PinModal />;
     }
 
     return (
