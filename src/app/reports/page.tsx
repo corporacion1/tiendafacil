@@ -3,7 +3,7 @@
 
 import { useState, useMemo } from "react";
 import { File, MoreHorizontal, Search } from "lucide-react";
-import { format, subDays, startOfWeek, startOfMonth, startOfYear } from "date-fns";
+import { format, subDays, startOfWeek, startOfMonth, startOfYear, parseISO } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -39,7 +39,6 @@ import {
     DialogClose,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { mockSales, initialCustomers, mockInventoryMovements, mockPurchases } from "@/lib/data";
 import { Sale, CartItem, Customer, Product, InventoryMovement, Purchase } from "@/lib/types";
 import { TicketPreview } from "@/components/ticket-preview";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -48,7 +47,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/settings-context";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection } from "firebase/firestore";
+import { collection, query, where, Timestamp } from "firebase/firestore";
 
 
 type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
@@ -57,12 +56,6 @@ export default function ReportsPage() {
     const { settings, activeSymbol, activeRate } = useSettings();
     const firestore = useFirestore();
     
-    const productsQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return collection(firestore, 'products');
-    }, [firestore]);
-    const { data: products } = useCollection<Product>(productsQuery);
-
     const [selectedSaleDetails, setSelectedSaleDetails] = useState<Sale | null>(null);
     const [saleForTicket, setSaleForTicket] = useState<Sale | null>(null);
     const [isTicketPreviewOpen, setIsTicketPreviewOpen] = useState(false);
@@ -70,6 +63,58 @@ export default function ReportsPage() {
     const [activeTab, setActiveTab] = useState("sales");
     const [timeRange, setTimeRange] = useState<TimeRange>(null);
     const { toast } = useToast();
+    
+    const productsQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, 'products');
+    }, [firestore]);
+    const { data: products } = useCollection<Product>(productsQuery);
+
+    const customersQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, 'customers');
+    }, [firestore]);
+    const { data: customers } = useCollection<Customer>(customersQuery);
+
+    const dateFilterQuery = useMemo(() => {
+        const now = new Date();
+        let startDate: Date | null = null;
+        if (timeRange === 'day') startDate = subDays(now, 1);
+        if (timeRange === 'week') startDate = startOfWeek(now);
+        if (timeRange === 'month') startDate = startOfMonth(now);
+        if (timeRange === 'year') startDate = startOfYear(now);
+        return startDate ? Timestamp.fromDate(startDate) : null;
+    }, [timeRange]);
+
+    const salesQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        const colRef = collection(firestore, 'sales');
+        if (dateFilterQuery) {
+            return query(colRef, where("date", ">=", dateFilterQuery));
+        }
+        return colRef;
+    }, [firestore, dateFilterQuery]);
+    const { data: salesData } = useCollection<Sale>(salesQuery);
+
+    const purchasesQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        const colRef = collection(firestore, 'purchases');
+        if (dateFilterQuery) {
+            return query(colRef, where("date", ">=", dateFilterQuery));
+        }
+        return colRef;
+    }, [firestore, dateFilterQuery]);
+    const { data: purchasesData } = useCollection<Purchase>(purchasesQuery);
+    
+    const movementsQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        const colRef = collection(firestore, 'inventoryMovements');
+        if (dateFilterQuery) {
+            return query(colRef, where("date", ">=", dateFilterQuery));
+        }
+        return colRef;
+    }, [firestore, dateFilterQuery]);
+    const { data: movementsData } = useCollection<InventoryMovement>(movementsQuery);
 
     const handleViewDetails = (sale: Sale) => {
         setSelectedSaleDetails(sale);
@@ -93,9 +138,7 @@ export default function ReportsPage() {
         const processRow = (row: object): string[] => Object.values(row).map(value => {
             if (value === null || value === undefined) return '';
             const stringValue = String(value);
-            // Handle complex objects if necessary, here we just stringify them
             if (typeof value === 'object' && value !== null) return `"${JSON.stringify(value).replace(/"/g, '""')}"`;
-            // Escape double quotes and wrap in double quotes if it contains commas or newlines
             if (stringValue.includes(',') || stringValue.includes('\n') || stringValue.includes('"')) {
                 return `"${stringValue.replace(/"/g, '""')}"`;
             }
@@ -136,7 +179,7 @@ export default function ReportsPage() {
                 dataToExport = filteredSales.map(s => ({
                     id: s.id,
                     cliente: s.customerName,
-                    fecha: s.date,
+                    fecha: s.date instanceof Timestamp ? s.date.toDate().toISOString() : s.date,
                     total: (s.total * activeRate).toFixed(2),
                     tipo: s.transactionType,
                     estado: s.status
@@ -146,14 +189,14 @@ export default function ReportsPage() {
                 dataToExport = filteredPurchases.map(p => ({
                   id: p.id,
                   proveedor: p.supplierName,
-                  fecha: p.date,
+                  fecha: p.date instanceof Timestamp ? p.date.toDate().toISOString() : p.date,
                   total: (p.total * activeRate).toFixed(2),
                   documento: p.documentNumber,
                   responsable: p.responsible
                 }));
                 break;
             case 'movements':
-                dataToExport = filteredMovements;
+                dataToExport = filteredMovements.map(m => ({ ...m, date: m.date instanceof Timestamp ? m.date.toDate().toISOString() : m.date }));
                 break;
             case 'inventory':
                 dataToExport = filteredProducts.map(p => ({
@@ -184,59 +227,37 @@ export default function ReportsPage() {
     };
     
     const getTicketCustomer = (sale: Sale | null): Customer | null => {
-        if (!sale) return null;
-        return initialCustomers.find(c => c.name === sale.customerName) || { id: 'unknown', name: sale.customerName, phone: '', address: '' };
+        if (!sale || !customers) return null;
+        return customers.find(c => c.name === sale.customerName) || { id: 'unknown', name: sale.customerName, phone: '', address: '' };
     }
-    
-    const dateFilteredData = useMemo(() => {
-        const now = new Date();
-        let startDate: Date | null = null;
-
-        if (timeRange === 'day') startDate = subDays(now, 1);
-        if (timeRange === 'week') startDate = startOfWeek(now);
-        if (timeRange === 'month') startDate = startOfMonth(now);
-        if (timeRange === 'year') startDate = startOfYear(now);
-        
-        const filterByDate = (items: { date: string }[]) => {
-            if (!startDate) return items;
-            return items.filter(item => new Date(item.date) >= startDate!);
-        };
-
-        return {
-            sales: filterByDate(mockSales),
-            purchases: filterByDate(mockPurchases),
-            movements: filterByDate(mockInventoryMovements),
-        };
-    }, [timeRange]);
 
     const filteredSales = useMemo(() => {
-        return dateFilteredData.sales.filter(sale =>
+        return (salesData || []).filter(sale =>
             sale.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
             sale.customerName.toLowerCase().includes(searchTerm.toLowerCase())
         );
-    }, [dateFilteredData.sales, searchTerm]);
+    }, [salesData, searchTerm]);
 
     const filteredPurchases = useMemo(() => {
-        return dateFilteredData.purchases.filter(purchase =>
+        return (purchasesData || []).filter(purchase =>
             purchase.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
             purchase.supplierName.toLowerCase().includes(searchTerm.toLowerCase())
         );
-    }, [dateFilteredData.purchases, searchTerm]);
+    }, [purchasesData, searchTerm]);
 
     const filteredMovements = useMemo(() => {
-        return dateFilteredData.movements.filter(movement =>
+        return (movementsData || []).filter(movement =>
             movement.productName.toLowerCase().includes(searchTerm.toLowerCase())
         );
-    }, [dateFilteredData.movements, searchTerm]);
+    }, [movementsData, searchTerm]);
 
     const filteredProducts = useMemo(() => {
-        const inventoryProducts = timeRange ? (products || []) : (products || []);
-        return inventoryProducts.filter(p => 
+        return (products || []).filter(p => 
             p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (p.sku && p.sku.toLowerCase().includes(searchTerm.toLowerCase())) ||
             (p.description && p.description.toLowerCase().includes(searchTerm.toLowerCase()))
         );
-    }, [products, searchTerm, timeRange]);
+    }, [products, searchTerm]);
     
     const salesTotal = useMemo(() => {
         return filteredSales.reduce((acc, sale) => acc + sale.total, 0);
@@ -261,9 +282,6 @@ export default function ReportsPage() {
         
         const subtotal = sale.items.reduce((acc, item) => acc + item.price * item.quantity, 0);
         
-        // This is a simplification. In a real scenario, we'd need to know
-        // which taxes were applied to each item at the time of sale.
-        // For now, we recalculate based on current product flags.
         sale.items.forEach(item => {
             if (!products) return;
             const product = products.find(p => p.id === item.productId);
@@ -279,12 +297,15 @@ export default function ReportsPage() {
         });
         
         const totalTaxes = tax1Amount + tax2Amount;
-        // Adjust subtotal based on total and calculated taxes
         const calculatedSubtotal = sale.total - totalTaxes;
 
         return { subtotal: calculatedSubtotal, tax1Amount, tax2Amount, totalTaxes };
     };
 
+    const getDate = (date: any) => {
+      if (!date) return 'N/A';
+      return date instanceof Timestamp ? date.toDate() : parseISO(date);
+    }
 
   return (
     <>
@@ -344,7 +365,7 @@ export default function ReportsPage() {
                   <TableRow key={sale.id}>
                     <TableCell className="font-medium">{sale.id}</TableCell>
                     <TableCell>{sale.customerName}</TableCell>
-                    <TableCell className="hidden md:table-cell">{new Date(sale.date as string).toLocaleDateString()}</TableCell>
+                    <TableCell className="hidden md:table-cell">{format(getDate(sale.date), 'dd/MM/yyyy')}</TableCell>
                     <TableCell className="text-right">{activeSymbol}{(sale.total * activeRate).toFixed(2)}</TableCell>
                     <TableCell>
                       <DropdownMenu>
@@ -397,7 +418,7 @@ export default function ReportsPage() {
                             <TableRow key={purchase.id}>
                                 <TableCell className="font-medium">{purchase.id}</TableCell>
                                 <TableCell>{purchase.supplierName}</TableCell>
-                                <TableCell className="hidden md:table-cell">{new Date(purchase.date as string).toLocaleDateString()}</TableCell>
+                                <TableCell className="hidden md:table-cell">{format(getDate(purchase.date), 'dd/MM/yyyy')}</TableCell>
                                 <TableCell className="text-right">{activeSymbol}{(purchase.total * activeRate).toFixed(2)}</TableCell>
                             </TableRow>
                         ))}
@@ -438,7 +459,7 @@ export default function ReportsPage() {
                                         {movement.type === 'sale' ? 'Salida' : movement.type === 'purchase' ? 'Entrada' : 'Ajuste'}
                                     </Badge>
                                 </TableCell>
-                                <TableCell className="hidden md:table-cell">{new Date(movement.date as string).toLocaleDateString()}</TableCell>
+                                <TableCell className="hidden md:table-cell">{format(getDate(movement.date), 'dd/MM/yyyy')}</TableCell>
                                 <TableCell className="text-right">{movement.quantity}</TableCell>
                             </TableRow>
                         ))}
@@ -498,7 +519,7 @@ export default function ReportsPage() {
             <DialogHeader>
                 <DialogTitle>Detalles de la Venta: {selectedSaleDetails?.id}</DialogTitle>
                 <DialogDescription>
-                   Cliente: {selectedSaleDetails?.customerName} | Fecha: {selectedSaleDetails ? new Date(selectedSaleDetails.date as string).toLocaleString() : ''}
+                   Cliente: {selectedSaleDetails?.customerName} | Fecha: {selectedSaleDetails ? format(getDate(selectedSaleDetails.date), 'dd/MM/yyyy HH:mm') : ''}
                 </DialogDescription>
             </DialogHeader>
             <div className="max-h-[60vh] overflow-y-auto">
@@ -572,5 +593,3 @@ export default function ReportsPage() {
     </>
   );
 }
-
-    

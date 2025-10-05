@@ -16,8 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { mockInventoryMovements, mockSales } from "@/lib/data";
-import type { Product, InventoryMovement } from "@/lib/types";
+import type { Product, InventoryMovement, Sale } from "@/lib/types";
 import {
   Command,
   CommandEmpty,
@@ -35,7 +34,7 @@ import { cn } from "@/lib/utils";
 import { ProductForm } from "@/components/product-form";
 import { useSettings } from "@/contexts/settings-context";
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
-import { collection, doc, updateDoc, deleteDoc, query } from "firebase/firestore";
+import { collection, doc, updateDoc, deleteDoc, writeBatch, serverTimestamp, addDoc } from "firebase/firestore";
 
 
 const getDisplayImageUrl = (imageUrl?: string) => {
@@ -60,8 +59,19 @@ export default function InventoryPage() {
     if (!firestore) return null;
     return collection(firestore, "products");
   }, [firestore]);
-
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollection);
+
+  const salesCollection = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, "sales");
+  }, [firestore]);
+  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollection);
+
+  const movementsCollection = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, "inventoryMovements");
+  }, [firestore]);
+  const { data: inventoryMovements, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsCollection);
 
   const { activeSymbol, activeRate } = useSettings();
   const [isMovementsDialogOpen, setIsMovementsDialogOpen] = useState(false);
@@ -118,8 +128,7 @@ export default function InventoryPage() {
   }
   
   const handleDelete = (productId: string) => {
-     // TODO: Replace mockSales with real sales data from Firestore when available
-    const isProductInSale = mockSales.some(sale => sale.items.some(item => item.productId === productId));
+    const isProductInSale = (sales || []).some(sale => sale.items.some(item => item.productId === productId));
 
     if (isProductInSale) {
         toast({
@@ -160,7 +169,7 @@ export default function InventoryPage() {
       setMovementResponsible('');
   }
 
-  const handleMoveInventory = () => {
+  const handleMoveInventory = async () => {
     if (!movementProduct || !movementType || movementQuantity <= 0 || !movementResponsible.trim() || !firestore) {
       toast({
         variant: "destructive",
@@ -193,21 +202,22 @@ export default function InventoryPage() {
         break;
     }
     
-    const docRef = doc(firestore, 'products', movementProduct.id);
-    const updateData = { stock: newStock };
-    
-    updateDoc(docRef, updateData)
-      .then(() => {
-        // TODO: This should also be a collection in firestore
-        const newMovement: InventoryMovement = {
-            id: `mov-${Date.now()}-${movementProduct.id}`,
-            productName: movementProduct.name,
-            type: movementType,
-            quantity: movementType === 'sale' ? -movementQuantity : movementQuantity,
-            date: new Date().toISOString(),
-            responsible: movementResponsible,
-        };
-        mockInventoryMovements.unshift(newMovement);
+    const productDocRef = doc(firestore, 'products', movementProduct.id);
+    const movementColRef = collection(firestore, 'inventoryMovements');
+
+    const newMovement: Omit<InventoryMovement, 'id'> = {
+        productName: movementProduct.name,
+        type: movementType,
+        quantity: movementType === 'sale' ? -movementQuantity : movementQuantity,
+        date: serverTimestamp(),
+        responsible: movementResponsible,
+    };
+
+    try {
+        const batch = writeBatch(firestore);
+        batch.update(productDocRef, { stock: newStock });
+        batch.set(doc(movementColRef), newMovement);
+        await batch.commit();
 
         toast({
             title: "Movimiento Registrado",
@@ -215,15 +225,14 @@ export default function InventoryPage() {
         });
         
         resetMovementForm();
-      })
-      .catch((serverError) => {
+    } catch(serverError) {
         const permissionError = new FirestorePermissionError({
-          path: docRef.path,
+          path: productDocRef.path, // Or movementColRef.path, depending on which fails
           operation: 'update',
-          requestResourceData: updateData,
+          requestResourceData: { stock: newStock },
         });
         errorEmitter.emit('permission-error', permissionError);
-      });
+    }
   };
   
   const getMovementLabel = (type: 'sale' | 'purchase' | 'adjustment') => {
@@ -235,7 +244,7 @@ export default function InventoryPage() {
     }
   };
 
-  const productMovements = selectedProduct ? mockInventoryMovements.filter(m => m.productName === selectedProduct.name) : [];
+  const productMovements = selectedProduct ? (inventoryMovements || []).filter(m => m.productName === selectedProduct.name) : [];
 
   const filteredProducts = useMemo(() => {
     return (products || []).filter(product =>
@@ -245,6 +254,7 @@ export default function InventoryPage() {
   }, [products, searchTerm]);
 
   const isMovementFormValid = movementProduct && movementType && movementQuantity > 0 && movementResponsible.trim() !== '';
+  const isLoading = isLoadingProducts || isLoadingSales || isLoadingMovements;
 
   return (
     <>
@@ -383,8 +393,8 @@ export default function InventoryPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {isLoadingProducts && <p>Cargando productos...</p>}
-            {!isLoadingProducts && (
+            {isLoading && <p>Cargando productos...</p>}
+            {!isLoading && (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -537,7 +547,7 @@ export default function InventoryPage() {
               <TableBody>
                   {productMovements.length > 0 ? productMovements.map((movement) => (
                       <TableRow key={movement.id}>
-                          <TableCell>{new Date(movement.date as string).toLocaleDateString()}</TableCell>
+                          <TableCell>{movement.date ? format(movement.date.toDate(), 'dd/MM/yyyy') : 'N/A'}</TableCell>
                           <TableCell>
                               <Badge variant={movement.type === "sale" ? "destructive" : movement.type === "purchase" ? "secondary" : "outline"}>
                                   {getMovementLabel(movement.type)}
@@ -564,7 +574,3 @@ export default function InventoryPage() {
     </>
   );
 }
-
-    
-
-    

@@ -35,55 +35,48 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/contexts/settings-context";
-import { mockSales, mockProducts, mockPurchases, mockInventoryMovements } from "@/lib/data";
-import { InventoryMovement } from "@/lib/types";
+import { InventoryMovement, Product, Purchase, Sale } from "@/lib/types";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, query, where, Timestamp } from "firebase/firestore";
 
 type TimeFilter = 'day' | 'week' | 'month';
 
 export default function Dashboard() {
   const { activeSymbol, activeRate } = useSettings();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
-  const [sales] = useState(mockSales);
-  const [products] = useState(mockProducts);
-  const [purchases] = useState(mockPurchases);
-  const [inventoryMovements] = useState(mockInventoryMovements);
+  const firestore = useFirestore();
 
-  const filteredData = useMemo(() => {
+  const cutoffDate = useMemo(() => {
     const now = new Date();
-    let startDate: Date;
-
     switch (timeFilter) {
-        case 'day':
-            startDate = subDays(now, 1);
-            break;
-        case 'week':
-            startDate = subDays(now, 7);
-            break;
-        case 'month':
-            startDate = subDays(now, 30);
-            break;
-        default:
-            startDate = subDays(now, 7);
+      case 'day': return subDays(now, 1);
+      case 'week': return subDays(now, 7);
+      case 'month': return subDays(now, 30);
+      default: return subDays(now, 7);
     }
-    
-    const cutoffDate = startDate;
+  }, [timeFilter]);
 
-    const filterByDate = <T extends { date: string }>(items: T[]) => {
-        return items.filter(item => {
-            if (!item.date) return false;
-            const itemDate = parseISO(item.date);
-            return itemDate >= cutoffDate;
-        });
-    }
+  const salesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, "sales"), where("date", ">=", Timestamp.fromDate(cutoffDate)));
+  }, [firestore, cutoffDate]);
+  const { data: sales } = useCollection<Sale>(salesQuery);
 
-    return {
-        sales: filterByDate(sales),
-        purchases: filterByDate(purchases)
-    };
-  }, [timeFilter, sales, purchases]);
-  
-  const { sales: filteredSales, purchases: filteredPurchases } = filteredData;
+  const purchasesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, "purchases"), where("date", ">=", Timestamp.fromDate(cutoffDate)));
+  }, [firestore, cutoffDate]);
+  const { data: purchases } = useCollection<Purchase>(purchasesQuery);
+
+  const productsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, "products");
+  }, [firestore]);
+  const { data: products } = useCollection<Product>(productsQuery);
+
+  const filteredSales = sales || [];
+  const filteredPurchases = purchases || [];
 
   const recentMovements = useMemo(() => {
     const movements: Omit<InventoryMovement, 'id'>[] = [];
@@ -99,19 +92,20 @@ export default function Dashboard() {
     });
     // We would also add purchases and adjustments here if we had those contexts
     return movements.sort((a, b) => {
-        const dateA = parseISO(a.date);
-        const dateB = parseISO(b.date);
-        return dateB.getTime() - dateA.getTime();
+        const dateA = a.date instanceof Timestamp ? a.date.toMillis() : parseISO(a.date as string).getTime();
+        const dateB = b.date instanceof Timestamp ? b.date.toMillis() : parseISO(b.date as string).getTime();
+        return dateB - dateA;
     });
   }, [filteredSales]);
   
   const chartData = useMemo(() => {
     const dataByDate: { [key: string]: { date: string, sales: number, profit: number, unitsSold: number, unitsPurchased: number } } = {};
     const dateFormat = timeFilter === 'month' ? 'dd-MMM' : 'eee dd';
+    
+    const getDate = (d: any) => d instanceof Timestamp ? d.toDate() : parseISO(d);
 
     filteredSales.forEach(sale => {
-        if (!sale.date) return;
-        const saleDate = parseISO(sale.date);
+        const saleDate = getDate(sale.date);
         const dateKey = format(saleDate, 'yyyy-MM-dd');
       
         if (!dataByDate[dateKey]) {
@@ -121,7 +115,7 @@ export default function Dashboard() {
         let costOfGoods = 0;
         let totalUnitsSold = 0;
         sale.items.forEach(item => {
-            const product = products.find(p => p.id === item.productId);
+            const product = products?.find(p => p.id === item.productId);
             if (product) {
                 costOfGoods += product.cost * item.quantity;
             }
@@ -134,8 +128,7 @@ export default function Dashboard() {
     });
 
     filteredPurchases.forEach(purchase => {
-        if(!purchase.date) return;
-        const purchaseDate = parseISO(purchase.date);
+        const purchaseDate = getDate(purchase.date);
         const dateKey = format(purchaseDate, 'yyyy-MM-dd');
 
         if (!dataByDate[dateKey]) {
@@ -171,8 +164,8 @@ export default function Dashboard() {
   };
 
   const totalRevenue = useMemo(() => filteredSales.reduce((acc, s) => acc + s.total, 0), [filteredSales]);
-  const totalPurchases = useMemo(() => filteredPurchases.reduce((acc, p) => acc + p.total, 0), [filteredPurchases]);
-  const activeProducts = useMemo(() => products.filter(p => p.status === 'active').length, [products]);
+  const totalPurchasesValue = useMemo(() => filteredPurchases.reduce((acc, p) => acc + p.total, 0), [filteredPurchases]);
+  const activeProducts = useMemo(() => (products || []).filter(p => p.status === 'active').length, [products]);
 
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -286,7 +279,7 @@ export default function Dashboard() {
               <ShoppingBag className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{activeSymbol}{(totalPurchases * activeRate).toFixed(2)}</div>
+              <div className="text-2xl font-bold">{activeSymbol}{(totalPurchasesValue * activeRate).toFixed(2)}</div>
             </CardContent>
           </Card>
           <Card>

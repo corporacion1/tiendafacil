@@ -13,25 +13,33 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { mockSales } from "@/lib/data";
 import type { Sale, Payment } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
+import { useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { collection, doc, updateDoc, arrayUnion } from "firebase/firestore";
 
 export default function CreditsPage() {
     const { toast } = useToast();
     const { settings, activeSymbol, activeRate } = useSettings();
-    const [sales, setSales] = useState<Sale[]>(mockSales);
+    const firestore = useFirestore();
+
+    const salesCollection = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, "sales");
+    }, [firestore]);
+    
+    const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollection);
+
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
     const [newPaymentAmount, setNewPaymentAmount] = useState<number>(0);
     const [searchTerm, setSearchTerm] = useState("");
     
-    const creditSales = useMemo(() => sales.filter(s => s.transactionType === 'credito'), [sales]);
+    const creditSales = useMemo(() => (sales || []).filter(s => s.transactionType === 'credito'), [sales]);
     
     const handleAddPayment = () => {
-        if (!selectedSale || newPaymentAmount <= 0) {
+        if (!selectedSale || newPaymentAmount <= 0 || !firestore) {
             toast({
                 variant: "destructive",
                 title: "Monto inválido",
@@ -50,34 +58,38 @@ export default function CreditsPage() {
             return;
         }
         
-        const newPayment: Payment = {
+        const newPayment: Omit<Payment, 'id'> & { id?: string } = {
             id: `pay-${Date.now()}`,
             amount: newPaymentAmount,
             date: new Date().toISOString(),
         };
 
-        const updatedSales = sales.map(sale => {
-            if (sale.id === selectedSale.id) {
-                const updatedPaidAmount = (sale.paidAmount || 0) + newPaymentAmount;
-                return {
-                    ...sale,
-                    payments: [...(sale.payments || []), newPayment],
-                    paidAmount: updatedPaidAmount,
-                    status: updatedPaidAmount >= sale.total ? 'paid' : 'unpaid',
-                };
-            }
-            return sale;
-        });
+        const saleRef = doc(firestore, 'sales', selectedSale.id);
+        const updatedPaidAmount = (selectedSale.paidAmount || 0) + newPaymentAmount;
+        const newStatus = updatedPaidAmount >= selectedSale.total ? 'paid' : 'unpaid';
 
-        setSales(updatedSales);
-        toast({
-            title: "Pago Registrado",
-            description: `Se agregó un abono de ${settings.primaryCurrencySymbol}${newPaymentAmount.toFixed(2)} a la venta ${selectedSale.id}.`,
+        updateDoc(saleRef, {
+            payments: arrayUnion(newPayment),
+            paidAmount: updatedPaidAmount,
+            status: newStatus
+        })
+        .then(() => {
+            toast({
+                title: "Pago Registrado",
+                description: `Se agregó un abono de ${settings.primaryCurrencySymbol}${newPaymentAmount.toFixed(2)} a la venta ${selectedSale.id}.`,
+            });
+            setPaymentDialogOpen(false);
+            setSelectedSale(prev => prev ? { ...prev, payments: [...(prev.payments || []), newPayment as Payment], paidAmount: updatedPaidAmount, status: newStatus } : null);
+            setNewPaymentAmount(0);
+        })
+        .catch((serverError) => {
+            const permissionError = new FirestorePermissionError({
+                path: saleRef.path,
+                operation: 'update',
+                requestResourceData: { paidAmount: updatedPaidAmount, status: newStatus },
+            });
+            errorEmitter.emit('permission-error', permissionError);
         });
-
-        setPaymentDialogOpen(false);
-        setSelectedSale(null);
-        setNewPaymentAmount(0);
     };
     
     const filteredSales = useMemo(() => {
@@ -86,6 +98,22 @@ export default function CreditsPage() {
             sale.id.toLowerCase().includes(searchTerm.toLowerCase())
         );
     }, [creditSales, searchTerm]);
+
+    const getFormattedDate = (date: any) => {
+        if (!date) return '';
+        if (date.seconds) { // Firebase Timestamp
+            return format(date.toDate(), "dd/MM/yyyy");
+        }
+        return format(parseISO(date), "dd/MM/yyyy");
+    };
+
+    const getFormattedDateTime = (date: any) => {
+        if (!date) return '';
+        if (date.seconds) { // Firebase Timestamp
+            return format(date.toDate(), "dd/MM/yyyy HH:mm");
+        }
+        return format(parseISO(date), "dd/MM/yyyy HH:mm");
+    };
     
     const renderSalesTable = (salesToRender: Sale[]) => (
         <Table>
@@ -102,13 +130,14 @@ export default function CreditsPage() {
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {salesToRender.map((sale) => {
+                {isLoadingSales && <TableRow><TableCell colSpan={8} className="text-center">Cargando créditos...</TableCell></TableRow>}
+                {!isLoadingSales && salesToRender.map((sale) => {
                     const balance = sale.total - (sale.paidAmount || 0);
                     return (
                         <TableRow key={sale.id}>
                             <TableCell className="font-medium">{sale.id}</TableCell>
                             <TableCell>{sale.customerName}</TableCell>
-                            <TableCell>{format(parseISO(sale.date), "dd/MM/yyyy")}</TableCell>
+                            <TableCell>{getFormattedDate(sale.date)}</TableCell>
                             <TableCell>
                                 <Badge variant={sale.status === 'paid' ? 'secondary' : 'destructive'}>
                                     {sale.status === 'paid' ? 'Pagada' : 'Pendiente'}
@@ -188,7 +217,7 @@ export default function CreditsPage() {
                     <DialogHeader>
                         <DialogTitle>Detalles de la Venta a Crédito: {selectedSale?.id}</DialogTitle>
                         <DialogDescription>
-                            Cliente: {selectedSale?.customerName} | Fecha: {selectedSale ? format(parseISO(selectedSale.date), "dd/MM/yyyy") : ''}
+                            Cliente: {selectedSale?.customerName} | Fecha: {selectedSale ? getFormattedDate(selectedSale.date) : ''}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid md:grid-cols-2 gap-6 max-h-[60vh] overflow-y-auto p-2">
@@ -231,7 +260,7 @@ export default function CreditsPage() {
                                 <TableBody>
                                     {selectedSale?.payments && selectedSale.payments.length > 0 ? selectedSale.payments.map(p => (
                                         <TableRow key={p.id}>
-                                            <TableCell>{format(parseISO(p.date), "dd/MM/yyyy HH:mm")}</TableCell>
+                                            <TableCell>{getFormattedDateTime(p.date)}</TableCell>
                                             <TableCell className="text-right">{activeSymbol}{(p.amount * activeRate).toFixed(2)}</TableCell>
                                         </TableRow>
                                     )) : (
