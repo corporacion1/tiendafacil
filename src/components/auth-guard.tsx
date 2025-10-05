@@ -2,18 +2,19 @@
 "use client";
 
 import { useUser } from "@/firebase";
-import { useRouter, usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import { useSecurity } from "@/contexts/security-context";
-import { PinModal } from "./pin-modal";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Logo } from "./logo";
 
+/**
+ * AuthGuard is the first line of defense.
+ * Its ONLY job is to check for a logged-in user. If a user is not logged in,
+ * it redirects to the /login page. It does NOT handle PIN locking or app loading states.
+ * This component runs before the main AppLoader.
+ */
 export function AuthGuard({ children }: { children: React.ReactNode }) {
     const { user, isUserLoading } = useUser();
-    const { isPinLoading, lockApp, hasPin, isLocked, isSecurityReady } = useSecurity();
     const router = useRouter();
-    const pathname = usePathname();
-    const previousPathname = useRef(pathname);
     const [isMounted, setIsMounted] = useState(false);
 
     useEffect(() => {
@@ -22,26 +23,18 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
     // This effect handles redirection based on user authentication status.
     useEffect(() => {
+        // Wait until the component is mounted and the user loading state is resolved.
         if (!isMounted || isUserLoading) return;
         
+        // If, after loading, there is no user, redirect to the login page.
         if (!user) {
             router.replace('/login');
         }
     }, [isMounted, isUserLoading, user, router]);
-    
-    // This effect handles app locking when navigating away from the POS.
-    useEffect(() => {
-      if (!isMounted || !hasPin) return;
-      
-      if (previousPathname.current === '/pos' && pathname !== '/pos') {
-        lockApp();
-      }
-      previousPathname.current = pathname;
-    }, [pathname, lockApp, hasPin, isMounted]);
 
-    // Until the component is mounted and auth/pin state is resolved, render the loading screen.
-    // This guarantees that the server and initial client render are identical, preventing hydration errors.
-    if (!isMounted || isUserLoading || isPinLoading || !isSecurityReady) {
+    // While loading or before the redirect can happen, show a generic loading screen.
+    // This prevents any child components from rendering prematurely.
+    if (isUserLoading || !user) {
         return (
             <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
                 <Logo className="w-64 h-20" />
@@ -50,23 +43,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         );
     }
     
-    // If there is no user after loading, the redirect is in progress. Continue showing a loading screen.
-    if (!user) {
-        return (
-            <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
-                <Logo className="w-64 h-20" />
-                <p className="text-muted-foreground animate-pulse">Redirigiendo...</p>
-            </div>
-        );
-    }
-
-    // If the app is locked after all checks, show the PIN modal.
-    if (isLocked) {
-        return <PinModal />;
-    }
-
-    // Only when everything is ready, unlocked, and the user is confirmed, render the children.
+    // If a user is found, render the children (which will be the AppLoader).
     return <>{children}</>;
 }
-
-    
