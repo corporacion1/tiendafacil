@@ -1,44 +1,93 @@
 
 "use client"
 
-import { useState } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useState, useEffect, useRef } from "react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Send, MessageSquare, HardHat } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth, useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
+import { collection, addDoc, serverTimestamp, query, orderBy, Timestamp, doc, setDoc } from "firebase/firestore";
+import type { ChatMessage } from "@/lib/types";
+import { format } from "date-fns";
 
-// Mock data for chat rooms
+// Static data for chat rooms
 const chatRooms = [
   { id: 'general', name: 'General', icon: MessageSquare },
   { id: 'support', name: 'Soporte Técnico', icon: HardHat },
 ];
 
-// Mock data for messages - will be replaced with real data from Firestore
-const mockMessages = {
-  general: [
-    { id: 1, sender: 'Admin', text: '¡Bienvenidos al chat general!', timestamp: '10:30 AM' },
-    { id: 2, sender: 'Tú', text: '¡Hola a todos!', timestamp: '10:31 AM' },
-  ],
-  support: [
-     { id: 1, sender: 'Soporte', text: 'Hola, ¿en qué podemos ayudarte hoy?', timestamp: '11:00 AM' },
-  ]
-};
-
 export default function ChatPage() {
+  const { user } = useUser();
+  const firestore = useFirestore();
+
   const [selectedRoom, setSelectedRoom] = useState(chatRooms[0]);
   const [newMessage, setNewMessage] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  // Memoize the query to prevent re-renders
+  const messagesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, "chats", selectedRoom.id, "messages"), orderBy("timestamp", "asc"));
+  }, [firestore, selectedRoom.id]);
+
+  const { data: messages, isLoading } = useCollection<ChatMessage>(messagesQuery);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Ensure chat rooms exist in Firestore
+  useEffect(() => {
+    if (!firestore) return;
+    const ensureRooms = async () => {
+        for (const room of chatRooms) {
+            const roomRef = doc(firestore, 'chats', room.id);
+            // Use setDoc with merge to create without overwriting if it exists
+            await setDoc(roomRef, { name: room.name }, { merge: true });
+        }
+    };
+    ensureRooms();
+  }, [firestore]);
+
+
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newMessage.trim() === "") return;
+    if (newMessage.trim() === "" || !user || !firestore) return;
     
-    console.log(`Sending to ${selectedRoom.id}: ${newMessage}`);
-    // Here we will add logic to send the message to Firestore
+    const messagesColRef = collection(firestore, "chats", selectedRoom.id, "messages");
+
+    await addDoc(messagesColRef, {
+      text: newMessage,
+      senderId: user.uid,
+      senderName: user.displayName || user.email || "Usuario Anónimo",
+      timestamp: serverTimestamp(),
+    });
     
     setNewMessage("");
   };
+
+  const formatTimestamp = (timestamp: Timestamp | string | null | undefined) => {
+    if (!timestamp) return "";
+    if (timestamp instanceof Timestamp) {
+      return format(timestamp.toDate(), "HH:mm");
+    }
+    // Fallback for locally created optimistic updates, though serverTimestamp is preferred
+    if (typeof timestamp === 'string') {
+        try {
+            return format(new Date(timestamp), "HH:mm");
+        } catch {
+            return "";
+        }
+    }
+    return "";
+  }
 
   return (
     <Card className="h-[calc(100vh-120px)] flex flex-col">
@@ -80,30 +129,34 @@ export default function ChatPage() {
             {/* Messages Display */}
             <div className="flex-grow p-6 overflow-y-auto bg-slate-50 dark:bg-slate-900/50">
                 <div className="flex flex-col gap-4">
-                     {(mockMessages[selectedRoom.id as keyof typeof mockMessages] || []).map(msg => (
-                        <div key={msg.id} className={cn("flex items-end gap-2", msg.sender === 'Tú' ? 'justify-end' : 'justify-start')}>
-                           {msg.sender !== 'Tú' && (
+                     {isLoading && <p className="text-center text-muted-foreground">Cargando mensajes...</p>}
+                     {!isLoading && messages && messages.map(msg => (
+                        <div key={msg.id} className={cn("flex items-end gap-2", msg.senderId === user?.uid ? 'justify-end' : 'justify-start')}>
+                           {msg.senderId !== user?.uid && (
                                 <Avatar className="h-8 w-8">
-                                    <AvatarFallback>{msg.sender.charAt(0)}</AvatarFallback>
+                                    <AvatarFallback>{msg.senderName.charAt(0)}</AvatarFallback>
                                 </Avatar>
                            )}
                             <div className={cn(
                                 "p-3 rounded-lg max-w-xs lg:max-w-md",
-                                msg.sender === 'Tú' ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                                msg.senderId === user?.uid ? 'bg-primary text-primary-foreground' : 'bg-muted'
                             )}>
                                 <p className="text-sm">{msg.text}</p>
-                                <p className="text-xs text-right mt-1 opacity-70">{msg.timestamp}</p>
+                                <p className="text-xs text-right mt-1 opacity-70">{formatTimestamp(msg.timestamp)}</p>
                             </div>
-                             {msg.sender === 'Tú' && (
+                             {msg.senderId === user?.uid && (
                                 <Avatar className="h-8 w-8">
-                                    <AvatarFallback>T</AvatarFallback>
+                                    <AvatarFallback>{user.displayName ? user.displayName.charAt(0) : 'T'}</AvatarFallback>
                                 </Avatar>
                            )}
                         </div>
                     ))}
-                     <div className="text-center text-sm text-muted-foreground py-4">
-                        --- Fin de los mensajes (por ahora) ---
-                    </div>
+                     {!isLoading && messages?.length === 0 && (
+                        <div className="text-center text-sm text-muted-foreground py-4">
+                            Aún no hay mensajes en esta sala. ¡Sé el primero!
+                        </div>
+                     )}
+                     <div ref={messagesEndRef} />
                 </div>
             </div>
 
@@ -113,11 +166,12 @@ export default function ChatPage() {
                     <Input
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder="Escribe un mensaje..."
+                        placeholder={user ? "Escribe un mensaje..." : "Inicia sesión para chatear"}
                         className="flex-grow"
                         autoComplete="off"
+                        disabled={!user}
                     />
-                    <Button type="submit" size="icon">
+                    <Button type="submit" size="icon" disabled={!user || newMessage.trim() === ''}>
                         <Send className="h-5 w-5" />
                     </Button>
                 </form>

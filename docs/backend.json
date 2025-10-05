@@ -63,6 +63,28 @@
         "phone": { "type": "string", "description": "Phone number of the customer." }
       },
       "required": ["id", "name"]
+    },
+    "Chat": {
+      "title": "Chat",
+      "description": "Represents a chat room.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the chat room." },
+        "lastMessage": { "type": "string" },
+        "lastMessageTimestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Represents a single message in a chat.",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["senderId", "senderName", "text", "timestamp"]
     }
   },
   "auth": {
@@ -74,6 +96,14 @@
             "$ref": "#/entities/Product"
         },
         "description": "Collection of all products in the inventory."
+    },
+    "/chats": {
+      "schema": { "$ref": "#/entities/Chat" },
+      "description": "Collection of all chat rooms."
+    },
+    "/chats/{chatId}/messages": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "Sub-collection of messages for a specific chat."
     }
   }
 }
