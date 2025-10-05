@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Image from "next/image";
@@ -98,12 +98,12 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     defaultValues: getInitialValues(product),
   });
 
-  const { formState: { isDirty } } = form;
+  const { formState: { isDirty }, watch } = form;
 
-  const watchedImageUrl = useWatch({ control: form.control, name: 'imageUrl' });
-  const watchedPrice = useWatch({ control: form.control, name: 'price' });
-  const watchedCost = useWatch({ control: form.control, name: 'cost' });
-  const watchedWholesalePrice = useWatch({ control: form.control, name: 'wholesalePrice' });
+  const watchedImageUrl = watch('imageUrl');
+  const watchedPrice = watch('price');
+  const watchedCost = watch('cost');
+  const watchedWholesalePrice = watch('wholesalePrice');
   
   useEffect(() => {
     form.reset(getInitialValues(product));
