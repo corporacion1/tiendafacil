@@ -46,25 +46,28 @@ export default function ChatPage() {
 
   // Ensure chat rooms exist in Firestore, only after user is authenticated
   useEffect(() => {
-    if (!firestore || isUserLoading || !user) return; // Wait for both firestore and user
-    const ensureRooms = () => {
-        for (const room of chatRooms) {
-            const roomRef = doc(firestore, 'chats', room.id);
-            const roomData = { name: room.name };
-            // Use setDoc with merge to create without overwriting if it exists
-            setDoc(roomRef, roomData, { merge: true })
-                .catch((serverError) => {
-                    const permissionError = new FirestorePermissionError({
-                        path: roomRef.path,
-                        operation: 'write', // 'write' covers create and merge
-                        requestResourceData: roomData,
-                    });
-                    errorEmitter.emit('permission-error', permissionError);
-                });
-        }
-    };
-    ensureRooms();
-  }, [firestore, user, isUserLoading]);
+    // Only run this effect if we have a user and firestore is ready.
+    if (user && firestore) {
+      const ensureRooms = () => {
+          for (const room of chatRooms) {
+              const roomRef = doc(firestore, 'chats', room.id);
+              const roomData = { name: room.name };
+              // Use setDoc with merge to create without overwriting if it exists
+              setDoc(roomRef, roomData, { merge: true })
+                  .catch((serverError) => {
+                      const permissionError = new FirestorePermissionError({
+                          path: roomRef.path,
+                          operation: 'write', // 'write' covers create and merge
+                          requestResourceData: roomData,
+                      });
+                      errorEmitter.emit('permission-error', permissionError);
+                  });
+          }
+      };
+      ensureRooms();
+    }
+    // This effect should only re-run if the user or firestore instance changes.
+  }, [user, firestore]);
 
 
   const handleSendMessage = (e: React.FormEvent) => {
