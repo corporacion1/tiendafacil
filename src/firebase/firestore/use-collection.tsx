@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useUser } from '../provider';
 
 
 /** Utility type to add an 'id' field to a given type T. */
@@ -41,7 +42,7 @@ export interface InternalQuery extends Query<DocumentData> {
 
 /**
  * React hook to subscribe to a Firestore collection or query in real-time.
- * Handles nullable references/queries.
+ * Handles nullable references/queries and user authentication state.
  * 
  *
  * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedTargetRefOrQuery or BAD THINGS WILL HAPPEN
@@ -59,12 +60,20 @@ export function useCollection<T = any>(
   type ResultItemType = WithId<T>;
   type StateDataType = ResultItemType[] | null;
 
+  const { user, isUserLoading } = useUser();
   const [data, setData] = useState<StateDataType>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
-    if (!memoizedTargetRefOrQuery) {
+    // Wait until user auth state is resolved.
+    if (isUserLoading) {
+      setIsLoading(true);
+      return;
+    }
+    
+    // If no user or no query, we are done loading and have no data.
+    if (!user || !memoizedTargetRefOrQuery) {
       setData(null);
       setIsLoading(false);
       setError(null);
@@ -103,7 +112,7 @@ export function useCollection<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery]);
+  }, [memoizedTargetRefOrQuery, user, isUserLoading]);
 
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
     throw new Error('A query/reference passed to useCollection was not properly memoized using useMemoFirebase. This will cause infinite loops.');

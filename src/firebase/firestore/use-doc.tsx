@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useUser } from '../provider';
 
 
 /** Utility type to add an 'id' field to a given type T. */
@@ -28,7 +29,7 @@ export interface UseDocResult<T> {
 
 /**
  * React hook to subscribe to a single Firestore document in real-time.
- * Handles nullable references.
+ * Handles nullable references and user authentication state.
  * 
  * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedTargetRefOrQuery or BAD THINGS WILL HAPPEN
  * use useMemo to memoize it per React guidence.  Also make sure that it's dependencies are stable
@@ -45,12 +46,20 @@ export function useDoc<T = any>(
 ): UseDocResult<T> {
   type StateDataType = WithId<T> | null;
 
+  const { user, isUserLoading } = useUser();
   const [data, setData] = useState<StateDataType>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
-    if (!memoizedDocRef) {
+    // Wait until user auth state is resolved.
+    if (isUserLoading) {
+      setIsLoading(true);
+      return;
+    }
+    
+    // If no user or no docRef, we are done loading and have no data.
+    if (!user || !memoizedDocRef) {
       setData(null);
       setIsLoading(false);
       setError(null);
@@ -85,7 +94,7 @@ export function useDoc<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedDocRef]);
+  }, [memoizedDocRef, user, isUserLoading]);
 
   return { data, isLoading, error };
 }
