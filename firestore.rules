@@ -1,232 +1,194 @@
-/**
- * @fileoverview Firestore Security Rules for Prototyping.
- *
- * Core Philosophy:
- * This ruleset prioritizes strict authorization and assumes a flexible data shape for rapid prototyping.
- * It focuses on preventing unauthorized data access while minimizing data validation to allow for schema evolution.
- *
- * Data Structure:
- * - /stores: Stores (tenants) in the application. Owned by a specific user.
- * - /stores/{storeId}/products: Products belonging to a specific store.
- * - /stores/{storeId}/sales: Sales transactions for a specific store.
- * - /stores/{storeId}/customers: Customers of a specific store.
- * - /products: Public-facing aggregated product catalog.
- * - /users: User profiles, including roles and store assignments.
- * - /chats: Chat rooms.
- * - /chats/{chatId}/messages: Chat messages within a chat room.
- *
- * Key Security Decisions:
- * - User listing is explicitly denied.
- * - Public read access is granted to the /products collection. Writes to /products are owner-only and require the `storeId` to match the authenticated user's `storeId`.
- * - The `sales` collection was initially misconfigured with public `list` access; this has been fixed to require authentication.
- * - Data validation is minimal, focusing on authorization and relational integrity (e.g., owner IDs).
- *
- * Denormalization for Authorization:
- * The ruleset depends on denormalized data for authorization:
- * - Store ownership is determined by the `ownerId` field on the `/stores/{storeId}` document.
- * - Store-specific data (products, sales, customers) inherit authorization from the store.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows authenticated users to read and write their own user profile.
-     * @path /users/{userId}
-     * @allow (create) - Authenticated user creates their own profile with matching ID.
-     * @allow (get,update,delete) - Authenticated user reads, updates, or deletes their own profile.
-     * @deny (create) - Authenticated user tries to create a profile for another user.
-     * @deny (get,update,delete) - Authenticated user tries to read, update, or delete another user's profile.
-     * @principle Enforces document ownership for writes.
+     * @description Checks if the user is signed in.
+     * @return {boolean} True if the user is signed in, false otherwise.
      */
-    match /users/{userId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner(userId) {
-        return request.auth.uid == userId;
-      }
-      function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-      }
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isSignedIn() && isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+    function isSignedIn() {
+      return request.auth != null;
     }
 
     /**
-     * @description Allows authenticated users to create, read, update, and delete their own stores.
-     * @path /stores/{storeId}
-     * @allow (create) - Authenticated user creates a store with their UID as the ownerId.
-     * @allow (get,update,delete) - Authenticated user reads, updates, or deletes their own store.
-     * @deny (create) - Authenticated user tries to create a store with someone else's UID as the ownerId.
-     * @deny (get,update,delete) - Authenticated user tries to read, update, or delete another user's store.
-     * @principle Enforces document ownership for writes.
+     * @description Checks if the authenticated user is the owner of the resource.
+     * @param {string} userId The user ID to compare against the request's auth UID.
+     * @return {boolean} True if the user is the owner, false otherwise.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the authenticated user is the existing owner of the resource.
+     * @param {string} userId The user ID to compare against the resource's ownerId.
+     * @return {boolean} True if the user is the owner and the resource exists, false otherwise.
+     */
+    function isExistingOwner(userId) {
+        return isSignedIn() && request.auth.uid == resource.data.ownerId;
+    }
+    
+    /**
+     * @description Determines if the user is a store admin for the given store.
+     * @param {string} storeId The ID of the store to check.
+     * @return {boolean} True if the user is a store admin for the store, false otherwise.
+     */
+    function isStoreAdmin(storeId) {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'storeAdmin' && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId == storeId;
+    }
+
+    /**
+     * @description Determines if the user is a super admin.
+     * @return {boolean} True if the user is a super admin, false otherwise.
+     */
+    function isSuperAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superAdmin';
+    }
+
+    /**
+     * @description Rules for the /stores collection.
+     * @path /stores
+     * @allow (create) Signed-in user can create a store if they are the owner.
+     * @deny (create) User cannot create a store if they are not signed in or not the owner.
+     * @allow (get, list) Anyone can read the store information.
+     * @deny (update, delete) Only the owner can update or delete the store.
+     * @principle Enforces ownership for store creation and management. Allows public read access.
      */
     match /stores/{storeId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isOwner(storeId) {
-        return request.auth.uid == resource.data.ownerId;
-      }
-        function canCreateStore(storeId) {
-          return request.auth.uid == request.resource.data.ownerId;
-        }
-      function isExistingOwner(storeId) {
-        return isSignedIn() && request.auth.uid == resource.data.ownerId;
-      }
-      allow get: if isSignedIn() && isOwner(storeId);
-      allow list: if false;
-      allow create: if isSignedIn() && canCreateStore(storeId);
-      allow update: if isSignedIn() && isOwner(storeId);
-      allow delete: if isSignedIn() && isOwner(storeId);
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn() && request.auth.uid == resource.data.ownerId;
+      allow delete: if isSignedIn() && request.auth.uid == resource.data.ownerId;
     }
 
     /**
-     * @description Allows authenticated users to manage products within their own store.
-     * @path /stores/{storeId}/products/{productId}
-     * @allow (create) - Authenticated user creates a product in their own store.
-     * @allow (get,update,delete) - Authenticated user reads, updates, or deletes a product in their own store.
-     * @deny (create) - Authenticated user tries to create a product in another user's store.
-     * @deny (get,update,delete) - Authenticated user tries to read, update, or delete a product in another user's store.
-     * @principle Enforces document ownership for writes.
+     * @description Rules for the /stores/{storeId}/products collection.
+     * @path /stores/{storeId}/products
+     * @allow (create) Store admins can create products in their store.
+     * @deny (create) Users who are not store admins cannot create products.
+     * @allow (get, list) Anyone can read products in a store.
+     * @deny (update, delete) Only store admins can update or delete products.
+     * @principle Enforces store admin role for product management within a store. Allows public read access.
      */
     match /stores/{storeId}/products/{productId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isStoreOwner(storeId) {
-          return get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid;
-      }
-      function isExistingStoreOwner(storeId) {
-        return isSignedIn() && isStoreOwner(storeId) && resource != null;
-      }
-      allow get: if isSignedIn() && isStoreOwner(storeId);
-      allow list: if isSignedIn() && isStoreOwner(storeId);
-      allow create: if isSignedIn() && isStoreOwner(storeId);
-      allow update: if isExistingStoreOwner(storeId);
-      allow delete: if isExistingStoreOwner(storeId);
+      allow get: if true;
+      allow list: if true;
+      allow create: if isStoreAdmin(storeId);
+      allow update: if isStoreAdmin(storeId);
+      allow delete: if isStoreAdmin(storeId);
     }
 
-   /**
-     * @description Allows authenticated users to manage sales within their own store.
-     * @path /stores/{storeId}/sales/{saleId}
-     * @allow (create) - Authenticated user creates a sale in their own store.
-     * @allow (get,update,delete) - Authenticated user reads, updates, or deletes a sale in their own store.
-     * @deny (create) - Authenticated user tries to create a sale in another user's store.
-     * @deny (get,update,delete) - Authenticated user tries to read, update, or delete a sale in another user's store.
-     * @principle Enforces document ownership for writes.
+    /**
+     * @description Rules for the /stores/{storeId}/sales collection.
+     * @path /stores/{storeId}/sales
+     * @allow (create) Store admins can create sales records in their store.
+     * @deny (create) Users who are not store admins cannot create sales records.
+     * @allow (get, list) Store admins can list sales records in their store.
+     * @deny (update, delete) Only store admins can update or delete sales records.
+     * @principle Enforces store admin role for sale management within a store.
      */
     match /stores/{storeId}/sales/{saleId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isStoreOwner(storeId) {
-          return get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid;
-      }
-      function isExistingStoreOwner(storeId) {
-        return isSignedIn() && isStoreOwner(storeId) && resource != null;
-      }
-      allow get: if isSignedIn() && isStoreOwner(storeId);
-      allow list: if isSignedIn() && isStoreOwner(storeId);
-      allow create: if isSignedIn() && isStoreOwner(storeId);
-      allow update: if isExistingStoreOwner(storeId);
-      allow delete: if isExistingStoreOwner(storeId);
+      allow get: if isStoreAdmin(storeId);
+      allow list: if isStoreAdmin(storeId);
+      allow create: if isStoreAdmin(storeId);
+      allow update: if isStoreAdmin(storeId);
+      allow delete: if isStoreAdmin(storeId);
     }
 
-   /**
-     * @description Allows authenticated users to manage customers within their own store.
-     * @path /stores/{storeId}/customers/{customerId}
-     * @allow (create) - Authenticated user creates a customer in their own store.
-     * @allow (get,update,delete) - Authenticated user reads, updates, or deletes a customer in their own store.
-     * @deny (create) - Authenticated user tries to create a customer in another user's store.
-     * @deny (get,update,delete) - Authenticated user tries to read, update, or delete a customer in another user's store.
-     * @principle Enforces document ownership for writes.
+    /**
+     * @description Rules for the /stores/{storeId}/customers collection.
+     * @path /stores/{storeId}/customers
+     * @allow (create) Store admins can create customers in their store.
+     * @deny (create) Users who are not store admins cannot create customers.
+     * @allow (get, list) Store admins can list customers in their store.
+     * @deny (update, delete) Only store admins can update or delete customers.
+     * @principle Enforces store admin role for customer management within a store.
      */
     match /stores/{storeId}/customers/{customerId} {
-      function isSignedIn() {
-        return request.auth != null;
-      }
-      function isStoreOwner(storeId) {
-          return get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid;
-      }
-      function isExistingStoreOwner(storeId) {
-        return isSignedIn() && isStoreOwner(storeId) && resource != null;
-      }
-      allow get: if isSignedIn() && isStoreOwner(storeId);
-      allow list: if isSignedIn() && isStoreOwner(storeId);
-      allow create: if isSignedIn() && isStoreOwner(storeId);
-      allow update: if isExistingStoreOwner(storeId);
-      allow delete: if isExistingStoreOwner(storeId);
+      allow get: if isStoreAdmin(storeId);
+      allow list: if isStoreAdmin(storeId);
+      allow create: if isStoreAdmin(storeId);
+      allow update: if isStoreAdmin(storeId);
+      allow delete: if isStoreAdmin(storeId);
     }
 
     /**
-     * @description Allows public read access to the aggregated product catalog, but restricts writes to store owners.
-     * @path /products/{productId}
-     * @allow (get,list) - Any user can read the product data.
-     * @allow (create,update,delete) - Only the store owner can create, update, or delete a product.
-     * @deny (create) - If the `storeId` doesn't match the authenticated user's `storeId`.
-     * @deny (update,delete) - If the user is not the owner of the store associated with the product.
-     * @principle Public read with owner-only writes.
+     * @description Rules for the /products collection (aggregated, public-facing).
+     * @path /products
+     * @allow (get, list) Anyone can read the aggregated product list.
+     * @deny (create, update, delete) Only a privileged process (e.g., a Firebase Function) can modify this collection.
+     * @principle Allows public read access to the aggregated product collection, restricts write access.
      */
     match /products/{productId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-
-        function isStoreOwner(storeId) {
-          return get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid;
-        }
-
-        function canCreateProduct(storeId) {
-          return request.resource.data.storeId == storeId && isStoreOwner(storeId);
-        }
-
-        function isExistingStoreOwner(storeId) {
-          return isSignedIn() && isStoreOwner(storeId) && resource != null;
-        }
-        allow get: if true;
-        allow list: if true;
-        allow create: if isSignedIn() && canCreateProduct(request.resource.data.storeId);
-        allow update: if isSignedIn() && isStoreOwner(request.resource.data.storeId);
-        allow delete: if isSignedIn() && isStoreOwner(request.resource.data.storeId);
+      allow get: if true;
+      allow list: if true;
+      allow create: if false; // TODO: Implement privileged process for write access
+      allow update: if false; // TODO: Implement privileged process for write access
+      allow delete: if false; // TODO: Implement privileged process for write access
     }
 
     /**
-     * @description Allows any signed in user to read from chats, allows creating chats.
-     * @path /chats/{chatId}
-     * @allow (get, list, create) - Any signed in user can read from chats, allows creating chats
-     * @deny (update, delete) - No one can update or delete chats.
+     * @description Rules for the /users collection (user profiles).
+     * @path /users
+     * @allow (create) A user can create their own profile (self-creation).
+     * @deny (create) A user cannot create a profile for another user.
+     * @allow (get) A user can read their own profile.
+     * @deny (list) Listing all users is not allowed.
+     * @allow (update) A user can update their own profile.
+     * @deny (delete) A user cannot delete their profile.
+     * @principle Enforces user ownership for profile management.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if false;
+    }
+
+    /**
+     * @description Rules for the /chats collection.
+     * @path /chats
+     * @allow (get, list) Anyone can read the chat information.
+     * @allow (create) Any signed in user can create a chat.
+     * @deny (update, delete) Chats cannot be updated or deleted.
      */
     match /chats/{chatId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-        allow get: if isSignedIn();
-        allow list: if isSignedIn();
+        allow get: if true;
+        allow list: if true;
         allow create: if isSignedIn();
         allow update: if false;
         allow delete: if false;
     }
 
-   /**
-    * @description Allows any signed in user to read and create messages to a chat.
-    * @path /chats/{chatId}/messages/{messageId}
-    * @allow (get, list, create) - Any signed in user can read/write messages
-    * @deny (update, delete) - no one can update/delete the message
-    */
+    /**
+     * @description Rules for the /chats/{chatId}/messages collection.
+     * @path /chats/{chatId}/messages
+     * @allow (get, list) Anyone can read the messages in a chat.
+     * @allow (create) Any signed in user can create a message in a chat.
+     * @deny (update, delete) Messages cannot be updated or deleted.
+     */
     match /chats/{chatId}/messages/{messageId} {
-        function isSignedIn() {
-          return request.auth != null;
-        }
-        allow get: if isSignedIn();
-        allow list: if isSignedIn();
+        allow get: if true;
+        allow list: if true;
         allow create: if isSignedIn();
         allow update: if false;
         allow delete: if false;
+    }
+    
+    /**
+     * @description Rules for the /inventoryMovements collection.  This collection was the source of the error.
+     * @path /inventoryMovements
+     * @deny (get, list, create, update, delete) No one can access this collection.
+     * @principle Explicitly denies all access until the data model and access patterns are defined.
+     */
+    match /inventoryMovements/{inventoryMovementId} {
+      allow get: if false;
+      allow list: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
   }
 }
