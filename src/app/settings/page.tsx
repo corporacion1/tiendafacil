@@ -322,18 +322,6 @@ export default function SettingsPage() {
                                     Obtener Ubicación Actual
                                 </Button>
                             </div>
-                            {localSettings.storeLocation && (
-                                <div className="mt-4 rounded-md overflow-hidden border aspect-video">
-                                    <iframe
-                                        width="100%"
-                                        height="100%"
-                                        style={{ border: 0 }}
-                                        loading="lazy"
-                                        allowFullScreen
-                                        src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=${localSettings.storeLocation.lat},${localSettings.storeLocation.lng}`}>
-                                    </iframe>
-                                </div>
-                            )}
                         </div>
 
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
@@ -524,5 +512,7 @@ export default function SettingsPage() {
         </Dialog>
     );
 }
+
+    
 
     
