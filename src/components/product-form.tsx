@@ -49,98 +49,84 @@ interface ProductFormProps {
     onCancel?: () => void;
 }
 
-const getInitialValues = (product?: Product): ProductFormValues => {
-    if (product) {
-        return {
-            ...product,
-            price: product.price || 0,
-            wholesalePrice: product.wholesalePrice || 0,
-            cost: product.cost || 0,
-            stock: product.stock || 0,
-            status: product.status || "active",
-            tax1: product.tax1 ?? true,
-            tax2: product.tax2 ?? false,
-        };
-    }
-    return {
-      id: '',
-      name: "",
-      sku: "",
-      price: 0,
-      wholesalePrice: 0,
-      cost: 0,
-      stock: 0,
-      status: "active",
-      tax1: true,
-      tax2: false,
-      unit: '',
-      family: '',
-      warehouse: '',
-      description: '',
-      imageUrl: '',
-      imageHint: '',
-    };
-};
-
-const calculateProfit = (price: number, cost: number): string => {
-  if (cost > 0 && price > cost) {
-    const profit = (((price - cost) / cost) * 100);
-    return profit.toFixed(2);
-  }
-  return '0.00';
-};
-
-
 export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
-  const { settings, activeSymbol, activeRate } = useSettings();
   const { toast } = useToast();
-  
+  const { settings, activeSymbol, activeRate } = useSettings();
+
+  const getInitialValues = (product?: Product): ProductFormValues => {
+      if (product) {
+          return {
+              ...product,
+              price: product.price || 0,
+              wholesalePrice: product.wholesalePrice || 0,
+              cost: product.cost || 0,
+              stock: product.stock || 0,
+              status: product.status || "active",
+              tax1: product.tax1 ?? true,
+              tax2: product.tax2 ?? false,
+          };
+      }
+      return {
+        id: '',
+        name: "",
+        sku: "",
+        price: 0,
+        wholesalePrice: 0,
+        cost: 0,
+        stock: 0,
+        status: "active",
+        tax1: true,
+        tax2: false,
+        unit: '',
+        family: '',
+        warehouse: '',
+        description: '',
+        imageUrl: '',
+        imageHint: '',
+      };
+  };
+
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: getInitialValues(product),
   });
-  
+
   const { formState: { isDirty } } = form;
 
   const watchedImageUrl = useWatch({ control: form.control, name: 'imageUrl' });
   const watchedPrice = useWatch({ control: form.control, name: 'price' });
   const watchedCost = useWatch({ control: form.control, name: 'cost' });
   const watchedWholesalePrice = useWatch({ control: form.control, name: 'wholesalePrice' });
-  
+
   const [displayValues, setDisplayValues] = useState({
     cost: product ? (product.cost * activeRate).toFixed(2) : '0.00',
     price: product ? (product.price * activeRate).toFixed(2) : '0.00',
     wholesalePrice: product ? (product.wholesalePrice * activeRate).toFixed(2) : '0.00',
   });
 
+  useEffect(() => {
+    form.reset(getInitialValues(product));
+  }, [product, form]);
+
+  useEffect(() => {
+    const values = form.getValues();
+    setDisplayValues({
+        cost: (values.cost * activeRate).toFixed(2),
+        price: (values.price * activeRate).toFixed(2),
+        wholesalePrice: (values.wholesalePrice * activeRate).toFixed(2),
+    });
+  }, [activeRate]);
+
   const displayImageUrl = useMemo(() => {
     if (!watchedImageUrl) return '';
     try {
-      // This part only transforms the URL for display, validation is onBlur
       const url = new URL(watchedImageUrl);
-      if (url.hostname.includes("www.dropbox.com")) {
-        url.searchParams.set('raw', '1');
-        url.searchParams.delete('dl');
-        return url.toString();
-      }
-      return watchedImageUrl;
+      return url.toString();
     } catch (e) {
-      return ''; // Return empty if URL is invalid, preventing Image component errors
+      return '';
     }
   }, [watchedImageUrl]);
-
-
-  useEffect(() => {
-    const initialValues = getInitialValues(product);
-    form.reset(initialValues);
-    setDisplayValues({
-        cost: product ? (product.cost * activeRate).toFixed(2) : '0.00',
-        price: product ? (product.price * activeRate).toFixed(2) : '0.00',
-        wholesalePrice: product ? (product.wholesalePrice * activeRate).toFixed(2) : '0.00',
-    });
-  }, [product, activeRate, form.reset]);
-
-
+  
   const handleDisplayValueChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'cost' | 'price' | 'wholesalePrice') => {
       const { value } = e.target;
       setDisplayValues(prev => ({ ...prev, [fieldName]: value }));
@@ -178,27 +164,20 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     }
 
     try {
-        const urlObject = new URL(urlValue);
-        
-        if (urlObject.hostname !== 'www.dropbox.com') {
+        const url = new URL(urlValue);
+        if (url.hostname !== 'www.dropbox.com') {
             showError("Dominio no permitido", "Solo se aceptan URLs de imágenes de Dropbox.");
             return;
         }
 
-        // It's a dropbox URL, try to fix it to a direct link
-        urlObject.searchParams.set('raw', '1');
-        urlObject.searchParams.delete('dl');
+        url.searchParams.set('raw', '1');
+        url.searchParams.delete('dl');
+        const newUrl = url.toString();
         
-        const newUrl = urlObject.toString();
         form.setValue("imageUrl", newUrl, { shouldDirty: true, shouldValidate: true });
-        
-        if(newUrl !== urlValue) {
-            toast({ title: 'URL de Dropbox corregida', description: 'Se ha convertido la URL a un enlace de imagen directa.'});
-        }
-        form.clearErrors("imageUrl");
 
-    } catch (_) {
-        showError("URL Inválida", "La URL que ingresaste no es válida. Por favor, corrígela.");
+    } catch (error) {
+        showError("URL Inválida", "La URL ingresada no es un enlace válido.");
     }
   };
 
@@ -209,7 +188,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         return;
     }
   
-    // No need to check if it's an existing product being edited and the SKU hasn't changed.
     if (product && product.sku.toLowerCase() === sku.toLowerCase()) {
       return;
     }
@@ -228,6 +206,14 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     } else {
       form.clearErrors("sku");
     }
+  };
+  
+  const calculateProfit = (price: number, cost: number): string => {
+    if (cost > 0 && price > cost) {
+      const profit = (((price - cost) / cost) * 100);
+      return profit.toFixed(2);
+    }
+    return '0.00';
   };
 
   const retailProfitPercentage = calculateProfit(watchedPrice, watchedCost);
@@ -546,7 +532,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                       Confirmar
                   </AlertDialogAction>
               </AlertDialogFooter>
-          </AlertDialogContent>
         </AlertDialog>
       </form>
     </Form>
