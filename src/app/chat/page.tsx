@@ -46,7 +46,7 @@ export default function ChatPage() {
 
   // Ensure chat rooms exist in Firestore, only after user is authenticated
   useEffect(() => {
-    if (!firestore || !user) return; // Wait for both firestore and user
+    if (!firestore || isUserLoading || !user) return; // Wait for both firestore and user
     const ensureRooms = async () => {
         console.log("User authenticated, ensuring chat rooms exist in Firestore.");
         for (const room of chatRooms) {
@@ -56,7 +56,7 @@ export default function ChatPage() {
         }
     };
     ensureRooms();
-  }, [firestore, user]); // Depend on both firestore and user
+  }, [firestore, user, isUserLoading]);
 
 
   const handleSendMessage = async (e: React.FormEvent) => {
