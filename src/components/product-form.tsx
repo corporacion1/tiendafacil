@@ -51,15 +51,7 @@ interface ProductFormProps {
 export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const { toast } = useToast();
   const { settings, activeSymbol, activeRate } = useSettings();
-
-  const calculateProfit = (price: number, cost: number): string => {
-    if (cost > 0 && price > cost) {
-        const profit = (((price - cost) / cost) * 100);
-        return profit.toFixed(2);
-    }
-    return '0.00';
-  };
-
+  
   const getInitialValues = (product?: Product): ProductFormValues => {
       if (product) {
           return {
@@ -110,21 +102,41 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     price: product ? (product.price * activeRate).toFixed(2) : '0.00',
     wholesalePrice: product ? (product.wholesalePrice * activeRate).toFixed(2) : '0.00',
   });
+
+  useEffect(() => {
+    form.reset(getInitialValues(product));
+    if (product) {
+      setDisplayValues({
+        cost: (product.cost * activeRate).toFixed(2),
+        price: (product.price * activeRate).toFixed(2),
+        wholesalePrice: (product.wholesalePrice * activeRate).toFixed(2),
+      });
+    }
+  }, [product, activeRate, form.reset]);
   
   const displayImageUrl = useMemo(() => {
     if (!watchedImageUrl) return '';
     try {
       const url = new URL(watchedImageUrl);
-      return url.toString();
+      if (url.hostname === 'www.dropbox.com' && (url.searchParams.has('raw') || url.searchParams.has('dl'))) {
+        url.searchParams.set('raw', '1');
+        url.searchParams.delete('dl');
+        return url.toString();
+      }
+      return watchedImageUrl;
     } catch (e) {
       return '';
     }
   }, [watchedImageUrl]);
-
-  useEffect(() => {
-    form.reset(getInitialValues(product));
-  }, [product, form.reset]);
-
+  
+  const calculateProfit = (price: number, cost: number): string => {
+    if (cost > 0 && price > cost) {
+        const profit = (((price - cost) / cost) * 100);
+        return profit.toFixed(2);
+    }
+    return '0.00';
+  };
+  
   const handleDisplayValueChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'cost' | 'price' | 'wholesalePrice') => {
       const { value } = e.target;
       setDisplayValues(prev => ({ ...prev, [fieldName]: value }));
@@ -152,28 +164,25 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     });
     form.setValue("imageUrl", "", { shouldDirty: true, shouldValidate: true });
   };
-
+  
   const handleImageUrlBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const urlValue = e.target.value;
     if (!urlValue) {
-      form.clearErrors("imageUrl");
-      return;
+        form.clearErrors("imageUrl");
+        return;
     }
 
     try {
-      const url = new URL(urlValue);
-      if (url.hostname !== 'www.dropbox.com') {
-        showError("Dominio no permitido", "Solo se aceptan URLs de imágenes de Dropbox.");
-        return;
-      }
-      
-      url.searchParams.set('raw', '1');
-      url.searchParams.delete('dl');
-      const newUrl = url.toString();
-      form.setValue("imageUrl", newUrl, { shouldDirty: true, shouldValidate: true });
-
+        const url = new URL(urlValue);
+        if (url.hostname !== 'www.dropbox.com') {
+            showError("Dominio no permitido", "Solo se aceptan URLs de imágenes de Dropbox.");
+        } else {
+            url.searchParams.set('raw', '1');
+            url.searchParams.delete('dl');
+            form.setValue("imageUrl", url.toString(), { shouldDirty: true, shouldValidate: true });
+        }
     } catch (error) {
-      showError("URL Inválida", "La URL ingresada no es un enlace válido.");
+        showError("URL Inválida", "La URL ingresada no es un enlace válido.");
     }
   };
   
@@ -206,7 +215,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
   const retailProfitPercentage = calculateProfit(watchedPrice, watchedCost);
   const wholesaleProfitPercentage = calculateProfit(watchedWholesalePrice, watchedCost);
-
+  
   const handleSubmit = async (data: ProductFormValues) => {
     const result = await onSubmit(data);
     if (!product && result === true) {
@@ -232,7 +241,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                             sizes="300px"
                             className="object-cover"
                             onError={() => {
-                                form.setValue("imageUrl", "", { shouldDirty: true });
+                                showError("Error de Imagen", "No se pudo cargar la imagen desde la URL proporcionada.");
                             }}
                           />
                         ) : (
@@ -311,7 +320,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                   render={({ field }) => (
                       <FormItem>
                           <FormLabel>Unidad de Medida</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                   <SelectTrigger><SelectValue placeholder="Selecciona una unidad" /></SelectTrigger>
                               </FormControl>
@@ -328,7 +337,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                   render={({ field }) => (
                       <FormItem>
                           <FormLabel>Familia</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                   <SelectTrigger><SelectValue placeholder="Selecciona una familia" /></SelectTrigger>
                               </FormControl>
@@ -345,7 +354,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                   render={({ field }) => (
                       <FormItem>
                           <FormLabel>Almacén</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                   <SelectTrigger><SelectValue placeholder="Selecciona un almacén" /></SelectTrigger>
                               </FormControl>
@@ -482,7 +491,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                   render={({ field }) => (
                       <FormItem>
                           <FormLabel>Estado</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                               <SelectTrigger>
                               <SelectValue placeholder="Selecciona un estado" />
