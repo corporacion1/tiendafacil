@@ -166,10 +166,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
   const handleImageUrlBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const urlValue = e.target.value;
-    if (!urlValue) {
-        form.clearErrors("imageUrl");
-        return;
-    }
 
     const showError = (title: string, description: string) => {
         toast({
@@ -179,6 +175,11 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         });
         form.setValue("imageUrl", "", { shouldDirty: true });
     };
+
+    if (!urlValue) {
+        form.clearErrors("imageUrl");
+        return;
+    }
 
     try {
         const urlObject = new URL(urlValue);
