@@ -1,11 +1,12 @@
+
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Image from "next/image";
-import { Upload, Package } from "lucide-react";
+import { Package } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -49,7 +50,7 @@ interface ProductFormProps {
 
 export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const { toast } = useToast();
-  const { settings, activeSymbol, activeRate } = useSettings();
+  const { settings } = useSettings();
   
   const getInitialValues = (product?: Product): ProductFormValues => {
       if (product) {
@@ -95,23 +96,10 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const watchedPrice = useWatch({ control: form.control, name: 'price' });
   const watchedCost = useWatch({ control: form.control, name: 'cost' });
   const watchedWholesalePrice = useWatch({ control: form.control, name: 'wholesalePrice' });
-
-  const [displayValues, setDisplayValues] = useState({
-    cost: product ? (product.cost * activeRate).toFixed(2) : '0.00',
-    price: product ? (product.price * activeRate).toFixed(2) : '0.00',
-    wholesalePrice: product ? (product.wholesalePrice * activeRate).toFixed(2) : '0.00',
-  });
-
+  
   useEffect(() => {
     form.reset(getInitialValues(product));
-    if (product) {
-      setDisplayValues({
-        cost: (product.cost * activeRate).toFixed(2),
-        price: (product.price * activeRate).toFixed(2),
-        wholesalePrice: (product.wholesalePrice * activeRate).toFixed(2),
-      });
-    }
-  }, [product, activeRate, form.reset]);
+  }, [product, form]);
   
   const displayImageUrl = useMemo(() => {
     if (!watchedImageUrl) return '';
@@ -136,25 +124,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     return '0.00';
   };
   
-  const handleDisplayValueChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'cost' | 'price' | 'wholesalePrice') => {
-      const { value } = e.target;
-      setDisplayValues(prev => ({ ...prev, [fieldName]: value }));
-  };
-
-  const handleValueBlur = (e: React.FocusEvent<HTMLInputElement>, fieldName: 'cost' | 'price' | 'wholesalePrice') => {
-      const displayValue = e.target.value;
-      const valueAsNumber = parseFloat(displayValue);
-      
-      if (!isNaN(valueAsNumber)) {
-          const valueInPrimaryCurrency = valueAsNumber / activeRate;
-          form.setValue(fieldName, valueInPrimaryCurrency, { shouldValidate: true, shouldDirty: true });
-          setDisplayValues(prev => ({ ...prev, [fieldName]: valueAsNumber.toFixed(2)}));
-      } else {
-          const lastValidValue = form.getValues(fieldName) * activeRate;
-          setDisplayValues(prev => ({...prev, [fieldName]: lastValidValue.toFixed(2)}));
-      }
-  };
-
   const showError = (title: string, description: string) => {
     toast({
       variant: "destructive",
@@ -173,8 +142,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
     try {
         const url = new URL(urlValue);
-        if (url.hostname !== 'www.dropbox.com') {
-            showError("Dominio no permitido", "Solo se aceptan URLs de imágenes de Dropbox.");
+        if (url.hostname !== 'www.dropbox.com' && url.hostname !== 'dl.dropboxusercontent.com' && url.hostname !== 'images.unsplash.com') {
+            showError("Dominio no permitido", "Solo se aceptan URLs de Dropbox o Unsplash.");
         } else {
             form.clearErrors("imageUrl");
         }
@@ -214,7 +183,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     const result = await onSubmit(data);
     if (!product && result === true) {
       form.reset(getInitialValues());
-      setDisplayValues({ cost: '0.00', price: '0.00', wholesalePrice: '0.00' });
     }
   };
   
@@ -251,7 +219,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                     name="imageUrl"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>URL de la Imagen (Dropbox)</FormLabel>
+                            <FormLabel>URL de la Imagen (Dropbox, Unsplash)</FormLabel>
                             <FormControl>
                                 <Input placeholder="https://www.dropbox.com/..." {...field} onBlur={handleImageUrlBlur} />
                             </FormControl>
@@ -368,66 +336,45 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             <FormField
               control={form.control}
               name="cost"
-              render={() => (
+              render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Costo ({activeSymbol})</FormLabel>
+                  <FormLabel>Costo ({settings.primaryCurrencySymbol})</FormLabel>
                   <FormControl>
-                    <Input 
-                      id="cost"
-                      type="text" 
-                      placeholder="0.00" 
-                      value={displayValues.cost}
-                      onChange={(e) => handleDisplayValueChange(e, 'cost')}
-                      onBlur={(e) => handleValueBlur(e, 'cost')}
-                    />
+                    <Input type="number" placeholder="0.00" {...field} />
                   </FormControl>
-                   <FormMessage>{form.formState.errors.cost?.message}</FormMessage>
+                   <FormMessage />
                 </FormItem>
               )}
             />
             <FormField
               control={form.control}
               name="price"
-              render={() => (
+              render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Precio Detal ({activeSymbol})</FormLabel>
+                  <FormLabel>Precio Detal ({settings.primaryCurrencySymbol})</FormLabel>
                   <FormControl>
-                     <Input 
-                      id="price"
-                      type="text" 
-                      placeholder="0.00" 
-                      value={displayValues.price}
-                      onChange={(e) => handleDisplayValueChange(e, 'price')}
-                      onBlur={(e) => handleValueBlur(e, 'price')}
-                    />
+                     <Input type="number" placeholder="0.00" {...field} />
                   </FormControl>
                   <FormDescription className={cn(parseFloat(retailProfitPercentage) > 0 ? "text-green-600 font-semibold" : "")}>
                       Margen de Ganancia: {retailProfitPercentage}%
                   </FormDescription>
-                  <FormMessage>{form.formState.errors.price?.message}</FormMessage>
+                  <FormMessage />
                 </FormItem>
               )}
             />
             <FormField
               control={form.control}
               name="wholesalePrice"
-              render={() => (
+              render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Precio Mayor ({activeSymbol})</FormLabel>
+                  <FormLabel>Precio Mayor ({settings.primaryCurrencySymbol})</FormLabel>
                   <FormControl>
-                     <Input 
-                      id="wholesalePrice"
-                      type="text" 
-                      placeholder="0.00" 
-                      value={displayValues.wholesalePrice}
-                      onChange={(e) => handleDisplayValueChange(e, 'wholesalePrice')}
-                      onBlur={(e) => handleValueBlur(e, 'wholesalePrice')}
-                    />
+                     <Input type="number" placeholder="0.00" {...field} />
                   </FormControl>
                   <FormDescription className={cn(parseFloat(wholesaleProfitPercentage) > 0 ? "text-green-600 font-semibold" : "")}>
                       Margen de Ganancia: {wholesaleProfitPercentage}%
                   </FormDescription>
-                  <FormMessage>{form.formState.errors.wholesalePrice?.message}</FormMessage>
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -475,7 +422,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                   <FormItem>
                       <FormLabel>Stock Inicial</FormLabel>
                       <FormControl>
-                      <Input type="number" placeholder="0" {...field} onChange={event => field.onChange(+event.target.value)} readOnly={!!product} />
+                      <Input type="number" placeholder="0" {...field} readOnly={!!product} />
                       </FormControl>
                       <FormDescription>{product ? "El stock se modifica con movimientos de inventario." : "Stock al momento de crear el producto."}</FormDescription>
                       <FormMessage />
@@ -531,3 +478,5 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     </Form>
   );
 }
+
+    
