@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useEffect, useMemo } from "react";
@@ -9,7 +10,7 @@ import Image from "next/image";
 import { Package } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -92,7 +93,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
 
   const handleSkuBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const sku = e.target.value;
-    if (!product || product.sku !== sku) { // Check only if SKU has changed or it's a new product
+    if (!product || product.sku !== sku) {
       const existingProduct = mockProducts.find(p => p.sku.toLowerCase() === sku.toLowerCase());
       if (existingProduct) {
         form.setError("sku", {
@@ -139,305 +140,306 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-6">
         <AlertDialog>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-            {/* Image & Status Column */}
-            <div className="space-y-4 md:col-span-1">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Imagen del Producto</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <FormField
-                        control={form.control}
-                        name="imageUrl"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>URL de la Imagen</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="https://..." {...field} onBlur={handleImageUrlBlur}/>
-                                </FormControl>
-                                <div className="aspect-square relative bg-muted rounded-md flex items-center justify-center mt-2 overflow-hidden">
-                                {watchedImageUrl ? (
-                                    <Image src={watchedImageUrl} alt="Vista previa del producto" fill sizes="300px" className="object-cover" />
-                                ) : (
-                                    <Package className="h-16 w-16 text-muted-foreground" />
-                                )}
-                                </div>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Estado</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <FormField
-                            control={form.control}
-                            name="status"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Estado del producto</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Selecciona un estado" />
-                                    </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                    <SelectItem value="active">Activo</SelectItem>
-                                    <SelectItem value="inactive">Inactivo</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                            />
-                    </CardContent>
-                </Card>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+            {/* Main Details Column */}
+            <div className="lg:col-span-2 space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Detalles del Producto</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nombre del Producto</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ej: Laptop Pro" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="sku"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>SKU (Código de Producto)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ej: LP-001" {...field} onBlur={handleSkuBlur} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Descripción</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Describe tu producto..."
+                            className="resize-none"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
             </div>
 
-            {/* Main Details Column */}
-            <div className="space-y-6 md:col-span-2">
+            {/* Image Column */}
+            <div className="lg:col-span-1 space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Imagen del Producto</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <FormField
+                    control={form.control}
+                    name="imageUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>URL de la Imagen</FormLabel>
+                        <FormControl>
+                          <Input placeholder="https://..." {...field} onBlur={handleImageUrlBlur} />
+                        </FormControl>
+                        <div className="aspect-square relative bg-muted rounded-md flex items-center justify-center mt-2 overflow-hidden">
+                          {watchedImageUrl ? (
+                            <Image src={watchedImageUrl} alt="Vista previa del producto" fill sizes="300px" className="object-cover" />
+                          ) : (
+                            <Package className="h-16 w-16 text-muted-foreground" />
+                          )}
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+          
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Precios y Costo</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <FormField
+                  control={form.control}
+                  name="cost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Costo ({settings.primaryCurrencySymbol})</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="price"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Precio Detal ({settings.primaryCurrencySymbol})</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} />
+                      </FormControl>
+                      <FormDescription className={cn(cost > 0 && price <= cost && "text-destructive")}>
+                        Margen de ganancia: {profitMargin}%
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="wholesalePrice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Precio Mayorista ({settings.primaryCurrencySymbol})</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} />
+                      </FormControl>
+                      <FormDescription className={cn(cost > 0 && wholesalePrice <= cost && "text-destructive")}>
+                        Margen de ganancia: {wholesaleProfitMargin}%
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Inventario y Clasificación</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-4 sm:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="stock"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Stock Inicial</FormLabel>
+                        <FormControl>
+                          <Input type="number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="unit"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Unidad de Medida</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecciona una unidad" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {initialUnits.map(unit => (
+                              <SelectItem key={unit.id} value={unit.name}>{unit.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="family"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Familia de Producto</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecciona una familia" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {initialFamilies.map(family => (
+                              <SelectItem key={family.id} value={family.name}>{family.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="warehouse"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Almacén</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecciona un almacén" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {initialWarehouses.map(wh => (
+                              <SelectItem key={wh.id} value={wh.name}>{wh.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+
+              <div className="space-y-6">
                 <Card>
-                    <CardHeader>
-                        <CardTitle>Detalles del Producto</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid gap-4">
-                        <FormField
-                        control={form.control}
-                        name="name"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Nombre del Producto</FormLabel>
+                  <CardHeader>
+                    <CardTitle>Estado</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <FormField
+                      control={form.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Estado del producto</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
-                                <Input placeholder="Ej: Laptop Pro" {...field} />
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecciona un estado" />
+                              </SelectTrigger>
                             </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
-                        control={form.control}
-                        name="sku"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>SKU (Código de Producto)</FormLabel>
-                            <FormControl>
-                                <Input placeholder="Ej: LP-001" {...field} onBlur={handleSkuBlur} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name="description"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Descripción</FormLabel>
-                                <FormControl>
-                                    <Textarea
-                                    placeholder="Describe tu producto..."
-                                    className="resize-none"
-                                    {...field}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </CardContent>
+                            <SelectContent>
+                              <SelectItem value="active">Activo</SelectItem>
+                              <SelectItem value="inactive">Inactivo</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </CardContent>
                 </Card>
-                
                 <Card>
-                    <CardHeader>
-                        <CardTitle>Precios y Costo</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid gap-4 sm:grid-cols-2">
-                        <FormField
-                            control={form.control}
-                            name="cost"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Costo ({settings.primaryCurrencySymbol})</FormLabel>
-                                <FormControl>
-                                    <Input type="number" step="0.01" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name="price"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Precio Detal ({settings.primaryCurrencySymbol})</FormLabel>
-                                <FormControl>
-                                    <Input type="number" step="0.01" {...field} />
-                                </FormControl>
-                                <FormDescription className={cn(cost > 0 && price <= cost && "text-destructive")}>
-                                    Margen de ganancia: {profitMargin}%
-                                </FormDescription>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name="wholesalePrice"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Precio Mayorista ({settings.primaryCurrencySymbol})</FormLabel>
-                                <FormControl>
-                                    <Input type="number" step="0.01" {...field} />
-                                </FormControl>
-                                <FormDescription className={cn(cost > 0 && wholesalePrice <= cost && "text-destructive")}>
-                                     Margen de ganancia: {wholesaleProfitMargin}%
-                                </FormDescription>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </CardContent>
+                  <CardHeader>
+                    <CardTitle>Impuestos</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="tax1"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                          <div className="space-y-0.5">
+                            <FormLabel>Impuesto 1 ({settings.tax1}%)</FormLabel>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="tax2"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                          <div className="space-y-0.5">
+                            <FormLabel>Impuesto 2 ({settings.tax2}%)</FormLabel>
+                          </div>
+                          <FormControl>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </CardContent>
                 </Card>
-                
-                 <Card>
-                    <CardHeader>
-                        <CardTitle>Inventario y Clasificación</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid gap-4 sm:grid-cols-2">
-                         <FormField
-                            control={form.control}
-                            name="stock"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Stock Inicial</FormLabel>
-                                <FormControl>
-                                    <Input type="number" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name="unit"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Unidad de Medida</FormLabel>
-                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Selecciona una unidad" />
-                                    </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                    {initialUnits.map(unit => (
-                                        <SelectItem key={unit.id} value={unit.name}>{unit.name}</SelectItem>
-                                    ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name="family"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Familia de Producto</FormLabel>
-                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Selecciona una familia" />
-                                    </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                     {initialFamilies.map(family => (
-                                        <SelectItem key={family.id} value={family.name}>{family.name}</SelectItem>
-                                    ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="warehouse"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Almacén</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Selecciona un almacén" />
-                                    </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                    {initialWarehouses.map(wh => (
-                                        <SelectItem key={wh.id} value={wh.name}>{wh.name}</SelectItem>
-                                    ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </CardContent>
-                </Card>
-                 <Card>
-                    <CardHeader>
-                        <CardTitle>Impuestos</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid gap-4 sm:grid-cols-2">
-                        <FormField
-                            control={form.control}
-                            name="tax1"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                <div className="space-y-0.5">
-                                    <FormLabel>Impuesto 1 ({settings.tax1}%)</FormLabel>
-                                    <FormDescription>
-                                    Aplica el impuesto general a las ventas.
-                                    </FormDescription>
-                                </div>
-                                <FormControl>
-                                    <Switch
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                    />
-                                </FormControl>
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="tax2"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                <div className="space-y-0.5">
-                                    <FormLabel>Impuesto 2 ({settings.tax2}%)</FormLabel>
-                                    <FormDescription>
-                                    Aplica el impuesto especial (si aplica).
-                                    </FormDescription>
-                                </div>
-                                <FormControl>
-                                    <Switch
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                    />
-                                </FormControl>
-                                </FormItem>
-                            )}
-                        />
-                    </CardContent>
-                 </Card>
+              </div>
             </div>
           </div>
           
