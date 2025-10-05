@@ -1,3 +1,4 @@
+
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
@@ -7,17 +8,13 @@ import { getFirestore } from 'firebase/firestore';
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
-  // Always initialize with the explicit config to ensure consistency across all environments and prevent stale instances.
   const appName = 'default';
-  try {
-      // This will throw if the app is not initialized.
+  if (getApps().length > 0) {
       const app = getApp(appName);
       return getSdks(app);
-  } catch (e) {
-      // Initialize the app if it's not already.
-      const firebaseApp = initializeApp(firebaseConfig, appName);
-      return getSdks(firebaseApp);
   }
+  const firebaseApp = initializeApp(firebaseConfig, appName);
+  return getSdks(firebaseApp);
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
