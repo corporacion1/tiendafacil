@@ -5,11 +5,11 @@ import { PinModal } from "@/components/pin-modal";
 import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { Footer } from "@/components/footer";
-import { ProvidersWrapper } from "@/components/providers-wrapper";
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import { useSecurity } from "@/contexts/security-context";
 import { useUser } from '@/firebase';
+import { AuthGuard } from "./auth-guard";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { isLocked, lockApp, hasPin, isMounted } = useSecurity();
@@ -18,19 +18,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const previousPathname = useRef(pathname);
 
-  // Auth Guard Logic
+  // Auth Guard Logic for login page redirection
   useEffect(() => {
-    // If auth state is loading, or we are not mounted yet, don't do anything.
+    // If auth state is still loading, or we are not mounted, don't do anything yet.
     if (isUserLoading || !isMounted) {
       return;
-    }
-    // If there is no user and we are not on the login page, redirect.
-    if (!user && pathname !== '/login') {
-      router.replace('/login');
     }
     // If there is a user and we are on the login page, redirect to dashboard.
     if (user && pathname === '/login') {
       router.replace('/dashboard');
+    }
+    // If there is no user and we are NOT on the login page, redirect to login.
+    // This is a failsafe, but AuthGuard should handle the main logic.
+    if (!user && pathname !== '/login') {
+      router.replace('/login');
     }
   }, [user, isUserLoading, pathname, router, isMounted]);
 
@@ -44,34 +45,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [pathname, lockApp, hasPin, isMounted]);
 
   // Render based on auth and lock state
-  if (isUserLoading || !isMounted) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        <p>Verificando sesión...</p>
-      </div>
-    );
-  }
-
   if (pathname === '/login') {
     return <>{children}</>;
-  }
-
-  // If there's no user, we show a loading screen while the redirect effect happens.
-  if (!user) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        <p>Redirigiendo...</p>
-      </div>
-    );
   }
 
   if (isLocked) {
     return <PinModal />;
   }
   
-  // User is authenticated and app is unlocked, render the full app.
   return (
-    <ProvidersWrapper>
+    <AuthGuard>
       <div className="flex min-h-screen w-full flex-col bg-muted/40">
         <SiteSidebar />
         <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
@@ -82,6 +65,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Footer />
         </div>
       </div>
-    </ProvidersWrapper>
+    </AuthGuard>
   );
 }
