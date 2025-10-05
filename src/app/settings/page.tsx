@@ -297,9 +297,9 @@ export default function SettingsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Datos del Comercio</CardTitle>
-                    <CardDescription>Configura la información de tu tienda que aparecerá en los tickets.</CardDescription>
+                    <CardDescription>Configura la información de tu tienda que aparecerá en los tickets y gestiona las clasificaciones de productos.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="storeName">Nombre de la Tienda</Label>
@@ -330,6 +330,12 @@ export default function SettingsPage() {
                             <Input id="tax2" type="number" value={localSettings.tax2} onChange={handleNumberSettingsChange} placeholder="Ej: 5" />
                              <CardDescription>Impuesto especial o selectivo.</CardDescription>
                         </div>
+                    </div>
+                    <Separator />
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+                        {renderManagementCard("Unidades de Medida", "Gestiona las unidades para tus productos.", units, 'unit')}
+                        {renderManagementCard("Familias de Productos", "Organiza tus productos en familias.", families, 'family')}
+                        {renderManagementCard("Almacenes", "Gestiona los almacenes de destino.", warehouses, 'warehouse')}
                     </div>
                 </CardContent>
                 <CardFooter className="border-t px-6 py-4 flex justify-end">
@@ -412,13 +418,6 @@ export default function SettingsPage() {
                     <Button className="bg-primary hover:bg-primary/90" onClick={saveAllSettings}>Guardar Configuración de Monedas</Button>
                 </CardFooter>
             </Card>
-
-            {/* Management Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {renderManagementCard("Unidades de Medida", "Gestiona las unidades para tus productos.", units, 'unit')}
-                {renderManagementCard("Familias de Productos", "Organiza tus productos en familias.", families, 'family')}
-                {renderManagementCard("Almacenes", "Gestiona los almacenes de destino.", warehouses, 'warehouse')}
-            </div>
 
             <Card>
                 <CardHeader>
