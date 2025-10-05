@@ -103,7 +103,11 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const activeCurrency = displayCurrency;
   const activeSymbol = activeCurrency === 'primary' ? settings.primaryCurrencySymbol : settings.secondaryCurrencySymbol;
-  const activeRate = activeCurrency === 'primary' ? 1 : (currencyRates?.[0]?.rate ?? 1);
+  
+  // Ensure activeRate is never 0 to prevent division by zero errors.
+  const latestRate = currencyRates?.[0]?.rate;
+  const activeRate = activeCurrency === 'primary' ? 1 : (latestRate && latestRate > 0 ? latestRate : 1);
+
 
   return (
     <SettingsContext.Provider value={{ settings, setSettings: handleSetSettings, displayCurrency, toggleDisplayCurrency, activeCurrency, activeSymbol, activeRate, currencyRates, setCurrencyRates }}>

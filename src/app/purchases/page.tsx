@@ -79,25 +79,26 @@ export default function PurchasesPage() {
   };
   
   const updateItem = (productId: string, field: 'quantity' | 'cost', value: number) => {
-      if (isNaN(value)) return;
+    if (isNaN(value)) return;
   
-      let valueToSet = value;
-      if (field === 'cost' && activeRate !== 1) {
-          // When user edits the cost, we assume they are entering it in the *active* currency.
-          // We need to convert it back to the primary currency for storage.
-          valueToSet = value / activeRate;
-      }
+    let valueToSet = value;
+    // Check for safe activeRate before division
+    if (field === 'cost' && activeRate !== 1 && activeRate > 0) {
+        // When user edits the cost, we assume they are entering it in the *active* currency.
+        // We need to convert it back to the primary currency for storage.
+        valueToSet = value / activeRate;
+    }
   
-      if (field === 'quantity' && value <= 0) {
-          removeProduct(productId);
-          return;
-      }
+    if (field === 'quantity' && value <= 0) {
+        removeProduct(productId);
+        return;
+    }
   
-      setPurchaseItems((prevItems) =>
-        prevItems.map((item) =>
-          item.productId === productId ? { ...item, [field]: valueToSet } : item
-        )
-      );
+    setPurchaseItems((prevItems) =>
+      prevItems.map((item) =>
+        item.productId === productId ? { ...item, [field]: valueToSet } : item
+      )
+    );
   };
   
   const removeProduct = (productId: string) => {
