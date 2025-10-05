@@ -28,7 +28,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       previousPathname.current = pathname;
     }, [pathname, lockApp, hasPin, isMounted]);
 
-    if (isUserLoading || isPinLoading) {
+    if (isUserLoading || (isMounted && isPinLoading)) {
         return (
             <div className="flex min-h-screen w-full items-center justify-center bg-background">
                 <p>Verificando sesión...</p>

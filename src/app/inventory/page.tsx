@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { mockInventoryMovements, mockSales } from "@/lib/data";
+import { mockProducts, mockInventoryMovements, mockSales } from "@/lib/data";
 import type { Product, InventoryMovement } from "@/lib/types";
 import {
   Command,
@@ -33,7 +33,6 @@ import {
 } from "@/components/ui/popover"
 import { cn } from "@/lib/utils";
 import { ProductForm } from "@/components/product-form";
-import { useProducts } from "@/contexts/product-context";
 import { useSettings } from "@/contexts/settings-context";
 
 
@@ -53,7 +52,7 @@ const getDisplayImageUrl = (imageUrl?: string) => {
 
 export default function InventoryPage() {
   const { toast } = useToast();
-  const { products, updateProduct, deleteProduct } = useProducts();
+  const [products, setProducts] = useState<Product[]>(mockProducts);
   const { activeSymbol, activeRate } = useSettings();
   const [isMovementsDialogOpen, setIsMovementsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -80,13 +79,10 @@ export default function InventoryPage() {
   };
 
 
-  async function handleUpdateProduct(data: Omit<Product, 'id'> & { id?: string }) {
+  function handleUpdateProduct(data: Omit<Product, 'id'> & { id?: string }) {
     if (!data.id) return false;
 
-    // The data from the form is already complete, just remove the id before sending to update
-    const { id, ...updateData } = data;
-
-    await updateProduct(id, updateData);
+    setProducts(prev => prev.map(p => p.id === data.id ? { ...p, ...data } : p));
     
     toast({
         title: "Producto Actualizado",
@@ -111,7 +107,7 @@ export default function InventoryPage() {
         return;
     }
     
-    deleteProduct(productId);
+    setProducts(prev => prev.filter(p => p.id !== productId));
     toast({
       title: "Producto Eliminado",
       description: "El producto ha sido eliminado del inventario.",
@@ -159,7 +155,9 @@ export default function InventoryPage() {
         break;
     }
     
-    updateProduct(movementProduct.id, { stock: newStock });
+    setProducts(prevProducts => prevProducts.map(p => 
+        p.id === movementProduct.id ? { ...p, stock: newStock } : p
+    ));
 
     const newMovement: InventoryMovement = {
         id: `mov-${Date.now()}-${movementProduct.id}`,
@@ -511,5 +509,3 @@ export default function InventoryPage() {
     </>
   );
 }
-
-    

@@ -10,7 +10,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { initialCustomers, initialFamilies } from "@/lib/data"
+import { initialCustomers, initialFamilies, mockProducts } from "@/lib/data"
 import { useToast } from "@/hooks/use-toast"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
@@ -22,9 +22,8 @@ import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
-import { useProducts } from "@/contexts/product-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useSales } from "@/contexts/sales-context";
+import { mockSales } from "@/lib/data";
 
 const generateSaleId = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -88,8 +87,7 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
 export default function POSPage() {
   const { toast } = useToast();
   const { settings, activeSymbol, activeRate } = useSettings();
-  const { products, updateProduct } = useProducts();
-  const { addSale } = useSales();
+  const [products, setProducts] = useState(mockProducts);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFamily, setSelectedFamily] = useState<string>("all");
@@ -198,7 +196,7 @@ export default function POSPage() {
   const total = subtotal + totalTaxes;
 
 
-  const handleProcessSale = async (andPrint: boolean) => {
+  const handleProcessSale = (andPrint: boolean) => {
      if (cartItems.length === 0) {
       toast({
         variant: "destructive",
@@ -237,12 +235,12 @@ export default function POSPage() {
         payments: transactionType === 'credito' ? [] : undefined,
     }
     
-    await addSale(newSale);
+    mockSales.push(newSale);
 
     for (const item of cartItems) {
         const product = products.find(p => p.id === item.product.id);
         if (product) {
-            await updateProduct(product.id, { ...product, stock: product.stock - item.quantity });
+            setProducts(prev => prev.map(p => p.id === product.id ? { ...p, stock: p.stock - item.quantity } : p));
         }
     }
 

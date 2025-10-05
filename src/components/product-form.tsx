@@ -15,10 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type { Product } from "@/lib/types";
-import { useProducts } from "@/contexts/product-context";
-import { useUnits } from "@/contexts/units-context";
-import { useFamilies } from "@/contexts/families-context";
-import { useWarehouses } from "@/contexts/warehouses-context";
+import { mockProducts, initialUnits, initialFamilies, initialWarehouses } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
@@ -94,10 +91,6 @@ const calculateProfit = (price: number, cost: number): string => {
 
 
 export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
-  const { products } = useProducts();
-  const { units } = useUnits();
-  const { families } = useFamilies();
-  const { warehouses } = useWarehouses();
   const { settings, activeSymbol, activeRate } = useSettings();
   const { toast } = useToast();
   
@@ -193,7 +186,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       return;
     }
   
-    const existingProduct = products.find(p => p.sku.toLowerCase() === sku.toLowerCase());
+    const existingProduct = mockProducts.find(p => p.sku.toLowerCase() === sku.toLowerCase());
     if (existingProduct) {
       toast({
         variant: "destructive",
@@ -321,7 +314,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                                   <SelectTrigger><SelectValue placeholder="Selecciona una unidad" /></SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                  {units.map(u => <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>)}
+                                  {initialUnits.map(u => <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>)}
                               </SelectContent>
                           </Select>
                       </FormItem>
@@ -338,7 +331,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                                   <SelectTrigger><SelectValue placeholder="Selecciona una familia" /></SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                  {families.map(f => <SelectItem key={f.id} value={f.name}>{f.name}</SelectItem>)}
+                                  {initialFamilies.map(f => <SelectItem key={f.id} value={f.name}>{f.name}</SelectItem>)}
                               </SelectContent>
                           </Select>
                       </FormItem>
@@ -355,7 +348,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                                   <SelectTrigger><SelectValue placeholder="Selecciona un almacén" /></SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                  {warehouses.map(w => <SelectItem key={w.id} value={w.name}>{w.name}</SelectItem>)}
+                                  {initialWarehouses.map(w => <SelectItem key={w.id} value={w.name}>{w.name}</SelectItem>)}
                               </SelectContent>
                           </Select>
                       </FormItem>

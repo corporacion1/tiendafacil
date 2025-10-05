@@ -18,12 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
 
-import { useProducts } from "@/contexts/product-context";
-import { useUnits } from "@/contexts/units-context";
-import { useFamilies } from "@/contexts/families-context";
-import { useWarehouses } from "@/contexts/warehouses-context";
-import { useCurrencyRates } from "@/contexts/currency-rates-context";
-import { Timestamp } from "firebase/firestore";
+import { mockProducts, initialUnits, initialFamilies, initialWarehouses, mockCurrencyRates } from "@/lib/data";
 
 
 function ChangePinDialog() {
@@ -86,11 +81,11 @@ export default function SettingsPage() {
     const [confirmPin, setConfirmPin] = useState('');
     const { toast } = useToast();
     
-    const { products } = useProducts();
-    const { units, addUnit, updateUnit, deleteUnit } = useUnits();
-    const { families, addFamily, updateFamily, deleteFamily } = useFamilies();
-    const { warehouses, addWarehouse, updateWarehouse, deleteWarehouse } = useWarehouses();
-    const { currencyRates, addRate } = useCurrencyRates();
+    const [products, setProducts] = useState(mockProducts);
+    const [units, setUnits] = useState(initialUnits);
+    const [families, setFamilies] = useState(initialFamilies);
+    const [warehouses, setWarehouses] = useState(initialWarehouses);
+    const [currencyRates, setCurrencyRates] = useState(mockCurrencyRates);
     const [newRate, setNewRate] = useState<number>(0);
 
     const [editingItem, setEditingItem] = useState<{type: 'unit' | 'family' | 'warehouse', data: any} | null>(null);
@@ -111,7 +106,7 @@ export default function SettingsPage() {
         toast({ title: "Configuración guardada", description: "Toda la configuración ha sido actualizada." });
     };
 
-    const handleSaveNewRate = async () => {
+    const handleSaveNewRate = () => {
         if(newRate <= 0) {
             toast({
                 variant: 'destructive',
@@ -121,11 +116,13 @@ export default function SettingsPage() {
             return;
         }
 
-        await addRate({
+        const newRateEntry: CurrencyRate = {
+            id: `rate-${Date.now()}`,
             rate: newRate,
-            date: Timestamp.now(),
-        });
+            date: new Date().toISOString(),
+        };
 
+        setCurrencyRates(prev => [newRateEntry, ...prev]);
         setNewRate(0);
 
         toast({
@@ -154,33 +151,29 @@ export default function SettingsPage() {
             return;
         }
 
-        switch(type) {
-            case 'unit': deleteUnit(id); break;
-            case 'family': deleteFamily(id); break;
-            case 'warehouse': deleteWarehouse(id); break;
-        }
+        const setter = {
+            unit: setUnits,
+            family: setFamilies,
+            warehouse: setWarehouses,
+        }[type];
+
+        setter(prev => prev.filter(item => item.id !== id));
 
         toast({ title: 'Elemento eliminado', description: 'El elemento ha sido eliminado correctamente.' });
     };
 
-    const handleSave = async () => {
+    const handleSave = () => {
         if (editingItem) { // Editing existing item
             const { type, data } = editingItem;
-            switch(type) {
-                case 'unit': await updateUnit(data.id, data); break;
-                case 'family': await updateFamily(data.id, data); break;
-                case 'warehouse': await updateWarehouse(data.id, data); break;
-            }
+            const setter = { unit: setUnits, family: setFamilies, warehouse: setWarehouses }[type];
+            setter(prev => prev.map(item => item.id === data.id ? data : item));
             toast({ title: 'Elemento actualizado' });
             setEditingItem(null);
         } else if (newItem && newItem.name.trim() !== '') { // Adding new item
             const { type, name } = newItem;
-            const newEntry = { name };
-             switch(type) {
-                case 'unit': await addUnit(newEntry); break;
-                case 'family': await addFamily(newEntry); break;
-                case 'warehouse': await addWarehouse(newEntry); break;
-            }
+            const newEntry = { id: `${type.slice(0,1)}-${Date.now()}`, name };
+            const setter = { unit: setUnits, family: setFamilies, warehouse: setWarehouses }[type];
+            setter(prev => [...prev, newEntry]);
             toast({ title: 'Elemento agregado' });
             setNewItem(null);
         }
@@ -346,7 +339,7 @@ export default function SettingsPage() {
                                         <TableBody>
                                             {currencyRates.length > 0 ? currencyRates.map(rate => (
                                                 <TableRow key={rate.id}>
-                                                    <TableCell>{format(typeof rate.date === 'string' ? parseISO(rate.date) : (rate.date as Timestamp).toDate(), "dd/MM/yy HH:mm")}</TableCell>
+                                                    <TableCell>{format(parseISO(rate.date), "dd/MM/yy HH:mm")}</TableCell>
                                                     <TableCell className="text-right font-mono">{`${rate.rate.toFixed(6)} ${localSettings.secondaryCurrencySymbol}`}</TableCell>
                                                 </TableRow>
                                             )) : (

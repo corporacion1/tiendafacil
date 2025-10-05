@@ -16,13 +16,11 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { mockSales } from "@/lib/data";
-import { useProducts } from "@/contexts/product-context";
 import type { Sale, Payment } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
 
 export default function CreditsPage() {
     const { toast } = useToast();
-    const { products } = useProducts();
     const { settings, activeSymbol, activeRate } = useSettings();
     const [sales, setSales] = useState<Sale[]>(mockSales);
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);

@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase';
 import { SecurityProvider } from '@/contexts/security-context';
+import { SettingsProvider } from '@/contexts/settings-context';
 
 export const metadata: Metadata = {
   title: 'TIENDA FACIL WEB',
@@ -30,10 +31,12 @@ export default function RootLayout({
          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <FirebaseClientProvider>
             <SecurityProvider>
-              <AppShell>
-                  {children}
-              </AppShell>
-              <Toaster />
+              <SettingsProvider>
+                <AppShell>
+                    {children}
+                </AppShell>
+                <Toaster />
+              </SettingsProvider>
             </SecurityProvider>
           </FirebaseClientProvider>
         </ThemeProvider>

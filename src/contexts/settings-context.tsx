@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import type { CurrencyRate } from '@/lib/types';
-import { useCurrencyRates } from './currency-rates-context';
+import { mockCurrencyRates } from '@/lib/data';
 
 export interface Settings {
     storeName: string;
@@ -52,7 +52,7 @@ const defaultSettings: Settings = {
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
   const [settings, setSettings] = useState<Settings>(defaultSettings);
-  const { currencyRates } = useCurrencyRates();
+  const [currencyRates, setCurrencyRates] = useState(mockCurrencyRates);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   const { toast } = useToast();
 
@@ -118,5 +118,3 @@ export const useSettings = (): SettingsContextType => {
   }
   return context;
 };
-
-    

@@ -1,18 +1,18 @@
 
-
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ProductForm } from "@/components/product-form";
 import type { Product } from "@/lib/types";
-import { useProducts } from "@/contexts/product-context";
+import { mockProducts } from "@/lib/data";
 
 export default function ProductsPage() {
   const { toast } = useToast();
-  const { products, addProduct } = useProducts();
+  const [products, setProducts] = useState(mockProducts);
 
-  async function onSubmit(data: Omit<Product, 'id'>) {
+  function onSubmit(data: Omit<Product, 'id'>) {
     const existingProduct = products.find(product => product.sku.toLowerCase() === data.sku.toLowerCase());
 
     if (existingProduct) {
@@ -24,15 +24,12 @@ export default function ProductsPage() {
       return false; // Stop the submission
     }
     
-    // Explicitly remove id field before adding, as addDoc generates it.
-    const productData = { ...data };
-    delete (productData as any).id;
+    const newProduct: Product = {
+        ...data,
+        id: `prod-${Date.now()}` // Generate a simple unique ID
+    };
 
-    if ('id' in productData && (productData.id === undefined || productData.id === '')) {
-        delete (productData as any).id;
-    }
-    
-    await addProduct(productData);
+    setProducts(prev => [...prev, newProduct]);
     
     toast({
       title: "Producto Creado",

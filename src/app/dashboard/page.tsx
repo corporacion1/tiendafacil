@@ -34,21 +34,20 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { useProducts } from "@/contexts/product-context";
 import { useSettings } from "@/contexts/settings-context";
-import { useSales } from "@/contexts/sales-context";
-import { usePurchases } from "@/contexts/purchases-context";
+import { mockSales, mockProducts, mockPurchases, mockInventoryMovements } from "@/lib/data";
 import { InventoryMovement } from "@/lib/types";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 
 type TimeFilter = 'day' | 'week' | 'month';
 
 export default function Dashboard() {
-  const { products, isLoading: productsLoading } = useProducts();
-  const { sales, isLoading: salesLoading } = useSales();
-  const { purchases, isLoading: purchasesLoading } = usePurchases();
   const { activeSymbol, activeRate } = useSettings();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
+  const [sales] = useState(mockSales);
+  const [products] = useState(mockProducts);
+  const [purchases] = useState(mockPurchases);
+  const [inventoryMovements] = useState(mockInventoryMovements);
 
   const filteredData = useMemo(() => {
     const now = new Date();
@@ -70,10 +69,10 @@ export default function Dashboard() {
     
     const cutoffDate = startDate;
 
-    const filterByDate = <T extends { date: string | { toDate: () => Date } }>(items: T[]) => {
+    const filterByDate = <T extends { date: string }>(items: T[]) => {
         return items.filter(item => {
             if (!item.date) return false;
-            const itemDate = typeof item.date === 'string' ? parseISO(item.date) : (item.date as any).toDate();
+            const itemDate = parseISO(item.date);
             return itemDate >= cutoffDate;
         });
     }
@@ -87,7 +86,7 @@ export default function Dashboard() {
   const { sales: filteredSales, purchases: filteredPurchases } = filteredData;
 
   const recentMovements = useMemo(() => {
-    const movements: Omit<InventoryMovement, 'id' | 'productId' >[] = [];
+    const movements: Omit<InventoryMovement, 'id'>[] = [];
     filteredSales.forEach(sale => {
       sale.items.forEach(item => {
         movements.push({
@@ -100,8 +99,8 @@ export default function Dashboard() {
     });
     // We would also add purchases and adjustments here if we had those contexts
     return movements.sort((a, b) => {
-        const dateA = typeof a.date === 'string' ? parseISO(a.date) : (a.date as any).toDate();
-        const dateB = typeof b.date === 'string' ? parseISO(b.date) : (b.date as any).toDate();
+        const dateA = parseISO(a.date);
+        const dateB = parseISO(b.date);
         return dateB.getTime() - dateA.getTime();
     });
   }, [filteredSales]);
@@ -112,7 +111,7 @@ export default function Dashboard() {
 
     filteredSales.forEach(sale => {
         if (!sale.date) return;
-        const saleDate = typeof sale.date === 'string' ? parseISO(sale.date) : (sale.date as any).toDate();
+        const saleDate = parseISO(sale.date);
         const dateKey = format(saleDate, 'yyyy-MM-dd');
       
         if (!dataByDate[dateKey]) {
@@ -136,7 +135,7 @@ export default function Dashboard() {
 
     filteredPurchases.forEach(purchase => {
         if(!purchase.date) return;
-        const purchaseDate = typeof purchase.date === 'string' ? parseISO(purchase.date) : (purchase.date as any).toDate();
+        const purchaseDate = parseISO(purchase.date);
         const dateKey = format(purchaseDate, 'yyyy-MM-dd');
 
         if (!dataByDate[dateKey]) {
@@ -174,10 +173,6 @@ export default function Dashboard() {
   const totalRevenue = useMemo(() => filteredSales.reduce((acc, s) => acc + s.total, 0), [filteredSales]);
   const totalPurchases = useMemo(() => filteredPurchases.reduce((acc, p) => acc + p.total, 0), [filteredPurchases]);
   const activeProducts = useMemo(() => products.filter(p => p.status === 'active').length, [products]);
-
-  if (productsLoading || salesLoading || purchasesLoading) {
-    return <div>Cargando dashboard...</div>
-  }
 
   return (
     <div className="flex min-h-screen w-full flex-col">
