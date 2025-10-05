@@ -5,7 +5,7 @@ import { PinModal } from "@/components/pin-modal";
 import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { Footer } from "@/components/footer";
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import { useSecurity } from "@/contexts/security-context";
 import { useUser } from '@/firebase';
@@ -13,27 +13,9 @@ import { AuthGuard } from "./auth-guard";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { isLocked, lockApp, hasPin, isMounted } = useSecurity();
-  const { user, isUserLoading } = useUser();
+  const { isUserLoading } = useUser();
   const pathname = usePathname();
-  const router = useRouter();
   const previousPathname = useRef(pathname);
-
-  // Auth Guard Logic for login page redirection
-  useEffect(() => {
-    // If auth state is still loading, or we are not mounted, don't do anything yet.
-    if (isUserLoading || !isMounted) {
-      return;
-    }
-    // If there is a user and we are on the login page, redirect to dashboard.
-    if (user && pathname === '/login') {
-      router.replace('/dashboard');
-    }
-    // If there is no user and we are NOT on the login page, redirect to login.
-    // This is a failsafe, but AuthGuard should handle the main logic.
-    if (!user && pathname !== '/login') {
-      router.replace('/login');
-    }
-  }, [user, isUserLoading, pathname, router, isMounted]);
 
   // Lock app on POS exit
   useEffect(() => {
@@ -44,9 +26,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     previousPathname.current = pathname;
   }, [pathname, lockApp, hasPin, isMounted]);
 
-  // Render based on auth and lock state
+  // Handle loading and unauthenticated states for the shell
   if (pathname === '/login') {
     return <>{children}</>;
+  }
+
+  if (!isMounted || isUserLoading) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <p>Cargando aplicación...</p>
+      </div>
+    );
   }
 
   if (isLocked) {

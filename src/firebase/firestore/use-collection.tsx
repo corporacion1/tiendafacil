@@ -60,20 +60,12 @@ export function useCollection<T = any>(
   type ResultItemType = WithId<T>;
   type StateDataType = ResultItemType[] | null;
 
-  const { user, isUserLoading } = useUser();
   const [data, setData] = useState<StateDataType>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
-    // Wait until user auth state is resolved.
-    if (isUserLoading) {
-      setIsLoading(true);
-      return;
-    }
-    
-    // If no user or no query, we are done loading and have no data.
-    if (!user || !memoizedTargetRefOrQuery) {
+    if (!memoizedTargetRefOrQuery) {
       setData(null);
       setIsLoading(false);
       setError(null);
@@ -112,7 +104,7 @@ export function useCollection<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery, user, isUserLoading]);
+  }, [memoizedTargetRefOrQuery]);
 
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
     throw new Error('A query/reference passed to useCollection was not properly memoized using useMemoFirebase. This will cause infinite loops.');
