@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import { useState, useRef, useEffect } from "react";
@@ -13,12 +14,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Unit, Family, Warehouse, CurrencyRate, Product } from "@/lib/types";
-import { Pencil, PlusCircle, Trash2 } from "lucide-react";
+import { Pencil, PlusCircle, Trash2, AlertTriangle } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
 
-import { mockProducts, initialUnits, initialFamilies, initialWarehouses, mockCurrencyRates } from "@/lib/data";
+import { mockProducts, initialUnits as defaultUnits, initialFamilies as defaultFamilies, initialWarehouses as defaultWarehouses, mockCurrencyRates, factoryReset } from "@/lib/data";
 
 
 function ChangePinDialog() {
@@ -74,7 +75,7 @@ function ChangePinDialog() {
                 </div>
                 <DialogFooter>
                     <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-                    <Button onClick={handleChangePin} disabled={!isFormDirty || newPin !== confirmPin}>Guardar Cambios</Button>
+                    <Button onClick={handleChangePin} disabled={!isFormDirty || newPin !== confirmPin || newPin.length !== 4}>Guardar Cambios</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -86,9 +87,9 @@ export default function SettingsPage() {
     const { settings, setSettings, currencyRates, setCurrencyRates } = useSettings();
     
     const [localSettings, setLocalSettings] = useState(settings);
-    const [localUnits, setLocalUnits] = useState(initialUnits);
-    const [localFamilies, setLocalFamilies] = useState(initialFamilies);
-    const [localWarehouses, setLocalWarehouses] = useState(initialWarehouses);
+    const [localUnits, setLocalUnits] = useState(defaultUnits);
+    const [localFamilies, setLocalFamilies] = useState(defaultFamilies);
+    const [localWarehouses, setLocalWarehouses] = useState(defaultWarehouses);
     const [localCurrencyRates, setLocalCurrencyRates] = useState(currencyRates);
 
     const [isDirty, setIsDirty] = useState(false);
@@ -101,9 +102,9 @@ export default function SettingsPage() {
     
     useEffect(() => {
         const mainSettingsChanged = JSON.stringify(localSettings) !== JSON.stringify(settings);
-        const unitsChanged = JSON.stringify(localUnits) !== JSON.stringify(initialUnits);
-        const familiesChanged = JSON.stringify(localFamilies) !== JSON.stringify(initialFamilies);
-        const warehousesChanged = JSON.stringify(localWarehouses) !== JSON.stringify(initialWarehouses);
+        const unitsChanged = JSON.stringify(localUnits) !== JSON.stringify(defaultUnits);
+        const familiesChanged = JSON.stringify(localFamilies) !== JSON.stringify(defaultFamilies);
+        const warehousesChanged = JSON.stringify(localWarehouses) !== JSON.stringify(defaultWarehouses);
         const ratesChanged = JSON.stringify(localCurrencyRates) !== JSON.stringify(currencyRates);
 
         setIsDirty(mainSettingsChanged || unitsChanged || familiesChanged || warehousesChanged || ratesChanged);
@@ -123,9 +124,9 @@ export default function SettingsPage() {
         setSettings(localSettings);
         // Here you would also save units, families, warehouses, and rates to your persistent storage.
         // For this mock app, we can update the context if we were to create one for them, or just consider it "saved".
-        Object.assign(initialUnits, localUnits);
-        Object.assign(initialFamilies, localFamilies);
-        Object.assign(initialWarehouses, localWarehouses);
+        Object.assign(defaultUnits, localUnits);
+        Object.assign(defaultFamilies, localFamilies);
+        Object.assign(defaultWarehouses, localWarehouses);
         setCurrencyRates(localCurrencyRates);
         
         setIsDirty(false);
@@ -150,11 +151,7 @@ export default function SettingsPage() {
 
         setLocalCurrencyRates(prev => [newRateEntry, ...prev]);
         setNewRate(0);
-
-        toast({
-            title: 'Tasa de Cambio Agregada',
-            description: `Nueva tasa de ${newRate.toFixed(6)} para ${localSettings.secondaryCurrencyName} ha sido agregada. Haz clic en "Guardar Configuración de Monedas" para persistir el cambio.`,
-        });
+        setIsDirty(true);
     };
 
     const isItemInUse = (type: 'unit' | 'family' | 'warehouse', id: string) => {
@@ -194,8 +191,24 @@ export default function SettingsPage() {
         }[type];
 
         setter(prev => prev.filter(item => item.id !== id));
+        setIsDirty(true);
+    };
+    
+    const handleFactoryReset = () => {
+        factoryReset();
+        // Also clear settings from localStorage
+        localStorage.removeItem('tienda_facil_settings');
+        localStorage.removeItem('tienda_facil_currency_pref');
+        
+        toast({
+            title: 'Restauración Completa',
+            description: 'Los datos de la aplicación han sido reiniciados. La página se recargará.',
+        });
 
-        toast({ title: 'Elemento eliminado', description: 'El cambio se guardará al hacer clic en "Guardar Configuración".' });
+        // Reload the page to apply changes everywhere
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
     };
 
     const renderManagementCard = (
@@ -215,8 +228,8 @@ export default function SettingsPage() {
             }
             const newEntry = { id: `${type}-${Date.now()}`, name: newItemName.trim() };
             setItems(prev => [...prev, newEntry]);
-            toast({ title: 'Elemento agregado', description: 'El cambio se guardará al hacer clic en "Guardar Configuración".' });
             setNewItemName('');
+            setIsDirty(true);
         };
         
         const handleEditItem = () => {
@@ -225,8 +238,8 @@ export default function SettingsPage() {
                 return;
             }
             setItems(prev => prev.map(item => item.id === editingItem.id ? { ...item, name: editingItem.name } : item));
-            toast({ title: 'Elemento actualizado', description: 'El cambio se guardará al hacer clic en "Guardar Configuración".' });
             setEditingItem(null);
+            setIsDirty(true);
         };
 
         return (
@@ -305,7 +318,7 @@ export default function SettingsPage() {
                             </DialogHeader>
                              <div className="py-4">
                                 <Label htmlFor={`edit-${type}-name`}>Nombre</Label>
-                                <Input id={`edit-${type}-name`} value={editingItem?.name || ''} onChange={(e) => editingItem && setEditingItem({...editingItem, name: e.target.value})} />
+                                <Input id={`edit-${type}-name`} value={editingItem?.name || ''} onChange={(e) => editingItem && setEditingItem({...editingItem, name: e.target.value})} autoFocus />
                             </div>
                             <DialogFooter>
                                 <DialogClose asChild>
@@ -408,18 +421,18 @@ export default function SettingsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
                             <h4 className="font-medium">Registrar Tasa ({localSettings.secondaryCurrencyName})</h4>
-                            <div className="space-y-2">
-                                <Label htmlFor="newRate">Tasa de Cambio Actual</Label>
+                            <div className="flex items-center gap-2">
                                 <Input 
                                     id="newRate" 
                                     type="number" 
                                     step="0.000001" 
                                     value={newRate || ''} 
                                     onChange={(e) => setNewRate(parseFloat(e.target.value) || 0)} 
-                                    placeholder={localCurrencyRates[0]?.rate.toFixed(6) || "0.000000"} 
+                                    placeholder={localCurrencyRates[0]?.rate.toFixed(6) || "0.000000"}
+                                    className="flex-grow"
                                 />
+                                <Button onClick={handleSaveNewRate} disabled={newRate <= 0}>Guardar Tasa</Button>
                             </div>
-                            <Button onClick={handleSaveNewRate} disabled={newRate <= 0}>Guardar Tasa</Button>
                         </div>
                         <div className="space-y-4">
                             <h4 className="font-medium">Historial de Tasas</h4>
@@ -496,12 +509,46 @@ export default function SettingsPage() {
                                         <Button variant="outline">Cancelar</Button>
                                     </DialogClose>
                                     <DialogClose asChild>
-                                        <Button onClick={() => setPin(newPin, confirmPin)} disabled={!newPin || newPin !== confirmPin}>Establecer PIN</Button>
+                                        <Button onClick={() => setPin(newPin, confirmPin)} disabled={!newPin || newPin !== confirmPin || newPin.length !== 4}>Establecer PIN</Button>
                                     </DialogClose>
                                 </DialogFooter>
                             </DialogContent>
                         </Dialog>
                     )}
+                </CardContent>
+            </Card>
+            
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-destructive">
+                        <AlertTriangle />
+                        Ajustes Avanzados
+                    </CardTitle>
+                    <CardDescription>
+                       Acciones peligrosas que pueden resultar en la pérdida de datos.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive">Restaurar Datos de Fábrica</Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Esta acción es irreversible. Se borrarán todos los productos, ventas, compras, clientes, proveedores y movimientos de inventario. La configuración de la tienda también se restablecerá a los valores predeterminados.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleFactoryReset} className="bg-destructive hover:bg-destructive/90">Sí, restaurar todo</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                    <p className="text-sm text-muted-foreground mt-2">
+                        Utiliza esta opción si deseas limpiar toda la aplicación y empezar desde cero.
+                    </p>
                 </CardContent>
             </Card>
         </div>
