@@ -24,15 +24,15 @@ export default function ProductsPage() {
     
     const productsCollection = collection(firestore, 'products');
     
+    // Return true optimistically to reset the form, error is handled in catch.
+    const shouldResetForm = true;
+
     addDoc(productsCollection, data)
       .then(() => {
           toast({
             title: "Producto Creado",
             description: `El producto "${data.name}" ha sido creado exitosamente.`,
           });
-          // This return is for the form, so it knows to reset.
-          // It needs to be inside the .then() to only happen on success.
-          return true; 
       })
       .catch((error) => {
           console.error("Error creating product: ", error);
@@ -45,9 +45,7 @@ export default function ProductsPage() {
           errorEmitter.emit('permission-error', permissionError);
       });
 
-      // Optimistically return true to allow the form to reset immediately.
-      // The user will be notified of the error via toast if it fails.
-      return true;
+      return shouldResetForm;
   }
   
   return (
