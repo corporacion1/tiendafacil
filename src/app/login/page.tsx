@@ -121,7 +121,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen w-full items-center justify-center bg-muted/40">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <Logo className="w-40 h-40 mx-auto mb-4" />
+          <Logo className="w-64 h-20 mx-auto mb-4" />
           <CardTitle className="text-2xl">Bienvenido a Tienda Facil</CardTitle>
           <CardDescription>
             {isSignUp ? 'Crea una cuenta para continuar' : 'Ingresa a tu cuenta para continuar'}

@@ -99,7 +99,7 @@ export function SiteHeader() {
             </SheetContent>
         </Sheet>
         <div className="hidden items-center gap-2 md:flex">
-            <Logo className="w-24 h-24 text-foreground" />
+            <Logo className="w-32 h-10" />
         </div>
       <div className="relative ml-auto flex items-center gap-2 md:grow-0">
         <TooltipProvider>

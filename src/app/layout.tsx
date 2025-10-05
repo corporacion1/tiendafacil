@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase';
 import { SecurityProvider } from '@/contexts/security-context';
 import { SettingsProvider } from '@/contexts/settings-context';
+import { useSettings } from '@/contexts/settings-context';
 
 export const metadata: Metadata = {
   title: 'TIENDA FACIL - Tu Comercio',
@@ -21,7 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="icon" href="https://www.dropbox.com/scl/fi/6jp3b04tgk5j45bkt3g6q/playstore.png?rlkey=d87w32npctfsb299k4jwb1ixh&raw=1" />
+        <link rel="icon" href="https://www.dropbox.com/scl/fi/apl8e6ymm6wel3coa10a9/tienda_facil_logo.svg?rlkey=jn7j3dezgn1ovbl35vapk5ap5&raw=1" type="image/svg+xml" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
