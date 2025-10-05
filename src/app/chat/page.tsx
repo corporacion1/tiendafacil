@@ -47,12 +47,21 @@ export default function ChatPage() {
   // Ensure chat rooms exist in Firestore, only after user is authenticated
   useEffect(() => {
     if (!firestore || isUserLoading || !user) return; // Wait for both firestore and user
-    const ensureRooms = async () => {
+    const ensureRooms = () => {
         console.log("User authenticated, ensuring chat rooms exist in Firestore.");
         for (const room of chatRooms) {
             const roomRef = doc(firestore, 'chats', room.id);
+            const roomData = { name: room.name };
             // Use setDoc with merge to create without overwriting if it exists
-            await setDoc(roomRef, { name: room.name }, { merge: true });
+            setDoc(roomRef, roomData, { merge: true })
+                .catch((error) => {
+                    const permissionError = new FirestorePermissionError({
+                        path: roomRef.path,
+                        operation: 'write', // 'write' covers create and merge
+                        requestResourceData: roomData,
+                    });
+                    errorEmitter.emit('permission-error', permissionError);
+                });
         }
     };
     ensureRooms();
