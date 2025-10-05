@@ -234,32 +234,36 @@ export default function ReportsPage() {
     }
 
     const filteredSales = useMemo(() => {
+        if (!user?.uid) return [];
         return (salesData || []).filter(sale =>
             sale.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
             sale.customerName.toLowerCase().includes(searchTerm.toLowerCase())
         );
-    }, [salesData, searchTerm]);
+    }, [salesData, searchTerm, user?.uid]);
 
     const filteredPurchases = useMemo(() => {
+        if (!user?.uid) return [];
         return (purchasesData || []).filter(purchase =>
             purchase.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
             purchase.supplierName.toLowerCase().includes(searchTerm.toLowerCase())
         );
-    }, [purchasesData, searchTerm]);
+    }, [purchasesData, searchTerm, user?.uid]);
 
     const filteredMovements = useMemo(() => {
+        if (!user?.uid) return [];
         return (movementsData || []).filter(movement =>
             movement.productName.toLowerCase().includes(searchTerm.toLowerCase())
         );
-    }, [movementsData, searchTerm]);
+    }, [movementsData, searchTerm, user?.uid]);
 
     const filteredProducts = useMemo(() => {
+        if (!user?.uid) return [];
         return (products || []).filter(p => 
             p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (p.sku && p.sku.toLowerCase().includes(searchTerm.toLowerCase())) ||
             (p.description && p.description.toLowerCase().includes(searchTerm.toLowerCase()))
         );
-    }, [products, searchTerm]);
+    }, [products, searchTerm, user?.uid]);
     
     const salesTotal = useMemo(() => {
         return filteredSales.reduce((acc, sale) => acc + sale.total, 0);
@@ -595,3 +599,5 @@ export default function ReportsPage() {
     </>
   );
 }
+
+    
