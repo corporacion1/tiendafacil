@@ -16,18 +16,19 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import type { Sale, Payment } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
-import { useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from "@/firebase";
 import { collection, doc, updateDoc, arrayUnion } from "firebase/firestore";
 
 export default function CreditsPage() {
     const { toast } = useToast();
     const { settings, activeSymbol, activeRate } = useSettings();
     const firestore = useFirestore();
+    const { user } = useUser();
 
     const salesCollection = useMemoFirebase(() => {
-        if (!firestore) return null;
+        if (!firestore || !user?.uid) return null;
         return collection(firestore, "sales");
-    }, [firestore]);
+    }, [firestore, user?.uid]);
     
     const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollection);
 
