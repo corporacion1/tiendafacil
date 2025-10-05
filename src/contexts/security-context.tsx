@@ -12,6 +12,7 @@ interface SecurityContextType {
   hasPin: boolean;
   removePin: () => void;
   changePin: (oldPin: string, newPin: string, confirmPin: string) => boolean;
+  checkPin: (pin: string) => boolean;
   isPinLoading: boolean;
   isMounted: boolean;
 }
@@ -70,6 +71,10 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
       });
     }
   }, [storedPin, toast]);
+
+  const checkPin = useCallback((pin: string) => {
+    return pin === storedPin;
+  }, [storedPin]);
 
   const setPin = useCallback((newPin: string, confirmPin: string) => {
     if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
@@ -175,6 +180,7 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
     hasPin,
     removePin,
     changePin,
+    checkPin,
     isPinLoading,
     isMounted
   };

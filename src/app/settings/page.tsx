@@ -18,7 +18,7 @@ import { Pencil, PlusCircle, Trash2, AlertTriangle } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
-import { useFirestore } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, getDocs, writeBatch } from "firebase/firestore";
 
 import { mockProducts, initialUnits as defaultUnits, initialFamilies as defaultFamilies, initialWarehouses as defaultWarehouses, mockCurrencyRates, factoryReset } from "@/lib/data";
@@ -85,7 +85,7 @@ function ChangePinDialog() {
 }
 
 export default function SettingsPage() {
-    const { hasPin, setPin, removePin } = useSecurity();
+    const { hasPin, setPin, removePin, checkPin } = useSecurity();
     const { settings, setSettings, currencyRates, setCurrencyRates } = useSettings();
     const firestore = useFirestore();
     
@@ -100,8 +100,18 @@ export default function SettingsPage() {
     const [confirmPin, setConfirmPin] = useState('');
     const { toast } = useToast();
     
-    const [products, setProducts] = useState(mockProducts);
+    const productsCollection = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, "products");
+    }, [firestore]);
+    
+    const { data: products } = useCollection<Product>(productsCollection);
+
     const [newRate, setNewRate] = useState<number>(0);
+
+    const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+    const [resetPin, setResetPin] = useState('');
+    const [resetConfirmationText, setResetConfirmationText] = useState('');
     
     useEffect(() => {
         const mainSettingsChanged = JSON.stringify(localSettings) !== JSON.stringify(settings);
@@ -158,6 +168,7 @@ export default function SettingsPage() {
     };
 
     const isItemInUse = (type: 'unit' | 'family' | 'warehouse', id: string) => {
+        if (!products) return false;
         const nameFinder = (items: any[], itemId: string) => items.find(i => i.id === itemId)?.name;
         
         let name: string | undefined;
@@ -198,6 +209,24 @@ export default function SettingsPage() {
     };
     
     const handleFactoryReset = async () => {
+        if(hasPin && !checkPin(resetPin)) {
+             toast({
+                variant: "destructive",
+                title: "PIN Incorrecto",
+                description: "El PIN de seguridad no es correcto."
+            });
+            return;
+        }
+        
+        if (resetConfirmationText !== 'RESTAURAR') {
+             toast({
+                variant: "destructive",
+                title: "Confirmación incorrecta",
+                description: "Debes escribir 'RESTAURAR' para confirmar."
+            });
+            return;
+        }
+
         if (!firestore) {
             toast({
                 variant: "destructive",
@@ -208,9 +237,13 @@ export default function SettingsPage() {
         }
 
         try {
+            toast({
+                title: 'Restaurando...',
+                description: 'Por favor, espera mientras se eliminan los datos.',
+            });
+
             // Delete all products from Firestore
-            const productsCollection = collection(firestore, 'products');
-            const productsSnapshot = await getDocs(productsCollection);
+            const productsSnapshot = await getDocs(productsCollection!);
             const batch = writeBatch(firestore);
             productsSnapshot.forEach((doc) => {
                 batch.delete(doc.ref);
@@ -225,6 +258,8 @@ export default function SettingsPage() {
             localStorage.removeItem('tienda_facil_currency_pref');
             localStorage.removeItem('tienda_facil_pin');
             
+            setIsResetConfirmOpen(false);
+
             toast({
                 title: 'Restauración Completa',
                 description: 'Todos los datos de productos han sido eliminados. La página se recargará.',
@@ -571,12 +606,12 @@ export default function SettingsPage() {
                             <AlertDialogHeader>
                                 <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                    Esta acción es irreversible. Se borrarán todos los productos, ventas, compras, clientes, proveedores y movimientos de inventario. La configuración de la tienda también se restablecerá a los valores predeterminados.
+                                    Esta acción es irreversible y borrará todos los datos.
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleFactoryReset} className="bg-destructive hover:bg-destructive/90">Sí, restaurar todo</AlertDialogAction>
+                                <AlertDialogAction onClick={() => setIsResetConfirmOpen(true)} className="bg-destructive hover:bg-destructive/90">Sí, estoy seguro</AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
@@ -585,6 +620,52 @@ export default function SettingsPage() {
                     </p>
                 </CardContent>
             </Card>
+
+            <Dialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="text-destructive">Confirmación Final</DialogTitle>
+                        <DialogDescription>
+                            Esta es tu última oportunidad. Para confirmar el borrado total de datos, completa lo siguiente.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        {hasPin && (
+                             <div className="space-y-2">
+                                <Label htmlFor="reset-pin">PIN de Seguridad</Label>
+                                <Input
+                                    id="reset-pin"
+                                    type="password"
+                                    value={resetPin}
+                                    onChange={(e) => setResetPin(e.target.value)}
+                                    maxLength={4}
+                                    placeholder="****"
+                                    autoFocus
+                                />
+                            </div>
+                        )}
+                        <div className="space-y-2">
+                            <Label htmlFor="reset-confirm-text">Escribe "RESTAURAR" para confirmar</Label>
+                            <Input
+                                id="reset-confirm-text"
+                                value={resetConfirmationText}
+                                onChange={(e) => setResetConfirmationText(e.target.value)}
+                                placeholder="RESTAURAR"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
+                        <Button
+                            variant="destructive"
+                            onClick={handleFactoryReset}
+                            disabled={resetConfirmationText !== 'RESTAURAR' || (hasPin && resetPin.length !== 4)}
+                        >
+                            Restaurar y Borrar Todo
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
