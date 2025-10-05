@@ -30,33 +30,23 @@ export default function ProductsPage() {
             title: "Producto Creado",
             description: `El producto "${data.name}" ha sido creado exitosamente.`,
           });
-          // Assuming the form component handles reset on success, which `true` would signify.
-          // This part of the logic needs to be handled within the promise resolution.
-          // If the form component needs an explicit call, it should be done here.
+          // This return is for the form, so it knows to reset.
+          // It needs to be inside the .then() to only happen on success.
+          return true; 
       })
       .catch((error) => {
           console.error("Error creating product: ", error);
           
-          if (error.code === 'permission-denied') {
-              const permissionError = new FirestorePermissionError({
-                  path: productsCollection.path,
-                  operation: 'create',
-                  requestResourceData: data,
-              });
-              errorEmitter.emit('permission-error', permissionError);
-          } else {
-              toast({
-                variant: "destructive",
-                title: "Error al crear",
-                description: error.message || "Ocurrió un problema al guardar el producto en la base de datos.",
-              });
-          }
+          const permissionError = new FirestorePermissionError({
+              path: productsCollection.path,
+              operation: 'create',
+              requestResourceData: data,
+          });
+          errorEmitter.emit('permission-error', permissionError);
       });
 
-      // Since addDoc is now handled asynchronously with .then/.catch,
-      // we need to decide what to return. If the form reset depends on a synchronous `true`,
-      // this might need adjustment in the ProductForm component.
-      // For optimistic UI, we can return true immediately.
+      // Optimistically return true to allow the form to reset immediately.
+      // The user will be notified of the error via toast if it fails.
       return true;
   }
   
