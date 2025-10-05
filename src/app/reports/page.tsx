@@ -47,7 +47,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/settings-context";
-import { useCollection, useFirestore } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection } from "firebase/firestore";
 
 
@@ -56,7 +56,13 @@ type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
 export default function ReportsPage() {
     const { settings, activeSymbol, activeRate } = useSettings();
     const firestore = useFirestore();
-    const { data: products } = useCollection<Product>(firestore ? collection(firestore, 'products') : null);
+    
+    const productsQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, 'products');
+    }, [firestore]);
+    const { data: products } = useCollection<Product>(productsQuery);
+
     const [selectedSaleDetails, setSelectedSaleDetails] = useState<Sale | null>(null);
     const [saleForTicket, setSaleForTicket] = useState<Sale | null>(null);
     const [isTicketPreviewOpen, setIsTicketPreviewOpen] = useState(false);
@@ -227,7 +233,7 @@ export default function ReportsPage() {
         const inventoryProducts = timeRange ? (products || []) : (products || []);
         return inventoryProducts.filter(p => 
             p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.sku.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (p.sku && p.sku.toLowerCase().includes(searchTerm.toLowerCase())) ||
             (p.description && p.description.toLowerCase().includes(searchTerm.toLowerCase()))
         );
     }, [products, searchTerm, timeRange]);
@@ -241,6 +247,7 @@ export default function ReportsPage() {
     }, [filteredPurchases]);
     
     const inventoryTotals = useMemo(() => {
+        if (!filteredProducts) return { totalStock: 0, totalValue: 0 };
         return filteredProducts.reduce((acc, product) => {
             acc.totalStock += product.stock;
             acc.totalValue += product.stock * product.cost;
@@ -460,7 +467,7 @@ export default function ReportsPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {filteredProducts.map((product) => (
+                        {filteredProducts && filteredProducts.map((product) => (
                             <TableRow key={product.id}>
                                 <TableCell className="font-mono">{product.sku}</TableCell>
                                 <TableCell>{product.name}</TableCell>
@@ -565,3 +572,5 @@ export default function ReportsPage() {
     </>
   );
 }
+
+    
