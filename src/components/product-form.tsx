@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -177,9 +176,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         if (url.hostname !== 'www.dropbox.com') {
             showError("Dominio no permitido", "Solo se aceptan URLs de imágenes de Dropbox.");
         } else {
-            url.searchParams.set('raw', '1');
-            url.searchParams.delete('dl');
-            form.setValue("imageUrl", url.toString(), { shouldDirty: true, shouldValidate: true });
+            form.clearErrors("imageUrl");
         }
     } catch (error) {
         showError("URL Inválida", "La URL ingresada no es un enlace válido.");
@@ -213,9 +210,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     }
   };
 
-  const retailProfitPercentage = calculateProfit(watchedPrice, watchedCost);
-  const wholesaleProfitPercentage = calculateProfit(watchedWholesalePrice, watchedCost);
-  
   const handleSubmit = async (data: ProductFormValues) => {
     const result = await onSubmit(data);
     if (!product && result === true) {
@@ -223,6 +217,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       setDisplayValues({ cost: '0.00', price: '0.00', wholesalePrice: '0.00' });
     }
   };
+  
+  const retailProfitPercentage = calculateProfit(watchedPrice, watchedCost);
+  const wholesaleProfitPercentage = calculateProfit(watchedWholesalePrice, watchedCost);
 
   return (
     <Form {...form}>
