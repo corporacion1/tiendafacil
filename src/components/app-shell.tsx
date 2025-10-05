@@ -20,7 +20,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const previousPathname = useRef(pathname);
 
   useEffect(() => {
-    if (!isMounted) return; // Wait for the security context to be mounted on the client
+    if (!isMounted) return; 
 
     if (!isUserLoading && !user && pathname !== '/login') {
       router.replace('/login');
@@ -28,25 +28,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [user, isUserLoading, pathname, router, isMounted]);
 
   useEffect(() => {
-    if (!hasPin) return;
+    if (!hasPin || !isMounted) return;
 
     if (previousPathname.current === '/pos' && pathname !== '/pos') {
       lockApp();
     }
     
     previousPathname.current = pathname;
-  }, [pathname, lockApp, hasPin]);
+  }, [pathname, lockApp, hasPin, isMounted]);
   
   const isLoading = isUserLoading || isPinLoading || !isMounted;
 
-  if (pathname === '/login') {
-    if (isLoading) {
-       return (
+  if (isLoading && pathname !== '/login') {
+      return (
         <div className="flex min-h-screen w-full items-center justify-center bg-background">
             <p>Cargando aplicación...</p>
         </div>
       );
-    }
+  }
+  
+  if (pathname === '/login') {
     return <>{children}</>;
   }
 
@@ -61,13 +62,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
                 <SiteHeader />
                 <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-                {isLoading ? (
-                    <div className="flex min-h-[calc(100vh-10rem)] w-full items-center justify-center">
-                        <p>Cargando datos...</p>
-                    </div>
-                ) : (
-                    children
-                )}
+                    {children}
                 </main>
                 <Footer />
             </div>
