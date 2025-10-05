@@ -30,7 +30,7 @@ const productSchema = z.object({
   sku: z.string().min(1, "El SKU es requerido."),
   price: z.coerce.number().min(0, "El precio no puede ser negativo.").max(9999999999.99, "El monto es demasiado grande."),
   wholesalePrice: z.coerce.number().min(0, "El precio mayorista no puede ser negativo.").max(9999999999.99, "El monto es demasiado grande."),
-  cost: z.coerce.number().min(0, "El costo no puede ser negativo.").max(9999999999.99, "El monto es demasiado grande."),
+  cost: zcoerce.number().min(0, "El costo no puede ser negativo.").max(9999999999.99, "El monto es demasiado grande."),
   stock: z.coerce.number().int("El stock debe ser un número entero.").min(0, "El stock no puede ser negativo.").max(9999999999, "La cantidad es demasiado grande."),
   status: z.enum(["active", "inactive"]),
   tax1: z.boolean(),
@@ -39,7 +39,22 @@ const productSchema = z.object({
   family: z.string().optional(),
   warehouse: z.string().optional(),
   description: z.string().optional(),
-  imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
+  imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')).refine(
+    (url) => {
+        if (!url) return true; // Permite URL vacía
+        try {
+            const { hostname, pathname } = new URL(url);
+            const isDropbox = hostname === 'www.dropbox.com' || hostname === 'dl.dropboxusercontent.com';
+            const hasImageExtension = /\.(jpg|jpeg|png|gif|svg|webp)$/i.test(pathname);
+            return isDropbox && hasImageExtension;
+        } catch (e) {
+            return false;
+        }
+    },
+    {
+        message: "La URL debe ser de Dropbox y terminar con una extensión de imagen (jpg, png, etc.)."
+    }
+  ),
   imageHint: z.string().optional(),
 });
 
@@ -157,7 +172,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
         toast({
           variant: "destructive",
           title: "URL de imagen inválida",
-          description: "La URL ha sido eliminada. Por favor, ingresa una URL válida que comience con http:// o https://.",
+          description: form.formState.errors.imageUrl?.message || "La URL ha sido eliminada. Por favor, ingresa una URL válida.",
         });
         setValue("imageUrl", "");
       }
