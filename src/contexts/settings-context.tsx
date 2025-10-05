@@ -30,6 +30,7 @@ interface SettingsContextType {
   activeSymbol: string;
   activeRate: number;
   currencyRates: CurrencyRate[];
+  setCurrencyRates: React.Dispatch<React.SetStateAction<CurrencyRate[]>>;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -105,7 +106,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const activeRate = activeCurrency === 'primary' ? 1 : (currencyRates[0]?.rate || 1);
 
   return (
-    <SettingsContext.Provider value={{ settings, setSettings: handleSetSettings, displayCurrency, toggleDisplayCurrency, activeCurrency, activeSymbol, activeRate, currencyRates }}>
+    <SettingsContext.Provider value={{ settings, setSettings: handleSetSettings, displayCurrency, toggleDisplayCurrency, activeCurrency, activeSymbol, activeRate, currencyRates, setCurrencyRates }}>
       {children}
     </SettingsContext.Provider>
   );
@@ -118,5 +119,3 @@ export const useSettings = (): SettingsContextType => {
   }
   return context;
 };
-
-    

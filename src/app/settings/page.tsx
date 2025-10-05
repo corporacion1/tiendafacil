@@ -27,20 +27,27 @@ function ChangePinDialog() {
     const [newPin, setNewPin] = useState('');
     const [confirmPin, setConfirmPin] = useState('');
     const [isOpen, setIsOpen] = useState(false);
+    
     const isFormDirty = oldPin !== '' || newPin !== '' || confirmPin !== '';
+
+    const handleOnOpenChange = (open: boolean) => {
+        if (!open) {
+            setOldPin('');
+            setNewPin('');
+            setConfirmPin('');
+        }
+        setIsOpen(open);
+    }
     
     const handleChangePin = () => {
         const success = changePin(oldPin, newPin, confirmPin);
         if (success) {
-            setOldPin('');
-            setNewPin('');
-            setConfirmPin('');
-            setIsOpen(false);
+            handleOnOpenChange(false);
         }
     }
 
     return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog open={isOpen} onOpenChange={handleOnOpenChange}>
             <DialogTrigger asChild>
                 <Button variant="outline">Cambiar PIN</Button>
             </DialogTrigger>
@@ -67,7 +74,7 @@ function ChangePinDialog() {
                 </div>
                 <DialogFooter>
                     <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-                    <Button onClick={handleChangePin} disabled={!isFormDirty}>Guardar Cambios</Button>
+                    <Button onClick={handleChangePin} disabled={!isFormDirty || newPin !== confirmPin}>Guardar Cambios</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -76,24 +83,31 @@ function ChangePinDialog() {
 
 export default function SettingsPage() {
     const { hasPin, setPin, removePin } = useSecurity();
-    const { settings, setSettings } = useSettings();
+    const { settings, setSettings, currencyRates, setCurrencyRates } = useSettings();
+    
     const [localSettings, setLocalSettings] = useState(settings);
+    const [localUnits, setLocalUnits] = useState(initialUnits);
+    const [localFamilies, setLocalFamilies] = useState(initialFamilies);
+    const [localWarehouses, setLocalWarehouses] = useState(initialWarehouses);
+    const [localCurrencyRates, setLocalCurrencyRates] = useState(currencyRates);
+
     const [isDirty, setIsDirty] = useState(false);
     const [newPin, setNewPin] = useState('');
     const [confirmPin, setConfirmPin] = useState('');
     const { toast } = useToast();
     
     const [products, setProducts] = useState(mockProducts);
-    const [units, setUnits] = useState(initialUnits);
-    const [families, setFamilies] = useState(initialFamilies);
-    const [warehouses, setWarehouses] = useState(initialWarehouses);
-    const [currencyRates, setCurrencyRates] = useState(mockCurrencyRates);
     const [newRate, setNewRate] = useState<number>(0);
-    const [newRateDirty, setNewRateDirty] = useState(false);
     
     useEffect(() => {
-        setIsDirty(JSON.stringify(localSettings) !== JSON.stringify(settings));
-    }, [localSettings, settings]);
+        const mainSettingsChanged = JSON.stringify(localSettings) !== JSON.stringify(settings);
+        const unitsChanged = JSON.stringify(localUnits) !== JSON.stringify(initialUnits);
+        const familiesChanged = JSON.stringify(localFamilies) !== JSON.stringify(initialFamilies);
+        const warehousesChanged = JSON.stringify(localWarehouses) !== JSON.stringify(initialWarehouses);
+        const ratesChanged = JSON.stringify(localCurrencyRates) !== JSON.stringify(currencyRates);
+
+        setIsDirty(mainSettingsChanged || unitsChanged || familiesChanged || warehousesChanged || ratesChanged);
+    }, [localSettings, settings, localUnits, localFamilies, localWarehouses, localCurrencyRates, currencyRates]);
 
     const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
@@ -107,6 +121,13 @@ export default function SettingsPage() {
 
     const saveAllSettings = () => {
         setSettings(localSettings);
+        // Here you would also save units, families, warehouses, and rates to your persistent storage.
+        // For this mock app, we can update the context if we were to create one for them, or just consider it "saved".
+        Object.assign(initialUnits, localUnits);
+        Object.assign(initialFamilies, localFamilies);
+        Object.assign(initialWarehouses, localWarehouses);
+        setCurrencyRates(localCurrencyRates);
+        
         setIsDirty(false);
         toast({ title: "Configuración guardada", description: "Toda la configuración ha sido actualizada." });
     };
@@ -127,13 +148,12 @@ export default function SettingsPage() {
             date: new Date().toISOString(),
         };
 
-        setCurrencyRates(prev => [newRateEntry, ...prev]);
+        setLocalCurrencyRates(prev => [newRateEntry, ...prev]);
         setNewRate(0);
-        setNewRateDirty(false);
 
         toast({
-            title: 'Tasa de Cambio Guardada',
-            description: `Nueva tasa de ${newRate.toFixed(6)} para ${localSettings.secondaryCurrencyName} ha sido registrada.`,
+            title: 'Tasa de Cambio Agregada',
+            description: `Nueva tasa de ${newRate.toFixed(6)} para ${localSettings.secondaryCurrencyName} ha sido agregada. Haz clic en "Guardar Configuración de Monedas" para persistir el cambio.`,
         });
     };
 
@@ -145,13 +165,13 @@ export default function SettingsPage() {
 
         switch(type) {
             case 'unit': 
-                name = nameFinder(units, id);
+                name = nameFinder(localUnits, id);
                 return name ? itemList.some(p => p.unit === name) : false;
             case 'family':
-                name = nameFinder(families, id);
+                name = nameFinder(localFamilies, id);
                 return name ? itemList.some(p => p.family === name) : false;
             case 'warehouse':
-                name = nameFinder(warehouses, id);
+                name = nameFinder(localWarehouses, id);
                 return name ? itemList.some(p => p.warehouse === name) : false;
             default: return false;
         }
@@ -168,20 +188,21 @@ export default function SettingsPage() {
         }
 
         const setter = {
-            unit: setUnits,
-            family: setFamilies,
-            warehouse: setWarehouses,
+            unit: setLocalUnits,
+            family: setLocalFamilies,
+            warehouse: setLocalWarehouses,
         }[type];
 
         setter(prev => prev.filter(item => item.id !== id));
 
-        toast({ title: 'Elemento eliminado', description: 'El elemento ha sido eliminado correctamente.' });
+        toast({ title: 'Elemento eliminado', description: 'El cambio se guardará al hacer clic en "Guardar Configuración".' });
     };
 
     const renderManagementCard = (
         title: string,
         description: string,
         items: any[],
+        setItems: React.Dispatch<React.SetStateAction<any[]>>,
         type: 'unit' | 'family' | 'warehouse'
     ) => {
         const [newItemName, setNewItemName] = useState('');
@@ -192,10 +213,9 @@ export default function SettingsPage() {
                 toast({ variant: 'destructive', title: 'Nombre inválido' });
                 return;
             }
-            const setter = { unit: setUnits, family: setFamilies, warehouse: setWarehouses }[type];
             const newEntry = { id: `${type}-${Date.now()}`, name: newItemName.trim() };
-            setter(prev => [...prev, newEntry]);
-            toast({ title: 'Elemento agregado' });
+            setItems(prev => [...prev, newEntry]);
+            toast({ title: 'Elemento agregado', description: 'El cambio se guardará al hacer clic en "Guardar Configuración".' });
             setNewItemName('');
         };
         
@@ -204,9 +224,8 @@ export default function SettingsPage() {
                  toast({ variant: 'destructive', title: 'Nombre inválido' });
                 return;
             }
-            const setter = { unit: setUnits, family: setFamilies, warehouse: setWarehouses }[type];
-            setter(prev => prev.map(item => item.id === editingItem.id ? { ...item, name: editingItem.name } : item));
-            toast({ title: 'Elemento actualizado' });
+            setItems(prev => prev.map(item => item.id === editingItem.id ? { ...item, name: editingItem.name } : item));
+            toast({ title: 'Elemento actualizado', description: 'El cambio se guardará al hacer clic en "Guardar Configuración".' });
             setEditingItem(null);
         };
 
@@ -342,9 +361,9 @@ export default function SettingsPage() {
                     </div>
                      <Separator />
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-                        {renderManagementCard("Unidades de Medida", "Gestiona las unidades para tus productos.", units, 'unit')}
-                        {renderManagementCard("Familias de Productos", "Organiza tus productos en familias.", families, 'family')}
-                        {renderManagementCard("Almacenes", "Gestiona los almacenes de destino.", warehouses, 'warehouse')}
+                        {renderManagementCard("Unidades de Medida", "Gestiona las unidades para tus productos.", localUnits, setLocalUnits, 'unit')}
+                        {renderManagementCard("Familias de Productos", "Organiza tus productos en familias.", localFamilies, setLocalFamilies, 'family')}
+                        {renderManagementCard("Almacenes", "Gestiona los almacenes de destino.", localWarehouses, setLocalWarehouses, 'warehouse')}
                     </div>
                 </CardContent>
                 <CardFooter className="border-t px-6 py-4 flex justify-end">
@@ -396,14 +415,11 @@ export default function SettingsPage() {
                                     type="number" 
                                     step="0.000001" 
                                     value={newRate || ''} 
-                                    onChange={(e) => {
-                                        setNewRate(parseFloat(e.target.value) || 0);
-                                        setNewRateDirty(true);
-                                    }} 
-                                    placeholder={currencyRates[0]?.rate.toFixed(6) || "0.000000"} 
+                                    onChange={(e) => setNewRate(parseFloat(e.target.value) || 0)} 
+                                    placeholder={localCurrencyRates[0]?.rate.toFixed(6) || "0.000000"} 
                                 />
                             </div>
-                            <Button onClick={handleSaveNewRate} disabled={!newRateDirty || newRate <= 0}>Guardar Tasa</Button>
+                            <Button onClick={handleSaveNewRate} disabled={newRate <= 0}>Guardar Tasa</Button>
                         </div>
                         <div className="space-y-4">
                             <h4 className="font-medium">Historial de Tasas</h4>
@@ -416,9 +432,9 @@ export default function SettingsPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {currencyRates.length > 0 ? currencyRates.map(rate => (
+                                        {localCurrencyRates.length > 0 ? localCurrencyRates.map(rate => (
                                             <TableRow key={rate.id}>
-                                                <TableCell>{format(parseISO(rate.date), "dd/MM/yy HH:mm")}</TableCell>
+                                                <TableCell>{format(parseISO(rate.date as string), "dd/MM/yy HH:mm")}</TableCell>
                                                 <TableCell className="text-right font-mono">{`${rate.rate.toFixed(6)} ${localSettings.secondaryCurrencySymbol}`}</TableCell>
                                             </TableRow>
                                         )) : (
@@ -491,5 +507,3 @@ export default function SettingsPage() {
         </div>
     );
 }
-
-    
