@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useEffect, useMemo } from "react";
@@ -71,6 +70,15 @@ const getInitialValues = (product?: Product): ProductFormValues => {
     };
 };
 
+const calculateProfit = (currentPrice: number, cost: number): string => {
+    if (cost > 0 && currentPrice > cost) {
+        const profitMargin = ((currentPrice - cost) / cost) * 100;
+        return profitMargin.toFixed(2);
+    }
+    return '0.00';
+};
+
+
 export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onCancel }) => {
   const { toast } = useToast();
   const { settings } = useSettings();
@@ -118,14 +126,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     }
   };
 
-  const calculateProfit = (currentPrice: number, cost: number): string => {
-    if (cost > 0 && currentPrice > cost) {
-      const profitMargin = ((currentPrice - cost) / cost) * 100;
-      return profitMargin.toFixed(2);
-    }
-    return '0.00';
-  };
-
   const profitMargin = useMemo(() => calculateProfit(price, cost), [price, cost]);
   const wholesaleProfitMargin = useMemo(() => calculateProfit(wholesalePrice, cost), [wholesalePrice, cost]);
 
@@ -140,69 +140,60 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-6">
         <AlertDialog>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-            {/* Main Details Column */}
-            <div className="lg:col-span-2 space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Detalles del Producto</CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-4">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nombre del Producto</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ej: Laptop Pro" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="sku"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>SKU (Código de Producto)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ej: LP-001" {...field} onBlur={handleSkuBlur} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Descripción</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Describe tu producto..."
-                            className="resize-none"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Image Column */}
-            <div className="lg:col-span-1 space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Imagen del Producto</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <FormField
+          <Card>
+            <CardHeader>
+              <CardTitle>Detalles del Producto</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Columna Izquierda: Detalles del producto */}
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nombre del Producto</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ej: Laptop Pro" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="sku"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>SKU (Código de Producto)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ej: LP-001" {...field} onBlur={handleSkuBlur} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Descripción</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Describe tu producto..."
+                          className="resize-none"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              {/* Columna Derecha: Imagen del producto */}
+              <div className="space-y-4">
+                 <FormField
                     control={form.control}
                     name="imageUrl"
                     render={({ field }) => (
@@ -222,10 +213,9 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                       </FormItem>
                     )}
                   />
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
           
           <div className="space-y-6">
             <Card>
