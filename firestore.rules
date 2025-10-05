@@ -1,67 +1,96 @@
 /**
- * @file Firestore Security Rules
- * @core-philosophy This ruleset prioritizes secure data access based on a public-read, owner-write model for products
- * and shared access for collaborative resources such as chats, with no authentication required for `products`.
- * @data-structure
- * - /products: Publicly readable collection of product information.
- * - /chats: Collection of chat rooms.
- * - /chats/{chatId}/messages: Subcollection of chat messages for a specific chat room.
- * @key-security-decisions
- * - Products are publicly readable but only updatable with a valid owner.
- * - Chat messages are secured by requiring users to be part of the chat to read or write.
+ * @fileoverview Firestore Security Rules for Prototyping.
+ *
+ * Core Philosophy:
+ * This ruleset is designed for the rapid prototyping phase. It prioritizes strong authorization while relaxing data validation,
+ * allowing developers to quickly iterate on the data model without being blocked by schema enforcement.
+ *
+ * Data Structure:
+ * - /products: Top-level collection of product data.
+ * - /chats: Top-level collection of chat rooms.
+ * - /chats/{chatId}/messages: Subcollection of messages for each chat room.
+ *
+ * Key Security Decisions:
+ * - Products are publicly readable but only writeable by authenticated users.
+ * - Chat messages can only be read if signed in.
+ * - Data validation is minimized to facilitate rapid prototyping and schema changes.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows anyone to read product information, but restricts modifications to authorized users.
+     * @description Manages access to the /products collection. Products are publicly readable,
+     *              but require authentication to create, update, or delete.
      * @path /products
-     * @allow (get, list): Any user can read product details.
-     * @allow (create): Only if request contains valid product data, including `authorId` equal to `auth.uid`.
-     * @allow (update, delete): Only if the user is the owner of the product.
-     * @deny (create): If the request attempts to create a product without proper authorization.
-     * @deny (update, delete): If the user is not the owner of the product.
-     * @principle Allows public reads, restricts writes to owner.
+     * @allow (get, list): Anyone can read the products.
+     * @allow (create): Authenticated users can create products. The 'ownerId' must match their UID.
+     * @allow (update, delete): Only the owner of the product can update or delete it.
+     * @deny  (create, update, delete): Unauthenticated users cannot create, update, or delete products.
+     * @principle Allows public read access while enforcing ownership for write operations.
      */
     match /products/{productId} {
       allow get, list: if true;
-      allow create: if request.resource.data.keys().hasAll(['name', 'price', 'wholesalePrice', 'cost', 'stock', 'sku', 'status', 'tax1', 'tax2']);
-      allow update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-    }
-
-        /**
-     * @description Manages access to chat rooms; access is granted to authenticated users.
-     * @path /chats
-     * @allow (get, list, create): Authenticated user can create, get, and list.
-     * @allow (update, delete): Only the owner can update or delete a chat.
-     * @deny (create): If the request attempts to create a chat without authentication.
-     * @deny (update, delete): If the user is not the owner of the chat.
-     * @principle Enforces access control based on authenticated user.
-     */
-    match /chats/{chatId} {
-      allow get, list, create: if isSignedIn();
-      allow update, delete: if false;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
     /**
-     * @description Secures chat messages within a specific chat room.
-     * @path /chats/{chatId}/messages
-     * @allow (get, list, create): Only users in the chat can read and create messages.
-     * @allow (update, delete): Only the owner of the message or chat can modify it.
-     * @deny (create): If the request attempts to create a message without proper authentication or chat membership.
-     * @deny (update, delete): If the user is not the owner of the message or the chat.
-     * @principle Requires membership for access.
+     * @description Manages access to the /chats collection.
+     * @path /chats
+     * @allow (get, list): Only signed-in users can list and get the chats.
+     * @allow (create): Only signed-in users can create chats.
+     * @allow (update, delete): Only signed-in users can update or delete chats.
+     * @deny (create, update, delete, get, list): If the user is not signed in.
+     * @principle: Restricts access to chats for signed-in users only.
      */
-    match /chats/{chatId}/messages/{messageId} {
-      allow get, list, create: if isSignedIn();
-      allow update, delete: if false;
+    match /chats/{chatId} {
+        allow get, list: if isSignedIn();
+        allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+        allow update, delete: if isSignedIn() && isOwner(resource.data.ownerId);
     }
 
-  }
+    /**
+     * @description Manages access to the /chats/{chatId}/messages subcollection.
+     * @path /chats/{chatId}/messages
+     * @allow (get, list): Only signed-in users can list and get messages within a chat.
+     * @allow (create): Only signed-in users can create messages within a chat.
+     * @allow (update, delete): Only signed-in users can update or delete messages within a chat.
+     * @deny (create, update, delete, get, list): If the user is not signed in.
+     * @principle: Restricts access to chat messages for signed-in users only.
+     */
+    match /chats/{chatId}/messages/{messageId} {
+        allow get, list: if isSignedIn();
+        allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+        allow update, delete: if isSignedIn() && isOwner(resource.data.ownerId);
+    }
 
-  // Helper function to determine if the user is signed in.
-  function isSignedIn() {
-    return request.auth != null;
+    // --- Helper functions ---
+
+    /**
+     * @description Checks if the user is signed in.
+     * @return {bool} True if the user is signed in, false otherwise.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the user is the owner of the resource.
+     * @param {string} userId The user ID to compare against.
+     * @return {bool} True if the user is the owner, false otherwise.
+     */
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the user is the existing owner of the resource.
+     * @param {string} userId The user ID to compare against.
+     * @return {bool} True if the user is the owner and the resource exists, false otherwise.
+     */
+    function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+    }
   }
 }
