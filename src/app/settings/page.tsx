@@ -88,8 +88,6 @@ export default function SettingsPage() {
     const [currencyRates, setCurrencyRates] = useState(mockCurrencyRates);
     const [newRate, setNewRate] = useState<number>(0);
 
-    const [newItemName, setNewItemName] = useState('');
-
     const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
         setLocalSettings(prev => ({ ...prev, [id]: value }));
@@ -171,112 +169,128 @@ export default function SettingsPage() {
         toast({ title: 'Elemento eliminado', description: 'El elemento ha sido eliminado correctamente.' });
     };
 
-    const handleItemNameChange = (id: string, newName: string, type: 'unit' | 'family' | 'warehouse') => {
-        const setter = {
-            unit: setUnits,
-            family: setFamilies,
-            warehouse: setWarehouses
-        }[type];
-        setter(prev => prev.map(item => item.id === id ? { ...item, name: newName } : item));
-    };
-
-    const handleSaveOnBlur = (id: string, oldName: string, newName: string, type: 'unit' | 'family' | 'warehouse') => {
-        if (oldName === newName) return;
-
-        if (newName.trim() === '') {
-            toast({
-                variant: 'destructive',
-                title: 'Nombre inválido',
-                description: 'El nombre no puede estar vacío.'
-            });
-            // Revert to old name
-            handleItemNameChange(id, oldName, type);
-            return;
-        }
-        
-        // In a real app, you would save to a DB here. For now, the state is already updated.
-        toast({ title: 'Elemento actualizado', description: `"${oldName}" ha sido renombrado a "${newName}".` });
-    };
-    
-    const handleAddNewItem = (type: 'unit' | 'family' | 'warehouse') => {
-        if (newItemName.trim() === '') {
-            toast({
-                variant: 'destructive',
-                title: 'Nombre inválido',
-                description: 'El nombre no puede estar vacío.'
-            });
-            return;
-        }
-        const setter = {
-            unit: setUnits,
-            family: setFamilies,
-            warehouse: setWarehouses
-        }[type];
-
-        const newEntry = { id: `${type.slice(0,1)}-${Date.now()}`, name: newItemName.trim() };
-        setter(prev => [...prev, newEntry]);
-        toast({ title: 'Elemento agregado', description: `"${newEntry.name}" fue agregado.` });
-        setNewItemName(''); // Reset input field
-    };
-    
     const renderManagementCard = (
         title: string,
         description: string,
         items: any[],
         type: 'unit' | 'family' | 'warehouse'
-    ) => (
-        <Card>
-            <CardHeader>
-                <CardTitle>{title}</CardTitle>
-                <CardDescription>{description}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-                {items.map(item => (
-                    <div key={item.id} className="flex items-center justify-between gap-2 p-1 border rounded-md">
-                        <Input
-                            defaultValue={item.name}
-                            className="border-none focus-visible:ring-0"
-                            onBlur={(e) => handleSaveOnBlur(item.id, item.name, e.target.value, type)}
-                            onChange={(e) => handleItemNameChange(item.id, e.target.value, type)}
-                        />
-                         <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive flex-shrink-0">
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>¿Eliminar "{item.name}"?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                       Esta acción es irreversible. Si este elemento está en uso, no se podrá eliminar.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDelete(type, item.id)}>
-                                        Sí, eliminar
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
+    ) => {
+        const [newItemName, setNewItemName] = useState('');
+        const [editingItem, setEditingItem] = useState<{id: string, name: string} | null>(null);
+
+        const handleAddNewItem = () => {
+             if (newItemName.trim() === '') {
+                toast({ variant: 'destructive', title: 'Nombre inválido' });
+                return;
+            }
+            const setter = { unit: setUnits, family: setFamilies, warehouse: setWarehouses }[type];
+            const newEntry = { id: `${type}-${Date.now()}`, name: newItemName.trim() };
+            setter(prev => [...prev, newEntry]);
+            toast({ title: 'Elemento agregado' });
+            setNewItemName('');
+        };
+        
+        const handleEditItem = () => {
+            if (!editingItem || editingItem.name.trim() === '') {
+                 toast({ variant: 'destructive', title: 'Nombre inválido' });
+                return;
+            }
+            const setter = { unit: setUnits, family: setFamilies, warehouse: setWarehouses }[type];
+            setter(prev => prev.map(item => item.id === editingItem.id ? { ...item, name: editingItem.name } : item));
+            toast({ title: 'Elemento actualizado' });
+            setEditingItem(null);
+        };
+
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>{title}</CardTitle>
+                    <CardDescription>{description}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-2">
+                        {items.map(item => (
+                            <div key={item.id} className="flex items-center justify-between gap-2 p-2 border rounded-md">
+                               <span>{item.name}</span>
+                               <div className="flex gap-1">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingItem(item)}>
+                                        <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive">
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>¿Eliminar "{item.name}"?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                   Esta acción es irreversible. Si este elemento está en uso, no se podrá eliminar.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleDelete(type, item.id)}>
+                                                    Sí, eliminar
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                               </div>
+                            </div>
+                        ))}
+                         {items.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No hay elementos.</p>}
                     </div>
-                ))}
-                {items.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No hay elementos.</p>}
-            </CardContent>
-            <CardFooter className="flex items-center gap-2 border-t pt-4">
-                 <Input
-                    placeholder={`Nuevo ${title.slice(0,-1).toLowerCase()}...`}
-                    value={newItemName}
-                    onChange={(e) => setNewItemName(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddNewItem(type)}
-                />
-                <Button onClick={() => handleAddNewItem(type)}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Agregar
-                </Button>
-            </CardFooter>
-        </Card>
-    );
+                </CardContent>
+                <CardFooter className="border-t pt-4">
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button className="w-full">
+                                <PlusCircle className="mr-2 h-4 w-4" /> Agregar Nuevo
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Agregar Nuevo {title.slice(0, -1)}</DialogTitle>
+                            </DialogHeader>
+                            <div className="py-4">
+                                <Label htmlFor={`new-${type}-name`}>Nombre</Label>
+                                <Input id={`new-${type}-name`} value={newItemName} onChange={(e) => setNewItemName(e.target.value)} />
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild>
+                                    <Button variant="outline">Cancelar</Button>
+                                </DialogClose>
+                                 <DialogClose asChild>
+                                    <Button onClick={handleAddNewItem}>Guardar</Button>
+                                </DialogClose>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                    
+                    {/* Edit Dialog */}
+                    <Dialog open={!!editingItem} onOpenChange={(isOpen) => !isOpen && setEditingItem(null)}>
+                        <DialogContent>
+                             <DialogHeader>
+                                <DialogTitle>Editar {title.slice(0, -1)}</DialogTitle>
+                            </DialogHeader>
+                             <div className="py-4">
+                                <Label htmlFor={`edit-${type}-name`}>Nombre</Label>
+                                <Input id={`edit-${type}-name`} value={editingItem?.name || ''} onChange={(e) => editingItem && setEditingItem({...editingItem, name: e.target.value})} />
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild>
+                                    <Button variant="outline">Cancelar</Button>
+                                </DialogClose>
+                                <Button onClick={handleEditItem}>Guardar Cambios</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                </CardFooter>
+            </Card>
+        );
+    }
 
     return (
         <div className="grid gap-6">
@@ -459,9 +473,5 @@ export default function SettingsPage() {
         </div>
     );
 }
-
-    
-
-    
 
     
