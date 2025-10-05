@@ -11,8 +11,6 @@ import {
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { useUser } from '../provider';
-
 
 /** Utility type to add an 'id' field to a given type T. */
 type WithId<T> = T & { id: string };
@@ -29,12 +27,13 @@ export interface UseDocResult<T> {
 
 /**
  * React hook to subscribe to a single Firestore document in real-time.
- * Handles nullable references and user authentication state.
- * 
- * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedTargetRefOrQuery or BAD THINGS WILL HAPPEN
- * use useMemo to memoize it per React guidence.  Also make sure that it's dependencies are stable
- * references
+ * Handles nullable references.
  *
+ * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedDocRef or BAD THINGS WILL HAPPEN.
+ * Use useMemoFirebase to memoize it per React guidance. Also make sure that its dependencies are stable.
+ *
+ * The component calling this hook is responsible for ensuring the user is authenticated before
+ * passing a reference that requires authentication. Pass `null` if the user is not ready.
  *
  * @template T Optional type for document data. Defaults to any.
  * @param {DocumentReference<DocumentData> | null | undefined} docRef -
@@ -46,20 +45,13 @@ export function useDoc<T = any>(
 ): UseDocResult<T> {
   type StateDataType = WithId<T> | null;
 
-  const { user, isUserLoading } = useUser();
   const [data, setData] = useState<StateDataType>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
-    // Wait until user auth state is resolved.
-    if (isUserLoading) {
-      setIsLoading(true);
-      return;
-    }
-    
-    // If no user or no docRef, we are done loading and have no data.
-    if (!user || !memoizedDocRef) {
+    // If no docRef is provided (e.g., waiting for auth), do nothing.
+    if (!memoizedDocRef) {
       setData(null);
       setIsLoading(false);
       setError(null);
@@ -94,7 +86,7 @@ export function useDoc<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedDocRef, user, isUserLoading]);
+  }, [memoizedDocRef]);
 
   return { data, isLoading, error };
 }

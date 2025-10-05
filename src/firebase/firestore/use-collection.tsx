@@ -12,7 +12,6 @@ import {
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import { useUser } from '../provider';
 
 
 /** Utility type to add an 'id' field to a given type T. */
@@ -42,13 +41,15 @@ export interface InternalQuery extends Query<DocumentData> {
 
 /**
  * React hook to subscribe to a Firestore collection or query in real-time.
- * Handles nullable references/queries and user authentication state.
- * 
+ * Handles nullable references/queries.
  *
  * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedTargetRefOrQuery or BAD THINGS WILL HAPPEN
- * use useMemo to memoize it per React guidence.  Also make sure that it's dependencies are stable
- * references
- *  
+ * use useMemoFirebase to memoize it per React guidance. Also make sure that its dependencies are stable
+ * references.
+ *
+ * The component calling this hook is responsible for ensuring the user is authenticated before
+ * passing a query that requires authentication. Pass `null` if the user is not ready.
+ *
  * @template T Optional type for document data. Defaults to any.
  * @param {CollectionReference<DocumentData> | Query<DocumentData> | null | undefined} targetRefOrQuery -
  * The Firestore CollectionReference or Query. Waits if null/undefined.
@@ -65,6 +66,7 @@ export function useCollection<T = any>(
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
+    // If the query is not ready (e.g., waiting for user auth), do nothing.
     if (!memoizedTargetRefOrQuery) {
       setData(null);
       setIsLoading(false);
