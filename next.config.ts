@@ -38,6 +38,12 @@ const nextConfig = {
         hostname: 'www.dropbox.com',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.mercadolibre.com.ve',
+        port: '',
+        pathname: '/**',
       }
     ],
   },
