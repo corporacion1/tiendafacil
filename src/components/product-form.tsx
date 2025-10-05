@@ -145,7 +145,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
               <CardTitle>Detalles del Producto</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Columna Izquierda: Detalles */}
               <div className="space-y-4">
                  <FormField
                   control={form.control}
@@ -271,7 +270,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                   />
               </div>
 
-              {/* Columna Derecha: Imagen */}
               <div className="space-y-4">
                  <FormField
                     control={form.control}
@@ -301,8 +299,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
             <CardHeader>
                 <CardTitle>Precios e Impuestos</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
+            <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField
                     control={form.control}
                     name="price"
@@ -336,7 +334,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                     )}
                     />
                 </div>
-                 <div className="space-y-4">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField
                       control={form.control}
                       name="tax1"
@@ -445,3 +443,5 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     </Form>
   );
 };
+
+    
