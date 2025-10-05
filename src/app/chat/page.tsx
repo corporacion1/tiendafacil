@@ -48,13 +48,12 @@ export default function ChatPage() {
   useEffect(() => {
     if (!firestore || isUserLoading || !user) return; // Wait for both firestore and user
     const ensureRooms = () => {
-        console.log("User authenticated, ensuring chat rooms exist in Firestore.");
         for (const room of chatRooms) {
             const roomRef = doc(firestore, 'chats', room.id);
             const roomData = { name: room.name };
             // Use setDoc with merge to create without overwriting if it exists
             setDoc(roomRef, roomData, { merge: true })
-                .catch((error) => {
+                .catch((serverError) => {
                     const permissionError = new FirestorePermissionError({
                         path: roomRef.path,
                         operation: 'write', // 'write' covers create and merge
@@ -83,7 +82,7 @@ export default function ChatPage() {
     setNewMessage("");
 
     addDoc(messagesColRef, messageData)
-        .catch((error) => {
+        .catch((serverError) => {
             const permissionError = new FirestorePermissionError({
                 path: messagesColRef.path,
                 operation: 'create',
