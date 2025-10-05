@@ -13,17 +13,19 @@ import { ProvidersWrapper } from "./providers-wrapper";
 
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { isLocked, lockApp, hasPin, isPinLoading } = useSecurity();
+  const { isLocked, lockApp, hasPin, isPinLoading, isMounted } = useSecurity();
   const { user, isUserLoading } = useUser();
   const pathname = usePathname();
   const router = useRouter();
   const previousPathname = useRef(pathname);
 
   useEffect(() => {
+    if (!isMounted) return; // Wait for the security context to be mounted on the client
+
     if (!isUserLoading && !user && pathname !== '/login') {
       router.replace('/login');
     }
-  }, [user, isUserLoading, pathname, router]);
+  }, [user, isUserLoading, pathname, router, isMounted]);
 
   useEffect(() => {
     if (!hasPin) return;
@@ -35,39 +37,41 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     previousPathname.current = pathname;
   }, [pathname, lockApp, hasPin]);
   
-  // Render login page without the shell
-  if (pathname === '/login') {
-      return <>{children}</>;
-  }
-  
-  const isLoading = isUserLoading || isPinLoading;
+  const isLoading = isUserLoading || isPinLoading || !isMounted;
 
-  if (isLoading) {
-    return (
+  if (pathname === '/login') {
+    if (isLoading) {
+       return (
         <div className="flex min-h-screen w-full items-center justify-center bg-background">
             <p>Cargando aplicación...</p>
         </div>
-    );
+      );
+    }
+    return <>{children}</>;
   }
 
   if (isLocked) {
-      return <PinModal />;
+    return <PinModal />;
   }
   
-
-  // Main application shell
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
-      <SiteSidebar />
-      <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-        <SiteHeader />
-        <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-            <ProvidersWrapper>
-              {children}
-            </ProvidersWrapper>
-        </main>
-        <Footer />
-      </div>
+        <ProvidersWrapper>
+            <SiteSidebar />
+            <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
+                <SiteHeader />
+                <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
+                {isLoading ? (
+                    <div className="flex min-h-[calc(100vh-10rem)] w-full items-center justify-center">
+                        <p>Cargando datos...</p>
+                    </div>
+                ) : (
+                    children
+                )}
+                </main>
+                <Footer />
+            </div>
+        </ProvidersWrapper>
     </div>
   );
 }
