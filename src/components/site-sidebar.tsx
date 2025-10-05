@@ -3,7 +3,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import Image from "next/image";
 import { Boxes, FileText, Home, PackagePlus, Settings, ShoppingCart, Store, CreditCard, MessageSquare } from "lucide-react";
 import {
   Tooltip,
@@ -28,19 +27,6 @@ const settingsNav = { href: "/settings", label: "Configuración", icon: Settings
 
 export function SiteSidebar() {
   const pathname = usePathname();
-  
-  const posNavItems = [
-    { href: "/dashboard", label: "Dashboard", icon: Home }
-  ];
-  
-  const getNavItems = () => {
-    if (pathname === '/pos') {
-      return posNavItems;
-    }
-    return navItems;
-  }
-
-  const currentNavItems = getNavItems();
 
   return (
     <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
@@ -54,7 +40,7 @@ export function SiteSidebar() {
                 <span className="sr-only">Tienda Facil</span>
             </Link>
 
-            {currentNavItems.map((item) => (
+            {navItems.map((item) => (
             <Tooltip key={item.href}>
                 <TooltipTrigger asChild>
                 <Link
@@ -69,28 +55,21 @@ export function SiteSidebar() {
             </Tooltip>
             ))}
         </nav>
-        {pathname !== '/pos' && (
-             <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                    <Link
-                        href={settingsNav.href}
-                        className={`flex h-9 w-9 items-center justify-center rounded-lg ${pathname === settingsNav.href ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'} transition-colors hover:text-foreground md:h-8 md:w-8`}
-                    >
-                        <settingsNav.icon className="h-5 w-5" />
-                        <span className="sr-only">{settingsNav.label}</span>
-                    </Link>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">{settingsNav.label}</TooltipContent>
-                </Tooltip>
-            </nav>
-        )}
-       
+        <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">
+            <Tooltip>
+                <TooltipTrigger asChild>
+                <Link
+                    href={settingsNav.href}
+                    className={`flex h-9 w-9 items-center justify-center rounded-lg ${pathname === settingsNav.href ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'} transition-colors hover:text-foreground md:h-8 md:w-8`}
+                >
+                    <settingsNav.icon className="h-5 w-5" />
+                    <span className="sr-only">{settingsNav.label}</span>
+                </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right">{settingsNav.label}</TooltipContent>
+            </Tooltip>
+        </nav>
       </TooltipProvider>
     </aside>
   );
-}
-
-export function SiteSidebarProvider({ children }: { children: React.ReactNode }) {
-    return <>{children}</>;
 }
