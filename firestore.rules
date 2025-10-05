@@ -2,61 +2,63 @@
  * @fileoverview Firestore Security Rules for Prototyping.
  *
  * Core Philosophy:
- * This ruleset prioritizes rapid prototyping by focusing on authorization and skipping data validation.
- * It assumes the application code will handle data validation and integrity.
- * The rules enforce a basic level of security by ensuring only authenticated users can perform write operations.
+ * This ruleset prioritizes rapid prototyping by focusing on authorization and omitting data validation.
+ * It assumes all data is public readable and writable, but requires users to be authenticated.
  *
  * Data Structure:
- * - /products: Publicly readable, but write-protected.
- * - /chats: Publicly readable and writable.
- * - /chats/{chatId}/messages: Publicly readable and writable.
+ * - Products: Top-level collection for product information. Publicly readable and writable.
+ * - Chats: Top-level collection for chat rooms. Publicly readable and writable.
+ * - Chat Messages: Subcollection under each chat room. Publicly readable and writable.
  *
  * Key Security Decisions:
- * - Read access to /products is public.
- * - Read and write access to /chats and /chats/{chatId}/messages are public.
+ * - All collections are publicly readable using `allow list: if true;` and `allow get: if true;`.
+ * - Authentication is required for all `create`, `update` and `delete` operations.
+ * - No schema validation is performed.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows anyone to read products, but only authenticated users can create, update, or delete them.
+     * @description Allows anyone to read product information, but requires authentication to modify it.
      * @path /products
-     * @allow (get, list)
-     * @deny (create, update, delete)
-     * @principle Allows public read, restricts writes to authenticated users.
+     * @allow (list, get): Any user can read product data.
+     * @allow (create, update, delete): Any authenticated user can modify product data.
+     * @deny (create, update, delete): Any unauthenticated user cannot modify product data.
+     * @principle Requires authentication for writes.
      */
-    match /products {
+    match /products/{productId} {
       allow get, list: if true;
       allow create, update, delete: if isSignedIn();
     }
 
     /**
-     * @description Allows anyone to read and write to chats.
+     * @description Allows anyone to read chat room information, but requires authentication to modify it.
      * @path /chats
-     * @allow (get, list, create, update, delete)
-     * @principle Allows public read and write access.
+     * @allow (list, get): Any user can read chat data.
+     * @allow (create, update, delete): Any authenticated user can modify chat data.
+     * @deny (create, update, delete): Any unauthenticated user cannot modify chat data.
+     * @principle Requires authentication for writes.
      */
-    match /chats {
-      allow get, list, create, update, delete: if true;
+    match /chats/{chatId} {
+      allow get, list: if true;
+      allow create, update, delete: if isSignedIn();
+
+      /**
+       * @description Allows anyone to read chat messages, but requires authentication to modify them.
+       * @path /chats/{chatId}/messages
+       * @allow (list, get): Any user can read message data.
+       * @allow (create, update, delete): Any authenticated user can modify message data.
+       * @deny (create, update, delete): Any unauthenticated user cannot modify message data.
+       * @principle Requires authentication for writes.
+       */
+      match /messages/{messageId} {
+        allow get, list: if true;
+        allow create, update, delete: if isSignedIn();
+      }
     }
 
-    /**
-     * @description Allows anyone to read and write messages in a chat.
-     * @path /chats/{chatId}/messages
-     * @allow (get, list, create, update, delete)
-     * @principle Allows public read and write access.
-     */
-    match /chats/{chatId}/messages/{messageId} {
-      allow get, list, create, update, delete: if true;
-    }
-
-    // --- Helper Functions ---
-
-    /**
-     * @description Checks if the user is signed in.
-     * @return {bool} True if the user is signed in, false otherwise.
-     */
+    // Helper function to check if the user is signed in
     function isSignedIn() {
       return request.auth != null;
     }
