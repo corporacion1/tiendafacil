@@ -1,50 +1,22 @@
 
 "use client";
 
-import { PinModal } from "@/components/pin-modal";
-import { SiteSidebar } from "@/components/site-sidebar";
-import { SiteHeader } from "@/components/site-header";
-import { Footer } from "@/components/footer";
 import { usePathname } from 'next/navigation';
-import { useEffect, useRef } from 'react';
-import { useSecurity } from "@/contexts/security-context";
 import { AuthGuard } from "./auth-guard";
+import { SecurityProvider } from '@/contexts/security-context';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { isLocked, lockApp, hasPin, isMounted } = useSecurity();
   const pathname = usePathname();
-  const previousPathname = useRef(pathname);
-
-  useEffect(() => {
-    if (!hasPin || !isMounted) return;
-    if (previousPathname.current === '/pos' && pathname !== '/pos') {
-      lockApp();
-    }
-    previousPathname.current = pathname;
-  }, [pathname, lockApp, hasPin, isMounted]);
 
   if (pathname === '/login') {
     return <>{children}</>;
   }
 
   return (
-    <AuthGuard>
-        <div className="flex min-h-screen w-full flex-col bg-muted/40">
-          {isLocked ? (
-             <PinModal />
-          ) : (
-            <>
-              <SiteSidebar />
-              <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
-                <SiteHeader />
-                <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-                  {children}
-                </main>
-                <Footer />
-              </div>
-            </>
-          )}
-        </div>
-    </AuthGuard>
+    <SecurityProvider>
+        <AuthGuard>
+            {children}
+        </AuthGuard>
+    </SecurityProvider>
   );
 }
