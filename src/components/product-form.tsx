@@ -103,7 +103,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     const sku = e.target.value;
     if (!sku) return;
 
-    // We only check for duplicates if it's a new product or if the SKU has changed.
     if (!product || product.sku.toLowerCase() !== sku.toLowerCase()) {
       const existingProduct = mockProducts.find(p => p.sku.toLowerCase() === sku.toLowerCase());
       if (existingProduct) {
@@ -117,7 +116,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
           description: `El SKU "${sku}" ya está en uso por otro producto.`,
         });
       } else {
-        // Clear error if it was previously set for this reason
         if(form.formState.errors.sku?.message?.includes("ya existe")) {
           form.clearErrors("sku");
         }
@@ -133,8 +131,9 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
         toast({
           variant: "destructive",
           title: "URL de imagen inválida",
-          description: "Por favor, ingresa una URL válida que comience con http:// o https://.",
+          description: "La URL ha sido eliminada. Por favor, ingresa una URL válida que comience con http:// o https://.",
         });
+        setValue("imageUrl", "");
       }
     }
   };
@@ -456,3 +455,5 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     </Form>
   );
 };
+
+    
