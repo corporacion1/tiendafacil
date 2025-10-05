@@ -113,23 +113,19 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     wholesalePrice: product ? (product.wholesalePrice * activeRate).toFixed(2) : '0.00',
   });
 
-  // Transform Dropbox URL for direct image access
   const displayImageUrl = useMemo(() => {
     if (!watchedImageUrl) return '';
     try {
+      // This part only transforms the URL for display, validation is onBlur
       const url = new URL(watchedImageUrl);
       if (url.hostname.includes("www.dropbox.com")) {
-        if (url.searchParams.has('dl')) {
-          url.searchParams.set('raw', '1');
-          url.searchParams.delete('dl');
-        } else if (!url.searchParams.has('raw')) {
-          url.searchParams.append('raw', '1');
-        }
+        url.searchParams.set('raw', '1');
+        url.searchParams.delete('dl');
         return url.toString();
       }
       return watchedImageUrl;
-    } catch(e) {
-      return '';
+    } catch (e) {
+      return ''; // Return empty if URL is invalid, preventing Image component errors
     }
   }, [watchedImageUrl]);
 
@@ -142,7 +138,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         price: product ? (product.price * activeRate).toFixed(2) : '0.00',
         wholesalePrice: product ? (product.wholesalePrice * activeRate).toFixed(2) : '0.00',
     });
-  }, [product, form, activeRate]);
+  }, [product, activeRate, form.reset]);
 
 
   const handleDisplayValueChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'cost' | 'price' | 'wholesalePrice') => {
@@ -173,7 +169,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
             title: title,
             description: description,
         });
-        form.setValue("imageUrl", "", { shouldDirty: true });
+        form.setValue("imageUrl", "", { shouldDirty: true, shouldValidate: true });
     };
 
     if (!urlValue) {
@@ -190,15 +186,12 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         }
 
         // It's a dropbox URL, try to fix it to a direct link
-        if (urlObject.searchParams.has('dl')) {
-            urlObject.searchParams.set('raw', '1');
-            urlObject.searchParams.delete('dl');
-        } else if (!urlObject.searchParams.has('raw')) {
-            urlObject.searchParams.append('raw', '1');
-        }
-
+        urlObject.searchParams.set('raw', '1');
+        urlObject.searchParams.delete('dl');
+        
         const newUrl = urlObject.toString();
         form.setValue("imageUrl", newUrl, { shouldDirty: true, shouldValidate: true });
+        
         if(newUrl !== urlValue) {
             toast({ title: 'URL de Dropbox corregida', description: 'Se ha convertido la URL a un enlace de imagen directa.'});
         }
