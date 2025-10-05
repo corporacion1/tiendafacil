@@ -46,7 +46,7 @@ export default function Dashboard() {
   const { activeSymbol, activeRate } = useSettings();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
 
   const cutoffDate = useMemo(() => {
     const now = new Date();
@@ -61,12 +61,12 @@ export default function Dashboard() {
   const salesQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
     return query(collection(firestore, "sales"), where("date", ">=", Timestamp.fromDate(cutoffDate)));
-  }, [firestore, cutoffDate, user?.uid]);
+  }, [firestore, user?.uid, cutoffDate]);
 
   const purchasesQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
     return query(collection(firestore, "purchases"), where("date", ">=", Timestamp.fromDate(cutoffDate)));
-  }, [firestore, cutoffDate, user?.uid]);
+  }, [firestore, user?.uid, cutoffDate]);
   
   const productsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
@@ -169,7 +169,7 @@ export default function Dashboard() {
   const totalRevenue = useMemo(() => filteredSales.reduce((acc, s) => acc + s.total, 0), [filteredSales]);
   const totalPurchasesValue = useMemo(() => filteredPurchases.reduce((acc, p) => acc + p.total, 0), [filteredPurchases]);
   const activeProducts = useMemo(() => (products || []).filter(p => p.status === 'active').length, [products]);
-  const isLoading = isLoadingSales || isLoadingPurchases || isLoadingProducts;
+  const isLoading = isUserLoading || isLoadingSales || isLoadingPurchases || isLoadingProducts;
 
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -366,7 +366,5 @@ export default function Dashboard() {
     </div>
   );
 }
-
-    
 
     

@@ -55,7 +55,7 @@ type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
 export default function ReportsPage() {
     const { settings, activeSymbol, activeRate } = useSettings();
     const firestore = useFirestore();
-    const { user } = useUser();
+    const { user, isUserLoading } = useUser();
     
     const [selectedSaleDetails, setSelectedSaleDetails] = useState<Sale | null>(null);
     const [saleForTicket, setSaleForTicket] = useState<Sale | null>(null);
@@ -95,8 +95,8 @@ export default function ReportsPage() {
             return query(colRef, where("date", ">=", dateFilterQuery));
         }
         return colRef;
-    }, [firestore, dateFilterQuery, user?.uid]);
-    const { data: salesData } = useCollection<Sale>(salesQuery);
+    }, [firestore, user?.uid, dateFilterQuery]);
+    const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
 
     const purchasesQuery = useMemoFirebase(() => {
         if (!firestore || !user?.uid) return null;
@@ -105,8 +105,8 @@ export default function ReportsPage() {
             return query(colRef, where("date", ">=", dateFilterQuery));
         }
         return colRef;
-    }, [firestore, dateFilterQuery, user?.uid]);
-    const { data: purchasesData } = useCollection<Purchase>(purchasesQuery);
+    }, [firestore, user?.uid, dateFilterQuery]);
+    const { data: purchasesData, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
     
     const movementsQuery = useMemoFirebase(() => {
         if (!firestore || !user?.uid) return null;
@@ -115,8 +115,10 @@ export default function ReportsPage() {
             return query(colRef, where("date", ">=", dateFilterQuery));
         }
         return colRef;
-    }, [firestore, dateFilterQuery, user?.uid]);
-    const { data: movementsData } = useCollection<InventoryMovement>(movementsQuery);
+    }, [firestore, user?.uid, dateFilterQuery]);
+    const { data: movementsData, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsQuery);
+    
+    const isLoading = isUserLoading || isLoadingSales || isLoadingPurchases || isLoadingMovements;
 
     const handleViewDetails = (sale: Sale) => {
         setSelectedSaleDetails(sale);
@@ -354,7 +356,8 @@ export default function ReportsPage() {
             <CardDescription>Un resumen de todas las ventas realizadas.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Table>
+            {isLoading && <p className="text-center">Cargando ventas...</p>}
+            {!isLoading && <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>ID Venta</TableHead>
@@ -398,7 +401,7 @@ export default function ReportsPage() {
                   <TableCell></TableCell>
                 </TableRow>
               </TableFooter>
-            </Table>
+            </Table>}
           </CardContent>
         </Card>
       </TabsContent>
@@ -410,7 +413,8 @@ export default function ReportsPage() {
                 <CardDescription>Un resumen de todas las compras a proveedores.</CardDescription>
             </CardHeader>
             <CardContent>
-                <Table>
+                {isLoading && <p className="text-center">Cargando compras...</p>}
+                {!isLoading && <Table>
                     <TableHeader>
                         <TableRow>
                             <TableHead>ID Compra</TableHead>
@@ -435,7 +439,7 @@ export default function ReportsPage() {
                           <TableCell className="text-right font-bold text-lg">{activeSymbol}{(purchasesTotal * activeRate).toFixed(2)}</TableCell>
                         </TableRow>
                     </TableFooter>
-                </Table>
+                </Table>}
             </CardContent>
         </Card>
       </TabsContent>
@@ -447,7 +451,8 @@ export default function ReportsPage() {
                 <CardDescription>Un historial de todas las entradas y salidas de stock.</CardDescription>
             </CardHeader>
             <CardContent>
-                 <Table>
+                 {isLoading && <p className="text-center">Cargando movimientos...</p>}
+                 {!isLoading && <Table>
                     <TableHeader>
                         <TableRow>
                             <TableHead>Producto</TableHead>
@@ -470,7 +475,7 @@ export default function ReportsPage() {
                             </TableRow>
                         ))}
                     </TableBody>
-                </Table>
+                </Table>}
             </CardContent>
         </Card>
       </TabsContent>
@@ -482,7 +487,8 @@ export default function ReportsPage() {
                 <CardDescription>Estado actual de todo tu inventario.</CardDescription>
             </CardHeader>
             <CardContent>
-                 <Table>
+                 {isLoading && <p className="text-center">Cargando inventario...</p>}
+                 {!isLoading && <Table>
                     <TableHeader>
                         <TableRow>
                             <TableHead>SKU</TableHead>
@@ -513,7 +519,7 @@ export default function ReportsPage() {
                             <TableCell className="text-right font-bold text-lg">{activeSymbol}{(inventoryTotals.totalValue * activeRate).toFixed(2)}</TableCell>
                         </TableRow>
                     </TableFooter>
-                </Table>
+                </Table>}
             </CardContent>
         </Card>
       </TabsContent>

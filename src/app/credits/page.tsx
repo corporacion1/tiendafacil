@@ -23,7 +23,7 @@ export default function CreditsPage() {
     const { toast } = useToast();
     const { settings, activeSymbol, activeRate } = useSettings();
     const firestore = useFirestore();
-    const { user } = useUser();
+    const { user, isUserLoading } = useUser();
 
     const salesCollection = useMemoFirebase(() => {
         if (!firestore || !user?.uid) return null;
@@ -116,6 +116,8 @@ export default function CreditsPage() {
         return format(parseISO(date), "dd/MM/yyyy HH:mm");
     };
     
+    const isLoading = isUserLoading || isLoadingSales;
+
     const renderSalesTable = (salesToRender: Sale[]) => (
         <Table>
             <TableHeader>
@@ -131,9 +133,9 @@ export default function CreditsPage() {
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {isLoadingSales && <TableRow><TableCell colSpan={8} className="text-center">Cargando créditos...</TableCell></TableRow>}
-                {!isLoadingSales && salesToRender.length === 0 && <TableRow><TableCell colSpan={8} className="text-center">No hay ventas a crédito que coincidan con la búsqueda.</TableCell></TableRow>}
-                {!isLoadingSales && salesToRender.map((sale) => {
+                {isLoading && <TableRow><TableCell colSpan={8} className="text-center">Cargando créditos...</TableCell></TableRow>}
+                {!isLoading && salesToRender.length === 0 && <TableRow><TableCell colSpan={8} className="text-center">No hay ventas a crédito que coincidan con la búsqueda.</TableCell></TableRow>}
+                {!isLoading && salesToRender.map((sale) => {
                     const balance = sale.total - (sale.paidAmount || 0);
                     return (
                         <TableRow key={sale.id}>
@@ -334,6 +336,5 @@ export default function CreditsPage() {
         </>
     );
 }
-
 
     

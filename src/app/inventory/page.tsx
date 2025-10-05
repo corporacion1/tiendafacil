@@ -55,7 +55,7 @@ const getDisplayImageUrl = (imageUrl?: string) => {
 export default function InventoryPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
 
   const productsCollection = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
@@ -256,7 +256,7 @@ export default function InventoryPage() {
   }, [products, searchTerm]);
 
   const isMovementFormValid = movementProduct && movementType && movementQuantity > 0 && movementResponsible.trim() !== '';
-  const isLoading = isLoadingProducts || isLoadingSales || isLoadingMovements;
+  const isLoading = isUserLoading || isLoadingProducts || isLoadingSales || isLoadingMovements;
 
   return (
     <>
