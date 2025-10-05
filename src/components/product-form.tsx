@@ -89,7 +89,7 @@ const calculateProfit = (price: number, cost: number): string => {
   return '0.00';
 };
 
-export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
+export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onCancel }) => {
   const { toast } = useToast();
   const { settings } = useSettings();
   
@@ -474,4 +474,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       </form>
     </Form>
   );
-}
+};
+
+    
