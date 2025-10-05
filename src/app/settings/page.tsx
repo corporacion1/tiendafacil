@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
 import { Button } from "@/components/ui/button";
@@ -88,8 +88,7 @@ export default function SettingsPage() {
     const [currencyRates, setCurrencyRates] = useState(mockCurrencyRates);
     const [newRate, setNewRate] = useState<number>(0);
 
-    const [editingItem, setEditingItem] = useState<{type: 'unit' | 'family' | 'warehouse', data: any} | null>(null);
-    const [newItem, setNewItem] = useState<{type: 'unit' | 'family' | 'warehouse', name: string} | null>(null);
+    const [newItemName, setNewItemName] = useState('');
 
     const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
@@ -132,11 +131,21 @@ export default function SettingsPage() {
     };
 
     const isItemInUse = (type: 'unit' | 'family' | 'warehouse', id: string) => {
-        const item = (items: any[]) => items.find(i => i.id === id)?.name;
+        const nameFinder = (items: any[], itemId: string) => items.find(i => i.id === itemId)?.name;
+        
+        let name: string | undefined;
+        let itemList: Product[] = products;
+
         switch(type) {
-            case 'unit': return products.some(p => p.unit === item(units));
-            case 'family': return products.some(p => p.family === item(families));
-            case 'warehouse': return products.some(p => p.warehouse === item(warehouses));
+            case 'unit': 
+                name = nameFinder(units, id);
+                return name ? itemList.some(p => p.unit === name) : false;
+            case 'family':
+                name = nameFinder(families, id);
+                return name ? itemList.some(p => p.family === name) : false;
+            case 'warehouse':
+                name = nameFinder(warehouses, id);
+                return name ? itemList.some(p => p.warehouse === name) : false;
             default: return false;
         }
     };
@@ -162,21 +171,52 @@ export default function SettingsPage() {
         toast({ title: 'Elemento eliminado', description: 'El elemento ha sido eliminado correctamente.' });
     };
 
-    const handleSave = () => {
-        if (editingItem) { // Editing existing item
-            const { type, data } = editingItem;
-            const setter = { unit: setUnits, family: setFamilies, warehouse: setWarehouses }[type];
-            setter(prev => prev.map(item => item.id === data.id ? data : item));
-            toast({ title: 'Elemento actualizado' });
-            setEditingItem(null);
-        } else if (newItem && newItem.name.trim() !== '') { // Adding new item
-            const { type, name } = newItem;
-            const newEntry = { id: `${type.slice(0,1)}-${Date.now()}`, name };
-            const setter = { unit: setUnits, family: setFamilies, warehouse: setWarehouses }[type];
-            setter(prev => [...prev, newEntry]);
-            toast({ title: 'Elemento agregado' });
-            setNewItem(null);
+    const handleItemNameChange = (id: string, newName: string, type: 'unit' | 'family' | 'warehouse') => {
+        const setter = {
+            unit: setUnits,
+            family: setFamilies,
+            warehouse: setWarehouses
+        }[type];
+        setter(prev => prev.map(item => item.id === id ? { ...item, name: newName } : item));
+    };
+
+    const handleSaveOnBlur = (id: string, oldName: string, newName: string, type: 'unit' | 'family' | 'warehouse') => {
+        if (oldName === newName) return;
+
+        if (newName.trim() === '') {
+            toast({
+                variant: 'destructive',
+                title: 'Nombre inválido',
+                description: 'El nombre no puede estar vacío.'
+            });
+            // Revert to old name
+            handleItemNameChange(id, oldName, type);
+            return;
         }
+        
+        // In a real app, you would save to a DB here. For now, the state is already updated.
+        toast({ title: 'Elemento actualizado', description: `"${oldName}" ha sido renombrado a "${newName}".` });
+    };
+    
+    const handleAddNewItem = (type: 'unit' | 'family' | 'warehouse') => {
+        if (newItemName.trim() === '') {
+            toast({
+                variant: 'destructive',
+                title: 'Nombre inválido',
+                description: 'El nombre no puede estar vacío.'
+            });
+            return;
+        }
+        const setter = {
+            unit: setUnits,
+            family: setFamilies,
+            warehouse: setWarehouses
+        }[type];
+
+        const newEntry = { id: `${type.slice(0,1)}-${Date.now()}`, name: newItemName.trim() };
+        setter(prev => [...prev, newEntry]);
+        toast({ title: 'Elemento agregado', description: `"${newEntry.name}" fue agregado.` });
+        setNewItemName(''); // Reset input field
     };
     
     const renderManagementCard = (
@@ -187,271 +227,236 @@ export default function SettingsPage() {
     ) => (
         <Card>
             <CardHeader>
-                <div className="flex justify-between items-center">
-                    <div>
-                        <CardTitle>{title}</CardTitle>
-                        <CardDescription>{description}</CardDescription>
-                    </div>
-                    <DialogTrigger asChild>
-                        <Button size="sm" onClick={() => setNewItem({ type, name: '' })}>
-                            <PlusCircle className="mr-2 h-4 w-4" /> Agregar
-                        </Button>
-                    </DialogTrigger>
-                </div>
+                <CardTitle>{title}</CardTitle>
+                <CardDescription>{description}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
                 {items.map(item => (
-                    <div key={item.id} className="flex items-center justify-between p-2 border rounded-md">
-                        <span>{item.name}</span>
-                        <div className="flex gap-2">
-                             <DialogTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={() => setEditingItem({ type, data: { ...item } })}>
-                                    <Pencil className="h-4 w-4" />
+                    <div key={item.id} className="flex items-center justify-between gap-2 p-1 border rounded-md">
+                        <Input
+                            defaultValue={item.name}
+                            className="border-none focus-visible:ring-0"
+                            onBlur={(e) => handleSaveOnBlur(item.id, item.name, e.target.value, type)}
+                            onChange={(e) => handleItemNameChange(item.id, e.target.value, type)}
+                        />
+                         <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive flex-shrink-0">
+                                    <Trash2 className="h-4 w-4" />
                                 </Button>
-                            </DialogTrigger>
-                             <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>¿Eliminar "{item.name}"?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                           Esta acción es irreversible. Si este elemento está en uso, no se podrá eliminar.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => handleDelete(type, item.id)}>
-                                            Sí, eliminar
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </div>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Eliminar "{item.name}"?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                       Esta acción es irreversible. Si este elemento está en uso, no se podrá eliminar.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDelete(type, item.id)}>
+                                        Sí, eliminar
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                     </div>
                 ))}
                 {items.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No hay elementos.</p>}
             </CardContent>
+            <CardFooter className="flex items-center gap-2 border-t pt-4">
+                 <Input
+                    placeholder={`Nuevo ${title.slice(0,-1).toLowerCase()}...`}
+                    value={newItemName}
+                    onChange={(e) => setNewItemName(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddNewItem(type)}
+                />
+                <Button onClick={() => handleAddNewItem(type)}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Agregar
+                </Button>
+            </CardFooter>
         </Card>
     );
 
     return (
-        <Dialog onOpenChange={(open) => { if(!open) { setEditingItem(null); setNewItem(null); }}}>
-            <div className="grid gap-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Datos del Comercio</CardTitle>
-                        <CardDescription>Configura la información de tu tienda que aparecerá en los tickets.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="storeName">Nombre de la Tienda</Label>
-                                <Input id="storeName" value={localSettings.storeName} onChange={handleSettingsChange} placeholder="Mi Tienda Increíble" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="storeAddress">Dirección</Label>
-                                <Input id="storeAddress" value={localSettings.storeAddress} onChange={handleSettingsChange} placeholder="Calle Falsa 123" />
-                            </div>
-                             <div className="space-y-2">
-                                <Label htmlFor="storePhone">Teléfono</Label>
-                                <Input id="storePhone" value={localSettings.storePhone} onChange={handleSettingsChange} placeholder="+1 (555) 123-4567" />
-                            </div>
-                             <div className="space-y-2">
-                                <Label htmlFor="storeSlogan">Slogan o Mensaje para el Ticket</Label>
-                                <Input id="storeSlogan" value={localSettings.storeSlogan} onChange={handleSettingsChange} placeholder="¡Gracias por tu compra!" />
-                            </div>
+        <div className="grid gap-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Datos del Comercio</CardTitle>
+                    <CardDescription>Configura la información de tu tienda que aparecerá en los tickets.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="storeName">Nombre de la Tienda</Label>
+                            <Input id="storeName" value={localSettings.storeName} onChange={handleSettingsChange} placeholder="Mi Tienda Increíble" />
                         </div>
-
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="tax1">Impuesto 1 (%)</Label>
-                                <Input id="tax1" type="number" value={localSettings.tax1} onChange={handleNumberSettingsChange} placeholder="Ej: 16" />
-                                <CardDescription>Impuesto general sobre las ventas (IVA).</CardDescription>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="tax2">Impuesto 2 (%)</Label>
-                                <Input id="tax2" type="number" value={localSettings.tax2} onChange={handleNumberSettingsChange} placeholder="Ej: 5" />
-                                 <CardDescription>Impuesto especial o selectivo.</CardDescription>
-                            </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="storeAddress">Dirección</Label>
+                            <Input id="storeAddress" value={localSettings.storeAddress} onChange={handleSettingsChange} placeholder="Calle Falsa 123" />
                         </div>
-                    </CardContent>
-                    <CardFooter className="border-t px-6 py-4 flex justify-end">
-                        <Button className="bg-primary hover:bg-primary/90" onClick={saveAllSettings}>Guardar Configuración</Button>
-                    </CardFooter>
-                </Card>
-
-                {/* Currency Management Card */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Gestión de Monedas y Tasa de Cambio</CardTitle>
-                        <CardDescription>Define tus monedas y registra la tasa de cambio de la secundaria.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                             <div className="space-y-4 p-4 border rounded-lg">
-                                <h3 className="font-semibold text-lg">Moneda Principal</h3>
-                                <div className="space-y-2">
-                                    <Label htmlFor="primaryCurrencyName">Nombre de la Moneda</Label>
-                                    <Input id="primaryCurrencyName" value={localSettings.primaryCurrencyName} onChange={handleSettingsChange} placeholder="Dólar" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="primaryCurrencySymbol">Símbolo</Label>
-                                    <Input id="primaryCurrencySymbol" value={localSettings.primaryCurrencySymbol} onChange={handleSettingsChange} placeholder="$" />
-                                </div>
-                            </div>
-                            <div className="space-y-4 p-4 border rounded-lg">
-                                <h3 className="font-semibold text-lg">Moneda Secundaria</h3>
-                                <div className="space-y-2">
-                                    <Label htmlFor="secondaryCurrencyName">Nombre de la Moneda</Label>
-                                    <Input id="secondaryCurrencyName" value={localSettings.secondaryCurrencyName} onChange={handleSettingsChange} placeholder="Bolívares" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="secondaryCurrencySymbol">Símbolo</Label>
-                                    <Input id="secondaryCurrencySymbol" value={localSettings.secondaryCurrencySymbol} onChange={handleSettingsChange} placeholder="Bs." />
-                                </div>
-                            </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="storePhone">Teléfono</Label>
+                            <Input id="storePhone" value={localSettings.storePhone} onChange={handleSettingsChange} placeholder="+1 (555) 123-4567" />
                         </div>
-
-                        <Separator />
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-4">
-                                <h4 className="font-medium">Registrar Tasa ({localSettings.secondaryCurrencyName})</h4>
-                                <div className="space-y-2">
-                                    <Label htmlFor="newRate">Tasa de Cambio Actual</Label>
-                                    <Input id="newRate" type="number" step="0.000001" value={newRate || ''} onChange={(e) => setNewRate(parseFloat(e.target.value) || 0)} placeholder={currencyRates[0]?.rate.toFixed(6) || "0.000000"} />
-                                </div>
-                                <Button onClick={handleSaveNewRate}>Guardar Tasa</Button>
-                            </div>
-                            <div className="space-y-4">
-                                <h4 className="font-medium">Historial de Tasas</h4>
-                                <div className="border rounded-md max-h-48 overflow-y-auto">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Fecha</TableHead>
-                                                <TableHead className="text-right">Tasa</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {currencyRates.length > 0 ? currencyRates.map(rate => (
-                                                <TableRow key={rate.id}>
-                                                    <TableCell>{format(parseISO(rate.date), "dd/MM/yy HH:mm")}</TableCell>
-                                                    <TableCell className="text-right font-mono">{`${rate.rate.toFixed(6)} ${localSettings.secondaryCurrencySymbol}`}</TableCell>
-                                                </TableRow>
-                                            )) : (
-                                                <TableRow>
-                                                    <TableCell colSpan={2} className="text-center text-muted-foreground">No hay tasas registradas.</TableCell>
-                                                </TableRow>
-                                            )}
-                                        </TableBody>
-                                    </Table>
-                                </div>
-                            </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="storeSlogan">Slogan o Mensaje para el Ticket</Label>
+                            <Input id="storeSlogan" value={localSettings.storeSlogan} onChange={handleSettingsChange} placeholder="¡Gracias por tu compra!" />
                         </div>
-
-                    </CardContent>
-                     <CardFooter className="border-t px-6 py-4 flex justify-end">
-                        <Button className="bg-primary hover:bg-primary/90" onClick={saveAllSettings}>Guardar Configuración de Monedas</Button>
-                    </CardFooter>
-                </Card>
-
-                {/* Management Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {renderManagementCard("Unidades de Medida", "Gestiona las unidades para tus productos.", units, 'unit')}
-                    {renderManagementCard("Familias de Productos", "Organiza tus productos en familias.", families, 'family')}
-                    {renderManagementCard("Almacenes", "Gestiona los almacenes de destino.", warehouses, 'warehouse')}
-                </div>
-
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Seguridad</CardTitle>
-                        <CardDescription>Administra el PIN de seguridad de la aplicación.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="flex items-center justify-between rounded-lg border p-4">
-                            <div>
-                                <p className="font-medium">PIN de Seguridad</p>
-                                <p className="text-sm text-muted-foreground">
-                                    {hasPin ? 'PIN de seguridad está activo.' : 'No hay PIN de seguridad configurado.'}
-                                </p>
-                            </div>
-                             <div className="flex items-center gap-4">
-                                {hasPin && <ChangePinDialog />}
-                                <Switch checked={hasPin} onCheckedChange={(checked) => { if (!checked) { removePin() } else if (!hasPin) { document.getElementById('new-pin-trigger')?.click() } }} />
-                            </div>
-                        </div>
-                        {!hasPin && (
-                             <Dialog>
-                                <DialogTrigger asChild>
-                                    <Button id="new-pin-trigger" className="hidden">Establecer PIN</Button>
-                                </DialogTrigger>
-                                <DialogContent>
-                                    <DialogHeader>
-                                        <DialogTitle>Establecer Nuevo PIN</DialogTitle>
-                                    </DialogHeader>
-                                    <div className="space-y-4 py-4">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="new-pin">Nuevo PIN (4 dígitos)</Label>
-                                            <Input id="new-pin" type="password" value={newPin} onChange={(e) => setNewPin(e.target.value)} maxLength={4} placeholder="****" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="confirm-pin">Confirmar Nuevo PIN</Label>
-                                            <Input id="confirm-pin" type="password" value={confirmPin} onChange={(e) => setConfirmPin(e.target.value)} maxLength={4} placeholder="****" />
-                                        </div>
-                                    </div>
-                                    <DialogFooter>
-                                        <DialogClose asChild>
-                                            <Button variant="outline">Cancelar</Button>
-                                        </DialogClose>
-                                        <DialogClose asChild>
-                                            <Button onClick={() => setPin(newPin, confirmPin)}>Establecer PIN</Button>
-                                        </DialogClose>
-                                    </DialogFooter>
-                                </DialogContent>
-                            </Dialog>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
-            
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>{editingItem ? 'Editar' : 'Agregar'} Elemento</DialogTitle>
-                    <DialogDescription>
-                        {editingItem ? 'Modifica el nombre del elemento.' : 'Ingresa el nombre del nuevo elemento.'}
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="item-name">Nombre</Label>
-                        <Input 
-                            id="item-name" 
-                            value={editingItem ? editingItem.data.name : newItem?.name || ''}
-                            onChange={(e) => {
-                                if (editingItem) {
-                                    setEditingItem(prev => prev ? { ...prev, data: { ...prev.data, name: e.target.value } } : null);
-                                } else if (newItem) {
-                                    setNewItem(prev => prev ? { ...prev, name: e.target.value } : null);
-                                }
-                            }}
-                        />
                     </div>
-                </div>
-                <DialogFooter>
-                    <DialogClose asChild>
-                        <Button variant="outline">Cancelar</Button>
-                    </DialogClose>
-                    <DialogClose asChild>
-                        <Button onClick={handleSave}>Guardar</Button>
-                    </DialogClose>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="tax1">Impuesto 1 (%)</Label>
+                            <Input id="tax1" type="number" value={localSettings.tax1} onChange={handleNumberSettingsChange} placeholder="Ej: 16" />
+                            <CardDescription>Impuesto general sobre las ventas (IVA).</CardDescription>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="tax2">Impuesto 2 (%)</Label>
+                            <Input id="tax2" type="number" value={localSettings.tax2} onChange={handleNumberSettingsChange} placeholder="Ej: 5" />
+                             <CardDescription>Impuesto especial o selectivo.</CardDescription>
+                        </div>
+                    </div>
+                </CardContent>
+                <CardFooter className="border-t px-6 py-4 flex justify-end">
+                    <Button className="bg-primary hover:bg-primary/90" onClick={saveAllSettings}>Guardar Configuración</Button>
+                </CardFooter>
+            </Card>
+
+            {/* Currency Management Card */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Gestión de Monedas y Tasa de Cambio</CardTitle>
+                    <CardDescription>Define tus monedas y registra la tasa de cambio de la secundaria.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                         <div className="space-y-4 p-4 border rounded-lg">
+                            <h3 className="font-semibold text-lg">Moneda Principal</h3>
+                            <div className="space-y-2">
+                                <Label htmlFor="primaryCurrencyName">Nombre de la Moneda</Label>
+                                <Input id="primaryCurrencyName" value={localSettings.primaryCurrencyName} onChange={handleSettingsChange} placeholder="Dólar" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="primaryCurrencySymbol">Símbolo</Label>
+                                <Input id="primaryCurrencySymbol" value={localSettings.primaryCurrencySymbol} onChange={handleSettingsChange} placeholder="$" />
+                            </div>
+                        </div>
+                        <div className="space-y-4 p-4 border rounded-lg">
+                            <h3 className="font-semibold text-lg">Moneda Secundaria</h3>
+                            <div className="space-y-2">
+                                <Label htmlFor="secondaryCurrencyName">Nombre de la Moneda</Label>
+                                <Input id="secondaryCurrencyName" value={localSettings.secondaryCurrencyName} onChange={handleSettingsChange} placeholder="Bolívares" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="secondaryCurrencySymbol">Símbolo</Label>
+                                <Input id="secondaryCurrencySymbol" value={localSettings.secondaryCurrencySymbol} onChange={handleSettingsChange} placeholder="Bs." />
+                            </div>
+                        </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                            <h4 className="font-medium">Registrar Tasa ({localSettings.secondaryCurrencyName})</h4>
+                            <div className="space-y-2">
+                                <Label htmlFor="newRate">Tasa de Cambio Actual</Label>
+                                <Input id="newRate" type="number" step="0.000001" value={newRate || ''} onChange={(e) => setNewRate(parseFloat(e.target.value) || 0)} placeholder={currencyRates[0]?.rate.toFixed(6) || "0.000000"} />
+                            </div>
+                            <Button onClick={handleSaveNewRate}>Guardar Tasa</Button>
+                        </div>
+                        <div className="space-y-4">
+                            <h4 className="font-medium">Historial de Tasas</h4>
+                            <div className="border rounded-md max-h-48 overflow-y-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Fecha</TableHead>
+                                            <TableHead className="text-right">Tasa</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {currencyRates.length > 0 ? currencyRates.map(rate => (
+                                            <TableRow key={rate.id}>
+                                                <TableCell>{format(parseISO(rate.date), "dd/MM/yy HH:mm")}</TableCell>
+                                                <TableCell className="text-right font-mono">{`${rate.rate.toFixed(6)} ${localSettings.secondaryCurrencySymbol}`}</TableCell>
+                                            </TableRow>
+                                        )) : (
+                                            <TableRow>
+                                                <TableCell colSpan={2} className="text-center text-muted-foreground">No hay tasas registradas.</TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+                    </div>
+
+                </CardContent>
+                 <CardFooter className="border-t px-6 py-4 flex justify-end">
+                    <Button className="bg-primary hover:bg-primary/90" onClick={saveAllSettings}>Guardar Configuración de Monedas</Button>
+                </CardFooter>
+            </Card>
+
+            {/* Management Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {renderManagementCard("Unidades de Medida", "Gestiona las unidades para tus productos.", units, 'unit')}
+                {renderManagementCard("Familias de Productos", "Organiza tus productos en familias.", families, 'family')}
+                {renderManagementCard("Almacenes", "Gestiona los almacenes de destino.", warehouses, 'warehouse')}
+            </div>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Seguridad</CardTitle>
+                    <CardDescription>Administra el PIN de seguridad de la aplicación.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between rounded-lg border p-4">
+                        <div>
+                            <p className="font-medium">PIN de Seguridad</p>
+                            <p className="text-sm text-muted-foreground">
+                                {hasPin ? 'PIN de seguridad está activo.' : 'No hay PIN de seguridad configurado.'}
+                            </p>
+                        </div>
+                         <div className="flex items-center gap-4">
+                            {hasPin && <ChangePinDialog />}
+                            <Switch checked={hasPin} onCheckedChange={(checked) => { if (!checked) { removePin() } else if (!hasPin) { document.getElementById('new-pin-trigger')?.click() } }} />
+                        </div>
+                    </div>
+                    {!hasPin && (
+                         <Dialog>
+                            <DialogTrigger asChild>
+                                <Button id="new-pin-trigger" className="hidden">Establecer PIN</Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Establecer Nuevo PIN</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4 py-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="new-pin">Nuevo PIN (4 dígitos)</Label>
+                                        <Input id="new-pin" type="password" value={newPin} onChange={(e) => setNewPin(e.target.value)} maxLength={4} placeholder="****" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="confirm-pin">Confirmar Nuevo PIN</Label>
+                                        <Input id="confirm-pin" type="password" value={confirmPin} onChange={(e) => setConfirmPin(e.target.value)} maxLength={4} placeholder="****" />
+                                    </div>
+                                </div>
+                                <DialogFooter>
+                                    <DialogClose asChild>
+                                        <Button variant="outline">Cancelar</Button>
+                                    </DialogClose>
+                                    <DialogClose asChild>
+                                        <Button onClick={() => setPin(newPin, confirmPin)}>Establecer PIN</Button>
+                                    </DialogClose>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
     );
 }
 
