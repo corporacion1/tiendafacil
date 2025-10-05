@@ -15,29 +15,35 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const previousPathname = useRef(pathname);
 
-    // This state will prevent rendering children until we are certain about the auth state
-    const [isAuthReady, setIsAuthReady] = useState(false);
+    // This state will prevent rendering children until we are certain about the auth state and component has mounted client-side
+    const [isClientReady, setIsClientReady] = useState(false);
 
     useEffect(() => {
-        if (!isUserLoading && isMounted && !isPinLoading) {
-            if (!user) {
-                router.replace('/login');
-            } else {
-                setIsAuthReady(true);
-            }
+      // When this runs, we are on the client.
+      setIsClientReady(true);
+    }, []);
+
+    useEffect(() => {
+        // Wait until everything is ready on the client before redirecting.
+        if (!isClientReady || isUserLoading || isPinLoading) return;
+        
+        if (!user) {
+            router.replace('/login');
         }
-    }, [isUserLoading, user, router, isMounted, isPinLoading]);
+    }, [isClientReady, isUserLoading, isPinLoading, user, router]);
 
     useEffect(() => {
-      if (!hasPin || !isMounted) return;
+      if (!isClientReady || !hasPin || !isMounted) return;
+      
       if (previousPathname.current === '/pos' && pathname !== '/pos') {
         lockApp();
       }
       previousPathname.current = pathname;
-    }, [pathname, lockApp, hasPin, isMounted]);
+    }, [pathname, lockApp, hasPin, isMounted, isClientReady]);
 
-    // Global loading state. Prevents any child components from rendering prematurely.
-    if (!isAuthReady) {
+    // This is the crucial part. Until the client has mounted and all auth states are resolved, show a consistent loading screen.
+    // This will be rendered on the server, and on the initial client render, avoiding the mismatch.
+    if (!isClientReady || isUserLoading || isPinLoading) {
         return (
             <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
                 <Logo className="w-64 h-20" />
@@ -51,6 +57,16 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         return <PinModal />;
     }
 
-    // Only when auth is ready and app is not locked, render children.
+    // If user is not present after loading (and we are on the client), wait for redirect.
+    if (!user) {
+        return (
+            <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
+                <Logo className="w-64 h-20" />
+                <p className="text-muted-foreground animate-pulse">Verificando sesión...</p>
+            </div>
+        );
+    }
+
+    // Only when everything is ready and user is confirmed, render children.
     return <>{children}</>;
 }
