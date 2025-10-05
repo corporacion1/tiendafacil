@@ -216,9 +216,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   };
 
   return (
-    <AlertDialog>
-      <Form {...form}>
-        <form onSubmit={(e) => e.preventDefault()} className="grid gap-6">
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-6">
+        <AlertDialog>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
              <div className="md:col-span-1 grid gap-4">
                  <FormItem>
@@ -507,23 +507,24 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                   <Button type="button" className="bg-primary hover:bg-primary/90" disabled={!isDirty}>{product ? "Guardar Cambios" : "Crear Producto"}</Button>
               </AlertDialogTrigger>
           </div>
-        </form>
-      </Form>
-
-      <AlertDialogContent>
-          <AlertDialogHeader>
-              <AlertDialogTitle>¿Confirmar?</AlertDialogTitle>
-              <AlertDialogDescription>
-                  ¿Estás seguro de que quieres {product ? 'guardar los cambios en' : 'crear'} este producto?
-              </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={form.handleSubmit(handleSubmit)}>
-                  Confirmar
-              </AlertDialogAction>
-          </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          <AlertDialogContent>
+              <AlertDialogHeader>
+                  <AlertDialogTitle>¿Confirmar?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                      ¿Estás seguro de que quieres {product ? 'guardar los cambios en' : 'crear'} este producto?
+                  </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction type="submit">
+                      Confirmar
+                  </AlertDialogAction>
+              </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </form>
+    </Form>
   );
 }
+
+    
