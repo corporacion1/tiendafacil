@@ -27,9 +27,9 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const messagesQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid || isUserLoading) return null;
+    if (!firestore || !user?.uid) return null;
     return query(collection(firestore, "chats", selectedRoom.id, "messages"), orderBy("timestamp", "asc"));
-  }, [firestore, selectedRoom.id, user?.uid, isUserLoading]);
+  }, [firestore, selectedRoom.id, user?.uid]);
 
   const { data: messages, isLoading: isLoadingMessages } = useCollection<ChatMessage>(messagesQuery);
 
@@ -170,3 +170,5 @@ export default function ChatPage() {
     </Card>
   );
 }
+
+    

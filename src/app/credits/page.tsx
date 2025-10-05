@@ -132,6 +132,7 @@ export default function CreditsPage() {
             </TableHeader>
             <TableBody>
                 {isLoadingSales && <TableRow><TableCell colSpan={8} className="text-center">Cargando créditos...</TableCell></TableRow>}
+                {!isLoadingSales && salesToRender.length === 0 && <TableRow><TableCell colSpan={8} className="text-center">No hay ventas a crédito que coincidan con la búsqueda.</TableCell></TableRow>}
                 {!isLoadingSales && salesToRender.map((sale) => {
                     const balance = sale.total - (sale.paidAmount || 0);
                     return (
@@ -333,3 +334,5 @@ export default function CreditsPage() {
         </>
     );
 }
+
+    
