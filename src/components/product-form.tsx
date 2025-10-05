@@ -22,7 +22,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useSettings } from "@/contexts/settings-context";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { collection, query, where, getDocs } from "firebase/firestore";
-import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase";
 
 const productSchema = z.object({
   id: z.string().optional(),
@@ -99,11 +99,12 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
   const { toast } = useToast();
   const { settings } = useSettings();
   const firestore = useFirestore();
+  const { user } = useUser();
 
   const productsCollection = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !user) return null;
     return collection(firestore, "products");
-  }, [firestore]);
+  }, [firestore, user]);
 
   const { data: products } = useCollection<Product>(productsCollection);
   
