@@ -27,29 +27,23 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // This function will only run on the client, after hydration
-    // and when user and firestore are available.
-    const ensureRooms = () => {
-      if (isUserLoading || !user || !firestore) return;
+    if (!firestore || !user) return;
 
-      chatRooms.forEach(room => {
-        const roomRef = doc(firestore, "chats", room.id);
-        const roomData = { name: room.name };
-        
-        setDoc(roomRef, roomData, { merge: true })
-          .catch((serverError) => {
-            const permissionError = new FirestorePermissionError({
-              path: roomRef.path,
-              operation: 'write',
-              requestResourceData: roomData,
-            });
-            errorEmitter.emit('permission-error', permissionError);
+    chatRooms.forEach(room => {
+      const roomRef = doc(firestore, "chats", room.id);
+      const roomData = { name: room.name };
+      
+      setDoc(roomRef, roomData, { merge: true })
+        .catch((serverError) => {
+          const permissionError = new FirestorePermissionError({
+            path: roomRef.path,
+            operation: 'write',
+            requestResourceData: roomData,
           });
-      });
-    };
-
-    ensureRooms();
-  }, [user, isUserLoading, firestore]);
+          errorEmitter.emit('permission-error', permissionError);
+        });
+    });
+  }, [user, firestore]);
 
   const messagesQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
