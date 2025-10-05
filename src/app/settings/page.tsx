@@ -315,8 +315,9 @@ export default function SettingsPage() {
                                 <Input 
                                     value={localSettings.storeLocation ? `Lat: ${localSettings.storeLocation.lat.toFixed(6)}, Lng: ${localSettings.storeLocation.lng.toFixed(6)}` : "Ubicación no establecida"}
                                     readOnly 
+                                    className="hidden"
                                 />
-                                <Button onClick={handleGetLocation} variant="outline" className="md:col-span-2">
+                                <Button onClick={handleGetLocation} variant="outline" className="md:col-span-3">
                                     <MapPin className="mr-2 h-4 w-4" />
                                     Obtener Ubicación Actual
                                 </Button>
@@ -523,3 +524,5 @@ export default function SettingsPage() {
         </Dialog>
     );
 }
+
+    
