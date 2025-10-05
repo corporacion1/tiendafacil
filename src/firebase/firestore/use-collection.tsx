@@ -10,6 +10,8 @@ import {
   QuerySnapshot,
   CollectionReference,
 } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 
 /** Utility type to add an 'id' field to a given type T. */
@@ -75,7 +77,18 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (err: FirestoreError) => {
-        console.error("useCollection error:", err);
+        if (memoizedTargetRefOrQuery instanceof CollectionReference) {
+            const permissionError = new FirestorePermissionError({
+                path: memoizedTargetRefOrQuery.path,
+                operation: 'list',
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        } else {
+             // For general queries, we can't always know the exact path.
+             // We'll log the original error and maybe emit a less specific event if needed.
+             console.error("useCollection error on a complex query:", err);
+        }
+
         setError(err);
         setData(null);
         setIsLoading(false);
@@ -90,3 +103,4 @@ export function useCollection<T = any>(
   }
   return { data, isLoading, error };
 }
+
