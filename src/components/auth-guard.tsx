@@ -3,9 +3,10 @@
 
 import { useUser } from "@/firebase";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSecurity } from "@/contexts/security-context";
 import { PinModal } from "./pin-modal";
+import { Logo } from "./logo";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
     const { user, isUserLoading } = useUser();
@@ -14,11 +15,18 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const previousPathname = useRef(pathname);
 
+    // This state will prevent rendering children until we are certain about the auth state
+    const [isAuthReady, setIsAuthReady] = useState(false);
+
     useEffect(() => {
-        if (!isUserLoading && !user) {
-            router.replace('/login');
+        if (!isUserLoading && isMounted && !isPinLoading) {
+            if (!user) {
+                router.replace('/login');
+            } else {
+                setIsAuthReady(true);
+            }
         }
-    }, [isUserLoading, user, router]);
+    }, [isUserLoading, user, router, isMounted, isPinLoading]);
 
     useEffect(() => {
       if (!hasPin || !isMounted) return;
@@ -28,34 +36,21 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       previousPathname.current = pathname;
     }, [pathname, lockApp, hasPin, isMounted]);
 
-    // This is the loading state. It will be shown until Firebase determines
-    // the user's auth state.
-    if (isUserLoading || (isMounted && isPinLoading)) {
+    // Global loading state. Prevents any child components from rendering prematurely.
+    if (!isAuthReady) {
         return (
-            <div className="flex min-h-screen w-full items-center justify-center bg-background">
-                <p>Verificando sesión...</p>
+            <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
+                <Logo className="w-64 h-20" />
+                <p className="text-muted-foreground animate-pulse">Verificando sesión...</p>
             </div>
         );
     }
     
-    // After loading, if there's no user, we show a redirecting message
-    // while the useEffect above handles the redirect. This prevents children
-    // from rendering.
-    if (!user) {
-        return (
-            <div className="flex min-h-screen w-full items-center justify-center bg-background">
-                <p>Redirigiendo a inicio de sesión...</p>
-            </div>
-        );
-    }
-
-    // If we have a user, check if the app is locked by PIN.
+    // If auth is ready but app is locked, show PIN modal.
     if (isLocked) {
         return <PinModal />;
     }
 
-    // Only if loading is false, a user exists, and the app is not locked,
-    // do we render the children.
+    // Only when auth is ready and app is not locked, render children.
     return <>{children}</>;
 }
-

@@ -10,10 +10,13 @@ import { AuthGuard } from './auth-guard';
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
+  // The login page is the only one that doesn't need the AuthGuard or the main layout.
   if (pathname === '/login') {
     return <>{children}</>;
   }
 
+  // The AuthGuard now wraps the entire application layout.
+  // Nothing inside, including the sidebar or header, will render until authentication is confirmed.
   return (
     <AuthGuard>
       <div className="flex min-h-screen w-full flex-col bg-muted/40">
