@@ -62,24 +62,25 @@ export default function Dashboard() {
     if (!firestore || !user?.uid) return null;
     return query(collection(firestore, "sales"), where("date", ">=", Timestamp.fromDate(cutoffDate)));
   }, [firestore, cutoffDate, user?.uid]);
-  const { data: sales } = useCollection<Sale>(salesQuery);
+  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
 
   const purchasesQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
     return query(collection(firestore, "purchases"), where("date", ">=", Timestamp.fromDate(cutoffDate)));
   }, [firestore, cutoffDate, user?.uid]);
-  const { data: purchases } = useCollection<Purchase>(purchasesQuery);
+  const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
 
   const productsQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
     return collection(firestore, "products");
   }, [firestore, user?.uid]);
-  const { data: products } = useCollection<Product>(productsQuery);
+  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
 
   const filteredSales = sales || [];
   const filteredPurchases = purchases || [];
 
   const recentMovements = useMemo(() => {
+    if (isLoadingSales) return [];
     const movements: Omit<InventoryMovement, 'id'>[] = [];
     filteredSales.forEach(sale => {
       sale.items.forEach(item => {
@@ -97,9 +98,10 @@ export default function Dashboard() {
         const dateB = b.date instanceof Timestamp ? b.date.toMillis() : parseISO(b.date as string).getTime();
         return dateB - dateA;
     });
-  }, [filteredSales]);
+  }, [filteredSales, isLoadingSales]);
   
   const chartData = useMemo(() => {
+    if (isLoadingSales || isLoadingPurchases || isLoadingProducts) return [];
     const dataByDate: { [key: string]: { date: string, sales: number, profit: number, unitsSold: number, unitsPurchased: number } } = {};
     const dateFormat = timeFilter === 'month' ? 'dd-MMM' : 'eee dd';
     
@@ -153,7 +155,7 @@ export default function Dashboard() {
         sales: parseFloat((d.sales * activeRate).toFixed(2)),
         profit: parseFloat((d.profit * activeRate).toFixed(2)),
     }));
-  }, [filteredSales, filteredPurchases, products, activeRate, timeFilter]);
+  }, [filteredSales, filteredPurchases, products, activeRate, timeFilter, isLoadingSales, isLoadingPurchases, isLoadingProducts]);
 
   const getMovementLabel = (type: 'sale' | 'purchase' | 'adjustment') => {
     switch (type) {
@@ -167,6 +169,7 @@ export default function Dashboard() {
   const totalRevenue = useMemo(() => filteredSales.reduce((acc, s) => acc + s.total, 0), [filteredSales]);
   const totalPurchasesValue = useMemo(() => filteredPurchases.reduce((acc, p) => acc + p.total, 0), [filteredPurchases]);
   const activeProducts = useMemo(() => (products || []).filter(p => p.status === 'active').length, [products]);
+  const isLoading = isLoadingSales || isLoadingPurchases || isLoadingProducts;
 
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -183,6 +186,11 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent>
+           {isLoading ? (
+               <div className="flex justify-center items-center h-[350px]">
+                   <p className="text-muted-foreground">Cargando datos del gráfico...</p>
+               </div>
+           ) : (
             <Carousel className="w-full" opts={{ loop: true }}>
               <CarouselContent>
                 <CarouselItem>
@@ -210,7 +218,7 @@ export default function Dashboard() {
                               backgroundColor: 'hsl(var(--background))',
                               borderColor: 'hsl(var(--border))',
                               }}
-                                formatter={(value: number) => `${activeSymbol}${value.toFixed(2)}`}
+                               formatter={(value: number) => `${activeSymbol}${value.toFixed(2)}`}
                           />
                           <Legend />
                           <Line type="monotone" dataKey="sales" name="Ventas" stroke="hsl(var(--chart-1))" strokeWidth={2} />
@@ -257,6 +265,7 @@ export default function Dashboard() {
               <CarouselPrevious className="absolute left-[-50px] top-1/2 -translate-y-1/2" />
               <CarouselNext className="absolute right-[-50px] top-1/2 -translate-y-1/2" />
             </Carousel>
+           )}
           </CardContent>
         </Card>
 
@@ -269,7 +278,7 @@ export default function Dashboard() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{activeSymbol}{(totalRevenue * activeRate).toFixed(2)}</div>
+              {isLoading ? <p className="animate-pulse">...</p> : <div className="text-2xl font-bold">{activeSymbol}{(totalRevenue * activeRate).toFixed(2)}</div>}
             </CardContent>
           </Card>
           <Card>
@@ -280,7 +289,7 @@ export default function Dashboard() {
               <ShoppingBag className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{activeSymbol}{(totalPurchasesValue * activeRate).toFixed(2)}</div>
+              {isLoading ? <p className="animate-pulse">...</p> : <div className="text-2xl font-bold">{activeSymbol}{(totalPurchasesValue * activeRate).toFixed(2)}</div>}
             </CardContent>
           </Card>
           <Card>
@@ -289,7 +298,7 @@ export default function Dashboard() {
               <Package className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">+{filteredSales.length}</div>
+              {isLoading ? <p className="animate-pulse">...</p> : <div className="text-2xl font-bold">+{filteredSales.length}</div>}
             </CardContent>
           </Card>
           <Card>
@@ -300,7 +309,7 @@ export default function Dashboard() {
               <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{activeProducts}</div>
+              {isLoading ? <p className="animate-pulse">...</p> : <div className="text-2xl font-bold">{activeProducts}</div>}
             </CardContent>
           </Card>
         </div>
@@ -331,19 +340,23 @@ export default function Dashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recentMovements.slice(0, 5).map((movement, index) => (
-                    <TableRow key={index}>
-                      <TableCell>
-                        <div className="font-medium">{movement.productName}</div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Badge variant={movement.type === "sale" ? "destructive" : movement.type === 'purchase' ? "secondary" : "outline"}>
-                          {getMovementLabel(movement.type)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">{movement.quantity}</TableCell>
-                    </TableRow>
-                  ))}
+                  {isLoading ? (
+                    <TableRow><TableCell colSpan={3} className="text-center">Cargando...</TableCell></TableRow>
+                  ) : (
+                    recentMovements.slice(0, 5).map((movement, index) => (
+                      <TableRow key={index}>
+                        <TableCell>
+                          <div className="font-medium">{movement.productName}</div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant={movement.type === "sale" ? "destructive" : movement.type === 'purchase' ? "secondary" : "outline"}>
+                            {getMovementLabel(movement.type)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">{movement.quantity}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -353,3 +366,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
+    
