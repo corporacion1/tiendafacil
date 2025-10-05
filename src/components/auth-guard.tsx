@@ -17,18 +17,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         }
     }, [user, isUserLoading, router, pathname]);
 
-    if (isUserLoading) {
+    if (isUserLoading || !user) {
         return (
-            <div className="flex min-h-screen w-full items-center justify-center">
+            <div className="flex flex-col flex-1 h-full items-center justify-center">
                 <p>Verificando sesión...</p>
-            </div>
-        );
-    }
-    
-    if (!user) {
-         return (
-            <div className="flex min-h-screen w-full items-center justify-center">
-                <p>Redirigiendo a inicio de sesión...</p>
             </div>
         );
     }
