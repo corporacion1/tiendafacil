@@ -50,19 +50,19 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         );
     }
     
-    // If the app is locked after all checks, show the PIN modal.
-    if (isLocked) {
-        return <PinModal />;
-    }
-
     // If there is no user after loading, the redirect is in progress. Continue showing a loading screen.
     if (!user) {
         return (
             <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
                 <Logo className="w-64 h-20" />
-                <p className="text-muted-foreground animate-pulse">Verificando sesión...</p>
+                <p className="text-muted-foreground animate-pulse">Redirigiendo...</p>
             </div>
         );
+    }
+
+    // If the app is locked after all checks, show the PIN modal.
+    if (isLocked) {
+        return <PinModal />;
     }
 
     // Only when everything is ready, unlocked, and the user is confirmed, render the children.
