@@ -24,7 +24,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     previousPathname.current = pathname;
   }, [pathname, lockApp, hasPin, isMounted]);
 
-  // Handle loading and unauthenticated states for the shell
+  // The login page is a special case, it doesn't need the app shell.
   if (pathname === '/login') {
     return <>{children}</>;
   }
