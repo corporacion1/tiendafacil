@@ -19,7 +19,7 @@ const chatRooms = [
 ];
 
 export default function ChatPage() {
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
   const firestore = useFirestore();
 
   const [selectedRoom, setSelectedRoom] = useState(chatRooms[0]);
@@ -27,11 +27,11 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const messagesQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
+    if (!firestore) return null;
     return query(collection(firestore, "chats", selectedRoom.id, "messages"), orderBy("timestamp", "asc"));
-  }, [firestore, selectedRoom.id, user?.uid]);
+  }, [firestore, selectedRoom.id]);
 
-  const { data: messages, isLoading: isLoadingMessages } = useCollection<ChatMessage>(messagesQuery);
+  const { data: messages, isLoading } = useCollection<ChatMessage>(messagesQuery);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -80,8 +80,6 @@ export default function ChatPage() {
     }
     return "";
   }
-
-  const isLoading = isUserLoading || isLoadingMessages;
 
   return (
     <Card className="h-[calc(100vh-120px)] flex flex-col">
@@ -170,5 +168,3 @@ export default function ChatPage() {
     </Card>
   );
 }
-
-    

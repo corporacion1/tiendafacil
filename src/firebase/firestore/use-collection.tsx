@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useUser } from '../provider';
 
 
 /** Utility type to add an 'id' field to a given type T. */
@@ -29,14 +30,11 @@ export interface UseCollectionResult<T> {
 
 /**
  * React hook to subscribe to a Firestore collection or query in real-time.
- * Handles nullable references/queries.
+ * Handles nullable references/queries and automatically waits for user authentication.
  *
  * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedTargetRefOrQuery or BAD THINGS WILL HAPPEN
  * use useMemoFirebase to memoize it per React guidance. Also make sure that its dependencies are stable
  * references.
- *
- * The component calling this hook is responsible for ensuring the user is authenticated before
- * passing a query that requires authentication. Pass `null` if the user is not ready.
  *
  * @template T Optional type for document data. Defaults to any.
  * @param {CollectionReference<DocumentData> | Query<DocumentData> | null | undefined} targetRefOrQuery -
@@ -49,15 +47,16 @@ export function useCollection<T = any>(
   type ResultItemType = WithId<T>;
   type StateDataType = ResultItemType[] | null;
 
+  const { isUserLoading } = useUser();
   const [data, setData] = useState<StateDataType>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | null>(null);
 
   useEffect(() => {
-    // If the query is not ready (e.g., waiting for user auth), do nothing.
-    if (!memoizedTargetRefOrQuery) {
+    // If the query is not ready OR if the user is still loading, do nothing.
+    if (!memoizedTargetRefOrQuery || isUserLoading) {
       setData(null);
-      setIsLoading(false);
+      setIsLoading(true); // Keep loading until user is ready
       setError(null);
       return;
     }
@@ -96,11 +95,10 @@ export function useCollection<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery]);
+  }, [memoizedTargetRefOrQuery, isUserLoading]); // Add isUserLoading to dependencies
 
   if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
     throw new Error('A query/reference passed to useCollection was not properly memoized using useMemoFirebase. This will cause infinite loops.');
   }
   return { data, isLoading, error };
 }
-

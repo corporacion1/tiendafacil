@@ -19,7 +19,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings } from "@/contexts/settings-context";
-import { useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { collection, addDoc, doc, writeBatch, serverTimestamp } from "firebase/firestore";
 
 const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
@@ -42,18 +42,17 @@ export default function PurchasesPage() {
   const { toast } = useToast();
   const { settings, activeSymbol, activeRate } = useSettings();
   const firestore = useFirestore();
-  const { user } = useUser();
 
   const productsCollection = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
+    if (!firestore) return null;
     return collection(firestore, "products");
-  }, [firestore, user?.uid]);
+  }, [firestore]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollection);
 
   const suppliersCollection = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
+    if (!firestore) return null;
     return collection(firestore, "suppliers");
-  }, [firestore, user?.uid]);
+  }, [firestore]);
   const { data: suppliers, isLoading: isLoadingSuppliers } = useCollection<Supplier>(suppliersCollection);
 
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
@@ -245,6 +244,7 @@ export default function PurchasesPage() {
   }, [purchaseItems, selectedSupplierId, responsible]);
 
   const isNewSupplierFormDirty = newSupplier.name.trim() !== '' || newSupplier.id.trim() !== '' || newSupplier.phone.trim() !== '' || newSupplier.address.trim() !== '';
+  const isLoading = isLoadingProducts || isLoadingSuppliers;
 
   return (
     <div className="grid flex-1 auto-rows-max gap-4 md:grid-cols-3 lg:gap-8">
@@ -275,7 +275,7 @@ export default function PurchasesPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {isLoadingProducts && <p>Cargando productos...</p>}
+            {isLoading && <p>Cargando productos...</p>}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
               {filteredProducts.map((product) => {
                 const displayImageUrl = getDisplayImageUrl(product.imageUrl);

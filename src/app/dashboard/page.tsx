@@ -37,7 +37,7 @@ import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/contexts/settings-context";
 import { InventoryMovement, Product, Purchase, Sale } from "@/lib/types";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, where, Timestamp } from "firebase/firestore";
 
 type TimeFilter = 'day' | 'week' | 'month';
@@ -46,7 +46,6 @@ export default function Dashboard() {
   const { activeSymbol, activeRate } = useSettings();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
   const firestore = useFirestore();
-  const { user, isUserLoading } = useUser();
 
   const cutoffDate = useMemo(() => {
     const now = new Date();
@@ -59,19 +58,19 @@ export default function Dashboard() {
   }, [timeFilter]);
 
   const salesQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
+    if (!firestore) return null;
     return query(collection(firestore, "sales"), where("date", ">=", Timestamp.fromDate(cutoffDate)));
-  }, [firestore, user?.uid, cutoffDate]);
+  }, [firestore, cutoffDate]);
 
   const purchasesQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
+    if (!firestore) return null;
     return query(collection(firestore, "purchases"), where("date", ">=", Timestamp.fromDate(cutoffDate)));
-  }, [firestore, user?.uid, cutoffDate]);
+  }, [firestore, cutoffDate]);
   
   const productsQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
+    if (!firestore) return null;
     return collection(firestore, "products");
-  }, [firestore, user?.uid]);
+  }, [firestore]);
 
   const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
   const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
@@ -169,7 +168,7 @@ export default function Dashboard() {
   const totalRevenue = useMemo(() => filteredSales.reduce((acc, s) => acc + s.total, 0), [filteredSales]);
   const totalPurchasesValue = useMemo(() => filteredPurchases.reduce((acc, p) => acc + p.total, 0), [filteredPurchases]);
   const activeProducts = useMemo(() => (products || []).filter(p => p.status === 'active').length, [products]);
-  const isLoading = isUserLoading || isLoadingSales || isLoadingPurchases || isLoadingProducts;
+  const isLoading = isLoadingSales || isLoadingPurchases || isLoadingProducts;
 
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -366,5 +365,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-    

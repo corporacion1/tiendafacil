@@ -46,7 +46,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/settings-context";
-import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, query, where, Timestamp } from "firebase/firestore";
 
 
@@ -55,7 +55,6 @@ type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
 export default function ReportsPage() {
     const { settings, activeSymbol, activeRate } = useSettings();
     const firestore = useFirestore();
-    const { user, isUserLoading } = useUser();
     
     const [selectedSaleDetails, setSelectedSaleDetails] = useState<Sale | null>(null);
     const [saleForTicket, setSaleForTicket] = useState<Sale | null>(null);
@@ -66,19 +65,18 @@ export default function ReportsPage() {
     const { toast } = useToast();
     
     const productsQuery = useMemoFirebase(() => {
-        if (!firestore || !user?.uid) return null;
+        if (!firestore) return null;
         return collection(firestore, 'products');
-    }, [firestore, user?.uid]);
+    }, [firestore]);
     const { data: products } = useCollection<Product>(productsQuery);
 
     const customersQuery = useMemoFirebase(() => {
-        if (!firestore || !user?.uid) return null;
+        if (!firestore) return null;
         return collection(firestore, 'customers');
-    }, [firestore, user?.uid]);
+    }, [firestore]);
     const { data: customers } = useCollection<Customer>(customersQuery);
 
     const dateFilterQuery = useMemo(() => {
-        if (!user?.uid) return null;
         const now = new Date();
         let startDate: Date | null = null;
         if (timeRange === 'day') startDate = subDays(now, 1);
@@ -86,39 +84,39 @@ export default function ReportsPage() {
         if (timeRange === 'month') startDate = startOfMonth(now);
         if (timeRange === 'year') startDate = startOfYear(now);
         return startDate ? Timestamp.fromDate(startDate) : null;
-    }, [timeRange, user?.uid]);
+    }, [timeRange]);
 
     const salesQuery = useMemoFirebase(() => {
-        if (!firestore || !user?.uid) return null;
+        if (!firestore) return null;
         const colRef = collection(firestore, 'sales');
         if (dateFilterQuery) {
             return query(colRef, where("date", ">=", dateFilterQuery));
         }
         return colRef;
-    }, [firestore, user?.uid, dateFilterQuery]);
+    }, [firestore, dateFilterQuery]);
     const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
 
     const purchasesQuery = useMemoFirebase(() => {
-        if (!firestore || !user?.uid) return null;
+        if (!firestore) return null;
         const colRef = collection(firestore, 'purchases');
         if (dateFilterQuery) {
             return query(colRef, where("date", ">=", dateFilterQuery));
         }
         return colRef;
-    }, [firestore, user?.uid, dateFilterQuery]);
+    }, [firestore, dateFilterQuery]);
     const { data: purchasesData, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
     
     const movementsQuery = useMemoFirebase(() => {
-        if (!firestore || !user?.uid) return null;
+        if (!firestore) return null;
         const colRef = collection(firestore, 'inventoryMovements');
         if (dateFilterQuery) {
             return query(colRef, where("date", ">=", dateFilterQuery));
         }
         return colRef;
-    }, [firestore, user?.uid, dateFilterQuery]);
+    }, [firestore, dateFilterQuery]);
     const { data: movementsData, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsQuery);
     
-    const isLoading = isUserLoading || isLoadingSales || isLoadingPurchases || isLoadingMovements;
+    const isLoading = isLoadingSales || isLoadingPurchases || isLoadingMovements;
 
     const handleViewDetails = (sale: Sale) => {
         setSelectedSaleDetails(sale);
@@ -236,36 +234,32 @@ export default function ReportsPage() {
     }
 
     const filteredSales = useMemo(() => {
-        if (!user?.uid) return [];
         return (salesData || []).filter(sale =>
             sale.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
             sale.customerName.toLowerCase().includes(searchTerm.toLowerCase())
         );
-    }, [salesData, searchTerm, user?.uid]);
+    }, [salesData, searchTerm]);
 
     const filteredPurchases = useMemo(() => {
-        if (!user?.uid) return [];
         return (purchasesData || []).filter(purchase =>
             purchase.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
             purchase.supplierName.toLowerCase().includes(searchTerm.toLowerCase())
         );
-    }, [purchasesData, searchTerm, user?.uid]);
+    }, [purchasesData, searchTerm]);
 
     const filteredMovements = useMemo(() => {
-        if (!user?.uid) return [];
         return (movementsData || []).filter(movement =>
             movement.productName.toLowerCase().includes(searchTerm.toLowerCase())
         );
-    }, [movementsData, searchTerm, user?.uid]);
+    }, [movementsData, searchTerm]);
 
     const filteredProducts = useMemo(() => {
-        if (!user?.uid) return [];
         return (products || []).filter(p => 
             p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (p.sku && p.sku.toLowerCase().includes(searchTerm.toLowerCase())) ||
             (p.description && p.description.toLowerCase().includes(searchTerm.toLowerCase()))
         );
-    }, [products, searchTerm, user?.uid]);
+    }, [products, searchTerm]);
     
     const salesTotal = useMemo(() => {
         return filteredSales.reduce((acc, sale) => acc + sale.total, 0);
@@ -605,5 +599,3 @@ export default function ReportsPage() {
     </>
   );
 }
-
-    

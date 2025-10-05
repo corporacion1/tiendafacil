@@ -33,7 +33,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ProductForm } from "@/components/product-form";
 import { useSettings } from "@/contexts/settings-context";
-import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { collection, doc, updateDoc, deleteDoc, writeBatch, serverTimestamp, addDoc } from "firebase/firestore";
 import { format } from "date-fns";
 
@@ -55,24 +55,23 @@ const getDisplayImageUrl = (imageUrl?: string) => {
 export default function InventoryPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
-  const { user, isUserLoading } = useUser();
 
   const productsCollection = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
+    if (!firestore) return null;
     return collection(firestore, "products");
-  }, [firestore, user?.uid]);
+  }, [firestore]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollection);
 
   const salesCollection = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
+    if (!firestore) return null;
     return collection(firestore, "sales");
-  }, [firestore, user?.uid]);
+  }, [firestore]);
   const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollection);
 
   const movementsCollection = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
+    if (!firestore) return null;
     return collection(firestore, "inventoryMovements");
-  }, [firestore, user?.uid]);
+  }, [firestore]);
   const { data: inventoryMovements, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsCollection);
 
   const { activeSymbol, activeRate } = useSettings();
@@ -256,7 +255,7 @@ export default function InventoryPage() {
   }, [products, searchTerm]);
 
   const isMovementFormValid = movementProduct && movementType && movementQuantity > 0 && movementResponsible.trim() !== '';
-  const isLoading = isUserLoading || isLoadingProducts || isLoadingSales || isLoadingMovements;
+  const isLoading = isLoadingProducts || isLoadingSales || isLoadingMovements;
 
   return (
     <>
@@ -576,5 +575,3 @@ export default function InventoryPage() {
     </>
   );
 }
-
-    

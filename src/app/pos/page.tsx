@@ -22,7 +22,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { collection, addDoc, serverTimestamp, writeBatch, doc } from "firebase/firestore";
 import { initialFamilies } from "@/lib/data";
 
@@ -89,18 +89,17 @@ export default function POSPage() {
   const { toast } = useToast();
   const { settings, activeSymbol, activeRate } = useSettings();
   const firestore = useFirestore();
-  const { user } = useUser();
 
   const productsCollection = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
+    if (!firestore) return null;
     return collection(firestore, "products");
-  }, [firestore, user?.uid]);
+  }, [firestore]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollection);
 
   const customersCollection = useMemoFirebase(() => {
-    if (!firestore || !user?.uid) return null;
+    if (!firestore) return null;
     return collection(firestore, "customers");
-  }, [firestore, user?.uid]);
+  }, [firestore]);
   const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollection);
   
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -366,6 +365,8 @@ export default function POSPage() {
 
   const isNewCustomerFormDirty = newCustomer.name.trim() !== '' || newCustomer.id.trim() !== '' || newCustomer.phone.trim() !== '' || newCustomer.address.trim() !== '';
 
+  const isLoading = isLoadingProducts || isLoadingCustomers;
+
   return (
     <Dialog onOpenChange={(open) => !open && setProductDetails(null)}>
     <div className="grid flex-1 auto-rows-max gap-4 md:grid-cols-3 lg:gap-8">
@@ -396,7 +397,7 @@ export default function POSPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {isLoadingProducts && <p>Cargando productos...</p>}
+            {isLoading && <p>Cargando productos...</p>}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {filteredProducts.map((product) => (
                 <ProductCard 
@@ -740,5 +741,3 @@ export default function POSPage() {
   </Dialog>
   );
 }
-
-    
