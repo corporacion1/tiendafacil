@@ -16,17 +16,17 @@ export function ProvidersWrapper({ children }: { children: React.ReactNode }) {
     <CurrencyRatesProvider>
       <SettingsProvider>
         <ProductProvider>
-          <SalesProvider>
-            <PurchasesProvider>
-              <UnitsProvider>
-                <FamiliesProvider>
-                  <WarehousesProvider>
-                    {children}
-                  </WarehousesProvider>
-                </FamiliesProvider>
-              </UnitsProvider>
-            </PurchasesProvider>
-          </SalesProvider>
+          <UnitsProvider>
+            <FamiliesProvider>
+              <WarehousesProvider>
+                  <SalesProvider>
+                    <PurchasesProvider>
+                      {children}
+                    </PurchasesProvider>
+                  </SalesProvider>
+              </WarehousesProvider>
+            </FamiliesProvider>
+          </UnitsProvider>
         </ProductProvider>
       </SettingsProvider>
     </CurrencyRatesProvider>
