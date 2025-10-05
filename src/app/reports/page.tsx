@@ -78,6 +78,7 @@ export default function ReportsPage() {
     const { data: customers } = useCollection<Customer>(customersQuery);
 
     const dateFilterQuery = useMemo(() => {
+        if (!user?.uid) return null;
         const now = new Date();
         let startDate: Date | null = null;
         if (timeRange === 'day') startDate = subDays(now, 1);
@@ -85,7 +86,7 @@ export default function ReportsPage() {
         if (timeRange === 'month') startDate = startOfMonth(now);
         if (timeRange === 'year') startDate = startOfYear(now);
         return startDate ? Timestamp.fromDate(startDate) : null;
-    }, [timeRange]);
+    }, [timeRange, user?.uid]);
 
     const salesQuery = useMemoFirebase(() => {
         if (!firestore || !user?.uid) return null;
