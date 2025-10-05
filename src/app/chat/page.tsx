@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Send, MessageSquare, HardHat } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAuth, useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, addDoc, serverTimestamp, query, orderBy, Timestamp, doc, setDoc } from "firebase/firestore";
 import type { ChatMessage } from "@/lib/types";
 import { format } from "date-fns";
@@ -20,7 +20,7 @@ const chatRooms = [
 ];
 
 export default function ChatPage() {
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
   const [selectedRoom, setSelectedRoom] = useState(chatRooms[0]);
@@ -29,9 +29,10 @@ export default function ChatPage() {
 
   // Memoize the query to prevent re-renders, and wait for user and firestore.
   const messagesQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
+    // CRITICAL: We must wait for auth to resolve and a user to be present.
+    if (!firestore || isUserLoading || !user) return null;
     return query(collection(firestore, "chats", selectedRoom.id, "messages"), orderBy("timestamp", "asc"));
-  }, [firestore, selectedRoom.id, user]);
+  }, [firestore, selectedRoom.id, user, isUserLoading]);
 
   const { data: messages, isLoading } = useCollection<ChatMessage>(messagesQuery);
 
