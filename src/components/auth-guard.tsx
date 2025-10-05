@@ -28,6 +28,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       previousPathname.current = pathname;
     }, [pathname, lockApp, hasPin, isMounted]);
 
+    // This is the loading state. It will be shown until Firebase determines
+    // the user's auth state.
     if (isUserLoading || (isMounted && isPinLoading)) {
         return (
             <div className="flex min-h-screen w-full items-center justify-center bg-background">
@@ -36,9 +38,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         );
     }
     
+    // After loading, if there's no user, we show a redirecting message
+    // while the useEffect above handles the redirect. This prevents children
+    // from rendering.
     if (!user) {
-        // This case is primarily for the server-side render before the useEffect redirect kicks in.
-        // Or if the redirect effect fails for some reason.
         return (
             <div className="flex min-h-screen w-full items-center justify-center bg-background">
                 <p>Redirigiendo a inicio de sesión...</p>
@@ -46,9 +49,12 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         );
     }
 
+    // If we have a user, check if the app is locked by PIN.
     if (isLocked) {
         return <PinModal />;
     }
 
+    // Only if loading is false, a user exists, and the app is not locked,
+    // do we render the children.
     return <>{children}</>;
 }
