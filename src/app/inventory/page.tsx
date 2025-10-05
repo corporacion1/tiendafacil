@@ -105,7 +105,7 @@ export default function InventoryPage() {
   }
   
   const handleDelete = async (productId: string) => {
-     // Check if product is in any sale
+     // TODO: Replace mockSales with real sales data from Firestore when available
     const isProductInSale = mockSales.some(sale => sale.items.some(item => item.productId === productId));
 
     if (isProductInSale) {
@@ -163,20 +163,21 @@ export default function InventoryPage() {
         newStock -= movementQuantity;
         break;
       case 'adjustment': // Ajuste (puede ser positivo o negativo, aquí lo manejamos como un reemplazo)
-        newStock = movementQuantity; // O podrías tener un campo separado para el tipo de ajuste
+        newStock = movementQuantity;
         break;
     }
     
     const docRef = doc(firestore, 'products', movementProduct.id);
     await updateDoc(docRef, { stock: newStock });
 
-    // This should also be a collection in firestore
+    // TODO: This should also be a collection in firestore
     const newMovement: InventoryMovement = {
         id: `mov-${Date.now()}-${movementProduct.id}`,
         productName: movementProduct.name,
         type: movementType,
         quantity: movementType === 'sale' ? -movementQuantity : movementQuantity,
         date: new Date().toISOString(),
+        responsible: movementResponsible,
     };
     mockInventoryMovements.unshift(newMovement);
 
@@ -526,3 +527,5 @@ export default function InventoryPage() {
     </>
   );
 }
+
+    
