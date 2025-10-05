@@ -4,15 +4,15 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import type { Warehouse } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc, query } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
 interface WarehousesContextType {
   warehouses: Warehouse[];
   isLoading: boolean;
-  addWarehouse: (warehouse: Omit<Warehouse, 'id'>) => Promise<string | undefined>;
-  updateWarehouse: (warehouseId: string, updatedWarehouse: Partial<Omit<Warehouse, 'id'>>) => Promise<void>;
+  addWarehouse: (warehouse: Omit<Warehouse, 'id' | 'storeId'>) => Promise<string | undefined>;
+  updateWarehouse: (warehouseId: string, updatedWarehouse: Partial<Omit<Warehouse, 'id' | 'storeId'>>) => Promise<void>;
   deleteWarehouse: (warehouseId: string) => Promise<void>;
 }
 
@@ -21,28 +21,30 @@ const WarehousesContext = createContext<WarehousesContextType | undefined>(undef
 export const WarehousesProvider = ({ children }: { children: React.ReactNode }) => {
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
+  const storeId = "test-store"; // This should come from user session or a higher-level context
 
   const warehousesQuery = useMemoFirebase(() => {
-      if (isUserLoading || !user) return null;
-      return query(collection(firestore, 'warehouses'));
-  }, [firestore, user, isUserLoading]);
+      if (isUserLoading || !user || !storeId) return null;
+      return query(collection(firestore, 'warehouses'), where('storeId', '==', storeId));
+  }, [firestore, user, isUserLoading, storeId]);
 
   const { data: warehouses, isLoading } = useCollection<Warehouse>(warehousesQuery);
   
-  const addWarehouse = async (warehouseData: Omit<Warehouse, 'id'>) => {
+  const addWarehouse = async (warehouseData: Omit<Warehouse, 'id' | 'storeId'>) => {
     if (!firestore || !user) return;
     const warehousesCollection = collection(firestore, 'warehouses');
+    const dataToSave = { ...warehouseData, storeId };
     try {
-        const docRef = await addDoc(warehousesCollection, warehouseData);
+        const docRef = await addDoc(warehousesCollection, dataToSave);
         return docRef?.id;
     } catch(error) {
         console.error("Error adding warehouse: ", error);
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: warehousesCollection.path, operation: 'create', requestResourceData: warehouseData }));
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: warehousesCollection.path, operation: 'create', requestResourceData: dataToSave }));
         return undefined;
     }
   };
 
-  const updateWarehouse = async (warehouseId: string, updatedWarehouseData: Partial<Omit<Warehouse, 'id'>>) => {
+  const updateWarehouse = async (warehouseId: string, updatedWarehouseData: Partial<Omit<Warehouse, 'id' | 'storeId'>>) => {
     if (!firestore || !user) return;
     const warehouseDoc = doc(firestore, 'warehouses', warehouseId);
     try {
@@ -86,3 +88,5 @@ export const useWarehouses = (): WarehousesContextType => {
   }
   return context;
 };
+
+    

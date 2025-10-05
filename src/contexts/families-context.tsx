@@ -4,15 +4,15 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import type { Family } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc, query } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
 interface FamiliesContextType {
   families: Family[];
   isLoading: boolean;
-  addFamily: (family: Omit<Family, 'id'>) => Promise<string | undefined>;
-  updateFamily: (familyId: string, updatedFamily: Partial<Omit<Family, 'id'>>) => Promise<void>;
+  addFamily: (family: Omit<Family, 'id' | 'storeId'>) => Promise<string | undefined>;
+  updateFamily: (familyId: string, updatedFamily: Partial<Omit<Family, 'id' | 'storeId'>>) => Promise<void>;
   deleteFamily: (familyId: string) => Promise<void>;
 }
 
@@ -21,28 +21,30 @@ const FamiliesContext = createContext<FamiliesContextType | undefined>(undefined
 export const FamiliesProvider = ({ children }: { children: React.ReactNode }) => {
   const { firestore } = useFirebase();
   const { user, isUserLoading } = useUser();
+  const storeId = "test-store"; // This should come from user session or a higher-level context
 
   const familiesQuery = useMemoFirebase(() => {
-      if (isUserLoading || !user) return null;
-      return query(collection(firestore, 'families'));
-  }, [firestore, user, isUserLoading]);
+      if (isUserLoading || !user || !storeId) return null;
+      return query(collection(firestore, 'families'), where('storeId', '==', storeId));
+  }, [firestore, user, isUserLoading, storeId]);
 
   const { data: families, isLoading } = useCollection<Family>(familiesQuery);
   
-  const addFamily = async (familyData: Omit<Family, 'id'>) => {
+  const addFamily = async (familyData: Omit<Family, 'id' | 'storeId'>) => {
     if (!firestore || !user) return;
     const familiesCollection = collection(firestore, 'families');
+    const dataToSave = { ...familyData, storeId };
     try {
-        const docRef = await addDoc(familiesCollection, familyData);
+        const docRef = await addDoc(familiesCollection, dataToSave);
         return docRef?.id;
     } catch (error) {
         console.error("Error adding family: ", error);
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: familiesCollection.path, operation: 'create', requestResourceData: familyData }));
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: familiesCollection.path, operation: 'create', requestResourceData: dataToSave }));
         return undefined;
     }
   };
 
-  const updateFamily = async (familyId: string, updatedFamilyData: Partial<Omit<Family, 'id'>>) => {
+  const updateFamily = async (familyId: string, updatedFamilyData: Partial<Omit<Family, 'id' | 'storeId'>>) => {
     if (!firestore || !user) return;
     const familyDoc = doc(firestore, 'families', familyId);
     try {
@@ -86,3 +88,5 @@ export const useFamilies = (): FamiliesContextType => {
   }
   return context;
 };
+
+    

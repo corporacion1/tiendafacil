@@ -101,16 +101,19 @@ export type Supplier = {
 
 export type Unit = {
     id: string;
+    storeId: string;
     name: string;
 };
 
 export type Family = {
     id: string;
+    storeId: string;
     name: string;
 };
 
 export type Warehouse = {
     id: string;
+    storeId: string;
     name: string;
 };
 
@@ -141,3 +144,5 @@ export type ChatMessage = {
     text: string;
     timestamp: Timestamp | string;
 };
+
+    

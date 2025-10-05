@@ -138,6 +138,28 @@
         "name": { "type": "string", "description": "Name of the family." }
       },
       "required": ["id", "storeId", "name"]
+    },
+    "Unit": {
+      "title": "Unit",
+      "type": "object",
+      "description": "Represents a unit of measure for products.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the unit." },
+        "storeId": { "type": "string", "description": "The ID of the store this unit belongs to." },
+        "name": { "type": "string", "description": "Name of the unit (e.g., Kg, Pieza)." }
+      },
+      "required": ["id", "storeId", "name"]
+    },
+    "Warehouse": {
+      "title": "Warehouse",
+      "type": "object",
+      "description": "Represents a storage location.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the warehouse." },
+        "storeId": { "type": "string", "description": "The ID of the store this warehouse belongs to." },
+        "name": { "type": "string", "description": "Name of the warehouse." }
+      },
+      "required": ["id", "storeId", "name"]
     }
   },
   "auth": {
@@ -184,7 +206,17 @@
       {
         "path": "/families/{familyId}",
         "definition": { "entityName": "Family", "schema": { "$ref": "#/backend/entities/Family" }, "description": "Collection for product families." }
+      },
+      {
+        "path": "/units/{unitId}",
+        "definition": { "entityName": "Unit", "schema": { "$ref": "#/backend/entities/Unit" }, "description": "Collection for units of measure." }
+      },
+      {
+        "path": "/warehouses/{warehouseId}",
+        "definition": { "entityName": "Warehouse", "schema": { "$ref": "#/backend/entities/Warehouse" }, "description": "Collection for warehouses." }
       }
     ]
   }
 }
+
+    
