@@ -99,15 +99,28 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     form.reset(getInitialValues(product));
   }, [product, form]);
 
-  const handleSkuBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+  const handleSkuBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
     const sku = e.target.value;
-    if (!product || product.sku !== sku) {
+    if (!sku) return;
+
+    // We only check for duplicates if it's a new product or if the SKU has changed.
+    if (!product || product.sku.toLowerCase() !== sku.toLowerCase()) {
       const existingProduct = mockProducts.find(p => p.sku.toLowerCase() === sku.toLowerCase());
       if (existingProduct) {
         form.setError("sku", {
           type: "manual",
           message: `El SKU "${sku}" ya existe. Por favor, usa uno diferente.`
         });
+        toast({
+          variant: "destructive",
+          title: "SKU Duplicado",
+          description: `El SKU "${sku}" ya está en uso por otro producto.`,
+        });
+      } else {
+        // Clear error if it was previously set for this reason
+        if(form.formState.errors.sku?.message?.includes("ya existe")) {
+          form.clearErrors("sku");
+        }
       }
     }
   };
@@ -421,7 +434,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                 <Button variant="outline" disabled={!isDirty}>Cancelar</Button>
               </AlertDialogTrigger>
             )}
-            <Button type="submit" disabled={!isDirty}>
+            <Button type="submit" disabled={!isDirty && !!product}>
               {product ? "Guardar Cambios" : "Crear Producto"}
             </Button>
           </div>
@@ -443,5 +456,3 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     </Form>
   );
 };
-
-    
