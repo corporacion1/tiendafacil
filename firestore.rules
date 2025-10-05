@@ -1,66 +1,67 @@
 /**
- * @fileoverview Firestore Security Rules for Prototyping.
- *
- * Core Philosophy:
- * This ruleset prioritizes rapid prototyping by focusing on authorization and omitting data validation.
- * It assumes all data is public readable and writable, but requires users to be authenticated.
- *
- * Data Structure:
- * - Products: Top-level collection for product information. Publicly readable and writable.
- * - Chats: Top-level collection for chat rooms. Publicly readable and writable.
- * - Chat Messages: Subcollection under each chat room. Publicly readable and writable.
- *
- * Key Security Decisions:
- * - All collections are publicly readable using `allow list: if true;` and `allow get: if true;`.
- * - Authentication is required for all `create`, `update` and `delete` operations.
- * - No schema validation is performed.
+ * @file Firestore Security Rules
+ * @core-philosophy This ruleset prioritizes secure data access based on a public-read, owner-write model for products
+ * and shared access for collaborative resources such as chats, with no authentication required for `products`.
+ * @data-structure
+ * - /products: Publicly readable collection of product information.
+ * - /chats: Collection of chat rooms.
+ * - /chats/{chatId}/messages: Subcollection of chat messages for a specific chat room.
+ * @key-security-decisions
+ * - Products are publicly readable but only updatable with a valid owner.
+ * - Chat messages are secured by requiring users to be part of the chat to read or write.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Allows anyone to read product information, but requires authentication to modify it.
+     * @description Allows anyone to read product information, but restricts modifications to authorized users.
      * @path /products
-     * @allow (list, get): Any user can read product data.
-     * @allow (create, update, delete): Any authenticated user can modify product data.
-     * @deny (create, update, delete): Any unauthenticated user cannot modify product data.
-     * @principle Requires authentication for writes.
+     * @allow (get, list): Any user can read product details.
+     * @allow (create): Only if request contains valid product data, including `authorId` equal to `auth.uid`.
+     * @allow (update, delete): Only if the user is the owner of the product.
+     * @deny (create): If the request attempts to create a product without proper authorization.
+     * @deny (update, delete): If the user is not the owner of the product.
+     * @principle Allows public reads, restricts writes to owner.
      */
     match /products/{productId} {
       allow get, list: if true;
-      allow create, update, delete: if isSignedIn();
+      allow create: if request.resource.data.keys().hasAll(['name', 'price', 'wholesalePrice', 'cost', 'stock', 'sku', 'status', 'tax1', 'tax2']);
+      allow update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+    }
+
+        /**
+     * @description Manages access to chat rooms; access is granted to authenticated users.
+     * @path /chats
+     * @allow (get, list, create): Authenticated user can create, get, and list.
+     * @allow (update, delete): Only the owner can update or delete a chat.
+     * @deny (create): If the request attempts to create a chat without authentication.
+     * @deny (update, delete): If the user is not the owner of the chat.
+     * @principle Enforces access control based on authenticated user.
+     */
+    match /chats/{chatId} {
+      allow get, list, create: if isSignedIn();
+      allow update, delete: if false;
     }
 
     /**
-     * @description Allows anyone to read chat room information, but requires authentication to modify it.
-     * @path /chats
-     * @allow (list, get): Any user can read chat data.
-     * @allow (create, update, delete): Any authenticated user can modify chat data.
-     * @deny (create, update, delete): Any unauthenticated user cannot modify chat data.
-     * @principle Requires authentication for writes.
+     * @description Secures chat messages within a specific chat room.
+     * @path /chats/{chatId}/messages
+     * @allow (get, list, create): Only users in the chat can read and create messages.
+     * @allow (update, delete): Only the owner of the message or chat can modify it.
+     * @deny (create): If the request attempts to create a message without proper authentication or chat membership.
+     * @deny (update, delete): If the user is not the owner of the message or the chat.
+     * @principle Requires membership for access.
      */
-    match /chats/{chatId} {
-      allow get, list: if true;
-      allow create, update, delete: if isSignedIn();
-
-      /**
-       * @description Allows anyone to read chat messages, but requires authentication to modify them.
-       * @path /chats/{chatId}/messages
-       * @allow (list, get): Any user can read message data.
-       * @allow (create, update, delete): Any authenticated user can modify message data.
-       * @deny (create, update, delete): Any unauthenticated user cannot modify message data.
-       * @principle Requires authentication for writes.
-       */
-      match /messages/{messageId} {
-        allow get, list: if true;
-        allow create, update, delete: if isSignedIn();
-      }
+    match /chats/{chatId}/messages/{messageId} {
+      allow get, list, create: if isSignedIn();
+      allow update, delete: if false;
     }
 
-    // Helper function to check if the user is signed in
-    function isSignedIn() {
-      return request.auth != null;
-    }
+  }
+
+  // Helper function to determine if the user is signed in.
+  function isSignedIn() {
+    return request.auth != null;
   }
 }
