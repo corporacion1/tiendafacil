@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -116,11 +117,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const displayImageUrl = useMemo(() => {
     if (!watchedImageUrl) return '';
     try {
-      // Only process if it's a valid URL string
       const url = new URL(watchedImageUrl);
-      
       if (url.hostname.includes("www.dropbox.com")) {
-        // Replace dl=0 with raw=1, or add raw=1 if no params exist
         if (url.searchParams.has('dl')) {
           url.searchParams.set('raw', '1');
           url.searchParams.delete('dl');
@@ -129,10 +127,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         }
         return url.toString();
       }
-      // For all other valid URLs, return them as is
-      return url.toString();
+      return watchedImageUrl;
     } catch(e) {
-      // If the URL is invalid (e.g., empty string, malformed), return an empty string
       return '';
     }
   }, [watchedImageUrl]);
@@ -149,21 +145,26 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   }, [product, form, activeRate]);
 
   useEffect(() => {
-    const newCost = watchedCost * activeRate;
-    const newPrice = watchedPrice * activeRate;
-    const newWholesalePrice = watchedWholesalePrice * activeRate;
+    if (!activeRate) return;
 
+    const watchedFields = form.watch(["cost", "price", "wholesalePrice"]);
+
+    const newDisplayValues = {
+        cost: (watchedFields[0] * activeRate).toFixed(2),
+        price: (watchedFields[1] * activeRate).toFixed(2),
+        wholesalePrice: (watchedFields[2] * activeRate).toFixed(2),
+    };
+    
     if (document.activeElement?.id !== 'cost') {
-         setDisplayValues(prev => ({...prev, cost: newCost.toFixed(2)}));
+         setDisplayValues(prev => ({...prev, cost: newDisplayValues.cost}));
     }
     if (document.activeElement?.id !== 'price') {
-         setDisplayValues(prev => ({...prev, price: newPrice.toFixed(2)}));
+         setDisplayValues(prev => ({...prev, price: newDisplayValues.price}));
     }
      if (document.activeElement?.id !== 'wholesalePrice') {
-         setDisplayValues(prev => ({...prev, wholesalePrice: newWholesalePrice.toFixed(2)}));
+         setDisplayValues(prev => ({...prev, wholesalePrice: newDisplayValues.wholesalePrice}));
     }
-
-  }, [activeRate, watchedCost, watchedPrice, watchedWholesalePrice]);
+}, [activeRate, form.watch()]); // Using form.watch() is okay if stable
 
 
   const handleDisplayValueChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'cost' | 'price' | 'wholesalePrice') => {
@@ -186,9 +187,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   };
 
   const handleImageUrlBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const url = e.target.value;
-    if (!url) {
-        form.clearErrors("imageUrl"); // Clear error if input is empty
+    const urlValue = e.target.value;
+    if (!urlValue) {
+        form.clearErrors("imageUrl");
         return;
     }
 
@@ -202,33 +203,28 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     };
 
     try {
-        const urlObject = new URL(url);
-        const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp'];
-        const pathname = urlObject.pathname.toLowerCase();
-
-        // Basic check for image extension
-        const isImage = imageExtensions.some(ext => pathname.endsWith(ext));
-
-        // Special handling for some image providers that don't use extensions
-        const isUnsplash = urlObject.hostname.includes('images.unsplash.com');
-        const isDropboxRaw = urlObject.hostname.includes('dropbox.com') && urlObject.search.includes('raw=1');
-
-        if (isImage || isUnsplash || isDropboxRaw) {
-            form.clearErrors("imageUrl");
-        } else if (urlObject.hostname.includes('dropbox.com') && !isDropboxRaw) {
-             // It's a dropbox link, but not a direct one. Let's try to fix it.
-             if (urlObject.searchParams.has('dl')) {
-                urlObject.searchParams.set('raw', '1');
-                urlObject.searchParams.delete('dl');
-            } else {
-                urlObject.searchParams.append('raw', '1');
-            }
-            form.setValue("imageUrl", urlObject.toString(), { shouldDirty: true, shouldValidate: true });
-            toast({ title: 'URL de Dropbox corregida', description: 'Se ha convertido la URL de Dropbox a un enlace de imagen directa.'});
+        const urlObject = new URL(urlValue);
+        
+        if (urlObject.hostname !== 'www.dropbox.com') {
+            showError("Dominio no permitido", "Solo se aceptan URLs de imágenes de Dropbox.");
+            return;
         }
-        else {
-            showError("URL de Imagen Inválida", "La URL no parece apuntar a un archivo de imagen. Intenta con un enlace directo.");
+
+        // It's a dropbox URL, try to fix it to a direct link
+        if (urlObject.searchParams.has('dl')) {
+            urlObject.searchParams.set('raw', '1');
+            urlObject.searchParams.delete('dl');
+        } else if (!urlObject.searchParams.has('raw')) {
+            urlObject.searchParams.append('raw', '1');
         }
+
+        const newUrl = urlObject.toString();
+        form.setValue("imageUrl", newUrl, { shouldDirty: true, shouldValidate: true });
+        if(newUrl !== urlValue) {
+            toast({ title: 'URL de Dropbox corregida', description: 'Se ha convertido la URL a un enlace de imagen directa.'});
+        }
+        form.clearErrors("imageUrl");
+
     } catch (_) {
         showError("URL Inválida", "La URL que ingresaste no es válida. Por favor, corrígela.");
     }
@@ -236,11 +232,12 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
   const handleSkuBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const sku = e.target.value;
-    if (!sku || (product && product.sku.toLowerCase() === sku.toLowerCase())) {
+    if (!sku) {
         form.clearErrors("sku");
         return;
     }
   
+    // No need to check if it's an existing product being edited and the SKU hasn't changed.
     if (product && product.sku.toLowerCase() === sku.toLowerCase()) {
       return;
     }
@@ -289,7 +286,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                             sizes="300px"
                             className="object-cover"
                             onError={() => {
-                                // If the image fails to load, we can clear the value or show a placeholder
+                                form.setValue("imageUrl", "", { shouldDirty: true });
                             }}
                           />
                         ) : (
@@ -302,9 +299,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                     name="imageUrl"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>URL de la Imagen</FormLabel>
+                            <FormLabel>URL de la Imagen (Dropbox)</FormLabel>
                             <FormControl>
-                                <Input placeholder="https://ejemplo.com/imagen.jpg" {...field} onBlur={handleImageUrlBlur} />
+                                <Input placeholder="https://www.dropbox.com/..." {...field} onBlur={handleImageUrlBlur} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
