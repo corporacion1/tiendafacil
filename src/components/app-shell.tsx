@@ -9,15 +9,12 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import { useSecurity } from "@/contexts/security-context";
 import { AuthGuard } from "./auth-guard";
-import { useUser } from "@/firebase";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { isLocked, lockApp, hasPin, isMounted, isPinLoading } = useSecurity();
-  const { isUserLoading } = useUser();
+  const { isLocked, lockApp, hasPin, isMounted } = useSecurity();
   const pathname = usePathname();
   const previousPathname = useRef(pathname);
 
-  // Lock app on POS exit
   useEffect(() => {
     if (!hasPin || !isMounted) return;
     if (previousPathname.current === '/pos' && pathname !== '/pos') {
@@ -26,7 +23,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     previousPathname.current = pathname;
   }, [pathname, lockApp, hasPin, isMounted]);
 
-  // The login page is a special case, it doesn't need the app shell.
   if (pathname === '/login') {
     return <>{children}</>;
   }
