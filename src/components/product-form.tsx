@@ -164,7 +164,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
      if (document.activeElement?.id !== 'wholesalePrice') {
          setDisplayValues(prev => ({...prev, wholesalePrice: newDisplayValues.wholesalePrice}));
     }
-}, [activeRate, form.watch()]); // Using form.watch() is okay if stable
+  }, [activeRate, form.watch()]); // Using form.watch() is okay if stable
 
 
   const handleDisplayValueChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'cost' | 'price' | 'wholesalePrice') => {
@@ -382,7 +382,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                   render={({ field }) => (
                       <FormItem>
                           <FormLabel>Familia</FormLabel>
-                          <Select onValuechange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
                               <FormControl>
                                   <SelectTrigger><SelectValue placeholder="Selecciona una familia" /></SelectTrigger>
                               </FormControl>
