@@ -18,6 +18,8 @@ import { Pencil, PlusCircle, Trash2, AlertTriangle } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
+import { useFirestore } from "@/firebase";
+import { collection, getDocs, writeBatch } from "firebase/firestore";
 
 import { mockProducts, initialUnits as defaultUnits, initialFamilies as defaultFamilies, initialWarehouses as defaultWarehouses, mockCurrencyRates, factoryReset } from "@/lib/data";
 
@@ -85,6 +87,7 @@ function ChangePinDialog() {
 export default function SettingsPage() {
     const { hasPin, setPin, removePin } = useSecurity();
     const { settings, setSettings, currencyRates, setCurrencyRates } = useSettings();
+    const firestore = useFirestore();
     
     const [localSettings, setLocalSettings] = useState(settings);
     const [localUnits, setLocalUnits] = useState(defaultUnits);
@@ -194,21 +197,52 @@ export default function SettingsPage() {
         setIsDirty(true);
     };
     
-    const handleFactoryReset = () => {
-        factoryReset();
-        // Also clear settings from localStorage
-        localStorage.removeItem('tienda_facil_settings');
-        localStorage.removeItem('tienda_facil_currency_pref');
-        
-        toast({
-            title: 'Restauración Completa',
-            description: 'Los datos de la aplicación han sido reiniciados. La página se recargará.',
-        });
+    const handleFactoryReset = async () => {
+        if (!firestore) {
+            toast({
+                variant: "destructive",
+                title: "Error de Conexión",
+                description: "No se pudo conectar a la base de datos para el reinicio."
+            });
+            return;
+        }
 
-        // Reload the page to apply changes everywhere
-        setTimeout(() => {
-            window.location.reload();
-        }, 1500);
+        try {
+            // Delete all products from Firestore
+            const productsCollection = collection(firestore, 'products');
+            const productsSnapshot = await getDocs(productsCollection);
+            const batch = writeBatch(firestore);
+            productsSnapshot.forEach((doc) => {
+                batch.delete(doc.ref);
+            });
+            await batch.commit();
+
+            // Reset mock data for other sections that might still use it
+            factoryReset();
+            
+            // Clear settings from localStorage
+            localStorage.removeItem('tienda_facil_settings');
+            localStorage.removeItem('tienda_facil_currency_pref');
+            localStorage.removeItem('tienda_facil_pin');
+            
+            toast({
+                title: 'Restauración Completa',
+                description: 'Todos los datos de productos han sido eliminados. La página se recargará.',
+            });
+
+            // Reload the page to apply changes everywhere
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+
+        } catch (error) {
+            console.error("Error during factory reset: ", error);
+            toast({
+                variant: "destructive",
+                title: 'Error en la Restauración',
+                description: 'No se pudieron eliminar los datos de la base de datos.',
+            });
+        }
     };
 
     const renderManagementCard = (
