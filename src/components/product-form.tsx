@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
@@ -53,6 +52,14 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const { toast } = useToast();
   const { settings, activeSymbol, activeRate } = useSettings();
 
+  const calculateProfit = (price: number, cost: number): string => {
+    if (cost > 0 && price > cost) {
+        const profit = (((price - cost) / cost) * 100);
+        return profit.toFixed(2);
+    }
+    return '0.00';
+  };
+
   const getInitialValues = (product?: Product): ProductFormValues => {
       if (product) {
           return {
@@ -103,20 +110,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     price: product ? (product.price * activeRate).toFixed(2) : '0.00',
     wholesalePrice: product ? (product.wholesalePrice * activeRate).toFixed(2) : '0.00',
   });
-
-  useEffect(() => {
-    form.reset(getInitialValues(product));
-  }, [product, form]);
-
-  useEffect(() => {
-    const values = form.getValues();
-    setDisplayValues({
-        cost: (values.cost * activeRate).toFixed(2),
-        price: (values.price * activeRate).toFixed(2),
-        wholesalePrice: (values.wholesalePrice * activeRate).toFixed(2),
-    });
-  }, [activeRate]);
-
+  
   const displayImageUrl = useMemo(() => {
     if (!watchedImageUrl) return '';
     try {
@@ -126,7 +120,11 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       return '';
     }
   }, [watchedImageUrl]);
-  
+
+  useEffect(() => {
+    form.reset(getInitialValues(product));
+  }, [product, form.reset]);
+
   const handleDisplayValueChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'cost' | 'price' | 'wholesalePrice') => {
       const { value } = e.target;
       setDisplayValues(prev => ({ ...prev, [fieldName]: value }));
@@ -146,41 +144,39 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       }
   };
 
+  const showError = (title: string, description: string) => {
+    toast({
+      variant: "destructive",
+      title: title,
+      description: description,
+    });
+    form.setValue("imageUrl", "", { shouldDirty: true, shouldValidate: true });
+  };
+
   const handleImageUrlBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const urlValue = e.target.value;
-
-    const showError = (title: string, description: string) => {
-        toast({
-            variant: "destructive",
-            title: title,
-            description: description,
-        });
-        form.setValue("imageUrl", "", { shouldDirty: true, shouldValidate: true });
-    };
-
     if (!urlValue) {
-        form.clearErrors("imageUrl");
-        return;
+      form.clearErrors("imageUrl");
+      return;
     }
 
     try {
-        const url = new URL(urlValue);
-        if (url.hostname !== 'www.dropbox.com') {
-            showError("Dominio no permitido", "Solo se aceptan URLs de imágenes de Dropbox.");
-            return;
-        }
-
-        url.searchParams.set('raw', '1');
-        url.searchParams.delete('dl');
-        const newUrl = url.toString();
-        
-        form.setValue("imageUrl", newUrl, { shouldDirty: true, shouldValidate: true });
+      const url = new URL(urlValue);
+      if (url.hostname !== 'www.dropbox.com') {
+        showError("Dominio no permitido", "Solo se aceptan URLs de imágenes de Dropbox.");
+        return;
+      }
+      
+      url.searchParams.set('raw', '1');
+      url.searchParams.delete('dl');
+      const newUrl = url.toString();
+      form.setValue("imageUrl", newUrl, { shouldDirty: true, shouldValidate: true });
 
     } catch (error) {
-        showError("URL Inválida", "La URL ingresada no es un enlace válido.");
+      showError("URL Inválida", "La URL ingresada no es un enlace válido.");
     }
   };
-
+  
   const handleSkuBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const sku = e.target.value;
     if (!sku) {
@@ -206,14 +202,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     } else {
       form.clearErrors("sku");
     }
-  };
-  
-  const calculateProfit = (price: number, cost: number): string => {
-    if (cost > 0 && price > cost) {
-      const profit = (((price - cost) / cost) * 100);
-      return profit.toFixed(2);
-    }
-    return '0.00';
   };
 
   const retailProfitPercentage = calculateProfit(watchedPrice, watchedCost);
