@@ -116,8 +116,10 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const displayImageUrl = useMemo(() => {
     if (!watchedImageUrl) return '';
     try {
-      if (watchedImageUrl.includes("www.dropbox.com")) {
-        let url = new URL(watchedImageUrl);
+      // Only process if it's a valid URL string
+      const url = new URL(watchedImageUrl);
+      
+      if (url.hostname.includes("www.dropbox.com")) {
         // Replace dl=0 with raw=1, or add raw=1 if no params exist
         if (url.searchParams.has('dl')) {
           url.searchParams.set('raw', '1');
@@ -127,10 +129,11 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         }
         return url.toString();
       }
-      return watchedImageUrl;
+      // For all other valid URLs, return them as is
+      return url.toString();
     } catch(e) {
-      // Invalid URL, return the original string or empty
-      return watchedImageUrl;
+      // If the URL is invalid (e.g., empty string, malformed), return an empty string
+      return '';
     }
   }, [watchedImageUrl]);
 
@@ -212,7 +215,18 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
         if (isImage || isUnsplash || isDropboxRaw) {
             form.clearErrors("imageUrl");
-        } else {
+        } else if (urlObject.hostname.includes('dropbox.com') && !isDropboxRaw) {
+             // It's a dropbox link, but not a direct one. Let's try to fix it.
+             if (urlObject.searchParams.has('dl')) {
+                urlObject.searchParams.set('raw', '1');
+                urlObject.searchParams.delete('dl');
+            } else {
+                urlObject.searchParams.append('raw', '1');
+            }
+            form.setValue("imageUrl", urlObject.toString(), { shouldDirty: true, shouldValidate: true });
+            toast({ title: 'URL de Dropbox corregida', description: 'Se ha convertido la URL de Dropbox a un enlace de imagen directa.'});
+        }
+        else {
             showError("URL de Imagen Inválida", "La URL no parece apuntar a un archivo de imagen. Intenta con un enlace directo.");
         }
     } catch (_) {
