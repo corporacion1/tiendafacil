@@ -12,12 +12,12 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
 
     useEffect(() => {
-        if (!isUserLoading && !user) {
+        if (!isUserLoading && !user && pathname !== '/login') {
             router.replace('/login');
         }
     }, [user, isUserLoading, router, pathname]);
 
-    if (isUserLoading || !user) {
+    if (isUserLoading || (!user && pathname !== '/login')) {
         return (
             <div className="flex flex-col flex-1 h-full items-center justify-center">
                 <p>Verificando sesión...</p>
