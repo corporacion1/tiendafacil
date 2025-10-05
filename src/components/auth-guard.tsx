@@ -41,8 +41,9 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       previousPathname.current = pathname;
     }, [pathname, lockApp, hasPin, isSecurityReady]);
 
-    // Muestra pantalla de carga mientras se verifica el usuario o el PIN
-    if (isUserLoading || isPinLoading || !isSecurityReady) {
+    // Muestra pantalla de carga mientras se verifica el usuario.
+    // Este es el punto CRÍTICO. No renderiza los children hasta que isUserLoading sea false.
+    if (isUserLoading || !isSecurityReady) {
         return (
             <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
                 <Logo className="w-64 h-20" />
@@ -60,9 +61,9 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
             </div>
         );
     }
-
-    // Si hay usuario pero la app está bloqueada, muestra el modal de PIN
-    if (user && isLocked) {
+    
+    // Si hay usuario pero la app está bloqueada por el PIN, muestra el modal
+    if (isLocked) {
         return <PinModal />;
     }
 
