@@ -25,7 +25,11 @@ export const CurrencyRatesProvider = ({ children }: { children: React.ReactNode 
     return query(collection(firestore, 'currency_rates'), orderBy('date', 'desc'), limit(50));
   }, [firestore, user, isUserLoading]);
 
-  const { data: currencyRates, isLoading } = useCollection<CurrencyRate>(ratesQuery);
+  const { data: currencyRatesData, isLoading: ratesLoading } = useCollection<CurrencyRate>(ratesQuery);
+  
+  const currencyRates = useMemo(() => currencyRatesData || [], [currencyRatesData]);
+  const isLoading = isUserLoading || ratesLoading;
+
 
   const addRate = async (rateData: Omit<CurrencyRate, 'id' | 'date'> & { date?: Timestamp }) => {
     if (!firestore || !user) return;
@@ -46,8 +50,8 @@ export const CurrencyRatesProvider = ({ children }: { children: React.ReactNode 
   };
 
   const contextValue = {
-    currencyRates: currencyRates || [],
-    isLoading: isLoading || isUserLoading,
+    currencyRates,
+    isLoading,
     addRate,
   };
 

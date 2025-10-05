@@ -27,7 +27,9 @@ export const SalesProvider = ({ children }: { children: React.ReactNode }) => {
       return query(collection(firestore, 'sales'), where('storeId', '==', storeId));
   }, [firestore, user, isUserLoading, storeId]);
 
-  const { data: sales, isLoading } = useCollection<Sale>(salesQuery);
+  const { data: salesData, isLoading: salesLoading } = useCollection<Sale>(salesQuery);
+  const sales = useMemo(() => salesData || [], [salesData]);
+  const isLoading = isUserLoading || salesLoading;
 
   const addSale = async (saleData: Omit<Sale, 'id' | 'storeId'>) => {
     if (!firestore || !user) {
@@ -35,20 +37,21 @@ export const SalesProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
     const salesCollection = collection(firestore, 'sales');
+    const dataToSave = { ...saleData, storeId, userId: user.uid };
     try {
-        const docRef = await addDoc(salesCollection, { ...saleData, storeId });
+        const docRef = await addDoc(salesCollection, dataToSave);
         return docRef?.id;
     } catch (error) {
         console.error("Error adding sale: ", error);
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: salesCollection.path, operation: 'create', requestResourceData: { ...saleData, storeId } }));
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: salesCollection.path, operation: 'create', requestResourceData: dataToSave }));
         return undefined;
     }
   };
 
 
   const contextValue = {
-    sales: sales || [],
-    isLoading: isLoading || isUserLoading,
+    sales,
+    isLoading,
     addSale,
   };
 

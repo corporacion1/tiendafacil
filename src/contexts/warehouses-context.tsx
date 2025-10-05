@@ -28,12 +28,13 @@ export const WarehousesProvider = ({ children }: { children: React.ReactNode }) 
       return query(collection(firestore, 'warehouses'), where('storeId', '==', storeId));
   }, [firestore, user, isUserLoading, storeId]);
 
-  const { data: warehouses, isLoading } = useCollection<Warehouse>(warehousesQuery);
+  const { data: warehouses, isLoading: warehousesLoading } = useCollection<Warehouse>(warehousesQuery);
+  const isLoading = isUserLoading || warehousesLoading;
   
   const addWarehouse = async (warehouseData: Omit<Warehouse, 'id' | 'storeId'>) => {
     if (!firestore || !user) return;
     const warehousesCollection = collection(firestore, 'warehouses');
-    const dataToSave = { ...warehouseData, storeId };
+    const dataToSave = { ...warehouseData, storeId, userId: user.uid };
     try {
         const docRef = await addDoc(warehousesCollection, dataToSave);
         return docRef?.id;
@@ -69,7 +70,7 @@ export const WarehousesProvider = ({ children }: { children: React.ReactNode }) 
 
   const contextValue = {
     warehouses: warehouses || [],
-    isLoading: isLoading || isUserLoading,
+    isLoading,
     addWarehouse,
     updateWarehouse,
     deleteWarehouse,

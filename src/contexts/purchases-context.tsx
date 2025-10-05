@@ -6,7 +6,6 @@ import type { Purchase } from '@/lib/types';
 import { useFirebase, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, addDoc, where } from 'firebase/firestore';
 import { useProducts } from './product-context';
-import { mockInventoryMovements } from '@/lib/data';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -29,7 +28,9 @@ export const PurchasesProvider = ({ children }: { children: React.ReactNode }) =
       return query(collection(firestore, 'purchases'), where('storeId', '==', storeId));
   }, [firestore, user, isUserLoading, storeId]);
 
-  const { data: purchases, isLoading } = useCollection<Purchase>(purchasesQuery);
+  const { data: purchasesData, isLoading: purchasesLoading } = useCollection<Purchase>(purchasesQuery);
+  const purchases = useMemo(() => purchasesData || [], [purchasesData]);
+  const isLoading = isUserLoading || purchasesLoading;
 
   const addPurchase = async (purchaseData: Omit<Purchase, 'id' | 'storeId'>) => {
     if (!firestore || !user) {
@@ -37,14 +38,15 @@ export const PurchasesProvider = ({ children }: { children: React.ReactNode }) =
       return;
     }
     const purchasesCollection = collection(firestore, 'purchases');
+    const dataToSave = { ...purchaseData, storeId, userId: user.uid };
     
     let docRefId: string | undefined;
     try {
-        const docRef = await addDoc(purchasesCollection, { ...purchaseData, storeId });
+        const docRef = await addDoc(purchasesCollection, dataToSave);
         docRefId = docRef.id;
     } catch (error) {
         console.error("Error adding purchase: ", error);
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: purchasesCollection.path, operation: 'create', requestResourceData: { ...purchaseData, storeId } }));
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: purchasesCollection.path, operation: 'create', requestResourceData: dataToSave }));
         return undefined;
     }
 
@@ -52,7 +54,7 @@ export const PurchasesProvider = ({ children }: { children: React.ReactNode }) =
         const product = products.find(p => p.id === item.productId);
         if (product) {
             const updatedStock = product.stock + item.quantity;
-            await updateProduct(product.id, { ...product, stock: updatedStock, cost: item.cost });
+            await updateProduct(product.id, { stock: updatedStock, cost: item.cost });
         }
     }
     
@@ -60,8 +62,8 @@ export const PurchasesProvider = ({ children }: { children: React.ReactNode }) =
   };
 
   const contextValue = {
-    purchases: purchases || [],
-    isLoading: isLoading || isUserLoading,
+    purchases,
+    isLoading,
     addPurchase,
   };
 

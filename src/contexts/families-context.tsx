@@ -28,12 +28,13 @@ export const FamiliesProvider = ({ children }: { children: React.ReactNode }) =>
       return query(collection(firestore, 'families'), where('storeId', '==', storeId));
   }, [firestore, user, isUserLoading, storeId]);
 
-  const { data: families, isLoading } = useCollection<Family>(familiesQuery);
+  const { data: families, isLoading: familiesLoading } = useCollection<Family>(familiesQuery);
+  const isLoading = isUserLoading || familiesLoading;
   
   const addFamily = async (familyData: Omit<Family, 'id' | 'storeId'>) => {
     if (!firestore || !user) return;
     const familiesCollection = collection(firestore, 'families');
-    const dataToSave = { ...familyData, storeId };
+    const dataToSave = { ...familyData, storeId, userId: user.uid };
     try {
         const docRef = await addDoc(familiesCollection, dataToSave);
         return docRef?.id;
@@ -69,7 +70,7 @@ export const FamiliesProvider = ({ children }: { children: React.ReactNode }) =>
 
   const contextValue = {
     families: families || [],
-    isLoading: isLoading || isUserLoading,
+    isLoading,
     addFamily,
     updateFamily,
     deleteFamily,

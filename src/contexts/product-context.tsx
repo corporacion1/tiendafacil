@@ -30,7 +30,9 @@ export const ProductProvider = ({ children }: { children: React.ReactNode }) => 
       return query(collection(firestore, 'products'), where('storeId', '==', storeId));
   }, [firestore, user, isUserLoading, storeId]);
 
-  const { data: products, isLoading } = useCollection<Product>(productsQuery);
+  const { data: productsData, isLoading: productsLoading } = useCollection<Product>(productsQuery);
+  const products = useMemo(() => productsData || [], [productsData]);
+  const isLoading = isUserLoading || productsLoading;
 
   const addProduct = async (productData: Omit<Product, 'id' | 'storeId'>) => {
     if (!firestore || !user) {
@@ -38,12 +40,13 @@ export const ProductProvider = ({ children }: { children: React.ReactNode }) => 
       return;
     }
     const productsCollection = collection(firestore, 'products');
+    const dataToSave = { ...productData, storeId, userId: user.uid };
     try {
-        const docRef = await addDoc(productsCollection, { ...productData, storeId });
+        const docRef = await addDoc(productsCollection, dataToSave);
         return docRef?.id;
     } catch (error) {
         console.error("Error adding product: ", error);
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: productsCollection.path, operation: 'create', requestResourceData: { ...productData, storeId } }));
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: productsCollection.path, operation: 'create', requestResourceData: dataToSave }));
         return undefined;
     }
   };
@@ -77,13 +80,13 @@ export const ProductProvider = ({ children }: { children: React.ReactNode }) => 
   }
 
   const getProductById = useCallback((productId: string) => {
-    return (products || []).find(p => p.id === productId);
+    return products.find(p => p.id === productId);
   }, [products]);
 
 
   const contextValue = {
-    products: products || [],
-    isLoading: isLoading || isUserLoading,
+    products,
+    isLoading,
     addProduct,
     updateProduct,
     deleteProduct,

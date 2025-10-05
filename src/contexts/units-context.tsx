@@ -28,12 +28,13 @@ export const UnitsProvider = ({ children }: { children: React.ReactNode }) => {
       return query(collection(firestore, 'units'), where('storeId', '==', storeId));
   }, [firestore, user, isUserLoading, storeId]);
 
-  const { data: units, isLoading } = useCollection<Unit>(unitsQuery);
+  const { data: units, isLoading: unitsLoading } = useCollection<Unit>(unitsQuery);
+  const isLoading = isUserLoading || unitsLoading;
 
   const addUnit = async (unitData: Omit<Unit, 'id' | 'storeId'>) => {
     if (!firestore || !user) return;
     const unitsCollection = collection(firestore, 'units');
-    const dataToSave = { ...unitData, storeId };
+    const dataToSave = { ...unitData, storeId, userId: user.uid };
     try {
         const docRef = await addDoc(unitsCollection, dataToSave);
         return docRef?.id;
@@ -69,7 +70,7 @@ export const UnitsProvider = ({ children }: { children: React.ReactNode }) => {
 
   const contextValue = {
     units: units || [],
-    isLoading: isLoading || isUserLoading,
+    isLoading,
     addUnit,
     updateUnit,
     deleteUnit,
