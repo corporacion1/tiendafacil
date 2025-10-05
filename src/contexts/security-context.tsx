@@ -22,7 +22,7 @@ const STORAGE_KEY = 'tienda_facil_pin';
 
 export const SecurityProvider = ({ children }: { children: React.ReactNode }) => {
   const [storedPin, setStoredPin] = useState<string | null>(null);
-  const [isLocked, setIsLocked] = useState(false);
+  const [isLocked, setIsLocked] = useState(true); // Default to locked
   const [hasPin, setHasPin] = useState(false);
   const [isPinLoading, setIsPinLoading] = useState(true);
   const [isMounted, setIsMounted] = useState(false); // To prevent hydration issues

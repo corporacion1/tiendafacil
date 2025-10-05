@@ -12,7 +12,7 @@ import { useUser } from '@/firebase';
 import { AuthGuard } from "./auth-guard";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { isLocked, lockApp, hasPin, isMounted } = useSecurity();
+  const { isLocked, lockApp, hasPin, isMounted, isPinLoading } = useSecurity();
   const { isUserLoading } = useUser();
   const pathname = usePathname();
   const previousPathname = useRef(pathname);
@@ -31,7 +31,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  if (!isMounted || isUserLoading) {
+  if (!isMounted || isPinLoading) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
         <p>Cargando aplicación...</p>
