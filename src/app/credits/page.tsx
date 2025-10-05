@@ -288,6 +288,7 @@ export default function CreditsPage() {
                                 placeholder="0.00"
                                 value={newPaymentAmount || ''}
                                 onChange={(e) => setNewPaymentAmount(parseFloat(e.target.value) || 0)}
+                                autoFocus
                             />
                         </div>
                     </div>
@@ -295,7 +296,7 @@ export default function CreditsPage() {
                         <DialogClose asChild>
                             <Button variant="outline" onClick={() => setNewPaymentAmount(0)}>Cancelar</Button>
                         </DialogClose>
-                        <Button onClick={handleAddPayment}>Guardar Pago</Button>
+                        <Button onClick={handleAddPayment} disabled={newPaymentAmount <= 0}>Guardar Pago</Button>
                     </DialogFooter>
                  </DialogContent>
             </Dialog>

@@ -323,6 +323,8 @@ export default function POSPage() {
     return productDetails?.imageUrl;
   }, [productDetails]);
 
+  const isNewCustomerFormDirty = newCustomer.name.trim() !== '' || newCustomer.id.trim() !== '' || newCustomer.phone.trim() !== '' || newCustomer.address.trim() !== '';
+
   return (
     <Dialog onOpenChange={(open) => !open && setProductDetails(null)}>
     <div className="grid flex-1 auto-rows-max gap-4 md:grid-cols-3 lg:gap-8">
@@ -473,7 +475,7 @@ export default function POSPage() {
                                 <DialogClose asChild>
                                     <Button variant="outline">Cancelar</Button>
                                 </DialogClose>
-                                <Button onClick={handleAddNewCustomer}>Guardar Cliente</Button>
+                                <Button onClick={handleAddNewCustomer} disabled={!isNewCustomerFormDirty || !newCustomer.name.trim()}>Guardar Cliente</Button>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>

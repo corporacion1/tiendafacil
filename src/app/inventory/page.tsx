@@ -82,7 +82,7 @@ export default function InventoryPage() {
   function handleUpdateProduct(data: Omit<Product, 'id'> & { id?: string }) {
     if (!data.id) return false;
 
-    setProducts(prev => prev.map(p => p.id === data.id ? { ...p, ...data } : p));
+    setProducts(prev => prev.map(p => p.id === data.id ? { ...p, ...data } as Product : p));
     
     toast({
         title: "Producto Actualizado",
@@ -123,11 +123,11 @@ export default function InventoryPage() {
   }
 
   const handleMoveInventory = () => {
-    if (!movementProduct || !movementType || movementQuantity <= 0) {
+    if (!movementProduct || !movementType || movementQuantity <= 0 || !movementResponsible.trim()) {
       toast({
         variant: "destructive",
         title: "Datos incompletos",
-        description: "Por favor, selecciona un producto, tipo de movimiento y una cantidad válida.",
+        description: "Por favor, completa todos los campos del formulario.",
       });
       return;
     }
@@ -194,6 +194,8 @@ export default function InventoryPage() {
     );
   }, [products, searchTerm]);
 
+  const isMovementFormValid = movementProduct && movementType && movementQuantity > 0 && movementResponsible.trim() !== '';
+
   return (
     <>
     <Tabs defaultValue="all">
@@ -229,7 +231,7 @@ export default function InventoryPage() {
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                        <Label htmlFor="product">Producto</Label>
+                        <Label htmlFor="product">Producto *</Label>
                         <Popover open={isProductComboboxOpen} onOpenChange={setIsProductComboboxOpen}>
                             <PopoverTrigger asChild>
                                 <Button
@@ -274,7 +276,7 @@ export default function InventoryPage() {
                         </Popover>
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="type">Tipo de Movimiento</Label>
+                        <Label htmlFor="type">Tipo de Movimiento *</Label>
                          <Select value={movementType} onValueChange={(value: 'purchase' | 'sale' | 'adjustment') => setMovementType(value)}>
                             <SelectTrigger id="type">
                                 <SelectValue placeholder="Selecciona un tipo" />
@@ -287,11 +289,11 @@ export default function InventoryPage() {
                         </Select>
                     </div>
                      <div className="space-y-2">
-                        <Label htmlFor="quantity">Cantidad</Label>
+                        <Label htmlFor="quantity">Cantidad *</Label>
                         <Input id="quantity" type="number" placeholder="0" value={movementQuantity || ''} onChange={(e) => setMovementQuantity(parseInt(e.target.value) || 0)} />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="responsable">Responsable</Label>
+                        <Label htmlFor="responsable">Responsable *</Label>
                         <Input id="responsable" type="text" placeholder="Nombre del responsable" value={movementResponsible} onChange={e => setMovementResponsible(e.target.value)} required />
                     </div>
                 </div>
@@ -300,7 +302,7 @@ export default function InventoryPage() {
                         <Button variant="outline" onClick={resetMovementForm}>Cancelar</Button>
                     </DialogClose>
                     <DialogClose asChild>
-                        <Button onClick={handleMoveInventory}>Registrar Movimiento</Button>
+                        <Button onClick={handleMoveInventory} disabled={!isMovementFormValid}>Registrar Movimiento</Button>
                     </DialogClose>
                 </DialogFooter>
             </DialogContent>

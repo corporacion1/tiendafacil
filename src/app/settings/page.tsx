@@ -13,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Unit, Family, Warehouse, CurrencyRate, Product } from "@/lib/types";
-import { MapPin, Pencil, PlusCircle, Trash2 } from "lucide-react";
+import { Pencil, PlusCircle, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
@@ -27,6 +27,7 @@ function ChangePinDialog() {
     const [newPin, setNewPin] = useState('');
     const [confirmPin, setConfirmPin] = useState('');
     const [isOpen, setIsOpen] = useState(false);
+    const isFormDirty = oldPin !== '' || newPin !== '' || confirmPin !== '';
     
     const handleChangePin = () => {
         const success = changePin(oldPin, newPin, confirmPin);
@@ -53,7 +54,7 @@ function ChangePinDialog() {
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
                         <Label htmlFor="old-pin">PIN Actual</Label>
-                        <Input id="old-pin" type="password" value={oldPin} onChange={(e) => setOldPin(e.target.value)} maxLength={4} placeholder="****" />
+                        <Input id="old-pin" type="password" value={oldPin} onChange={(e) => setOldPin(e.target.value)} maxLength={4} placeholder="****" autoFocus />
                     </div>
                      <div className="space-y-2">
                         <Label htmlFor="new-pin-change">Nuevo PIN (4 dígitos)</Label>
@@ -66,7 +67,7 @@ function ChangePinDialog() {
                 </div>
                 <DialogFooter>
                     <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-                    <Button onClick={handleChangePin}>Guardar Cambios</Button>
+                    <Button onClick={handleChangePin} disabled={!isFormDirty}>Guardar Cambios</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -77,6 +78,7 @@ export default function SettingsPage() {
     const { hasPin, setPin, removePin } = useSecurity();
     const { settings, setSettings } = useSettings();
     const [localSettings, setLocalSettings] = useState(settings);
+    const [isDirty, setIsDirty] = useState(false);
     const [newPin, setNewPin] = useState('');
     const [confirmPin, setConfirmPin] = useState('');
     const { toast } = useToast();
@@ -87,6 +89,11 @@ export default function SettingsPage() {
     const [warehouses, setWarehouses] = useState(initialWarehouses);
     const [currencyRates, setCurrencyRates] = useState(mockCurrencyRates);
     const [newRate, setNewRate] = useState<number>(0);
+    const [newRateDirty, setNewRateDirty] = useState(false);
+    
+    useEffect(() => {
+        setIsDirty(JSON.stringify(localSettings) !== JSON.stringify(settings));
+    }, [localSettings, settings]);
 
     const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
@@ -100,6 +107,7 @@ export default function SettingsPage() {
 
     const saveAllSettings = () => {
         setSettings(localSettings);
+        setIsDirty(false);
         toast({ title: "Configuración guardada", description: "Toda la configuración ha sido actualizada." });
     };
 
@@ -121,6 +129,7 @@ export default function SettingsPage() {
 
         setCurrencyRates(prev => [newRateEntry, ...prev]);
         setNewRate(0);
+        setNewRateDirty(false);
 
         toast({
             title: 'Tasa de Cambio Guardada',
@@ -263,7 +272,7 @@ export default function SettingsPage() {
                                     <Button variant="outline">Cancelar</Button>
                                 </DialogClose>
                                  <DialogClose asChild>
-                                    <Button onClick={handleAddNewItem}>Guardar</Button>
+                                    <Button onClick={handleAddNewItem} disabled={!newItemName.trim()}>Guardar</Button>
                                 </DialogClose>
                             </DialogFooter>
                         </DialogContent>
@@ -283,7 +292,7 @@ export default function SettingsPage() {
                                 <DialogClose asChild>
                                     <Button variant="outline">Cancelar</Button>
                                 </DialogClose>
-                                <Button onClick={handleEditItem}>Guardar Cambios</Button>
+                                <Button onClick={handleEditItem} disabled={!editingItem?.name.trim()}>Guardar Cambios</Button>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
@@ -331,7 +340,7 @@ export default function SettingsPage() {
                              <CardDescription>Impuesto especial o selectivo.</CardDescription>
                         </div>
                     </div>
-                    <Separator />
+                     <Separator />
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
                         {renderManagementCard("Unidades de Medida", "Gestiona las unidades para tus productos.", units, 'unit')}
                         {renderManagementCard("Familias de Productos", "Organiza tus productos en familias.", families, 'family')}
@@ -339,7 +348,7 @@ export default function SettingsPage() {
                     </div>
                 </CardContent>
                 <CardFooter className="border-t px-6 py-4 flex justify-end">
-                    <Button className="bg-primary hover:bg-primary/90" onClick={saveAllSettings}>Guardar Configuración</Button>
+                    <Button className="bg-primary hover:bg-primary/90" onClick={saveAllSettings} disabled={!isDirty}>Guardar Configuración</Button>
                 </CardFooter>
             </Card>
 
@@ -382,9 +391,19 @@ export default function SettingsPage() {
                             <h4 className="font-medium">Registrar Tasa ({localSettings.secondaryCurrencyName})</h4>
                             <div className="space-y-2">
                                 <Label htmlFor="newRate">Tasa de Cambio Actual</Label>
-                                <Input id="newRate" type="number" step="0.000001" value={newRate || ''} onChange={(e) => setNewRate(parseFloat(e.target.value) || 0)} placeholder={currencyRates[0]?.rate.toFixed(6) || "0.000000"} />
+                                <Input 
+                                    id="newRate" 
+                                    type="number" 
+                                    step="0.000001" 
+                                    value={newRate || ''} 
+                                    onChange={(e) => {
+                                        setNewRate(parseFloat(e.target.value) || 0);
+                                        setNewRateDirty(true);
+                                    }} 
+                                    placeholder={currencyRates[0]?.rate.toFixed(6) || "0.000000"} 
+                                />
                             </div>
-                            <Button onClick={handleSaveNewRate}>Guardar Tasa</Button>
+                            <Button onClick={handleSaveNewRate} disabled={!newRateDirty || newRate <= 0}>Guardar Tasa</Button>
                         </div>
                         <div className="space-y-4">
                             <h4 className="font-medium">Historial de Tasas</h4>
@@ -415,7 +434,7 @@ export default function SettingsPage() {
 
                 </CardContent>
                  <CardFooter className="border-t px-6 py-4 flex justify-end">
-                    <Button className="bg-primary hover:bg-primary/90" onClick={saveAllSettings}>Guardar Configuración de Monedas</Button>
+                    <Button className="bg-primary hover:bg-primary/90" onClick={saveAllSettings} disabled={!isDirty}>Guardar Configuración de Monedas</Button>
                 </CardFooter>
             </Card>
 
@@ -449,7 +468,7 @@ export default function SettingsPage() {
                                 <div className="space-y-4 py-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="new-pin">Nuevo PIN (4 dígitos)</Label>
-                                        <Input id="new-pin" type="password" value={newPin} onChange={(e) => setNewPin(e.target.value)} maxLength={4} placeholder="****" />
+                                        <Input id="new-pin" type="password" value={newPin} onChange={(e) => setNewPin(e.target.value)} maxLength={4} placeholder="****" autoFocus/>
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="confirm-pin">Confirmar Nuevo PIN</Label>
@@ -461,7 +480,7 @@ export default function SettingsPage() {
                                         <Button variant="outline">Cancelar</Button>
                                     </DialogClose>
                                     <DialogClose asChild>
-                                        <Button onClick={() => setPin(newPin, confirmPin)}>Establecer PIN</Button>
+                                        <Button onClick={() => setPin(newPin, confirmPin)} disabled={!newPin || newPin !== confirmPin}>Establecer PIN</Button>
                                     </DialogClose>
                                 </DialogFooter>
                             </DialogContent>

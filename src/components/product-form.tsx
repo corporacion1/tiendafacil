@@ -105,6 +105,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     defaultValues: getInitialValues(product),
   });
   
+  const { formState: { isDirty } } = form;
+
   const watchedCost = useWatch({ control: form.control, name: 'cost' });
   const watchedPrice = useWatch({ control: form.control, name: 'price' });
   const watchedWholesalePrice = useWatch({ control: form.control, name: 'wholesalePrice' });
@@ -502,7 +504,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
                   Cancelar
               </Button>}
               <AlertDialogTrigger asChild>
-                  <Button type="button" className="bg-primary hover:bg-primary/90">{product ? "Guardar Cambios" : "Crear Producto"}</Button>
+                  <Button type="button" className="bg-primary hover:bg-primary/90" disabled={!isDirty}>{product ? "Guardar Cambios" : "Crear Producto"}</Button>
               </AlertDialogTrigger>
           </div>
         </form>

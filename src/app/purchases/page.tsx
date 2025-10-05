@@ -206,6 +206,11 @@ export default function PurchasesPage() {
     setResponsible('');
   };
 
+  const isFormComplete = useMemo(() => {
+      return purchaseItems.length > 0 && selectedSupplierId && responsible.trim() !== '';
+  }, [purchaseItems, selectedSupplierId, responsible]);
+
+  const isNewSupplierFormDirty = newSupplier.name.trim() !== '' || newSupplier.id.trim() !== '' || newSupplier.phone.trim() !== '' || newSupplier.address.trim() !== '';
 
   return (
     <div className="grid flex-1 auto-rows-max gap-4 md:grid-cols-3 lg:gap-8">
@@ -292,7 +297,7 @@ export default function PurchasesPage() {
           </CardHeader>
           <CardContent className="space-y-4">
              <div className="space-y-2">
-                <Label htmlFor="supplier">Proveedor</Label>
+                <Label htmlFor="supplier">Proveedor *</Label>
                 <div className="flex gap-2">
                     <Popover open={isSupplierSearchOpen} onOpenChange={setIsSupplierSearchOpen}>
                         <PopoverTrigger asChild>
@@ -353,7 +358,7 @@ export default function PurchasesPage() {
                             </div>
                             <DialogFooter>
                                 <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-                                <Button onClick={handleAddNewSupplier}>Guardar Proveedor</Button>
+                                <Button onClick={handleAddNewSupplier} disabled={!isNewSupplierFormDirty || !newSupplier.name.trim()}>Guardar Proveedor</Button>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
@@ -366,7 +371,7 @@ export default function PurchasesPage() {
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="responsible">Responsable</Label>
+                <Label htmlFor="responsible">Responsable *</Label>
                 <Input id="responsible" value={responsible} onChange={(e) => setResponsible(e.target.value)} placeholder="Nombre del comprador" required/>
             </div>
             
@@ -455,7 +460,7 @@ export default function PurchasesPage() {
             )}
           </CardContent>
           <CardFooter>
-            <Button className="w-full bg-primary hover:bg-primary/90" size="lg" onClick={handleProcessPurchase} disabled={purchaseItems.length === 0}>
+            <Button className="w-full bg-primary hover:bg-primary/90" size="lg" onClick={handleProcessPurchase} disabled={!isFormComplete}>
                 Procesar Compra
             </Button>
           </CardFooter>

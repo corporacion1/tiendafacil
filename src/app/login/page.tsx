@@ -26,6 +26,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
 
+  const isFormDirty = email !== '' || password !== '';
+
   useEffect(() => {
     if (!isUserLoading && user) {
       router.replace('/dashboard');
@@ -137,7 +139,7 @@ export default function LoginPage() {
                     <Label htmlFor="password">Contraseña</Label>
                     <Input id="password" type="password" placeholder="********" value={password} onChange={(e) => setPassword(e.target.value)} required />
                 </div>
-                <Button type="submit" className="w-full">
+                <Button type="submit" className="w-full" disabled={!isFormDirty}>
                     {isSignUp ? 'Crear Cuenta' : 'Ingresar'}
                 </Button>
             </form>
