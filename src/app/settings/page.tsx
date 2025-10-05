@@ -275,12 +275,14 @@ export default function SettingsPage() {
             });
 
             // Delete all products from Firestore
-            const productsSnapshot = await getDocs(productsCollection!);
-            const batch = writeBatch(firestore);
-            productsSnapshot.forEach((doc) => {
-                batch.delete(doc.ref);
-            });
-            await batch.commit();
+            if (productsCollection) {
+              const productsSnapshot = await getDocs(productsCollection);
+              const batch = writeBatch(firestore);
+              productsSnapshot.forEach((doc) => {
+                  batch.delete(doc.ref);
+              });
+              await batch.commit();
+            }
 
             // Reset mock data for other sections that might still use it
             factoryReset();
@@ -662,8 +664,7 @@ export default function SettingsPage() {
                                 </div>
                                 <DialogFooter>
                                     <DialogClose asChild>
-                                        <Button variant="outline">Cancelar</Button>
-                                    </DialogClose>
+                                        <Button variant="outline">Cancelar</Button></DialogClose>
                                     <DialogClose asChild>
                                         <Button onClick={handleSetPin} disabled={!newPin || newPin !== confirmPin || newPin.length !== 4}>Establecer PIN</Button>
                                     </DialogClose>
@@ -756,7 +757,3 @@ export default function SettingsPage() {
         </div>
     );
 }
-
-    
-
-    

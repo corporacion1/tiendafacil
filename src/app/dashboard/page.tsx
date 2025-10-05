@@ -61,12 +61,12 @@ export default function Dashboard() {
   const salesQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return query(collection(firestore, "sales"), where("date", ">=", Timestamp.fromDate(cutoffDate)));
-  }, [firestore, cutoffDate, user]);
+  }, [firestore, user, cutoffDate]);
 
   const purchasesQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return query(collection(firestore, "purchases"), where("date", ">=", Timestamp.fromDate(cutoffDate)));
-  }, [firestore, cutoffDate, user]);
+  }, [firestore, user, cutoffDate]);
   
   const productsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;

@@ -94,7 +94,7 @@ export default function ReportsPage() {
             return query(colRef, where("date", ">=", dateFilterQuery));
         }
         return colRef;
-    }, [firestore, dateFilterQuery, user]);
+    }, [firestore, user, dateFilterQuery]);
     const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
 
     const purchasesQuery = useMemoFirebase(() => {
@@ -104,7 +104,7 @@ export default function ReportsPage() {
             return query(colRef, where("date", ">=", dateFilterQuery));
         }
         return colRef;
-    }, [firestore, dateFilterQuery, user]);
+    }, [firestore, user, dateFilterQuery]);
     const { data: purchasesData, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
     
     const movementsQuery = useMemoFirebase(() => {
@@ -114,7 +114,7 @@ export default function ReportsPage() {
             return query(colRef, where("date", ">=", dateFilterQuery));
         }
         return colRef;
-    }, [firestore, dateFilterQuery, user]);
+    }, [firestore, user, dateFilterQuery]);
     const { data: movementsData, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsQuery);
     
     const isLoading = isLoadingSales || isLoadingPurchases || isLoadingMovements;
