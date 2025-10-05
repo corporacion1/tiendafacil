@@ -47,8 +47,20 @@ const nextConfig = {
       }
     ],
   },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Evita que 'fs' se incluya en los bundles del cliente
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false
+      };
+    }
+
+    return config;
+  },
+  serverActions: {
+    bodySizeLimit: '4mb',
+  }
 };
 
 module.exports = nextConfig;
-
-    
