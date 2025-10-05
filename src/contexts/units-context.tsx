@@ -28,7 +28,8 @@ export const UnitsProvider = ({ children }: { children: React.ReactNode }) => {
       return query(collection(firestore, 'units'), where('storeId', '==', storeId));
   }, [firestore, user, isUserLoading, storeId]);
 
-  const { data: units, isLoading: unitsLoading } = useCollection<Unit>(unitsQuery);
+  const { data: unitsData, isLoading: unitsLoading } = useCollection<Unit>(unitsQuery);
+  const units = useMemo(() => unitsData || [], [unitsData]);
   const isLoading = isUserLoading || unitsLoading;
 
   const addUnit = async (unitData: Omit<Unit, 'id' | 'storeId'>) => {
@@ -69,7 +70,7 @@ export const UnitsProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   const contextValue = {
-    units: units || [],
+    units: units,
     isLoading,
     addUnit,
     updateUnit,

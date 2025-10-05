@@ -28,7 +28,8 @@ export const WarehousesProvider = ({ children }: { children: React.ReactNode }) 
       return query(collection(firestore, 'warehouses'), where('storeId', '==', storeId));
   }, [firestore, user, isUserLoading, storeId]);
 
-  const { data: warehouses, isLoading: warehousesLoading } = useCollection<Warehouse>(warehousesQuery);
+  const { data: warehousesData, isLoading: warehousesLoading } = useCollection<Warehouse>(warehousesQuery);
+  const warehouses = useMemo(() => warehousesData || [], [warehousesData]);
   const isLoading = isUserLoading || warehousesLoading;
   
   const addWarehouse = async (warehouseData: Omit<Warehouse, 'id' | 'storeId'>) => {
@@ -69,7 +70,7 @@ export const WarehousesProvider = ({ children }: { children: React.ReactNode }) 
   }
 
   const contextValue = {
-    warehouses: warehouses || [],
+    warehouses: warehouses,
     isLoading,
     addWarehouse,
     updateWarehouse,

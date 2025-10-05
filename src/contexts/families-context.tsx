@@ -28,7 +28,8 @@ export const FamiliesProvider = ({ children }: { children: React.ReactNode }) =>
       return query(collection(firestore, 'families'), where('storeId', '==', storeId));
   }, [firestore, user, isUserLoading, storeId]);
 
-  const { data: families, isLoading: familiesLoading } = useCollection<Family>(familiesQuery);
+  const { data: familiesData, isLoading: familiesLoading } = useCollection<Family>(familiesQuery);
+  const families = useMemo(() => familiesData || [], [familiesData]);
   const isLoading = isUserLoading || familiesLoading;
   
   const addFamily = async (familyData: Omit<Family, 'id' | 'storeId'>) => {
@@ -69,7 +70,7 @@ export const FamiliesProvider = ({ children }: { children: React.ReactNode }) =>
   }
 
   const contextValue = {
-    families: families || [],
+    families: families,
     isLoading,
     addFamily,
     updateFamily,
