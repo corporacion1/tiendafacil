@@ -95,39 +95,6 @@ export default function SettingsPage() {
         const { id, value } = e.target;
         setLocalSettings(prev => ({ ...prev, [id]: value }));
     };
-    
-    const handleLocationChange = (lat: number, lng: number) => {
-        setLocalSettings(prev => ({ ...prev, storeLocation: { lat, lng } }));
-    };
-
-    const handleGetLocation = () => {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const { latitude, longitude } = position.coords;
-                    handleLocationChange(latitude, longitude);
-                    toast({
-                        title: "Ubicación Obtenida",
-                        description: "Se ha capturado la ubicación actual del navegador.",
-                    });
-                },
-                (error) => {
-                    toast({
-                        variant: "destructive",
-                        title: "Error de Geolocalización",
-                        description: error.message,
-                    });
-                }
-            );
-        } else {
-            toast({
-                variant: "destructive",
-                title: "Geolocalización no soportada",
-                description: "Tu navegador no soporta la geolocalización.",
-            });
-        }
-    };
-
 
     const handleNumberSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
@@ -135,14 +102,6 @@ export default function SettingsPage() {
     };
 
     const saveAllSettings = () => {
-         if (!localSettings.storeLocation || !localSettings.storeLocation.lat || !localSettings.storeLocation.lng) {
-            toast({
-                variant: "destructive",
-                title: "Geolocalización requerida",
-                description: "Por favor, establece la ubicación de la tienda.",
-            });
-            return;
-        }
         setSettings(localSettings);
         toast({ title: "Configuración guardada", description: "Toda la configuración ha sido actualizada." });
     };
@@ -304,23 +263,6 @@ export default function SettingsPage() {
                              <div className="space-y-2">
                                 <Label htmlFor="storeSlogan">Slogan o Mensaje para el Ticket</Label>
                                 <Input id="storeSlogan" value={localSettings.storeSlogan} onChange={handleSettingsChange} placeholder="¡Gracias por tu compra!" />
-                            </div>
-                        </div>
-
-                        <Separator className="my-6" />
-
-                        <div className="space-y-4">
-                            <Label>Geolocalización (Obligatorio)</Label>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <Input 
-                                    value={localSettings.storeLocation ? `Lat: ${localSettings.storeLocation.lat.toFixed(6)}, Lng: ${localSettings.storeLocation.lng.toFixed(6)}` : "Ubicación no establecida"}
-                                    readOnly 
-                                    className="hidden"
-                                />
-                                <Button onClick={handleGetLocation} variant="outline" className="md:col-span-3">
-                                    <MapPin className="mr-2 h-4 w-4" />
-                                    Obtener Ubicación Actual
-                                </Button>
                             </div>
                         </div>
 
@@ -512,6 +454,8 @@ export default function SettingsPage() {
         </Dialog>
     );
 }
+
+    
 
     
 
