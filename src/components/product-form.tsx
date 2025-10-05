@@ -47,43 +47,51 @@ interface ProductFormProps {
     onCancel?: () => void;
 }
 
+const getInitialValues = (product?: Product): ProductFormValues => {
+    if (product) {
+        return {
+            ...product,
+            price: product.price || 0,
+            wholesalePrice: product.wholesalePrice || 0,
+            cost: product.cost || 0,
+            stock: product.stock || 0,
+            status: product.status || "active",
+            tax1: product.tax1 ?? true,
+            tax2: product.tax2 ?? false,
+        };
+    }
+    return {
+      id: '',
+      name: "",
+      sku: "",
+      price: 0,
+      wholesalePrice: 0,
+      cost: 0,
+      stock: 0,
+      status: "active",
+      tax1: true,
+      tax2: false,
+      unit: '',
+      family: '',
+      warehouse: '',
+      description: '',
+      imageUrl: '',
+      imageHint: '',
+    };
+};
+
+const calculateProfit = (price: number, cost: number): string => {
+  if (cost > 0 && price > cost) {
+      const profit = (((price - cost) / cost) * 100);
+      return profit.toFixed(2);
+  }
+  return '0.00';
+};
+
 export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const { toast } = useToast();
   const { settings } = useSettings();
   
-  const getInitialValues = (product?: Product): ProductFormValues => {
-      if (product) {
-          return {
-              ...product,
-              price: product.price || 0,
-              wholesalePrice: product.wholesalePrice || 0,
-              cost: product.cost || 0,
-              stock: product.stock || 0,
-              status: product.status || "active",
-              tax1: product.tax1 ?? true,
-              tax2: product.tax2 ?? false,
-          };
-      }
-      return {
-        id: '',
-        name: "",
-        sku: "",
-        price: 0,
-        wholesalePrice: 0,
-        cost: 0,
-        stock: 0,
-        status: "active",
-        tax1: true,
-        tax2: false,
-        unit: '',
-        family: '',
-        warehouse: '',
-        description: '',
-        imageUrl: '',
-        imageHint: '',
-      };
-  };
-
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: getInitialValues(product),
@@ -114,15 +122,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
       return '';
     }
   }, [watchedImageUrl]);
-  
-  const calculateProfit = (price: number, cost: number): string => {
-    if (cost > 0 && price > cost) {
-        const profit = (((price - cost) / cost) * 100);
-        return profit.toFixed(2);
-    }
-    return '0.00';
-  };
-  
+    
   const showError = (title: string, description: string) => {
     toast({
       variant: "destructive",
