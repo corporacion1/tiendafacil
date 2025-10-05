@@ -27,11 +27,11 @@ export default function ChatPage() {
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Memoize the query to prevent re-renders
+  // Memoize the query to prevent re-renders, and wait for user and firestore.
   const messagesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    if (!firestore || !user) return null;
     return query(collection(firestore, "chats", selectedRoom.id, "messages"), orderBy("timestamp", "asc"));
-  }, [firestore, selectedRoom.id]);
+  }, [firestore, selectedRoom.id, user]);
 
   const { data: messages, isLoading } = useCollection<ChatMessage>(messagesQuery);
 
