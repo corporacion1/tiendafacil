@@ -35,6 +35,11 @@ export default function LoginPage() {
   }, [user, isUserLoading, router]);
 
   const handleAuthError = (error: any, providerName: string) => {
+    // Silently ignore when the user closes the sign-in popup.
+    if (error.code === 'auth/popup-closed-by-user') {
+      return;
+    }
+
     console.error(`Error during ${providerName} auth:`, error);
     let description = 'Ocurrió un error inesperado. Por favor, intenta de nuevo.';
 
