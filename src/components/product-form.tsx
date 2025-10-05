@@ -145,8 +145,21 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
               <CardTitle>Detalles del Producto</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Columna Izquierda: Detalles del producto */}
+              {/* Columna Izquierda: Detalles */}
               <div className="space-y-4">
+                 <FormField
+                  control={form.control}
+                  name="sku"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>SKU (Código de Producto)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ej: LP-001" {...field} onBlur={handleSkuBlur} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="name"
@@ -155,19 +168,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                       <FormLabel>Nombre del Producto</FormLabel>
                       <FormControl>
                         <Input placeholder="Ej: Laptop Pro" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="sku"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>SKU (Código de Producto)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ej: LP-001" {...field} onBlur={handleSkuBlur} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -190,39 +190,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                     </FormItem>
                   )}
                 />
-              </div>
-              {/* Columna Derecha: Imagen del producto */}
-              <div className="space-y-4">
-                 <FormField
-                    control={form.control}
-                    name="imageUrl"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>URL de la Imagen</FormLabel>
-                        <FormControl>
-                          <Input placeholder="https://..." {...field} onBlur={handleImageUrlBlur} />
-                        </FormControl>
-                        <div className="aspect-square relative bg-muted rounded-md flex items-center justify-center mt-2 overflow-hidden">
-                          {watchedImageUrl ? (
-                            <Image src={watchedImageUrl} alt="Vista previa del producto" fill sizes="300px" className="object-cover" />
-                          ) : (
-                            <Package className="h-16 w-16 text-muted-foreground" />
-                          )}
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-              </div>
-            </CardContent>
-          </Card>
-          
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Precios y Costo</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <FormField
                   control={form.control}
                   name="cost"
@@ -237,60 +204,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                   )}
                 />
                 <FormField
-                  control={form.control}
-                  name="price"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Precio Detal ({settings.primaryCurrencySymbol})</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" {...field} />
-                      </FormControl>
-                      <FormDescription className={cn(cost > 0 && price <= cost && "text-destructive")}>
-                        Margen de ganancia: {profitMargin}%
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="wholesalePrice"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Precio Mayorista ({settings.primaryCurrencySymbol})</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" {...field} />
-                      </FormControl>
-                      <FormDescription className={cn(cost > 0 && wholesalePrice <= cost && "text-destructive")}>
-                        Margen de ganancia: {wholesaleProfitMargin}%
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Inventario y Clasificación</CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-4 sm:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="stock"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Stock Inicial</FormLabel>
-                        <FormControl>
-                          <Input type="number" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
                     control={form.control}
                     name="unit"
                     render={({ field }) => (
@@ -356,48 +269,79 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                       </FormItem>
                     )}
                   />
-                </CardContent>
-              </Card>
+              </div>
 
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Estado</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+              {/* Columna Derecha: Imagen */}
+              <div className="space-y-4">
+                 <FormField
+                    control={form.control}
+                    name="imageUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>URL de la Imagen</FormLabel>
+                        <FormControl>
+                          <Input placeholder="https://..." {...field} onBlur={handleImageUrlBlur} />
+                        </FormControl>
+                        <div className="aspect-square relative bg-muted rounded-md flex items-center justify-center mt-2 overflow-hidden">
+                          {watchedImageUrl ? (
+                            <Image src={watchedImageUrl} alt="Vista previa del producto" fill sizes="300px" className="object-cover" />
+                          ) : (
+                            <Package className="h-16 w-16 text-muted-foreground" />
+                          )}
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+                <CardTitle>Precios e Impuestos</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
                     <FormField
-                      control={form.control}
-                      name="status"
-                      render={({ field }) => (
+                    control={form.control}
+                    name="price"
+                    render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Estado del producto</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecciona un estado" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="active">Activo</SelectItem>
-                              <SelectItem value="inactive">Inactivo</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
+                        <FormLabel>Precio Detal ({settings.primaryCurrencySymbol})</FormLabel>
+                        <FormControl>
+                            <Input type="number" step="0.01" {...field} />
+                        </FormControl>
+                        <FormDescription className={cn(cost > 0 && price <= cost && "text-destructive")}>
+                            Margen de ganancia: {profitMargin}%
+                        </FormDescription>
+                        <FormMessage />
                         </FormItem>
-                      )}
+                    )}
                     />
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Impuestos</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
+                    <FormField
+                    control={form.control}
+                    name="wholesalePrice"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Precio Mayorista ({settings.primaryCurrencySymbol})</FormLabel>
+                        <FormControl>
+                            <Input type="number" step="0.01" {...field} />
+                        </FormControl>
+                        <FormDescription className={cn(cost > 0 && wholesalePrice <= cost && "text-destructive")}>
+                            Margen de ganancia: {wholesaleProfitMargin}%
+                        </FormDescription>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                </div>
+                 <div className="space-y-4">
                     <FormField
                       control={form.control}
                       name="tax1"
                       render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm h-fit">
                           <div className="space-y-0.5">
                             <FormLabel>Impuesto 1 ({settings.tax1}%)</FormLabel>
                           </div>
@@ -414,7 +358,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                       control={form.control}
                       name="tax2"
                       render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm h-fit">
                           <div className="space-y-0.5">
                             <FormLabel>Impuesto 2 ({settings.tax2}%)</FormLabel>
                           </div>
@@ -427,11 +371,51 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                         </FormItem>
                       )}
                     />
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </div>
+                </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+                <CardTitle>Inventario y Estado</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                    control={form.control}
+                    name="stock"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Stock Inicial</FormLabel>
+                        <FormControl>
+                            <Input type="number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Estado del producto</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Selecciona un estado" />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            <SelectItem value="active">Activo</SelectItem>
+                            <SelectItem value="inactive">Inactivo</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            </CardContent>
+          </Card>
           
           <div className="flex justify-end gap-2 mt-6">
             {onCancel && (
