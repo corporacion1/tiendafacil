@@ -108,6 +108,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const { formState: { isDirty } } = form;
 
   const watchedImageUrl = useWatch({ control: form.control, name: 'imageUrl' });
+  const watchedPrice = useWatch({ control: form.control, name: 'price' });
+  const watchedCost = useWatch({ control: form.control, name: 'cost' });
+  const watchedWholesalePrice = useWatch({ control: form.control, name: 'wholesalePrice' });
 
   // Transform Dropbox URL for direct image access
   const displayImageUrl = useMemo(() => {
@@ -116,8 +119,8 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
         let url = new URL(watchedImageUrl);
         // Replace dl=0 with raw=1, or add raw=1 if no params exist
         if (url.searchParams.has('dl')) {
-          url.searchParams.set('dl', '0'); // First reset just in case
-          url.search = url.search.replace('dl=0', 'raw=1');
+          url.searchParams.set('raw', '1');
+          url.searchParams.delete('dl');
         } else if (!url.searchParams.has('raw')) {
           url.searchParams.append('raw', '1');
         }
@@ -518,7 +521,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
               </AlertDialogHeader>
               <AlertDialogFooter>
                   <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction type="submit">
+                  <AlertDialogAction onClick={form.handleSubmit(handleSubmit)}>
                       Confirmar
                   </AlertDialogAction>
               </AlertDialogFooter>
@@ -528,3 +531,5 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
     </Form>
   );
 }
+
+    
