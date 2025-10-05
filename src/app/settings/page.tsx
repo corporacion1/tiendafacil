@@ -13,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Unit, Family, Warehouse, CurrencyRate, Product } from "@/lib/types";
-import { Pencil, PlusCircle, Trash2 } from "lucide-react";
+import { MapPin, Pencil, PlusCircle, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
@@ -95,6 +95,39 @@ export default function SettingsPage() {
         const { id, value } = e.target;
         setLocalSettings(prev => ({ ...prev, [id]: value }));
     };
+    
+    const handleLocationChange = (lat: number, lng: number) => {
+        setLocalSettings(prev => ({ ...prev, storeLocation: { lat, lng } }));
+    };
+
+    const handleGetLocation = () => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const { latitude, longitude } = position.coords;
+                    handleLocationChange(latitude, longitude);
+                    toast({
+                        title: "Ubicación Obtenida",
+                        description: "Se ha capturado la ubicación actual del navegador.",
+                    });
+                },
+                (error) => {
+                    toast({
+                        variant: "destructive",
+                        title: "Error de Geolocalización",
+                        description: error.message,
+                    });
+                }
+            );
+        } else {
+            toast({
+                variant: "destructive",
+                title: "Geolocalización no soportada",
+                description: "Tu navegador no soporta la geolocalización.",
+            });
+        }
+    };
+
 
     const handleNumberSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
@@ -102,6 +135,14 @@ export default function SettingsPage() {
     };
 
     const saveAllSettings = () => {
+         if (!localSettings.storeLocation || !localSettings.storeLocation.lat || !localSettings.storeLocation.lng) {
+            toast({
+                variant: "destructive",
+                title: "Geolocalización requerida",
+                description: "Por favor, establece la ubicación de la tienda.",
+            });
+            return;
+        }
         setSettings(localSettings);
         toast({ title: "Configuración guardada", description: "Toda la configuración ha sido actualizada." });
     };
@@ -265,6 +306,35 @@ export default function SettingsPage() {
                                 <Input id="storeSlogan" value={localSettings.storeSlogan} onChange={handleSettingsChange} placeholder="¡Gracias por tu compra!" />
                             </div>
                         </div>
+
+                        <Separator className="my-6" />
+
+                        <div className="space-y-4">
+                            <Label>Geolocalización (Obligatorio)</Label>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <Input 
+                                    value={localSettings.storeLocation ? `Lat: ${localSettings.storeLocation.lat.toFixed(6)}, Lng: ${localSettings.storeLocation.lng.toFixed(6)}` : "Ubicación no establecida"}
+                                    readOnly 
+                                />
+                                <Button onClick={handleGetLocation} variant="outline" className="md:col-span-2">
+                                    <MapPin className="mr-2 h-4 w-4" />
+                                    Obtener Ubicación Actual
+                                </Button>
+                            </div>
+                            {localSettings.storeLocation && (
+                                <div className="mt-4 rounded-md overflow-hidden border aspect-video">
+                                    <iframe
+                                        width="100%"
+                                        height="100%"
+                                        style={{ border: 0 }}
+                                        loading="lazy"
+                                        allowFullScreen
+                                        src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=${localSettings.storeLocation.lat},${localSettings.storeLocation.lng}`}>
+                                    </iframe>
+                                </div>
+                            )}
+                        </div>
+
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                             <div className="space-y-2">
                                 <Label htmlFor="tax1">Impuesto 1 (%)</Label>

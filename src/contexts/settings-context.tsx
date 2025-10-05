@@ -17,6 +17,7 @@ export interface Settings {
     primaryCurrencySymbol: string;
     secondaryCurrencyName: string;
     secondaryCurrencySymbol: string;
+    storeLocation?: { lat: number; lng: number };
 }
 
 type DisplayCurrency = 'primary' | 'secondary';
@@ -48,6 +49,7 @@ const defaultSettings: Settings = {
     primaryCurrencySymbol: '$',
     secondaryCurrencyName: 'Bolívares',
     secondaryCurrencySymbol: 'Bs.',
+    storeLocation: { lat: 10.4806, lng: -66.9036 }, // Default to Caracas, VE
 };
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
