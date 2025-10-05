@@ -4,7 +4,6 @@
 import { useUser } from "@/firebase";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
-import { ProvidersWrapper } from "./providers-wrapper";
 import { useSecurity } from "@/contexts/security-context";
 import { PinModal } from "./pin-modal";
 
@@ -38,9 +37,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
     
     if (!user) {
+        // This case is primarily for the server-side render before the useEffect redirect kicks in.
+        // Or if the redirect effect fails for some reason.
         return (
             <div className="flex min-h-screen w-full items-center justify-center bg-background">
-                <p>Redirigiendo...</p>
+                <p>Redirigiendo a inicio de sesión...</p>
             </div>
         );
     }
@@ -49,9 +50,4 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         return <PinModal />;
     }
 
-    return (
-        <ProvidersWrapper>
-            {children}
-        </ProvidersWrapper>
-    );
-}
+    return <>{children}</>;
