@@ -1,10 +1,34 @@
 {
   "entities": {
+    "Store": {
+      "title": "Store",
+      "description": "Represents a single store or tenant in the SaaS platform.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the store." },
+        "description": { "type": "string", "description": "Public description of the store." },
+        "ownerId": { "type": "string", "description": "The UID of the user who owns this store." },
+        "logoUrl": { "type": "string", "format": "uri" }
+      },
+      "required": ["name", "ownerId"]
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Represents a user's public profile and role information.",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["customer", "storeAdmin", "superAdmin"] },
+        "storeId": { "type": "string", "description": "The ID of the store this user manages, if they are a storeAdmin." }
+      },
+      "required": ["displayName", "email", "role"]
+    },
     "Product": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Product",
       "type": "object",
-      "description": "Represents a product in the inventory.",
+      "description": "Represents a product in the inventory. This can be in a specific store's collection or in the public-facing aggregated collection.",
       "properties": {
         "name": { "type": "string", "description": "Name of the product." },
         "description": { "type": "string", "description": "Detailed description of the product." },
@@ -20,20 +44,22 @@
         "family": { "type": "string" },
         "warehouse": { "type": "string" },
         "imageUrl": { "type": "string", "description": "URL of the product image.", "format": "uri" },
-        "imageHint": { "type": "string" }
+        "imageHint": { "type": "string" },
+        "storeId": { "type": "string", "description": "The ID of the store this product belongs to." },
+        "storeName": { "type": "string", "description": "The name of the store for public display." }
       },
-      "required": ["name", "price", "wholesalePrice", "cost", "stock", "sku", "status", "tax1", "tax2"]
+      "required": ["name", "price", "stock", "sku", "status", "storeId", "storeName"]
     },
     "Sale": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Sale",
       "type": "object",
-      "description": "Represents a sale transaction.",
+      "description": "Represents a sale transaction within a specific store.",
       "properties": {
-        "id": { "type": "string", "description": "Unique identifier for the sale transaction." },
-        "customerId": { "type": "string", "description": "Reference to Customer." },
-        "saleDate": { "type": "string", "description": "Date of the sale.", "format": "date-time" },
-        "totalAmount": { "type": "number", "description": "Total amount of the sale." }
+        "id": { "type": "string" },
+        "customerId": { "type": "string" },
+        "saleDate": { "type": "string", "format": "date-time" },
+        "totalAmount": { "type": "number" }
       },
       "required": ["id", "customerId", "saleDate", "totalAmount"]
     },
@@ -43,11 +69,11 @@
       "type": "object",
       "description": "Represents an item within a sale transaction.",
       "properties": {
-        "id": { "type": "string", "description": "Unique identifier for the sale item." },
-        "saleId": { "type": "string", "description": "Reference to Sale." },
-        "productId": { "type": "string", "description": "Reference to Product." },
-        "quantity": { "type": "number", "description": "Quantity of the product sold." },
-        "unitPrice": { "type": "number", "description": "Price of the product at the time of the sale." }
+        "id": { "type": "string" },
+        "saleId": { "type": "string" },
+        "productId": { "type": "string" },
+        "quantity": { "type": "number" },
+        "unitPrice": { "type": "number" }
       },
       "required": ["id", "saleId", "productId", "quantity", "unitPrice"]
     },
@@ -55,12 +81,12 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Customer",
       "type": "object",
-      "description": "Represents a customer.",
+      "description": "Represents a customer of a specific store.",
       "properties": {
-        "id": { "type": "string", "description": "Unique identifier for the customer." },
-        "name": { "type": "string", "description": "Name of the customer." },
-        "email": { "type": "string", "description": "Email address of the customer.", "format": "email" },
-        "phone": { "type": "string", "description": "Phone number of the customer." }
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" }
       },
       "required": ["id", "name"]
     },
@@ -88,14 +114,32 @@
     }
   },
   "auth": {
-    "providers": ["password", "anonymous"]
+    "providers": ["password", "anonymous", "google.com"]
   },
   "firestore": {
+    "/stores": {
+      "schema": { "$ref": "#/entities/Store" },
+      "description": "Collection of all stores (tenants) in the platform."
+    },
+    "/stores/{storeId}/products": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Collection of products specific to a single store."
+    },
+    "/stores/{storeId}/sales": {
+      "schema": { "$ref": "#/entities/Sale" },
+      "description": "Collection of sales specific to a single store."
+    },
+    "/stores/{storeId}/customers": {
+      "schema": { "$ref": "#/entities/Customer" },
+      "description": "Collection of customers specific to a single store."
+    },
     "/products": {
-        "schema": {
-            "$ref": "#/entities/Product"
-        },
-        "description": "Collection of all products in the inventory."
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Aggregated, public-facing collection of products from all stores for the marketplace view."
+    },
+    "/users": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Collection of all user profiles, including their roles."
     },
     "/chats": {
       "schema": { "$ref": "#/entities/Chat" },
