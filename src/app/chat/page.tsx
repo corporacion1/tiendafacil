@@ -8,11 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Send, MessageSquare, HardHat } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, useUser, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { collection, addDoc, serverTimestamp, query, orderBy, Timestamp, doc, setDoc } from "firebase/firestore";
 import type { ChatMessage } from "@/lib/types";
 import { format } from "date-fns";
-import { useToast } from "@/hooks/use-toast";
 
 // Static data for chat rooms
 const chatRooms = [
@@ -23,7 +22,6 @@ const chatRooms = [
 export default function ChatPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
-  const { toast } = useToast();
 
   const [selectedRoom, setSelectedRoom] = useState(chatRooms[0]);
   const [newMessage, setNewMessage] = useState("");
@@ -61,7 +59,7 @@ export default function ChatPage() {
   }, [firestore, user, isUserLoading]);
 
 
-  const handleSendMessage = async (e: React.FormEvent) => {
+  const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (newMessage.trim() === "" || !user || !firestore) return;
 
@@ -75,16 +73,15 @@ export default function ChatPage() {
     
     setNewMessage("");
 
-    try {
-        await addDoc(messagesColRef, messageData);
-    } catch (error: any) {
-        console.error("Error sending message: ", error);
-        toast({
-            variant: "destructive",
-            title: "Error al enviar mensaje",
-            description: error.message || "No se pudo enviar el mensaje debido a un error de permisos.",
+    addDoc(messagesColRef, messageData)
+        .catch((error) => {
+            const permissionError = new FirestorePermissionError({
+                path: messagesColRef.path,
+                operation: 'create',
+                requestResourceData: messageData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
         });
-    }
   };
 
   const formatTimestamp = (timestamp: Timestamp | string | null | undefined) => {
