@@ -45,10 +45,9 @@
         "warehouse": { "type": "string" },
         "imageUrl": { "type": "string", "description": "URL of the product image.", "format": "uri" },
         "imageHint": { "type": "string" },
-        "storeId": { "type": "string", "description": "The ID of the store this product belongs to." },
-        "storeName": { "type": "string", "description": "The name of the store for public display." }
+        "storeId": { "type": "string", "description": "The ID of the store this product belongs to." }
       },
-      "required": ["name", "price", "stock", "sku", "status", "storeId", "storeName"]
+      "required": ["name", "price", "stock", "sku", "status", "storeId"]
     },
     "Sale": {
       "$schema": "http://json-schema.org/draft-07/schema#",
