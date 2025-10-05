@@ -24,6 +24,7 @@ import {
 import { ThemeToggle } from "./theme-toggle";
 import { useSettings } from "@/contexts/settings-context";
 import { useAuth, useUser } from "@/firebase";
+import { Logo } from "./logo";
 
 const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: Home },
@@ -98,7 +99,7 @@ export function SiteHeader() {
             </SheetContent>
         </Sheet>
         <div className="hidden items-center gap-2 md:flex">
-            <Image src="https://www.dropbox.com/scl/fi/kuewv83r2uycd7zg6eahk/tienda_facil_logo-off.png?rlkey=hr4mnu9gdwm38zkj1jqhs96ln&st=mpfq8mii&raw=1" width={100} height={100} alt="TF" />
+            <Logo className="w-24 h-24 text-foreground" />
         </div>
       <div className="relative ml-auto flex items-center gap-2 md:grow-0">
         <TooltipProvider>

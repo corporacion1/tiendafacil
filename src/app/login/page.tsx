@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Logo } from '@/components/logo';
 
 export default function LoginPage() {
   const auth = useAuth();
@@ -120,7 +121,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen w-full items-center justify-center bg-muted/40">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <Image src="https://www.dropbox.com/scl/fi/kuewv83r2uycd7zg6eahk/tienda_facil_logo-off.png?rlkey=hr4mnu9gdwm38zkj1jqhs96ln&st=mpfq8mii&raw=1" width={160} height={160} alt="TF Logo" className="mx-auto mb-4" />
+          <Logo className="w-40 h-40 mx-auto mb-4" />
           <CardTitle className="text-2xl">Bienvenido a Tienda Facil</CardTitle>
           <CardDescription>
             {isSignUp ? 'Crea una cuenta para continuar' : 'Ingresa a tu cuenta para continuar'}
