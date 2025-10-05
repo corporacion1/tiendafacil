@@ -12,7 +12,7 @@ interface UnitsContextType {
   units: Unit[];
   isLoading: boolean;
   addUnit: (unit: Omit<Unit, 'id' | 'storeId'>) => Promise<string | undefined>;
-  updateUnit: (unitId: string, updatedUnit: Partial<Omit<Unit, 'id' | 'storeId'>>) => Promise<void>;
+  updateUnit: (unitId: string, updatedUnit: Partial<Omit<Unit, 'id'>>) => Promise<void>;
   deleteUnit: (unitId: string) => Promise<void>;
 }
 
@@ -24,9 +24,9 @@ export const UnitsProvider = ({ children }: { children: React.ReactNode }) => {
   const storeId = "test-store"; // This should come from user session or a higher-level context
 
   const unitsQuery = useMemoFirebase(() => {
-      if (isUserLoading || !user || !storeId) return null;
+      if (!user || !firestore) return null;
       return query(collection(firestore, 'units'), where('storeId', '==', storeId));
-  }, [firestore, user, isUserLoading, storeId]);
+  }, [firestore, user, storeId]);
 
   const { data: units, isLoading } = useCollection<Unit>(unitsQuery);
 
@@ -44,14 +44,15 @@ export const UnitsProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const updateUnit = async (unitId: string, updatedUnitData: Partial<Omit<Unit, 'id' | 'storeId'>>) => {
+  const updateUnit = async (unitId: string, updatedUnitData: Partial<Omit<Unit, 'id'>>) => {
     if (!firestore || !user) return;
     const unitDoc = doc(firestore, 'units', unitId);
+    const dataToSave = { ...updatedUnitData, storeId };
     try {
-        await updateDoc(unitDoc, updatedUnitData);
+        await updateDoc(unitDoc, dataToSave);
     } catch (error) {
         console.error("Error updating unit: ", error);
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: unitDoc.path, operation: 'update', requestResourceData: updatedUnitData }));
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: unitDoc.path, operation: 'update', requestResourceData: dataToSave }));
     }
   };
 
@@ -88,5 +89,3 @@ export const useUnits = (): UnitsContextType => {
   }
   return context;
 };
-
-    

@@ -12,7 +12,7 @@ interface FamiliesContextType {
   families: Family[];
   isLoading: boolean;
   addFamily: (family: Omit<Family, 'id' | 'storeId'>) => Promise<string | undefined>;
-  updateFamily: (familyId: string, updatedFamily: Partial<Omit<Family, 'id' | 'storeId'>>) => Promise<void>;
+  updateFamily: (familyId: string, updatedFamily: Partial<Omit<Family, 'id'>>) => Promise<void>;
   deleteFamily: (familyId: string) => Promise<void>;
 }
 
@@ -24,9 +24,9 @@ export const FamiliesProvider = ({ children }: { children: React.ReactNode }) =>
   const storeId = "test-store"; // This should come from user session or a higher-level context
 
   const familiesQuery = useMemoFirebase(() => {
-      if (isUserLoading || !user || !storeId) return null;
+      if (!user || !firestore) return null;
       return query(collection(firestore, 'families'), where('storeId', '==', storeId));
-  }, [firestore, user, isUserLoading, storeId]);
+  }, [firestore, user, storeId]);
 
   const { data: families, isLoading } = useCollection<Family>(familiesQuery);
   
@@ -44,14 +44,15 @@ export const FamiliesProvider = ({ children }: { children: React.ReactNode }) =>
     }
   };
 
-  const updateFamily = async (familyId: string, updatedFamilyData: Partial<Omit<Family, 'id' | 'storeId'>>) => {
+  const updateFamily = async (familyId: string, updatedFamilyData: Partial<Omit<Family, 'id'>>) => {
     if (!firestore || !user) return;
     const familyDoc = doc(firestore, 'families', familyId);
+    const dataToSave = { ...updatedFamilyData, storeId };
     try {
-        await updateDoc(familyDoc, updatedFamilyData);
+        await updateDoc(familyDoc, dataToSave);
     } catch(error) {
         console.error("Error updating family: ", error);
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: familyDoc.path, operation: 'update', requestResourceData: updatedFamilyData }));
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: familyDoc.path, operation: 'update', requestResourceData: dataToSave }));
     }
   };
 
@@ -88,5 +89,3 @@ export const useFamilies = (): FamiliesContextType => {
   }
   return context;
 };
-
-    

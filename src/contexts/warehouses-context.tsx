@@ -12,7 +12,7 @@ interface WarehousesContextType {
   warehouses: Warehouse[];
   isLoading: boolean;
   addWarehouse: (warehouse: Omit<Warehouse, 'id' | 'storeId'>) => Promise<string | undefined>;
-  updateWarehouse: (warehouseId: string, updatedWarehouse: Partial<Omit<Warehouse, 'id' | 'storeId'>>) => Promise<void>;
+  updateWarehouse: (warehouseId: string, updatedWarehouse: Partial<Omit<Warehouse, 'id'>>) => Promise<void>;
   deleteWarehouse: (warehouseId: string) => Promise<void>;
 }
 
@@ -24,9 +24,9 @@ export const WarehousesProvider = ({ children }: { children: React.ReactNode }) 
   const storeId = "test-store"; // This should come from user session or a higher-level context
 
   const warehousesQuery = useMemoFirebase(() => {
-      if (isUserLoading || !user || !storeId) return null;
+      if (!user || !firestore) return null;
       return query(collection(firestore, 'warehouses'), where('storeId', '==', storeId));
-  }, [firestore, user, isUserLoading, storeId]);
+  }, [firestore, user, storeId]);
 
   const { data: warehouses, isLoading } = useCollection<Warehouse>(warehousesQuery);
   
@@ -44,14 +44,15 @@ export const WarehousesProvider = ({ children }: { children: React.ReactNode }) 
     }
   };
 
-  const updateWarehouse = async (warehouseId: string, updatedWarehouseData: Partial<Omit<Warehouse, 'id' | 'storeId'>>) => {
+  const updateWarehouse = async (warehouseId: string, updatedWarehouseData: Partial<Omit<Warehouse, 'id'>>) => {
     if (!firestore || !user) return;
     const warehouseDoc = doc(firestore, 'warehouses', warehouseId);
+    const dataToSave = { ...updatedWarehouseData, storeId };
     try {
-        await updateDoc(warehouseDoc, updatedWarehouseData);
+        await updateDoc(warehouseDoc, dataToSave);
     } catch(error) {
         console.error("Error updating warehouse: ", error);
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: warehouseDoc.path, operation: 'update', requestResourceData: updatedWarehouseData }));
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: warehouseDoc.path, operation: 'update', requestResourceData: dataToSave }));
     }
   };
 
@@ -88,5 +89,3 @@ export const useWarehouses = (): WarehousesContextType => {
   }
   return context;
 };
-
-    
