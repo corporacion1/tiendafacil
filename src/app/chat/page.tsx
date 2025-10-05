@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Send, MessageSquare, HardHat } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, useUser, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { collection, addDoc, serverTimestamp, query, orderBy, Timestamp, doc, setDoc } from "firebase/firestore";
 import type { ChatMessage } from "@/lib/types";
 import { format } from "date-fns";
@@ -62,17 +62,28 @@ export default function ChatPage() {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newMessage.trim() === "" || !user || !firestore) return;
-    
-    const messagesColRef = collection(firestore, "chats", selectedRoom.id, "messages");
 
-    await addDoc(messagesColRef, {
+    const messagesColRef = collection(firestore, "chats", selectedRoom.id, "messages");
+    const messageData = {
       text: newMessage,
       senderId: user.uid,
       senderName: user.displayName || user.email || "Usuario Anónimo",
       timestamp: serverTimestamp(),
-    });
+    };
     
     setNewMessage("");
+
+    addDoc(messagesColRef, messageData)
+      .catch((error) => {
+        console.error("Error sending message: ", error);
+        
+        const permissionError = new FirestorePermissionError({
+            path: messagesColRef.path,
+            operation: 'create',
+            requestResourceData: messageData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
   };
 
   const formatTimestamp = (timestamp: Timestamp | string | null | undefined) => {
