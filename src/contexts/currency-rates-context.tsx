@@ -21,13 +21,11 @@ export const CurrencyRatesProvider = ({ children }: { children: React.ReactNode 
   const { user, isUserLoading } = useUser();
 
   const ratesQuery = useMemoFirebase(() => {
-    if (isUserLoading || !user) return null;
+    if (isUserLoading || !user || !firestore) return null;
     return query(collection(firestore, 'currency_rates'), orderBy('date', 'desc'), limit(50));
   }, [firestore, user, isUserLoading]);
 
-  // const { data: currencyRates, isLoading } = useCollection<CurrencyRate>(ratesQuery);
-  const currencyRates: CurrencyRate[] = [];
-  const isLoading = false;
+  const { data: currencyRates, isLoading } = useCollection<CurrencyRate>(ratesQuery);
 
   const addRate = async (rateData: Omit<CurrencyRate, 'id' | 'date'> & { date?: Timestamp }) => {
     if (!firestore || !user) return;

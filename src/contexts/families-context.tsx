@@ -24,9 +24,9 @@ export const FamiliesProvider = ({ children }: { children: React.ReactNode }) =>
   const storeId = "test-store"; // This should come from user session or a higher-level context
 
   const familiesQuery = useMemoFirebase(() => {
-      if (!user || !firestore) return null;
+      if (isUserLoading || !user || !firestore) return null;
       return query(collection(firestore, 'families'), where('storeId', '==', storeId));
-  }, [firestore, user, storeId]);
+  }, [firestore, user, isUserLoading, storeId]);
 
   const { data: families, isLoading } = useCollection<Family>(familiesQuery);
   
