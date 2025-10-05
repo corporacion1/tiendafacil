@@ -8,12 +8,10 @@ import { Footer } from "@/components/footer";
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 import { useSecurity } from "@/contexts/security-context";
-import { useUser } from '@/firebase';
 import { AuthGuard } from "./auth-guard";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { isLocked, lockApp, hasPin, isMounted, isPinLoading } = useSecurity();
-  const { isUserLoading } = useUser();
   const pathname = usePathname();
   const previousPathname = useRef(pathname);
 
@@ -44,17 +42,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
   
   return (
-    <AuthGuard>
       <div className="flex min-h-screen w-full flex-col bg-muted/40">
         <SiteSidebar />
         <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
           <SiteHeader />
           <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-            {children}
+            <AuthGuard>{children}</AuthGuard>
           </main>
           <Footer />
         </div>
       </div>
-    </AuthGuard>
   );
 }
