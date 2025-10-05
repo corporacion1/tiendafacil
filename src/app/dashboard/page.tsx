@@ -59,13 +59,13 @@ export default function Dashboard() {
   }, [timeFilter]);
 
   const salesQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid || !cutoffDate) return null;
+    if (!firestore || !user?.uid) return null;
     return query(collection(firestore, "sales"), where("date", ">=", Timestamp.fromDate(cutoffDate)));
   }, [firestore, cutoffDate, user?.uid]);
   const { data: sales } = useCollection<Sale>(salesQuery);
 
   const purchasesQuery = useMemoFirebase(() => {
-    if (!firestore || !user?.uid || !cutoffDate) return null;
+    if (!firestore || !user?.uid) return null;
     return query(collection(firestore, "purchases"), where("date", ">=", Timestamp.fromDate(cutoffDate)));
   }, [firestore, cutoffDate, user?.uid]);
   const { data: purchases } = useCollection<Purchase>(purchasesQuery);
@@ -354,3 +354,6 @@ export default function Dashboard() {
   );
 }
 
+
+
+    
