@@ -34,7 +34,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ProductForm } from "@/components/product-form";
 import { useSettings } from "@/contexts/settings-context";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { collection, doc, updateDoc, deleteDoc, query } from "firebase/firestore";
 
 
@@ -89,22 +89,35 @@ export default function InventoryPage() {
   };
 
 
-  async function handleUpdateProduct(data: Omit<Product, 'id'> & { id?: string }) {
+  function handleUpdateProduct(data: Omit<Product, 'id'> & { id?: string }) {
     if (!data.id || !firestore) return false;
 
     const docRef = doc(firestore, 'products', data.id);
-    await updateDoc(docRef, data);
-    
-    toast({
-        title: "Producto Actualizado",
-        description: `El producto "${data.name}" ha sido actualizado.`,
-    });
-    
-    setProductToEdit(null); // Close the dialog
-    return true; // Indicate success for form reset if needed
+    const updatedData = { ...data };
+    delete updatedData.id;
+
+    updateDoc(docRef, updatedData)
+        .then(() => {
+            toast({
+                title: "Producto Actualizado",
+                description: `El producto "${data.name}" ha sido actualizado.`,
+            });
+            setProductToEdit(null); // Close the dialog
+        })
+        .catch((serverError) => {
+            const permissionError = new FirestorePermissionError({
+                path: docRef.path,
+                operation: 'update',
+                requestResourceData: updatedData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
+
+    // Optimistically return true to allow form to reset
+    return true;
   }
   
-  const handleDelete = async (productId: string) => {
+  const handleDelete = (productId: string) => {
      // TODO: Replace mockSales with real sales data from Firestore when available
     const isProductInSale = mockSales.some(sale => sale.items.some(item => item.productId === productId));
 
@@ -119,11 +132,24 @@ export default function InventoryPage() {
     }
     
     if (!firestore) return;
-    await deleteDoc(doc(firestore, 'products', productId));
-    toast({
-      title: "Producto Eliminado",
-      description: "El producto ha sido eliminado del inventario.",
-    });
+    
+    const docRef = doc(firestore, 'products', productId);
+
+    deleteDoc(docRef)
+      .then(() => {
+        toast({
+          title: "Producto Eliminado",
+          description: "El producto ha sido eliminado del inventario.",
+        });
+      })
+      .catch((serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'delete',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
+
     setProductToDelete(null);
   };
 
@@ -134,7 +160,7 @@ export default function InventoryPage() {
       setMovementResponsible('');
   }
 
-  const handleMoveInventory = async () => {
+  const handleMoveInventory = () => {
     if (!movementProduct || !movementType || movementQuantity <= 0 || !movementResponsible.trim() || !firestore) {
       toast({
         variant: "destructive",
@@ -168,25 +194,36 @@ export default function InventoryPage() {
     }
     
     const docRef = doc(firestore, 'products', movementProduct.id);
-    await updateDoc(docRef, { stock: newStock });
-
-    // TODO: This should also be a collection in firestore
-    const newMovement: InventoryMovement = {
-        id: `mov-${Date.now()}-${movementProduct.id}`,
-        productName: movementProduct.name,
-        type: movementType,
-        quantity: movementType === 'sale' ? -movementQuantity : movementQuantity,
-        date: new Date().toISOString(),
-        responsible: movementResponsible,
-    };
-    mockInventoryMovements.unshift(newMovement);
-
-    toast({
-        title: "Movimiento Registrado",
-        description: `El stock de "${movementProduct.name}" ha sido actualizado a ${newStock}.`,
-    });
+    const updateData = { stock: newStock };
     
-    resetMovementForm();
+    updateDoc(docRef, updateData)
+      .then(() => {
+        // TODO: This should also be a collection in firestore
+        const newMovement: InventoryMovement = {
+            id: `mov-${Date.now()}-${movementProduct.id}`,
+            productName: movementProduct.name,
+            type: movementType,
+            quantity: movementType === 'sale' ? -movementQuantity : movementQuantity,
+            date: new Date().toISOString(),
+            responsible: movementResponsible,
+        };
+        mockInventoryMovements.unshift(newMovement);
+
+        toast({
+            title: "Movimiento Registrado",
+            description: `El stock de "${movementProduct.name}" ha sido actualizado a ${newStock}.`,
+        });
+        
+        resetMovementForm();
+      })
+      .catch((serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'update',
+          requestResourceData: updateData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
   };
   
   const getMovementLabel = (type: 'sale' | 'purchase' | 'adjustment') => {
@@ -527,5 +564,7 @@ export default function InventoryPage() {
     </>
   );
 }
+
+    
 
     
