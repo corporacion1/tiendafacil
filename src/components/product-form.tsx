@@ -94,12 +94,6 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const { settings, activeSymbol, activeRate } = useSettings();
   const { toast } = useToast();
   
-  const [displayValues, setDisplayValues] = useState({
-    cost: product ? (product.cost * activeRate).toFixed(2) : '0.00',
-    price: product ? (product.price * activeRate).toFixed(2) : '0.00',
-    wholesalePrice: product ? (product.wholesalePrice * activeRate).toFixed(2) : '0.00',
-  });
-
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: getInitialValues(product),
@@ -111,6 +105,12 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const watchedPrice = useWatch({ control: form.control, name: 'price' });
   const watchedCost = useWatch({ control: form.control, name: 'cost' });
   const watchedWholesalePrice = useWatch({ control: form.control, name: 'wholesalePrice' });
+  
+  const [displayValues, setDisplayValues] = useState({
+    cost: product ? (product.cost * activeRate).toFixed(2) : '0.00',
+    price: product ? (product.price * activeRate).toFixed(2) : '0.00',
+    wholesalePrice: product ? (product.wholesalePrice * activeRate).toFixed(2) : '0.00',
+  });
 
   // Transform Dropbox URL for direct image access
   const displayImageUrl = useMemo(() => {
@@ -149,10 +149,10 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   }, [product, form, activeRate]);
 
   useEffect(() => {
-    const newCost = form.getValues('cost') * activeRate;
-    const newPrice = form.getValues('price') * activeRate;
-    const newWholesalePrice = form.getValues('wholesalePrice') * activeRate;
-    
+    const newCost = watchedCost * activeRate;
+    const newPrice = watchedPrice * activeRate;
+    const newWholesalePrice = watchedWholesalePrice * activeRate;
+
     if (document.activeElement?.id !== 'cost') {
          setDisplayValues(prev => ({...prev, cost: newCost.toFixed(2)}));
     }
@@ -163,7 +163,7 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
          setDisplayValues(prev => ({...prev, wholesalePrice: newWholesalePrice.toFixed(2)}));
     }
 
-  }, [activeRate, form]);
+  }, [activeRate, watchedCost, watchedPrice, watchedWholesalePrice]);
 
 
   const handleDisplayValueChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'cost' | 'price' | 'wholesalePrice') => {
