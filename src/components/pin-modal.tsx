@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -43,6 +44,7 @@ export function PinModal() {
             onKeyPress={handleKeyPress}
             className="text-center text-2xl tracking-[0.5em]"
             maxLength={4}
+            autoFocus
           />
           <Button onClick={handleUnlock} className="w-full" size="lg">
             Desbloquear
