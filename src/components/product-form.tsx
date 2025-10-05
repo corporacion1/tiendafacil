@@ -114,8 +114,9 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
 
   // Transform Dropbox URL for direct image access
   const displayImageUrl = useMemo(() => {
-    if (watchedImageUrl && watchedImageUrl.includes("www.dropbox.com")) {
-      try {
+    if (!watchedImageUrl) return '';
+    try {
+      if (watchedImageUrl.includes("www.dropbox.com")) {
         let url = new URL(watchedImageUrl);
         // Replace dl=0 with raw=1, or add raw=1 if no params exist
         if (url.searchParams.has('dl')) {
@@ -125,12 +126,12 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
           url.searchParams.append('raw', '1');
         }
         return url.toString();
-      } catch(e) {
-        // Invalid URL, return the original string or empty
-        return watchedImageUrl;
       }
+      return watchedImageUrl;
+    } catch(e) {
+      // Invalid URL, return the original string or empty
+      return watchedImageUrl;
     }
-    return watchedImageUrl;
   }, [watchedImageUrl]);
 
 
@@ -184,19 +185,38 @@ export function ProductForm({ product, onSubmit, onCancel }: ProductFormProps) {
   const handleImageUrlBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const url = e.target.value;
     if (!url) {
-      return;
+        form.clearErrors("imageUrl"); // Clear error if input is empty
+        return;
     }
 
+    const showError = (title: string, description: string) => {
+        toast({
+            variant: "destructive",
+            title: title,
+            description: description,
+        });
+        form.setValue("imageUrl", "", { shouldDirty: true });
+    };
+
     try {
-      new URL(url);
-      form.clearErrors("imageUrl");
+        const urlObject = new URL(url);
+        const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp'];
+        const pathname = urlObject.pathname.toLowerCase();
+
+        // Basic check for image extension
+        const isImage = imageExtensions.some(ext => pathname.endsWith(ext));
+
+        // Special handling for some image providers that don't use extensions
+        const isUnsplash = urlObject.hostname.includes('images.unsplash.com');
+        const isDropboxRaw = urlObject.hostname.includes('dropbox.com') && urlObject.search.includes('raw=1');
+
+        if (isImage || isUnsplash || isDropboxRaw) {
+            form.clearErrors("imageUrl");
+        } else {
+            showError("URL de Imagen Inválida", "La URL no parece apuntar a un archivo de imagen. Intenta con un enlace directo.");
+        }
     } catch (_) {
-      toast({
-        variant: "destructive",
-        title: "URL Inválida",
-        description: "La URL que ingresaste no parece ser válida. Por favor, corrígela.",
-      });
-      form.setValue("imageUrl", "", { shouldDirty: true });
+        showError("URL Inválida", "La URL que ingresaste no es válida. Por favor, corrígela.");
     }
   };
 
