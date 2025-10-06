@@ -6,18 +6,19 @@ import { useToast } from "@/hooks/use-toast";
 import { ProductForm } from "@/components/product-form";
 import type { Product } from "@/lib/types";
 import { collection, addDoc } from "firebase/firestore";
-import { useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useFirestore, errorEmitter, FirestorePermissionError, useUser } from "@/firebase";
 
 export default function ProductsPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
+  const { user } = useUser();
 
   async function onSubmit(data: Omit<Product, 'id'>) {
-    if (!firestore) {
+    if (!firestore || !user) {
         toast({
             variant: "destructive",
             title: "Error de conexión",
-            description: "No se pudo conectar a la base de datos."
+            description: "No se pudo conectar a la base de datos o no estás autenticado."
         });
         return false;
     }
