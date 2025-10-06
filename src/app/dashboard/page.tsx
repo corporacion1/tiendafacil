@@ -1,6 +1,6 @@
 
 "use client"
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { ArrowUpRight, DollarSign, Users, Package, ShoppingBag, ArrowLeft, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import {
@@ -37,7 +37,7 @@ import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/contexts/settings-context";
 import { InventoryMovement, Product, Purchase, Sale } from "@/lib/types";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, useUser, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { collection, query, where, Timestamp } from "firebase/firestore";
 
 type TimeFilter = 'day' | 'week' | 'month';
@@ -73,9 +73,39 @@ export default function Dashboard() {
     return collection(firestore, "products");
   }, [firestore, user]);
 
-  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
-  const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+  const { data: sales, isLoading: isLoadingSales, error: salesError } = useCollection<Sale>(salesQuery);
+  const { data: purchases, isLoading: isLoadingPurchases, error: purchasesError } = useCollection<Purchase>(purchasesQuery);
+  const { data: products, isLoading: isLoadingProducts, error: productsError } = useCollection<Product>(productsQuery);
+
+  useEffect(() => {
+      if (salesError && salesQuery) {
+          const permissionError = new FirestorePermissionError({
+              path: salesQuery.path,
+              operation: 'list',
+          });
+          errorEmitter.emit('permission-error', permissionError);
+      }
+  }, [salesError, salesQuery]);
+
+  useEffect(() => {
+      if (purchasesError && purchasesQuery) {
+          const permissionError = new FirestorePermissionError({
+              path: purchasesQuery.path,
+              operation: 'list',
+          });
+          errorEmitter.emit('permission-error', permissionError);
+      }
+  }, [purchasesError, purchasesQuery]);
+
+  useEffect(() => {
+      if (productsError && productsQuery) {
+          const permissionError = new FirestorePermissionError({
+              path: productsQuery.path,
+              operation: 'list',
+          });
+          errorEmitter.emit('permission-error', permissionError);
+      }
+  }, [productsError, productsQuery]);
 
   const filteredSales = sales || [];
   const filteredPurchases = purchases || [];
@@ -366,5 +396,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-    
