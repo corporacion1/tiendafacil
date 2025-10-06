@@ -122,7 +122,7 @@ export interface UseCollectionResult<T> {
 }
 
 export function useCollection<T = any>(
-    memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo?: boolean})  | null | undefined,
+    memoizedTargetRefOrQuery: CollectionReference<DocumentData> | Query<DocumentData> | null | undefined
 ): UseCollectionResult<T> {
   type ResultItemType = WithId<T>;
   type StateDataType = ResultItemType[] | null;
@@ -133,7 +133,8 @@ export function useCollection<T = any>(
   const [error, setError] = useState<FirestoreError | null>(null);
 
   useEffect(() => {
-    if (!memoizedTargetRefOrQuery || isUserLoading) {
+    // Structural guard: Do not proceed if user is loading or query is null.
+    if (isUserLoading || !memoizedTargetRefOrQuery) {
       setData(null);
       setIsLoading(true);
       setError(null);
@@ -155,6 +156,7 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (err: FirestoreError) => {
+        // This check ensures path is available before creating the error
         if ('path' in memoizedTargetRefOrQuery) {
             const permissionError = new FirestorePermissionError({
                 path: memoizedTargetRefOrQuery.path,
@@ -194,7 +196,8 @@ export function useDoc<T = any>(
   const [error, setError] = useState<FirestoreError | null>(null);
 
   useEffect(() => {
-    if (!memoizedDocRef || isUserLoading) {
+    // Structural guard: Do not proceed if user is loading or ref is null.
+    if (isUserLoading || !memoizedDocRef) {
       setData(null);
       setIsLoading(true);
       setError(null);
@@ -231,11 +234,7 @@ export function useDoc<T = any>(
 
 
 // useMemoFirebase HELPER
-type MemoFirebase<T> = T & { __memo?: boolean };
-export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | MemoFirebase<T> {
-  const memoized = useMemo(factory, deps);
-  if (typeof memoized === 'object' && memoized !== null) {
-    (memoized as MemoFirebase<T>).__memo = true;
-  }
-  return memoized;
+export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(factory, deps);
 }

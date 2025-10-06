@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Send, MessageSquare, HardHat } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCollection, useFirestore, useMemoFirebase, useUser, errorEmitter, FirestorePermissionError } from "@/firebase";
-import { collection, addDoc, serverTimestamp, query, orderBy, Timestamp, doc, setDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, query, orderBy, Timestamp } from "firebase/firestore";
 import type { ChatMessage } from "@/lib/types";
 import { format } from "date-fns";
 

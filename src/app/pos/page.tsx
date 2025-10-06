@@ -412,7 +412,7 @@ export default function POSPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="grid auto-rows-max items-start gap-4 lg:gap-8">
+      <div className="grid auto-rows-max items-start gap-4 lg:col-span-1 lg:gap-8">
         <Card>
           <CardHeader className="flex flex-row justify-between items-center">
             <CardTitle>Carrito de Compra</CardTitle>

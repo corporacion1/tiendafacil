@@ -37,7 +37,7 @@ import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/contexts/settings-context";
 import { InventoryMovement, Product, Purchase, Sale } from "@/lib/types";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { useCollection, useFirestore, useMemoFirebase, useUser, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, query, where, Timestamp } from "firebase/firestore";
 
 type TimeFilter = 'day' | 'week' | 'month';

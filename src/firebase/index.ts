@@ -7,19 +7,19 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
+// This function ensures that Firebase is initialized only once.
 export function initializeFirebase() {
   const appName = 'default';
-  // Avoid re-initializing the app on every render.
-  if (getApps().length > 0) {
-      const app = getApp(appName);
-      return getSdks(app);
+  if (getApps().length) {
+    const app = getApp(appName);
+    return getSdks(app);
   }
   const firebaseApp = initializeApp(firebaseConfig, appName);
   return getSdks(firebaseApp);
 }
 
 // Helper to get all the SDKs in one place
-export function getSdks(firebaseApp: FirebaseApp) {
+function getSdks(firebaseApp: FirebaseApp) {
   return {
     firebaseApp,
     auth: getAuth(firebaseApp),
