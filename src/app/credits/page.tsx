@@ -16,14 +16,15 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import type { Sale, Payment } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
-import { useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase/provider";
+import { errorEmitter, FirestorePermissionError } from "@/firebase";
 import { collection, doc, updateDoc, arrayUnion } from "firebase/firestore";
 
 export default function CreditsPage() {
     const { toast } = useToast();
     const { settings, activeSymbol, activeRate } = useSettings();
     const firestore = useFirestore();
-    const { user, isUserLoading } = useUser();
+    const { user } = useUser();
 
     const salesCollection = useMemoFirebase(() => {
         if (!firestore || !user) return null;
@@ -116,7 +117,7 @@ export default function CreditsPage() {
         return format(parseISO(date), "dd/MM/yyyy HH:mm");
     };
     
-    const isLoading = isUserLoading || isLoadingSales;
+    const isLoading = isLoadingSales;
     
     const renderSalesTable = (salesToRender: Sale[]) => (
         <Table>

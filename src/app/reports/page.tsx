@@ -46,7 +46,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/settings-context";
-import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase/provider";
 import { collection, query, where, Timestamp } from "firebase/firestore";
 
 
@@ -55,7 +55,7 @@ type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
 export default function ReportsPage() {
     const { settings, activeSymbol, activeRate } = useSettings();
     const firestore = useFirestore();
-    const { user, isUserLoading } = useUser();
+    const { user } = useUser();
     
     const [selectedSaleDetails, setSelectedSaleDetails] = useState<Sale | null>(null);
     const [saleForTicket, setSaleForTicket] = useState<Sale | null>(null);
@@ -117,7 +117,7 @@ export default function ReportsPage() {
     }, [firestore, user, dateFilterQuery]);
     const { data: movementsData, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsQuery);
     
-    const isLoading = isUserLoading || isLoadingSales || isLoadingPurchases || isLoadingMovements;
+    const isLoading = isLoadingSales || isLoadingPurchases || isLoadingMovements;
 
     const handleViewDetails = (sale: Sale) => {
         setSelectedSaleDetails(sale);

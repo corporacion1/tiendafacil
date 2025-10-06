@@ -133,12 +133,17 @@ export function useCollection<T = any>(
   const [error, setError] = useState<FirestoreError | null>(null);
 
   useEffect(() => {
-    // Do not proceed if user is loading OR if the query is null.
-    // This is the main guard against premature queries.
-    if (isUserLoading || !memoizedTargetRefOrQuery) {
-      setIsLoading(isUserLoading);
+    // Strict Guard: Do not proceed if user is loading.
+    // The effect will re-run when isUserLoading changes.
+    if (isUserLoading) {
+      setIsLoading(true);
+      return;
+    }
+
+    // Guard: If the query is not ready, do nothing.
+    if (!memoizedTargetRefOrQuery) {
       setData(null);
-      setError(null);
+      setIsLoading(false);
       return;
     }
 
@@ -176,8 +181,9 @@ export function useCollection<T = any>(
     return () => unsubscribe();
   }, [memoizedTargetRefOrQuery, isUserLoading]);
 
-  return { data, isLoading: isLoading || isUserLoading, error };
+  return { data, isLoading: isLoading, error };
 }
+
 
 // useDoc HOOK
 export interface UseDocResult<T> {
@@ -196,11 +202,16 @@ export function useDoc<T = any>(
   const [error, setError] = useState<FirestoreError | null>(null);
 
   useEffect(() => {
-    // Do not proceed if user is loading OR if the ref is null.
-    if (isUserLoading || !memoizedDocRef) {
-      setIsLoading(isUserLoading);
+    // Strict Guard: Do not proceed if user is loading.
+    if (isUserLoading) {
+      setIsLoading(true);
+      return;
+    }
+    
+    // Guard: If the ref is not ready, do nothing.
+    if (!memoizedDocRef) {
       setData(null);
-      setError(null);
+      setIsLoading(false);
       return;
     }
 
@@ -236,7 +247,7 @@ export function useDoc<T = any>(
     return () => unsubscribe();
   }, [memoizedDocRef, isUserLoading]);
 
-  return { data, isLoading: isLoading || isUserLoading, error };
+  return { data, isLoading: isLoading, error };
 }
 
 
@@ -245,3 +256,4 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   return useMemo(factory, deps);
 }
+

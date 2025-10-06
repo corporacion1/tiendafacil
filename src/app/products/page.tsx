@@ -6,7 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import { ProductForm } from "@/components/product-form";
 import type { Product } from "@/lib/types";
 import { collection, addDoc } from "firebase/firestore";
-import { useFirestore, errorEmitter, FirestorePermissionError, useUser } from "@/firebase";
+import { useFirestore, useUser } from "@/firebase/provider";
+import { errorEmitter, FirestorePermissionError } from "@/firebase";
 
 export default function ProductsPage() {
   const { toast } = useToast();

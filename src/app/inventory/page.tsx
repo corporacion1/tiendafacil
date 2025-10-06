@@ -33,7 +33,8 @@ import {
 import { cn } from "@/lib/utils";
 import { ProductForm } from "@/components/product-form";
 import { useSettings } from "@/contexts/settings-context";
-import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase/provider";
+import { errorEmitter, FirestorePermissionError } from "@/firebase";
 import { collection, doc, updateDoc, deleteDoc, writeBatch, serverTimestamp, addDoc } from "firebase/firestore";
 import { format } from "date-fns";
 
@@ -55,7 +56,7 @@ const getDisplayImageUrl = (imageUrl?: string) => {
 export default function InventoryPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
 
   const productsCollection = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -256,7 +257,7 @@ export default function InventoryPage() {
   }, [products, searchTerm]);
 
   const isMovementFormValid = movementProduct && movementType && movementQuantity > 0 && movementResponsible.trim() !== '';
-  const isLoading = isUserLoading || isLoadingProducts || isLoadingSales || isLoadingMovements;
+  const isLoading = isLoadingProducts || isLoadingSales || isLoadingMovements;
 
   return (
     <>
