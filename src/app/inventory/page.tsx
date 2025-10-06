@@ -549,7 +549,7 @@ export default function InventoryPage() {
               <TableBody>
                   {productMovements.length > 0 ? productMovements.map((movement) => (
                       <TableRow key={movement.id}>
-                          <TableCell>{movement.date ? format(movement.date.toDate(), 'dd/MM/yyyy') : 'N/A'}</TableCell>
+                          <TableCell>{movement.date && movement.date instanceof Date ? format(movement.date, 'dd/MM/yyyy') : 'N/A'}</TableCell>
                           <TableCell>
                               <Badge variant={movement.type === "sale" ? "destructive" : movement.type === "purchase" ? "secondary" : "outline"}>
                                   {getMovementLabel(movement.type)}
@@ -576,5 +576,7 @@ export default function InventoryPage() {
     </>
   );
 }
+
+    
 
     
