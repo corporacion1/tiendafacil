@@ -173,7 +173,7 @@ export function useCollection<T = any>(
         }
 
         setError(err);
-        setData(null);
+setData(null);
         setIsLoading(false);
       }
     );
@@ -256,4 +256,3 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   return useMemo(factory, deps);
 }
-
