@@ -23,14 +23,14 @@ export default function CreditsPage() {
     const { toast } = useToast();
     const { settings, activeSymbol, activeRate } = useSettings();
     const firestore = useFirestore();
-    const { user } = useUser();
+    const { user, isUserLoading } = useUser();
 
     const salesCollection = useMemoFirebase(() => {
         if (!firestore || !user) return null;
         return collection(firestore, "sales");
     }, [firestore, user]);
     
-    const { data: sales, isLoading } = useCollection<Sale>(salesCollection);
+    const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollection);
 
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
@@ -115,6 +115,8 @@ export default function CreditsPage() {
         }
         return format(parseISO(date), "dd/MM/yyyy HH:mm");
     };
+    
+    const isLoading = isUserLoading || isLoadingSales;
     
     const renderSalesTable = (salesToRender: Sale[]) => (
         <Table>
@@ -334,5 +336,3 @@ export default function CreditsPage() {
         </>
     );
 }
-
-    

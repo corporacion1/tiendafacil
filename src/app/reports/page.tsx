@@ -55,7 +55,7 @@ type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
 export default function ReportsPage() {
     const { settings, activeSymbol, activeRate } = useSettings();
     const firestore = useFirestore();
-    const { user } = useUser();
+    const { user, isUserLoading } = useUser();
     
     const [selectedSaleDetails, setSelectedSaleDetails] = useState<Sale | null>(null);
     const [saleForTicket, setSaleForTicket] = useState<Sale | null>(null);
@@ -117,7 +117,7 @@ export default function ReportsPage() {
     }, [firestore, user, dateFilterQuery]);
     const { data: movementsData, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsQuery);
     
-    const isLoading = isLoadingSales || isLoadingPurchases || isLoadingMovements;
+    const isLoading = isUserLoading || isLoadingSales || isLoadingPurchases || isLoadingMovements;
 
     const handleViewDetails = (sale: Sale) => {
         setSelectedSaleDetails(sale);
@@ -600,5 +600,3 @@ export default function ReportsPage() {
     </>
   );
 }
-
-    

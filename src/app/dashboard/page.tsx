@@ -46,7 +46,7 @@ export default function Dashboard() {
   const { activeSymbol, activeRate } = useSettings();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
 
   const cutoffDate = useMemo(() => {
     const now = new Date();
@@ -73,39 +73,9 @@ export default function Dashboard() {
     return collection(firestore, "products");
   }, [firestore, user]);
 
-  const { data: sales, isLoading: isLoadingSales, error: salesError } = useCollection<Sale>(salesQuery);
-  const { data: purchases, isLoading: isLoadingPurchases, error: purchasesError } = useCollection<Purchase>(purchasesQuery);
-  const { data: products, isLoading: isLoadingProducts, error: productsError } = useCollection<Product>(productsQuery);
-
-  useEffect(() => {
-      if (salesError && salesQuery) {
-          const permissionError = new FirestorePermissionError({
-              path: salesQuery.path,
-              operation: 'list',
-          });
-          errorEmitter.emit('permission-error', permissionError);
-      }
-  }, [salesError, salesQuery]);
-
-  useEffect(() => {
-      if (purchasesError && purchasesQuery) {
-          const permissionError = new FirestorePermissionError({
-              path: purchasesQuery.path,
-              operation: 'list',
-          });
-          errorEmitter.emit('permission-error', permissionError);
-      }
-  }, [purchasesError, purchasesQuery]);
-
-  useEffect(() => {
-      if (productsError && productsQuery) {
-          const permissionError = new FirestorePermissionError({
-              path: productsQuery.path,
-              operation: 'list',
-          });
-          errorEmitter.emit('permission-error', permissionError);
-      }
-  }, [productsError, productsQuery]);
+  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
+  const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
+  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
 
   const filteredSales = sales || [];
   const filteredPurchases = purchases || [];
@@ -199,7 +169,7 @@ export default function Dashboard() {
   const totalRevenue = useMemo(() => filteredSales.reduce((acc, s) => acc + s.total, 0), [filteredSales]);
   const totalPurchasesValue = useMemo(() => filteredPurchases.reduce((acc, p) => acc + p.total, 0), [filteredPurchases]);
   const activeProducts = useMemo(() => (products || []).filter(p => p.status === 'active').length, [products]);
-  const isLoading = isLoadingSales || isLoadingPurchases || isLoadingProducts;
+  const isLoading = isUserLoading || isLoadingSales || isLoadingPurchases || isLoadingProducts;
 
   return (
     <div className="flex min-h-screen w-full flex-col">
