@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
@@ -122,19 +123,18 @@ export interface UseCollectionResult<T> {
 }
 
 export function useCollection<T = any>(
-    memoizedTargetRefOrQuery: CollectionReference<DocumentData> | Query<DocumentData> | null | undefined
+    memoizedTargetRefOrQuery: CollectionReference<DocumentData> | Query<DocumentData> | null | undefined,
+    isUserLoading: boolean
 ): UseCollectionResult<T> {
   type ResultItemType = WithId<T>;
   type StateDataType = ResultItemType[] | null;
 
-  const { isUserLoading } = useUser();
   const [data, setData] = useState<StateDataType>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | null>(null);
 
   useEffect(() => {
     // Strict Guard: Do not proceed if user is loading.
-    // The effect will re-run when isUserLoading changes.
     if (isUserLoading) {
       setIsLoading(true);
       return;
@@ -181,7 +181,7 @@ setData(null);
     return () => unsubscribe();
   }, [memoizedTargetRefOrQuery, isUserLoading]);
 
-  return { data, isLoading: isLoading, error };
+  return { data, isLoading, error };
 }
 
 
@@ -194,9 +194,9 @@ export interface UseDocResult<T> {
 
 export function useDoc<T = any>(
   memoizedDocRef: DocumentReference<DocumentData> | null | undefined,
+  isUserLoading: boolean
 ): UseDocResult<T> {
   type StateDataType = WithId<T> | null;
-  const { isUserLoading } = useUser();
   const [data, setData] = useState<StateDataType>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | null>(null);
@@ -256,3 +256,4 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   return useMemo(factory, deps);
 }
+

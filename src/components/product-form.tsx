@@ -99,14 +99,14 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
   const { toast } = useToast();
   const { settings } = useSettings();
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
 
   const productsCollection = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return collection(firestore, "products");
   }, [firestore, user]);
 
-  const { data: products } = useCollection<Product>(productsCollection);
+  const { data: products } = useCollection<Product>(productsCollection, isUserLoading);
   
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),

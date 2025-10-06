@@ -24,14 +24,14 @@ export default function CreditsPage() {
     const { toast } = useToast();
     const { settings, activeSymbol, activeRate } = useSettings();
     const firestore = useFirestore();
-    const { user } = useUser();
+    const { user, isUserLoading } = useUser();
 
     const salesCollection = useMemoFirebase(() => {
         if (!firestore || !user) return null;
         return collection(firestore, "sales");
     }, [firestore, user]);
     
-    const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollection);
+    const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollection, isUserLoading);
 
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);

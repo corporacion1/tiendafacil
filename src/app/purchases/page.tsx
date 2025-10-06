@@ -43,19 +43,19 @@ export default function PurchasesPage() {
   const { toast } = useToast();
   const { settings, activeSymbol, activeRate } = useSettings();
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
 
   const productsCollection = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return collection(firestore, "products");
   }, [firestore, user]);
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollection);
+  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollection, isUserLoading);
 
   const suppliersCollection = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return collection(firestore, "suppliers");
   }, [firestore, user]);
-  const { data: suppliers, isLoading: isLoadingSuppliers } = useCollection<Supplier>(suppliersCollection);
+  const { data: suppliers, isLoading: isLoadingSuppliers } = useCollection<Supplier>(suppliersCollection, isUserLoading);
 
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");

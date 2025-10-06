@@ -115,7 +115,7 @@ export default function SettingsPage() {
     const { hasPin, setPin, removePin, checkPin } = useSecurity();
     const { settings, setSettings, currencyRates, setCurrencyRates } = useSettings();
     const firestore = useFirestore();
-    const { user } = useUser();
+    const { user, isUserLoading } = useUser();
     
     const [localSettings, setLocalSettings] = useState(settings);
     const [localUnits, setLocalUnits] = useState(defaultUnits);
@@ -133,7 +133,7 @@ export default function SettingsPage() {
         return collection(firestore, "products");
     }, [firestore, user]);
     
-    const { data: products } = useCollection<Product>(productsCollection);
+    const { data: products } = useCollection<Product>(productsCollection, isUserLoading);
 
     const [newRate, setNewRate] = useState<number>(0);
 

@@ -56,25 +56,25 @@ const getDisplayImageUrl = (imageUrl?: string) => {
 export default function InventoryPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
 
   const productsCollection = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return collection(firestore, "products");
   }, [firestore, user]);
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollection);
+  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollection, isUserLoading);
 
   const salesCollection = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return collection(firestore, "sales");
   }, [firestore, user]);
-  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollection);
+  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollection, isUserLoading);
 
   const movementsCollection = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return collection(firestore, "inventoryMovements");
   }, [firestore, user]);
-  const { data: inventoryMovements, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsCollection);
+  const { data: inventoryMovements, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsCollection, isUserLoading);
 
   const { activeSymbol, activeRate } = useSettings();
   const [isMovementsDialogOpen, setIsMovementsDialogOpen] = useState(false);

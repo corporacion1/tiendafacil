@@ -20,7 +20,7 @@ const chatRooms = [
 ];
 
 export default function ChatPage() {
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
   const [selectedRoom, setSelectedRoom] = useState(chatRooms[0]);
@@ -32,7 +32,7 @@ export default function ChatPage() {
     return query(collection(firestore, "chats", selectedRoom.id, "messages"), orderBy("timestamp", "asc"));
   }, [firestore, user, selectedRoom.id]);
 
-  const { data: messages, isLoading } = useCollection<ChatMessage>(messagesQuery);
+  const { data: messages, isLoading } = useCollection<ChatMessage>(messagesQuery, isUserLoading);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

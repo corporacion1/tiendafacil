@@ -90,19 +90,19 @@ export default function POSPage() {
   const { toast } = useToast();
   const { settings, activeSymbol, activeRate } = useSettings();
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
 
   const productsCollection = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return collection(firestore, "products");
   }, [firestore, user]);
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollection);
+  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollection, isUserLoading);
 
   const customersCollection = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return collection(firestore, "customers");
   }, [firestore, user]);
-  const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollection);
+  const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollection, isUserLoading);
   
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -111,7 +111,7 @@ export default function POSPage() {
   
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('eventual');
   const [newCustomer, setNewCustomer] = useState({ id: '', name: '', phone: '', address: '' });
-  const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
+  const [isCustomerDialogOpen, setIsCustomerDialogOpen] useState(false);
   const [isCustomerSearchOpen, setIsCustomerSearchOpen] = useState(false);
 
   const [isProcessSaleDialogOpen, setIsProcessSaleDialogOpen] = useState(false);

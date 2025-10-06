@@ -46,7 +46,7 @@ export default function Dashboard() {
   const { activeSymbol, activeRate } = useSettings();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
 
   const cutoffDate = useMemo(() => {
     const now = new Date();
@@ -73,9 +73,9 @@ export default function Dashboard() {
     return collection(firestore, "products");
   }, [firestore, user]);
 
-  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
-  const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery, isUserLoading);
+  const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery, isUserLoading);
+  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery, isUserLoading);
 
   const filteredSales = sales || [];
   const filteredPurchases = purchases || [];
