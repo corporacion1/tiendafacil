@@ -133,16 +133,16 @@ export function useCollection<T = any>(
   const [error, setError] = useState<FirestoreError | null>(null);
 
   useEffect(() => {
-    // Structural guard: Do not proceed if user is loading or query is null.
+    // Do not proceed if user is loading OR if the query is null.
+    // This is the main guard against premature queries.
     if (isUserLoading || !memoizedTargetRefOrQuery) {
+      setIsLoading(isUserLoading);
       setData(null);
-      setIsLoading(true);
       setError(null);
       return;
     }
 
     setIsLoading(true);
-    setError(null);
 
     const unsubscribe = onSnapshot(
       memoizedTargetRefOrQuery,
@@ -176,7 +176,7 @@ export function useCollection<T = any>(
     return () => unsubscribe();
   }, [memoizedTargetRefOrQuery, isUserLoading]);
 
-  return { data, isLoading, error };
+  return { data, isLoading: isLoading || isUserLoading, error };
 }
 
 // useDoc HOOK
@@ -196,16 +196,15 @@ export function useDoc<T = any>(
   const [error, setError] = useState<FirestoreError | null>(null);
 
   useEffect(() => {
-    // Structural guard: Do not proceed if user is loading or ref is null.
+    // Do not proceed if user is loading OR if the ref is null.
     if (isUserLoading || !memoizedDocRef) {
+      setIsLoading(isUserLoading);
       setData(null);
-      setIsLoading(true);
       setError(null);
       return;
     }
 
     setIsLoading(true);
-    setError(null);
 
     const unsubscribe = onSnapshot(
       memoizedDocRef,
@@ -219,7 +218,15 @@ export function useDoc<T = any>(
         setIsLoading(false);
       },
       (err: FirestoreError) => {
-        console.error("useDoc error:", err);
+        if ('path' in memoizedDocRef) {
+            const permissionError = new FirestorePermissionError({
+                path: memoizedDocRef.path,
+                operation: 'get',
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        } else {
+            console.error("useDoc error:", err);
+        }
         setError(err);
         setData(null);
         setIsLoading(false);
@@ -229,7 +236,7 @@ export function useDoc<T = any>(
     return () => unsubscribe();
   }, [memoizedDocRef, isUserLoading]);
 
-  return { data, isLoading, error };
+  return { data, isLoading: isLoading || isUserLoading, error };
 }
 
 
