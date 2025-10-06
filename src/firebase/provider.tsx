@@ -3,18 +3,20 @@
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
-import { Firestore } from 'firebase/firestore';
+import { Firestore, Query, onSnapshot, DocumentData, FirestoreError, QuerySnapshot, CollectionReference, DocumentReference, DocumentSnapshot } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
+import { errorEmitter } from './error-emitter';
+import { FirestorePermissionError } from './errors';
 
-// This interface defines the shape of the user's authentication state.
+// USER AUTH STATE
 interface UserAuthState {
   user: User | null;
   isUserLoading: boolean;
   userError: Error | null;
 }
 
-// This interface defines the complete state managed by the Firebase context.
+// FIREBASE CONTEXT STATE
 export interface FirebaseContextState {
   areServicesAvailable: boolean;
   firebaseApp: FirebaseApp | null;
@@ -25,7 +27,7 @@ export interface FirebaseContextState {
   userError: Error | null;
 }
 
-// The props required by the FirebaseProvider component.
+// PROVIDER PROPS
 interface FirebaseProviderProps {
   children: ReactNode;
   firebaseApp: FirebaseApp;
@@ -33,13 +35,8 @@ interface FirebaseProviderProps {
   auth: Auth;
 }
 
-// React Context to hold the Firebase state.
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
-/**
- * Manages and provides Firebase services and user authentication state to the application.
- * It listens for authentication changes and updates the context accordingly.
- */
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   children,
   firebaseApp,
@@ -48,29 +45,24 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 }) => {
   const [userAuthState, setUserAuthState] = useState<UserAuthState>({
     user: null,
-    isUserLoading: true, // `isUserLoading` is true until the first auth state is determined.
+    isUserLoading: true,
     userError: null,
   });
 
-  // This effect subscribes to Firebase's authentication state changes.
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(
       auth,
       (firebaseUser) => {
-        // When the auth state is determined, update the state.
         setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
       },
       (error) => {
-        // If there's an error with the auth listener, capture it.
         console.error("FirebaseProvider: onAuthStateChanged error:", error);
         setUserAuthState({ user: null, isUserLoading: false, userError: error });
       }
     );
-    // Unsubscribe from the listener on component unmount.
     return () => unsubscribe();
-  }, [auth]); // The effect depends on the auth service instance.
+  }, [auth]);
 
-  // Memoize the context value to prevent unnecessary re-renders.
   const contextValue = useMemo((): FirebaseContextState => ({
     areServicesAvailable: true,
     firebaseApp,
@@ -87,11 +79,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   );
 };
 
-
-/**
- * A custom hook to safely access the Firebase context.
- * It throws an error if used outside of a FirebaseProvider.
- */
+// HOOKS
 function useFirebaseContext(): FirebaseContextState {
     const context = useContext(FirebaseContext);
     if (context === undefined) {
@@ -100,48 +88,153 @@ function useFirebaseContext(): FirebaseContextState {
     return context;
 }
 
-/**
- * Hook to access the Firebase App instance.
- */
 export const useFirebaseApp = (): FirebaseApp => {
   const { firebaseApp } = useFirebaseContext();
   if (!firebaseApp) throw new Error("Firebase app is not available.");
   return firebaseApp;
 };
 
-/**
- * Hook to access the Firebase Auth instance.
- */
 export const useAuth = (): Auth => {
   const { auth } = useFirebaseContext();
   if (!auth) throw new Error("Firebase Auth service is not available.");
   return auth;
 };
 
-/**
- * Hook to access the Firestore instance.
- */
 export const useFirestore = (): Firestore => {
   const { firestore } = useFirebaseContext();
   if (!firestore) throw new Error("Firestore service is not available.");
   return firestore;
 };
 
-/**
- * Hook specifically for accessing the authenticated user's state.
- */
 export const useUser = (): UserAuthState => {
   const { user, isUserLoading, userError } = useFirebaseContext();
   return { user, isUserLoading, userError };
 };
 
-// Helper type for useMemoFirebase
-type MemoFirebase<T> = T & { __memo?: boolean };
+// WithId Type
+export type WithId<T> = T & { id: string };
 
-/**
- * A wrapper around React's useMemo that tags the memoized value.
- * This is used to ensure that queries passed to custom hooks are properly memoized.
- */
+// useCollection HOOK
+export interface UseCollectionResult<T> {
+  data: WithId<T>[] | null;
+  isLoading: boolean;
+  error: FirestoreError | null;
+}
+
+export function useCollection<T = any>(
+    memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo?: boolean})  | null | undefined,
+): UseCollectionResult<T> {
+  type ResultItemType = WithId<T>;
+  type StateDataType = ResultItemType[] | null;
+
+  const { isUserLoading } = useUser();
+  const [data, setData] = useState<StateDataType>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<FirestoreError | null>(null);
+
+  useEffect(() => {
+    if (!memoizedTargetRefOrQuery || isUserLoading) {
+      setData(null);
+      setIsLoading(true);
+      setError(null);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    const unsubscribe = onSnapshot(
+      memoizedTargetRefOrQuery,
+      (snapshot: QuerySnapshot<DocumentData>) => {
+        const results: ResultItemType[] = [];
+        for (const doc of snapshot.docs) {
+          results.push({ ...(doc.data() as T), id: doc.id });
+        }
+        setData(results);
+        setError(null);
+        setIsLoading(false);
+      },
+      (err: FirestoreError) => {
+        if ('path' in memoizedTargetRefOrQuery) {
+            const permissionError = new FirestorePermissionError({
+                path: memoizedTargetRefOrQuery.path,
+                operation: 'list',
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        } else {
+             console.error("useCollection error on a complex query:", err);
+        }
+
+        setError(err);
+        setData(null);
+        setIsLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [memoizedTargetRefOrQuery, isUserLoading]);
+
+  if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
+    throw new Error('A query/reference passed to useCollection was not properly memoized using useMemoFirebase. This will cause infinite loops.');
+  }
+  return { data, isLoading, error };
+}
+
+// useDoc HOOK
+export interface UseDocResult<T> {
+  data: WithId<T> | null;
+  isLoading: boolean;
+  error: FirestoreError | null;
+}
+
+export function useDoc<T = any>(
+  memoizedDocRef: DocumentReference<DocumentData> | null | undefined,
+): UseDocResult<T> {
+  type StateDataType = WithId<T> | null;
+  const { isUserLoading } = useUser();
+  const [data, setData] = useState<StateDataType>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<FirestoreError | null>(null);
+
+  useEffect(() => {
+    if (!memoizedDocRef || isUserLoading) {
+      setData(null);
+      setIsLoading(true);
+      setError(null);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    const unsubscribe = onSnapshot(
+      memoizedDocRef,
+      (snapshot: DocumentSnapshot<DocumentData>) => {
+        if (snapshot.exists()) {
+          setData({ ...(snapshot.data() as T), id: snapshot.id });
+        } else {
+          setData(null);
+        }
+        setError(null);
+        setIsLoading(false);
+      },
+      (err: FirestoreError) => {
+        console.error("useDoc error:", err);
+        setError(err);
+        setData(null);
+        setIsLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [memoizedDocRef, isUserLoading]);
+
+  return { data, isLoading, error };
+}
+
+
+// useMemoFirebase HELPER
+type MemoFirebase<T> = T & { __memo?: boolean };
 export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | MemoFirebase<T> {
   const memoized = useMemo(factory, deps);
   if (typeof memoized === 'object' && memoized !== null) {
