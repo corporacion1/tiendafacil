@@ -442,7 +442,7 @@ export default function InventoryPage() {
       </TabsContent>
     </Tabs>
 
-    <AlertDialog open={!!productToEdit} onOpenChange={(isOpen) => !isOpen && setProductToEdit(null)}>
+    <Dialog open={!!productToEdit} onOpenChange={(isOpen) => !isOpen && setProductToEdit(null)}>
         <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
                 <DialogTitle>Editar Producto</DialogTitle>
@@ -460,7 +460,7 @@ export default function InventoryPage() {
                 )}
             </div>
         </DialogContent>
-    </AlertDialog>
+    </Dialog>
 
     <AlertDialog open={!!productToDelete} onOpenChange={(isOpen) => !isOpen && setProductToDelete(null)}>
         <AlertDialogContent>
