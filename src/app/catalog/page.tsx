@@ -142,28 +142,39 @@ export default function CatalogPage() {
 
 
     const sortedAndFilteredProducts = useMemo(() => {
-        const filtered = products.filter(product =>
+        // 1. Filter by search term and family first
+        const baseFiltered = products.filter(product =>
             (product.status === 'active' || product.status === 'promotion') &&
             (selectedFamily === 'all' || product.family === selectedFamily) &&
             (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase())))
         );
 
-        return filtered.sort((a, b) => {
-            // 1. Promotions first
-            if (a.status === 'promotion' && b.status !== 'promotion') return -1;
-            if (a.status !== 'promotion' && b.status === 'promotion') return 1;
+        // 2. Separate into categories
+        const promotions: Product[] = [];
+        const bestSellerProducts: Product[] = [];
+        const rest: Product[] = [];
 
-            // 2. Best sellers
-            const aIndex = bestSellers.indexOf(a.id);
-            const bIndex = bestSellers.indexOf(b.id);
-            if (aIndex > -1 && bIndex > -1) return aIndex - bIndex;
-            if (aIndex > -1) return -1;
-            if (bIndex > -1) return 1;
-
-            // 3. Active products (default order)
-            return 0;
+        baseFiltered.forEach(product => {
+            if (product.status === 'promotion') {
+                promotions.push(product);
+            } else {
+                // If not a promotion, check if it's a best seller
+                const bestSellerIndex = bestSellers.indexOf(product.id);
+                if (bestSellerIndex > -1) {
+                    // Add with its rank for sorting
+                    bestSellerProducts.push({ ...product, bestSellerRank: bestSellerIndex });
+                } else {
+                    rest.push(product);
+                }
+            }
         });
+        
+        // 3. Sort best sellers by their rank (lower index is better)
+        bestSellerProducts.sort((a, b) => (a as any).bestSellerRank - (b as any).bestSellerRank);
+
+        // 4. Concatenate arrays ensuring no duplicates
+        return [...promotions, ...bestSellerProducts, ...rest];
 
     }, [products, searchTerm, selectedFamily, bestSellers]);
     
@@ -358,5 +369,3 @@ export default function CatalogPage() {
         </div>
     );
 }
-
-    
