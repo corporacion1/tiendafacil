@@ -26,6 +26,18 @@ export type CartItem = {
   price: number;
 };
 
+export type PendingOrder = {
+  id: string;
+  date: string;
+  items: {
+      productId: string;
+      productName: string;
+      quantity: number;
+      price: number;
+  }[];
+  total: number;
+};
+
 export type InventoryMovement = {
   id: string;
   productName: string;

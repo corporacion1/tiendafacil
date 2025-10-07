@@ -2,7 +2,7 @@
 "use client"
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
-import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff } from "lucide-react"
+import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff, Archive } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import type { Product, CartItem, Customer, Sale, InventoryMovement, Family, Payment } from "@/lib/types";
+import type { Product, CartItem, Customer, Sale, InventoryMovement, Family, Payment, PendingOrder } from "@/lib/types";
 import { TicketPreview } from "@/components/ticket-preview";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -22,7 +22,9 @@ import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useUser } from "@/firebase";
-import { mockProducts, defaultCustomers, initialFamilies, mockSales, mockInventoryMovements, paymentMethods } from "@/lib/data";
+import { mockProducts, defaultCustomers, initialFamilies, mockSales, mockInventoryMovements, paymentMethods, pendingOrders as initialPendingOrders } from "@/lib/data";
+import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
 
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
     const { activeSymbol, activeRate } = useSettings();
@@ -71,6 +73,7 @@ export default function POSPage() {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>(initialPendingOrders);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -107,7 +110,12 @@ export default function POSPage() {
   
   const generateSaleId = () => {
     const series = settings.saleSeries || 'SALE';
-    const nextCorrelative = settings.saleCorrelative || 1;
+    const highestId = mockSales.reduce((max, sale) => {
+        const parts = sale.id.split('-');
+        const currentNum = parseInt(parts[parts.length - 1], 10);
+        return !isNaN(currentNum) && currentNum > max ? currentNum : max;
+    }, 0);
+    const nextCorrelative = highestId + 1;
     return `${series}-${String(nextCorrelative).padStart(3, '0')}`;
   };
 
@@ -396,6 +404,44 @@ export default function POSPage() {
   }, [products, searchTerm, selectedFamily]);
 
   const isNewCustomerFormDirty = newCustomer.name.trim() !== '' || newCustomer.id.trim() !== '' || newCustomer.phone.trim() !== '' || newCustomer.address.trim() !== '';
+  
+  const loadPendingOrder = (order: PendingOrder) => {
+    if (cartItems.length > 0) {
+        toast({
+            variant: "destructive",
+            title: "Carrito no está vacío",
+            description: "Vacía el carrito actual antes de cargar un pedido pendiente."
+        });
+        return;
+    }
+    const orderCartItems: CartItem[] = order.items.map(item => {
+        const product = products.find(p => p.id === item.productId);
+        if (!product) {
+            // Create a fallback product representation if not found
+            return {
+                product: {
+                    id: item.productId,
+                    name: item.productName,
+                    price: item.price,
+                    stock: 0,
+                    sku: 'N/A', cost: 0, status: 'inactive', tax1: false, tax2: false, wholesalePrice: 0,
+                },
+                quantity: item.quantity,
+                price: item.price,
+            };
+        }
+        return { product, quantity: item.quantity, price: item.price };
+    });
+
+    setCartItems(orderCartItems);
+    setPendingOrders(prev => prev.filter(p => p.id !== order.id)); // Remove from pending list
+    toast({
+        title: "Pedido Cargado",
+        description: `El pedido ${order.id} está listo para facturar.`
+    });
+    // This will close the dialog
+    document.getElementById('pending-orders-close-button')?.click();
+  };
 
   return (
     <Dialog onOpenChange={(open) => { if (!open) setProductDetails(null); setProductImageError(false); }}>
@@ -403,7 +449,61 @@ export default function POSPage() {
       <div className="grid auto-rows-max items-start gap-4 md:col-span-2 lg:gap-8">
         <Card>
           <CardHeader>
-            <CardTitle>Productos</CardTitle>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <CardTitle>Productos</CardTitle>
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <Button variant="secondary" className="w-full sm:w-auto">
+                            <Archive className="mr-2 h-4 w-4" />
+                            Pedidos Pendientes
+                            {pendingOrders.length > 0 && <Badge variant="destructive" className="ml-2">{pendingOrders.length}</Badge>}
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Pedidos Pendientes del Catálogo</DialogTitle>
+                            <DialogDescription>
+                                Aquí están los pedidos generados por los clientes desde el catálogo en línea.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4 max-h-96 overflow-y-auto">
+                             {pendingOrders.length === 0 ? (
+                                <p className="text-center text-muted-foreground py-8">No hay pedidos pendientes.</p>
+                            ) : (
+                                <div className="space-y-4">
+                                {pendingOrders.map(order => (
+                                    <div key={order.id} className="p-4 border rounded-lg">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <h4 className="font-semibold">{order.id}</h4>
+                                                <p className="text-sm text-muted-foreground">{format(new Date(order.date), 'dd/MM/yyyy HH:mm')}</p>
+                                            </div>
+                                            <Button size="sm" onClick={() => loadPendingOrder(order)}>Cargar</Button>
+                                        </div>
+                                        <Separator className="my-2" />
+                                        <ul className="text-sm space-y-1">
+                                            {order.items.map(item => (
+                                                <li key={item.productId} className="flex justify-between">
+                                                    <span>{item.quantity} x {item.productName}</span>
+                                                    <span>${(item.quantity * item.price).toFixed(2)}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                        <Separator className="my-2" />
+                                        <p className="text-right font-bold">Total: ${order.total.toFixed(2)}</p>
+                                    </div>
+                                ))}
+                                </div>
+                            )}
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild id="pending-orders-close-button">
+                                <Button variant="outline">Cerrar</Button>
+                            </DialogClose>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
             <div className="mt-4 flex gap-4">
               <Input
                 placeholder="Buscar por nombre o SKU..."

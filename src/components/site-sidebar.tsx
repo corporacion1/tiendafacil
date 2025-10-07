@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Boxes, FileText, Home, PackagePlus, Settings, ShoppingCart, Store, CreditCard } from "lucide-react";
+import { Boxes, FileText, Home, PackagePlus, Settings, ShoppingCart, Store, CreditCard, LayoutGrid } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -13,6 +13,7 @@ import {
 
 const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: Home },
+    { href: "/catalog", label: "Catálogo", icon: LayoutGrid },
     { href: "/inventory", label: "Inventario", icon: Boxes },
     { href: "/products", label: "Productos", icon: PackagePlus },
     { href: "/pos", label: "Punto de Venta", icon: ShoppingCart },

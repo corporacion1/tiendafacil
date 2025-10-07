@@ -1,5 +1,5 @@
 
-import type { Product, InventoryMovement, Sale, Unit, Family, Warehouse, Customer, Purchase, Supplier, CurrencyRate, Payment } from '@/lib/types';
+import type { Product, InventoryMovement, Sale, Unit, Family, Warehouse, Customer, Purchase, Supplier, CurrencyRate, Payment, PendingOrder } from '@/lib/types';
 import { PlaceHolderImages } from './placeholder-images';
 import { subDays, subHours } from 'date-fns';
 
@@ -79,27 +79,6 @@ export const mockProducts: Product[] = [
 ];
 
 
-export const mockSales: Sale[] = [
-    {
-        id: "SALE-001", customerId: "cust-1", customerName: "John Doe",
-        items: [ { productId: "prod-1", productName: "Tarjeta Gráfica RTX 4090", quantity: 1, price: 1799.99 } ],
-        total: 1799.99, date: subDays(new Date(), 8).toISOString(), transactionType: 'contado', status: 'paid', paidAmount: 1799.99,
-        payments: [{ id: 'pay-sale-001', amount: 1799.99, date: subDays(new Date(), 8).toISOString(), method: 'tarjeta', reference: '1234' }]
-    },
-    {
-        id: "SALE-002", customerId: "cust-2", customerName: "Jane Smith",
-        items: [ { productId: "prod-2", productName: "Procesador Intel Core i9-13900K", quantity: 1, price: 589.00 }, { productId: "prod-5", productName: "Tarjeta Madre Z790", quantity: 1, price: 349.99 } ],
-        total: 938.99, date: subDays(new Date(), 5).toISOString(), transactionType: 'credito', status: 'unpaid', paidAmount: 500,
-        payments: [{ id: 'pay-sale-002', amount: 500, date: subDays(new Date(), 4).toISOString(), method: 'pago-movil', reference: '012345' }]
-    },
-    {
-        id: "SALE-003", customerId: "eventual", customerName: "Cliente Eventual",
-        items: [ { productId: "prod-3", productName: "Memoria RAM 32GB DDR5", quantity: 2, price: 129.99 } ],
-        total: 259.98, date: subHours(new Date(), 3).toISOString(), transactionType: 'contado', status: 'paid', paidAmount: 259.98,
-        payments: [{ id: 'pay-sale-003', amount: 259.98, date: subHours(new Date(), 3).toISOString(), method: 'efectivo' }]
-    },
-];
-
 export const mockPurchases: Purchase[] = [
     {
         id: "PUR-001", supplierId: "sup-1", supplierName: "TechData Corp",
@@ -110,6 +89,27 @@ export const mockPurchases: Purchase[] = [
         id: "PUR-002", supplierId: "sup-2", supplierName: "PC Components LLC",
         items: [ { productId: "prod-2", productName: "Procesador Intel Core i9-13900K", quantity: 20, cost: 520.00 }, { productId: "prod-3", productName: "Memoria RAM 32GB DDR5", quantity: 30, cost: 100.00 } ],
         total: 13400, date: subDays(new Date(), 10).toISOString(), documentNumber: "INV-PCC-1122", responsible: "Usuario Demo",
+    },
+];
+
+export const mockSales: Sale[] = [
+    {
+        id: "SALE-001", customerId: "cust-1", customerName: "John Doe",
+        items: [ { productId: "prod-1", productName: "Tarjeta Gráfica RTX 4090", quantity: 1, price: 1799.99 } ],
+        total: 1799.99, date: subDays(new Date(), 8).toISOString(), transactionType: 'contado', status: 'paid', paidAmount: 1799.99,
+        payments: [{ id: 'pay-sale-001', amount: 1799.99, date: subDays(new Date(), 8).toISOString(), method: 'tarjeta', reference: '1234' }]
+    },
+    {
+        id: "SALE-002", customerId: "cust-2", customerName: "Jane Smith",
+        items: [ { productId: "prod-2", productName: "Procesador Intel Core i9-13900K", quantity: 1, price: 589.00 }, { productId: "prod-5", productName: "Tarjeta Madre Z790", quantity: 1, price: 349.99 } ],
+        total: 938.99, date: subDays(new Date(), 4).toISOString(), transactionType: 'credito', status: 'unpaid', paidAmount: 500,
+        payments: [{ id: 'pay-sale-002', amount: 500, date: subDays(new Date(), 4).toISOString(), method: 'pago-movil', reference: '012345' }]
+    },
+    {
+        id: "SALE-003", customerId: "eventual", customerName: "Cliente Eventual",
+        items: [ { productId: "prod-3", productName: "Memoria RAM 32GB DDR5", quantity: 2, price: 129.99 } ],
+        total: 259.98, date: subHours(new Date(), 3).toISOString(), transactionType: 'contado', status: 'paid', paidAmount: 259.98,
+        payments: [{ id: 'pay-sale-003', amount: 259.98, date: subHours(new Date(), 3).toISOString(), method: 'efectivo' }]
     },
 ];
 
@@ -137,6 +137,18 @@ export const paymentMethods = [
     { id: 'otro', name: 'Otro', requiresRef: false },
 ];
 
+// This will store orders created from the public catalog page
+export const pendingOrders: PendingOrder[] = [
+    {
+        id: 'ORD-1720101010',
+        date: subHours(new Date(), 2).toISOString(),
+        items: [
+            { productId: 'prod-7', productName: 'Tarjeta Gráfica RX 7900 XTX', quantity: 1, price: 999.99 },
+            { productId: 'prod-8', productName: 'Procesador AMD Ryzen 9 7950X', quantity: 1, price: 549.00 },
+        ],
+        total: 1548.99,
+    }
+];
 
 export function factoryReset() {
     console.log("Performing factory reset on mock data...");
@@ -147,6 +159,7 @@ export function factoryReset() {
     mockSales.length = 0;
     mockPurchases.length = 0;
     mockCurrencyRates.length = 0;
+    pendingOrders.length = 0;
     
     // Clear classification data
     initialUnits.length = 0;

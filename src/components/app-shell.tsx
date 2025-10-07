@@ -10,12 +10,12 @@ import { AuthGuard } from './auth-guard';
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // The login page does not need the main layout.
-  if (pathname === '/login') {
+  // The login and catalog pages do not need the main authenticated layout.
+  if (pathname === '/login' || pathname === '/catalog') {
     return <>{children}</>;
   }
 
-  // The main layout structure.
+  // The main layout structure for authenticated routes.
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
       <SiteSidebar />
