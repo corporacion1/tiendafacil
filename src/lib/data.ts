@@ -177,8 +177,6 @@ export function trackAdClick(adId: string) {
     };
 
     mockAdClicks.push(newClick);
-    console.log("Ad Click Tracked:", newClick);
-    console.log("Total Clicks for Ad:", mockAds[adIndex].views);
 }
 
 
