@@ -658,13 +658,6 @@ export default function POSPage() {
                 </DialogContent>
             </Dialog>
 
-            <Button className="w-full" variant="outline" size="lg" onClick={() => {
-              setTicketType('sale');
-              setIsPrintPreviewOpen(true);
-            }} disabled={cartItems.length === 0 && !lastSale}>
-              <Printer className="mr-2 h-4 w-4" />
-              Imprimir Ticket
-            </Button>
             <Button className="w-full" variant="secondary" size="lg" onClick={handlePrintQuote} disabled={cartItems.length === 0}>
                 <FileText className="mr-2 h-4 w-4" />
                 Imprimir Cotización
