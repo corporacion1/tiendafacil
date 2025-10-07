@@ -514,7 +514,7 @@ export default function ReportsPage() {
                                 <TableCell>{movement.productName}</TableCell>
                                 <TableCell>
                                     <Badge variant={movement.type === "sale" ? "destructive" : movement.type === "purchase" ? "secondary" : "outline"}>
-                                        {movement.type === 'sale' ? 'Salida' : movement.type === 'purchase' ? 'Entrada' : 'Ajuste'}
+                                        {movement.type === 'sale' ? 'Salida' : movement.type === 'purchase' ? 'Entrada(Compra)' : 'Ajuste'}
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="hidden md:table-cell">{format(getDate(movement.date), 'dd/MM/yyyy')}</TableCell>
@@ -653,5 +653,7 @@ export default function ReportsPage() {
     </>
   );
 }
+
+    
 
     

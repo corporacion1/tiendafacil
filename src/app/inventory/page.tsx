@@ -268,7 +268,7 @@ export default function InventoryPage() {
   const getMovementLabel = (type: 'sale' | 'purchase' | 'adjustment') => {
     switch (type) {
         case 'sale': return 'Salida(Descargo)';
-        case 'purchase': return 'Entrada(carga)';
+        case 'purchase': return 'Entrada(Compra)';
         case 'adjustment': return 'Ajuste(Reemplaza Stock)';
         default: return type;
     }
@@ -516,7 +516,7 @@ export default function InventoryPage() {
                                 <SelectValue placeholder="Selecciona un tipo" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="purchase">Entrada(carga)</SelectItem>
+                                <SelectItem value="purchase">Entrada(Compra)</SelectItem>
                                 <SelectItem value="sale">Salida(Descargo)</SelectItem>
                                 <SelectItem value="adjustment">Ajuste(Reemplaza Stock)</SelectItem>
                             </SelectContent>
@@ -641,3 +641,5 @@ export default function InventoryPage() {
     </>
   );
 }
+
+    
