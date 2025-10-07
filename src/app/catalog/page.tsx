@@ -99,27 +99,31 @@ export default function CatalogPage() {
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
     useEffect(() => {
-        // Initialize audio only on client
         if (typeof window !== 'undefined') {
             audioRef.current = new Audio("https://stream.zeno.fm/fvr822g62d0uv");
             audioRef.current.loop = true;
+
+            const playAudio = () => {
+                if (audioRef.current && audioRef.current.paused) {
+                    audioRef.current.play().catch(error => {
+                        console.error("Audio playback failed, will retry on next interaction.", error);
+                    });
+                }
+                window.removeEventListener('click', playAudio);
+                window.removeEventListener('keydown', playAudio);
+            };
+
+            window.addEventListener('click', playAudio);
+            window.addEventListener('keydown', playAudio);
+
+            return () => {
+                window.removeEventListener('click', playAudio);
+                window.removeEventListener('keydown', playAudio);
+                if (audioRef.current) {
+                    audioRef.current.pause();
+                }
+            };
         }
-
-        // Play on first user interaction
-        const handleFirstInteraction = () => {
-            if (audioRef.current && audioRef.current.paused) {
-                audioRef.current.play().catch(error => console.error("Audio playback failed:", error));
-            }
-            // Remove listener after first interaction
-            window.removeEventListener('click', handleFirstInteraction);
-        };
-        
-        window.addEventListener('click', handleFirstInteraction);
-
-        return () => {
-            window.removeEventListener('click', handleFirstInteraction);
-            audioRef.current?.pause();
-        };
     }, []);
 
 
@@ -686,7 +690,3 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
-
-    
-
-    

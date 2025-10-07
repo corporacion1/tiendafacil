@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { Boxes, FileText, Home, PackagePlus, PanelLeft, Settings, ShoppingCart, Store, CreditCard, Coins, UserCircle, LogOut, LayoutGrid, Music, VolumeX } from "lucide-react";
+import { Boxes, FileText, Home, PackagePlus, PanelLeft, Settings, ShoppingCart, Store, CreditCard, Coins, UserCircle, LogOut, LayoutGrid } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,20 +45,6 @@ export function SiteHeader() {
   const pathname = usePathname();
   const router = useRouter();
   const { settings, activeCurrency, toggleDisplayCurrency } = useSettings();
-  
-  const [isMuted, setIsMuted] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  useEffect(() => {
-    // This logic is now handled in the catalog page
-  }, []);
-
-  const toggleMute = () => {
-     if (audioRef.current) {
-        audioRef.current.muted = !audioRef.current.muted;
-        setIsMuted(audioRef.current.muted);
-    }
-  };
   
   // Mock user for offline mode
   const user = {
@@ -133,18 +119,6 @@ export function SiteHeader() {
               <p>Cambiar a {inactiveCurrencyName}</p>
             </TooltipContent>
           </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={toggleMute}>
-                    {isMuted ? <VolumeX /> : <Music />}
-                    <span className="sr-only">Toggle Music</span>
-                </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-                <p>{isMuted ? 'Activar sonido' : 'Silenciar'}</p>
-            </TooltipContent>
-          </Tooltip>
         </TooltipProvider>
 
         <ThemeToggle />
@@ -173,5 +147,3 @@ export function SiteHeader() {
     </header>
   );
 }
-
-    
