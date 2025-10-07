@@ -35,6 +35,54 @@
       "description": "A carton of eggs.",
       "imageUrl": "https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?q=80&w=1080",
       "imageHint": "egg carton"
+    },
+    {
+      "id": "7",
+      "description": "A bag of coffee beans.",
+      "imageUrl": "https://images.unsplash.com/photo-1599158998239-555554d19335?q=80&w=1080",
+      "imageHint": "coffee beans"
+    },
+    {
+      "id": "8",
+      "description": "A can of tuna.",
+      "imageUrl": "https://images.unsplash.com/photo-1625164678170-761b0f5e4b6c?q=80&w=1080",
+      "imageHint": "tuna can"
+    },
+    {
+      "id": "9",
+      "description": "A package of pasta.",
+      "imageUrl": "https://images.unsplash.com/photo-1621996346565-e326e7e2444e?q=80&w=1080",
+      "imageHint": "pasta package"
+    },
+    {
+      "id": "10",
+      "description": "A jar of tomato sauce.",
+      "imageUrl": "https://images.unsplash.com/photo-1580991472533-356d2a819a16?q=80&w=1080",
+      "imageHint": "tomato sauce"
+    },
+    {
+      "id": "11",
+      "description": "A bar of soap.",
+      "imageUrl": "https://images.unsplash.com/photo-1600950346366-c73a113a3b5a?q=80&w=1080",
+      "imageHint": "soap bar"
+    },
+    {
+      "id": "12",
+      "description": "A bottle of shampoo.",
+      "imageUrl": "https://images.unsplash.com/photo-1556912922-3594b281c7e9?q=80&w=1080",
+      "imageHint": "shampoo bottle"
+    },
+    {
+      "id": "13",
+      "description": "A bottle of detergent.",
+      "imageUrl": "https://images.unsplash.com/photo-1624322476569-6d165f12443a?q=80&w=1080",
+      "imageHint": "detergent bottle"
+    },
+    {
+      "id": "14",
+      "description": "A bag of rice.",
+      "imageUrl": "https://images.unsplash.com/photo-1586201375765-c124a953b6ab?q=80&w=1080",
+      "imageHint": "rice bag"
     }
   ]
 }
