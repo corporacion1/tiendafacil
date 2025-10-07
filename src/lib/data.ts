@@ -47,7 +47,7 @@ export const mockProducts: Product[] = [
     imageUrl: PlaceHolderImages.find(p => p.id === '2')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '2')?.imageHint,
   },
   {
-    id: "prod-3", name: "Memoria RAM 32GB DDR5", sku: "RAM-DDR5-32G-03", stock: 50, price: 129.99, wholesalePrice: 120.00, cost: 100.00, status: "active", tax1: true, tax2: false, unit: "Paquete", family: "Memoria RAM", warehouse: "Almacén Principal",
+    id: "prod-3", name: "Memoria RAM 32GB DDR5", sku: "RAM-DDR5-32G-03", stock: 50, price: 129.99, wholesalePrice: 120.00, cost: 100.00, status: "promotion", tax1: true, tax2: false, unit: "Paquete", family: "Memoria RAM", warehouse: "Almacén Principal",
     description: "Kit de 2x16GB de memoria RAM DDR5 a 6000MHz.",
     imageUrl: PlaceHolderImages.find(p => p.id === '3')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '3')?.imageHint,
   },
@@ -67,7 +67,7 @@ export const mockProducts: Product[] = [
     imageUrl: PlaceHolderImages.find(p => p.id === '6')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '6')?.imageHint,
   },
   {
-    id: "prod-7", name: "Tarjeta Gráfica RX 7900 XTX", sku: "AMD-RX7900XTX-07", stock: 20, price: 999.99, wholesalePrice: 950.00, cost: 880.00, status: "active", tax1: true, tax2: true, unit: "Unidad", family: "Tarjetas Gráficas", warehouse: "Almacén Principal",
+    id: "prod-7", name: "Tarjeta Gráfica RX 7900 XTX", sku: "AMD-RX7900XTX-07", stock: 20, price: 999.99, wholesalePrice: 950.00, cost: 880.00, status: "promotion", tax1: true, tax2: true, unit: "Unidad", family: "Tarjetas Gráficas", warehouse: "Almacén Principal",
     description: "GPU de alta gama de AMD, excelente para gaming en 4K.",
     imageUrl: PlaceHolderImages.find(p => p.id === '7')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '7')?.imageHint,
   },
@@ -111,6 +111,12 @@ export const mockSales: Sale[] = [
         total: 259.98, date: subHours(new Date(), 3).toISOString(), transactionType: 'contado', status: 'paid', paidAmount: 259.98,
         payments: [{ id: 'pay-sale-003', amount: 259.98, date: subHours(new Date(), 3).toISOString(), method: 'efectivo' }]
     },
+    {
+        id: "SALE-004", customerId: "cust-1", customerName: "John Doe",
+        items: [ { productId: "prod-7", productName: "Tarjeta Gráfica RX 7900 XTX", quantity: 1, price: 999.99 } ],
+        total: 999.99, date: subHours(new Date(), 20).toISOString(), transactionType: 'contado', status: 'paid', paidAmount: 999.99,
+        payments: [{ id: 'pay-sale-004', amount: 999.99, date: subHours(new Date(), 20).toISOString(), method: 'zelle' }]
+    },
 ];
 
 export const mockInventoryMovements: InventoryMovement[] = [
@@ -138,17 +144,7 @@ export const paymentMethods = [
 ];
 
 // This will store orders created from the public catalog page
-export const pendingOrders: PendingOrder[] = [
-    {
-        id: 'ORD-1720101010',
-        date: subHours(new Date(), 2).toISOString(),
-        items: [
-            { productId: 'prod-7', productName: 'Tarjeta Gráfica RX 7900 XTX', quantity: 1, price: 999.99 },
-            { productId: 'prod-8', productName: 'Procesador AMD Ryzen 9 7950X', quantity: 1, price: 549.00 },
-        ],
-        total: 1548.99,
-    }
-];
+export const pendingOrders: PendingOrder[] = [];
 
 export function factoryReset() {
     console.log("Performing factory reset on mock data...");

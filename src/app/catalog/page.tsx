@@ -3,22 +3,25 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid, Instagram, Star, Search } from "lucide-react";
+import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid, Instagram, Star, Search, UserPlus, QrCode } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
+import QRCode from "qrcode";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import type { Product, CartItem, Sale } from "@/lib/types";
-import { mockProducts, initialFamilies, pendingOrders, mockSales } from "@/lib/data";
+import type { Product, CartItem, Sale, Customer } from "@/lib/types";
+import { mockProducts, initialFamilies, pendingOrders, mockSales, defaultCustomers } from "@/lib/data";
 import { useSettings } from "@/contexts/settings-context";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 
 const CatalogProductCard = ({ product, onAddToCart }: { product: Product; onAddToCart: (p: Product) => void; }) => {
@@ -75,10 +78,17 @@ export default function CatalogPage() {
     const { toast } = useToast();
     const [products, setProducts] = useState<Product[]>([]);
     const [sales, setSales] = useState<Sale[]>([]);
+    const [customers, setCustomers] = useState<Customer[]>(defaultCustomers);
     const [isLoading, setIsLoading] = useState(true);
     
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
     const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Order generation state
+    const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
+    const [newCustomer, setNewCustomer] = useState({ name: '', phone: '' });
+    const [lastOrderId, setLastOrderId] = useState<string | null>(null);
+    const [qrCodeUrl, setQrCodeUrl] = useState('');
 
     useEffect(() => {
         const INACTIVITY_TIMEOUT = 5000; // 5 seconds
@@ -87,13 +97,12 @@ export default function CatalogPage() {
             if (scrollIntervalRef.current) return;
             scrollIntervalRef.current = setInterval(() => {
                 if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
-                    // Reached bottom, stop scrolling
                     if (scrollIntervalRef.current) clearInterval(scrollIntervalRef.current);
                     scrollIntervalRef.current = null;
                 } else {
-                    window.scrollBy({ top: 10, behavior: 'smooth' });
+                    window.scrollBy({ top: 30, behavior: 'smooth' });
                 }
-            }, 30); // Adjust for scroll speed
+            }, 30);
         };
 
         const stopAutoScroll = () => {
@@ -111,15 +120,13 @@ export default function CatalogPage() {
             inactivityTimerRef.current = setTimeout(startAutoScroll, INACTIVITY_TIMEOUT);
         };
         
-        // Listen for user activity
         window.addEventListener('mousemove', resetInactivityTimer);
         window.addEventListener('scroll', resetInactivityTimer);
         window.addEventListener('keydown', resetInactivityTimer);
 
-        resetInactivityTimer(); // Initial call
+        resetInactivityTimer();
 
         return () => {
-            // Cleanup on component unmount
             stopAutoScroll();
             if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
             window.removeEventListener('mousemove', resetInactivityTimer);
@@ -193,7 +200,6 @@ export default function CatalogPage() {
 
 
     const sortedAndFilteredProducts = useMemo(() => {
-        // 1. Filter by search term and family first
         const baseFiltered = products.filter(product =>
             (product.status === 'active' || product.status === 'promotion') &&
             (selectedFamily === 'all' || product.family === selectedFamily) &&
@@ -201,7 +207,6 @@ export default function CatalogPage() {
             (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase())))
         );
 
-        // 2. Separate into categories
         const promotions: Product[] = [];
         const bestSellerProducts: Product[] = [];
         const rest: Product[] = [];
@@ -210,36 +215,56 @@ export default function CatalogPage() {
             if (product.status === 'promotion') {
                 promotions.push(product);
             } else {
-                // If not a promotion, check if it's a best seller
                 const bestSellerIndex = bestSellers.indexOf(product.id);
                 if (bestSellerIndex > -1) {
-                    // Add with its rank for sorting
-                    bestSellerProducts.push({ ...product, bestSellerRank: bestSellerIndex });
+                    bestSellerProducts.push({ ...product, bestSellerRank: bestSellerIndex } as Product & { bestSellerRank: number });
                 } else {
                     rest.push(product);
                 }
             }
         });
         
-        // 3. Sort best sellers by their rank (lower index is better)
         bestSellerProducts.sort((a, b) => (a as any).bestSellerRank - (b as any).bestSellerRank);
+        
+        const finalSet = new Set<Product>();
+        [...promotions, ...bestSellerProducts, ...rest].forEach(p => finalSet.add(p));
 
-        // 4. Concatenate arrays ensuring no duplicates
-        return [...promotions, ...bestSellerProducts, ...rest];
-
+        return Array.from(finalSet);
     }, [products, searchTerm, selectedFamily, bestSellers]);
     
     const familyFilters = ["all", ...initialFamilies.map(f => f.name)];
     
-    const generateOrder = () => {
+    const handleOpenOrderDialog = () => {
         if(cart.length === 0) {
             toast({ variant: 'destructive', title: 'Tu pedido está vacío' });
             return;
         }
+        setIsOrderDialogOpen(true);
+    };
 
+    const handleGenerateOrder = async () => {
+        if (newCustomer.name.trim() === '' || newCustomer.phone.trim() === '') {
+            toast({ variant: 'destructive', title: 'Datos de cliente requeridos' });
+            return;
+        }
+
+        let customer = customers.find(c => c.phone === newCustomer.phone);
+        if (!customer) {
+            customer = {
+                id: `cust-${Date.now()}`,
+                name: newCustomer.name,
+                phone: newCustomer.phone
+            };
+            defaultCustomers.push(customer);
+            setCustomers([...defaultCustomers]);
+        }
+
+        const newOrderId = `ORD-${Date.now()}`;
         const newOrder = {
-            id: `ORD-${Date.now()}`,
+            id: newOrderId,
             date: new Date().toISOString(),
+            customerName: customer.name,
+            customerPhone: customer.phone,
             items: cart.map(item => ({
                 productId: item.product.id,
                 productName: item.product.name,
@@ -251,14 +276,24 @@ export default function CatalogPage() {
         
         pendingOrders.unshift(newOrder);
 
+        try {
+            const url = await QRCode.toDataURL(newOrderId);
+            setQrCodeUrl(url);
+        } catch (err) {
+            console.error(err);
+            toast({ variant: 'destructive', title: 'Error al generar QR' });
+        }
+
+        setLastOrderId(newOrderId);
+        setIsOrderDialogOpen(false);
+        setNewCustomer({ name: '', phone: '' });
+        setCart([]);
+        document.getElementById('cart-close-button')?.click();
+
         toast({
             title: "¡Pedido Generado!",
-            description: "Tu pedido ha sido enviado. Contáctanos para finalizar la compra.",
+            description: "Muestra el código QR para facturar.",
         });
-
-        setCart([]);
-        // This will close the sheet
-        document.getElementById('cart-close-button')?.click();
     };
 
     return (
@@ -321,7 +356,7 @@ export default function CatalogPage() {
                                             <span>Subtotal</span>
                                             <span>${subtotal.toFixed(2)}</span>
                                         </div>
-                                        <Button size="lg" className="w-full" onClick={generateOrder}>
+                                        <Button size="lg" className="w-full" onClick={handleOpenOrderDialog}>
                                             <Send className="mr-2" /> Generar Pedido
                                         </Button>
                                         <SheetClose id="cart-close-button" className="hidden" />
@@ -402,6 +437,56 @@ export default function CatalogPage() {
                     </div>
                 )}
             </main>
+
+            {/* Customer Data and Order Dialog */}
+            <Dialog open={isOrderDialogOpen} onOpenChange={setIsOrderDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Completa tu Pedido</DialogTitle>
+                        <DialogDescription>
+                            Necesitamos tus datos para registrar el pedido.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="customer-name" className="text-right">Nombre*</Label>
+                            <Input id="customer-name" value={newCustomer.name} onChange={(e) => setNewCustomer(prev => ({ ...prev, name: e.target.value }))} className="col-span-3" placeholder="Tu nombre completo" required />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="customer-phone" className="text-right">Teléfono*</Label>
+                            <Input id="customer-phone" value={newCustomer.phone} onChange={(e) => setNewCustomer(prev => ({ ...prev, phone: e.target.value }))} className="col-span-3" placeholder="Tu número de teléfono" required/>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
+                        <Button onClick={handleGenerateOrder} disabled={!newCustomer.name || !newCustomer.phone}>Confirmar Pedido</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+             {/* QR Code Dialog */}
+            <Dialog open={!!lastOrderId} onOpenChange={(isOpen) => !isOpen && setLastOrderId(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>¡Pedido Generado con Éxito!</DialogTitle>
+                        <DialogDescription>
+                            Presenta este código QR en caja para facturar tu pedido. Tu ID de pedido es: <strong>{lastOrderId}</strong>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex items-center justify-center p-4">
+                        {qrCodeUrl ? (
+                            <Image src={qrCodeUrl} alt={`Código QR para el pedido ${lastOrderId}`} width={256} height={256} />
+                        ) : (
+                            <p>Generando código QR...</p>
+                        )}
+                    </div>
+                    <DialogFooter>
+                         <DialogClose asChild>
+                            <Button>Cerrar</Button>
+                        </DialogClose>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
                  <Button asChild size="icon" className="rounded-full h-14 w-14 bg-[#25D366] hover:bg-[#128C7E] shadow-lg">

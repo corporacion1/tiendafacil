@@ -29,6 +29,8 @@ export type CartItem = {
 export type PendingOrder = {
   id: string;
   date: string;
+  customerName: string;
+  customerPhone: string;
   items: {
       productId: string;
       productName: string;

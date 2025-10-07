@@ -2,7 +2,7 @@
 "use client"
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
-import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff, Archive } from "lucide-react"
+import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff, Archive, QrCode } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -75,6 +75,8 @@ export default function POSPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>(initialPendingOrders);
   const [isLoading, setIsLoading] = useState(true);
+  
+  const [scannedOrderId, setScannedOrderId] = useState('');
 
   useEffect(() => {
     // Simulate fetching data for offline mode
@@ -425,7 +427,7 @@ export default function POSPage() {
                     name: item.productName,
                     price: item.price,
                     stock: 0,
-                    sku: 'N/A', cost: 0, status: 'inactive', tax1: false, tax2: false, wholesalePrice: 0, promotion: false,
+                    sku: 'N/A', cost: 0, status: 'inactive', tax1: false, tax2: false, wholesalePrice: 0,
                 } as Product,
                 quantity: item.quantity,
                 price: item.price,
@@ -435,6 +437,21 @@ export default function POSPage() {
     });
 
     setCartItems(orderCartItems);
+
+    const customer = customers.find(c => c.phone === order.customerPhone);
+    if(customer) {
+        setSelectedCustomerId(customer.id);
+    } else {
+        const newCustomerFromOrder: Customer = {
+            id: `cust-${Date.now()}`,
+            name: order.customerName,
+            phone: order.customerPhone,
+        }
+        defaultCustomers.push(newCustomerFromOrder);
+        setCustomers([...defaultCustomers]);
+        setSelectedCustomerId(newCustomerFromOrder.id);
+    }
+
     setPendingOrders(prev => prev.filter(p => p.id !== order.id)); // Remove from pending list
     toast({
         title: "Pedido Cargado",
@@ -442,6 +459,21 @@ export default function POSPage() {
     });
     // This will close the dialog
     document.getElementById('pending-orders-close-button')?.click();
+  };
+
+  const loadOrderById = () => {
+    if (cartItems.length > 0) {
+        toast({ variant: "destructive", title: "Carrito no está vacío" });
+        return;
+    }
+    const order = pendingOrders.find(o => o.id === scannedOrderId);
+    if (order) {
+        loadPendingOrder(order);
+        setScannedOrderId('');
+        document.getElementById('scan-order-close-button')?.click();
+    } else {
+        toast({ variant: "destructive", title: "Pedido no encontrado" });
+    }
   };
 
   return (
@@ -452,58 +484,89 @@ export default function POSPage() {
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <CardTitle>Productos</CardTitle>
-                <Dialog>
-                    <DialogTrigger asChild>
-                        <Button variant="secondary" className="w-full sm:w-auto">
-                            <Archive className="mr-2 h-4 w-4" />
-                            Pedidos Pendientes
-                            {pendingOrders.length > 0 && <Badge variant="destructive" className="ml-2">{pendingOrders.length}</Badge>}
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Pedidos Pendientes del Catálogo</DialogTitle>
-                            <DialogDescription>
-                                Aquí están los pedidos generados por los clientes desde el catálogo en línea.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="py-4 max-h-96 overflow-y-auto">
-                             {pendingOrders.length === 0 ? (
-                                <p className="text-center text-muted-foreground py-8">No hay pedidos pendientes.</p>
-                            ) : (
-                                <div className="space-y-4">
-                                {pendingOrders.map(order => (
-                                    <div key={order.id} className="p-4 border rounded-lg">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <h4 className="font-semibold">{order.id}</h4>
-                                                <p className="text-sm text-muted-foreground">{format(new Date(order.date), 'dd/MM/yyyy HH:mm')}</p>
+                <div className="flex gap-2">
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button variant="outline">
+                                <QrCode className="mr-2 h-4 w-4" />
+                                Escanear Pedido
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Cargar Pedido por ID</DialogTitle>
+                                <DialogDescription>
+                                    Ingresa el ID del pedido (obtenido del código QR) para cargarlo en el carrito.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="flex gap-2 py-4">
+                                <Input 
+                                    placeholder="ORD-..." 
+                                    value={scannedOrderId} 
+                                    onChange={(e) => setScannedOrderId(e.target.value)} 
+                                />
+                                <Button onClick={loadOrderById} disabled={!scannedOrderId}>Cargar</Button>
+                            </div>
+                             <DialogFooter>
+                                <DialogClose asChild id="scan-order-close-button">
+                                    <Button variant="outline">Cerrar</Button>
+                                </DialogClose>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                    <Dialog>
+                        <DialogTrigger asChild>
+                            <Button variant="secondary">
+                                <Archive className="mr-2 h-4 w-4" />
+                                Pedidos Pendientes
+                                {pendingOrders.length > 0 && <Badge variant="destructive" className="ml-2">{pendingOrders.length}</Badge>}
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Pedidos Pendientes del Catálogo</DialogTitle>
+                                <DialogDescription>
+                                    Aquí están los pedidos generados por los clientes desde el catálogo en línea.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="py-4 max-h-96 overflow-y-auto">
+                                {pendingOrders.length === 0 ? (
+                                    <p className="text-center text-muted-foreground py-8">No hay pedidos pendientes.</p>
+                                ) : (
+                                    <div className="space-y-4">
+                                    {pendingOrders.map(order => (
+                                        <div key={order.id} className="p-4 border rounded-lg">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h4 className="font-semibold">{order.id}</h4>
+                                                    <p className="text-sm text-muted-foreground">{order.customerName} - {format(new Date(order.date), 'dd/MM/yyyy HH:mm')}</p>
+                                                </div>
+                                                <Button size="sm" onClick={() => loadPendingOrder(order)}>Cargar</Button>
                                             </div>
-                                            <Button size="sm" onClick={() => loadPendingOrder(order)}>Cargar</Button>
+                                            <Separator className="my-2" />
+                                            <ul className="text-sm space-y-1">
+                                                {order.items.map(item => (
+                                                    <li key={item.productId} className="flex justify-between">
+                                                        <span>{item.quantity} x {item.productName}</span>
+                                                        <span>${(item.quantity * item.price).toFixed(2)}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                            <Separator className="my-2" />
+                                            <p className="text-right font-bold">Total: ${order.total.toFixed(2)}</p>
                                         </div>
-                                        <Separator className="my-2" />
-                                        <ul className="text-sm space-y-1">
-                                            {order.items.map(item => (
-                                                <li key={item.productId} className="flex justify-between">
-                                                    <span>{item.quantity} x {item.productName}</span>
-                                                    <span>${(item.quantity * item.price).toFixed(2)}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                        <Separator className="my-2" />
-                                        <p className="text-right font-bold">Total: ${order.total.toFixed(2)}</p>
+                                    ))}
                                     </div>
-                                ))}
-                                </div>
-                            )}
-                        </div>
-                        <DialogFooter>
-                            <DialogClose asChild id="pending-orders-close-button">
-                                <Button variant="outline">Cerrar</Button>
-                            </DialogClose>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
+                                )}
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild id="pending-orders-close-button">
+                                    <Button variant="outline">Cerrar</Button>
+                                </DialogClose>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
             <div className="mt-4 flex gap-4">
               <Input
@@ -896,5 +959,3 @@ export default function POSPage() {
   </Dialog>
   );
 }
-
-    
