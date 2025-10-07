@@ -22,6 +22,7 @@ import { useSettings } from "@/contexts/settings-context";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { getDisplayImageUrl } from "@/lib/utils";
 import { DatePicker } from "./ui/date-picker";
+import { MultiSelect } from "./ui/multi-select";
 
 
 const adSchema = z.object({
@@ -33,7 +34,7 @@ const adSchema = z.object({
   description: z.string().optional(),
   imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
   imageHint: z.string().optional(),
-  targetBusinessType: z.string().min(1, "El tipo de negocio de destino es requerido."),
+  targetBusinessTypes: z.array(z.string()).min(1, "Debes seleccionar al menos un tipo de negocio."),
   expiryDate: z.string().optional(),
 });
 
@@ -46,7 +47,7 @@ interface AdFormProps {
 }
 
 const getInitialValues = (ad?: Ad): AdFormValues => {
-    return ad ? { ...ad } : {
+    return ad ? { ...ad, targetBusinessTypes: ad.targetBusinessTypes || [] } : {
         name: "",
         sku: "",
         price: 0,
@@ -54,7 +55,7 @@ const getInitialValues = (ad?: Ad): AdFormValues => {
         imageUrl: '',
         description: '',
         imageHint: '',
-        targetBusinessType: '',
+        targetBusinessTypes: [],
         expiryDate: '',
     };
 };
@@ -201,28 +202,20 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
                     </FormItem>
                   )}
                 />
-                 <FormField
+                <FormField
                     control={form.control}
-                    name="targetBusinessType"
+                    name="targetBusinessTypes"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Tipo de Negocio de Destino</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Selecciona un tipo de negocio" />
-                                    </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    {businessCategories.map(category => (
-                                        <SelectItem key={category} value={category}>
-                                            {category}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <FormLabel>Tipos de Negocio de Destino</FormLabel>
+                             <MultiSelect
+                                options={businessCategories.map(cat => ({ value: cat, label: cat }))}
+                                selected={field.value}
+                                onChange={field.onChange}
+                                placeholder="Selecciona uno o más tipos..."
+                            />
                              <FormDescription>
-                                El anuncio se mostrará en tiendas de este tipo.
+                                El anuncio se mostrará en tiendas de estos tipos.
                             </FormDescription>
                             <FormMessage />
                         </FormItem>

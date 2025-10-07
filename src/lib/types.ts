@@ -147,7 +147,7 @@ export type Ad = {
   imageHint?: string;
   views: number;
   status: 'active' | 'inactive';
-  targetBusinessType: string;
+  targetBusinessTypes: string[];
   expiryDate?: string;
 };
 

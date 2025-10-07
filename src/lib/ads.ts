@@ -11,11 +11,11 @@ export const mockAds: Ad[] = [
     name: "Servicio Técnico Especializado",
     description: "Reparamos tu PC con los mejores componentes.",
     price: 0,
-    imageUrl: "https://images.unsplash.com/photo-1576680590355-32033c563339?q=80&w=600&auto=format&fit=crop",
+    imageUrl: "https://images.unsplash.com/photo-1593344484962-796b02d7a21f?q=80&w=600&auto=format&fit=crop",
     imageHint: "computer repair",
     views: 1024,
     status: 'active',
-    targetBusinessType: 'Tecnologia',
+    targetBusinessTypes: ['Tecnologia', 'Servicios Profesionales'],
     expiryDate: addDays(new Date(), 30).toISOString(),
   },
   {
@@ -28,7 +28,7 @@ export const mockAds: Ad[] = [
     imageHint: "gaming pc",
     views: 512,
     status: 'active',
-    targetBusinessType: 'Tecnologia',
+    targetBusinessTypes: ['Tecnologia'],
     expiryDate: addDays(new Date(), 60).toISOString(),
   },
   {
@@ -37,11 +37,11 @@ export const mockAds: Ad[] = [
     name: "20% de Descuento en Vitaminas",
     description: "Cuida tu salud con nuestras vitaminas en oferta.",
     price: 0,
-    imageUrl: "https://images.unsplash.com/photo-1607619056574-7d8d3ee536b2?q=80&w=600&auto=format&fit=crop",
+    imageUrl: "https://images.unsplash.com/photo-1576092762791-d0e8ad12dd4f?q=80&w=600&auto=format&fit=crop",
     imageHint: "vitamins pharmacy",
     views: 840,
     status: 'active',
-    targetBusinessType: 'Salud y Belleza',
+    targetBusinessTypes: ['Salud y Belleza'],
     expiryDate: addDays(new Date(), 45).toISOString(),
   },
   {
@@ -54,7 +54,7 @@ export const mockAds: Ad[] = [
     imageHint: "supermarket groceries",
     views: 1230,
     status: 'active',
-    targetBusinessType: 'Supermercado',
+    targetBusinessTypes: ['Supermercado'],
     expiryDate: addDays(new Date(), 20).toISOString(),
   },
   {
@@ -67,7 +67,7 @@ export const mockAds: Ad[] = [
     imageHint: "expired sale",
     views: 2048,
     status: 'active', // Will be automatically set to inactive
-    targetBusinessType: 'Tecnologia',
+    targetBusinessTypes: ['Tecnologia'],
     expiryDate: subDays(new Date(), 5).toISOString(),
   },
 ];
