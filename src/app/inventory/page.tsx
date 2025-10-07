@@ -266,6 +266,69 @@ export default function InventoryPage() {
 
   const isMovementFormValid = movementProduct && movementType && movementQuantity > 0 && movementResponsible.trim() !== '';
 
+  const renderProductsTable = (productsToRender: Product[]) => (
+    <Card>
+      <CardHeader>
+        <div className="flex justify-between items-center">
+          <div>
+            <CardTitle>Inventario de Productos</CardTitle>
+            <CardDescription>Administra y consulta tu inventario.</CardDescription>
+          </div>
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Buscar por nombre o SKU..."
+              className="pl-8 sm:w-full"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {isLoading && <p>Cargando productos...</p>}
+        {!isLoading && (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="hidden w-[64px] sm:table-cell">
+                  <span className="sr-only">Imagen</span>
+                </TableHead>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="hidden md:table-cell">Precio Detal</TableHead>
+                <TableHead className="hidden md:table-cell">Precio Mayor</TableHead>
+                <TableHead className="hidden md:table-cell">Stock</TableHead>
+                <TableHead>
+                  <span className="sr-only">Actions</span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {productsToRender.map((product) => (
+                <ProductRow
+                  key={product.id}
+                  product={product}
+                  activeSymbol={activeSymbol}
+                  activeRate={activeRate}
+                  handleEdit={handleEdit}
+                  handleViewMovements={handleViewMovements}
+                  setProductToDelete={setProductToDelete}
+                />
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+      <CardFooter>
+        <div className="text-xs text-muted-foreground">
+          Mostrando <strong>1-{productsToRender.length}</strong> de <strong>{products.length}</strong> productos
+        </div>
+      </CardFooter>
+    </Card>
+  );
+
   return (
     <>
     <Tabs defaultValue="all">
@@ -381,71 +444,13 @@ export default function InventoryPage() {
         </div>
       </div>
       <TabsContent value="all">
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-center">
-                <div>
-                    <CardTitle>Inventario de Productos</CardTitle>
-                    <CardDescription>
-                    Administra y consulta tu inventario.
-                    </CardDescription>
-                </div>
-                <div className="relative w-full max-w-sm">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                    type="search"
-                    placeholder="Buscar por nombre o SKU..."
-                    className="pl-8 sm:w-full"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading && <p>Cargando productos...</p>}
-            {!isLoading && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="hidden w-[64px] sm:table-cell">
-                    <span className="sr-only">Imagen</span>
-                  </TableHead>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead className="hidden md:table-cell">Precio Detal</TableHead>
-                  <TableHead className="hidden md:table-cell">Precio Mayor</TableHead>
-                  <TableHead className="hidden md:table-cell">
-                    Stock
-                  </TableHead>
-                  <TableHead>
-                    <span className="sr-only">Actions</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredProducts.map((product) => (
-                    <ProductRow
-                        key={product.id}
-                        product={product}
-                        activeSymbol={activeSymbol}
-                        activeRate={activeRate}
-                        handleEdit={handleEdit}
-                        handleViewMovements={handleViewMovements}
-                        setProductToDelete={setProductToDelete}
-                    />
-                ))}
-              </TableBody>
-            </Table>
-            )}
-          </CardContent>
-          <CardFooter>
-            <div className="text-xs text-muted-foreground">
-              Mostrando <strong>1-{filteredProducts.length}</strong> de <strong>{products.length}</strong>{" "}
-              productos
-            </div>
-          </CardFooter>
-        </Card>
+        {renderProductsTable(filteredProducts)}
+      </TabsContent>
+      <TabsContent value="active">
+        {renderProductsTable(filteredProducts.filter(p => p.status === 'active'))}
+      </TabsContent>
+      <TabsContent value="inactive">
+        {renderProductsTable(filteredProducts.filter(p => p.status === 'inactive'))}
       </TabsContent>
     </Tabs>
 
