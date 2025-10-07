@@ -515,7 +515,7 @@ export default function POSPage() {
   };
 
   return (
-    <Dialog onOpenChange={(open) => { if (!open) setProductDetails(null); setProductImageError(false); }}>
+    <Dialog onOpenChange={(open) => { if (!open) setProductDetails(null); setImageError(false); }}>
     <div className="grid flex-1 auto-rows-max gap-4 md:grid-cols-3 lg:gap-8">
       <div className="grid auto-rows-max items-start gap-4 md:col-span-2 lg:gap-8">
         <Card>
