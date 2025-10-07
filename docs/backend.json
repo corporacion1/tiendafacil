@@ -86,29 +86,6 @@
         "storeId": { "type": "string", "description": "El ID de la tienda a la que está asociado este cliente." }
       },
       "required": ["id", "name", "storeId"]
-    },
-    "Chat": {
-      "title": "Chat",
-      "description": "Representa una sala de chat entre un cliente y los administradores de tienda/plataforma.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string", "description": "Nombre de la sala de chat." },
-        "participants": { "type": "array", "items": { "type": "string" }, "description": "Arreglo de UIDs de los participantes." },
-        "lastMessage": { "type": "string" },
-        "lastMessageTimestamp": { "type": "string", "format": "date-time" }
-      }
-    },
-    "ChatMessage": {
-      "title": "ChatMessage",
-      "description": "Representa un único mensaje dentro de un chat.",
-      "type": "object",
-      "properties": {
-        "senderId": { "type": "string" },
-        "senderName": { "type": "string" },
-        "text": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" }
-      },
-      "required": ["senderId", "senderName", "text", "timestamp"]
     }
   },
   "auth": {
@@ -138,14 +115,6 @@
     "/users": {
       "schema": { "$ref": "#/entities/UserProfile" },
       "description": "Colección de todos los perfiles de usuario, incluyendo sus roles (customer, storeAdmin, superAdmin)."
-    },
-    "/chats": {
-      "schema": { "$ref": "#/entities/Chat" },
-      "description": "Colección de todas las salas de chat."
-    },
-    "/chats/{chatId}/messages": {
-      "schema": { "$ref": "#/entities/ChatMessage" },
-      "description": "Sub-colección de mensajes para un chat específico."
     }
   }
 }

@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { Boxes, FileText, Home, PackagePlus, PanelLeft, Settings, ShoppingCart, Store, CreditCard, Coins, UserCircle, LogOut, MessageSquare } from "lucide-react";
+import { Boxes, FileText, Home, PackagePlus, PanelLeft, Settings, ShoppingCart, Store, CreditCard, Coins, UserCircle, LogOut } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,7 +34,6 @@ const navItems = [
     { href: "/purchases", label: "Compras", icon: Store },
     { href: "/credits", label: "Créditos", icon: CreditCard },
     { href: "/reports", label: "Reportes", icon: FileText },
-    { href: "/chat", label: "Chat", icon: MessageSquare },
 ];
 
 const settingsNav = { href: "/settings", label: "Configuración", icon: Settings };
