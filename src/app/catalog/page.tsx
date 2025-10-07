@@ -31,7 +31,7 @@ const CatalogProductCard = ({ product, onAddToCart, onImageClick }: { product: P
 
     return (
         <Card className="overflow-hidden group flex flex-col">
-            <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative" onClick={() => onImageClick(product)}>
+            <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative cursor-pointer" onClick={() => onImageClick(product)}>
                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent z-10" />
                 {imageUrl && !imageError ? (
                     <Image
@@ -92,7 +92,7 @@ export default function CatalogPage() {
     // Order generation state
     const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
     const [newCustomer, setNewCustomer] = useState({ name: '', phone: '' });
-    const [lastOrderId, setLastOrderId] = useState<string | null>(null);
+    const [orderIdForQr, setOrderIdForQr] = useState<string | null>(null);
     const [qrCodeUrl, setQrCodeUrl] = useState('');
 
     useEffect(() => {
@@ -102,13 +102,14 @@ export default function CatalogPage() {
             if (scrollIntervalRef.current) return;
             
             scrollIntervalRef.current = setInterval(() => {
-                if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight -1) {
+                // If we've scrolled to the bottom (or very close), stop scrolling
+                if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 2) {
                     if (scrollIntervalRef.current) clearInterval(scrollIntervalRef.current);
                     scrollIntervalRef.current = null;
                 } else {
                     window.scrollBy({ top: 1, behavior: 'smooth' });
                 }
-            }, 50);
+            }, 50); // Scroll 1px every 50ms for a smooth "breeze" effect
         };
 
         const stopAutoScroll = () => {
@@ -140,6 +141,7 @@ export default function CatalogPage() {
             window.removeEventListener('keydown', resetInactivityTimer);
         };
     }, [isLoading]);
+
 
     useEffect(() => {
         setTimeout(() => {
@@ -239,6 +241,17 @@ export default function CatalogPage() {
         setIsOrderDialogOpen(true);
     };
 
+    const generateQrCode = async (orderId: string) => {
+        try {
+            const url = await QRCode.toDataURL(orderId);
+            setQrCodeUrl(url);
+            setOrderIdForQr(orderId);
+        } catch (err) {
+            console.error(err);
+            toast({ variant: 'destructive', title: 'Error al generar QR' });
+        }
+    };
+
     const handleGenerateOrder = async () => {
         if (newCustomer.name.trim() === '' || newCustomer.phone.trim() === '') {
             toast({ variant: 'destructive', title: 'Datos de cliente requeridos' });
@@ -272,16 +285,9 @@ export default function CatalogPage() {
         };
         
         setPendingOrders(prev => [...prev, newOrder]);
+        
+        await generateQrCode(newOrderId);
 
-        try {
-            const url = await QRCode.toDataURL(newOrderId);
-            setQrCodeUrl(url);
-        } catch (err) {
-            console.error(err);
-            toast({ variant: 'destructive', title: 'Error al generar QR' });
-        }
-
-        setLastOrderId(newOrderId);
         setIsOrderDialogOpen(false);
         setNewCustomer({ name: '', phone: '' });
         setCart([]);
@@ -406,6 +412,9 @@ export default function CatalogPage() {
                                                             <p className="text-sm text-muted-foreground">{order.customerName}</p>
                                                         </div>
                                                         <div className="flex gap-1">
+                                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => generateQrCode(order.id)}>
+                                                                <QrCode className="h-4 w-4" />
+                                                            </Button>
                                                              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleEditOrder(order)}>
                                                                 <Pencil className="h-4 w-4" />
                                                             </Button>
@@ -534,17 +543,17 @@ export default function CatalogPage() {
                 </Dialog>
 
                  {/* QR Code Dialog */}
-                <Dialog open={!!lastOrderId} onOpenChange={(isOpen) => !isOpen && setLastOrderId(null)}>
+                <Dialog open={!!orderIdForQr} onOpenChange={(isOpen) => !isOpen && setOrderIdForQr(null)}>
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>¡Pedido Generado con Éxito!</DialogTitle>
                             <DialogDescription>
-                                Presenta este código QR en caja para facturar tu pedido. Tu ID de pedido es: <strong>{lastOrderId}</strong>
+                                Presenta este código QR en caja para facturar tu pedido. Tu ID de pedido es: <strong>{orderIdForQr}</strong>
                             </DialogDescription>
                         </DialogHeader>
                         <div className="flex items-center justify-center p-4">
                             {qrCodeUrl ? (
-                                <Image src={qrCodeUrl} alt={`Código QR para el pedido ${lastOrderId}`} width={256} height={256} />
+                                <Image src={qrCodeUrl} alt={`Código QR para el pedido ${orderIdForQr}`} width={256} height={256} />
                             ) : (
                                 <p>Generando código QR...</p>
                             )}
@@ -558,16 +567,17 @@ export default function CatalogPage() {
                 </Dialog>
                 
                 {/* Product Details Dialog */}
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-2xl">
                     <DialogTrigger asChild>
                         <button className="hidden" />
                     </DialogTrigger>
-                    <DialogHeader>
-                        <DialogTitle>{productDetails?.name}</DialogTitle>
-                        <DialogDescription>SKU: {productDetails?.sku}</DialogDescription>
-                    </DialogHeader>
-                    {productDetails && (
-                        <div className="grid gap-4">
+                     {productDetails && (
+                        <>
+                        <DialogHeader>
+                            <DialogTitle>{productDetails?.name}</DialogTitle>
+                            <DialogDescription>SKU: {productDetails?.sku}</DialogDescription>
+                        </DialogHeader>
+                        <div className="grid md:grid-cols-2 gap-6 items-start">
                              <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
                                 {getDisplayImageUrl(productDetails.imageUrl) && !productImageError ? (
                                     <Image
@@ -584,11 +594,12 @@ export default function CatalogPage() {
                                 )}
                              </div>
                              <div className="grid gap-2">
+                                <h3 className="text-lg font-semibold">Detalles</h3>
                                 <div className="flex justify-between">
                                     <span className="text-muted-foreground">Disponibilidad:</span>
                                     <span className="font-semibold">{productDetails.stock} unidades</span>
                                 </div>
-                                 <Separator />
+                                <Separator />
                                 <div className="flex justify-between">
                                     <span className="text-muted-foreground">Precio Detal:</span>
                                     <span className="font-semibold">{activeSymbol}{(productDetails.price * activeRate).toFixed(2)}</span>
@@ -597,23 +608,30 @@ export default function CatalogPage() {
                                     <span className="text-muted-foreground">Precio Mayor:</span>
                                     <span className="font-semibold">{activeSymbol}{(productDetails.wholesalePrice * activeRate).toFixed(2)}</span>
                                 </div>
+                                {productDetails.description && (
+                                    <>
+                                        <Separator/>
+                                        <p className="text-sm text-muted-foreground pt-2">{productDetails.description}</p>
+                                    </>
+                                )}
                              </div>
                         </div>
+                        <DialogFooter className="sm:justify-end gap-2">
+                            <DialogClose asChild>
+                                <Button variant="secondary">Cerrar</Button>
+                            </DialogClose>
+                            <Button onClick={() => {
+                                if(productDetails) {
+                                    addToCart(productDetails);
+                                    setProductDetails(null);
+                                    toast({title: `"${productDetails.name}" agregado al pedido`})
+                                }
+                            }}>
+                                <ShoppingBag className="mr-2 h-4 w-4" /> Agregar al Pedido
+                            </Button>
+                        </DialogFooter>
+                        </>
                     )}
-                    <DialogFooter>
-                        <DialogClose asChild>
-                            <Button variant="secondary">Cerrar</Button>
-                        </DialogClose>
-                        <Button onClick={() => {
-                            if(productDetails) {
-                                addToCart(productDetails);
-                                setProductDetails(null);
-                                toast({title: `"${productDetails.name}" agregado al pedido`})
-                            }
-                        }}>
-                            Agregar al Pedido
-                        </Button>
-                    </DialogFooter>
                 </DialogContent>
 
                 <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
