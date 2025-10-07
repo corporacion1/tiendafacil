@@ -39,7 +39,7 @@ import {
     DialogClose,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Sale, CartItem, Customer, Product, InventoryMovement, Purchase } from "@/lib/types";
+import { Sale, CartItem, Customer, Product, InventoryMovement, Purchase, Payment } from "@/lib/types";
 import { TicketPreview } from "@/components/ticket-preview";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -108,6 +108,16 @@ export default function ReportsPage() {
         return typeof date === 'string' ? parseISO(date) : date; // Already a Date object
     }
     
+    const allPayments = useMemo(() => {
+        return salesData.flatMap(sale => 
+            sale.payments?.map(payment => ({
+                ...payment,
+                saleId: sale.id,
+                customerName: sale.customerName
+            })) ?? []
+        );
+    }, [salesData]);
+
     const handleExport = (format: 'csv' | 'json' | 'txt') => {
         const date = new Date().toISOString().split('T')[0];
         let dataToExport: object[] = [];
@@ -145,6 +155,16 @@ export default function ReportsPage() {
                     costo: (p.cost * activeRate).toFixed(2),
                     precio_detal: (p.price * activeRate).toFixed(2),
                     valor_inventario: (p.stock * p.cost * activeRate).toFixed(2)
+                }));
+                break;
+            case 'payments':
+                dataToExport = filteredPayments.map(p => ({
+                    fecha: getDate(p.date).toISOString(),
+                    venta_id: p.saleId,
+                    cliente: p.customerName,
+                    metodo: p.method,
+                    referencia: p.reference,
+                    monto: (p.amount * activeRate).toFixed(2),
                 }));
                 break;
         }
@@ -202,11 +222,11 @@ export default function ReportsPage() {
         return customers.find(c => c.name === sale.customerName) || { id: 'unknown', name: sale.customerName, phone: '', address: '' };
     }
 
-    const filterByDate = (data: (Sale | Purchase | InventoryMovement)[]) => {
+    const filterByDate = (data: (Sale | Purchase | InventoryMovement | (Payment & { saleId: string; customerName: string; }))[]) => {
         if (!dateFilterQuery) return data;
         return data.filter(item => getDate(item.date) >= dateFilterQuery!);
     };
-
+    
     const filteredSales = useMemo(() => {
         return filterByDate(salesData).filter(s =>
             (s.id as string).toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -236,6 +256,14 @@ export default function ReportsPage() {
         );
     }, [products, searchTerm]);
     
+    const filteredPayments = useMemo(() => {
+        return filterByDate(allPayments).filter(p =>
+            p.saleId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (p.reference && p.reference.toLowerCase().includes(searchTerm.toLowerCase()))
+        ) as (Payment & { saleId: string; customerName: string; })[];
+    }, [allPayments, searchTerm, dateFilterQuery]);
+
     const salesTotal = useMemo(() => {
         return filteredSales.reduce((acc, sale) => acc + sale.total, 0);
     }, [filteredSales]);
@@ -243,6 +271,10 @@ export default function ReportsPage() {
     const purchasesTotal = useMemo(() => {
         return filteredPurchases.reduce((acc, purchase) => acc + purchase.total, 0);
     }, [filteredPurchases]);
+    
+    const paymentsTotal = useMemo(() => {
+        return filteredPayments.reduce((acc, payment) => acc + payment.amount, 0);
+    }, [filteredPayments]);
     
     const inventoryTotals = useMemo(() => {
         if (!filteredProducts) return { totalStock: 0, totalValue: 0 };
@@ -286,6 +318,7 @@ export default function ReportsPage() {
         <TabsList>
           <TabsTrigger value="sales">Ventas</TabsTrigger>
           <TabsTrigger value="purchases">Compras</TabsTrigger>
+          <TabsTrigger value="payments">Pagos</TabsTrigger>
           <TabsTrigger value="movements">Movimientos</TabsTrigger>
           <TabsTrigger value="inventory">Inventario</TabsTrigger>
         </TabsList>
@@ -420,6 +453,48 @@ export default function ReportsPage() {
                         <TableRow>
                           <TableCell colSpan={3} className="font-bold text-lg">Total General</TableCell>
                           <TableCell className="text-right font-bold text-lg">{activeSymbol}{(purchasesTotal * activeRate).toFixed(2)}</TableCell>
+                        </TableRow>
+                    </TableFooter>
+                </Table>}
+            </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="payments">
+        <Card>
+            <CardHeader>
+                <CardTitle>Reporte de Pagos</CardTitle>
+                <CardDescription>Un resumen de todos los pagos y abonos recibidos.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {isLoading && <p className="text-center">Cargando pagos...</p>}
+                {!isLoading && <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Fecha</TableHead>
+                            <TableHead>Venta ID</TableHead>
+                            <TableHead>Cliente</TableHead>
+                            <TableHead>Método</TableHead>
+                            <TableHead>Referencia</TableHead>
+                            <TableHead className="text-right">Monto</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {filteredPayments.map((payment) => (
+                            <TableRow key={payment.id}>
+                                <TableCell>{format(getDate(payment.date), 'dd/MM/yyyy HH:mm')}</TableCell>
+                                <TableCell>{payment.saleId}</TableCell>
+                                <TableCell>{payment.customerName}</TableCell>
+                                <TableCell>{payment.method}</TableCell>
+                                <TableCell>{payment.reference || 'N/A'}</TableCell>
+                                <TableCell className="text-right font-medium">{activeSymbol}{(payment.amount * activeRate).toFixed(2)}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                     <TableFooter>
+                        <TableRow>
+                          <TableCell colSpan={5} className="font-bold text-lg">Total Recibido</TableCell>
+                          <TableCell className="text-right font-bold text-lg">{activeSymbol}{(paymentsTotal * activeRate).toFixed(2)}</TableCell>
                         </TableRow>
                     </TableFooter>
                 </Table>}
@@ -588,3 +663,5 @@ export default function ReportsPage() {
     </>
   );
 }
+
+    
