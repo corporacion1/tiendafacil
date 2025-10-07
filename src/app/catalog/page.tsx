@@ -98,12 +98,6 @@ export default function CatalogPage() {
         const INACTIVITY_TIMEOUT = 5000; // 5 seconds
         
         const startAutoScroll = () => {
-             const firstCard = document.querySelector('.grid > div');
-            if (!firstCard) return;
-
-            const cardHeight = firstCard.clientHeight;
-            const scrollAmount = cardHeight > 0 ? cardHeight : 300; // Fallback height
-            
             if (scrollIntervalRef.current) return;
             
             scrollIntervalRef.current = setInterval(() => {
@@ -111,9 +105,9 @@ export default function CatalogPage() {
                     if (scrollIntervalRef.current) clearInterval(scrollIntervalRef.current);
                     scrollIntervalRef.current = null;
                 } else {
-                    window.scrollBy({ top: scrollAmount, behavior: 'smooth' });
+                    window.scrollBy({ top: 1, behavior: 'smooth' });
                 }
-            }, 3000);
+            }, 50);
         };
 
         const stopAutoScroll = () => {
@@ -144,7 +138,7 @@ export default function CatalogPage() {
             window.removeEventListener('scroll', resetInactivityTimer);
             window.removeEventListener('keydown', resetInactivityTimer);
         };
-    }, [isLoading]); // Rerun when loading is done to get card height
+    }, [isLoading]);
 
     useEffect(() => {
         setTimeout(() => {
@@ -568,3 +562,5 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
+
+    
