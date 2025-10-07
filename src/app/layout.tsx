@@ -4,9 +4,8 @@ import './globals.css';
 import { AppShell } from '@/components/app-shell';
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
-import { FirebaseClientProvider } from '@/firebase';
-import { SecurityProvider } from '@/contexts/security-context';
 import { SettingsProvider } from '@/contexts/settings-context';
+import { SecurityProvider } from '@/contexts/security-context';
 
 export const metadata: Metadata = {
   title: 'TIENDA FACIL - Tu Comercio',
@@ -29,7 +28,6 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <FirebaseClientProvider>
             <SecurityProvider>
               <SettingsProvider>
                 <AppShell>
@@ -38,7 +36,6 @@ export default function RootLayout({
                 <Toaster />
               </SettingsProvider>
             </SecurityProvider>
-          </FirebaseClientProvider>
         </ThemeProvider>
       </body>
     </html>

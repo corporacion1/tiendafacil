@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import { MoreHorizontal, Search, PlusCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -16,32 +16,31 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import type { Sale, Payment } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
-import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase/provider";
-import { errorEmitter, FirestorePermissionError } from "@/firebase";
-import { collection, doc, updateDoc, arrayUnion } from "firebase/firestore";
+import { mockSales } from "@/lib/data";
 
 export default function CreditsPage() {
     const { toast } = useToast();
     const { settings, activeSymbol, activeRate } = useSettings();
-    const firestore = useFirestore();
-    const { user, isUserLoading } = useUser();
-
-    const salesCollection = useMemoFirebase(() => {
-        if (!firestore || !user) return null;
-        return collection(firestore, "sales");
-    }, [firestore, user]);
-    
-    const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollection, isUserLoading);
+    const [sales, setSales] = useState<Sale[]>(mockSales);
+    const [isLoading, setIsLoading] = useState(true);
 
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
     const [newPaymentAmount, setNewPaymentAmount] = useState<number>(0);
     const [searchTerm, setSearchTerm] = useState("");
     
-    const creditSales = useMemo(() => (sales || []).filter(s => s.transactionType === 'credito'), [sales]);
+    useEffect(() => {
+        // Simulate fetching data
+        setTimeout(() => {
+            setSales(mockSales);
+            setIsLoading(false);
+        }, 500);
+    }, []);
+
+    const creditSales = useMemo(() => sales.filter(s => s.transactionType === 'credito'), [sales]);
     
     const handleAddPayment = () => {
-        if (!selectedSale || newPaymentAmount <= 0 || !firestore) {
+        if (!selectedSale || newPaymentAmount <= 0) {
             toast({
                 variant: "destructive",
                 title: "Monto inválido",
@@ -66,32 +65,27 @@ export default function CreditsPage() {
             date: new Date().toISOString(),
         };
 
-        const saleRef = doc(firestore, 'sales', selectedSale.id);
         const updatedPaidAmount = (selectedSale.paidAmount || 0) + newPaymentAmount;
         const newStatus = updatedPaidAmount >= selectedSale.total ? 'paid' : 'unpaid';
 
-        updateDoc(saleRef, {
-            payments: arrayUnion(newPayment),
-            paidAmount: updatedPaidAmount,
-            status: newStatus
-        })
-        .then(() => {
-            toast({
-                title: "Pago Registrado",
-                description: `Se agregó un abono de ${settings.primaryCurrencySymbol}${newPaymentAmount.toFixed(2)} a la venta ${selectedSale.id}.`,
-            });
-            setPaymentDialogOpen(false);
-            setSelectedSale(prev => prev ? { ...prev, payments: [...(prev.payments || []), newPayment as Payment], paidAmount: updatedPaidAmount, status: newStatus } : null);
-            setNewPaymentAmount(0);
-        })
-        .catch((serverError) => {
-            const permissionError = new FirestorePermissionError({
-                path: saleRef.path,
-                operation: 'update',
-                requestResourceData: { paidAmount: updatedPaidAmount, status: newStatus },
-            });
-            errorEmitter.emit('permission-error', permissionError);
+        // Update the mock data
+        const saleIndex = mockSales.findIndex(s => s.id === selectedSale.id);
+        if (saleIndex > -1) {
+            const saleToUpdate = mockSales[saleIndex];
+            saleToUpdate.payments = [...(saleToUpdate.payments || []), newPayment as Payment];
+            saleToUpdate.paidAmount = updatedPaidAmount;
+            saleToUpdate.status = newStatus;
+        }
+
+        setSales([...mockSales]);
+        setSelectedSale(prev => prev ? { ...prev, payments: [...(prev.payments || []), newPayment as Payment], paidAmount: updatedPaidAmount, status: newStatus } : null);
+
+        toast({
+            title: "Pago Registrado",
+            description: `Se agregó un abono de ${settings.primaryCurrencySymbol}${newPaymentAmount.toFixed(2)} a la venta ${selectedSale.id}.`,
         });
+        setPaymentDialogOpen(false);
+        setNewPaymentAmount(0);
     };
     
     const filteredSales = useMemo(() => {
@@ -103,21 +97,13 @@ export default function CreditsPage() {
 
     const getFormattedDate = (date: any) => {
         if (!date) return '';
-        if (date.seconds) { // Firebase Timestamp
-            return format(date.toDate(), "dd/MM/yyyy");
-        }
         return format(parseISO(date), "dd/MM/yyyy");
     };
 
     const getFormattedDateTime = (date: any) => {
         if (!date) return '';
-        if (date.seconds) { // Firebase Timestamp
-            return format(date.toDate(), "dd/MM/yyyy HH:mm");
-        }
         return format(parseISO(date), "dd/MM/yyyy HH:mm");
     };
-    
-    const isLoading = isLoadingSales;
     
     const renderSalesTable = (salesToRender: Sale[]) => (
         <Table>

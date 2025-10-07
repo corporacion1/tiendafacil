@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import { File, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X, Package, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -33,10 +33,8 @@ import {
 import { cn } from "@/lib/utils";
 import { ProductForm } from "@/components/product-form";
 import { useSettings } from "@/contexts/settings-context";
-import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase/provider";
-import { errorEmitter, FirestorePermissionError } from "@/firebase";
-import { collection, doc, updateDoc, deleteDoc, writeBatch, serverTimestamp, addDoc } from "firebase/firestore";
-import { format } from "date-fns";
+import { mockProducts, mockSales, mockInventoryMovements } from "@/lib/data";
+import { format, parseISO } from "date-fns";
 
 
 const getDisplayImageUrl = (imageUrl?: string) => {
@@ -55,27 +53,11 @@ const getDisplayImageUrl = (imageUrl?: string) => {
 
 export default function InventoryPage() {
   const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user, isUserLoading } = useUser();
-
-  const productsCollection = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return collection(firestore, "products");
-  }, [firestore, user]);
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollection, isUserLoading);
-
-  const salesCollection = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return collection(firestore, "sales");
-  }, [firestore, user]);
-  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesCollection, isUserLoading);
-
-  const movementsCollection = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return collection(firestore, "inventoryMovements");
-  }, [firestore, user]);
-  const { data: inventoryMovements, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsCollection, isUserLoading);
-
+  const [products, setProducts] = useState<Product[]>(mockProducts);
+  const [sales, setSales] = useState<Sale[]>(mockSales);
+  const [inventoryMovements, setInventoryMovements] = useState<InventoryMovement[]>(mockInventoryMovements);
+  const [isLoading, setIsLoading] = useState(true);
+  
   const { activeSymbol, activeRate } = useSettings();
   const [isMovementsDialogOpen, setIsMovementsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -85,12 +67,20 @@ export default function InventoryPage() {
   
   const [isProductComboboxOpen, setIsProductComboboxOpen] = useState(false)
   
-  // State for the inventory movement form
   const [movementProduct, setMovementProduct] = useState<Product | null>(null);
   const [movementType, setMovementType] = useState<'purchase' | 'sale' | 'adjustment' | ''>('');
   const [movementQuantity, setMovementQuantity] = useState<number>(0);
   const [movementResponsible, setMovementResponsible] = useState('');
 
+  useEffect(() => {
+    // Simulate fetching data
+    setTimeout(() => {
+        setProducts(mockProducts);
+        setSales(mockSales);
+        setInventoryMovements(mockInventoryMovements);
+        setIsLoading(false);
+    }, 500);
+  }, []);
 
   const handleEdit = (product: Product) => {
     setProductToEdit(product);
@@ -101,66 +91,45 @@ export default function InventoryPage() {
     setIsMovementsDialogOpen(true);
   };
 
-
   function handleUpdateProduct(data: Omit<Product, 'id'> & { id?: string }) {
-    if (!data.id || !firestore) return false;
+    if (!data.id) return false;
 
-    const docRef = doc(firestore, 'products', data.id);
-    const updatedData = { ...data };
-    delete updatedData.id;
-
-    updateDoc(docRef, updatedData)
-        .then(() => {
-            toast({
-                title: "Producto Actualizado",
-                description: `El producto "${data.name}" ha sido actualizado.`,
-            });
-            setProductToEdit(null); // Close the dialog
-        })
-        .catch((serverError) => {
-            const permissionError = new FirestorePermissionError({
-                path: docRef.path,
-                operation: 'update',
-                requestResourceData: updatedData,
-            });
-            errorEmitter.emit('permission-error', permissionError);
+    const productIndex = mockProducts.findIndex(p => p.id === data.id);
+    if (productIndex > -1) {
+        mockProducts[productIndex] = { ...mockProducts[productIndex], ...data };
+        setProducts([...mockProducts]);
+        toast({
+            title: "Producto Actualizado",
+            description: `El producto "${data.name}" ha sido actualizado.`,
         });
-
-    // Optimistically return true to allow form to reset
-    return true;
+        setProductToEdit(null); // Close the dialog
+        return true;
+    }
+    return false;
   }
   
   const handleDelete = (productId: string) => {
-    const isProductInSale = (sales || []).some(sale => sale.items.some(item => item.productId === productId));
+    const isProductInSale = sales.some(sale => sale.items.some(item => item.productId === productId));
 
     if (isProductInSale) {
         toast({
             variant: "destructive",
             title: "Eliminación Bloqueada",
-            description: "Este producto no se puede eliminar porque tiene ventas asociadas. Para mantener la integridad de los reportes, considere cambiar su estado a 'Inactivo'.",
+            description: "Este producto no se puede eliminar porque tiene ventas asociadas. Considere cambiar su estado a 'Inactivo'.",
         });
         setProductToDelete(null);
         return;
     }
     
-    if (!firestore) return;
-    
-    const docRef = doc(firestore, 'products', productId);
-
-    deleteDoc(docRef)
-      .then(() => {
+    const productIndex = mockProducts.findIndex(p => p.id === productId);
+    if (productIndex > -1) {
+        mockProducts.splice(productIndex, 1);
+        setProducts([...mockProducts]);
         toast({
           title: "Producto Eliminado",
           description: "El producto ha sido eliminado del inventario.",
         });
-      })
-      .catch((serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'delete',
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      });
+    }
 
     setProductToDelete(null);
   };
@@ -172,8 +141,8 @@ export default function InventoryPage() {
       setMovementResponsible('');
   }
 
-  const handleMoveInventory = async () => {
-    if (!movementProduct || !movementType || movementQuantity <= 0 || !movementResponsible.trim() || !firestore) {
+  const handleMoveInventory = () => {
+    if (!movementProduct || !movementType || movementQuantity <= 0 || !movementResponsible.trim()) {
       toast({
         variant: "destructive",
         title: "Datos incompletos",
@@ -186,56 +155,42 @@ export default function InventoryPage() {
     let newStock = currentStock;
 
     switch (movementType) {
-      case 'purchase': // Entrada
-        newStock += movementQuantity;
-        break;
-      case 'sale': // Salida
+      case 'purchase': newStock += movementQuantity; break;
+      case 'sale': 
         if (currentStock < movementQuantity) {
-          toast({
-            variant: "destructive",
-            title: "Stock insuficiente",
-            description: `No puedes sacar ${movementQuantity} unidades. Stock actual: ${currentStock}.`,
-          });
+          toast({ variant: "destructive", title: "Stock insuficiente", description: `No puedes sacar ${movementQuantity} unidades. Stock actual: ${currentStock}.`});
           return;
         }
         newStock -= movementQuantity;
         break;
-      case 'adjustment': // Ajuste (puede ser positivo o negativo, aquí lo manejamos como un reemplazo)
-        newStock = movementQuantity;
-        break;
+      case 'adjustment': newStock = movementQuantity; break;
     }
     
-    const productDocRef = doc(firestore, 'products', movementProduct.id);
-    const movementColRef = collection(firestore, 'inventoryMovements');
+    const productIndex = mockProducts.findIndex(p => p.id === movementProduct.id);
+    if (productIndex > -1) {
+        mockProducts[productIndex].stock = newStock;
+    }
 
-    const newMovement: Omit<InventoryMovement, 'id'> = {
+    const newMovement: InventoryMovement = {
+        id: `mov-${Date.now()}`,
         productName: movementProduct.name,
         type: movementType,
         quantity: movementType === 'sale' ? -movementQuantity : movementQuantity,
-        date: serverTimestamp(),
+        date: new Date().toISOString(),
         responsible: movementResponsible,
     };
 
-    try {
-        const batch = writeBatch(firestore);
-        batch.update(productDocRef, { stock: newStock });
-        batch.set(doc(movementColRef), newMovement);
-        await batch.commit();
+    mockInventoryMovements.push(newMovement);
 
-        toast({
-            title: "Movimiento Registrado",
-            description: `El stock de "${movementProduct.name}" ha sido actualizado a ${newStock}.`,
-        });
-        
-        resetMovementForm();
-    } catch(serverError) {
-        const permissionError = new FirestorePermissionError({
-          path: productDocRef.path, // Or movementColRef.path, depending on which fails
-          operation: 'update',
-          requestResourceData: { stock: newStock },
-        });
-        errorEmitter.emit('permission-error', permissionError);
-    }
+    setProducts([...mockProducts]);
+    setInventoryMovements([...mockInventoryMovements]);
+
+    toast({
+        title: "Movimiento Registrado",
+        description: `El stock de "${movementProduct.name}" ha sido actualizado a ${newStock}.`,
+    });
+    
+    resetMovementForm();
   };
   
   const getMovementLabel = (type: 'sale' | 'purchase' | 'adjustment') => {
@@ -247,18 +202,17 @@ export default function InventoryPage() {
     }
   };
 
-  const productMovements = selectedProduct ? (inventoryMovements || []).filter(m => m.productName === selectedProduct.name) : [];
+  const productMovements = selectedProduct ? inventoryMovements.filter(m => m.productName === selectedProduct.name) : [];
 
   const filteredProducts = useMemo(() => {
-    return (products || []).filter(product =>
+    return products.filter(product =>
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [products, searchTerm]);
 
   const isMovementFormValid = movementProduct && movementType && movementQuantity > 0 && movementResponsible.trim() !== '';
-  const isLoading = isLoadingProducts || isLoadingSales || isLoadingMovements;
-
+  
   return (
     <>
     <Tabs defaultValue="all">
@@ -315,12 +269,12 @@ export default function InventoryPage() {
                                     <CommandList>
                                         <CommandEmpty>No se encontraron productos.</CommandEmpty>
                                         <CommandGroup>
-                                            {(products || []).map((product) => (
+                                            {products.map((product) => (
                                                 <CommandItem
                                                 key={product.id}
                                                 value={product.name}
                                                 onSelect={(currentValue) => {
-                                                    const product = (products || []).find(p => p.name.toLowerCase() === currentValue.toLowerCase());
+                                                    const product = products.find(p => p.name.toLowerCase() === currentValue.toLowerCase());
                                                     setMovementProduct(product || null);
                                                     setIsProductComboboxOpen(false)
                                                 }}
@@ -480,7 +434,7 @@ export default function InventoryPage() {
           </CardContent>
           <CardFooter>
             <div className="text-xs text-muted-foreground">
-              Mostrando <strong>1-{filteredProducts.length}</strong> de <strong>{products?.length || 0}</strong>{" "}
+              Mostrando <strong>1-{filteredProducts.length}</strong> de <strong>{products.length}</strong>{" "}
               productos
             </div>
           </CardFooter>
@@ -488,31 +442,26 @@ export default function InventoryPage() {
       </TabsContent>
     </Tabs>
 
-    {/* Edit Product Dialog */}
-    <AlertDialog>
-      <Dialog open={!!productToEdit} onOpenChange={(isOpen) => !isOpen && setProductToEdit(null)}>
-          <DialogContent className="sm:max-w-2xl">
-              <DialogHeader>
-                  <DialogTitle>Editar Producto</DialogTitle>
-                  <DialogDescription>
-                      Modifica los detalles del producto y guarda los cambios.
-                  </DialogDescription>
-              </DialogHeader>
-              <div className="max-h-[80vh] overflow-y-auto p-1">
-                  {productToEdit && (
-                      <ProductForm 
-                          product={productToEdit}
-                          onSubmit={handleUpdateProduct}
-                          onCancel={() => setProductToEdit(null)}
-                      />
-                  )}
-              </div>
-          </DialogContent>
-      </Dialog>
+    <AlertDialog open={!!productToEdit} onOpenChange={(isOpen) => !isOpen && setProductToEdit(null)}>
+        <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+                <DialogTitle>Editar Producto</DialogTitle>
+                <DialogDescription>
+                    Modifica los detalles del producto y guarda los cambios.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[80vh] overflow-y-auto p-1">
+                {productToEdit && (
+                    <ProductForm 
+                        product={productToEdit}
+                        onSubmit={handleUpdateProduct}
+                        onCancel={() => setProductToEdit(null)}
+                    />
+                )}
+            </div>
+        </DialogContent>
     </AlertDialog>
 
-
-    {/* Delete Product Alert */}
     <AlertDialog open={!!productToDelete} onOpenChange={(isOpen) => !isOpen && setProductToDelete(null)}>
         <AlertDialogContent>
             <AlertDialogHeader>
@@ -530,7 +479,6 @@ export default function InventoryPage() {
         </AlertDialogContent>
     </AlertDialog>
     
-    {/* Movements Dialog */}
     <Dialog open={isMovementsDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) { setSelectedProduct(null); } setIsMovementsDialogOpen(isOpen); }}>
       <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -550,7 +498,7 @@ export default function InventoryPage() {
               <TableBody>
                   {productMovements.length > 0 ? productMovements.map((movement) => (
                       <TableRow key={movement.id}>
-                          <TableCell>{movement.date && movement.date instanceof Date ? format(movement.date, 'dd/MM/yyyy') : 'N/A'}</TableCell>
+                          <TableCell>{movement.date ? format(parseISO(movement.date as string), 'dd/MM/yyyy') : 'N/A'}</TableCell>
                           <TableCell>
                               <Badge variant={movement.type === "sale" ? "destructive" : movement.type === "purchase" ? "secondary" : "outline"}>
                                   {getMovementLabel(movement.type)}

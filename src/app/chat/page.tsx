@@ -8,31 +8,44 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Send, MessageSquare, HardHat } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase/provider";
-import { errorEmitter, FirestorePermissionError } from "@/firebase";
-import { collection, addDoc, serverTimestamp, query, orderBy, Timestamp } from "firebase/firestore";
+import { useUser } from "@/firebase";
 import type { ChatMessage } from "@/lib/types";
-import { format } from "date-fns";
+import { format, subMinutes } from "date-fns";
 
 const chatRooms = [
   { id: 'general', name: 'General', icon: MessageSquare },
   { id: 'support', name: 'Soporte Técnico', icon: HardHat },
 ];
 
+const mockMessages: { [key: string]: ChatMessage[] } = {
+    general: [
+        { id: 'msg-g1', chatId: 'general', senderId: 'other-user-1', senderName: 'Alice', text: '¡Hola a todos! ¿Cómo va la semana?', timestamp: subMinutes(new Date(), 10).toISOString() },
+        { id: 'msg-g2', chatId: 'general', senderId: 'demo-user-id', senderName: 'Usuario Demo', text: '¡Hola Alice! Todo bien por aquí, preparando todo para el fin de semana.', timestamp: subMinutes(new Date(), 8).toISOString() },
+        { id: 'msg-g3', chatId: 'general', senderId: 'other-user-2', senderName: 'Bob', text: 'Genial, ¿alguien tiene planes interesantes?', timestamp: subMinutes(new Date(), 5).toISOString() },
+    ],
+    support: [
+        { id: 'msg-s1', chatId: 'support', senderId: 'other-user-3', senderName: 'Carlos', text: 'Buenos días, tengo un problema con la impresora de tickets.', timestamp: subMinutes(new Date(), 15).toISOString() },
+    ]
+}
+
 export default function ChatPage() {
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
+  const { user } = useUser();
 
   const [selectedRoom, setSelectedRoom] = useState(chatRooms[0]);
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const [messages, setMessages] = useState<ChatMessage[]>(mockMessages[selectedRoom.id]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const messagesQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return query(collection(firestore, "chats", selectedRoom.id, "messages"), orderBy("timestamp", "asc"));
-  }, [firestore, user, selectedRoom.id]);
+  useEffect(() => {
+    setIsLoading(true);
+    setTimeout(() => {
+        setMessages(mockMessages[selectedRoom.id]);
+        setIsLoading(false);
+    }, 300);
+  }, [selectedRoom]);
 
-  const { data: messages, isLoading } = useCollection<ChatMessage>(messagesQuery, isUserLoading);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -44,42 +57,29 @@ export default function ChatPage() {
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newMessage.trim() === "" || !user || !firestore) return;
+    if (newMessage.trim() === "" || !user) return;
 
-    const messagesColRef = collection(firestore, "chats", selectedRoom.id, "messages");
-    const messageData = {
+    const messageData: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      chatId: selectedRoom.id,
       text: newMessage,
       senderId: user.uid,
       senderName: user.displayName || user.email || "Usuario Anónimo",
-      timestamp: serverTimestamp(),
+      timestamp: new Date().toISOString(),
     };
     
+    setMessages(prev => [...prev, messageData]);
+    mockMessages[selectedRoom.id].push(messageData); // Persist in mock data
     setNewMessage("");
-
-    addDoc(messagesColRef, messageData)
-      .catch((serverError) => {
-          const permissionError = new FirestorePermissionError({
-              path: messagesColRef.path,
-              operation: 'create',
-              requestResourceData: messageData,
-          });
-          errorEmitter.emit('permission-error', permissionError);
-      });
   };
 
-  const formatTimestamp = (timestamp: Timestamp | string | null | undefined) => {
+  const formatTimestamp = (timestamp: string | null | undefined) => {
     if (!timestamp) return "";
-    if (timestamp instanceof Timestamp) {
-      return format(timestamp.toDate(), "HH:mm");
+    try {
+        return format(new Date(timestamp), "HH:mm");
+    } catch {
+        return "";
     }
-    if (typeof timestamp === 'string') {
-        try {
-            return format(new Date(timestamp), "HH:mm");
-        } catch {
-            return "";
-        }
-    }
-    return "";
   }
 
   return (
@@ -119,7 +119,7 @@ export default function ChatPage() {
             <div className="flex-grow p-6 overflow-y-auto bg-slate-50 dark:bg-slate-900/50">
                 <div className="flex flex-col gap-4">
                      {isLoading && <p className="text-center text-muted-foreground">Cargando...</p>}
-                     {!isLoading && messages && messages.map(msg => (
+                     {!isLoading && messages.map(msg => (
                         <div key={msg.id} className={cn("flex items-end gap-2", msg.senderId === user?.uid ? 'justify-end' : 'justify-start')}>
                            {msg.senderId !== user?.uid && (
                                 <Avatar className="h-8 w-8">
@@ -154,12 +154,11 @@ export default function ChatPage() {
                     <Input
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder={user ? "Escribe un mensaje..." : "Inicia sesión para chatear"}
+                        placeholder={"Escribe un mensaje..."}
                         className="flex-grow"
                         autoComplete="off"
-                        disabled={!user}
                     />
-                    <Button type="submit" size="icon" disabled={!user || newMessage.trim() === ''}>
+                    <Button type="submit" size="icon" disabled={newMessage.trim() === ''}>
                         <Send className="h-5 w-5" />
                     </Button>
                 </form>

@@ -15,7 +15,7 @@ import {
   Legend,
   CartesianGrid
 } from "recharts";
-import { subDays, parseISO, format } from "date-fns";
+import { subDays, parseISO, format, toDate } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -37,16 +37,28 @@ import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/contexts/settings-context";
 import { InventoryMovement, Product, Purchase, Sale } from "@/lib/types";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase/provider";
-import { collection, query, where, Timestamp } from "firebase/firestore";
+import { mockSales, mockPurchases, mockProducts } from "@/lib/data";
 
 type TimeFilter = 'day' | 'week' | 'month';
 
 export default function Dashboard() {
   const { activeSymbol, activeRate } = useSettings();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
-  const firestore = useFirestore();
-  const { user, isUserLoading } = useUser();
+  
+  const [sales, setSales] = useState(mockSales);
+  const [purchases, setPurchases] = useState(mockPurchases);
+  const [products, setProducts] = useState(mockProducts);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate data loading
+    setTimeout(() => {
+        setSales(mockSales);
+        setPurchases(mockPurchases);
+        setProducts(mockProducts);
+        setIsLoading(false);
+    }, 500);
+  }, []);
 
   const cutoffDate = useMemo(() => {
     const now = new Date();
@@ -58,27 +70,9 @@ export default function Dashboard() {
     }
   }, [timeFilter]);
 
-  const salesQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return query(collection(firestore, "sales"), where("date", ">=", Timestamp.fromDate(cutoffDate)));
-  }, [firestore, user, cutoffDate]);
+  const filteredSales = useMemo(() => sales.filter(s => toDate(parseISO(s.date as string)) >= cutoffDate), [sales, cutoffDate]);
+  const filteredPurchases = useMemo(() => purchases.filter(p => toDate(parseISO(p.date as string)) >= cutoffDate), [purchases, cutoffDate]);
 
-  const purchasesQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return query(collection(firestore, "purchases"), where("date", ">=", Timestamp.fromDate(cutoffDate)));
-  }, [firestore, user, cutoffDate]);
-  
-  const productsQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return collection(firestore, "products");
-  }, [firestore, user]);
-
-  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery, isUserLoading);
-  const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery, isUserLoading);
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery, isUserLoading);
-
-  const filteredSales = sales || [];
-  const filteredPurchases = purchases || [];
 
   const recentMovements = useMemo(() => {
     const movements: Omit<InventoryMovement, 'id'>[] = [];
@@ -94,20 +88,19 @@ export default function Dashboard() {
     });
     // We would also add purchases and adjustments here if we had those contexts
     return movements.sort((a, b) => {
-        const dateA = a.date instanceof Timestamp ? a.date.toMillis() : parseISO(a.date as string).getTime();
-        const dateB = b.date instanceof Timestamp ? b.date.toMillis() : parseISO(b.date as string).getTime();
+        const dateA = parseISO(a.date as string).getTime();
+        const dateB = parseISO(b.date as string).getTime();
         return dateB - dateA;
     });
   }, [filteredSales]);
   
   const chartData = useMemo(() => {
-    if (!sales || !purchases || !products) return [];
     const dataByDate: { [key: string]: { date: string, sales: number, profit: number, unitsSold: number, unitsPurchased: number } } = {};
     const dateFormat = timeFilter === 'month' ? 'dd-MMM' : 'eee dd';
     
-    const getDate = (d: any) => d instanceof Timestamp ? d.toDate() : parseISO(d);
+    const getDate = (d: any) => parseISO(d);
 
-    sales.forEach(sale => {
+    filteredSales.forEach(sale => {
         const saleDate = getDate(sale.date);
         const dateKey = format(saleDate, 'yyyy-MM-dd');
       
@@ -130,7 +123,7 @@ export default function Dashboard() {
         dataByDate[dateKey].unitsSold += totalUnitsSold;
     });
 
-    purchases.forEach(purchase => {
+    filteredPurchases.forEach(purchase => {
         const purchaseDate = getDate(purchase.date);
         const dateKey = format(purchaseDate, 'yyyy-MM-dd');
 
@@ -146,7 +139,6 @@ export default function Dashboard() {
         dataByDate[dateKey].unitsPurchased += totalUnitsPurchased;
     });
     
-    // Sort keys to ensure the chart is in chronological order
     const sortedKeys = Object.keys(dataByDate).sort();
     const sortedData = sortedKeys.map(key => dataByDate[key]);
 
@@ -155,7 +147,7 @@ export default function Dashboard() {
         sales: parseFloat((d.sales * activeRate).toFixed(2)),
         profit: parseFloat((d.profit * activeRate).toFixed(2)),
     }));
-  }, [sales, purchases, products, activeRate, timeFilter]);
+  }, [filteredSales, filteredPurchases, products, activeRate, timeFilter]);
 
   const getMovementLabel = (type: 'sale' | 'purchase' | 'adjustment') => {
     switch (type) {
@@ -169,8 +161,7 @@ export default function Dashboard() {
   const totalRevenue = useMemo(() => filteredSales.reduce((acc, s) => acc + s.total, 0), [filteredSales]);
   const totalPurchasesValue = useMemo(() => filteredPurchases.reduce((acc, p) => acc + p.total, 0), [filteredPurchases]);
   const activeProducts = useMemo(() => (products || []).filter(p => p.status === 'active').length, [products]);
-  const isLoading = isLoadingSales || isLoadingPurchases || isLoadingProducts;
-
+  
   return (
     <div className="flex min-h-screen w-full flex-col">
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">

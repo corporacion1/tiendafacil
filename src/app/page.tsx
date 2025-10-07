@@ -3,12 +3,11 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-// This page now acts as a simple redirector.
-// The auth state is handled by the providers and AppShell.
 export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
+    // Redirect to dashboard, AuthGuard will handle if user needs to login
     router.replace('/dashboard');
   }, [router]);
 

@@ -3,7 +3,7 @@
 
 import { useUser } from "@/firebase";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Logo } from "./logo";
 import { useSecurity } from "@/contexts/security-context";
 import { PinModal } from "./pin-modal";
@@ -17,19 +17,20 @@ import { PinModal } from "./pin-modal";
  * 4. Only when the user is authenticated and the app is unlocked, it renders the children.
  */
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-    const { user, isUserLoading } = useUser();
+    // In offline mode, we can simulate an authenticated user.
+    const [isReady, setIsReady] = useState(false);
     const { isPinLoading, isLocked } = useSecurity();
-    const router = useRouter();
     
-    // This effect handles redirection if the user state is resolved and there's no user.
     useEffect(() => {
-        if (!isUserLoading && !user) {
-            router.replace('/login');
-        }
-    }, [isUserLoading, user, router]);
+        // Simulate loading time
+        const timer = setTimeout(() => {
+            setIsReady(true);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, []);
 
-    // Primary loading state: wait for both user and PIN status to be resolved.
-    if (isUserLoading || isPinLoading) {
+    // Primary loading state: wait for either Firebase user or local readiness.
+    if (isPinLoading || !isReady) {
         return (
             <div className="flex flex-col items-center justify-center pt-20 gap-4">
                 <Logo className="w-64 h-20" />
@@ -38,21 +39,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         );
     }
     
-    // If loading is complete but there is no user, render nothing while redirecting.
-    if (!user) {
-         return (
-            <div className="flex flex-col items-center justify-center pt-20 gap-4">
-                <Logo className="w-64 h-20" />
-                <p className="text-muted-foreground animate-pulse">Redirigiendo...</p>
-            </div>
-        );
-    }
-    
-    // If the user exists but the app is locked, show the PIN modal.
+    // If the app is locked, show the PIN modal.
     if (isLocked) {
         return <PinModal />;
     }
 
-    // If all checks pass (user exists and app is unlocked), render the actual page content.
+    // If all checks pass, render the actual page content.
     return <>{children}</>;
 }

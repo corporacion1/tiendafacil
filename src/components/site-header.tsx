@@ -23,8 +23,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from "./theme-toggle";
 import { useSettings } from "@/contexts/settings-context";
-import { useAuth, useUser } from "@/firebase";
 import { Logo } from "./logo";
+import { useRouter } from "next/navigation";
 
 const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: Home },
@@ -42,14 +42,19 @@ const settingsNav = { href: "/settings", label: "Configuración", icon: Settings
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const router = useRouter();
   const { settings, activeCurrency, toggleDisplayCurrency } = useSettings();
-  const { user } = useUser();
-  const auth = useAuth();
+  
+  // Mock user for offline mode
+  const user = {
+    displayName: "Usuario Demo",
+    email: "demo@tiendafacil.com",
+    photoURL: null,
+  };
 
   const handleSignOut = () => {
-    if (auth) {
-      auth.signOut();
-    }
+    // In offline mode, just redirect to a simulated login
+    router.push('/login');
   }
 
   const inactiveSymbol = activeCurrency === 'primary' 

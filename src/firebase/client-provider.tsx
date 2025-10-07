@@ -1,26 +1,18 @@
 
 'use client';
 
-import React, { useMemo, type ReactNode } from 'react';
+import React, { type ReactNode } from 'react';
 import { FirebaseProvider } from '@/firebase/provider';
-import { initializeFirebase } from '@/firebase';
 
 interface FirebaseClientProviderProps {
   children: ReactNode;
 }
 
+// In offline mode, this provider just passes through to the FirebaseProvider
+// which now handles the mock state.
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
-  // `useMemo` ensures Firebase is initialized only once on the client-side.
-  const { firebaseApp, auth, firestore } = useMemo(() => initializeFirebase(), []);
-
-  // The `FirebaseProvider` now receives the initialized services as props
-  // and is responsible for managing the user's authentication state.
   return (
-    <FirebaseProvider
-      firebaseApp={firebaseApp}
-      auth={auth}
-      firestore={firestore}
-    >
+    <FirebaseProvider>
       {children}
     </FirebaseProvider>
   );
