@@ -41,18 +41,6 @@ const nextConfig = {
         port: '',
         pathname: '/**',
       },
-      {
-        protocol: 'https',
-        hostname: 'www.mercadolibre.com.ve',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'chat.deepseek.com',
-        port: '',
-        pathname: '/**',
-      }
     ],
   },
   experimental: {
@@ -67,4 +55,5 @@ const nextConfig = {
 };
 
 module.exports = nextConfig;
+
 
