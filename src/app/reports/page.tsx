@@ -2,7 +2,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react";
-import { File, MoreHorizontal, Search } from "lucide-react";
+import { File, MoreHorizontal, Search, FileSpreadsheet, FileJson, FileText } from "lucide-react";
 import { format, subDays, startOfWeek, startOfMonth, startOfYear, parseISO } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -108,7 +108,16 @@ export default function ReportsPage() {
         return typeof date === 'string' ? parseISO(date) : date; // Already a Date object
     }
     
-    const handleExport = (format: 'csv' | 'json' | 'txt') => {
+    const handleExport = (format: 'csv' | 'json' | 'txt' | 'pdf') => {
+        if (format === 'pdf') {
+            toast({
+                variant: 'destructive',
+                title: 'Función no disponible',
+                description: 'La exportación a PDF aún no está implementada.'
+            });
+            return;
+        }
+
         const date = new Date().toISOString().split('T')[0];
         let dataToExport: object[] = [];
         let filename = `${activeTab}-report-${date}.${format}`;
@@ -315,9 +324,22 @@ export default function ReportsPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Formatos de Exportación</DropdownMenuLabel>
-                <DropdownMenuItem onSelect={() => handleExport('csv')}>CSV (para Excel)</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => handleExport('json')}>JSON</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => handleExport('txt')}>TXT (Texto Plano)</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleExport('csv')}>
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    <span>CSV (para Excel)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleExport('json')}>
+                    <FileJson className="mr-2 h-4 w-4" />
+                    <span>JSON (Copia de Seguridad)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleExport('txt')}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    <span>TXT (Texto Plano)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleExport('pdf')}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    <span>PDF (Próximamente)</span>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
         </div>

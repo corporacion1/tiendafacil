@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
-import { File, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X, Package, Check, ImageOff } from "lucide-react";
+import { File, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X, Package, Check, ImageOff, FileText, FileSpreadsheet, FileJson } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -272,7 +272,15 @@ export default function InventoryPage() {
     return baseFilter;
   }
 
-  const exportData = (format: 'csv' | 'json' | 'txt') => {
+  const exportData = (format: 'csv' | 'json' | 'txt' | 'pdf') => {
+    if (format === 'pdf') {
+        toast({
+            variant: 'destructive',
+            title: 'Función no disponible',
+            description: 'La exportación a PDF aún no está implementada.'
+        });
+        return;
+    }
     const data = getVisibleProducts();
     if (data.length === 0) {
       toast({ variant: 'destructive', title: 'No hay datos para exportar' });
@@ -412,9 +420,22 @@ export default function InventoryPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Formatos de Exportación</DropdownMenuLabel>
-                <DropdownMenuItem onSelect={() => exportData('csv')}>CSV (para Excel)</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => exportData('json')}>JSON</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => exportData('txt')}>TXT (Texto Plano)</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportData('csv')}>
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    <span>CSV (para Excel)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportData('json')}>
+                    <FileJson className="mr-2 h-4 w-4" />
+                    <span>JSON (Copia de Seguridad)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportData('txt')}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    <span>TXT (Texto Plano)</span>
+                </DropdownMenuItem>
+                 <DropdownMenuItem onSelect={() => exportData('pdf')}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    <span>PDF (Próximamente)</span>
+                </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
