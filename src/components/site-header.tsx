@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { PanelLeft, UserCircle, LogOut } from "lucide-react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -27,7 +27,12 @@ import { Logo } from "./logo";
 import { useRouter } from "next/navigation";
 import { navItems, settingsNav } from "@/lib/navigation";
 
-export function SiteHeader() {
+interface SiteHeaderProps {
+  toggleSidebar: () => void;
+  isSidebarExpanded: boolean;
+}
+
+export function SiteHeader({ toggleSidebar, isSidebarExpanded }: SiteHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { settings, activeCurrency, toggleDisplayCurrency } = useSettings();
@@ -98,6 +103,12 @@ export function SiteHeader() {
               </nav>
             </SheetContent>
         </Sheet>
+        
+        <Button size="icon" variant="outline" className="hidden sm:flex" onClick={toggleSidebar}>
+            <PanelLeft className="h-5 w-5" />
+            <span className="sr-only">Toggle Sidebar</span>
+        </Button>
+
       <div className="relative ml-auto flex items-center gap-2 md:grow-0">
         <TooltipProvider>
           <Tooltip>
