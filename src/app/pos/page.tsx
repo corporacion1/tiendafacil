@@ -76,18 +76,18 @@ export default function POSPage() {
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
 
   const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
-  const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersRef);
+  const { data: customers = [], isLoading: isLoadingCustomers } = useCollection<Customer>(customersRef);
   
   const pendingOrdersQuery = useMemoFirebase(() => query(collection(firestore, 'pendingOrders'), orderBy('date', 'desc')), [firestore]);
   const { data: pendingOrders = [], isLoading: isLoadingPendingOrders } = useCollection<PendingOrder>(pendingOrdersQuery);
   
   const salesRef = useMemoFirebase(() => query(collection(firestore, 'sales'), orderBy('date', 'desc')), [firestore]);
-  const { data: sales = [] } = useCollection<Sale>(salesRef);
+  const { data: sales = [], isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
 
   const familiesRef = useMemoFirebase(() => query(collection(firestore, 'families'), orderBy('name', 'asc')), [firestore]);
-  const { data: families = [] } = useCollection<Family>(familiesRef);
+  const { data: families = [], isLoading: isLoadingFamilies } = useCollection<Family>(familiesRef);
 
-  const isLoading = isLoadingProducts || isLoadingCustomers || isLoadingPendingOrders;
+  const isLoading = isLoadingProducts || isLoadingCustomers || isLoadingPendingOrders || isLoadingSales || isLoadingFamilies;
   
   const [scannedOrderId, setScannedOrderId] = useState('');
   
@@ -126,7 +126,7 @@ export default function POSPage() {
     return `${series}-${String(nextCorrelative).padStart(3, '0')}`;
   };
 
-  const customerList = useMemo(() => [{ id: 'eventual', name: 'Cliente Eventual', phone: '' }, ...(customers || [])], [customers]);
+  const customerList = useMemo(() => [{ id: 'eventual', name: 'Cliente Eventual', phone: '' }, ...customers], [customers]);
   const selectedCustomer = customerList.find(c => c.id === selectedCustomerId) ?? null;
 
   const addToCart = (product: Product) => {
