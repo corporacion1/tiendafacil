@@ -85,6 +85,7 @@ export default function CatalogPage() {
     
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
     const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const scrollDirectionRef = useRef<'down' | 'up'>('down');
 
     const [productDetails, setProductDetails] = useState<Product | null>(null);
     const [productImageError, setProductImageError] = useState(false);
@@ -102,14 +103,19 @@ export default function CatalogPage() {
             if (scrollIntervalRef.current) return;
             
             scrollIntervalRef.current = setInterval(() => {
-                // If we've scrolled to the bottom (or very close), stop scrolling
-                if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 2) {
-                    if (scrollIntervalRef.current) clearInterval(scrollIntervalRef.current);
-                    scrollIntervalRef.current = null;
-                } else {
-                    window.scrollBy({ top: 200, behavior: 'smooth' });
+                const atBottom = (window.innerHeight + window.scrollY) >= document.body.offsetHeight - 2;
+                const atTop = window.scrollY === 0;
+
+                if (atBottom) {
+                    scrollDirectionRef.current = 'up';
+                } else if (atTop) {
+                    scrollDirectionRef.current = 'down';
                 }
-            }, 50); // Scroll 200px every 50ms for a smooth effect
+
+                const scrollAmount = scrollDirectionRef.current === 'down' ? 200 : -200;
+                window.scrollBy({ top: scrollAmount, behavior: 'smooth' });
+
+            }, 50); 
         };
 
         const stopAutoScroll = () => {
@@ -652,6 +658,8 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
+
+    
 
     
 
