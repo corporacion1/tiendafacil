@@ -77,14 +77,6 @@ const calculateProfit = (currentPrice: number, cost: number): string => {
     return '0.00';
 };
 
-const getDisplayImageUrl = (url?: string): string | undefined => {
-  if (!url) return undefined;
-  if (url.includes('dropbox.com')) {
-    return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '') + '?raw=1';
-  }
-  return url;
-};
-
 
 export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onCancel }) => {
   const { toast } = useToast();
@@ -155,8 +147,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
       form.reset(getInitialValues());
     }
   };
-  
-  const displayImageUrl = getDisplayImageUrl(watchedImageUrl);
 
   return (
     <Form {...form}>
@@ -303,8 +293,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                           <Input placeholder="https://..." {...field} onBlur={handleImageUrlBlur} />
                         </FormControl>
                         <div className="aspect-square relative bg-muted rounded-md flex items-center justify-center mt-2 overflow-hidden">
-                          {displayImageUrl ? (
-                            <Image src={displayImageUrl} alt="Vista previa del producto" fill sizes="300px" className="object-cover" />
+                          {field.value ? (
+                            <Image src={field.value} alt="Vista previa del producto" fill sizes="300px" className="object-cover" />
                           ) : (
                             <Package className="h-16 w-16 text-muted-foreground" />
                           )}

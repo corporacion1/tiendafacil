@@ -3,37 +3,37 @@
     {
       "id": "1",
       "description": "A bottle of Coca-Cola.",
-      "imageUrl": "https://images.unsplash.com/photo-1554866585-CD94860890b7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxzb2RhJTIwYm90dGxlfGVufDB8fHx8MTc2MDExNzM3Nnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1554866585-CD94860890b7?q=80&w=1080",
       "imageHint": "soda bottle"
     },
     {
       "id": "2",
       "description": "A bag of Lays potato chips.",
-      "imageUrl": "https://images.unsplash.com/photo-1599442150393-278a975e5235?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxwb3RhdG8lMjBjaGlwc3xlbnwwfHx8fDE3NjAxMTc0MDR8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1599442150393-278a975e5235?q=80&w=1080",
       "imageHint": "potato chips"
     },
     {
       "id": "3",
       "description": "A carton of milk.",
-      "imageUrl": "https://images.unsplash.com/photo-1598514983318-2169c67635c8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxtaWxrJTIwY2FydG9ufGVufDB8fHx8MTc2MDExNzQyNnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1598514983318-2169c67635c8?q=80&w=1080",
       "imageHint": "milk carton"
     },
     {
       "id": "4",
       "description": "A bottle of cleaning spray.",
-      "imageUrl": "https://images.unsplash.com/photo-1583946099360-a521a242c25a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxj barcodesajhbfdgbgY2xlYW5pbmclMjBzcHJheXxlbnwwfHx8fDE3NjAxMTc0NTd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1583946099360-a521a242c25a?q=80&w=1080",
       "imageHint": "cleaning spray"
     },
     {
       "id": "5",
       "description": "A loaf of sliced bread.",
-      "imageUrl": "https://images.unsplash.com/photo-1587598282338-103555be6816?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxzbGljZWQlMjBicmVhZHxlbnwwfHx8fDE3NjAxMTc0ODN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1587598282338-103555be6816?q=80&w=1080",
       "imageHint": "sliced bread"
     },
     {
       "id": "6",
       "description": "A carton of eggs.",
-      "imageUrl": "https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxlZ2clMjBjYXJ0b258ZW58MHx8fHwxNzYwMTE3NTA2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageUrl": "https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?q=80&w=1080",
       "imageHint": "egg carton"
     }
   ]
