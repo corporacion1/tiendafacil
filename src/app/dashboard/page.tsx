@@ -37,28 +37,26 @@ import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/contexts/settings-context";
 import { InventoryMovement, Product, Purchase, Sale } from "@/lib/types";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { mockSales, mockPurchases, mockProducts } from "@/lib/data";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection } from "firebase/firestore";
 
 type TimeFilter = 'day' | 'week' | 'month';
 
 export default function Dashboard() {
   const { activeSymbol, activeRate } = useSettings();
+  const firestore = useFirestore();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
   
-  const [sales, setSales] = useState(mockSales);
-  const [purchases, setPurchases] = useState(mockPurchases);
-  const [products, setProducts] = useState(mockProducts);
-  const [isLoading, setIsLoading] = useState(true);
+  const salesRef = useMemoFirebase(() => collection(firestore, 'sales'), [firestore]);
+  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
 
-  useEffect(() => {
-    // Simulate data loading
-    setTimeout(() => {
-        setSales(mockSales);
-        setPurchases(mockPurchases);
-        setProducts(mockProducts);
-        setIsLoading(false);
-    }, 500);
-  }, []);
+  const purchasesRef = useMemoFirebase(() => collection(firestore, 'purchases'), [firestore]);
+  const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesRef);
+
+  const productsRef = useMemoFirebase(() => collection(firestore, 'products'), [firestore]);
+  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
+
+  const isLoading = isLoadingSales || isLoadingPurchases || isLoadingProducts;
 
   const cutoffDate = useMemo(() => {
     const now = new Date();
@@ -70,8 +68,8 @@ export default function Dashboard() {
     }
   }, [timeFilter]);
 
-  const filteredSales = useMemo(() => sales.filter(s => toDate(parseISO(s.date as string)) >= cutoffDate), [sales, cutoffDate]);
-  const filteredPurchases = useMemo(() => purchases.filter(p => toDate(parseISO(p.date as string)) >= cutoffDate), [purchases, cutoffDate]);
+  const filteredSales = useMemo(() => (sales || []).filter(s => toDate(parseISO(s.date as string)) >= cutoffDate), [sales, cutoffDate]);
+  const filteredPurchases = useMemo(() => (purchases || []).filter(p => toDate(parseISO(p.date as string)) >= cutoffDate), [purchases, cutoffDate]);
 
 
   const recentMovements = useMemo(() => {
@@ -98,7 +96,7 @@ export default function Dashboard() {
     const dataByDate: { [key: string]: { date: string, sales: number, profit: number, unitsSold: number, unitsPurchased: number } } = {};
     const dateFormat = timeFilter === 'month' ? 'dd-MMM' : 'eee dd';
     
-    const getDate = (d: any) => parseISO(d);
+    const getDate = (d: any) => parseISO(d as string);
 
     filteredSales.forEach(sale => {
         const saleDate = getDate(sale.date);
@@ -357,3 +355,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
+    

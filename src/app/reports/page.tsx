@@ -46,22 +46,23 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/settings-context";
-import { useUser } from "@/firebase";
-import { mockSales, mockPurchases, mockInventoryMovements, mockProducts, defaultCustomers } from "@/lib/data";
+import { useUser, useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection } from "firebase/firestore";
 
 
 type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
 
 export default function ReportsPage() {
     const { settings, activeSymbol, activeRate } = useSettings();
-    const { user } = useUser();
+    const firestore = useFirestore();
     
-    const [salesData, setSalesData] = useState<Sale[]>([]);
-    const [purchasesData, setPurchasesData] = useState<Purchase[]>([]);
-    const [movementsData, setMovementsData] = useState<InventoryMovement[]>([]);
-    const [products, setProducts] = useState<Product[]>([]);
-    const [customers, setCustomers] = useState<Customer[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(useMemoFirebase(() => collection(firestore, 'sales'), [firestore]));
+    const { data: purchasesData, isLoading: isLoadingPurchases } = useCollection<Purchase>(useMemoFirebase(() => collection(firestore, 'purchases'), [firestore]));
+    const { data: movementsData, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(useMemoFirebase(() => collection(firestore, 'inventory_movements'), [firestore]));
+    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(useMemoFirebase(() => collection(firestore, 'products'), [firestore]));
+    const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(useMemoFirebase(() => collection(firestore, 'customers'), [firestore]));
+
+    const isLoading = isLoadingSales || isLoadingPurchases || isLoadingMovements || isLoadingProducts || isLoadingCustomers;
     
     const [selectedSaleDetails, setSelectedSaleDetails] = useState<Sale | null>(null);
     const [saleForTicket, setSaleForTicket] = useState<Sale | null>(null);
@@ -70,18 +71,6 @@ export default function ReportsPage() {
     const [activeTab, setActiveTab] = useState("sales");
     const [timeRange, setTimeRange] = useState<TimeRange>(null);
     const { toast } = useToast();
-    
-    useEffect(() => {
-        // Simulate fetching data
-        setTimeout(() => {
-            setSalesData(mockSales);
-            setPurchasesData(mockPurchases);
-            setMovementsData(mockInventoryMovements);
-            setProducts(mockProducts);
-            setCustomers(defaultCustomers);
-            setIsLoading(false);
-        }, 500);
-    }, []);
 
     const dateFilterQuery = useMemo(() => {
         if (!timeRange) return null;
@@ -109,7 +98,7 @@ export default function ReportsPage() {
     }
     
     const allPayments = useMemo(() => {
-        return salesData.flatMap(sale => 
+        return (salesData || []).flatMap(sale => 
             sale.payments?.map(payment => ({
                 ...payment,
                 saleId: sale.id,
@@ -208,7 +197,7 @@ export default function ReportsPage() {
         if (!sale || !products) return [];
         return sale.items.map(item => {
             const product = products.find(p => p.id === item.productId);
-            const fallbackProduct: Product = { id: item.productId, name: item.productName, price: item.price, stock: 0, sku: '', cost: 0, status: 'inactive', tax1: false, tax2: false, wholesalePrice: item.price };
+            const fallbackProduct: Product = { id: item.productId, name: item.productName, price: item.price, stock: 0, sku: '', cost: 0, status: 'inactive', tax1: false, tax2: false, wholesalePrice: item.price, storeId:'' };
             return {
                 product: product || fallbackProduct,
                 quantity: item.quantity,
@@ -228,21 +217,21 @@ export default function ReportsPage() {
     };
     
     const filteredSales = useMemo(() => {
-        return filterByDate(salesData).filter(s =>
+        return filterByDate(salesData || []).filter(s =>
             (s.id as string).toLowerCase().includes(searchTerm.toLowerCase()) ||
             s.customerName.toLowerCase().includes(searchTerm.toLowerCase())
         ) as Sale[];
     }, [salesData, searchTerm, dateFilterQuery]);
 
     const filteredPurchases = useMemo(() => {
-        return filterByDate(purchasesData).filter(p =>
+        return filterByDate(purchasesData || []).filter(p =>
             (p.id as string).toLowerCase().includes(searchTerm.toLowerCase()) ||
             p.supplierName.toLowerCase().includes(searchTerm.toLowerCase())
         ) as Purchase[];
     }, [purchasesData, searchTerm, dateFilterQuery]);
 
     const filteredMovements = useMemo(() => {
-        return filterByDate(movementsData).filter(m =>
+        return filterByDate(movementsData || []).filter(m =>
             m.productName.toLowerCase().includes(searchTerm.toLowerCase())
         ) as InventoryMovement[];
     }, [movementsData, searchTerm, dateFilterQuery]);
@@ -480,8 +469,8 @@ export default function ReportsPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {filteredPayments.map((payment) => (
-                            <TableRow key={payment.id}>
+                        {filteredPayments.map((payment, index) => (
+                            <TableRow key={payment.id || `payment-${index}`}>
                                 <TableCell>{format(getDate(payment.date), 'dd/MM/yyyy HH:mm')}</TableCell>
                                 <TableCell>{payment.saleId}</TableCell>
                                 <TableCell>{payment.customerName}</TableCell>
@@ -658,6 +647,7 @@ export default function ReportsPage() {
         cartItems={getTicketCartItems(saleForTicket)}
         saleId={saleForTicket.id}
         customer={getTicketCustomer(saleForTicket)}
+        payments={saleForTicket.payments}
       />
     )}
     </>
