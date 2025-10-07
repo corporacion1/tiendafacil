@@ -279,7 +279,7 @@ export default function CatalogPage() {
     }, [products, searchTerm, selectedFamily, bestSellers]);
     
     const itemsForGrid = useMemo(() => {
-        const activeAds = ads.filter(ad => ad.status === 'active' && ad.targetBusinessType === settings.businessType);
+        const activeAds = ads.filter(ad => ad.status === 'active');
         const items: (Product | Ad)[] = [...sortedAndFilteredProducts];
         
         for (let i = 0; i < activeAds.length; i++) {
@@ -291,7 +291,7 @@ export default function CatalogPage() {
             }
         }
         return items;
-    }, [sortedAndFilteredProducts, ads, settings.businessType]);
+    }, [sortedAndFilteredProducts, ads]);
 
     const familyFilters = ["all", ...initialFamilies.map(f => f.name)];
     
@@ -565,7 +565,7 @@ export default function CatalogPage() {
                     ) : (
                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                             {itemsForGrid.map((item, index) => {
-                                if ('targetBusinessType' in item) { // This is an Ad
+                                if ('views' in item) { // This is an Ad
                                     return <AdCard key={`ad-${item.id}-${index}`} ad={item} />;
                                 }
                                 // This is a Product

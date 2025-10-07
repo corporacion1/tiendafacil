@@ -68,12 +68,6 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
                     {getStatusLabel(ad.status)}
                 </Badge>
             </TableCell>
-             <TableCell className="hidden md:table-cell">
-                <div className="flex items-center gap-2">
-                    <Store className="h-4 w-4 text-muted-foreground" />
-                    <span>{ad.storeIds.length} Tienda(s)</span>
-                </div>
-            </TableCell>
             <TableCell className="hidden md:table-cell">
                 <div className="flex items-center gap-1">
                     {isExpired && <AlertTriangle className="h-4 w-4 text-amber-500" />}
@@ -258,7 +252,6 @@ export default function AdsPage() {
                 </TableHead>
                 <TableHead>Nombre</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead className="hidden md:table-cell">Tiendas</TableHead>
                 <TableHead className="hidden md:table-cell">Vence</TableHead>
                 <TableHead className="hidden md:table-cell">Vistas</TableHead>
                 <TableHead>

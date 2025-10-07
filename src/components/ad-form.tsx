@@ -20,9 +20,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useSettings } from "@/contexts/settings-context";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { getDisplayImageUrl } from "@/lib/utils";
-import { MultiSelect } from "./ui/multi-select";
-import { mockStores } from "@/lib/stores";
-import { businessCategories } from "@/lib/data";
 import { DatePicker } from "./ui/date-picker";
 
 
@@ -35,8 +32,6 @@ const adSchema = z.object({
   description: z.string().optional(),
   imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
   imageHint: z.string().optional(),
-  targetBusinessType: z.string().min(1, "Debes seleccionar un tipo de negocio."),
-  storeIds: z.array(z.string()).min(1, "Debes seleccionar al menos una tienda."),
   expiryDate: z.string().optional(),
 });
 
@@ -57,8 +52,6 @@ const getInitialValues = (ad?: Ad): AdFormValues => {
         imageUrl: '',
         description: '',
         imageHint: '',
-        targetBusinessType: '',
-        storeIds: [],
         expiryDate: '',
     };
 };
@@ -136,11 +129,6 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
     }
   };
   
-  const storeOptions = useMemo(() => mockStores.map(store => ({
-    value: store.id,
-    label: store.name,
-  })), []);
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-6">
@@ -210,30 +198,7 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="targetBusinessType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tipo de Negocio de Destino</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Selecciona un tipo de negocio" />
-                            </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                {businessCategories.map(category => (
-                                    <SelectItem key={category} value={category}>
-                                        {category}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                
                  <FormField
                     control={form.control}
                     name="status"
@@ -285,22 +250,6 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="storeIds"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Tiendas de Destino</FormLabel>
-                            <MultiSelect
-                                options={storeOptions}
-                                selected={field.value}
-                                onChange={field.onChange}
-                                placeholder="Selecciona una o más tiendas..."
-                            />
-                             <FormMessage />
-                        </FormItem>
-                    )}
-                   />
                    <FormField
                     control={form.control}
                     name="expiryDate"

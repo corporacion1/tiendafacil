@@ -13,10 +13,8 @@ export const mockAds: Ad[] = [
     price: 0,
     imageUrl: "https://images.unsplash.com/photo-1576680590355-32033c563339?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     imageHint: "computer repair",
-    targetBusinessType: "Tecnologia",
     views: 1024,
     status: 'active',
-    storeIds: ['store-1'],
     expiryDate: addDays(new Date(), 30).toISOString(),
   },
   {
@@ -27,10 +25,8 @@ export const mockAds: Ad[] = [
     price: 0,
     imageUrl: "https://images.unsplash.com/photo-1593640408182-31c70c8268f5?q=80&w=2042&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     imageHint: "gaming pc",
-    targetBusinessType: "Tecnologia",
     views: 512,
     status: 'active',
-    storeIds: ['store-1'],
   },
   {
     id: "ad-3",
@@ -40,10 +36,8 @@ export const mockAds: Ad[] = [
     price: 0,
     imageUrl: "https://images.unsplash.com/photo-1576680590355-32033c563339?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
     imageHint: "expired sale",
-    targetBusinessType: "Tecnologia",
     views: 2048,
     status: 'active', // Will be automatically set to inactive
-    storeIds: ['store-1'],
     expiryDate: subDays(new Date(), 5).toISOString(),
   },
 ];
