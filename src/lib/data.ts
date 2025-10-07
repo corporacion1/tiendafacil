@@ -48,8 +48,8 @@ export const mockProducts: Product[] = [
     family: "Bebidas",
     warehouse: "Almacén Principal",
     description: "Refresco carbonatado sabor cola, botella de 2 litros.",
-    imageUrl: PlaceHolderImages[0].imageUrl,
-    imageHint: PlaceHolderImages[0].imageHint,
+    imageUrl: PlaceHolderImages.find(p => p.id === '1')?.imageUrl,
+    imageHint: PlaceHolderImages.find(p => p.id === '1')?.imageHint,
   },
   {
     id: "prod-2",
@@ -66,8 +66,8 @@ export const mockProducts: Product[] = [
     family: "Snacks",
     warehouse: "Almacén Principal",
     description: "Papas fritas naturales en bolsa de 150g.",
-    imageUrl: PlaceHolderImages[1].imageUrl,
-    imageHint: PlaceHolderImages[1].imageHint,
+    imageUrl: PlaceHolderImages.find(p => p.id === '2')?.imageUrl,
+    imageHint: PlaceHolderImages.find(p => p.id === '2')?.imageHint,
   },
   {
     id: "prod-3",
@@ -84,8 +84,8 @@ export const mockProducts: Product[] = [
     family: "Lácteos y Huevos",
     warehouse: "Almacén Principal",
     description: "Leche de vaca pasteurizada, cartón de 1 litro.",
-    imageUrl: PlaceHolderImages[2].imageUrl,
-    imageHint: PlaceHolderImages[2].imageHint,
+    imageUrl: PlaceHolderImages.find(p => p.id === '3')?.imageUrl,
+    imageHint: PlaceHolderImages.find(p => p.id === '3')?.imageHint,
   },
    {
     id: "prod-4",
@@ -102,8 +102,8 @@ export const mockProducts: Product[] = [
     family: "Limpieza",
     warehouse: "Almacén Principal",
     description: "Limpiador desinfectante para todo tipo de superficies, aroma a lavanda.",
-    imageUrl: PlaceHolderImages[3].imageUrl,
-    imageHint: PlaceHolderImages[3].imageHint,
+    imageUrl: PlaceHolderImages.find(p => p.id === '4')?.imageUrl,
+    imageHint: PlaceHolderImages.find(p => p.id === '4')?.imageHint,
   },
   {
     id: "prod-5",
@@ -120,8 +120,8 @@ export const mockProducts: Product[] = [
     family: "Panadería",
     warehouse: "Almacén Principal",
     description: "Pan de molde blanco, ideal para sándwiches.",
-    imageUrl: PlaceHolderImages[4].imageUrl,
-    imageHint: PlaceHolderImages[4].imageHint,
+    imageUrl: PlaceHolderImages.find(p => p.id === '5')?.imageUrl,
+    imageHint: PlaceHolderImages.find(p => p.id === '5')?.imageHint,
   },
   {
     id: "prod-6",
@@ -138,8 +138,8 @@ export const mockProducts: Product[] = [
     family: "Lácteos y Huevos",
     warehouse: "Almacén Principal",
     description: "Cartón con 12 huevos de gallina frescos.",
-    imageUrl: PlaceHolderImages[5].imageUrl,
-    imageHint: PlaceHolderImages[5].imageHint,
+    imageUrl: PlaceHolderImages.find(p => p.id === '6')?.imageUrl,
+    imageHint: PlaceHolderImages.find(p => p.id === '6')?.imageHint,
   },
 ];
 
@@ -243,5 +243,3 @@ export function factoryReset() {
     
     console.log("Factory reset complete.");
 }
-
-    
