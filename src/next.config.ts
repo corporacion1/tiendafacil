@@ -1,4 +1,5 @@
 
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   typescript: {
@@ -58,7 +59,12 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '4mb',
     },
+    allowedDevOrigins: [
+        'http://localhost:3000',
+        'https://*.cloudworkstations.dev',
+    ]
   },
 };
 
 module.exports = nextConfig;
+
