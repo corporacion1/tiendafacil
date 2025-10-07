@@ -43,6 +43,7 @@ export const businessCategories: string[] = [
     'Supermercado',
     'Servicios Profesionales',
     'Ferretería',
+    'Tienda de Repuestos',
     'Salud y Belleza',
     'Otro'
 ];
