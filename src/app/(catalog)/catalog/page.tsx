@@ -28,7 +28,7 @@ import { isPast } from "date-fns";
 
 const AdCard = ({ ad }: { ad: Ad }) => {
     return (
-        <div className="block group" onClick={() => trackAdClick(ad.id)}>
+        <a href={ad.imageUrl} target="_blank" rel="noopener noreferrer" className="block group" onClick={() => trackAdClick(ad.id)}>
             <Card className="overflow-hidden group flex flex-col bg-accent/20 border-accent/50 hover:border-accent transition-all">
                 <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative cursor-pointer">
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent z-10" />
@@ -58,7 +58,7 @@ const AdCard = ({ ad }: { ad: Ad }) => {
                     <ArrowRight className="w-4 h-4 text-accent-foreground/80" />
                 </CardFooter>
             </Card>
-        </div>
+        </a>
     );
 };
 
@@ -453,10 +453,6 @@ export default function CatalogPage() {
                     <div className="container flex h-16 items-center justify-between">
                         <Logo className="w-32 h-10" />
                         <div className="flex items-center gap-2">
-                             <Button variant="outline" onClick={handleRefreshData}>
-                                <RefreshCw className="mr-2 h-4 w-4" />
-                                Actualizar
-                            </Button>
                              <Dialog>
                                 <DialogTrigger asChild>
                                     <Button variant="outline" onClick={generateShareQrCode}>
