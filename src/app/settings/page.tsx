@@ -518,33 +518,6 @@ export default function SettingsPage() {
                 </CardFooter>
             </Card>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle>Redes Sociales</CardTitle>
-                    <CardDescription>Configura los enlaces a tus perfiles de redes sociales.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="storeWhatsapp">Teléfono de WhatsApp</Label>
-                            <Input id="storeWhatsapp" value={localSettings.storeWhatsapp} onChange={handleSettingsChange} placeholder="+58-412-1112233" />
-                            <CardDescription>Este número se usará para los enlaces de WhatsApp.</CardDescription>
-                        </div>
-                         <div className="space-y-2">
-                            <Label htmlFor="storeTiktok">Usuario de TikTok</Label>
-                            <Input id="storeTiktok" value={localSettings.storeTiktok} onChange={handleSettingsChange} placeholder="@tu-usuario-tiktok" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="storeMeta">Usuario de Meta (Instagram, Facebook, X)</Label>
-                            <Input id="storeMeta" value={localSettings.storeMeta} onChange={handleSettingsChange} placeholder="@tu-usuario-meta" />
-                        </div>
-                    </div>
-                </CardContent>
-                 <CardFooter className="border-t px-6 py-4 flex justify-end">
-                    <Button className="bg-primary hover:bg-primary/90" onClick={saveAllSettings} disabled={!isDirty}>Guardar Cambios de Redes</Button>
-                </CardFooter>
-            </Card>
-
             {/* Currency Management Card */}
             <Card>
                 <CardHeader>
@@ -641,6 +614,33 @@ export default function SettingsPage() {
                 </CardContent>
                  <CardFooter className="border-t px-6 py-4 flex justify-end">
                     <Button className="bg-primary hover:bg-primary/90" onClick={saveAllSettings} disabled={!isDirty}>Guardar Configuración de Monedas</Button>
+                </CardFooter>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Redes Sociales</CardTitle>
+                    <CardDescription>Configura los enlaces a tus perfiles de redes sociales.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="storeWhatsapp">Teléfono de WhatsApp</Label>
+                            <Input id="storeWhatsapp" value={localSettings.storeWhatsapp} onChange={handleSettingsChange} placeholder="+58-412-1112233" />
+                            <CardDescription>Este número se usará para los enlaces de WhatsApp.</CardDescription>
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="storeTiktok">Usuario de TikTok</Label>
+                            <Input id="storeTiktok" value={localSettings.storeTiktok} onChange={handleSettingsChange} placeholder="@tu-usuario-tiktok" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="storeMeta">Usuario de Meta (Instagram, Facebook, X)</Label>
+                            <Input id="storeMeta" value={localSettings.storeMeta} onChange={handleSettingsChange} placeholder="@tu-usuario-meta" />
+                        </div>
+                    </div>
+                </CardContent>
+                 <CardFooter className="border-t px-6 py-4 flex justify-end">
+                    <Button className="bg-primary hover:bg-primary/90" onClick={saveAllSettings} disabled={!isDirty}>Guardar Cambios de Redes</Button>
                 </CardFooter>
             </Card>
 
