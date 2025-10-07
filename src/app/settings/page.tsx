@@ -463,6 +463,10 @@ export default function SettingsPage() {
                             <Input id="storeName" value={localSettings.storeName} onChange={handleSettingsChange} placeholder="Mi Tienda Increíble" maxLength={45} />
                         </div>
                         <div className="space-y-2">
+                            <Label htmlFor="businessType">Tipo de Negocio</Label>
+                            <Input id="businessType" value={localSettings.businessType} onChange={handleSettingsChange} placeholder="Ej: Tienda de Tecnología" maxLength={45} />
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
                             <Label htmlFor="storeAddress">Dirección</Label>
                             <Input id="storeAddress" value={localSettings.storeAddress} onChange={handleSettingsChange} placeholder="Calle Falsa 123" maxLength={55} />
                         </div>

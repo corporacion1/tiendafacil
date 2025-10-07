@@ -22,6 +22,7 @@ export interface Settings {
     primaryCurrencySymbol: string;
     secondaryCurrencyName: string;
     secondaryCurrencySymbol: string;
+    businessType: string;
 }
 
 type DisplayCurrency = 'primary' | 'secondary';
@@ -72,6 +73,7 @@ const defaultSettings: Settings = {
     primaryCurrencySymbol: '$',
     secondaryCurrencyName: 'Bolívares',
     secondaryCurrencySymbol: 'Bs.',
+    businessType: 'Tienda de Tecnología',
 };
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {

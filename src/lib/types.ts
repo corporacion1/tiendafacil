@@ -133,6 +133,7 @@ export type Store = {
     id: string;
     name: string;
     status: 'active' | 'inactive';
+    businessType: string;
 };
 
 export type Ad = {

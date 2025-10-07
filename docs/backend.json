@@ -8,7 +8,8 @@
         "name": { "type": "string", "description": "Nombre de la tienda." },
         "description": { "type": "string", "description": "Descripción pública de la tienda." },
         "ownerId": { "type": "string", "description": "El UID del usuario (storeAdmin) que posee esta tienda." },
-        "logoUrl": { "type": "string", "format": "uri", "description": "URL del logo de la tienda." }
+        "logoUrl": { "type": "string", "format": "uri", "description": "URL del logo de la tienda." },
+        "businessType": { "type": "string", "description": "Categoría o tipo de negocio de la tienda (ej: 'tecnología', 'restaurante', 'ropa')." }
       },
       "required": ["name", "ownerId"]
     },
