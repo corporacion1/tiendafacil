@@ -594,7 +594,7 @@ export default function InventoryPage() {
     </AlertDialog>
     
     <Dialog open={isMovementsDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) { setSelectedProduct(null); } setIsMovementsDialogOpen(isOpen); }}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-xl">
           <DialogHeader>
               <DialogTitle>Movimientos de: {selectedProduct?.name}</DialogTitle>
               <DialogDescription>
@@ -606,6 +606,7 @@ export default function InventoryPage() {
                   <TableRow>
                       <TableHead>Fecha</TableHead>
                       <TableHead>Tipo</TableHead>
+                      <TableHead>Responsable</TableHead>
                       <TableHead className="text-right">Cantidad</TableHead>
                   </TableRow>
               </TableHeader>
@@ -618,11 +619,12 @@ export default function InventoryPage() {
                                   {getMovementLabel(movement.type)}
                               </Badge>
                           </TableCell>
+                          <TableCell>{movement.responsible || 'N/A'}</TableCell>
                           <TableCell className="text-right">{movement.quantity}</TableCell>
                       </TableRow>
                   )) : (
                     <TableRow>
-                        <TableCell colSpan={3} className="text-center text-muted-foreground">No hay movimientos para este producto.</TableCell>
+                        <TableCell colSpan={4} className="text-center text-muted-foreground">No hay movimientos para este producto.</TableCell>
                     </TableRow>
                   )}
               </TableBody>
