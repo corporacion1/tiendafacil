@@ -21,7 +21,7 @@ import { useUser, useFirestore, useCollection, useMemoFirebase, setDocumentNonBl
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { factoryReset, businessCategories } from "@/lib/data";
 import { seedDatabase } from "@/lib/seed";
-import { collection, orderBy, query, writeBatch } from "firebase/firestore";
+import { collection, orderBy, query, writeBatch, doc } from "firebase/firestore";
 
 
 function ChangePinDialog() {
@@ -119,9 +119,9 @@ export default function SettingsPage() {
     
     const [localSettings, setLocalSettings] = useState(settings);
 
-    const { data: units = [] } = useCollection<Unit>(useMemoFirebase(() => collection(firestore, 'units'), [firestore]));
-    const { data: families = [] } = useCollection<Family>(useMemoFirebase(() => collection(firestore, 'families'), [firestore]));
-    const { data: warehouses = [] } = useCollection<Warehouse>(useMemoFirebase(() => collection(firestore, 'warehouses'), [firestore]));
+    const { data: units = [] } = useCollection<Unit>(useMemoFirebase(() => query(collection(firestore, 'units'), orderBy('name', 'asc')), [firestore]));
+    const { data: families = [] } = useCollection<Family>(useMemoFirebase(() => query(collection(firestore, 'families'), orderBy('name', 'asc')), [firestore]));
+    const { data: warehouses = [] } = useCollection<Warehouse>(useMemoFirebase(() => query(collection(firestore, 'warehouses'), orderBy('name', 'asc')), [firestore]));
 
     const [localUnits, setLocalUnits] = useState<Unit[]>([]);
     const [localFamilies, setLocalFamilies] = useState<Family[]>([]);
@@ -200,15 +200,15 @@ export default function SettingsPage() {
         setSettings(localSettings);
 
         // Save units, families, warehouses
-        localUnits.forEach(unit => {
+        (localUnits || []).forEach(unit => {
             const unitRef = doc(firestore, 'units', unit.id);
             batch.set(unitRef, unit, { merge: true });
         });
-        localFamilies.forEach(family => {
+        (localFamilies || []).forEach(family => {
             const familyRef = doc(firestore, 'families', family.id);
             batch.set(familyRef, family, { merge: true });
         });
-        localWarehouses.forEach(wh => {
+        (localWarehouses || []).forEach(wh => {
             const whRef = doc(firestore, 'warehouses', wh.id);
             batch.set(whRef, wh, { merge: true });
         });
@@ -251,7 +251,7 @@ export default function SettingsPage() {
 
     const isItemInUse = (type: 'unit' | 'family' | 'warehouse', id: string) => {
         if (!products) return false;
-        const nameFinder = (items: any[], itemId: string) => items.find(i => i.id === itemId)?.name;
+        const nameFinder = (items: any[], itemId: string) => (items || []).find(i => i.id === itemId)?.name;
         
         let name: string | undefined;
         let itemList: Product[] = products;
@@ -882,3 +882,5 @@ export default function SettingsPage() {
         </div>
     );
 }
+
+    
