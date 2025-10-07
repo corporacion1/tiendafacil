@@ -3,9 +3,10 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid, Instagram, Star, Search, UserPlus, QrCode, ZoomIn, Pencil } from "lucide-react";
+import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid, Instagram, Star, Search, UserPlus, QrCode, ZoomIn, Pencil, ArrowRight } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -15,13 +16,50 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import type { Product, CartItem, Sale, Customer, PendingOrder } from "@/lib/types";
+import type { Product, CartItem, Sale, Customer, PendingOrder, Ad } from "@/lib/types";
 import { mockProducts, initialFamilies, mockSales, defaultCustomers } from "@/lib/data";
+import { mockAds } from "@/lib/ads";
 import { useSettings } from "@/contexts/settings-context";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+
+const AdCard = ({ ad }: { ad: Ad }) => {
+    return (
+        <a href={ad.link} target="_blank" rel="noopener noreferrer" className="block group">
+            <Card className="overflow-hidden group flex flex-col bg-accent/20 border-accent/50 hover:border-accent transition-all">
+                <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative cursor-pointer">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent z-10" />
+                    {ad.imageUrl ? (
+                        <Image
+                            src={ad.imageUrl}
+                            alt={ad.title}
+                            fill
+                            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+                            className="object-cover transition-transform duration-300 group-hover:scale-105"
+                            data-ai-hint={ad.imageHint}
+                        />
+                    ) : (
+                        <div className="flex items-center justify-center h-full w-full bg-muted">
+                            <Package className="w-16 h-16 text-muted-foreground" />
+                        </div>
+                    )}
+                    <Badge variant="secondary" className="absolute top-2 left-2 z-20 shadow-lg bg-accent text-accent-foreground">
+                        Publicidad
+                    </Badge>
+                    <div className="absolute bottom-0 left-0 right-0 p-4 z-20">
+                         <h3 className="text-lg font-bold text-white drop-shadow-md">{ad.title}</h3>
+                    </div>
+                </CardContent>
+                <CardFooter className="p-2 bg-accent/30 mt-auto flex justify-end items-center">
+                    <span className="text-xs text-accent-foreground/80 mr-2">Ver más</span>
+                    <ArrowRight className="w-4 h-4 text-accent-foreground/80" />
+                </CardFooter>
+            </Card>
+        </a>
+    );
+};
 
 
 const CatalogProductCard = ({ product, onAddToCart, onImageClick }: { product: Product; onAddToCart: (p: Product) => void; onImageClick: (p: Product) => void; }) => {
@@ -80,6 +118,7 @@ export default function CatalogPage() {
     const [products, setProducts] = useState<Product[]>([]);
     const [sales, setSales] = useState<Sale[]>([]);
     const [customers, setCustomers] = useState<Customer[]>(defaultCustomers);
+    const [ads, setAds] = useState<Ad[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
     
@@ -153,6 +192,7 @@ export default function CatalogPage() {
         setTimeout(() => {
             setProducts(mockProducts);
             setSales(mockSales);
+            setAds(mockAds);
             setIsLoading(false);
         }, 500);
     }, []);
@@ -238,6 +278,20 @@ export default function CatalogPage() {
         return Array.from(finalSet);
     }, [products, searchTerm, selectedFamily, bestSellers]);
     
+    const itemsForGrid = useMemo(() => {
+        const items: (Product | Ad)[] = [...sortedAndFilteredProducts];
+        // Insert an ad after every 8 products
+        for (let i = 0; i < ads.length; i++) {
+            const adIndex = (i + 1) * 9 - 1; // Position 8, 17, 26...
+            if (items.length > adIndex) {
+                items.splice(adIndex, 0, ads[i]);
+            } else {
+                items.push(ads[i]);
+            }
+        }
+        return items;
+    }, [sortedAndFilteredProducts, ads]);
+
     const familyFilters = ["all", ...initialFamilies.map(f => f.name)];
     
     const handleOpenOrderDialog = () => {
@@ -509,12 +563,16 @@ export default function CatalogPage() {
                         </div>
                     ) : (
                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                            {sortedAndFilteredProducts.map((product) => (
-                                <CatalogProductCard key={product.id} product={product} onAddToCart={addToCart} onImageClick={handleImageClick} />
-                            ))}
+                            {itemsForGrid.map((item, index) => {
+                                if ('link' in item) { // This is an Ad
+                                    return <AdCard key={`ad-${item.id}-${index}`} ad={item} />;
+                                }
+                                // This is a Product
+                                return <CatalogProductCard key={item.id} product={item} onAddToCart={addToCart} onImageClick={handleImageClick} />;
+                            })}
                         </div>
                     )}
-                     {sortedAndFilteredProducts.length === 0 && !isLoading && (
+                     {itemsForGrid.length === 0 && !isLoading && (
                         <div className="text-center py-16 text-muted-foreground">
                             <Package className="mx-auto h-12 w-12 mb-4" />
                             <h3 className="text-lg font-semibold">No se encontraron productos</h3>

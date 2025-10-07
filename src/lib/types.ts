@@ -135,4 +135,11 @@ export type Store = {
     status: 'active' | 'inactive';
 };
 
+export type Ad = {
+  id: string;
+  title: string;
+  imageUrl: string;
+  imageHint?: string;
+  link: string;
+};
     
