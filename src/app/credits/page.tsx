@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -58,6 +59,21 @@ export default function CreditsPage() {
             setCurrentPaymentAmount('');
         }
     }, [paymentDialogOpen, balanceAfterNewPayments])
+    
+    const isReferenceDuplicate = (reference: string, method: string) => {
+        if (!reference || !method) return false;
+        // Check current unsaved payments
+        if (payments.some(p => p.method === method && p.reference === reference)) {
+            return true;
+        }
+        // Check all past sales
+        for (const sale of mockSales) {
+            if (sale.payments && sale.payments.some(p => p.method === method && p.reference === reference)) {
+                return true;
+            }
+        }
+        return false;
+    };
 
     const handleAddPayment = () => {
         const amount = Number(currentPaymentAmount);
@@ -71,8 +87,8 @@ export default function CreditsPage() {
             toast({ variant: 'destructive', title: 'Referencia requerida.' });
             return;
         }
-        if (payments.some(p => p.method === currentPaymentMethod && p.reference === currentPaymentRef && currentPaymentRef.trim() !== '')) {
-            toast({ variant: 'destructive', title: 'Referencia duplicada.'});
+        if (method.requiresRef && isReferenceDuplicate(currentPaymentRef.trim(), method.name)) {
+            toast({ variant: 'destructive', title: 'Referencia duplicada', description: 'Este número de referencia ya ha sido utilizado.' });
             return;
         }
         if (amount > remainingBalance) {
@@ -80,7 +96,7 @@ export default function CreditsPage() {
             return;
         }
 
-        setPayments(prev => [...prev, { amount, method: method.name, reference: currentPaymentRef }]);
+        setPayments(prev => [...prev, { amount, method: method.name, reference: currentPaymentRef.trim() }]);
         setCurrentPaymentAmount('');
         setCurrentPaymentRef('');
     }

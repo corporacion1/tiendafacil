@@ -124,7 +124,7 @@ export default function POSPage() {
   
   const [productDetails, setProductDetails] = useState<Product | null>(null);
 
-  const customerList = useMemo(() => [{ id: 'eventual', name: 'Cliente Eventual' }, ...customers], [customers]);
+  const customerList = useMemo(() => [{ id: 'eventual', name: 'Cliente Eventual', phone: '' }, ...customers], [customers]);
   const selectedCustomer = customerList.find(c => c.id === selectedCustomerId) ?? null;
 
   const addToCart = (product: Product) => {
@@ -226,6 +226,21 @@ export default function POSPage() {
     }
   }, [isProcessSaleDialogOpen, remainingBalance]);
 
+  const isReferenceDuplicate = (reference: string, method: string) => {
+    if (!reference || !method) return false;
+    // Check current unsaved payments
+    if (payments.some(p => p.method === method && p.reference === reference)) {
+        return true;
+    }
+    // Check all past sales
+    for (const sale of mockSales) {
+        if (sale.payments && sale.payments.some(p => p.method === method && p.reference === reference)) {
+            return true;
+        }
+    }
+    return false;
+  };
+
   const handleAddPayment = () => {
       const amount = Number(currentPaymentAmount);
       const method = paymentMethods.find(m => m.id === currentPaymentMethod);
@@ -238,12 +253,12 @@ export default function POSPage() {
           toast({ variant: 'destructive', title: 'Referencia requerida para este método de pago.' });
           return;
       }
-      if (payments.some(p => p.method === currentPaymentMethod && p.reference === currentPaymentRef && currentPaymentRef.trim() !== '')) {
-          toast({ variant: 'destructive', title: 'Referencia duplicada.'});
+       if (method.requiresRef && isReferenceDuplicate(currentPaymentRef.trim(), method.name)) {
+          toast({ variant: 'destructive', title: 'Referencia duplicada', description: 'Este número de referencia ya ha sido utilizado en otra transacción.' });
           return;
       }
 
-      setPayments(prev => [...prev, { amount, method: method.name, reference: currentPaymentRef }]);
+      setPayments(prev => [...prev, { amount, method: method.name, reference: currentPaymentRef.trim() }]);
       setCurrentPaymentAmount('');
       setCurrentPaymentRef('');
   };
@@ -267,8 +282,8 @@ export default function POSPage() {
     
     const isCreditSale = remainingBalance > 0;
 
-    if (isCreditSale && selectedCustomerId === 'eventual') {
-        toast({ variant: "destructive", title: "Cliente no válido para crédito", description: "Selecciona un cliente registrado para dejar un saldo pendiente." });
+    if (isCreditSale && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone)) {
+        toast({ variant: "destructive", title: "Cliente no válido para crédito", description: "Para ventas a crédito, selecciona un cliente registrado con número de teléfono." });
         return;
     }
 
@@ -325,6 +340,7 @@ export default function POSPage() {
     setCartItems([]);
     setIsProcessSaleDialogOpen(false);
     resetPaymentModal();
+    setSelectedCustomerId('eventual');
 
     if (andPrint) {
         setTimeout(() => {
@@ -349,11 +365,11 @@ export default function POSPage() {
   };
 
   const handleAddNewCustomer = () => {
-    if (newCustomer.name.trim() === "") {
+    if (newCustomer.name.trim() === "" || newCustomer.phone.trim() === "") {
         toast({
             variant: "destructive",
-            title: "Nombre inválido",
-            description: "El nombre del cliente no puede estar vacío.",
+            title: "Datos incompletos",
+            description: "El nombre y el teléfono del cliente son requeridos.",
         });
         return;
     }
@@ -544,8 +560,8 @@ export default function POSPage() {
                                     <Input id="new-customer-name" value={newCustomer.name} onChange={(e) => setNewCustomer(prev => ({ ...prev, name: e.target.value }))} className="col-span-3" placeholder="Ej: Jane Doe" required />
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="new-customer-phone" className="text-right">Teléfono</Label>
-                                    <Input id="new-customer-phone" value={newCustomer.phone} onChange={(e) => setNewCustomer(prev => ({ ...prev, phone: e.target.value }))} className="col-span-3" />
+                                    <Label htmlFor="new-customer-phone" className="text-right">Teléfono*</Label>
+                                    <Input id="new-customer-phone" value={newCustomer.phone} onChange={(e) => setNewCustomer(prev => ({ ...prev, phone: e.target.value }))} className="col-span-3" required />
                                 </div>
                                 <div className="grid grid-cols-4 items-center gap-4">
                                     <Label htmlFor="new-customer-address" className="text-right">Dirección</Label>
@@ -556,7 +572,7 @@ export default function POSPage() {
                                 <DialogClose asChild>
                                     <Button variant="outline">Cancelar</Button>
                                 </DialogClose>
-                                <Button onClick={handleAddNewCustomer} disabled={!isNewCustomerFormDirty || !newCustomer.name.trim()}>Guardar Cliente</Button>
+                                <Button onClick={handleAddNewCustomer} disabled={!newCustomer.name.trim() || !newCustomer.phone.trim()}>Guardar Cliente</Button>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
@@ -709,17 +725,17 @@ export default function POSPage() {
                             </div>
                         </div>
                     </div>
-                    {remainingBalance > 0 && selectedCustomerId === 'eventual' && (
+                    {remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone) && (
                         <div className="text-destructive text-sm font-medium flex items-center gap-2 mt-2 p-2 bg-destructive/10 rounded-md">
                             <AlertCircle className="h-4 w-4" />
-                            <span>Para guardar como crédito, debe seleccionar un cliente registrado.</span>
+                            <span>Para guardar como crédito, debe seleccionar un cliente registrado con teléfono.</span>
                         </div>
                     )}
                     <DialogFooter className="gap-2 sm:gap-0 mt-4">
-                        <Button variant="outline" onClick={() => handleProcessSale(false)} disabled={remainingBalance > 0 && selectedCustomerId === 'eventual'}>
+                        <Button variant="outline" onClick={() => handleProcessSale(false)} disabled={remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone)}>
                             {remainingBalance > 0 ? 'Guardar como Crédito' : 'Solo Guardar'}
                         </Button>
-                        <Button onClick={() => handleProcessSale(true)} disabled={remainingBalance > 0 && selectedCustomerId === 'eventual'}>
+                        <Button onClick={() => handleProcessSale(true)} disabled={remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone)}>
                             {remainingBalance > 0 ? 'Guardar Crédito e Imprimir' : 'Guardar e Imprimir'}
                         </Button>
                     </DialogFooter>
