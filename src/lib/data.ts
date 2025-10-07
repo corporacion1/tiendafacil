@@ -1,6 +1,7 @@
 
 import type { Product, InventoryMovement, Sale, Unit, Family, Warehouse, Customer, Purchase, Supplier, CurrencyRate, Payment } from '@/lib/types';
 import { PlaceHolderImages } from './placeholder-images';
+import { subDays, subHours } from 'date-fns';
 
 export const defaultCustomers: Customer[] = [
     { id: 'eventual', name: 'Cliente Eventual', phone: '', address: '' },
@@ -154,11 +155,11 @@ export const mockSales: Sale[] = [
             { productId: "prod-2", productName: "Papas Fritas Lays 150g", quantity: 3, price: 1.5 }
         ],
         total: 9.5,
-        date: new Date('2025-01-15T14:30:00Z').toISOString(), // 2025
+        date: subDays(new Date(), 2).toISOString(),
         transactionType: 'contado',
         status: 'paid',
         paidAmount: 9.5,
-        payments: [{ id: 'pay-sale-001', amount: 9.5, date: new Date('2025-01-15T14:30:00Z').toISOString(), method: 'efectivo' }]
+        payments: [{ id: 'pay-sale-001', amount: 9.5, date: subDays(new Date(), 2).toISOString(), method: 'efectivo' }]
     },
     {
         id: "SALE-002",
@@ -168,11 +169,43 @@ export const mockSales: Sale[] = [
             { productId: "prod-3", productName: "Leche Completa 1L", quantity: 6, price: 1.6 } // wholesale
         ],
         total: 9.6,
-        date: new Date('2025-02-20T10:00:00Z').toISOString(), // 2025
+        date: subDays(new Date(), 8).toISOString(),
         transactionType: 'credito',
         status: 'unpaid',
         paidAmount: 5,
-        payments: [{ id: 'pay-sale-002', amount: 5, date: new Date('2025-02-21T18:00:00Z').toISOString(), method: 'pago-movil', reference: '012345' }]
+        payments: [{ id: 'pay-sale-002', amount: 5, date: subDays(new Date(), 7).toISOString(), method: 'pago-movil', reference: '012345' }]
+    },
+    {
+        id: "SALE-003",
+        customerId: "eventual",
+        customerName: "Cliente Eventual",
+        items: [
+            { productId: "prod-4", productName: "Limpiador Multiuso Mistolin 1L", quantity: 1, price: 3.0 },
+            { productId: "prod-5", productName: "Pan de Sándwich Blanco", quantity: 2, price: 2.0 }
+        ],
+        total: 7.0,
+        date: subHours(new Date(), 3).toISOString(),
+        transactionType: 'contado',
+        status: 'paid',
+        paidAmount: 7.0,
+        payments: [{ id: 'pay-sale-003', amount: 7.0, date: subHours(new Date(), 3).toISOString(), method: 'tarjeta', reference: '1234' }]
+    },
+     {
+        id: "SALE-004",
+        customerId: "cust-1",
+        customerName: "John Doe",
+        items: [
+            { productId: "prod-6", productName: "Huevos (Cartón de 12)", quantity: 10, price: 3.1 }
+        ],
+        total: 31.0,
+        date: subDays(new Date(), 20).toISOString(),
+        transactionType: 'credito',
+        status: 'paid',
+        paidAmount: 31.0,
+        payments: [
+            { id: 'pay-sale-004-1', amount: 15.0, date: subDays(new Date(), 19).toISOString(), method: 'pago-movil', reference: '67890' },
+            { id: 'pay-sale-004-2', amount: 16.0, date: subDays(new Date(), 10).toISOString(), method: 'efectivo' }
+        ]
     }
 ];
 
@@ -185,9 +218,22 @@ export const mockPurchases: Purchase[] = [
             { productId: "prod-1", productName: "Refresco Coca-Cola 2L", quantity: 100, cost: 1.8 }
         ],
         total: 180,
-        date: new Date('2025-01-10T09:00:00Z').toISOString(), // 2025
+        date: subDays(new Date(), 15).toISOString(),
         documentNumber: "INV-CC-8899",
         responsible: "Admin",
+    },
+    {
+        id: "PUR-002",
+        supplierId: "sup-1",
+        supplierName: "Distribuidora Alimentos Polar",
+        items: [
+            { productId: "prod-2", productName: "Papas Fritas Lays 150g", quantity: 200, cost: 0.9 },
+            { productId: "prod-5", productName: "Pan de Sándwich Blanco", quantity: 50, cost: 1.3 }
+        ],
+        total: 245,
+        date: subDays(new Date(), 5).toISOString(),
+        documentNumber: "INV-POLAR-1122",
+        responsible: "Usuario Demo",
     }
 ];
 
@@ -211,9 +257,9 @@ export const mockInventoryMovements: InventoryMovement[] = [
 ];
 
 export const mockCurrencyRates: CurrencyRate[] = [
-    { id: 'rate-1', rate: 39.50, date: new Date('2025-01-01T12:00:00Z').toISOString() },
-    { id: 'rate-2', rate: 39.45, date: new Date('2025-01-02T12:00:00Z').toISOString() },
-    { id: 'rate-3', rate: 39.30, date: new Date('2025-01-03T12:00:00Z').toISOString() },
+    { id: 'rate-1', rate: 39.50, date: new Date().toISOString() },
+    { id: 'rate-2', rate: 39.45, date: subDays(new Date(), 1).toISOString() },
+    { id: 'rate-3', rate: 39.30, date: subDays(new Date(), 2).toISOString() },
 ];
 
 export const paymentMethods = [
