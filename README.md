@@ -1,28 +1,27 @@
-# Tienda Facil - Sistema de Punto de Venta e Inventario
+# Tienda Facil - Sistema de Punto de Venta e Inventario (Ver. 1.0.0.1)
 
-Tienda Facil es una aplicación web moderna y completa, diseñada para ser un sistema de Punto de Venta (POS) e inventario todo en uno. Creada con Next.js y Tailwind CSS, ofrece una interfaz de usuario rápida, intuitiva y totalmente responsive, ideal para pequeñas y medianas empresas que buscan digitalizar y optimizar sus operaciones.
+Tienda Facil es una aplicación web moderna y completa, diseñada para ser un sistema de Punto de Venta (POS) e inventario todo en uno. Creada con Next.js y Tailwind CSS, y ahora conectada a **Firebase**, ofrece una interfaz de usuario rápida, intuitiva y con persistencia de datos en tiempo real.
 
-Esta versión actual funciona en un **modo de demostración offline**, donde todos los datos se gestionan localmente en el navegador y se reinician al recargar la página. Es perfecto para demostraciones a clientes sin necesidad de una base de datos.
+Esta versión está conectada a una base de datos **Firestore**, lo que permite que tus datos (productos, ventas, inventario, etc.) se guarden de forma segura en la nube.
 
 ## 🚀 Características Principales
 
-- **Dashboard Interactivo:** Visualiza métricas clave de tu negocio en tiempo real, como ventas, compras y productos más vendidos.
-- **Punto de Venta (POS) Moderno:** Una interfaz táctil y amigable para procesar ventas rápidamente, gestionar clientes y aplicar diferentes métodos de pago.
-- **Gestión de Inventario Completa:** Crea, edita y elimina productos. Controla el stock, precios (detal y mayorista), costos y clasifícalos por familias y unidades.
-- **Catálogo Público:** Una página de catálogo de cara al cliente que se puede compartir, permitiendo a los usuarios ver productos y generar pedidos mediante un código QR.
-- **Módulo de Compras:** Registra las compras a proveedores para mantener el stock y los costos actualizados.
-- **Gestión de Créditos:** Administra las ventas a crédito, registra abonos y lleva un control del saldo pendiente de cada cliente.
-- **Reportes Detallados:** Genera reportes de ventas, compras, movimientos de inventario y más, con opciones para filtrar por fecha y exportar en diferentes formatos (CSV, JSON, TXT).
-- **Publicidad Segmentada:** Módulo para crear y gestionar anuncios que se muestran en el catálogo, dirigidos a tipos de negocio específicos.
-- **Alta Configuración:** Personaliza los datos de tu tienda, impuestos, monedas, redes sociales y clasificaciones de productos.
-- **Seguridad con PIN:** Una capa de seguridad opcional para bloquear la aplicación y proteger el acceso.
+- **Dashboard Interactivo:** Visualiza métricas clave de tu negocio en tiempo real.
+- **Punto de Venta (POS) Moderno:** Procesa ventas rápidamente, gestiona clientes y aplica múltiples métodos de pago.
+- **Gestión de Inventario Completa:** Crea, edita y elimina productos con persistencia en la nube.
+- **Catálogo Público Dinámico:** Una página de catálogo que se actualiza en tiempo real, con generación de pedidos mediante código QR.
+- **Módulo de Compras y Créditos:** Registra compras a proveedores y administra las ventas a crédito con abonos.
+- **Reportes Detallados:** Genera reportes de ventas, compras, movimientos de inventario y más.
+- **Publicidad Segmentada:** Módulo para crear y gestionar anuncios dirigidos a tipos de negocio específicos.
+- **Alta Configuración y Seguridad:** Personaliza tu tienda, monedas, impuestos y protege el acceso con un PIN de seguridad.
 
 ## 🛠️ Tecnologías Utilizadas
 
 - **Framework:** Next.js 15 (App Router)
+- **Base de Datos:** Firebase Firestore
+- **Autenticación:** Firebase Authentication (simulada)
 - **Lenguaje:** TypeScript
-- **Estilos:** Tailwind CSS
-- **Componentes UI:** ShadCN
+- **Estilos:** Tailwind CSS & ShadCN
 - **Iconos:** Lucide React
 - **Gráficos:** Recharts
 
@@ -42,10 +41,15 @@ Para ejecutar este proyecto en tu máquina local, sigue estos pasos:
 
 3.  Abre [http://localhost:3000](http://localhost:3000) en tu navegador para ver la aplicación.
 
-## ☁️ Despliegue (Recomendado)
+## ☁️ Despliegue en Vercel (Recomendado)
 
-La forma más sencilla de desplegar esta aplicación Next.js es a través de **Vercel**, la plataforma de los creadores de Next.js.
+La forma más sencilla de desplegar esta aplicación Next.js es a través de **Vercel**, la plataforma de los creadores de Next.js. Si tu proyecto de Vercel ya está conectado a tu repositorio de GitHub, el despliegue es automático.
 
-1.  Sube este código a un repositorio de GitHub.
-2.  Crea una cuenta en [Vercel](https://vercel.com) e importa el repositorio.
-3.  Vercel detectará automáticamente la configuración y desplegará la aplicación con un solo clic.
+1.  **Sube tus cambios a GitHub:**
+    ```bash
+    git add .
+    git commit -m "Deploy version 1.0.0.1"
+    git push
+    ```
+
+2.  **Vercel se encargará del resto:** Al detectar el `push` a tu rama principal, Vercel iniciará un nuevo despliegue automáticamente. En pocos minutos, tu aplicación estará actualizada con la última versión.
