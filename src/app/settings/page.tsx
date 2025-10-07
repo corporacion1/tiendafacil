@@ -312,26 +312,34 @@ export default function SettingsPage() {
             title: 'Restaurando...',
             description: 'Por favor, espera mientras se eliminan los datos.',
         });
-
-        // Reset mock data for other sections that might still use it
-        factoryReset();
         
-        // Clear settings from localStorage
-        localStorage.removeItem('tienda_facil_settings');
-        localStorage.removeItem('tienda_facil_currency_pref');
-        localStorage.removeItem('tienda_facil_pin');
-        
-        setIsResetConfirmOpen(false);
+        try {
+            await factoryReset(firestore);
+            
+            // Clear settings from localStorage
+            localStorage.removeItem('tienda_facil_settings');
+            localStorage.removeItem('tienda_facil_currency_pref');
+            localStorage.removeItem('tienda_facil_pin');
+            
+            setIsResetConfirmOpen(false);
 
-        toast({
-            title: 'Restauración Completa',
-            description: 'Todos los datos de productos han sido eliminados. La página se recargará.',
-        });
+            toast({
+                title: 'Restauración Completa',
+                description: 'Todos los datos han sido eliminados. La página se recargará.',
+            });
 
-        // Reload the page to apply changes everywhere
-        setTimeout(() => {
-            window.location.reload();
-        }, 1500);
+            // Reload the page to apply changes everywhere
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } catch (error) {
+             toast({
+                variant: "destructive",
+                title: "Error en la Restauración",
+                description: "No se pudieron eliminar todos los datos. Revisa la consola para más detalles.",
+            });
+            console.error("Factory reset failed:", error);
+        }
 
     };
 
@@ -686,7 +694,7 @@ export default function SettingsPage() {
                                     <TableBody>
                                         {localCurrencyRates.length > 0 ? localCurrencyRates.map(rate => (
                                             <TableRow key={rate.id}>
-                                                <TableCell>{format(parseISO(rate.date as string), "dd/MM/yy HH:mm")}</TableCell>
+                                                <TableCell>{rate.date ? format(parseISO(rate.date as string), "dd/MM/yy HH:mm") : 'N/A'}</TableCell>
                                                 <TableCell className="text-right font-mono">{`${rate.rate.toFixed(6)} ${localSettings.secondaryCurrencySymbol}`}</TableCell>
                                             </TableRow>
                                         )) : (
