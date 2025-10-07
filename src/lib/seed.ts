@@ -16,8 +16,8 @@ import {
   initialWarehouses,
   mockSales,
   mockPurchases,
-  mockAds
 } from './data';
+import { mockAds } from './ads';
 
 async function isCollectionEmpty(db: Firestore, collectionName: string): Promise<boolean> {
   const collectionRef = collection(db, collectionName);
