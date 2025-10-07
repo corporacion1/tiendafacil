@@ -33,8 +33,17 @@ const generateSaleId = () => {
     return result;
 }
 
+const getDisplayImageUrl = (url?: string): string | undefined => {
+  if (!url) return undefined;
+  if (url.includes('dropbox.com')) {
+    return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '') + '?raw=1';
+  }
+  return url;
+};
+
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
     const { activeSymbol, activeRate } = useSettings();
+    const displayImageUrl = getDisplayImageUrl(product.imageUrl);
 
     return (
         <Card className="overflow-hidden group">
@@ -47,9 +56,9 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
                         </Button>
                     </DialogTrigger>
                 </div>
-                {product.imageUrl ? (
+                {displayImageUrl ? (
                     <Image
-                        src={product.imageUrl}
+                        src={displayImageUrl}
                         alt={product.name}
                         fill
                         sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
@@ -730,9 +739,9 @@ export default function POSPage() {
         {productDetails && (
             <div className="grid gap-4">
                  <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
-                    {productDetails.imageUrl ? (
+                    {getDisplayImageUrl(productDetails.imageUrl) ? (
                         <Image
-                            src={productDetails.imageUrl}
+                            src={getDisplayImageUrl(productDetails.imageUrl)!}
                             alt={productDetails.name}
                             fill
                             sizes="300px"
@@ -790,7 +799,3 @@ export default function POSPage() {
   </Dialog>
   );
 }
-
-    
-
-    

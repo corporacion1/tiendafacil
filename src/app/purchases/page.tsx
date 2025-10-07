@@ -19,14 +19,20 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings } from "@/contexts/settings-context";
-import { useUser } from "@/firebase";
 
 const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
+
+const getDisplayImageUrl = (url?: string): string | undefined => {
+  if (!url) return undefined;
+  if (url.includes('dropbox.com')) {
+    return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '') + '?raw=1';
+  }
+  return url;
+};
 
 export default function PurchasesPage() {
   const { toast } = useToast();
   const { settings, activeSymbol, activeRate } = useSettings();
-  const { user } = useUser();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -242,14 +248,16 @@ export default function PurchasesPage() {
           <CardContent>
             {isLoading && <p>Cargando productos...</p>}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
-              {filteredProducts.map((product) => (
+              {filteredProducts.map((product) => {
+                    const displayImageUrl = getDisplayImageUrl(product.imageUrl);
+                    return (
                     <Card key={product.id} className="overflow-hidden group cursor-pointer" onClick={() => addProductToPurchase(product)}>
                     <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative isolate">
                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
                             <Button size="sm">Agregar</Button>
                         </div>
-                        {product.imageUrl ? (
-                            <Image src={product.imageUrl} alt={product.name} fill sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw" className="object-cover transition-transform group-hover:scale-105" data-ai-hint={product.imageHint} />
+                        {displayImageUrl ? (
+                            <Image src={displayImageUrl} alt={product.name} fill sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw" className="object-cover transition-transform group-hover:scale-105" data-ai-hint={product.imageHint} />
                             ) : (
                             <Package className="w-12 h-12 text-muted-foreground" />
                         )}
@@ -261,7 +269,7 @@ export default function PurchasesPage() {
                         <h3 className="text-sm font-medium truncate">{product.name}</h3>
                     </CardFooter>
                     </Card>
-                ))}
+                )})}
             </div>
           </CardContent>
         </Card>
@@ -466,5 +474,3 @@ export default function PurchasesPage() {
     </div>
   );
 }
-
-    

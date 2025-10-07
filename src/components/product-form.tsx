@@ -20,7 +20,6 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
 import { useSettings } from "@/contexts/settings-context";
-import { useUser } from "@/firebase";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 const productSchema = z.object({
@@ -78,11 +77,18 @@ const calculateProfit = (currentPrice: number, cost: number): string => {
     return '0.00';
 };
 
+const getDisplayImageUrl = (url?: string): string | undefined => {
+  if (!url) return undefined;
+  if (url.includes('dropbox.com')) {
+    return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '') + '?raw=1';
+  }
+  return url;
+};
+
 
 export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onCancel }) => {
   const { toast } = useToast();
   const { settings } = useSettings();
-  const { user } = useUser();
 
   const [products, setProducts] = useState(mockProducts);
   
@@ -149,6 +155,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
       form.reset(getInitialValues());
     }
   };
+  
+  const displayImageUrl = getDisplayImageUrl(watchedImageUrl);
 
   return (
     <Form {...form}>
@@ -295,8 +303,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                           <Input placeholder="https://..." {...field} onBlur={handleImageUrlBlur} />
                         </FormControl>
                         <div className="aspect-square relative bg-muted rounded-md flex items-center justify-center mt-2 overflow-hidden">
-                          {watchedImageUrl ? (
-                            <Image src={watchedImageUrl} alt="Vista previa del producto" fill sizes="300px" className="object-cover" />
+                          {displayImageUrl ? (
+                            <Image src={displayImageUrl} alt="Vista previa del producto" fill sizes="300px" className="object-cover" />
                           ) : (
                             <Package className="h-16 w-16 text-muted-foreground" />
                           )}
@@ -457,5 +465,3 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     </Form>
   );
 };
-
-    
