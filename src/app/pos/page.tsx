@@ -728,7 +728,7 @@ export default function POSPage() {
                     {remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone) && (
                         <div className="text-destructive text-sm font-medium flex items-center gap-2 mt-2 p-2 bg-destructive/10 rounded-md">
                             <AlertCircle className="h-4 w-4" />
-                            <span>Para guardar como crédito, debe seleccionar un cliente registrado con teléfono.</span>
+                            <span>Para guardar como crédito, debe seleccionar un cliente debidamente registrado</span>
                         </div>
                     )}
                     <DialogFooter className="gap-2 sm:gap-0 mt-4">
