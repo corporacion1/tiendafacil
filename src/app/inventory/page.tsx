@@ -148,18 +148,24 @@ export default function InventoryPage() {
   function handleUpdateProduct(data: Omit<Product, 'id'> & { id?: string }) {
     if (!data.id) return false;
 
-    const productIndex = mockProducts.findIndex(p => p.id === data.id);
-    if (productIndex > -1) {
-        mockProducts[productIndex] = { ...mockProducts[productIndex], ...data };
-        setProducts([...mockProducts]);
-        toast({
-            title: "Producto Actualizado",
-            description: `El producto "${data.name}" ha sido actualizado.`,
-        });
-        setProductToEdit(null); // Close the dialog
-        return true;
-    }
-    return false;
+    setProducts(prevProducts => {
+        const updatedProducts = prevProducts.map(p => 
+            p.id === data.id ? { ...p, ...data } : p
+        );
+        // Also update the "global" mockProducts for consistency across the app in this demo
+        const productIndex = mockProducts.findIndex(p => p.id === data.id);
+        if (productIndex > -1) {
+            mockProducts[productIndex] = { ...mockProducts[productIndex], ...data };
+        }
+        return updatedProducts;
+    });
+
+    toast({
+        title: "Producto Actualizado",
+        description: `El producto "${data.name}" ha sido actualizado.`,
+    });
+    setProductToEdit(null); // Close the dialog
+    return true;
   }
   
   const handleDelete = (productId: string) => {
@@ -175,15 +181,20 @@ export default function InventoryPage() {
         return;
     }
     
-    const productIndex = mockProducts.findIndex(p => p.id === productId);
-    if (productIndex > -1) {
-        mockProducts.splice(productIndex, 1);
-        setProducts([...mockProducts]);
-        toast({
-          title: "Producto Eliminado",
-          description: "El producto ha sido eliminado del inventario.",
-        });
-    }
+    setProducts(prevProducts => {
+        const updatedProducts = prevProducts.filter(p => p.id !== productId);
+        // Also update the "global" mockProducts for consistency
+        const productIndex = mockProducts.findIndex(p => p.id === productId);
+        if (productIndex > -1) {
+            mockProducts.splice(productIndex, 1);
+        }
+        return updatedProducts;
+    });
+
+    toast({
+      title: "Producto Eliminado",
+      description: "El producto ha sido eliminado del inventario.",
+    });
 
     setProductToDelete(null);
   };
@@ -205,53 +216,63 @@ export default function InventoryPage() {
       return;
     }
 
-    const currentStock = movementProduct.stock;
-    let newStock = currentStock;
+    let newStock: number;
+    
+    setProducts(prevProducts => {
+        const productToUpdate = prevProducts.find(p => p.id === movementProduct.id);
+        if (!productToUpdate) return prevProducts;
 
-    switch (movementType) {
-      case 'purchase': newStock += movementQuantity; break;
-      case 'sale': 
-        if (currentStock < movementQuantity) {
-          toast({ variant: "destructive", title: "Stock insuficiente", description: `No puedes sacar ${movementQuantity} unidades. Stock actual: ${currentStock}.`});
-          return;
+        const currentStock = productToUpdate.stock;
+        
+        switch (movementType) {
+          case 'purchase': newStock = currentStock + movementQuantity; break;
+          case 'sale': 
+            if (currentStock < movementQuantity) {
+              toast({ variant: "destructive", title: "Stock insuficiente", description: `No puedes sacar ${movementQuantity} unidades. Stock actual: ${currentStock}.`});
+              return prevProducts; // Abort update
+            }
+            newStock = currentStock - movementQuantity;
+            break;
+          case 'adjustment': newStock = movementQuantity; break;
+          default: newStock = currentStock; break;
         }
-        newStock -= movementQuantity;
-        break;
-      case 'adjustment': newStock = movementQuantity; break;
-    }
-    
-    const productIndex = mockProducts.findIndex(p => p.id === movementProduct.id);
-    if (productIndex > -1) {
-        mockProducts[productIndex].stock = newStock;
-    }
 
-    const newMovement: InventoryMovement = {
-        id: `mov-${Date.now()}`,
-        productName: movementProduct.name,
-        type: movementType,
-        quantity: movementType === 'sale' ? -movementQuantity : movementQuantity,
-        date: new Date().toISOString(),
-        responsible: movementResponsible,
-    };
+        const updatedProducts = prevProducts.map(p => 
+            p.id === movementProduct.id ? { ...p, stock: newStock } : p
+        );
 
-    mockInventoryMovements.push(newMovement);
+        const newMovement: InventoryMovement = {
+            id: `mov-${Date.now()}`,
+            productName: movementProduct.name,
+            type: movementType,
+            quantity: movementType === 'sale' ? -movementQuantity : movementQuantity,
+            date: new Date().toISOString(),
+            responsible: movementResponsible,
+        };
 
-    setProducts([...mockProducts]);
-    setInventoryMovements([...mockInventoryMovements]);
+        // Also update global mocks
+        const globalProductIndex = mockProducts.findIndex(p => p.id === movementProduct.id);
+        if (globalProductIndex > -1) {
+            mockProducts[globalProductIndex].stock = newStock;
+        }
+        mockInventoryMovements.push(newMovement);
+        setInventoryMovements(prev => [...prev, newMovement]);
 
-    toast({
-        title: "Movimiento Registrado",
-        description: `El stock de "${movementProduct.name}" ha sido actualizado a ${newStock}.`,
+        toast({
+            title: "Movimiento Registrado",
+            description: `El stock de "${movementProduct.name}" ha sido actualizado a ${newStock}.`,
+        });
+        
+        resetMovementForm();
+        return updatedProducts;
     });
-    
-    resetMovementForm();
   };
   
   const getMovementLabel = (type: 'sale' | 'purchase' | 'adjustment') => {
     switch (type) {
-        case 'sale': return 'Salida';
-        case 'purchase': return 'Entrada';
-        case 'adjustment': return 'Ajuste';
+        case 'sale': return 'Salida(Descargo)';
+        case 'purchase': return 'Entrada(carga)';
+        case 'adjustment': return 'Ajuste(Reemplaza Stock)';
         default: return type;
     }
   };
@@ -618,3 +639,5 @@ export default function InventoryPage() {
     </>
   );
 }
+
+    
