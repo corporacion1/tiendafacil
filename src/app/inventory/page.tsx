@@ -117,6 +117,7 @@ export default function InventoryPage() {
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("all");
   
   const [isProductComboboxOpen, setIsProductComboboxOpen] = useState(false)
   
@@ -263,6 +264,67 @@ export default function InventoryPage() {
       (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [products, searchTerm]);
+  
+  const getVisibleProducts = () => {
+    const baseFilter = filteredProducts;
+    if (activeTab === 'active') return baseFilter.filter(p => p.status === 'active');
+    if (activeTab === 'inactive') return baseFilter.filter(p => p.status === 'inactive');
+    return baseFilter;
+  }
+
+  const exportData = (format: 'csv' | 'json' | 'txt') => {
+    const data = getVisibleProducts();
+    if (data.length === 0) {
+      toast({ variant: 'destructive', title: 'No hay datos para exportar' });
+      return;
+    }
+
+    let content = '';
+    let mimeType = '';
+    let fileExtension = '';
+
+    const dataToExport = data.map(p => ({
+        SKU: p.sku,
+        Nombre: p.name,
+        Estado: p.status,
+        Precio_Detal: (p.price * activeRate).toFixed(2),
+        Precio_Mayor: (p.wholesalePrice * activeRate).toFixed(2),
+        Costo: (p.cost * activeRate).toFixed(2),
+        Stock: p.stock,
+        Unidad: p.unit,
+        Familia: p.family,
+    }));
+
+    if (format === 'csv') {
+      const headers = Object.keys(dataToExport[0]);
+      const csvRows = [
+        headers.join(','),
+        ...dataToExport.map(row => headers.map(header => `"${(row as any)[header]}"`).join(','))
+      ];
+      content = csvRows.join('\n');
+      mimeType = 'text/csv';
+      fileExtension = 'csv';
+    } else if (format === 'json') {
+      content = JSON.stringify(dataToExport, null, 2);
+      mimeType = 'application/json';
+      fileExtension = 'json';
+    } else { // txt
+      content = dataToExport.map(p => 
+        Object.entries(p).map(([key, value]) => `${key}: ${value}`).join('\n')
+      ).join('\n\n--------------------------------\n\n');
+      mimeType = 'text/plain';
+      fileExtension = 'txt';
+    }
+
+    const blob = new Blob([content], { type: `${mimeType};charset=utf-8;` });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `inventario-${activeTab}-${new Date().toISOString().split('T')[0]}.${fileExtension}`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    toast({ title: 'Exportación completada' });
+  };
+
 
   const isMovementFormValid = movementProduct && movementType && movementQuantity > 0 && movementResponsible.trim() !== '';
 
@@ -331,7 +393,7 @@ export default function InventoryPage() {
 
   return (
     <>
-    <Tabs defaultValue="all">
+    <Tabs defaultValue="all" onValueChange={setActiveTab}>
       <div className="flex items-center">
         <TabsList>
           <TabsTrigger value="all">Todo</TabsTrigger>
@@ -339,12 +401,22 @@ export default function InventoryPage() {
           <TabsTrigger value="inactive">Inactivo</TabsTrigger>
         </TabsList>
         <div className="ml-auto flex items-center gap-2">
-          <Button size="sm" variant="outline" className="h-8 gap-1">
-            <File className="h-3.5 w-3.5" />
-            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-              Exportar
-            </span>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" className="h-8 gap-1">
+                    <File className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                    Exportar
+                    </span>
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Formatos de Exportación</DropdownMenuLabel>
+                <DropdownMenuItem onSelect={() => exportData('csv')}>CSV (para Excel)</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportData('json')}>JSON</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportData('txt')}>TXT (Texto Plano)</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           <Dialog>
             <DialogTrigger asChild>

@@ -102,60 +102,16 @@ export default function ReportsPage() {
         setSaleForTicket(sale);
         setIsTicketPreviewOpen(true);
     }
-
-    const exportToCsv = (filename: string, rows: object[]) => {
-        if (!rows || rows.length === 0) {
-            toast({
-                variant: "destructive",
-                title: "No hay datos para exportar",
-                description: "La tabla actual está vacía.",
-            });
-            return;
-        }
-        
-        const processRow = (row: object): string[] => Object.values(row).map(value => {
-            if (value === null || value === undefined) return '';
-            const stringValue = String(value);
-            if (typeof value === 'object' && value !== null) return `"${JSON.stringify(value).replace(/"/g, '""')}"`;
-            if (stringValue.includes(',') || stringValue.includes('\n') || stringValue.includes('"')) {
-                return `"${stringValue.replace(/"/g, '""')}"`;
-            }
-            return stringValue;
-        });
-
-        const headers = Object.keys(rows[0]);
-        const csvContent = [
-            headers.join(','),
-            ...rows.map(row => processRow(row).join(','))
-        ].join('\n');
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        if (link.download !== undefined) {
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute("download", filename);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        toast({
-            title: "Exportación completada",
-            description: `${filename} ha sido descargado.`,
-        });
-    };
     
     const getDate = (date: any) => {
         if (!date) return 'N/A';
         return typeof date === 'string' ? parseISO(date) : date; // Already a Date object
     }
     
-    const handleExport = () => {
+    const handleExport = (format: 'csv' | 'json' | 'txt') => {
         const date = new Date().toISOString().split('T')[0];
         let dataToExport: object[] = [];
-        let filename = `${activeTab}-report-${date}.csv`;
+        let filename = `${activeTab}-report-${date}.${format}`;
 
         switch (activeTab) {
             case 'sales':
@@ -193,8 +149,40 @@ export default function ReportsPage() {
                 break;
         }
 
-        exportToCsv(filename, dataToExport);
-    }
+        if (dataToExport.length === 0) {
+            toast({ variant: 'destructive', title: 'No hay datos para exportar' });
+            return;
+        }
+
+        let content = '';
+        let mimeType = '';
+
+        if (format === 'csv') {
+            const headers = Object.keys(dataToExport[0]);
+            const csvRows = [
+                headers.join(','),
+                ...dataToExport.map(row => headers.map(header => `"${(row as any)[header]}"`).join(','))
+            ];
+            content = csvRows.join('\n');
+            mimeType = 'text/csv';
+        } else if (format === 'json') {
+            content = JSON.stringify(dataToExport, null, 2);
+            mimeType = 'application/json';
+        } else { // txt
+            content = dataToExport.map(p => 
+                Object.entries(p).map(([key, value]) => `${key}: ${value}`).join('\n')
+            ).join('\n\n--------------------------------\n\n');
+            mimeType = 'text/plain';
+        }
+
+        const blob = new Blob([content], { type: `${mimeType};charset=utf-8;` });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(link.href);
+        toast({ title: 'Exportación completada', description: `${filename} ha sido descargado.` });
+    };
 
     const getTicketCartItems = (sale: Sale | null): CartItem[] => {
         if (!sale || !products) return [];
@@ -316,12 +304,22 @@ export default function ReportsPage() {
             <Button size="sm" variant={timeRange === 'week' ? 'default': 'outline'} onClick={() => setTimeRange(t => t === 'week' ? null : 'week')}>Semana</Button>
             <Button size="sm" variant={timeRange === 'month' ? 'default': 'outline'} onClick={() => setTimeRange(t => t === 'month' ? null : 'month')}>Mes</Button>
             <Button size="sm" variant={timeRange === 'year' ? 'default': 'outline'} onClick={() => setTimeRange(t => t === 'year' ? null : 'year')}>Año</Button>
-            <Button size="sm" variant="outline" className="h-8 gap-1" onClick={handleExport}>
-                <File className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                Exportar
-                </span>
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" className="h-8 gap-1">
+                    <File className="h-3.5 w-3.5" />
+                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                    Exportar
+                    </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Formatos de Exportación</DropdownMenuLabel>
+                <DropdownMenuItem onSelect={() => handleExport('csv')}>CSV (para Excel)</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleExport('json')}>JSON</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => handleExport('txt')}>TXT (Texto Plano)</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
         </div>
       </div>
 
@@ -581,5 +579,3 @@ export default function ReportsPage() {
     </>
   );
 }
-
-    
