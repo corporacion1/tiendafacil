@@ -559,6 +559,9 @@ export default function CatalogPage() {
                 
                 {/* Product Details Dialog */}
                 <DialogContent className="sm:max-w-md">
+                    <DialogTrigger asChild>
+                        <button className="hidden" />
+                    </DialogTrigger>
                     <DialogHeader>
                         <DialogTitle>{productDetails?.name}</DialogTitle>
                         <DialogDescription>SKU: {productDetails?.sku}</DialogDescription>
@@ -631,7 +634,5 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
-
-    
 
     
