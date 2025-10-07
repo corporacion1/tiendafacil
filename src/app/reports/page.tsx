@@ -47,7 +47,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/settings-context";
 import { useUser, useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection } from "firebase/firestore";
+import { collection, query, orderBy } from "firebase/firestore";
 
 
 type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
@@ -56,11 +56,11 @@ export default function ReportsPage() {
     const { settings, activeSymbol, activeRate } = useSettings();
     const firestore = useFirestore();
     
-    const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(useMemoFirebase(() => collection(firestore, 'sales'), [firestore]));
-    const { data: purchasesData, isLoading: isLoadingPurchases } = useCollection<Purchase>(useMemoFirebase(() => collection(firestore, 'purchases'), [firestore]));
-    const { data: movementsData, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(useMemoFirebase(() => collection(firestore, 'inventory_movements'), [firestore]));
-    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(useMemoFirebase(() => collection(firestore, 'products'), [firestore]));
-    const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(useMemoFirebase(() => collection(firestore, 'customers'), [firestore]));
+    const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(useMemoFirebase(() => query(collection(firestore, 'sales'), orderBy('date', 'desc')), [firestore]));
+    const { data: purchasesData, isLoading: isLoadingPurchases } = useCollection<Purchase>(useMemoFirebase(() => query(collection(firestore, 'purchases'), orderBy('date', 'desc')), [firestore]));
+    const { data: movementsData, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(useMemoFirebase(() => query(collection(firestore, 'inventory_movements'), orderBy('date', 'desc')), [firestore]));
+    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(useMemoFirebase(() => query(collection(firestore, 'products'), orderBy('createdAt', 'desc')), [firestore]));
+    const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(useMemoFirebase(() => query(collection(firestore, 'customers'), orderBy('name', 'asc')), [firestore]));
 
     const isLoading = isLoadingSales || isLoadingPurchases || isLoadingMovements || isLoadingProducts || isLoadingCustomers;
     
@@ -104,7 +104,7 @@ export default function ReportsPage() {
                 saleId: sale.id,
                 customerName: sale.customerName
             })) ?? []
-        );
+        ).sort((a, b) => new Date(b.date as string).getTime() - new Date(a.date as string).getTime());
     }, [salesData]);
 
     const handleExport = (format: 'csv' | 'json' | 'txt') => {
@@ -197,7 +197,7 @@ export default function ReportsPage() {
         if (!sale || !products) return [];
         return sale.items.map(item => {
             const product = products.find(p => p.id === item.productId);
-            const fallbackProduct: Product = { id: item.productId, name: item.productName, price: item.price, stock: 0, sku: '', cost: 0, status: 'inactive', tax1: false, tax2: false, wholesalePrice: item.price, storeId:'' };
+            const fallbackProduct: Product = { id: item.productId, name: item.productName, price: item.price, stock: 0, sku: '', cost: 0, status: 'inactive', tax1: false, tax2: false, wholesalePrice: item.price, storeId:'', createdAt: new Date().toISOString() };
             return {
                 product: product || fallbackProduct,
                 quantity: item.quantity,
@@ -654,6 +654,3 @@ export default function ReportsPage() {
   );
 }
 
-    
-
-    

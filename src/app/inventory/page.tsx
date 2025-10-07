@@ -127,7 +127,7 @@ export default function InventoryPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
 
-  const productsRef = useMemoFirebase(() => collection(firestore, 'products'), [firestore]);
+  const productsRef = useMemoFirebase(() => query(collection(firestore, 'products'), orderBy('createdAt', 'desc')), [firestore]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
 
   const salesRef = useMemoFirebase(() => collection(firestore, 'sales'), [firestore]);

@@ -38,7 +38,7 @@ import { useSettings } from "@/contexts/settings-context";
 import { InventoryMovement, Product, Purchase, Sale } from "@/lib/types";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection } from "firebase/firestore";
+import { collection, query, orderBy } from "firebase/firestore";
 
 type TimeFilter = 'day' | 'week' | 'month';
 
@@ -47,16 +47,19 @@ export default function Dashboard() {
   const firestore = useFirestore();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
   
-  const salesRef = useMemoFirebase(() => collection(firestore, 'sales'), [firestore]);
+  const salesRef = useMemoFirebase(() => query(collection(firestore, 'sales'), orderBy('date', 'desc')), [firestore]);
   const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
 
-  const purchasesRef = useMemoFirebase(() => collection(firestore, 'purchases'), [firestore]);
+  const purchasesRef = useMemoFirebase(() => query(collection(firestore, 'purchases'), orderBy('date', 'desc')), [firestore]);
   const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesRef);
 
-  const productsRef = useMemoFirebase(() => collection(firestore, 'products'), [firestore]);
+  const productsRef = useMemoFirebase(() => query(collection(firestore, 'products'), orderBy('createdAt', 'desc')), [firestore]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
+  
+  const movementsRef = useMemoFirebase(() => query(collection(firestore, 'inventory_movements'), orderBy('date', 'desc')), [firestore]);
+  const { data: recentMovements, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsRef);
 
-  const isLoading = isLoadingSales || isLoadingPurchases || isLoadingProducts;
+  const isLoading = isLoadingSales || isLoadingPurchases || isLoadingProducts || isLoadingMovements;
 
   const cutoffDate = useMemo(() => {
     const now = new Date();
@@ -71,27 +74,6 @@ export default function Dashboard() {
   const filteredSales = useMemo(() => (sales || []).filter(s => toDate(parseISO(s.date as string)) >= cutoffDate), [sales, cutoffDate]);
   const filteredPurchases = useMemo(() => (purchases || []).filter(p => toDate(parseISO(p.date as string)) >= cutoffDate), [purchases, cutoffDate]);
 
-
-  const recentMovements = useMemo(() => {
-    const movements: Omit<InventoryMovement, 'id'>[] = [];
-    filteredSales.forEach(sale => {
-      sale.items.forEach(item => {
-        movements.push({
-          productName: item.productName,
-          type: 'sale',
-          quantity: -item.quantity,
-          date: sale.date,
-        });
-      });
-    });
-    // We would also add purchases and adjustments here if we had those contexts
-    return movements.sort((a, b) => {
-        const dateA = parseISO(a.date as string).getTime();
-        const dateB = parseISO(b.date as string).getTime();
-        return dateB - dateA;
-    });
-  }, [filteredSales]);
-  
   const chartData = useMemo(() => {
     const dataByDate: { [key: string]: { date: string, sales: number, profit: number, unitsSold: number, unitsPurchased: number } } = {};
     const dateFormat = timeFilter === 'month' ? 'dd-MMM' : 'eee dd';
@@ -329,11 +311,11 @@ export default function Dashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoading ? (
+                  {isLoadingMovements ? (
                     <TableRow><TableCell colSpan={3} className="text-center">Cargando...</TableCell></TableRow>
                   ) : (
-                    recentMovements.slice(0, 5).map((movement, index) => (
-                      <TableRow key={index}>
+                    (recentMovements || []).slice(0, 5).map((movement, index) => (
+                      <TableRow key={movement.id || index}>
                         <TableCell>
                           <div className="font-medium">{movement.productName}</div>
                         </TableCell>
@@ -355,5 +337,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-    

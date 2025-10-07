@@ -19,7 +19,7 @@ import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings } from "@/contexts/settings-context";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc, writeBatch } from "firebase/firestore";
+import { collection, doc, writeBatch, query, orderBy } from "firebase/firestore";
 
 const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
 
@@ -28,10 +28,10 @@ export default function PurchasesPage() {
   const firestore = useFirestore();
   const { settings, activeSymbol, activeRate } = useSettings();
 
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(useMemoFirebase(() => collection(firestore, 'products'), [firestore]));
-  const { data: suppliers, isLoading: isLoadingSuppliers } = useCollection<Supplier>(useMemoFirebase(() => collection(firestore, 'suppliers'), [firestore]));
-  const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(useMemoFirebase(() => collection(firestore, 'families'), [firestore]));
-  const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(useMemoFirebase(() => collection(firestore, 'purchases'), [firestore]));
+  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(useMemoFirebase(() => query(collection(firestore, 'products'), orderBy('createdAt', 'desc')), [firestore]));
+  const { data: suppliers, isLoading: isLoadingSuppliers } = useCollection<Supplier>(useMemoFirebase(() => query(collection(firestore, 'suppliers'), orderBy('name', 'asc')), [firestore]));
+  const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(useMemoFirebase(() => query(collection(firestore, 'families'), orderBy('name', 'asc')), [firestore]));
+  const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(useMemoFirebase(() => query(collection(firestore, 'purchases'), orderBy('date', 'desc')), [firestore]));
 
   const isLoading = isLoadingProducts || isLoadingSuppliers || isLoadingFamilies || isLoadingPurchases;
 
@@ -548,7 +548,3 @@ export default function PurchasesPage() {
     </div>
   );
 }
-
-    
-
-    
