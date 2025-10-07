@@ -460,11 +460,11 @@ export default function SettingsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="storeName">Nombre de la Tienda</Label>
-                            <Input id="storeName" value={localSettings.storeName} onChange={handleSettingsChange} placeholder="Mi Tienda Increíble" maxLength={120} />
+                            <Input id="storeName" value={localSettings.storeName} onChange={handleSettingsChange} placeholder="Mi Tienda Increíble" maxLength={45} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="storeAddress">Dirección</Label>
-                            <Input id="storeAddress" value={localSettings.storeAddress} onChange={handleSettingsChange} placeholder="Calle Falsa 123" maxLength={220} />
+                            <Input id="storeAddress" value={localSettings.storeAddress} onChange={handleSettingsChange} placeholder="Calle Falsa 123" maxLength={55} />
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="storePhone">Teléfono</Label>
@@ -472,7 +472,7 @@ export default function SettingsPage() {
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="storeSlogan">Slogan o Mensaje para el Ticket</Label>
-                            <Input id="storeSlogan" value={localSettings.storeSlogan} onChange={handleSettingsChange} placeholder="¡Gracias por tu compra!" maxLength={120} />
+                            <Input id="storeSlogan" value={localSettings.storeSlogan} onChange={handleSettingsChange} placeholder="¡Gracias por tu compra!" maxLength={55} />
                         </div>
                     </div>
                     
