@@ -44,6 +44,12 @@ const nextConfig = {
         hostname: 'www.mercadolibre.com.ve',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'chat.deepseek.com',
+        port: '',
+        pathname: '/**',
       }
     ],
   },
