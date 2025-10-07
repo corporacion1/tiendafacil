@@ -202,12 +202,11 @@ export default function POSPage() {
     let tax2Amount = 0;
     
     cartItems.forEach(item => {
-      const itemSubtotal = item.price * item.quantity;
       if(item.product.tax1 && settings.tax1 > 0) {
-        tax1Amount += itemSubtotal * (settings.tax1 / 100);
+        tax1Amount += item.price * item.quantity * (settings.tax1 / 100);
       }
       if(item.product.tax2 && settings.tax2 > 0) {
-        tax2Amount += itemSubtotal * (settings.tax2 / 100);
+        tax2Amount += item.price * item.quantity * (settings.tax2 / 100);
       }
     });
 
@@ -557,7 +556,7 @@ export default function POSPage() {
                             <Button variant="secondary">
                                 <Archive className="mr-2 h-4 w-4" />
                                 Pedidos Pendientes
-                                {pendingOrders.length > 0 && <Badge variant="destructive" className="ml-2">{pendingOrders.length}</Badge>}
+                                {(pendingOrders || []).length > 0 && <Badge variant="destructive" className="ml-2">{(pendingOrders || []).length}</Badge>}
                             </Button>
                         </DialogTrigger>
                         <DialogContent>
@@ -569,11 +568,11 @@ export default function POSPage() {
                             </DialogHeader>
                             <div className="py-4 max-h-96 overflow-y-auto">
                                 {isLoadingPendingOrders && <p>Cargando pedidos...</p>}
-                                {!isLoadingPendingOrders && pendingOrders.length === 0 ? (
+                                {!isLoadingPendingOrders && (pendingOrders || []).length === 0 ? (
                                     <p className="text-center text-muted-foreground py-8">No hay pedidos pendientes.</p>
                                 ) : (
                                     <div className="space-y-4">
-                                    {pendingOrders.map(order => (
+                                    {(pendingOrders || []).map(order => (
                                         <div key={order.id} className="p-4 border rounded-lg">
                                             <div className="flex justify-between items-start">
                                                 <div>
@@ -620,7 +619,7 @@ export default function POSPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas las familias</SelectItem>
-                  {families.map(family => (
+                  {(families || []).map(family => (
                     <SelectItem key={family.id} value={family.name}>
                       {family.name}
                     </SelectItem>
@@ -998,3 +997,5 @@ export default function POSPage() {
   </Dialog>
   );
 }
+
+    
