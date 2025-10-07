@@ -121,23 +121,14 @@ export default function CatalogPage() {
 
     const productsRef = useMemoFirebase(() => collection(firestore, 'products'), [firestore]);
     const { data: products = [], isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
-
-    const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
-    const { data: customers = [], isLoading: isLoadingCustomers } = useCollection<Customer>(customersRef);
     
     const familiesRef = useMemoFirebase(() => collection(firestore, 'families'), [firestore]);
     const { data: families = [], isLoading: isLoadingFamilies } = useCollection<Family>(familiesRef);
-
-    const salesRef = useMemoFirebase(() => collection(firestore, 'sales'), [firestore]);
-    const { data: sales = [], isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
     
     const adsRef = useMemoFirebase(() => collection(firestore, 'ads'), [firestore]);
     const { data: allAds = [], isLoading: isLoadingAds } = useCollection<Ad>(adsRef);
     
-    const pendingOrdersRef = useMemoFirebase(() => collection(firestore, 'pendingOrders'), [firestore]);
-    const { data: pendingOrders = [], isLoading: isLoadingPendingOrders } = useCollection<PendingOrder>(pendingOrdersRef);
-    
-    const isLoading = isLoadingProducts || isLoadingCustomers || isLoadingFamilies || isLoadingSales || isLoadingAds || isLoadingPendingOrders;
+    const isLoading = isLoadingProducts || isLoadingFamilies || isLoadingAds;
     
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
     const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -246,46 +237,23 @@ export default function CatalogPage() {
     };
 
     const subtotal = useMemo(() => cart.reduce((acc, item) => acc + item.price * item.quantity, 0), [cart]);
-    
-    const bestSellers = useMemo(() => {
-        const productSaleCounts = sales.reduce((acc, sale) => {
-            const productsInSale = new Set(sale.items.map(item => item.productId));
-            productsInSale.forEach(productId => {
-                acc[productId] = (acc[productId] || 0) + 1;
-            });
-            return acc;
-        }, {} as Record<string, number>);
-
-        return Object.entries(productSaleCounts)
-            .sort((a, b) => b[1] - a[1])
-            .map(entry => entry[0]);
-    }, [sales]);
-
 
     const sortedAndFilteredProducts = useMemo(() => {
-        const baseFiltered = products.filter(product =>
-            (product.status === 'active' || product.status === 'promotion') &&
-            product.stock > 0 &&
-            (selectedFamily === 'all' || product.family === selectedFamily) &&
-            (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase())))
-        );
-
-        const finalSet = new Set<Product>();
-
-        const promotions = baseFiltered.filter(p => p.status === 'promotion');
-        promotions.forEach(p => finalSet.add(p));
-
-        const bestSellerProducts = bestSellers
-            .map(id => baseFiltered.find(p => p.id === id))
-            .filter((p): p is Product => !!p && !finalSet.has(p));
-        bestSellerProducts.forEach(p => finalSet.add(p));
-
-        const rest = baseFiltered.filter(p => !finalSet.has(p));
-        rest.forEach(p => finalSet.add(p));
-        
-        return Array.from(finalSet);
-    }, [products, searchTerm, selectedFamily, bestSellers]);
+        return products
+          .filter(
+            (product) =>
+              (product.status === 'active' || product.status === 'promotion') &&
+              product.stock > 0 &&
+              (selectedFamily === 'all' || product.family === selectedFamily) &&
+              (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase())))
+          )
+          .sort((a, b) => {
+            if (a.status === 'promotion' && b.status !== 'promotion') return -1;
+            if (a.status !== 'promotion' && b.status === 'promotion') return 1;
+            return a.name.localeCompare(b.name);
+          });
+      }, [products, searchTerm, selectedFamily]);
     
     const itemsForGrid = useMemo(() => {
         // 1. Filter ads based on criteria
@@ -349,16 +317,11 @@ export default function CatalogPage() {
         }
 
         const batch = writeBatch(firestore);
-
-        let customerId = customers.find(c => c.phone === newCustomer.phone)?.id;
-
-        if (!customerId) {
-            const newCustomerRef = doc(collection(firestore, 'customers'));
-            const newCustomerData = { name: newCustomer.name, phone: newCustomer.phone };
-            batch.set(newCustomerRef, newCustomerData);
-            customerId = newCustomerRef.id;
-        }
-
+        
+        // This part needs adjustment, as we can't query customers here.
+        // For now, we will create a new customer every time. 
+        // This is a limitation of a public catalog without user login.
+        
         const newOrderId = `ORD-${Date.now()}`;
         const newOrderRef = doc(firestore, 'pendingOrders', newOrderId);
         const newOrder: Omit<PendingOrder, 'id'> = {
@@ -399,53 +362,6 @@ export default function CatalogPage() {
     
     const handleImageClick = (product: Product) => {
         setProductDetails(product);
-    };
-    
-    const handleEditOrder = (orderToEdit: PendingOrder) => {
-        if (cart.length > 0) {
-            toast({
-                variant: "destructive",
-                title: "Carrito no está vacío",
-                description: "Por favor, vacía tu carrito actual antes de editar un pedido."
-            });
-            return;
-        }
-
-        const orderCartItems: CartItem[] = orderToEdit.items.map(item => {
-            const product = products.find(p => p.id === item.productId);
-            if (!product) {
-                 return {
-                    product: {
-                        id: item.productId,
-                        name: item.productName,
-                        price: item.price,
-                        stock: 0,
-                        sku: 'N/A', cost: 0, status: 'inactive', tax1: false, tax2: false, wholesalePrice: 0, storeId: 'store-1'
-                    } as Product,
-                    quantity: item.quantity,
-                    price: item.price,
-                };
-            }
-            return { product, quantity: item.quantity, price: item.price };
-        });
-
-        setCart(orderCartItems);
-        const orderRef = doc(firestore, 'pendingOrders', orderToEdit.id);
-        deleteDoc(orderRef);
-        
-        toast({
-            title: "Pedido Cargado para Edición",
-            description: `El pedido ${orderToEdit.id} está de nuevo en tu carrito.`
-        });
-    };
-
-    const handleDeleteOrder = (orderId: string) => {
-        const orderRef = doc(firestore, 'pendingOrders', orderId);
-        deleteDoc(orderRef);
-        toast({
-            title: "Pedido Eliminado",
-            description: `El pedido ${orderId} ha sido eliminado.`,
-        });
     };
 
     return (
@@ -496,7 +412,7 @@ export default function CatalogPage() {
                                         <SheetTitle>Mi Pedido</SheetTitle>
                                     </SheetHeader>
                                     <div className="flex-1 overflow-y-auto py-6">
-                                        {cart.length === 0 && pendingOrders.length === 0 && (
+                                        {cart.length === 0 && (
                                             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground px-6">
                                                 <ShoppingBag className="h-16 w-16 mb-4" />
                                                 <h3 className="text-lg font-semibold">Tu pedido está vacío</h3>
@@ -527,33 +443,6 @@ export default function CatalogPage() {
                                                     </div>
                                                 </div>
                                             ))}
-                                            </div>
-                                        )}
-                                        {pendingOrders.length > 0 && (
-                                            <div className="px-6 mt-6">
-                                                <Separator />
-                                                <h4 className="text-lg font-semibold my-4">Pedidos Generados</h4>
-                                                <div className="space-y-3">
-                                                    {pendingOrders.map(order => (
-                                                        <div key={order.id} className="flex items-center justify-between gap-2 p-3 border rounded-lg bg-muted/50">
-                                                            <div>
-                                                                <p className="font-semibold">{order.id}</p>
-                                                                <p className="text-sm text-muted-foreground">{order.customerName}</p>
-                                                            </div>
-                                                            <div className="flex gap-1">
-                                                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => generateQrCode(order.id)}>
-                                                                    <QrCode className="h-4 w-4" />
-                                                                </Button>
-                                                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleEditOrder(order)}>
-                                                                    <Pencil className="h-4 w-4" />
-                                                                </Button>
-                                                                <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleDeleteOrder(order.id)}>
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
                                             </div>
                                         )}
                                     </div>

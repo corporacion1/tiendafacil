@@ -20,7 +20,7 @@ interface SiteSidebarProps {
 
 export function SiteSidebar({ isExpanded }: SiteSidebarProps) {
     const pathname = usePathname();
-    const { user } = useUser(); // Using the mock user
+    const user = { email: "corporacion1@gmail.com" }; // Mock user for demo
 
     // In a real app, the user object would have a `role` property.
     // We'll simulate it for "corporacion1@gmail.com".
@@ -50,6 +50,13 @@ export function SiteSidebar({ isExpanded }: SiteSidebarProps) {
         </Tooltip>
       </TooltipProvider>
     );
+    
+    const renderAdminLink = (item: typeof adminNavItems[0]) => {
+        if (item.role && userRole !== item.role) {
+            return null;
+        }
+        return renderLink(item);
+    }
 
     return (
         <aside className={cn(
@@ -67,9 +74,7 @@ export function SiteSidebar({ isExpanded }: SiteSidebarProps) {
                     <div key={item.href}>{renderLink(item)}</div>
                 ))}
                 {adminNavItems.map((item) => (
-                     userRole === item.role ? (
-                        <div key={item.href}>{renderLink(item)}</div>
-                    ) : null
+                    <div key={item.href}>{renderAdminLink(item)}</div>
                 ))}
             </nav>
             <nav className="mt-auto flex flex-col gap-2 p-2 font-medium">
