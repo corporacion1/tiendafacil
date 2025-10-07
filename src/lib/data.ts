@@ -37,13 +37,13 @@ export let initialWarehouses: Warehouse[] = [
 ];
 
 export const businessCategories: string[] = [
-    'Tienda de Tecnología',
+    'Tecnologia',
     'Restaurante',
     'Tienda de Ropa',
     'Supermercado',
     'Servicios Profesionales',
     'Ferretería',
-    'Tienda de Repuestos',
+    'Repuestos',
     'Salud y Belleza',
     'Otro'
 ];

@@ -73,7 +73,7 @@ const defaultSettings: Settings = {
     primaryCurrencySymbol: '$',
     secondaryCurrencyName: 'Bolívares',
     secondaryCurrencySymbol: 'Bs.',
-    businessType: 'Tienda de Tecnología',
+    businessType: 'Tecnologia',
 };
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
