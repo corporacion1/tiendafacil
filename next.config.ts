@@ -46,10 +46,6 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '4mb',
     },
-    allowedDevOrigins: [
-        'http://localhost:3000',
-        'https://*.cloudworkstations.dev',
-    ]
   },
 };
 
