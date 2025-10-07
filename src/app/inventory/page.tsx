@@ -36,6 +36,74 @@ import { useSettings } from "@/contexts/settings-context";
 import { mockProducts, mockSales, mockInventoryMovements } from "@/lib/data";
 import { format, parseISO } from "date-fns";
 
+const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewMovements, setProductToDelete }: {
+    product: Product;
+    activeSymbol: string;
+    activeRate: number;
+    handleEdit: (product: Product) => void;
+    handleViewMovements: (product: Product) => void;
+    setProductToDelete: (product: Product | null) => void;
+}) => {
+    const [imageError, setImageError] = useState(false);
+    const imageUrl = getDisplayImageUrl(product.imageUrl);
+
+    return (
+        <TableRow>
+            <TableCell className="hidden sm:table-cell">
+                <div className="relative flex items-center justify-center w-10 h-10 bg-muted rounded-md overflow-hidden isolate">
+                    {imageUrl && !imageError ? (
+                    <Image
+                        src={imageUrl}
+                        alt={product.name}
+                        fill
+                        sizes="40px"
+                        className="object-cover"
+                        data-ai-hint={product.imageHint}
+                        onError={() => setImageError(true)}
+                    />
+                    ) : (
+                    <Package className="h-5 w-5 text-muted-foreground" />
+                    )}
+                </div>
+            </TableCell>
+            <TableCell className="font-medium">{product.name}</TableCell>
+            <TableCell>
+                <Badge variant={product.status === 'active' ? 'outline' : 'secondary'}>
+                    {product.status === 'active' ? 'Activo' : 'Inactivo'}
+                </Badge>
+            </TableCell>
+            <TableCell className="hidden md:table-cell">
+                {activeSymbol}{(product.price * activeRate).toFixed(2)}
+            </TableCell>
+            <TableCell className="hidden md:table-cell">
+                {activeSymbol}{(product.wholesalePrice * activeRate).toFixed(2)}
+            </TableCell>
+            <TableCell className="hidden md:table-cell">
+                {product.stock}
+            </TableCell>
+            <TableCell>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                    <Button aria-haspopup="true" size="icon" variant="ghost">
+                        <MoreHorizontal className="h-4 w-4" />
+                        <span className="sr-only">Toggle menu</span>
+                    </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                    <DropdownMenuItem onSelect={() => handleEdit(product)}>Editar</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => handleViewMovements(product)}>Ver Movimientos</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="text-destructive" onSelect={() => setProductToDelete(product)}>
+                        Eliminar
+                    </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </TableCell>
+        </TableRow>
+    );
+}
+
 export default function InventoryPage() {
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>(mockProducts);
@@ -356,64 +424,17 @@ export default function InventoryPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredProducts.map((product) => {
-                    const [imageError, setImageError] = useState(false);
-                    const imageUrl = getDisplayImageUrl(product.imageUrl);
-                    return (
-                    <TableRow key={product.id}>
-                        <TableCell className="hidden sm:table-cell">
-                        <div className="relative flex items-center justify-center w-10 h-10 bg-muted rounded-md overflow-hidden isolate">
-                            {imageUrl && !imageError ? (
-                            <Image
-                                src={imageUrl}
-                                alt={product.name}
-                                fill
-                                sizes="40px"
-                                className="object-cover"
-                                data-ai-hint={product.imageHint}
-                                onError={() => setImageError(true)}
-                            />
-                            ) : (
-                            <Package className="h-5 w-5 text-muted-foreground" />
-                            )}
-                        </div>
-                        </TableCell>
-                        <TableCell className="font-medium">{product.name}</TableCell>
-                        <TableCell>
-                        <Badge variant={product.status === 'active' ? 'outline' : 'secondary'}>
-                            {product.status === 'active' ? 'Activo' : 'Inactivo'}
-                        </Badge>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                        {activeSymbol}{(product.price * activeRate).toFixed(2)}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                        {activeSymbol}{(product.wholesalePrice * activeRate).toFixed(2)}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                        {product.stock}
-                        </TableCell>
-                        <TableCell>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                            <Button aria-haspopup="true" size="icon" variant="ghost">
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Toggle menu</span>
-                            </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                            <DropdownMenuItem onSelect={() => handleEdit(product)}>Editar</DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => handleViewMovements(product)}>Ver Movimientos</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive" onSelect={() => setProductToDelete(product)}>
-                                Eliminar
-                            </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        </TableCell>
-                    </TableRow>
-                  )})}
+                {filteredProducts.map((product) => (
+                    <ProductRow
+                        key={product.id}
+                        product={product}
+                        activeSymbol={activeSymbol}
+                        activeRate={activeRate}
+                        handleEdit={handleEdit}
+                        handleViewMovements={handleViewMovements}
+                        setProductToDelete={setProductToDelete}
+                    />
+                ))}
               </TableBody>
             </Table>
             )}
