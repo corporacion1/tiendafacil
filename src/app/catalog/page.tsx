@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid, Instagram, Star, Search } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
@@ -76,6 +76,57 @@ export default function CatalogPage() {
     const [products, setProducts] = useState<Product[]>([]);
     const [sales, setSales] = useState<Sale[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    
+    const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+    useEffect(() => {
+        const INACTIVITY_TIMEOUT = 5000; // 5 seconds
+
+        const startAutoScroll = () => {
+            if (scrollIntervalRef.current) return;
+            scrollIntervalRef.current = setInterval(() => {
+                if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
+                    // Reached bottom, stop scrolling
+                    if (scrollIntervalRef.current) clearInterval(scrollIntervalRef.current);
+                    scrollIntervalRef.current = null;
+                } else {
+                    window.scrollBy({ top: 1, behavior: 'smooth' });
+                }
+            }, 50); // Adjust for scroll speed
+        };
+
+        const stopAutoScroll = () => {
+            if (scrollIntervalRef.current) {
+                clearInterval(scrollIntervalRef.current);
+                scrollIntervalRef.current = null;
+            }
+        };
+
+        const resetInactivityTimer = () => {
+            stopAutoScroll();
+            if (inactivityTimerRef.current) {
+                clearTimeout(inactivityTimerRef.current);
+            }
+            inactivityTimerRef.current = setTimeout(startAutoScroll, INACTIVITY_TIMEOUT);
+        };
+        
+        // Listen for user activity
+        window.addEventListener('mousemove', resetInactivityTimer);
+        window.addEventListener('scroll', resetInactivityTimer);
+        window.addEventListener('keydown', resetInactivityTimer);
+
+        resetInactivityTimer(); // Initial call
+
+        return () => {
+            // Cleanup on component unmount
+            stopAutoScroll();
+            if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+            window.removeEventListener('mousemove', resetInactivityTimer);
+            window.removeEventListener('scroll', resetInactivityTimer);
+            window.removeEventListener('keydown', resetInactivityTimer);
+        };
+    }, []);
 
     useEffect(() => {
         setTimeout(() => {
