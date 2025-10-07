@@ -496,9 +496,9 @@ export default function InventoryPage() {
                                 <SelectValue placeholder="Selecciona un tipo" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="purchase">Entrada (Compra)</SelectItem>
-                                <SelectItem value="sale">Salida (Venta)</SelectItem>
-                                <SelectItem value="adjustment">Ajuste (Reemplaza stock)</SelectItem>
+                                <SelectItem value="purchase">Entrada(carga)</SelectItem>
+                                <SelectItem value="sale">Salida(Descargo)</SelectItem>
+                                <SelectItem value="adjustment">Ajuste(Reemplaza Stock)</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
