@@ -6,7 +6,7 @@ import { useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import type { CartItem, Customer, Product } from "@/lib/types";
+import type { CartItem, Customer, Product, Payment } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
 
 interface TicketPreviewProps {
@@ -16,6 +16,7 @@ interface TicketPreviewProps {
   customer: Customer | null;
   saleId?: string | null;
   ticketType?: 'sale' | 'quote';
+  payments?: Payment[];
 }
 
 export function TicketPreview({
@@ -25,6 +26,7 @@ export function TicketPreview({
   customer,
   saleId,
   ticketType = 'sale',
+  payments,
 }: TicketPreviewProps) {
   const ticketRef = useRef<HTMLDivElement>(null);
   const { settings, activeSymbol, activeRate } = useSettings();
@@ -100,7 +102,7 @@ export function TicketPreview({
             .customer {
               margin-top: 10px;
             }
-            .item, .total-line {
+            .item, .total-line, .payment-line {
               display: flex;
               justify-content: space-between;
             }
@@ -122,8 +124,14 @@ export function TicketPreview({
               border-top: 1px dashed #000;
               margin: 5px 0;
             }
-            .totals {
+            .totals, .payments {
                 margin-top: 5px;
+            }
+            .payments h4 {
+                text-align: center;
+                text-transform: uppercase;
+                margin: 5px 0;
+                font-size: 12px;
             }
             .totals .total-line.grand-total {
               font-weight: bold;
@@ -176,9 +184,13 @@ export function TicketPreview({
                 {ticketType === 'sale' && saleId && <p style={{ margin: '2px 0', fontSize: '10px', fontWeight: 'bold' }}>CONTROL #: {saleId}</p>}
                 </div>
                 
-                {ticketType === 'quote' && (
+                {ticketType === 'quote' ? (
                   <div className="ticket-title" style={{ fontSize: '14px', fontWeight: 'bold', textAlign: 'center', margin: '10px 0', textTransform: 'uppercase' }}>
                       Cotización
+                  </div>
+                ) : (
+                  <div className="ticket-title" style={{ fontSize: '14px', fontWeight: 'bold', textAlign: 'center', margin: '10px 0', textTransform: 'uppercase' }}>
+                      Ticket de Venta
                   </div>
                 )}
                 
@@ -239,9 +251,24 @@ export function TicketPreview({
                   </>
                 )}
                 
+                {ticketType === 'sale' && payments && payments.length > 0 && (
+                    <div className="payments" style={{marginTop: '10px'}}>
+                        <h4 style={{textAlign: 'center', textTransform: 'uppercase', margin: '5px 0', fontSize: '12px'}}>Resumen de Pago</h4>
+                        <div className="separator" style={{ borderTop: '1px dashed #000', margin: '5px 0' }}></div>
+                         {payments.map(p => (
+                            <div key={p.id} className="payment-line" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                                <span>{p.method}:</span>
+                                <span>{activeSymbol}{(p.amount * activeRate).toFixed(2)}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+                
                 <div className="footer" style={{ textAlign: 'center', marginTop: '10px', fontSize: '10px' }}>
-                    {ticketType === 'sale' && <p>{settings.storeSlogan || '¡Gracias por tu compra!'}</p>}
-                    {ticketType === 'quote' && <p>El Presupuesto puede variar sin previo aviso</p>}
+                    {ticketType === 'sale' ? 
+                      <p>{settings.storeSlogan || '¡Gracias por tu compra!'}</p> :
+                      <p>El Presupuesto puede variar sin previo aviso</p>
+                    }
                 </div>
             </div>
             </div>

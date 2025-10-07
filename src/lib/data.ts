@@ -1,5 +1,5 @@
 
-import type { Product, InventoryMovement, Sale, Unit, Family, Warehouse, Customer, Purchase, Supplier, CurrencyRate } from '@/lib/types';
+import type { Product, InventoryMovement, Sale, Unit, Family, Warehouse, Customer, Purchase, Supplier, CurrencyRate, Payment } from '@/lib/types';
 import { PlaceHolderImages } from './placeholder-images';
 
 export const defaultCustomers: Customer[] = [
@@ -155,9 +155,9 @@ export const mockSales: Sale[] = [
         total: 1225,
         date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
         transactionType: 'contado',
-        paymentMethod: 'tarjeta',
         status: 'paid',
         paidAmount: 1225,
+        payments: [{ id: 'pay-sale-001', amount: 1225, date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), method: 'tarjeta' }]
     },
     {
         id: "SALE-002",
@@ -171,7 +171,7 @@ export const mockSales: Sale[] = [
         transactionType: 'credito',
         status: 'unpaid',
         paidAmount: 50,
-        payments: [{ id: 'pay-1', amount: 50, date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString() }]
+        payments: [{ id: 'pay-sale-002', amount: 50, date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(), method: 'efectivo' }]
     }
 ];
 
@@ -214,6 +214,15 @@ export const mockCurrencyRates: CurrencyRate[] = [
     { id: 'rate-1', rate: 39.50, date: new Date().toISOString() },
     { id: 'rate-2', rate: 39.45, date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
     { id: 'rate-3', rate: 39.30, date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+];
+
+export const paymentMethods = [
+    { id: 'efectivo', name: 'Efectivo', requiresRef: false },
+    { id: 'transferencia', name: 'Transferencia', requiresRef: true },
+    { id: 'pago-movil', name: 'Pago Móvil', requiresRef: true },
+    { id: 'tarjeta', name: 'Tarjeta', requiresRef: true },
+    { id: 'zelle', name: 'Zelle', requiresRef: true },
+    { id: 'otro', name: 'Otro', requiresRef: false },
 ];
 
 

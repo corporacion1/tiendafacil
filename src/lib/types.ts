@@ -39,6 +39,8 @@ export type Payment = {
     id: string;
     amount: number;
     date: Timestamp | string;
+    method: string;
+    reference?: string;
 }
 
 export type Sale = {
@@ -54,10 +56,10 @@ export type Sale = {
   total: number;
   date: Timestamp | string;
   transactionType: 'contado' | 'credito';
-  paymentMethod?: string;
+  paymentMethod?: string; // Kept for simple legacy sales, but new ones will use payments array
   status: 'paid' | 'unpaid';
   paidAmount: number;
-  payments?: Payment[];
+  payments: Payment[]; // Now this will hold all payment info
 };
 
 export type PurchaseItem = {

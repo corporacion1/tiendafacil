@@ -3,7 +3,7 @@
 "use client"
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
-import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText } from "lucide-react"
+import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import type { Product, CartItem, Customer, Sale, InventoryMovement, Family } from "@/lib/types";
+import type { Product, CartItem, Customer, Sale, InventoryMovement, Family, Payment } from "@/lib/types";
 import { TicketPreview } from "@/components/ticket-preview";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -23,7 +23,7 @@ import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useUser } from "@/firebase";
-import { mockProducts, defaultCustomers, initialFamilies, mockSales, mockInventoryMovements } from "@/lib/data";
+import { mockProducts, defaultCustomers, initialFamilies, mockSales, mockInventoryMovements, paymentMethods } from "@/lib/data";
 
 const generateSaleId = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -112,9 +112,13 @@ export default function POSPage() {
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [isCustomerSearchOpen, setIsCustomerSearchOpen] = useState(false);
 
+  // New state for multi-payment
   const [isProcessSaleDialogOpen, setIsProcessSaleDialogOpen] = useState(false);
-  const [transactionType, setTransactionType] = useState<'contado' | 'credito'>('contado');
-  const [paymentMethod, setPaymentMethod] = useState<string>('efectivo');
+  const [payments, setPayments] = useState<Omit<Payment, 'id' | 'date'>[]>([]);
+  const [currentPaymentMethod, setCurrentPaymentMethod] = useState('efectivo');
+  const [currentPaymentAmount, setCurrentPaymentAmount] = useState<number | string>('');
+  const [currentPaymentRef, setCurrentPaymentRef] = useState('');
+
   const [lastSale, setLastSale] = useState<Sale | null>(null);
   const [ticketType, setTicketType] = useState<'sale' | 'quote'>('sale');
   
@@ -211,27 +215,70 @@ export default function POSPage() {
   const { tax1Amount, tax2Amount, totalTaxes } = calculateTaxes();
   const total = subtotal + totalTaxes;
 
+  const totalPaid = useMemo(() => payments.reduce((sum, p) => sum + p.amount, 0), [payments]);
+  const remainingBalance = useMemo(() => total - totalPaid, [total, totalPaid]);
+  
+  useEffect(() => {
+    if (isProcessSaleDialogOpen && remainingBalance > 0) {
+        setCurrentPaymentAmount(remainingBalance);
+    } else {
+        setCurrentPaymentAmount('');
+    }
+  }, [isProcessSaleDialogOpen, remainingBalance]);
+
+  const handleAddPayment = () => {
+      const amount = Number(currentPaymentAmount);
+      const method = paymentMethods.find(m => m.id === currentPaymentMethod);
+
+      if (!method || isNaN(amount) || amount <= 0) {
+          toast({ variant: 'destructive', title: 'Monto inválido.' });
+          return;
+      }
+      if (method.requiresRef && !currentPaymentRef.trim()) {
+          toast({ variant: 'destructive', title: 'Referencia requerida para este método de pago.' });
+          return;
+      }
+      if (payments.some(p => p.method === currentPaymentMethod && p.reference === currentPaymentRef && currentPaymentRef.trim() !== '')) {
+          toast({ variant: 'destructive', title: 'Referencia duplicada.'});
+          return;
+      }
+
+      setPayments(prev => [...prev, { amount, method: method.name, reference: currentPaymentRef }]);
+      setCurrentPaymentAmount('');
+      setCurrentPaymentRef('');
+  };
+
+  const removePayment = (index: number) => {
+    setPayments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const resetPaymentModal = () => {
+    setPayments([]);
+    setCurrentPaymentAmount('');
+    setCurrentPaymentRef('');
+    setCurrentPaymentMethod('efectivo');
+  }
 
   const handleProcessSale = (andPrint: boolean) => {
      if (cartItems.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "Carrito vacío",
-        description: "Agrega productos al carrito para procesar la venta.",
-      });
+      toast({ variant: "destructive", title: "Carrito vacío"});
       return;
     }
     
-    if (transactionType === 'credito' && selectedCustomerId === 'eventual') {
-        toast({
-            variant: "destructive",
-            title: "Cliente no válido para crédito",
-            description: "Por favor, selecciona un cliente registrado para procesar una venta a crédito.",
-        });
+    const isCreditSale = remainingBalance > 0;
+
+    if (isCreditSale && selectedCustomerId === 'eventual') {
+        toast({ variant: "destructive", title: "Cliente no válido para crédito", description: "Selecciona un cliente registrado para dejar un saldo pendiente." });
         return;
     }
 
     const saleId = generateSaleId();
+    const finalPayments = payments.map((p, i) => ({
+        ...p,
+        id: `pay-${saleId}-${i}`,
+        date: new Date().toISOString(),
+    }));
+
     const newSale: Sale = {
         id: saleId,
         customerId: selectedCustomer?.id ?? 'eventual',
@@ -244,11 +291,10 @@ export default function POSPage() {
         })),
         total: total,
         date: new Date().toISOString(),
-        transactionType: transactionType,
-        paymentMethod: transactionType === 'contado' ? paymentMethod : undefined,
-        status: transactionType === 'credito' ? 'unpaid' : 'paid',
-        paidAmount: transactionType === 'credito' ? 0 : total,
-        payments: transactionType === 'credito' ? [] : undefined,
+        transactionType: isCreditSale ? 'credito' : 'contado',
+        status: isCreditSale ? 'unpaid' : 'paid',
+        paidAmount: totalPaid,
+        payments: finalPayments,
     }
 
     // Update mock data for offline mode
@@ -259,7 +305,6 @@ export default function POSPage() {
         if (productIndex > -1) {
             mockProducts[productIndex].stock -= item.quantity;
         }
-
         const movement: InventoryMovement = {
             id: `mov-sale-${saleId}-${item.product.id}`,
             productName: item.product.name,
@@ -274,11 +319,12 @@ export default function POSPage() {
     
     toast({
         title: "Venta Procesada",
-        description: `La venta con control #${saleId} ha sido registrada.`,
+        description: `La venta #${saleId} ha sido registrada.`,
     });
     
     setCartItems([]);
     setIsProcessSaleDialogOpen(false);
+    resetPaymentModal();
 
     if (andPrint) {
         setTimeout(() => {
@@ -598,66 +644,87 @@ export default function POSPage() {
             )}
           </CardContent>
           <CardFooter className="flex flex-col gap-2">
-             <Dialog open={isProcessSaleDialogOpen} onOpenChange={setIsProcessSaleDialogOpen}>
+             <Dialog open={isProcessSaleDialogOpen} onOpenChange={(isOpen) => { setIsProcessSaleDialogOpen(isOpen); if (!isOpen) resetPaymentModal(); }}>
                 <DialogTrigger asChild>
                     <Button className="w-full bg-primary hover:bg-primary/90" size="lg" disabled={cartItems.length === 0}>
                         Procesar Venta
                     </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>Finalizar Venta</DialogTitle>
                         <DialogDescription>
-                            Selecciona el tipo de transacción y método de pago.
+                            Total a Pagar: <span className="font-bold text-primary">{activeSymbol}{(total * activeRate).toFixed(2)}</span>
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-6 py-4">
-                        <div className="space-y-2">
-                            <Label>Tipo de Transacción</Label>
-                            <RadioGroup defaultValue="contado" value={transactionType} onValueChange={(value: 'contado' | 'credito') => setTransactionType(value)}>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="contado" id="contado" />
-                                    <Label htmlFor="contado">Contado</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="credito" id="credito" />
-                                    <Label htmlFor="credito">Crédito</Label>
-                                </div>
-                            </RadioGroup>
-                        </div>
-                        {transactionType === 'contado' && (
-                            <div className="space-y-2">
+                    <div className="grid md:grid-cols-2 gap-6 items-start">
+                         <div className="space-y-4">
+                            <h4 className="font-medium text-center md:text-left">Registrar Pagos</h4>
+                             <div className="space-y-2">
                                 <Label>Método de Pago</Label>
-                                <RadioGroup defaultValue="efectivo" value={paymentMethod} onValueChange={setPaymentMethod}>
-                                    <div className="flex flex-col space-y-2">
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="efectivo" id="efectivo" />
-                                            <Label htmlFor="efectivo">Efectivo</Label>
-                                        </div>
-                                         <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="transferencia" id="transferencia" />
-                                            <Label htmlFor="transferencia">Transferencia</Label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="pago-movil" id="pago-movil" />
-                                            <Label htmlFor="pago-movil">Pago Móvil</Label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="tarjeta" id="tarjeta" />
-                                            <Label htmlFor="tarjeta">Tarjeta</Label>
-                                        </div>
-                                    </div>
-                                </RadioGroup>
+                                <Select value={currentPaymentMethod} onValueChange={setCurrentPaymentMethod}>
+                                    <SelectTrigger><SelectValue/></SelectTrigger>
+                                    <SelectContent>
+                                        {paymentMethods.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
                             </div>
-                        )}
+                            <div className="space-y-2">
+                                <Label>Monto a Pagar ({activeSymbol})</Label>
+                                <Input type="number" placeholder="0.00" value={currentPaymentAmount} onChange={e => setCurrentPaymentAmount(e.target.value)} />
+                            </div>
+                            {paymentMethods.find(m => m.id === currentPaymentMethod)?.requiresRef && (
+                                <div className="space-y-2">
+                                    <Label>Referencia</Label>
+                                    <Input placeholder="Nro. de referencia" value={currentPaymentRef} onChange={e => setCurrentPaymentRef(e.target.value)} />
+                                </div>
+                            )}
+                            <Button className="w-full" onClick={handleAddPayment} disabled={!currentPaymentAmount || Number(currentPaymentAmount) <= 0}>
+                                <Plus className="mr-2 h-4 w-4" /> Agregar Pago
+                            </Button>
+                        </div>
+                        <div className="space-y-4">
+                            <h4 className="font-medium text-center md:text-left">Pagos Realizados</h4>
+                            <div className="space-y-2 p-3 bg-muted/50 rounded-lg min-h-[150px]">
+                                {payments.length === 0 ? <p className="text-sm text-muted-foreground text-center pt-8">Aún no hay pagos registrados.</p> : (
+                                    payments.map((p, i) => (
+                                        <div key={i} className="flex justify-between items-center text-sm">
+                                            <span>{p.method} {p.reference && `(${p.reference})`}</span>
+                                            <span className="font-medium">{activeSymbol}{(p.amount * activeRate).toFixed(2)}</span>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removePayment(i)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                            <Separator />
+                            <div className="space-y-2 text-lg font-bold">
+                                <div className="flex justify-between">
+                                    <span>Total Pagado:</span>
+                                    <span>{activeSymbol}{(totalPaid * activeRate).toFixed(2)}</span>
+                                </div>
+                                <div className={cn("flex justify-between", remainingBalance > 0 ? "text-destructive" : "text-green-600")}>
+                                    <span>{remainingBalance > 0 ? 'Faltante:' : 'Cambio:'}</span>
+                                    <span>{activeSymbol}{(Math.abs(remainingBalance) * activeRate).toFixed(2)}</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <DialogFooter className="gap-2 sm:gap-0">
-                        <Button variant="outline" onClick={() => handleProcessSale(false)}>Guardar Venta</Button>
-                        <Button onClick={() => handleProcessSale(true)}>Guardar e Imprimir</Button>
+                    {remainingBalance > 0 && selectedCustomerId === 'eventual' && (
+                        <div className="text-destructive text-sm font-medium flex items-center gap-2 mt-2 p-2 bg-destructive/10 rounded-md">
+                            <AlertCircle className="h-4 w-4" />
+                            <span>Para guardar como crédito, debe seleccionar un cliente registrado.</span>
+                        </div>
+                    )}
+                    <DialogFooter className="gap-2 sm:gap-0 mt-4">
+                        <Button variant="outline" onClick={() => handleProcessSale(false)} disabled={remainingBalance > 0 && selectedCustomerId === 'eventual'}>
+                            {remainingBalance > 0 ? 'Guardar como Crédito' : 'Solo Guardar'}
+                        </Button>
+                        <Button onClick={() => handleProcessSale(true)} disabled={remainingBalance > 0 && selectedCustomerId === 'eventual'}>
+                            {remainingBalance > 0 ? 'Guardar Crédito e Imprimir' : 'Guardar e Imprimir'}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
             <Button className="w-full" variant="secondary" size="lg" onClick={handlePrintQuote} disabled={cartItems.length === 0}>
                 <FileText className="mr-2 h-4 w-4" />
                 Imprimir Cotización
@@ -721,7 +788,7 @@ export default function POSPage() {
         </DialogFooter>
     </DialogContent>
     
-    {(cartItems.length > 0 || lastSale) && (
+    {(isPrintPreviewOpen && (cartItems.length > 0 || lastSale)) && (
       <TicketPreview
         isOpen={isPrintPreviewOpen}
         onOpenChange={setIsPrintPreviewOpen}
@@ -729,6 +796,7 @@ export default function POSPage() {
         cartItems={ticketType === 'quote' || !lastSale ? cartItems : lastSale.items.map(item => ({ product: products.find(p => p.id === item.productId)!, quantity: item.quantity, price: item.price }))}
         saleId={ticketType === 'sale' ? lastSale?.id : undefined}
         customer={selectedCustomer}
+        payments={ticketType === 'sale' ? lastSale?.payments : undefined}
       />
     )}
   </Dialog>

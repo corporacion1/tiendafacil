@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { format, parseISO } from "date-fns";
-import { MoreHorizontal, Search, PlusCircle } from "lucide-react";
+import { MoreHorizontal, Search, PlusCircle, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +16,9 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import type { Sale, Payment } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
-import { mockSales } from "@/lib/data";
+import { mockSales, paymentMethods } from "@/lib/data";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 
 export default function CreditsPage() {
     const { toast } = useToast();
@@ -26,7 +28,13 @@ export default function CreditsPage() {
 
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-    const [newPaymentAmount, setNewPaymentAmount] = useState<number>(0);
+    
+    // State for multi-payment form
+    const [payments, setPayments] = useState<Omit<Payment, 'id' | 'date'>[]>([]);
+    const [currentPaymentMethod, setCurrentPaymentMethod] = useState('efectivo');
+    const [currentPaymentAmount, setCurrentPaymentAmount] = useState<number | string>('');
+    const [currentPaymentRef, setCurrentPaymentRef] = useState('');
+
     const [searchTerm, setSearchTerm] = useState("");
     
     useEffect(() => {
@@ -39,53 +47,83 @@ export default function CreditsPage() {
 
     const creditSales = useMemo(() => sales.filter(s => s.transactionType === 'credito'), [sales]);
     
+    const totalNewPayment = useMemo(() => payments.reduce((sum, p) => sum + p.amount, 0), [payments]);
+    const remainingBalance = useMemo(() => selectedSale ? selectedSale.total - (selectedSale.paidAmount || 0) : 0, [selectedSale]);
+    const balanceAfterNewPayments = useMemo(() => remainingBalance - totalNewPayment, [remainingBalance, totalNewPayment]);
+
+    useEffect(() => {
+        if(paymentDialogOpen && balanceAfterNewPayments > 0) {
+            setCurrentPaymentAmount(balanceAfterNewPayments)
+        } else {
+            setCurrentPaymentAmount('');
+        }
+    }, [paymentDialogOpen, balanceAfterNewPayments])
+
     const handleAddPayment = () => {
-        if (!selectedSale || newPaymentAmount <= 0) {
-            toast({
-                variant: "destructive",
-                title: "Monto inválido",
-                description: "Por favor, ingresa un monto de pago válido.",
-            });
+        const amount = Number(currentPaymentAmount);
+        const method = paymentMethods.find(m => m.id === currentPaymentMethod);
+
+        if (!method || isNaN(amount) || amount <= 0) {
+            toast({ variant: 'destructive', title: 'Monto inválido.' });
+            return;
+        }
+        if (method.requiresRef && !currentPaymentRef.trim()) {
+            toast({ variant: 'destructive', title: 'Referencia requerida.' });
+            return;
+        }
+        if (payments.some(p => p.method === currentPaymentMethod && p.reference === currentPaymentRef && currentPaymentRef.trim() !== '')) {
+            toast({ variant: 'destructive', title: 'Referencia duplicada.'});
+            return;
+        }
+        if (amount > remainingBalance) {
+             toast({ variant: "destructive", title: "Monto excede el saldo" });
             return;
         }
 
-        const remainingBalance = selectedSale.total - (selectedSale.paidAmount || 0);
-        if (newPaymentAmount > remainingBalance) {
-            toast({
-                variant: "destructive",
-                title: "Monto excede el saldo",
-                description: `El pago no puede ser mayor que el saldo pendiente de ${settings.primaryCurrencySymbol}${remainingBalance.toFixed(2)}.`,
-            });
+        setPayments(prev => [...prev, { amount, method: method.name, reference: currentPaymentRef }]);
+        setCurrentPaymentAmount('');
+        setCurrentPaymentRef('');
+    }
+    
+    const removePayment = (index: number) => {
+      setPayments(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const resetPaymentForm = () => {
+        setPayments([]);
+        setCurrentPaymentAmount('');
+        setCurrentPaymentRef('');
+        setCurrentPaymentMethod('efectivo');
+    }
+
+    const handleSavePayments = () => {
+        if (!selectedSale || payments.length === 0) {
+            toast({ variant: "destructive", title: "No hay pagos que guardar." });
             return;
         }
-        
-        const newPayment: Omit<Payment, 'id'> & { id?: string } = {
-            id: `pay-${Date.now()}`,
-            amount: newPaymentAmount,
-            date: new Date().toISOString(),
-        };
 
-        const updatedPaidAmount = (selectedSale.paidAmount || 0) + newPaymentAmount;
-        const newStatus = updatedPaidAmount >= selectedSale.total ? 'paid' : 'unpaid';
-
-        // Update the mock data
         const saleIndex = mockSales.findIndex(s => s.id === selectedSale.id);
         if (saleIndex > -1) {
             const saleToUpdate = mockSales[saleIndex];
-            saleToUpdate.payments = [...(saleToUpdate.payments || []), newPayment as Payment];
-            saleToUpdate.paidAmount = updatedPaidAmount;
-            saleToUpdate.status = newStatus;
+            const newPayments: Payment[] = payments.map((p, i) => ({
+                ...p,
+                id: `pay-${saleToUpdate.id}-${Date.now()}-${i}`,
+                date: new Date().toISOString(),
+            }));
+
+            saleToUpdate.payments = [...(saleToUpdate.payments || []), ...newPayments];
+            saleToUpdate.paidAmount += totalNewPayment;
+            if (saleToUpdate.paidAmount >= saleToUpdate.total) {
+                saleToUpdate.status = 'paid';
+            }
         }
 
         setSales([...mockSales]);
-        setSelectedSale(prev => prev ? { ...prev, payments: [...(prev.payments || []), newPayment as Payment], paidAmount: updatedPaidAmount, status: newStatus } : null);
-
-        toast({
-            title: "Pago Registrado",
-            description: `Se agregó un abono de ${settings.primaryCurrencySymbol}${newPaymentAmount.toFixed(2)} a la venta ${selectedSale.id}.`,
-        });
+        setSelectedSale(null); // Close details view after saving
         setPaymentDialogOpen(false);
-        setNewPaymentAmount(0);
+        resetPaymentForm();
+        
+        toast({ title: "Abono Registrado", description: `Se agregaron ${payments.length} pago(s) a la venta ${selectedSale.id}.`});
     };
     
     const filteredSales = useMemo(() => {
@@ -245,6 +283,7 @@ export default function CreditsPage() {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Fecha</TableHead>
+                                        <TableHead>Método</TableHead>
                                         <TableHead className="text-right">Monto</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -252,11 +291,12 @@ export default function CreditsPage() {
                                     {selectedSale?.payments && selectedSale.payments.length > 0 ? selectedSale.payments.map(p => (
                                         <TableRow key={p.id}>
                                             <TableCell>{getFormattedDateTime(p.date)}</TableCell>
+                                            <TableCell>{p.method}</TableCell>
                                             <TableCell className="text-right">{activeSymbol}{(p.amount * activeRate).toFixed(2)}</TableCell>
                                         </TableRow>
                                     )) : (
                                         <TableRow>
-                                            <TableCell colSpan={2} className="text-center text-muted-foreground">No hay pagos registrados.</TableCell>
+                                            <TableCell colSpan={3} className="text-center text-muted-foreground">No hay pagos registrados.</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
@@ -287,36 +327,75 @@ export default function CreditsPage() {
             </Dialog>
 
             {/* Add Payment Dialog */}
-            <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
-                 <DialogContent className="sm:max-w-md">
+            <Dialog open={paymentDialogOpen} onOpenChange={(isOpen) => { if(!isOpen) { setPaymentDialogOpen(false); resetPaymentForm(); } else { setPaymentDialogOpen(true); }}}>
+                 <DialogContent className="sm:max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>Registrar Abono</DialogTitle>
+                        <DialogTitle>Registrar Abono para Venta {selectedSale?.id}</DialogTitle>
                         <DialogDescription>
-                            Agrega un nuevo pago para la venta {selectedSale?.id}. El monto se registrará en tu moneda principal ({settings.primaryCurrencyName}).
+                            Cliente: {selectedSale?.customerName}. El monto se registrará en tu moneda principal ({settings.primaryCurrencyName}).
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-1">
-                            <p className="font-medium">Cliente: {selectedSale?.customerName}</p>
-                             <p className="text-sm text-muted-foreground">Saldo actual: <span className="font-bold text-destructive">{activeSymbol}{selectedSale ? ((selectedSale.total - (selectedSale.paidAmount || 0)) * activeRate).toFixed(2) : '0.00'}</span></p>
+                    <div className="grid md:grid-cols-2 gap-6 py-4 items-start">
+                        <div className="space-y-4">
+                             <h4 className="font-medium text-center md:text-left">Registrar Pagos</h4>
+                            <div className="space-y-2">
+                                <Label>Método de Pago</Label>
+                                <Select value={currentPaymentMethod} onValueChange={setCurrentPaymentMethod}>
+                                    <SelectTrigger><SelectValue/></SelectTrigger>
+                                    <SelectContent>
+                                        {paymentMethods.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Monto del Abono ({settings.primaryCurrencySymbol})</Label>
+                                <Input type="number" placeholder="0.00" value={currentPaymentAmount} onChange={e => setCurrentPaymentAmount(e.target.value)} />
+                            </div>
+                            {paymentMethods.find(m => m.id === currentPaymentMethod)?.requiresRef && (
+                                <div className="space-y-2">
+                                    <Label>Referencia</Label>
+                                    <Input placeholder="Nro. de referencia" value={currentPaymentRef} onChange={e => setCurrentPaymentRef(e.target.value)} />
+                                </div>
+                            )}
+                            <Button className="w-full" onClick={handleAddPayment} disabled={!currentPaymentAmount || Number(currentPaymentAmount) <= 0}>
+                                <PlusCircle className="mr-2 h-4 w-4" /> Agregar Pago
+                            </Button>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="payment-amount">Monto del Abono ({settings.primaryCurrencySymbol})</Label>
-                            <Input
-                                id="payment-amount"
-                                type="number"
-                                placeholder="0.00"
-                                value={newPaymentAmount || ''}
-                                onChange={(e) => setNewPaymentAmount(parseFloat(e.target.value) || 0)}
-                                autoFocus
-                            />
+                         <div className="space-y-4">
+                            <h4 className="font-medium text-center md:text-left">Resumen de Abonos</h4>
+                            <div className="space-y-2 p-3 bg-muted/50 rounded-lg min-h-[150px]">
+                                {payments.length === 0 ? <p className="text-sm text-muted-foreground text-center pt-8">Agrega uno o más pagos.</p> : (
+                                    payments.map((p, i) => (
+                                        <div key={i} className="flex justify-between items-center text-sm">
+                                            <span>{p.method} {p.reference && `(${p.reference})`}</span>
+                                            <span className="font-medium">{activeSymbol}{(p.amount * activeRate).toFixed(2)}</span>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removePayment(i)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                            <Separator />
+                            <div className="space-y-2 text-base">
+                                <div className="flex justify-between">
+                                    <span>Saldo Actual:</span>
+                                    <span className="font-semibold text-destructive">{activeSymbol}{(remainingBalance * activeRate).toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Total Abonando:</span>
+                                    <span className="font-semibold">{activeSymbol}{(totalNewPayment * activeRate).toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between font-bold text-lg">
+                                    <span>Saldo Restante:</span>
+                                    <span>{activeSymbol}{(balanceAfterNewPayments * activeRate).toFixed(2)}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>
                         <DialogClose asChild>
-                            <Button variant="outline" onClick={() => setNewPaymentAmount(0)}>Cancelar</Button>
+                            <Button variant="outline">Cancelar</Button>
                         </DialogClose>
-                        <Button onClick={handleAddPayment} disabled={newPaymentAmount <= 0}>Guardar Pago</Button>
+                        <Button onClick={handleSavePayments} disabled={payments.length === 0}>Guardar Abono(s)</Button>
                     </DialogFooter>
                  </DialogContent>
             </Dialog>
