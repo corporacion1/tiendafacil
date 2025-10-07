@@ -2,87 +2,51 @@
   "placeholderImages": [
     {
       "id": "1",
-      "description": "Refresco Coca-Cola 2L",
-      "imageUrl": "https://i.imgur.com/3QXZ4s1.jpeg",
-      "imageHint": "soda bottle"
+      "description": "Tarjeta Gráfica RTX 4090",
+      "imageUrl": "https://i.imgur.com/7D2j2yU.png",
+      "imageHint": "graphics card"
     },
     {
       "id": "2",
-      "description": "Papas Fritas Lays 150g",
-      "imageUrl": "https://i.imgur.com/vLhQ29n.jpeg",
-      "imageHint": "potato chips"
+      "description": "Procesador Intel Core i9-13900K",
+      "imageUrl": "https://i.imgur.com/a5nO3kH.png",
+      "imageHint": "cpu processor"
     },
     {
       "id": "3",
-      "description": "Leche Completa 1L",
-      "imageUrl": "https://i.imgur.com/9nC8p37.jpeg",
-      "imageHint": "milk carton"
+      "description": "Memoria RAM 32GB DDR5",
+      "imageUrl": "https://i.imgur.com/sT3hTj8.png",
+      "imageHint": "ram memory"
     },
     {
       "id": "4",
-      "description": "Detergente en Polvo 1kg",
-      "imageUrl": "https://i.imgur.com/A6k5P9N.jpeg",
-      "imageHint": "detergent bottle"
+      "description": "SSD NVMe 2TB",
+      "imageUrl": "https://i.imgur.com/dK3z2rM.png",
+      "imageHint": "ssd drive"
     },
     {
       "id": "5",
-      "description": "Pan de Sándwich Blanco",
-      "imageUrl": "https://i.imgur.com/kM0Yf5A.jpeg",
-      "imageHint": "sliced bread"
+      "description": "Tarjeta Madre Z790",
+      "imageUrl": "https://i.imgur.com/v2G3bN4.png",
+      "imageHint": "motherboard"
     },
     {
       "id": "6",
-      "description": "Huevos (Cartón de 12)",
-      "imageUrl": "https://i.imgur.com/iHnHN3d.jpeg",
-      "imageHint": "egg carton"
+      "description": "Fuente de Poder 1000W Gold",
+      "imageUrl": "https://i.imgur.com/J3t2Wqb.png",
+      "imageHint": "power supply"
     },
     {
       "id": "7",
-      "description": "Café en Grano 500g",
-      "imageUrl": "https://i.imgur.com/plV3SgE.jpeg",
-      "imageHint": "coffee beans"
+      "description": "Tarjeta Gráfica RX 7900 XTX",
+      "imageUrl": "https://i.imgur.com/hYSYvT5.png",
+      "imageHint": "graphics card"
     },
     {
       "id": "8",
-      "description": "Atún en Aceite 140g",
-      "imageUrl": "https://i.imgur.com/UPlbAAS.jpeg",
-      "imageHint": "tuna can"
-    },
-    {
-      "id": "9",
-      "description": "Pasta Larga (Spaghetti) 1kg",
-      "imageUrl": "https://i.imgur.com/95L2iM9.jpeg",
-      "imageHint": "pasta package"
-    },
-    {
-      "id": "10",
-      "description": "Salsa de Tomate 500g",
-      "imageUrl": "https://i.imgur.com/P4q2pBq.jpeg",
-      "imageHint": "tomato sauce"
-    },
-    {
-      "id": "11",
-      "description": "Jabón de Baño",
-      "imageUrl": "https://i.imgur.com/yvLvyiA.jpeg",
-      "imageHint": "soap bar"
-    },
-    {
-      "id": "12",
-      "description": "Shampoo 400ml",
-      "imageUrl": "https://i.imgur.com/RkIwhjY.jpeg",
-      "imageHint": "shampoo bottle"
-    },
-    {
-      "id": "13",
-      "description": "Harina de Maíz 1kg (P.A.N.)",
-      "imageUrl": "https://i.imgur.com/vHqJ5iR.jpeg",
-      "imageHint": "corn flour"
-    },
-    {
-      "id": "14",
-      "description": "Arroz Blanco 1kg",
-      "imageUrl": "https://i.imgur.com/y81h3yT.jpeg",
-      "imageHint": "rice bag"
+      "description": "Procesador AMD Ryzen 9 7950X",
+      "imageUrl": "https://i.imgur.com/i9j3s3v.png",
+      "imageHint": "cpu processor"
     }
   ]
 }
