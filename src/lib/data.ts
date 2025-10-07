@@ -144,7 +144,7 @@ export const paymentMethods = [
 ];
 
 // This will store orders created from the public catalog page
-export const pendingOrders: PendingOrder[] = [];
+export let pendingOrders: PendingOrder[] = [];
 
 export function factoryReset() {
     console.log("Performing factory reset on mock data...");
@@ -164,3 +164,5 @@ export function factoryReset() {
     
     console.log("Factory reset complete.");
 }
+
+    

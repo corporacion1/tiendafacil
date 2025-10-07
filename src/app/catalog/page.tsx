@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid, Instagram, Star, Search, UserPlus, QrCode, ZoomIn } from "lucide-react";
+import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid, Instagram, Star, Search, UserPlus, QrCode, ZoomIn, Pencil } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 
@@ -15,8 +15,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import type { Product, CartItem, Sale, Customer } from "@/lib/types";
-import { mockProducts, initialFamilies, pendingOrders, mockSales, defaultCustomers } from "@/lib/data";
+import type { Product, CartItem, Sale, Customer, PendingOrder } from "@/lib/types";
+import { mockProducts, initialFamilies, mockSales, defaultCustomers } from "@/lib/data";
 import { useSettings } from "@/contexts/settings-context";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
@@ -81,6 +81,7 @@ export default function CatalogPage() {
     const [sales, setSales] = useState<Sale[]>([]);
     const [customers, setCustomers] = useState<Customer[]>(defaultCustomers);
     const [isLoading, setIsLoading] = useState(true);
+    const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
     
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
     const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -101,7 +102,7 @@ export default function CatalogPage() {
             if (scrollIntervalRef.current) return;
             
             scrollIntervalRef.current = setInterval(() => {
-                if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
+                if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight -1) {
                     if (scrollIntervalRef.current) clearInterval(scrollIntervalRef.current);
                     scrollIntervalRef.current = null;
                 } else {
@@ -256,7 +257,7 @@ export default function CatalogPage() {
         }
 
         const newOrderId = `ORD-${Date.now()}`;
-        const newOrder = {
+        const newOrder: PendingOrder = {
             id: newOrderId,
             date: new Date().toISOString(),
             customerName: customer.name,
@@ -270,7 +271,7 @@ export default function CatalogPage() {
             total: subtotal,
         };
         
-        pendingOrders.unshift(newOrder);
+        setPendingOrders(prev => [...prev, newOrder]);
 
         try {
             const url = await QRCode.toDataURL(newOrderId);
@@ -284,7 +285,6 @@ export default function CatalogPage() {
         setIsOrderDialogOpen(false);
         setNewCustomer({ name: '', phone: '' });
         setCart([]);
-        document.getElementById('cart-close-button')?.click();
 
         toast({
             title: "¡Pedido Generado!",
@@ -294,6 +294,50 @@ export default function CatalogPage() {
     
     const handleImageClick = (product: Product) => {
         setProductDetails(product);
+    };
+    
+    const handleEditOrder = (orderToEdit: PendingOrder) => {
+        if (cart.length > 0) {
+            toast({
+                variant: "destructive",
+                title: "Carrito no está vacío",
+                description: "Por favor, vacía tu carrito actual antes de editar un pedido."
+            });
+            return;
+        }
+
+        const orderCartItems: CartItem[] = orderToEdit.items.map(item => {
+            const product = products.find(p => p.id === item.productId);
+            if (!product) {
+                 return {
+                    product: {
+                        id: item.productId,
+                        name: item.productName,
+                        price: item.price,
+                        stock: 0,
+                        sku: 'N/A', cost: 0, status: 'inactive', tax1: false, tax2: false, wholesalePrice: 0,
+                    } as Product,
+                    quantity: item.quantity,
+                    price: item.price,
+                };
+            }
+            return { product, quantity: item.quantity, price: item.price };
+        });
+
+        setCart(orderCartItems);
+        setPendingOrders(prev => prev.filter(p => p.id !== orderToEdit.id));
+        toast({
+            title: "Pedido Cargado para Edición",
+            description: `El pedido ${orderToEdit.id} está de nuevo en tu carrito.`
+        });
+    };
+
+    const handleDeleteOrder = (orderId: string) => {
+        setPendingOrders(prev => prev.filter(p => p.id !== orderId));
+        toast({
+            title: "Pedido Eliminado",
+            description: `El pedido ${orderId} ha sido eliminado.`,
+        });
     };
 
     return (
@@ -317,13 +361,14 @@ export default function CatalogPage() {
                                     <SheetTitle>Mi Pedido</SheetTitle>
                                 </SheetHeader>
                                 <div className="flex-1 overflow-y-auto py-6">
-                                    {cart.length === 0 ? (
-                                        <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+                                    {cart.length === 0 && pendingOrders.length === 0 && (
+                                        <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground px-6">
                                             <ShoppingBag className="h-16 w-16 mb-4" />
                                             <h3 className="text-lg font-semibold">Tu pedido está vacío</h3>
                                             <p className="text-sm">Agrega productos del catálogo para comenzar.</p>
                                         </div>
-                                    ) : (
+                                    )}
+                                    {cart.length > 0 && (
                                         <div className="px-6 space-y-4">
                                            {cart.map(item => (
                                                <div key={item.product.id} className="flex items-start gap-4">
@@ -347,6 +392,30 @@ export default function CatalogPage() {
                                                    </div>
                                                </div>
                                            ))}
+                                        </div>
+                                    )}
+                                    {pendingOrders.length > 0 && (
+                                        <div className="px-6 mt-6">
+                                            <Separator />
+                                            <h4 className="text-lg font-semibold my-4">Pedidos Generados</h4>
+                                            <div className="space-y-3">
+                                                {pendingOrders.map(order => (
+                                                    <div key={order.id} className="flex items-center justify-between gap-2 p-3 border rounded-lg bg-muted/50">
+                                                        <div>
+                                                            <p className="font-semibold">{order.id}</p>
+                                                            <p className="text-sm text-muted-foreground">{order.customerName}</p>
+                                                        </div>
+                                                        <div className="flex gap-1">
+                                                             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleEditOrder(order)}>
+                                                                <Pencil className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleDeleteOrder(order.id)}>
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -562,5 +631,7 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
+
+    
 
     
