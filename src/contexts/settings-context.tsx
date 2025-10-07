@@ -10,6 +10,7 @@ export interface Settings {
     storeName: string;
     storeAddress: string;
     storePhone: string;
+    storeWhatsapp: string; // Nuevo campo para WhatsApp
     storeSlogan: string;
     storeTiktok: string;
     storeMeta: string;
@@ -59,6 +60,7 @@ const defaultSettings: Settings = {
     storeName: 'TIENDA FACIL WEB',
     storeAddress: 'Calle Falsa 123',
     storePhone: '+58-412-6915593',
+    storeWhatsapp: '+58-412-6915593',
     storeSlogan: '¡Gracias por tu compra!',
     storeTiktok: '@corporacion1plus',
     storeMeta: '@corporacion1plus',
@@ -148,5 +150,3 @@ export const useSettings = (): SettingsContextType => {
   }
   return context;
 };
-
-    

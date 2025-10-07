@@ -13,8 +13,8 @@ export function Footer() {
     {
       name: "WhatsApp",
       icon: FaWhatsapp,
-      url: `https://wa.me/${settings.storePhone.replace(/\D/g, '')}`,
-      enabled: !!settings.storePhone
+      url: `https://wa.me/${settings.storeWhatsapp.replace(/\D/g, '')}`,
+      enabled: !!settings.storeWhatsapp
     },
     {
       name: "TikTok",
@@ -72,5 +72,3 @@ export function Footer() {
     </footer>
   );
 }
-
-    

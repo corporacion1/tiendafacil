@@ -467,7 +467,7 @@ export default function SettingsPage() {
                             <Input id="storeAddress" value={localSettings.storeAddress} onChange={handleSettingsChange} placeholder="Calle Falsa 123" maxLength={55} />
                         </div>
                          <div className="space-y-2">
-                            <Label htmlFor="storePhone">Teléfono</Label>
+                            <Label htmlFor="storePhone">Teléfono (para el ticket)</Label>
                             <Input id="storePhone" value={localSettings.storePhone} onChange={handleSettingsChange} placeholder="+58-412-1234567" maxLength={15} />
                         </div>
                          <div className="space-y-2">
@@ -526,9 +526,9 @@ export default function SettingsPage() {
                 <CardContent className="space-y-6">
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="storeWhatsapp">WhatsApp</Label>
-                            <Input id="storeWhatsapp" value={localSettings.storePhone} readOnly disabled />
-                            <CardDescription>El número de WhatsApp es el mismo que el teléfono de la tienda.</CardDescription>
+                            <Label htmlFor="storeWhatsapp">Teléfono de WhatsApp</Label>
+                            <Input id="storeWhatsapp" value={localSettings.storeWhatsapp} onChange={handleSettingsChange} placeholder="+58-412-1112233" />
+                            <CardDescription>Este número se usará para los enlaces de WhatsApp.</CardDescription>
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="storeTiktok">Usuario de TikTok</Label>
