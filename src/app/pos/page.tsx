@@ -1,8 +1,9 @@
 
+
 "use client"
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
-import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package } from "lucide-react"
+import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -115,6 +116,7 @@ export default function POSPage() {
   const [transactionType, setTransactionType] = useState<'contado' | 'credito'>('contado');
   const [paymentMethod, setPaymentMethod] = useState<string>('efectivo');
   const [lastSale, setLastSale] = useState<Sale | null>(null);
+  const [ticketType, setTicketType] = useState<'sale' | 'quote'>('sale');
   
   const [productDetails, setProductDetails] = useState<Product | null>(null);
 
@@ -280,10 +282,25 @@ export default function POSPage() {
 
     if (andPrint) {
         setTimeout(() => {
+        setTicketType('sale');
         setIsPrintPreviewOpen(true);
         }, 100);
     }
   }
+
+  const handlePrintQuote = () => {
+    if (cartItems.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Carrito vacío",
+        description: "Agrega productos para generar una cotización.",
+      });
+      return;
+    }
+    setTicketType('quote');
+    setLastSale(null); // Ensure we don't show a previous sale ID
+    setIsPrintPreviewOpen(true);
+  };
 
   const handleAddNewCustomer = () => {
     if (newCustomer.name.trim() === "") {
@@ -641,9 +658,16 @@ export default function POSPage() {
                 </DialogContent>
             </Dialog>
 
-            <Button className="w-full" variant="outline" size="lg" onClick={() => setIsPrintPreviewOpen(true)} disabled={cartItems.length === 0 && !lastSale}>
+            <Button className="w-full" variant="outline" size="lg" onClick={() => {
+              setTicketType('sale');
+              setIsPrintPreviewOpen(true);
+            }} disabled={cartItems.length === 0 && !lastSale}>
               <Printer className="mr-2 h-4 w-4" />
               Imprimir Ticket
+            </Button>
+            <Button className="w-full" variant="secondary" size="lg" onClick={handlePrintQuote} disabled={cartItems.length === 0}>
+                <FileText className="mr-2 h-4 w-4" />
+                Imprimir Cotización
             </Button>
           </CardFooter>
         </Card>
@@ -708,8 +732,9 @@ export default function POSPage() {
       <TicketPreview
         isOpen={isPrintPreviewOpen}
         onOpenChange={setIsPrintPreviewOpen}
-        cartItems={lastSale ? lastSale.items.map(item => ({ product: products.find(p => p.id === item.productId)!, quantity: item.quantity, price: item.price })) : cartItems}
-        saleId={lastSale?.id}
+        ticketType={ticketType}
+        cartItems={ticketType === 'quote' || !lastSale ? cartItems : lastSale.items.map(item => ({ product: products.find(p => p.id === item.productId)!, quantity: item.quantity, price: item.price }))}
+        saleId={ticketType === 'sale' ? lastSale?.id : undefined}
         customer={selectedCustomer}
       />
     )}

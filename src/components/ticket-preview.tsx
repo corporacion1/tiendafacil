@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useRef } from "react";
@@ -14,6 +15,7 @@ interface TicketPreviewProps {
   cartItems: CartItem[];
   customer: Customer | null;
   saleId?: string | null;
+  ticketType?: 'sale' | 'quote';
 }
 
 export function TicketPreview({
@@ -22,6 +24,7 @@ export function TicketPreview({
   cartItems,
   customer,
   saleId,
+  ticketType = 'sale',
 }: TicketPreviewProps) {
   const ticketRef = useRef<HTMLDivElement>(null);
   const { settings, activeSymbol, activeRate } = useSettings();
@@ -87,6 +90,13 @@ export function TicketPreview({
               margin: 0;
               font-size: 10px;
             }
+            .ticket-title {
+                font-size: 14px;
+                font-weight: bold;
+                text-align: center;
+                margin: 10px 0;
+                text-transform: uppercase;
+            }
             .customer {
               margin-top: 10px;
             }
@@ -150,9 +160,9 @@ export function TicketPreview({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Vista Previa del Ticket</DialogTitle>
+          <DialogTitle>Vista Previa del Documento</DialogTitle>
           <DialogDescription>
-            Así se verá tu ticket. Confirma para imprimir.
+            Así se verá tu {ticketType === 'quote' ? 'cotización' : 'ticket'}. Confirma para imprimir.
           </DialogDescription>
         </DialogHeader>
         {displayInfo ? (
@@ -163,8 +173,14 @@ export function TicketPreview({
                 <p style={{ margin: '2px 0', fontSize: '10px' }}>{settings.storeAddress}</p>
                 <p style={{ margin: '2px 0', fontSize: '10px' }}>Tel: {settings.storePhone}</p>
                 <p style={{ margin: '2px 0', fontSize: '10px' }}>{new Date().toLocaleString()}</p>
-                {saleId && <p style={{ margin: '2px 0', fontSize: '10px', fontWeight: 'bold' }}>CONTROL #: {saleId}</p>}
+                {ticketType === 'sale' && saleId && <p style={{ margin: '2px 0', fontSize: '10px', fontWeight: 'bold' }}>CONTROL #: {saleId}</p>}
                 </div>
+                
+                {ticketType === 'quote' && (
+                  <div className="ticket-title" style={{ fontSize: '14px', fontWeight: 'bold', textAlign: 'center', margin: '10px 0', textTransform: 'uppercase' }}>
+                      Cotización
+                  </div>
+                )}
                 
                 {customer && (
                 <div className="customer" style={{ marginTop: '10px', fontSize: '10px' }}>
@@ -225,12 +241,13 @@ export function TicketPreview({
                 
                 <div className="footer" style={{ textAlign: 'center', marginTop: '10px', fontSize: '10px' }}>
                 <p>{settings.storeSlogan || '¡Gracias por tu compra!'}</p>
+                {ticketType === 'quote' && <p>Presupuesto válido por 7 días.</p>}
                 </div>
             </div>
             </div>
         ) : (
             <div className="p-8 text-center text-muted-foreground">
-                No hay información de venta para mostrar.
+                No hay información para mostrar.
             </div>
         )}
         <DialogFooter className="sm:justify-end">
