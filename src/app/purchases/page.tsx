@@ -49,9 +49,36 @@ export default function PurchasesPage() {
   const [newSupplier, setNewSupplier] = useState({ id: '', name: '', phone: '', address: '' });
   
   const [documentNumber, setDocumentNumber] = useState('');
+  const [documentNumberError, setDocumentNumberError] = useState<string | null>(null);
   const [responsible, setResponsible] = useState('');
 
   const selectedSupplier = suppliers.find(s => s.id === selectedSupplierId) ?? null;
+
+  const handleDocumentNumberBlur = () => {
+    if (!documentNumber.trim() || !selectedSupplierId) {
+        setDocumentNumberError(null);
+        return;
+    }
+
+    const isDuplicate = mockPurchases.some(
+        (purchase) =>
+            purchase.supplierId === selectedSupplierId &&
+            purchase.documentNumber?.trim().toLowerCase() === documentNumber.trim().toLowerCase()
+    );
+
+    if (isDuplicate) {
+        const errorMsg = "Este número de documento ya fue registrado para este proveedor.";
+        setDocumentNumberError(errorMsg);
+        toast({
+            variant: "destructive",
+            title: "Documento Duplicado",
+            description: errorMsg,
+        });
+    } else {
+        setDocumentNumberError(null);
+    }
+  };
+
 
   const filteredProducts = useMemo(() => {
     return products.filter(product =>
@@ -165,6 +192,10 @@ export default function PurchasesPage() {
         toast({ variant: "destructive", title: "Falta responsable", description: "Por favor, ingresa el nombre del responsable de la compra." });
         return;
     }
+    if (documentNumberError) {
+        toast({ variant: "destructive", title: "Documento Duplicado", description: "No puedes registrar una compra con un número de documento duplicado." });
+        return;
+    }
 
     const purchaseId = generatePurchaseId();
     const newPurchase: Purchase = {
@@ -208,8 +239,8 @@ export default function PurchasesPage() {
   };
 
   const isFormComplete = useMemo(() => {
-      return purchaseItems.length > 0 && selectedSupplierId && responsible.trim() !== '' && documentNumber.trim() !== '';
-  }, [purchaseItems, selectedSupplierId, responsible, documentNumber]);
+      return purchaseItems.length > 0 && selectedSupplierId && responsible.trim() !== '' && documentNumber.trim() !== '' && !documentNumberError;
+  }, [purchaseItems, selectedSupplierId, responsible, documentNumber, documentNumberError]);
 
   const isNewSupplierFormDirty = newSupplier.name.trim() !== '' || newSupplier.id.trim() !== '' || newSupplier.phone.trim() !== '' || newSupplier.address.trim() !== '';
   
@@ -374,7 +405,18 @@ export default function PurchasesPage() {
 
             <div className="space-y-2">
                 <Label htmlFor="document-number">Número de Documento *</Label>
-                <Input id="document-number" value={documentNumber} onChange={(e) => setDocumentNumber(e.target.value)} placeholder="Ej: FACT-00123" required/>
+                <Input 
+                    id="document-number" 
+                    value={documentNumber} 
+                    onChange={(e) => {
+                        setDocumentNumber(e.target.value);
+                        if(documentNumberError) setDocumentNumberError(null);
+                    }} 
+                    onBlur={handleDocumentNumberBlur}
+                    placeholder="Ej: FACT-00123" 
+                    required
+                />
+                {documentNumberError && <p className="text-sm font-medium text-destructive">{documentNumberError}</p>}
             </div>
 
             <div className="space-y-2">
@@ -493,3 +535,5 @@ export default function PurchasesPage() {
     </div>
   );
 }
+
+    
