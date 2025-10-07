@@ -15,22 +15,26 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import type { Sale, Payment } from "@/lib/types";
+import type { Sale, Payment, Product } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
-import { mockSales, paymentMethods } from "@/lib/data";
+import { paymentMethods } from "@/lib/data";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, doc, writeBatch } from "firebase/firestore";
 
 export default function CreditsPage() {
     const { toast } = useToast();
+    const firestore = useFirestore();
     const { settings, activeSymbol, activeRate } = useSettings();
-    const [sales, setSales] = useState<Sale[]>(mockSales);
-    const [isLoading, setIsLoading] = useState(true);
+
+    const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(useMemoFirebase(() => collection(firestore, 'sales'), [firestore]));
+    const { data: productsData, isLoading: isLoadingProducts } = useCollection<Product>(useMemoFirebase(() => collection(firestore, 'products'), [firestore]));
+    const isLoading = isLoadingSales || isLoadingProducts;
 
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
     
-    // State for multi-payment form
     const [payments, setPayments] = useState<Omit<Payment, 'id' | 'date'>[]>([]);
     const [currentPaymentMethod, setCurrentPaymentMethod] = useState('efectivo');
     const [currentPaymentAmount, setCurrentPaymentAmount] = useState<number | string>('');
@@ -38,15 +42,7 @@ export default function CreditsPage() {
 
     const [searchTerm, setSearchTerm] = useState("");
     
-    useEffect(() => {
-        // Simulate fetching data
-        setTimeout(() => {
-            setSales(mockSales);
-            setIsLoading(false);
-        }, 500);
-    }, []);
-
-    const creditSales = useMemo(() => sales.filter(s => s.transactionType === 'credito'), [sales]);
+    const creditSales = useMemo(() => (salesData || []).filter(s => s.transactionType === 'credito'), [salesData]);
     
     const totalNewPayment = useMemo(() => payments.reduce((sum, p) => sum + p.amount, 0), [payments]);
     const remainingBalance = useMemo(() => selectedSale ? selectedSale.total - (selectedSale.paidAmount || 0) : 0, [selectedSale]);
@@ -61,13 +57,13 @@ export default function CreditsPage() {
     }, [paymentDialogOpen, balanceAfterNewPayments])
     
     const isReferenceDuplicate = (reference: string, method: string) => {
-        if (!reference || !method) return false;
+        if (!reference || !method || !salesData) return false;
         // Check current unsaved payments
         if (payments.some(p => p.method === method && p.reference === reference)) {
             return true;
         }
         // Check all past sales
-        for (const sale of mockSales) {
+        for (const sale of salesData) {
             if (sale.payments && sale.payments.some(p => p.method === method && p.reference === reference)) {
                 return true;
             }
@@ -112,34 +108,40 @@ export default function CreditsPage() {
         setCurrentPaymentMethod('efectivo');
     }
 
-    const handleSavePayments = () => {
+    const handleSavePayments = async () => {
         if (!selectedSale || payments.length === 0) {
             toast({ variant: "destructive", title: "No hay pagos que guardar." });
             return;
         }
 
-        const saleIndex = mockSales.findIndex(s => s.id === selectedSale.id);
-        if (saleIndex > -1) {
-            const saleToUpdate = mockSales[saleIndex];
-            const newPayments: Payment[] = payments.map((p, i) => ({
-                ...p,
-                id: `pay-${saleToUpdate.id}-${Date.now()}-${i}`,
-                date: new Date().toISOString(),
-            }));
-
-            saleToUpdate.payments = [...(saleToUpdate.payments || []), ...newPayments];
-            saleToUpdate.paidAmount += totalNewPayment;
-            if (saleToUpdate.paidAmount >= saleToUpdate.total) {
-                saleToUpdate.status = 'paid';
-            }
-        }
-
-        setSales([...mockSales]);
-        setSelectedSale(null); // Close details view after saving
-        setPaymentDialogOpen(false);
-        resetPaymentForm();
+        const saleRef = doc(firestore, 'sales', selectedSale.id);
+        const newPayments: Payment[] = payments.map((p, i) => ({
+            ...p,
+            id: `pay-${selectedSale.id}-${Date.now()}-${i}`,
+            date: new Date().toISOString(),
+        }));
         
-        toast({ title: "Abono Registrado", description: `Se agregaron ${payments.length} pago(s) a la venta ${selectedSale.id}.`});
+        const updatedPaidAmount = selectedSale.paidAmount + totalNewPayment;
+        const newStatus = updatedPaidAmount >= selectedSale.total ? 'paid' : 'unpaid';
+
+        const batch = writeBatch(firestore);
+        batch.update(saleRef, {
+            payments: [...(selectedSale.payments || []), ...newPayments],
+            paidAmount: updatedPaidAmount,
+            status: newStatus,
+        });
+
+        try {
+            await batch.commit();
+            setSelectedSale(null); // Close details view after saving
+            setPaymentDialogOpen(false);
+            resetPaymentForm();
+            
+            toast({ title: "Abono Registrado", description: `Se agregaron ${payments.length} pago(s) a la venta ${selectedSale.id}.`});
+        } catch (error) {
+            console.error("Error saving payments:", error);
+            toast({ variant: 'destructive', title: 'Error al guardar abono', description: (error as Error).message });
+        }
     };
     
     const filteredSales = useMemo(() => {
@@ -151,12 +153,14 @@ export default function CreditsPage() {
 
     const getFormattedDate = (date: any) => {
         if (!date) return '';
-        return format(parseISO(date), "dd/MM/yyyy");
+        const dateObj = typeof date === 'string' ? parseISO(date) : date.toDate();
+        return format(dateObj, "dd/MM/yyyy");
     };
 
     const getFormattedDateTime = (date: any) => {
         if (!date) return '';
-        return format(parseISO(date), "dd/MM/yyyy HH:mm");
+        const dateObj = typeof date === 'string' ? parseISO(date) : date.toDate();
+        return format(dateObj, "dd/MM/yyyy HH:mm");
     };
     
     const renderSalesTable = (salesToRender: Sale[]) => (
@@ -420,3 +424,5 @@ export default function CreditsPage() {
         </>
     );
 }
+
+    

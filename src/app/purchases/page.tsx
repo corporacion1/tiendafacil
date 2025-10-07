@@ -10,34 +10,30 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { Product, PurchaseItem, Supplier, Purchase, InventoryMovement, Family } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { mockProducts, defaultSuppliers, initialFamilies, mockPurchases, mockInventoryMovements } from "@/lib/data";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { cn } from "@/lib/utils";
+import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings } from "@/contexts/settings-context";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, doc, writeBatch } from "firebase/firestore";
 
 const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
 
 export default function PurchasesPage() {
   const { toast } = useToast();
+  const firestore = useFirestore();
   const { settings, activeSymbol, activeRate } = useSettings();
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(useMemoFirebase(() => collection(firestore, 'products'), [firestore]));
+  const { data: suppliers, isLoading: isLoadingSuppliers } = useCollection<Supplier>(useMemoFirebase(() => collection(firestore, 'suppliers'), [firestore]));
+  const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(useMemoFirebase(() => collection(firestore, 'families'), [firestore]));
+  const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(useMemoFirebase(() => collection(firestore, 'purchases'), [firestore]));
 
-  useEffect(() => {
-    // Simulate fetching data
-    setTimeout(() => {
-        setProducts(mockProducts);
-        setSuppliers(defaultSuppliers);
-        setIsLoading(false);
-    }, 500);
-  }, []);
+  const isLoading = isLoadingProducts || isLoadingSuppliers || isLoadingFamilies || isLoadingPurchases;
 
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -52,15 +48,15 @@ export default function PurchasesPage() {
   const [documentNumberError, setDocumentNumberError] = useState<string | null>(null);
   const [responsible, setResponsible] = useState('');
 
-  const selectedSupplier = suppliers.find(s => s.id === selectedSupplierId) ?? null;
+  const selectedSupplier = (suppliers || []).find(s => s.id === selectedSupplierId) ?? null;
 
   const handleDocumentNumberBlur = () => {
-    if (!documentNumber.trim() || !selectedSupplierId) {
+    if (!documentNumber.trim() || !selectedSupplierId || !purchases) {
         setDocumentNumberError(null);
         return;
     }
 
-    const isDuplicate = mockPurchases.some(
+    const isDuplicate = purchases.some(
         (purchase) =>
             purchase.supplierId === selectedSupplierId &&
             purchase.documentNumber?.trim().toLowerCase() === documentNumber.trim().toLowerCase()
@@ -81,6 +77,7 @@ export default function PurchasesPage() {
 
 
   const filteredProducts = useMemo(() => {
+    if (!products) return [];
     return products.filter(product =>
       (selectedFamily === 'all' || product.family === selectedFamily) &&
       (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -138,6 +135,8 @@ export default function PurchasesPage() {
     let tax1Amount = 0;
     let tax2Amount = 0;
     
+    if (!products) return { tax1Amount, tax2Amount, totalTaxes: 0 };
+    
     purchaseItems.forEach(item => {
         const product = products.find(p => p.id === item.productId);
         if (product) {
@@ -158,24 +157,31 @@ export default function PurchasesPage() {
   const totalCost = subtotal + totalTaxes;
 
 
-  const handleAddNewSupplier = () => {
+  const handleAddNewSupplier = async () => {
     if (newSupplier.name.trim() === "") {
         toast({ variant: "destructive", title: "Nombre inválido" });
         return;
     }
     const newId = newSupplier.id.trim() || `sup-${Date.now()}`;
-    const supplierToAdd: Supplier = { id: newId, name: newSupplier.name, phone: newSupplier.phone, address: newSupplier.address };
+    const supplierToAdd: Omit<Supplier, 'id'> = { name: newSupplier.name, phone: newSupplier.phone, address: newSupplier.address };
     
-    defaultSuppliers.push(supplierToAdd);
-    setSuppliers([...defaultSuppliers]);
-    
-    setSelectedSupplierId(newId);
-    setNewSupplier({ id: '', name: '', phone: '', address: '' });
-    setIsSupplierDialogOpen(false);
-    toast({ title: "Proveedor Agregado", description: `El proveedor "${supplierToAdd.name}" ha sido agregado.` });
+    const batch = writeBatch(firestore);
+    const supplierRef = doc(firestore, 'suppliers', newId);
+    batch.set(supplierRef, supplierToAdd);
+
+    try {
+        await batch.commit();
+        setSelectedSupplierId(newId);
+        setNewSupplier({ id: '', name: '', phone: '', address: '' });
+        setIsSupplierDialogOpen(false);
+        toast({ title: "Proveedor Agregado", description: `El proveedor "${supplierToAdd.name}" ha sido agregado.` });
+    } catch(error) {
+        console.error("Error adding supplier:", error);
+        toast({ variant: 'destructive', title: 'Error al agregar proveedor' });
+    }
   };
   
-  const handleProcessPurchase = () => {
+  const handleProcessPurchase = async () => {
     if (purchaseItems.length === 0) {
       toast({ variant: "destructive", title: "Orden vacía", description: "Agrega productos para procesar la compra." });
       return;
@@ -197,9 +203,11 @@ export default function PurchasesPage() {
         return;
     }
 
+    const batch = writeBatch(firestore);
     const purchaseId = generatePurchaseId();
-    const newPurchase: Purchase = {
-        id: purchaseId,
+
+    const purchaseRef = doc(firestore, "purchases", purchaseId);
+    const newPurchase: Omit<Purchase, 'id'> = {
         supplierId: selectedSupplier.id,
         supplierName: selectedSupplier.name,
         items: purchaseItems,
@@ -208,34 +216,39 @@ export default function PurchasesPage() {
         documentNumber: documentNumber,
         responsible: responsible,
     };
-    
-    mockPurchases.unshift(newPurchase);
+    batch.set(purchaseRef, newPurchase);
 
     for (const item of purchaseItems) {
-        const productIndex = mockProducts.findIndex(p => p.id === item.productId);
-        if (productIndex > -1) {
-            const product = mockProducts[productIndex];
-            product.stock += item.quantity;
-            product.cost = item.cost;
+        const productRef = doc(firestore, "products", item.productId);
+        const product = products?.find(p => p.id === item.productId);
+        if (product) {
+            const newStock = product.stock + item.quantity;
+            batch.update(productRef, { stock: newStock, cost: item.cost });
         }
 
-        const movement: InventoryMovement = {
-            id: `mov-pur-${purchaseId}-${item.productId}`,
+        const movementRef = doc(collection(firestore, "inventory_movements"));
+        const newMovement: Omit<InventoryMovement, 'id'> = {
             productName: item.productName,
             type: 'purchase',
             quantity: item.quantity,
             date: new Date().toISOString(),
             responsible: responsible,
         };
-        mockInventoryMovements.unshift(movement);
+        batch.set(movementRef, newMovement);
     }
     
-    toast({ title: "Compra Procesada", description: `La compra con ID #${purchaseId} ha sido registrada.` });
-    
-    setPurchaseItems([]);
-    setSelectedSupplierId('');
-    setDocumentNumber('');
-    setResponsible('');
+    try {
+        await batch.commit();
+        toast({ title: "Compra Procesada", description: `La compra con ID #${purchaseId} ha sido registrada.` });
+        
+        setPurchaseItems([]);
+        setSelectedSupplierId('');
+        setDocumentNumber('');
+        setResponsible('');
+    } catch (error) {
+        console.error("Error processing purchase: ", error);
+        toast({ variant: 'destructive', title: 'Error al procesar la compra', description: (error as Error).message });
+    }
   };
 
   const isFormComplete = useMemo(() => {
@@ -263,7 +276,7 @@ export default function PurchasesPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas las familias</SelectItem>
-                  {initialFamilies.map(family => (
+                  {(families || []).map(family => (
                     <SelectItem key={family.id} value={family.name}>
                       {family.name}
                     </SelectItem>
@@ -275,16 +288,16 @@ export default function PurchasesPage() {
           <CardContent>
             {isLoading && <p>Cargando productos...</p>}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
-              {filteredProducts.map((product) => {
+              {(filteredProducts || []).map((product) => {
                     return (
                     <Card key={product.id} className="overflow-hidden group cursor-pointer" onClick={() => addProductToPurchase(product)}>
                     <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative isolate">
                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
                             <Button size="sm">Agregar</Button>
                         </div>
-                        {product.imageUrl ? (
+                        {getDisplayImageUrl(product.imageUrl) ? (
                             <Image 
-                              src={product.imageUrl} 
+                              src={getDisplayImageUrl(product.imageUrl)}
                               alt={product.name} 
                               fill 
                               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw" 
@@ -340,7 +353,7 @@ export default function PurchasesPage() {
                     <Popover open={isSupplierSearchOpen} onOpenChange={setIsSupplierSearchOpen}>
                         <PopoverTrigger asChild>
                             <Button variant="outline" role="combobox" className="w-full justify-between">
-                                { isLoading ? "Cargando..." : (selectedSupplier ? selectedSupplier.name : "Seleccionar proveedor...") }
+                                { isLoadingSuppliers ? "Cargando..." : (selectedSupplier ? selectedSupplier.name : "Seleccionar proveedor...") }
                                 <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                         </PopoverTrigger>
@@ -350,7 +363,7 @@ export default function PurchasesPage() {
                                 <CommandList>
                                     <CommandEmpty>No se encontraron proveedores.</CommandEmpty>
                                     <CommandGroup>
-                                        {suppliers.map((supplier) => (
+                                        {(suppliers || []).map((supplier) => (
                                             <CommandItem
                                                 key={supplier.id}
                                                 value={supplier.name}
