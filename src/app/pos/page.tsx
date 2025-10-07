@@ -76,7 +76,7 @@ export default function POSPage() {
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
 
   const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
-  const { data: customers = [], isLoading: isLoadingCustomers } = useCollection<Customer>(customersRef);
+  const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersRef);
   
   const pendingOrdersQuery = useMemoFirebase(() => query(collection(firestore, 'pendingOrders'), orderBy('date', 'desc')), [firestore]);
   const { data: pendingOrders = [], isLoading: isLoadingPendingOrders } = useCollection<PendingOrder>(pendingOrdersQuery);
@@ -116,7 +116,7 @@ export default function POSPage() {
   
   const generateSaleId = () => {
     const series = settings.saleSeries || 'SALE';
-    const highestId = sales.reduce((max, sale) => {
+    const highestId = (sales || []).reduce((max, sale) => {
         if (!sale.id.startsWith(series + '-')) return max;
         const parts = sale.id.split('-');
         const currentNum = parseInt(parts[parts.length - 1], 10);
@@ -126,7 +126,7 @@ export default function POSPage() {
     return `${series}-${String(nextCorrelative).padStart(3, '0')}`;
   };
 
-  const customerList = useMemo(() => [{ id: 'eventual', name: 'Cliente Eventual', phone: '' }, ...customers], [customers]);
+  const customerList = useMemo(() => [{ id: 'eventual', name: 'Cliente Eventual', phone: '' }, ...(customers || [])], [customers]);
   const selectedCustomer = customerList.find(c => c.id === selectedCustomerId) ?? null;
 
   const addToCart = (product: Product) => {
@@ -233,7 +233,7 @@ export default function POSPage() {
     if (payments.some(p => p.method === method && p.reference === reference)) {
         return true;
     }
-    for (const sale of sales) {
+    for (const sale of (sales || [])) {
         if (sale.payments && sale.payments.some(p => p.method === method && p.reference === reference)) {
             return true;
         }
@@ -998,5 +998,3 @@ export default function POSPage() {
   </Dialog>
   );
 }
-
-    
