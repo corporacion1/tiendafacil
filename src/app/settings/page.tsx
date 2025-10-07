@@ -18,8 +18,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
 import { useUser } from "@/firebase";
-
-import { mockProducts, initialUnits as defaultUnits, initialFamilies as defaultFamilies, initialWarehouses as defaultWarehouses, mockCurrencyRates, factoryReset } from "@/lib/data";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { mockProducts, initialUnits as defaultUnits, initialFamilies as defaultFamilies, initialWarehouses as defaultWarehouses, mockCurrencyRates, factoryReset, businessCategories } from "@/lib/data";
 
 
 function ChangePinDialog() {
@@ -155,6 +155,10 @@ export default function SettingsPage() {
 
     const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
+        setLocalSettings(prev => ({ ...prev, [id]: value }));
+    };
+
+    const handleSelectChange = (id: string, value: string) => {
         setLocalSettings(prev => ({ ...prev, [id]: value }));
     };
 
@@ -464,7 +468,18 @@ export default function SettingsPage() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="businessType">Tipo de Negocio</Label>
-                            <Input id="businessType" value={localSettings.businessType} onChange={handleSettingsChange} placeholder="Ej: Tienda de Tecnología" maxLength={45} />
+                            <Select value={localSettings.businessType} onValueChange={(value) => handleSelectChange('businessType', value)}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecciona un tipo de negocio" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {businessCategories.map(category => (
+                                        <SelectItem key={category} value={category}>
+                                            {category}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="space-y-2 md:col-span-2">
                             <Label htmlFor="storeAddress">Dirección</Label>

@@ -36,6 +36,17 @@ export let initialWarehouses: Warehouse[] = [
     { id: 'wh-2', name: 'Depósito Secundario' },
 ];
 
+export const businessCategories: string[] = [
+    'Tienda de Tecnología',
+    'Restaurante',
+    'Tienda de Ropa',
+    'Supermercado',
+    'Servicios Profesionales',
+    'Ferretería',
+    'Salud y Belleza',
+    'Otro'
+];
+
 export const mockProducts: Product[] = [
   {
     id: "prod-1", name: "Tarjeta Gráfica RTX 4090", sku: "NV-RTX4090-01", stock: 15, price: 1799.99, wholesalePrice: 1750.00, cost: 1600.00, status: "active", tax1: true, tax2: true, unit: "Unidad", family: "Tarjetas Gráficas", warehouse: "Almacén Principal",
