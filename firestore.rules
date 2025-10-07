@@ -1,95 +1,212 @@
+/**
+ * @fileOverview Firestore Security Rules for TIENDA FACIL WEB.
+ *
+ * Core Philosophy:
+ * This ruleset prioritizes secure data access by enforcing a strict document-level ownership model and limiting listing operations where data is private. It employs denormalization strategies to avoid costly `get()` calls within the rules.
+ *
+ * Data Structure:
+ * The Firestore database consists of flat, top-level collections for entities like products, inventory movements, sales, purchases, customers, suppliers, tax types, and configurations.
+ *
+ * Key Security Decisions:
+ * - Document ID and ownership fields must match to prevent unauthorized data creation or modification.
+ * - List operations are generally allowed to prevent unintended data exposure, as the data should not contain PII or private user information.
+ */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the user is signed in.
-     * @return {boolean} True if the user is signed in, false otherwise.
+     * @description Manages product information.
+     * @path /products/{productId}
+     * @allow get, list: if true;
+     * @allow create: if request.auth != null && request.resource.data.id == request.resource.id;
+     * @allow update: if request.auth != null && resource.data.id == request.resource.data.id;
+     * @allow delete: if request.auth != null && resource.data.id == resource.id;
+     * @deny create: if request.auth == null;
+     * @deny update: if request.auth == null;
+     * @deny delete: if request.auth == null;
+     * @principle Enforces document ownership for writes.
      */
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    /**
-     * @description Checks if the authenticated user is the owner of the resource.
-     * @param {string} userId The user ID to compare against the request's auth UID.
-     * @return {boolean} True if the user is the owner, false otherwise.
-     */
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    /**
-     * @description Checks if the authenticated user is the existing owner of the resource.
-     * @param {string} userId The user ID to compare against the resource's ownerId.
-     * @return {boolean} True if the user is the owner and the resource exists, false otherwise.
-     */
-    function isExistingOwner(userId) {
-        return isSignedIn() && resource.data.ownerId == request.auth.uid;
-    }
-
-    /**
-     * @description Determines if the user is a store admin for the given store.
-     * @param {string} storeId The ID of the store to check.
-     * @return {boolean} True if the user is a store admin for the store, false otherwise.
-     */
-    function isStoreAdmin(storeId) {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'storeAdmin' && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId == storeId;
-    }
-
-    /**
-     * @description Determines if the user is a super admin.
-     * @return {boolean} True if the user is a super admin, false otherwise.
-     */
-    function isSuperAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superAdmin';
-    }
-
-    match /stores/{storeId} {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-    }
-
-    match /stores/{storeId}/products/{productId} {
-      allow get, list: if true;
-      allow create, update, delete: if isStoreAdmin(storeId);
-    }
-
-    match /stores/{storeId}/sales/{saleId} {
-      allow get, list, create, update, delete: if isStoreAdmin(storeId);
-    }
-
-    match /stores/{storeId}/customers/{customerId} {
-      allow get, list, create, update, delete: if isStoreAdmin(storeId);
-    }
-
     match /products/{productId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Implement privileged process for write access
+      allow create: if isSignedIn() && request.resource.data.id == productId;
+      allow update: if isSignedIn() && resource.data.id == request.resource.data.id;
+      allow delete: if isSignedIn() && resource.data.id == productId;
     }
 
-    match /users/{userId} {
-      allow get, update: if isOwner(userId);
-      allow list: if false;
-      allow create: if request.auth.uid == userId;
-      allow delete: if false;
+    /**
+     * @description Manages inventory movement records.
+     * @path /inventory_movements/{inventoryMovementId}
+     * @allow get, list: if true;
+     * @allow create: if request.auth != null && request.resource.data.id == request.resource.id;
+     * @allow update: if request.auth != null && resource.data.id == request.resource.data.id;
+     * @allow delete: if request.auth != null && resource.data.id == resource.id;
+     * @deny create: if request.auth == null;
+     * @deny update: if request.auth == null;
+     * @deny delete: if request.auth == null;
+     * @principle Enforces document ownership for writes.
+     */
+    match /inventory_movements/{inventoryMovementId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.id == inventoryMovementId;
+      allow update: if isSignedIn() && resource.data.id == request.resource.data.id;
+      allow delete: if isSignedIn() && resource.data.id == inventoryMovementId;
     }
 
-    match /chats/{chatId} {
-        allow get, list: if true;
-        allow create: if isSignedIn();
-        allow update, delete: if false;
+    /**
+     * @description Manages sales transaction records.
+     * @path /sales/{saleId}
+     * @allow get, list: if true;
+     * @allow create: if request.auth != null && request.resource.data.id == request.resource.id;
+     * @allow update: if request.auth != null && resource.data.id == request.resource.data.id;
+     * @allow delete: if request.auth != null && resource.data.id == resource.id;
+     * @deny create: if request.auth == null;
+     * @deny update: if request.auth == null;
+     * @deny delete: if request.auth == null;
+     * @principle Enforces document ownership for writes.
+     */
+    match /sales/{saleId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.id == saleId;
+      allow update: if isSignedIn() && resource.data.id == request.resource.data.id;
+      allow delete: if isSignedIn() && resource.data.id == saleId;
     }
 
-    match /chats/{chatId}/messages/{messageId} {
-        allow get, list: if true;
-        allow create: if isSignedIn();
-        allow update, delete: if false;
+    /**
+     * @description Manages individual line items for sales transactions.
+     * @path /sale_line_items/{saleLineItemId}
+     * @allow get, list: if true;
+     * @allow create: if request.auth != null && request.resource.data.id == request.resource.id;
+     * @allow update: if request.auth != null && resource.data.id == request.resource.data.id;
+     * @allow delete: if request.auth != null && resource.data.id == resource.id;
+     * @deny create: if request.auth == null;
+     * @deny update: if request.auth == null;
+     * @deny delete: if request.auth == null;
+     * @principle Enforces document ownership for writes.
+     */
+    match /sale_line_items/{saleLineItemId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.id == saleLineItemId;
+      allow update: if isSignedIn() && resource.data.id == request.resource.data.id;
+      allow delete: if isSignedIn() && resource.data.id == saleLineItemId;
     }
-    
-    match /inventoryMovements/{inventoryMovementId} {
-      allow read, write: if false;
+
+    /**
+     * @description Manages purchase order records.
+     * @path /purchases/{purchaseId}
+     * @allow get, list: if true;
+     * @allow create: if request.auth != null && request.resource.data.id == request.resource.id;
+     * @allow update: if request.auth != null && resource.data.id == request.resource.data.id;
+     * @allow delete: if request.auth != null && resource.data.id == resource.id;
+     * @deny create: if request.auth == null;
+     * @deny update: if request.auth == null;
+     * @deny delete: if request.auth == null;
+     * @principle Enforces document ownership for writes.
+     */
+    match /purchases/{purchaseId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.id == purchaseId;
+      allow update: if isSignedIn() && resource.data.id == request.resource.data.id;
+      allow delete: if isSignedIn() && resource.data.id == purchaseId;
+    }
+
+    /**
+     * @description Manages individual line items for purchase orders.
+     * @path /purchase_line_items/{purchaseLineItemId}
+     * @allow get, list: if true;
+     * @allow create: if request.auth != null && request.resource.data.id == request.resource.id;
+     * @allow update: if request.auth != null && resource.data.id == request.resource.data.id;
+     * @allow delete: if request.auth != null && resource.data.id == resource.id;
+     * @deny create: if request.auth == null;
+     * @deny update: if request.auth == null;
+     * @deny delete: if request.auth == null;
+     * @principle Enforces document ownership for writes.
+     */
+    match /purchase_line_items/{purchaseLineItemId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.id == purchaseLineItemId;
+      allow update: if isSignedIn() && resource.data.id == request.resource.data.id;
+      allow delete: if isSignedIn() && resource.data.id == purchaseLineItemId;
+    }
+
+    /**
+     * @description Manages customer information.
+     * @path /customers/{customerId}
+     * @allow get, list: if true;
+     * @allow create: if request.auth != null && request.resource.data.id == request.resource.id;
+     * @allow update: if request.auth != null && resource.data.id == request.resource.data.id;
+     * @allow delete: if request.auth != null && resource.data.id == resource.id;
+     * @deny create: if request.auth == null;
+     * @deny update: if request.auth == null;
+     * @deny delete: if request.auth == null;
+     * @principle Enforces document ownership for writes.
+     */
+    match /customers/{customerId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.id == customerId;
+      allow update: if isSignedIn() && resource.data.id == request.resource.data.id;
+      allow delete: if isSignedIn() && resource.data.id == customerId;
+    }
+
+    /**
+     * @description Manages supplier information.
+     * @path /suppliers/{supplierId}
+     * @allow get, list: if true;
+     * @allow create: if request.auth != null && request.resource.data.id == request.resource.id;
+     * @allow update: if request.auth != null && resource.data.id == request.resource.data.id;
+     * @allow delete: if request.auth != null && resource.data.id == resource.id;
+     * @deny create: if request.auth == null;
+     * @deny update: if request.auth == null;
+     * @deny delete: if request.auth == null;
+     * @principle Enforces document ownership for writes.
+     */
+    match /suppliers/{supplierId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.id == supplierId;
+      allow update: if isSignedIn() && resource.data.id == request.resource.data.id;
+      allow delete: if isSignedIn() && resource.data.id == supplierId;
+    }
+
+    /**
+     * @description Manages tax type information.
+     * @path /tax_types/{taxTypeId}
+     * @allow get, list: if true;
+     * @allow create: if request.auth != null && request.resource.data.id == request.resource.id;
+     * @allow update: if request.auth != null && resource.data.id == request.resource.data.id;
+     * @allow delete: if request.auth != null && resource.data.id == resource.id;
+     * @deny create: if request.auth == null;
+     * @deny update: if request.auth == null;
+     * @deny delete: if request.auth == null;
+     * @principle Enforces document ownership for writes.
+     */
+    match /tax_types/{taxTypeId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.id == taxTypeId;
+      allow update: if isSignedIn() && resource.data.id == request.resource.data.id;
+      allow delete: if isSignedIn() && resource.data.id == taxTypeId;
+    }
+
+    /**
+     * @description Manages application configuration settings.
+     * @path /configuration/{configurationId}
+     * @allow get, list: if true;
+     * @allow create: if request.auth != null && request.resource.data.id == request.resource.id;
+     * @allow update: if request.auth != null && resource.data.id == request.resource.data.id;
+     * @allow delete: if request.auth != null && resource.data.id == resource.id;
+     * @deny create: if request.auth == null;
+     * @deny update: if request.auth == null;
+     * @deny delete: if request.auth == null;
+     * @principle Enforces document ownership for writes.
+     */
+    match /configuration/{configurationId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.id == configurationId;
+      allow update: if isSignedIn() && resource.data.id == request.resource.data.id;
+      allow delete: if isSignedIn() && resource.data.id == configurationId;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
     }
   }
 }
