@@ -23,9 +23,20 @@ const nextConfig = {
         pathname: '/**',
       },
       {
-        protocol: 'https'
-        ,
+        protocol: 'https',
         hostname: 'lh3.googleusercontent.com',
+        port: '',
+        pathname: '/**',
+      },
+       {
+        protocol: 'https',
+        hostname: 'i.imgur.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'picsum.photos',
         port: '',
         pathname: '/**',
       },
@@ -40,7 +51,7 @@ const nextConfig = {
         hostname: 'www.dropbox.com',
         port: '',
         pathname: '/**',
-      },
+      }
     ],
   },
   experimental: {
@@ -55,5 +66,6 @@ const nextConfig = {
 };
 
 module.exports = nextConfig;
+
 
 
