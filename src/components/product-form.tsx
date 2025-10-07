@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -15,14 +15,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type { Product } from "@/lib/types";
-import { initialUnits, initialFamilies, initialWarehouses } from "@/lib/data";
+import { initialUnits, initialFamilies, initialWarehouses, mockProducts } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
 import { useSettings } from "@/contexts/settings-context";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { collection, query, where, getDocs } from "firebase/firestore";
-import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase/provider";
+import { useUser } from "@/firebase";
 
 const productSchema = z.object({
   id: z.string().optional(),
@@ -98,15 +97,9 @@ const calculateProfit = (currentPrice: number, cost: number): string => {
 export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onCancel }) => {
   const { toast } = useToast();
   const { settings } = useSettings();
-  const firestore = useFirestore();
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
 
-  const productsCollection = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return collection(firestore, "products");
-  }, [firestore, user]);
-
-  const { data: products } = useCollection<Product>(productsCollection, isUserLoading);
+  const [products, setProducts] = useState(mockProducts);
   
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -141,9 +134,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
 
   const handleSkuBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
     const sku = e.target.value;
-    if (!sku || !firestore || !products) return;
+    if (!sku) return;
 
-    // Check if the SKU has changed or if it's a new product
     if (!product || product.sku.toLowerCase() !== sku.toLowerCase()) {
         const existingProduct = products.find(p => p.sku.toLowerCase() === sku.toLowerCase());
         if (existingProduct) {
@@ -157,7 +149,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                 description: `El SKU "${sku}" ya está en uso por otro producto.`,
             });
         } else {
-            // Clear error if it was previously set for duplication
             if (form.formState.errors.sku?.message?.includes("ya existe")) {
                 form.clearErrors("sku");
             }
