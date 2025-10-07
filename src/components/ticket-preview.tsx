@@ -62,7 +62,7 @@ export function TicketPreview({
     if (printContent) {
       const printWindow = window.open('', '', 'height=600,width=800');
       if (printWindow) {
-        printWindow.document.write('<html><head><title>Imprimir Ticket</title>');
+        printWindow.document.write('<html><head><title>Imprimir Documento</title>');
         printWindow.document.write(`
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&display=swap');
@@ -240,8 +240,8 @@ export function TicketPreview({
                 )}
                 
                 <div className="footer" style={{ textAlign: 'center', marginTop: '10px', fontSize: '10px' }}>
-                <p>{settings.storeSlogan || '¡Gracias por tu compra!'}</p>
-                {ticketType === 'quote' && <p>Presupuesto válido por 7 días.</p>}
+                    {ticketType === 'sale' && <p>{settings.storeSlogan || '¡Gracias por tu compra!'}</p>}
+                    {ticketType === 'quote' && <p>El Presupuesto puede variar sin previo aviso</p>}
                 </div>
             </div>
             </div>
