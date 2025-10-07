@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import type { Product, CartItem, Sale, Customer, PendingOrder, Ad } from "@/lib/types";
-import { mockProducts, initialFamilies, mockSales, defaultCustomers } from "@/lib/data";
+import { mockProducts, initialFamilies, mockSales, defaultCustomers, trackAdClick } from "@/lib/data";
 import { mockAds } from "@/lib/ads";
 import { useSettings } from "@/contexts/settings-context";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
@@ -27,14 +27,14 @@ import { Label } from "@/components/ui/label";
 
 const AdCard = ({ ad }: { ad: Ad }) => {
     return (
-        <a href={ad.link} target="_blank" rel="noopener noreferrer" className="block group">
+        <a href={ad.url} target="_blank" rel="noopener noreferrer" className="block group" onClick={() => trackAdClick(ad.id)}>
             <Card className="overflow-hidden group flex flex-col bg-accent/20 border-accent/50 hover:border-accent transition-all">
                 <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative cursor-pointer">
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent z-10" />
                     {ad.imageUrl ? (
                         <Image
                             src={ad.imageUrl}
-                            alt={ad.title}
+                            alt={ad.name}
                             fill
                             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
                             className="object-cover transition-transform duration-300 group-hover:scale-105"
@@ -49,7 +49,7 @@ const AdCard = ({ ad }: { ad: Ad }) => {
                         Publicidad
                     </Badge>
                     <div className="absolute bottom-0 left-0 right-0 p-4 z-20">
-                         <h3 className="text-lg font-bold text-white drop-shadow-md">{ad.title}</h3>
+                         <h3 className="text-lg font-bold text-white drop-shadow-md">{ad.name}</h3>
                     </div>
                 </CardContent>
                 <CardFooter className="p-2 bg-accent/30 mt-auto flex justify-end items-center">
@@ -279,14 +279,15 @@ export default function CatalogPage() {
     }, [products, searchTerm, selectedFamily, bestSellers]);
     
     const itemsForGrid = useMemo(() => {
+        const activeAds = ads.filter(ad => ad.status === 'active');
         const items: (Product | Ad)[] = [...sortedAndFilteredProducts];
-        // Insert an ad after every 8 products
-        for (let i = 0; i < ads.length; i++) {
+        
+        for (let i = 0; i < activeAds.length; i++) {
             const adIndex = (i + 1) * 9 - 1; // Position 8, 17, 26...
             if (items.length > adIndex) {
-                items.splice(adIndex, 0, ads[i]);
+                items.splice(adIndex, 0, activeAds[i]);
             } else {
-                items.push(ads[i]);
+                items.push(activeAds[i]);
             }
         }
         return items;
@@ -564,7 +565,7 @@ export default function CatalogPage() {
                     ) : (
                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                             {itemsForGrid.map((item, index) => {
-                                if ('link' in item) { // This is an Ad
+                                if ('url' in item) { // This is an Ad
                                     return <AdCard key={`ad-${item.id}-${index}`} ad={item} />;
                                 }
                                 // This is a Product

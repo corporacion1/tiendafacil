@@ -3,13 +3,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Boxes, FileText, Home, PackagePlus, Settings, ShoppingCart, Store, CreditCard, LayoutGrid } from "lucide-react";
+import { Boxes, FileText, Home, PackagePlus, Settings, ShoppingCart, Store, CreditCard, LayoutGrid, Megaphone } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { useUser } from "@/firebase";
 
 const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: Home },
@@ -22,11 +23,20 @@ const navItems = [
     { href: "/reports", label: "Reportes", icon: FileText },
 ];
 
+const adminNavItems = [
+    { href: "/ads", label: "Anuncios", icon: Megaphone, role: "superAdmin" },
+];
+
 const settingsNav = { href: "/settings", label: "Configuración", icon: Settings };
 
 
 export function SiteSidebar() {
   const pathname = usePathname();
+  const { user } = useUser(); // Using the mock user
+
+  // In a real app, the user object would have a `role` property.
+  // We'll simulate it for "corporacion1@gmail.com".
+  const userRole = user?.email === 'corporacion1@gmail.com' ? 'superAdmin' : 'admin';
 
   return (
     <aside className="fixed inset-y-0 left-0 z-10 hidden w-14 flex-col border-r bg-background sm:flex">
@@ -53,6 +63,22 @@ export function SiteSidebar() {
                 </TooltipTrigger>
                 <TooltipContent side="right">{item.label}</TooltipContent>
             </Tooltip>
+            ))}
+            {adminNavItems.map((item) => (
+                userRole === item.role && (
+                    <Tooltip key={item.href}>
+                        <TooltipTrigger asChild>
+                        <Link
+                            href={item.href}
+                            className={`flex h-9 w-9 items-center justify-center rounded-lg ${pathname === item.href ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'} transition-colors hover:text-foreground md:h-8 md:w-8`}
+                        >
+                            <item.icon className="h-5 w-5" />
+                            <span className="sr-only">{item.label}</span>
+                        </Link>
+                        </TooltipTrigger>
+                        <TooltipContent side="right">{item.label}</TooltipContent>
+                    </Tooltip>
+                )
             ))}
         </nav>
         <nav className="mt-auto flex flex-col items-center gap-4 px-2 sm:py-5">

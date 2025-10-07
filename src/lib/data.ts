@@ -1,7 +1,8 @@
 
-import type { Product, InventoryMovement, Sale, Unit, Family, Warehouse, Customer, Purchase, Supplier, CurrencyRate, Payment, PendingOrder } from '@/lib/types';
+import type { Product, InventoryMovement, Sale, Unit, Family, Warehouse, Customer, Purchase, Supplier, CurrencyRate, Payment, PendingOrder, AdClick } from '@/lib/types';
 import { PlaceHolderImages } from './placeholder-images';
 import { subDays, subHours } from 'date-fns';
+import { mockAds } from './ads';
 
 export const defaultCustomers: Customer[] = [
     { id: 'eventual', name: 'Cliente Eventual', phone: '', address: '' },
@@ -146,6 +147,29 @@ export const paymentMethods = [
 // This will store orders created from the public catalog page
 export let pendingOrders: PendingOrder[] = [];
 
+
+export const mockAdClicks: AdClick[] = [];
+
+export function trackAdClick(adId: string) {
+    const adIndex = mockAds.findIndex(ad => ad.id === adId);
+    if (adIndex > -1) {
+        mockAds[adIndex].views += 1;
+    }
+
+    const newClick: AdClick = {
+        id: `click-${Date.now()}`,
+        adId: adId,
+        timestamp: new Date().toISOString(),
+        // In a real app, you would get this from request headers on the server
+        userAgent: navigator.userAgent, 
+    };
+
+    mockAdClicks.push(newClick);
+    console.log("Ad Click Tracked:", newClick);
+    console.log("Total Clicks for Ad:", mockAds[adIndex].views);
+}
+
+
 export function factoryReset() {
     console.log("Performing factory reset on mock data...");
     
@@ -156,6 +180,8 @@ export function factoryReset() {
     mockPurchases.length = 0;
     mockCurrencyRates.length = 0;
     pendingOrders.length = 0;
+    mockAds.length = 0;
+    mockAdClicks.length = 0;
     
     // Clear classification data
     initialUnits.length = 0;

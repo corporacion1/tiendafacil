@@ -6,9 +6,9 @@
 
 // Mock User object for offline development
 export const mockUser = {
-  uid: 'demo-user-id',
-  displayName: 'Usuario Demo',
-  email: 'demo@tiendafacil.com',
+  uid: 'demo-super-admin-id',
+  displayName: 'Super Admin',
+  email: 'corporacion1@gmail.com',
   photoURL: null,
 };
 

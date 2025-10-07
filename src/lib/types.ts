@@ -137,9 +137,22 @@ export type Store = {
 
 export type Ad = {
   id: string;
-  title: string;
+  sku: string;
+  name: string;
+  description?: string;
+  price: number; // For promotional price display
   imageUrl: string;
   imageHint?: string;
-  link: string;
+  url: string; // The destination link for the ad
+  views: number;
+  status: 'active' | 'inactive';
+};
+
+export type AdClick = {
+    id: string;
+    adId: string;
+    timestamp: string;
+    userAgent: string;
+    // In a real app, you might capture IP and other details on the server side
 };
     
