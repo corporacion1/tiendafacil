@@ -25,13 +25,17 @@ import { useUser } from "@/firebase";
 import { mockProducts, defaultCustomers, initialFamilies, mockSales, mockInventoryMovements, paymentMethods } from "@/lib/data";
 
 const generateSaleId = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = '';
-    for (let i = 0; i < 7; i++) {
-        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    const lastSale = mockSales[0];
+    if (!lastSale) {
+        return "SALE-001";
     }
-    return result;
-}
+    const lastId = lastSale.id;
+    const parts = lastId.split('-');
+    const lastNumber = parseInt(parts[1], 10);
+    const newNumber = lastNumber + 1;
+    const newId = `SALE-${String(newNumber).padStart(3, '0')}`;
+    return newId;
+};
 
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
     const { activeSymbol, activeRate } = useSettings();
@@ -795,3 +799,5 @@ export default function POSPage() {
   </Dialog>
   );
 }
+
+    
