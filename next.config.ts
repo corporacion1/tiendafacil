@@ -50,6 +50,12 @@ const nextConfig = {
         hostname: 'chat.deepseek.com',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.imgur.com',
+        port: '',
+        pathname: '/**',
       }
     ],
   },
