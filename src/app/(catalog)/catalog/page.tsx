@@ -135,6 +135,7 @@ export default function CatalogPage() {
     const [newCustomer, setNewCustomer] = useState({ name: '', phone: '' });
     const [orderIdForQr, setOrderIdForQr] = useState<string | null>(null);
     const [qrCodeUrl, setQrCodeUrl] = useState('');
+    const [shareQrCodeUrl, setShareQrCodeUrl] = useState('');
 
     useEffect(() => {
         const INACTIVITY_TIMEOUT = 3000; // 3 seconds
@@ -191,7 +192,12 @@ export default function CatalogPage() {
 
     useEffect(() => {
         setTimeout(() => {
-            setProducts(mockProducts);
+            // In a real app, you'd filter by the current store's ID on the backend.
+            // Here, we simulate it on the client.
+            const currentStoreId = "store-1"; // Replace with dynamic store ID later
+            const storeProducts = mockProducts.filter(p => p.storeId === currentStoreId);
+            
+            setProducts(storeProducts);
             setSales(mockSales);
             setAllAds(mockAds);
             setIsLoading(false);
@@ -322,6 +328,17 @@ export default function CatalogPage() {
             toast({ variant: 'destructive', title: 'Error al generar QR' });
         }
     };
+    
+    const generateShareQrCode = async () => {
+        try {
+            const url = window.location.href;
+            const dataUrl = await QRCode.toDataURL(url);
+            setShareQrCodeUrl(dataUrl);
+        } catch (err) {
+            console.error(err);
+            toast({ variant: 'destructive', title: 'Error al generar QR para compartir' });
+        }
+    }
 
     const handleGenerateOrder = async () => {
         if (newCustomer.name.trim() === '' || newCustomer.phone.trim() === '') {
@@ -392,7 +409,7 @@ export default function CatalogPage() {
                         name: item.productName,
                         price: item.price,
                         stock: 0,
-                        sku: 'N/A', cost: 0, status: 'inactive', tax1: false, tax2: false, wholesalePrice: 0,
+                        sku: 'N/A', cost: 0, status: 'inactive', tax1: false, tax2: false, wholesalePrice: 0, storeId: 'store-1'
                     } as Product,
                     quantity: item.quantity,
                     price: item.price,
@@ -423,98 +440,126 @@ export default function CatalogPage() {
                  <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                     <div className="container flex h-16 items-center justify-between">
                         <Logo className="w-32 h-10" />
-                        <Sheet>
-                            <SheetTrigger asChild>
-                                 <Button variant="outline" className="relative">
-                                    <ShoppingBag className="mr-2" />
-                                    <span>Ver Pedido</span>
-                                    {cart.length > 0 && (
-                                         <Badge className="absolute -right-2 -top-2 h-5 w-5 justify-center p-0">{cart.reduce((acc, item) => acc + item.quantity, 0)}</Badge>
-                                    )}
-                                </Button>
-                            </SheetTrigger>
-                             <SheetContent className="flex w-full flex-col pr-0 sm:max-w-lg">
-                                <SheetHeader className="px-6">
-                                    <SheetTitle>Mi Pedido</SheetTitle>
-                                </SheetHeader>
-                                <div className="flex-1 overflow-y-auto py-6">
-                                    {cart.length === 0 && pendingOrders.length === 0 && (
-                                        <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground px-6">
-                                            <ShoppingBag className="h-16 w-16 mb-4" />
-                                            <h3 className="text-lg font-semibold">Tu pedido está vacío</h3>
-                                            <p className="text-sm">Agrega productos del catálogo para comenzar.</p>
-                                        </div>
-                                    )}
-                                    {cart.length > 0 && (
-                                        <div className="px-6 space-y-4">
-                                           {cart.map(item => (
-                                               <div key={item.product.id} className="flex items-start gap-4">
-                                                   <div className="relative h-16 w-16 rounded-md overflow-hidden bg-muted">
-                                                        <Image src={getDisplayImageUrl(item.product.imageUrl)} alt={item.product.name} fill className="object-cover" />
-                                                   </div>
-                                                   <div className="flex-1">
-                                                       <h4 className="font-semibold">{item.product.name}</h4>
-                                                       <p className="text-sm text-muted-foreground">${item.price.toFixed(2)}</p>
-                                                       <div className="flex items-center gap-2 mt-2">
-                                                            <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(item.product.id, item.quantity - 1)}><Minus className="h-4 w-4" /></Button>
-                                                            <span>{item.quantity}</span>
-                                                            <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(item.product.id, item.quantity + 1)}><Plus className="h-4 w-4" /></Button>
-                                                       </div>
-                                                   </div>
-                                                   <div className="text-right">
-                                                        <p className="font-bold">${(item.price * item.quantity).toFixed(2)}</p>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 mt-2 text-muted-foreground hover:text-destructive" onClick={() => removeFromCart(item.product.id)}>
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                   </div>
-                                               </div>
-                                           ))}
-                                        </div>
-                                    )}
-                                    {pendingOrders.length > 0 && (
-                                        <div className="px-6 mt-6">
-                                            <Separator />
-                                            <h4 className="text-lg font-semibold my-4">Pedidos Generados</h4>
-                                            <div className="space-y-3">
-                                                {pendingOrders.map(order => (
-                                                    <div key={order.id} className="flex items-center justify-between gap-2 p-3 border rounded-lg bg-muted/50">
-                                                        <div>
-                                                            <p className="font-semibold">{order.id}</p>
-                                                            <p className="text-sm text-muted-foreground">{order.customerName}</p>
-                                                        </div>
-                                                        <div className="flex gap-1">
-                                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => generateQrCode(order.id)}>
-                                                                <QrCode className="h-4 w-4" />
-                                                            </Button>
-                                                             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleEditOrder(order)}>
-                                                                <Pencil className="h-4 w-4" />
-                                                            </Button>
-                                                            <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleDeleteOrder(order.id)}>
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
+                        <div className="flex items-center gap-2">
+                             <Dialog>
+                                <DialogTrigger asChild>
+                                    <Button variant="outline" onClick={generateShareQrCode}>
+                                        <QrCode className="mr-2 h-4 w-4" />
+                                        Compartir Catálogo
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Comparte este Catálogo</DialogTitle>
+                                        <DialogDescription>
+                                            Escanea este código QR con otro dispositivo para abrir este catálogo.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="flex items-center justify-center p-4">
+                                        {shareQrCodeUrl ? (
+                                            <Image src={shareQrCodeUrl} alt="Código QR para compartir" width={256} height={256} />
+                                        ) : (
+                                            <p>Generando código QR...</p>
+                                        )}
+                                    </div>
+                                     <DialogFooter>
+                                        <DialogClose asChild><Button>Cerrar</Button></DialogClose>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+                            <Sheet>
+                                <SheetTrigger asChild>
+                                    <Button variant="outline" className="relative">
+                                        <ShoppingBag className="mr-2" />
+                                        <span>Ver Pedido</span>
+                                        {cart.length > 0 && (
+                                            <Badge className="absolute -right-2 -top-2 h-5 w-5 justify-center p-0">{cart.reduce((acc, item) => acc + item.quantity, 0)}</Badge>
+                                        )}
+                                    </Button>
+                                </SheetTrigger>
+                                <SheetContent className="flex w-full flex-col pr-0 sm:max-w-lg">
+                                    <SheetHeader className="px-6">
+                                        <SheetTitle>Mi Pedido</SheetTitle>
+                                    </SheetHeader>
+                                    <div className="flex-1 overflow-y-auto py-6">
+                                        {cart.length === 0 && pendingOrders.length === 0 && (
+                                            <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground px-6">
+                                                <ShoppingBag className="h-16 w-16 mb-4" />
+                                                <h3 className="text-lg font-semibold">Tu pedido está vacío</h3>
+                                                <p className="text-sm">Agrega productos del catálogo para comenzar.</p>
+                                            </div>
+                                        )}
+                                        {cart.length > 0 && (
+                                            <div className="px-6 space-y-4">
+                                            {cart.map(item => (
+                                                <div key={item.product.id} className="flex items-start gap-4">
+                                                    <div className="relative h-16 w-16 rounded-md overflow-hidden bg-muted">
+                                                            <Image src={getDisplayImageUrl(item.product.imageUrl)} alt={item.product.name} fill className="object-cover" />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <h4 className="font-semibold">{item.product.name}</h4>
+                                                        <p className="text-sm text-muted-foreground">${item.price.toFixed(2)}</p>
+                                                        <div className="flex items-center gap-2 mt-2">
+                                                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(item.product.id, item.quantity - 1)}><Minus className="h-4 w-4" /></Button>
+                                                                <span>{item.quantity}</span>
+                                                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(item.product.id, item.quantity + 1)}><Plus className="h-4 w-4" /></Button>
                                                         </div>
                                                     </div>
-                                                ))}
+                                                    <div className="text-right">
+                                                            <p className="font-bold">${(item.price * item.quantity).toFixed(2)}</p>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 mt-2 text-muted-foreground hover:text-destructive" onClick={() => removeFromCart(item.product.id)}>
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                    </div>
+                                                </div>
+                                            ))}
                                             </div>
-                                        </div>
+                                        )}
+                                        {pendingOrders.length > 0 && (
+                                            <div className="px-6 mt-6">
+                                                <Separator />
+                                                <h4 className="text-lg font-semibold my-4">Pedidos Generados</h4>
+                                                <div className="space-y-3">
+                                                    {pendingOrders.map(order => (
+                                                        <div key={order.id} className="flex items-center justify-between gap-2 p-3 border rounded-lg bg-muted/50">
+                                                            <div>
+                                                                <p className="font-semibold">{order.id}</p>
+                                                                <p className="text-sm text-muted-foreground">{order.customerName}</p>
+                                                            </div>
+                                                            <div className="flex gap-1">
+                                                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => generateQrCode(order.id)}>
+                                                                    <QrCode className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleEditOrder(order)}>
+                                                                    <Pencil className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleDeleteOrder(order.id)}>
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {cart.length > 0 && (
+                                        <SheetFooter className="px-6 py-4 bg-background border-t">
+                                            <div className="w-full space-y-4">
+                                                <div className="flex justify-between font-bold text-lg">
+                                                    <span>Subtotal</span>
+                                                    <span>${subtotal.toFixed(2)}</span>
+                                                </div>
+                                                <Button size="lg" className="w-full" onClick={handleOpenOrderDialog}>
+                                                    <Send className="mr-2" /> Generar Pedido
+                                                </Button>
+                                                <SheetClose id="cart-close-button" className="hidden" />
+                                            </div>
+                                        </SheetFooter>
                                     )}
-                                </div>
-                                {cart.length > 0 && (
-                                    <SheetFooter className="px-6 py-4 bg-background border-t">
-                                         <div className="w-full space-y-4">
-                                            <div className="flex justify-between font-bold text-lg">
-                                                <span>Subtotal</span>
-                                                <span>${subtotal.toFixed(2)}</span>
-                                            </div>
-                                            <Button size="lg" className="w-full" onClick={handleOpenOrderDialog}>
-                                                <Send className="mr-2" /> Generar Pedido
-                                            </Button>
-                                            <SheetClose id="cart-close-button" className="hidden" />
-                                        </div>
-                                    </SheetFooter>
-                                )}
-                            </SheetContent>
-                        </Sheet>
+                                </SheetContent>
+                            </Sheet>
+                        </div>
                     </div>
                 </header>
 

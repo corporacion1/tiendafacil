@@ -4,14 +4,14 @@
 import { usePathname } from 'next/navigation';
 import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
-import { Footer } from "@/components/footer";
 import { AuthGuard } from './auth-guard';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
-  // The login and catalog pages do not need the main authenticated layout.
-  if (pathname === '/login' || pathname === '/catalog') {
+  // The login page does not need the main authenticated layout.
+  // The catalog has its own simplified layout.
+  if (pathname === '/login' || pathname.startsWith('/catalog')) {
     return <>{children}</>;
   }
 
@@ -26,7 +26,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   {children}
               </AuthGuard>
           </main>
-          <Footer />
       </div>
     </div>
   );

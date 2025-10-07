@@ -18,6 +18,7 @@ export type Product = {
   description?: string;
   imageUrl?: string;
   imageHint?: string;
+  storeId: string;
 };
 
 export type CartItem = {
