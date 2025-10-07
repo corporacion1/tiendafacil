@@ -15,6 +15,7 @@ export const mockAds: Ad[] = [
     imageHint: "computer repair",
     views: 1024,
     status: 'active',
+    targetBusinessType: 'Tecnologia',
     expiryDate: addDays(new Date(), 30).toISOString(),
   },
   {
@@ -27,6 +28,8 @@ export const mockAds: Ad[] = [
     imageHint: "gaming pc",
     views: 512,
     status: 'active',
+    targetBusinessType: 'Tecnologia',
+    expiryDate: addDays(new Date(), 60).toISOString(),
   },
   {
     id: "ad-3",
@@ -38,6 +41,7 @@ export const mockAds: Ad[] = [
     imageHint: "expired sale",
     views: 2048,
     status: 'active', // Will be automatically set to inactive
+    targetBusinessType: 'Tecnologia',
     expiryDate: subDays(new Date(), 5).toISOString(),
   },
 ];

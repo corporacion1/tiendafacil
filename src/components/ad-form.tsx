@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import type { Ad } from "@/lib/types";
 import { mockAds } from "@/lib/ads";
+import { businessCategories } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
 import { useSettings } from "@/contexts/settings-context";
@@ -32,6 +33,7 @@ const adSchema = z.object({
   description: z.string().optional(),
   imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
   imageHint: z.string().optional(),
+  targetBusinessType: z.string().min(1, "El tipo de negocio de destino es requerido."),
   expiryDate: z.string().optional(),
 });
 
@@ -52,6 +54,7 @@ const getInitialValues = (ad?: Ad): AdFormValues => {
         imageUrl: '',
         description: '',
         imageHint: '',
+        targetBusinessType: '',
         expiryDate: '',
     };
 };
@@ -198,25 +201,30 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
                     </FormItem>
                   )}
                 />
-                
                  <FormField
                     control={form.control}
-                    name="status"
+                    name="targetBusinessType"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Estado del anuncio</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Selecciona un estado" />
-                            </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            <SelectItem value="active">Activo</SelectItem>
-                            <SelectItem value="inactive">Inactivo</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
+                            <FormLabel>Tipo de Negocio de Destino</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecciona un tipo de negocio" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {businessCategories.map(category => (
+                                        <SelectItem key={category} value={category}>
+                                            {category}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                             <FormDescription>
+                                El anuncio se mostrará en tiendas de este tipo.
+                            </FormDescription>
+                            <FormMessage />
                         </FormItem>
                     )}
                 />
@@ -250,6 +258,27 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
                       </FormItem>
                     )}
                   />
+                    <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Estado del anuncio</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Selecciona un estado" />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            <SelectItem value="active">Activo</SelectItem>
+                            <SelectItem value="inactive">Inactivo</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
                    <FormField
                     control={form.control}
                     name="expiryDate"

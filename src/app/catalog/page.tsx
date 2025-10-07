@@ -24,6 +24,7 @@ import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { isPast } from "date-fns";
 
 const AdCard = ({ ad }: { ad: Ad }) => {
     return (
@@ -118,7 +119,7 @@ export default function CatalogPage() {
     const [products, setProducts] = useState<Product[]>([]);
     const [sales, setSales] = useState<Sale[]>([]);
     const [customers, setCustomers] = useState<Customer[]>(defaultCustomers);
-    const [ads, setAds] = useState<Ad[]>([]);
+    const [allAds, setAllAds] = useState<Ad[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
     
@@ -192,7 +193,7 @@ export default function CatalogPage() {
         setTimeout(() => {
             setProducts(mockProducts);
             setSales(mockSales);
-            setAds(mockAds);
+            setAllAds(mockAds);
             setIsLoading(false);
         }, 500);
     }, []);
@@ -279,19 +280,27 @@ export default function CatalogPage() {
     }, [products, searchTerm, selectedFamily, bestSellers]);
     
     const itemsForGrid = useMemo(() => {
-        const activeAds = ads.filter(ad => ad.status === 'active');
-        const items: (Product | Ad)[] = [...sortedAndFilteredProducts];
+        // 1. Filter ads based on criteria
+        const relevantAds = allAds.filter(ad => {
+            const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate)) : false;
+            return ad.status === 'active' && !isExpired && ad.targetBusinessType === settings.businessType;
+        });
         
-        for (let i = 0; i < activeAds.length; i++) {
+        // 2. Shuffle the relevant ads for randomness
+        const shuffledAds = [...relevantAds].sort(() => Math.random() - 0.5);
+
+        // 3. Intersperse ads with products
+        const items: (Product | Ad)[] = [...sortedAndFilteredProducts];
+        for (let i = 0; i < shuffledAds.length; i++) {
             const adIndex = (i + 1) * 9 - 1; // Position 8, 17, 26...
             if (items.length > adIndex) {
-                items.splice(adIndex, 0, activeAds[i]);
+                items.splice(adIndex, 0, shuffledAds[i]);
             } else {
-                items.push(activeAds[i]);
+                items.push(shuffledAds[i]);
             }
         }
         return items;
-    }, [sortedAndFilteredProducts, ads]);
+    }, [sortedAndFilteredProducts, allAds, settings.businessType]);
 
     const familyFilters = ["all", ...initialFamilies.map(f => f.name)];
     
