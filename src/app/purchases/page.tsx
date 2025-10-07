@@ -25,7 +25,7 @@ const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
 const getDisplayImageUrl = (url?: string): string => {
     if (!url) return '';
     if (url.includes('dropbox.com')) {
-      return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace(/&dl=0$/, '').replace(/\?dl=0$/, '') + '&raw=1';
+      return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '&raw=1');
     }
     return url;
 };
@@ -263,11 +263,13 @@ export default function PurchasesPage() {
                               fill 
                               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw" 
                               className="object-cover transition-transform group-hover:scale-105" 
-                              data-ai-hint={product.imageHint} 
+                              data-ai-hint={product.imageHint}
+                              onError={(e) => e.currentTarget.style.display = 'none'} 
                             />
                             ) : (
                             <Package className="w-12 h-12 text-muted-foreground" />
                         )}
+                        {!displayUrl && <Package className="w-12 h-12 text-muted-foreground" />}
                         <div className="absolute top-2 left-2 bg-secondary text-secondary-foreground text-xs font-bold px-2 py-1 rounded">
                         Costo: {activeSymbol}{(product.cost * activeRate).toFixed(2)}
                         </div>
@@ -481,7 +483,3 @@ export default function PurchasesPage() {
     </div>
   );
 }
-
-    
-
-    

@@ -80,7 +80,7 @@ const calculateProfit = (currentPrice: number, cost: number): string => {
 const getDisplayImageUrl = (url?: string): string => {
   if (!url) return '';
   if (url.includes('dropbox.com')) {
-    return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace(/&dl=0$/, '').replace(/\?dl=0$/, '') + '&raw=1';
+    return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '&raw=1');
   }
   return url;
 };
@@ -318,12 +318,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                               sizes="300px" 
                               className="object-cover"
                               onError={() => {
-                                toast({
-                                    variant: "destructive",
-                                    title: "URL de imagen inválida",
-                                    description: "No se pudo cargar la imagen. Revisa la URL.",
-                                });
-                                setValue("imageUrl", "", { shouldDirty: true });
                                 setImageError(true);
                               }}
                             />
@@ -487,5 +481,3 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     </Form>
   );
 };
-
-    

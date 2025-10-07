@@ -39,7 +39,7 @@ import { format, parseISO } from "date-fns";
 const getDisplayImageUrl = (url?: string): string => {
   if (!url) return '';
   if (url.includes('dropbox.com')) {
-    return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace(/&dl=0$/, '').replace(/\?dl=0$/, '') + '&raw=1';
+    return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '&raw=1');
   }
   return url;
 };
@@ -378,10 +378,12 @@ export default function InventoryPage() {
                                 sizes="40px"
                                 className="object-cover"
                                 data-ai-hint={product.imageHint}
+                                onError={(e) => e.currentTarget.style.display = 'none'}
                             />
                             ) : (
                             <Package className="h-5 w-5 text-muted-foreground" />
                             )}
+                            {!displayUrl && <Package className="h-5 w-5 text-muted-foreground" />}
                         </div>
                         </TableCell>
                         <TableCell className="font-medium">{product.name}</TableCell>
@@ -517,5 +519,3 @@ export default function InventoryPage() {
     </>
   );
 }
-
-    
