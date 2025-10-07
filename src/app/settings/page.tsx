@@ -17,11 +17,11 @@ import { Pencil, PlusCircle, Trash2, AlertTriangle, Database } from "lucide-reac
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
-import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { useUser, useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { factoryReset, businessCategories } from "@/lib/data";
 import { seedDatabase } from "@/lib/seed";
-import { collection, orderBy, query } from "firebase/firestore";
+import { collection, orderBy, query, writeBatch } from "firebase/firestore";
 
 
 function ChangePinDialog() {
@@ -193,13 +193,34 @@ export default function SettingsPage() {
         setLocalSettings(prev => ({ ...prev, [id]: parseFloat(value) || 0 }));
     };
 
-    const saveAllSettings = () => {
+    const saveAllSettings = async () => {
+        const batch = writeBatch(firestore);
+
+        // Save main settings
         setSettings(localSettings);
-        // Here you would also save units, families, warehouses, and rates to your persistent storage.
-        setCurrencyRates(localCurrencyRates);
+
+        // Save units, families, warehouses
+        localUnits.forEach(unit => {
+            const unitRef = doc(firestore, 'units', unit.id);
+            batch.set(unitRef, unit, { merge: true });
+        });
+        localFamilies.forEach(family => {
+            const familyRef = doc(firestore, 'families', family.id);
+            batch.set(familyRef, family, { merge: true });
+        });
+        localWarehouses.forEach(wh => {
+            const whRef = doc(firestore, 'warehouses', wh.id);
+            batch.set(whRef, wh, { merge: true });
+        });
         
-        setIsDirty(false);
-        toast({ title: "Configuración guardada", description: "Toda la configuración ha sido actualizada." });
+        try {
+            await batch.commit();
+            setIsDirty(false);
+            toast({ title: "Configuración guardada", description: "Toda la configuración ha sido actualizada." });
+        } catch (error) {
+            console.error("Error saving settings:", error);
+            toast({ variant: 'destructive', title: 'Error al guardar la configuración' });
+        }
     };
 
     const handleSaveNewRate = () => {
@@ -218,9 +239,10 @@ export default function SettingsPage() {
             date: new Date().toISOString(),
         };
 
-        setLocalCurrencyRates(prev => [newRateEntry, ...prev]);
+        const rateRef = doc(firestore, 'currencyRates', newRateEntry.id);
+        setDocumentNonBlocking(rateRef, newRateEntry, {});
+        
         setNewRate(0);
-        setIsDirty(true);
         toast({
             title: "Tasa Guardada",
             description: `La nueva tasa de ${newRate} ha sido registrada.`,
@@ -257,15 +279,14 @@ export default function SettingsPage() {
             });
             return;
         }
+        
+        const ref = doc(firestore, `${type}s`, id);
+        deleteDocumentNonBlocking(ref);
 
-        const setter = {
-            unit: setLocalUnits,
-            family: setLocalFamilies,
-            warehouse: setLocalWarehouses,
-        }[type];
-
-        setter(prev => prev.filter(item => item.id !== id));
-        setIsDirty(true);
+        toast({
+            title: 'Elemento Eliminado',
+            description: 'El elemento se ha eliminado de la base de datos.',
+        });
     };
     
     const handleFactoryReset = async () => {
@@ -352,10 +373,12 @@ export default function SettingsPage() {
                 toast({ variant: 'destructive', title: 'Nombre inválido' });
                 return;
             }
-            const newEntry = { id: `${type}-${Date.now()}`, name: newItemName.trim() };
-            setItems(prev => [...prev, newEntry]);
+            const newId = `${type}-${Date.now()}`;
+            const newEntry = { id: newId, name: newItemName.trim() };
+            const itemRef = doc(firestore, `${type}s`, newId);
+            setDocumentNonBlocking(itemRef, newEntry, {});
+            
             setNewItemName('');
-            setIsDirty(true);
         };
         
         const handleEditItem = () => {
@@ -363,9 +386,11 @@ export default function SettingsPage() {
                  toast({ variant: 'destructive', title: 'Nombre inválido' });
                 return;
             }
-            setItems(prev => prev.map(item => item.id === editingItem.id ? { ...item, name: editingItem.name } : item));
+            
+            const itemRef = doc(firestore, `${type}s`, editingItem.id);
+            setDocumentNonBlocking(itemRef, editingItem, { merge: true });
+
             setEditingItem(null);
-            setIsDirty(true);
         };
 
         return (
@@ -407,7 +432,7 @@ export default function SettingsPage() {
                                </div>
                             </div>
                         ))}
-                         {items.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No hay elementos.</p>}
+                         {(items || []).length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No hay elementos.</p>}
                     </div>
                 </CardContent>
                 <CardFooter className="border-t pt-4">
@@ -431,7 +456,7 @@ export default function SettingsPage() {
                                 </DialogClose>
                                  <DialogClose asChild>
                                     <Button onClick={handleAddNewItem} disabled={!newItemName.trim()}>Guardar</Button>
-                                </DialogClose>
+                                 </DialogClose>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
@@ -572,9 +597,9 @@ export default function SettingsPage() {
                      <Separator />
                      <h3 className="text-lg font-medium">Clasificación de Productos</h3>
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-                        {renderManagementCard("Unidades de Medida", "Gestiona las unidades para tus productos.", localUnits || [], setLocalUnits, 'unit')}
-                        {renderManagementCard("Familias de Productos", "Organiza tus productos en familias.", localFamilies || [], setLocalFamilies, 'family')}
-                        {renderManagementCard("Almacenes", "Gestiona los almacenes de destino.", localWarehouses || [], setLocalWarehouses, 'warehouse')}
+                        {renderManagementCard("Unidades de Medida", "Gestiona las unidades para tus productos.", localUnits, setLocalUnits, 'unit')}
+                        {renderManagementCard("Familias de Productos", "Organiza tus productos en familias.", localFamilies, setLocalFamilies, 'family')}
+                        {renderManagementCard("Almacenes", "Gestiona los almacenes de destino.", localWarehouses, setLocalWarehouses, 'warehouse')}
                     </div>
                 </CardContent>
                 <CardFooter className="border-t px-6 py-4 flex justify-end">
@@ -857,5 +882,3 @@ export default function SettingsPage() {
         </div>
     );
 }
-
-    
