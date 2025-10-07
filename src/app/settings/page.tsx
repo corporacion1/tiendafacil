@@ -468,15 +468,35 @@ export default function SettingsPage() {
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="storePhone">Teléfono</Label>
-                            <Input id="storePhone" value={localSettings.storePhone} onChange={handleSettingsChange} placeholder="+1 (555) 123-4567" maxLength={13} />
+                            <Input id="storePhone" value={localSettings.storePhone} onChange={handleSettingsChange} placeholder="+58-412-1234567" maxLength={15} />
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="storeSlogan">Slogan o Mensaje para el Ticket</Label>
                             <Input id="storeSlogan" value={localSettings.storeSlogan} onChange={handleSettingsChange} placeholder="¡Gracias por tu compra!" maxLength={55} />
                         </div>
                     </div>
+
+                    <Separator />
+                    <h3 className="text-lg font-medium">Redes Sociales</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="storeWhatsapp">WhatsApp</Label>
+                            <Input id="storeWhatsapp" value={localSettings.storePhone} readOnly disabled />
+                            <CardDescription>El número de WhatsApp es el mismo que el teléfono de la tienda.</CardDescription>
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="storeTiktok">Usuario de TikTok</Label>
+                            <Input id="storeTiktok" value={localSettings.storeTiktok} onChange={handleSettingsChange} placeholder="@tu-usuario-tiktok" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="storeMeta">Usuario de Meta (Instagram, Facebook, X)</Label>
+                            <Input id="storeMeta" value={localSettings.storeMeta} onChange={handleSettingsChange} placeholder="@tu-usuario-meta" />
+                        </div>
+                    </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                    <Separator />
+                    <h3 className="text-lg font-medium">Correlativos de Venta</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="saleSeries">Serie de Venta</Label>
                             <Input id="saleSeries" value={localSettings.saleSeries} onChange={handleSettingsChange} placeholder="Ej: SALE" maxLength={11} />
@@ -489,8 +509,9 @@ export default function SettingsPage() {
                         </div>
                     </div>
 
-
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                    <Separator />
+                    <h3 className="text-lg font-medium">Impuestos</h3>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="tax1">Impuesto 1 (%)</Label>
                             <Input id="tax1" type="number" value={localSettings.tax1} onChange={handleNumberSettingsChange} placeholder="Ej: 16" />
@@ -503,6 +524,7 @@ export default function SettingsPage() {
                         </div>
                     </div>
                      <Separator />
+                     <h3 className="text-lg font-medium">Clasificación de Productos</h3>
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
                         {renderManagementCard("Unidades de Medida", "Gestiona las unidades para tus productos.", localUnits, setLocalUnits, 'unit')}
                         {renderManagementCard("Familias de Productos", "Organiza tus productos en familias.", localFamilies, setLocalFamilies, 'family')}
@@ -745,3 +767,5 @@ export default function SettingsPage() {
         </div>
     );
 }
+
+    

@@ -11,6 +11,8 @@ export interface Settings {
     storeAddress: string;
     storePhone: string;
     storeSlogan: string;
+    storeTiktok: string;
+    storeMeta: string;
     saleSeries: string;
     saleCorrelative: number;
     tax1: number;
@@ -56,8 +58,10 @@ const findHighestSaleCorrelative = () => {
 const defaultSettings: Settings = {
     storeName: 'TIENDA FACIL WEB',
     storeAddress: 'Calle Falsa 123',
-    storePhone: '+1 (555) 123-4567',
+    storePhone: '+58-412-6915593',
     storeSlogan: '¡Gracias por tu compra!',
+    storeTiktok: '@corporacion1plus',
+    storeMeta: '@corporacion1plus',
     saleSeries: 'SALE',
     saleCorrelative: 1, // Will be updated on client
     tax1: 16,
@@ -81,7 +85,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       
       if (storedSettings) {
         const parsedSettings = JSON.parse(storedSettings);
-        setSettings(prev => ({ ...prev, ...parsedSettings, saleCorrelative: parsedSettings.saleCorrelative > nextCorrelative ? parsedSettings.saleCorrelative : nextCorrelative }));
+        setSettings(prev => ({ ...defaultSettings, ...parsedSettings, saleCorrelative: parsedSettings.saleCorrelative > nextCorrelative ? parsedSettings.saleCorrelative : nextCorrelative }));
       } else {
         const initialSettings = { ...defaultSettings, saleCorrelative: nextCorrelative };
         localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(initialSettings));
@@ -144,3 +148,5 @@ export const useSettings = (): SettingsContextType => {
   }
   return context;
 };
+
+    

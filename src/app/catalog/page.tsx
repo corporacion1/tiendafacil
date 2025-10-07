@@ -76,7 +76,7 @@ const CatalogProductCard = ({ product, onAddToCart, onImageClick }: { product: P
 
 export default function CatalogPage() {
     const { toast } = useToast();
-    const { activeSymbol, activeRate } = useSettings();
+    const { settings, activeSymbol, activeRate } = useSettings();
     const [products, setProducts] = useState<Product[]>([]);
     const [sales, setSales] = useState<Sale[]>([]);
     const [customers, setCustomers] = useState<Customer[]>(defaultCustomers);
@@ -642,14 +642,14 @@ export default function CatalogPage() {
                 </DialogContent>
 
                 <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
-                     <Button asChild size="icon" className="rounded-full h-14 w-14 bg-[#25D366] hover:bg-[#128C7E] shadow-lg">
-                        <a href="https://wa.me/584126915593" target="_blank" rel="noopener noreferrer">
+                    <Button asChild size="icon" className="rounded-full h-14 w-14 bg-[#25D366] hover:bg-[#128C7E] shadow-lg">
+                        <a href={`https://wa.me/${settings.storePhone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">
                             <FaWhatsapp className="h-7 w-7" />
                             <span className="sr-only">WhatsApp</span>
                         </a>
                     </Button>
                     <Button asChild size="icon" className="rounded-full h-14 w-14 bg-gradient-to-br from-purple-400 to-pink-600 text-white shadow-lg">
-                        <a href="https://www.instagram.com/corporacion1plus" target="_blank" rel="noopener noreferrer">
+                        <a href={`https://www.instagram.com/${settings.storeMeta.replace('@', '')}`} target="_blank" rel="noopener noreferrer">
                             <Instagram className="h-7 w-7" />
                             <span className="sr-only">Instagram</span>
                         </a>
@@ -659,3 +659,5 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
+
+    
