@@ -40,18 +40,17 @@ const productSchema = z.object({
   description: z.string().optional(),
   imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')).refine(
     (url) => {
-        if (!url) return true; // Permite URL vacía
+        if (!url) return true; // Allows empty URL
         try {
-            const { hostname, pathname } = new URL(url);
-            const isDropbox = hostname === 'www.dropbox.com' || hostname === 'dl.dropboxusercontent.com';
-            const hasImageExtension = /\.(jpg|jpeg|png|gif|svg|webp)$/i.test(pathname);
-            return isDropbox && hasImageExtension;
+            const { hostname } = new URL(url);
+            const allowedHostnames = ['images.unsplash.com', 'www.dropbox.com', 'dl.dropboxusercontent.com'];
+            return allowedHostnames.some(allowedHost => hostname.includes(allowedHost));
         } catch (e) {
             return false;
         }
     },
     {
-        message: "La URL debe ser de Dropbox y terminar con una extensión de imagen (jpg, png, etc.)."
+        message: "La URL debe ser de un dominio permitido (Unsplash, Dropbox)."
     }
   ),
   imageHint: z.string().optional(),
