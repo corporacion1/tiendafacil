@@ -376,7 +376,7 @@ export default function SettingsPage() {
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-2">
-                        {items.map(item => (
+                        {(items || []).map(item => (
                             <div key={item.id} className="flex items-center justify-between gap-2 p-2 border rounded-md">
                                <span>{item.name}</span>
                                <div className="flex gap-1">
@@ -572,9 +572,9 @@ export default function SettingsPage() {
                      <Separator />
                      <h3 className="text-lg font-medium">Clasificación de Productos</h3>
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-                        {renderManagementCard("Unidades de Medida", "Gestiona las unidades para tus productos.", localUnits, setLocalUnits, 'unit')}
-                        {renderManagementCard("Familias de Productos", "Organiza tus productos en familias.", localFamilies, setLocalFamilies, 'family')}
-                        {renderManagementCard("Almacenes", "Gestiona los almacenes de destino.", localWarehouses, setLocalWarehouses, 'warehouse')}
+                        {renderManagementCard("Unidades de Medida", "Gestiona las unidades para tus productos.", localUnits || [], setLocalUnits, 'unit')}
+                        {renderManagementCard("Familias de Productos", "Organiza tus productos en familias.", localFamilies || [], setLocalFamilies, 'family')}
+                        {renderManagementCard("Almacenes", "Gestiona los almacenes de destino.", localWarehouses || [], setLocalWarehouses, 'warehouse')}
                     </div>
                 </CardContent>
                 <CardFooter className="border-t px-6 py-4 flex justify-end">
@@ -857,3 +857,5 @@ export default function SettingsPage() {
         </div>
     );
 }
+
+    
