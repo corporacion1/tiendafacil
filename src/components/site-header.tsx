@@ -26,6 +26,7 @@ import { useSettings } from "@/contexts/settings-context";
 import { Logo } from "./logo";
 import { useRouter } from "next/navigation";
 import { navItems, settingsNav } from "@/lib/navigation";
+import { SidebarTrigger } from "./ui/sidebar";
 
 export function SiteHeader() {
   const pathname = usePathname();
@@ -96,7 +97,7 @@ export function SiteHeader() {
             </SheetContent>
         </Sheet>
         <div className="hidden items-center gap-2 md:flex">
-            <Logo className="w-32 h-10" />
+            <SidebarTrigger className="hidden md:flex" />
         </div>
       <div className="relative ml-auto flex items-center gap-2 md:grow-0">
         <TooltipProvider>

@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { SettingsProvider } from '@/contexts/settings-context';
 import { SecurityProvider } from '@/contexts/security-context';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
 export const metadata: Metadata = {
   title: 'TIENDA FACIL - Tu Comercio',
@@ -30,7 +31,9 @@ export default function RootLayout({
          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <SecurityProvider>
               <SettingsProvider>
-                <AppShell>{children}</AppShell>
+                <SidebarProvider>
+                  <AppShell>{children}</AppShell>
+                </SidebarProvider>
                 <Toaster />
               </SettingsProvider>
             </SecurityProvider>
@@ -39,5 +42,3 @@ export default function RootLayout({
     </html>
   );
 }
-
-    
