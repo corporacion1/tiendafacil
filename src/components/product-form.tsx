@@ -111,21 +111,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
   const cost = watch("cost");
   const price = watch("price");
   const wholesalePrice = watch("wholesalePrice");
-  
-  const displayImageUrl = useMemo(() => {
-    if (watchedImageUrl && watchedImageUrl.includes("www.dropbox.com")) {
-      let url = new URL(watchedImageUrl);
-      if (url.searchParams.has('dl')) {
-        url.searchParams.set('raw', '1');
-        url.searchParams.delete('dl');
-      } else if (!url.searchParams.has('raw')) {
-        url.searchParams.append('raw', '1');
-      }
-      return url.toString();
-    }
-    return watchedImageUrl;
-  }, [watchedImageUrl]);
-
 
   useEffect(() => {
     form.reset(getInitialValues(product));
@@ -325,8 +310,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                           <Input placeholder="https://..." {...field} onBlur={handleImageUrlBlur} />
                         </FormControl>
                         <div className="aspect-square relative bg-muted rounded-md flex items-center justify-center mt-2 overflow-hidden">
-                          {displayImageUrl ? (
-                            <Image src={displayImageUrl} alt="Vista previa del producto" fill sizes="300px" className="object-cover" />
+                          {watchedImageUrl ? (
+                            <Image src={watchedImageUrl} alt="Vista previa del producto" fill sizes="300px" className="object-cover" />
                           ) : (
                             <Package className="h-16 w-16 text-muted-foreground" />
                           )}

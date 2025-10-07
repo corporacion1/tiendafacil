@@ -36,21 +36,6 @@ import { useSettings } from "@/contexts/settings-context";
 import { mockProducts, mockSales, mockInventoryMovements } from "@/lib/data";
 import { format, parseISO } from "date-fns";
 
-
-const getDisplayImageUrl = (imageUrl?: string) => {
-    if (imageUrl && imageUrl.includes("www.dropbox.com")) {
-        let url = new URL(imageUrl);
-        if (url.searchParams.has('dl')) {
-            url.searchParams.set('raw', '1');
-            url.searchParams.delete('dl');
-        } else if (!url.searchParams.has('raw')) {
-            url.searchParams.append('raw', '1');
-        }
-        return url.toString();
-    }
-    return imageUrl;
-};
-
 export default function InventoryPage() {
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>(mockProducts);
@@ -371,15 +356,13 @@ export default function InventoryPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredProducts.map((product) => {
-                  const displayImageUrl = getDisplayImageUrl(product.imageUrl);
-                  return (
+                {filteredProducts.map((product) => (
                     <TableRow key={product.id}>
                         <TableCell className="hidden sm:table-cell">
                         <div className="relative flex items-center justify-center w-10 h-10 bg-muted rounded-md overflow-hidden isolate">
-                            {displayImageUrl ? (
+                            {product.imageUrl ? (
                             <Image
-                                src={displayImageUrl}
+                                src={product.imageUrl}
                                 alt={product.name}
                                 fill
                                 sizes="40px"
@@ -426,8 +409,7 @@ export default function InventoryPage() {
                         </DropdownMenu>
                         </TableCell>
                     </TableRow>
-                  );
-                })}
+                  ))}
               </TableBody>
             </Table>
             )}

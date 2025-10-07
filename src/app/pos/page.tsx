@@ -36,19 +36,6 @@ const generateSaleId = () => {
 
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
     const { activeSymbol, activeRate } = useSettings();
-    const displayImageUrl = useMemo(() => {
-        if (product.imageUrl && product.imageUrl.includes("www.dropbox.com")) {
-            let url = new URL(product.imageUrl);
-            if (url.searchParams.has('dl')) {
-                url.searchParams.set('raw', '1');
-                url.searchParams.delete('dl');
-            } else if (!url.searchParams.has('raw')) {
-                url.searchParams.append('raw', '1');
-            }
-            return url.toString();
-        }
-        return product.imageUrl;
-    }, [product.imageUrl]);
 
     return (
         <Card className="overflow-hidden group">
@@ -61,9 +48,9 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
                         </Button>
                     </DialogTrigger>
                 </div>
-                {displayImageUrl ? (
+                {product.imageUrl ? (
                     <Image
-                        src={displayImageUrl}
+                        src={product.imageUrl}
                         alt={product.name}
                         fill
                         sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
@@ -283,7 +270,7 @@ export default function POSPage() {
     const isCreditSale = remainingBalance > 0;
 
     if (isCreditSale && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone)) {
-        toast({ variant: "destructive", title: "Cliente no válido para crédito", description: "Para ventas a crédito, selecciona un cliente registrado con número de teléfono." });
+        toast({ variant: "destructive", title: "Cliente no válido para crédito", description: "Para guardar como crédito, debe seleccionar un cliente debidamente registrado" });
         return;
     }
 
@@ -404,20 +391,6 @@ export default function POSPage() {
           (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase())))
       );
   }, [products, searchTerm, selectedFamily]);
-  
-  const productDetailsImageUrl = useMemo(() => {
-    if (productDetails?.imageUrl && productDetails.imageUrl.includes("www.dropbox.com")) {
-        let url = new URL(productDetails.imageUrl);
-        if (url.searchParams.has('dl')) {
-            url.searchParams.set('raw', '1');
-            url.searchParams.delete('dl');
-        } else if (!url.searchParams.has('raw')) {
-            url.searchParams.append('raw', '1');
-        }
-        return url.toString();
-    }
-    return productDetails?.imageUrl;
-  }, [productDetails]);
 
   const isNewCustomerFormDirty = newCustomer.name.trim() !== '' || newCustomer.id.trim() !== '' || newCustomer.phone.trim() !== '' || newCustomer.address.trim() !== '';
 
@@ -758,9 +731,9 @@ export default function POSPage() {
         {productDetails && (
             <div className="grid gap-4">
                  <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
-                    {productDetailsImageUrl ? (
+                    {productDetails.imageUrl ? (
                         <Image
-                            src={productDetailsImageUrl}
+                            src={productDetails.imageUrl}
                             alt={productDetails.name}
                             fill
                             sizes="300px"
@@ -818,5 +791,3 @@ export default function POSPage() {
   </Dialog>
   );
 }
-
-    
