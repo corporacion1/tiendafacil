@@ -13,13 +13,15 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Unit, Family, Warehouse, CurrencyRate, Product } from "@/lib/types";
-import { Pencil, PlusCircle, Trash2, AlertTriangle } from "lucide-react";
+import { Pencil, PlusCircle, Trash2, AlertTriangle, Database } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
-import { useUser } from "@/firebase";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { mockProducts, initialUnits as defaultUnits, initialFamilies as defaultFamilies, initialWarehouses as defaultWarehouses, mockCurrencyRates, factoryReset, businessCategories } from "@/lib/data";
+import { seedDatabase } from "@/lib/seed";
+import { collection } from "firebase/firestore";
 
 
 function ChangePinDialog() {
@@ -113,7 +115,7 @@ function ChangePinDialog() {
 export default function SettingsPage() {
     const { hasPin, setPin, removePin, checkPin } = useSecurity();
     const { settings, setSettings, currencyRates, setCurrencyRates } = useSettings();
-    const { user } = useUser();
+    const firestore = useFirestore();
     
     const [localSettings, setLocalSettings] = useState(settings);
     const [localUnits, setLocalUnits] = useState(defaultUnits);
@@ -126,18 +128,15 @@ export default function SettingsPage() {
     const [confirmPin, setConfirmPin] = useState('');
     const { toast } = useToast();
     
-    const [products, setProducts] = useState<Product[]>([]);
+    const productsRef = useMemoFirebase(() => collection(firestore, 'products'), [firestore]);
+    const { data: products = [] } = useCollection<Product>(productsRef);
     
-    useEffect(() => {
-        // Simulate fetching products for offline mode
-        setProducts(mockProducts);
-    }, []);
-
     const [newRate, setNewRate] = useState<number>(0);
 
     const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
     const [resetPin, setResetPin] = useState('');
     const [resetConfirmationText, setResetConfirmationText] = useState('');
+    const [isSeeding, setIsSeeding] = useState(false);
 
      useEffect(() => {
         setLocalSettings(settings);
@@ -290,6 +289,29 @@ export default function SettingsPage() {
             window.location.reload();
         }, 1500);
 
+    };
+
+    const handleSeedDatabase = async () => {
+        setIsSeeding(true);
+        toast({
+            title: 'Poblando Base de Datos',
+            description: 'Este proceso puede tardar unos momentos. Por favor, espera...',
+        });
+        try {
+            await seedDatabase(firestore);
+            toast({
+                title: '¡Éxito!',
+                description: 'La base de datos ha sido poblada con los datos de demostración.',
+            });
+        } catch (error: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Error al Poblar la Base de Datos',
+                description: error.message || 'Ocurrió un error inesperado.',
+            });
+        } finally {
+            setIsSeeding(false);
+        }
     };
 
     const renderManagementCard = (
@@ -723,8 +745,27 @@ export default function SettingsPage() {
                        Acciones peligrosas que pueden resultar en la pérdida de datos.
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <AlertDialog>
+                <CardContent className="space-y-4">
+                     <div className="flex items-center justify-between rounded-lg border p-4">
+                        <div>
+                            <p className="font-medium">Poblar Base de Datos</p>
+                            <p className="text-sm text-muted-foreground">
+                                Carga los datos de demostración a Firestore. Úsalo solo una vez.
+                            </p>
+                        </div>
+                        <Button variant="secondary" onClick={handleSeedDatabase} disabled={isSeeding}>
+                            <Database className="mr-2 h-4 w-4" />
+                            {isSeeding ? 'Poblando...' : 'Poblar Base de Datos de Demostración'}
+                        </Button>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
+                        <div>
+                            <p className="font-medium text-destructive">Restaurar Datos de Fábrica</p>
+                            <p className="text-sm text-muted-foreground">
+                                Borra todos los datos locales y de la base de datos.
+                            </p>
+                        </div>
+                        <AlertDialog>
                         <AlertDialogTrigger asChild>
                             <Button variant="destructive">Restaurar Datos de Fábrica</Button>
                         </AlertDialogTrigger>
@@ -741,9 +782,7 @@ export default function SettingsPage() {
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
-                    <p className="text-sm text-muted-foreground mt-2">
-                        Utiliza esta opción si deseas limpiar toda la aplicación y empezar desde cero.
-                    </p>
+                    </div>
                 </CardContent>
             </Card>
 

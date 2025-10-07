@@ -199,6 +199,5 @@ export function factoryReset() {
     initialWarehouses.length = 0;
     
     console.log("Factory reset complete.");
+    return Promise.resolve();
 }
-
-    

@@ -35,6 +35,8 @@ import { ProductForm } from "@/components/product-form";
 import { useSettings } from "@/contexts/settings-context";
 import { mockProducts, mockSales, mockInventoryMovements } from "@/lib/data";
 import { format, parseISO } from "date-fns";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, doc, writeBatch } from "firebase/firestore";
 
 const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewMovements, setProductToDelete }: {
     product: Product;
@@ -124,10 +126,18 @@ const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewM
 
 export default function InventoryPage() {
   const { toast } = useToast();
-  const [products, setProducts] = useState<Product[]>(mockProducts);
-  const [sales, setSales] = useState<Sale[]>(mockSales);
-  const [inventoryMovements, setInventoryMovements] = useState<InventoryMovement[]>(mockInventoryMovements);
-  const [isLoading, setIsLoading] = useState(true);
+  const firestore = useFirestore();
+
+  const productsRef = useMemoFirebase(() => collection(firestore, 'products'), [firestore]);
+  const { data: products = [], isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
+
+  const salesRef = useMemoFirebase(() => collection(firestore, 'sales'), [firestore]);
+  const { data: sales = [], isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
+
+  const inventoryMovementsRef = useMemoFirebase(() => collection(firestore, 'inventory_movements'), [firestore]);
+  const { data: inventoryMovements = [], isLoading: isLoadingMovements } = useCollection<InventoryMovement>(inventoryMovementsRef);
+
+  const isLoading = isLoadingProducts || isLoadingSales || isLoadingMovements;
   
   const { activeSymbol, activeRate } = useSettings();
   const [isMovementsDialogOpen, setIsMovementsDialogOpen] = useState(false);
@@ -144,15 +154,6 @@ export default function InventoryPage() {
   const [movementQuantity, setMovementQuantity] = useState<number>(0);
   const [movementResponsible, setMovementResponsible] = useState('');
 
-  useEffect(() => {
-    // Simulate fetching data
-    setTimeout(() => {
-        setProducts(mockProducts);
-        setSales(mockSales);
-        setInventoryMovements(mockInventoryMovements);
-        setIsLoading(false);
-    }, 500);
-  }, []);
 
   const handleEdit = (product: Product) => {
     setProductToEdit(product);
@@ -166,23 +167,25 @@ export default function InventoryPage() {
   function handleUpdateProduct(data: Omit<Product, 'id'> & { id?: string }) {
     if (!data.id) return false;
 
-    setProducts(prevProducts => {
-        const updatedProducts = prevProducts.map(p => 
-            p.id === data.id ? { ...p, ...data } : p
-        );
-        // Also update the "global" mockProducts for consistency across the app in this demo
-        const productIndex = mockProducts.findIndex(p => p.id === data.id);
-        if (productIndex > -1) {
-            mockProducts[productIndex] = { ...mockProducts[productIndex], ...data } as Product;
-        }
-        return updatedProducts;
+    const productRef = doc(firestore, 'products', data.id);
+    const batch = writeBatch(firestore);
+    batch.set(productRef, data, { merge: true });
+
+    batch.commit().then(() => {
+        toast({
+            title: "Producto Actualizado",
+            description: `El producto "${data.name}" ha sido actualizado.`,
+        });
+        setProductToEdit(null); // Close the dialog
+    }).catch(error => {
+        console.error("Error updating product: ", error);
+        toast({
+            variant: "destructive",
+            title: "Error al actualizar",
+            description: error.message,
+        });
     });
 
-    toast({
-        title: "Producto Actualizado",
-        description: `El producto "${data.name}" ha sido actualizado.`,
-    });
-    setProductToEdit(null); // Close the dialog
     return true;
   }
   
@@ -199,22 +202,24 @@ export default function InventoryPage() {
         return;
     }
     
-    setProducts(prevProducts => {
-        const updatedProducts = prevProducts.filter(p => p.id !== productId);
-        // Also update the "global" mockProducts for consistency
-        const productIndex = mockProducts.findIndex(p => p.id === productId);
-        if (productIndex > -1) {
-            mockProducts.splice(productIndex, 1);
-        }
-        return updatedProducts;
-    });
+    const productRef = doc(firestore, 'products', productId);
+    const batch = writeBatch(firestore);
+    batch.delete(productRef);
 
-    toast({
-      title: "Producto Eliminado",
-      description: "El producto ha sido eliminado del inventario.",
+    batch.commit().then(() => {
+        toast({
+            title: "Producto Eliminado",
+            description: "El producto ha sido eliminado del inventario.",
+        });
+        setProductToDelete(null);
+    }).catch(error => {
+        console.error("Error deleting product: ", error);
+        toast({
+            variant: "destructive",
+            title: "Error al eliminar",
+            description: error.message,
+        });
     });
-
-    setProductToDelete(null);
   };
 
   const resetMovementForm = () => {
@@ -235,56 +240,49 @@ export default function InventoryPage() {
     }
 
     let newStock: number;
+    const currentStock = movementProduct.stock;
     
-    setProducts(prevProducts => {
-        const productsCopy = [...prevProducts];
-        const productToUpdateIndex = productsCopy.findIndex(p => p.id === movementProduct.id);
-
-        if (productToUpdateIndex === -1) return prevProducts;
-
-        const productToUpdate = { ...productsCopy[productToUpdateIndex] };
-        const currentStock = productToUpdate.stock;
-        
-        switch (movementType) {
-          case 'purchase': newStock = currentStock + movementQuantity; break;
-          case 'sale': 
-            if (currentStock < movementQuantity) {
-              toast({ variant: "destructive", title: "Stock insuficiente", description: `No puedes sacar ${movementQuantity} unidades. Stock actual: ${currentStock}.`});
-              return prevProducts; // Abort update
-            }
-            newStock = currentStock - movementQuantity;
-            break;
-          case 'adjustment': newStock = movementQuantity; break;
-          default: newStock = currentStock; break;
+    switch (movementType) {
+      case 'purchase': newStock = currentStock + movementQuantity; break;
+      case 'sale': 
+        if (currentStock < movementQuantity) {
+          toast({ variant: "destructive", title: "Stock insuficiente", description: `No puedes sacar ${movementQuantity} unidades. Stock actual: ${currentStock}.`});
+          return;
         }
+        newStock = currentStock - movementQuantity;
+        break;
+      case 'adjustment': newStock = movementQuantity; break;
+      default: newStock = currentStock; break;
+    }
 
-        productToUpdate.stock = newStock;
-        productsCopy[productToUpdateIndex] = productToUpdate;
+    const batch = writeBatch(firestore);
 
-        const newMovement: InventoryMovement = {
-            id: `mov-${Date.now()}`,
-            productName: movementProduct.name,
-            type: movementType,
-            quantity: movementType === 'sale' ? -movementQuantity : (movementType === 'purchase' ? movementQuantity : newStock),
-            date: new Date().toISOString(),
-            responsible: movementResponsible,
-        };
+    const productRef = doc(firestore, "products", movementProduct.id);
+    batch.update(productRef, { stock: newStock });
+    
+    const movementRef = doc(collection(firestore, "inventory_movements"));
+    const newMovement: Omit<InventoryMovement, 'id'> = {
+        productName: movementProduct.name,
+        type: movementType,
+        quantity: movementType === 'sale' ? -movementQuantity : (movementType === 'purchase' ? movementQuantity : newStock),
+        date: new Date().toISOString(),
+        responsible: movementResponsible,
+    };
+    batch.set(movementRef, newMovement);
 
-        // Also update global mocks
-        const globalProductIndex = mockProducts.findIndex(p => p.id === movementProduct.id);
-        if (globalProductIndex > -1) {
-            mockProducts[globalProductIndex].stock = newStock;
-        }
-        mockInventoryMovements.push(newMovement);
-        setInventoryMovements(prev => [...prev, newMovement]);
-
+    batch.commit().then(() => {
         toast({
             title: "Movimiento Registrado",
             description: `El stock de "${movementProduct.name}" ha sido actualizado a ${newStock}.`,
         });
-        
         resetMovementForm();
-        return productsCopy;
+    }).catch(error => {
+         console.error("Error moving inventory: ", error);
+        toast({
+            variant: "destructive",
+            title: "Error al registrar movimiento",
+            description: error.message,
+        });
     });
   };
   
@@ -300,6 +298,7 @@ export default function InventoryPage() {
   const productMovements = selectedProduct ? inventoryMovements.filter(m => m.productName === selectedProduct.name) : [];
 
   const filteredProducts = useMemo(() => {
+    if (!products) return [];
     return products.filter(product =>
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -664,5 +663,3 @@ export default function InventoryPage() {
     </>
   );
 }
-
-    
