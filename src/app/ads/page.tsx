@@ -16,7 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import type { Ad } from "@/lib/types";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { AdForm } from "@/components/ad-form";
-import { mockAds, trackAdClick } from "@/lib/data";
+import { mockAds } from "@/lib/ads";
+import { trackAdClick } from "@/lib/data";
 
 const AdRow = ({ ad, handleEdit, setAdToDelete }: {
     ad: Ad;
