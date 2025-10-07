@@ -19,6 +19,7 @@ export type Product = {
   imageUrl?: string;
   imageHint?: string;
   storeId: string;
+  createdAt: string;
 };
 
 export type CartItem = {
@@ -149,6 +150,7 @@ export type Ad = {
   status: 'active' | 'inactive';
   targetBusinessTypes: string[];
   expiryDate?: string;
+  createdAt: string;
 };
 
 export type AdClick = {
@@ -158,4 +160,3 @@ export type AdClick = {
     userAgent: string;
     // In a real app, you might capture IP and other details on the server side
 };
-    

@@ -22,10 +22,10 @@ import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { mockProducts, defaultCustomers, initialFamilies, paymentMethods } from "@/lib/data";
+import { paymentMethods } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { collection, doc, writeBatch } from "firebase/firestore";
+import { collection, doc, writeBatch, query, orderBy } from "firebase/firestore";
 
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
     const { activeSymbol, activeRate } = useSettings();
@@ -78,11 +78,14 @@ export default function POSPage() {
   const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
   const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersRef);
   
-  const pendingOrdersRef = useMemoFirebase(() => collection(firestore, 'pendingOrders'), [firestore]);
-  const { data: pendingOrders, isLoading: isLoadingPendingOrders } = useCollection<PendingOrder>(pendingOrdersRef);
+  const pendingOrdersQuery = useMemoFirebase(() => query(collection(firestore, 'pendingOrders'), orderBy('date', 'desc')), [firestore]);
+  const { data: pendingOrders = [], isLoading: isLoadingPendingOrders } = useCollection<PendingOrder>(pendingOrdersQuery);
   
   const salesRef = useMemoFirebase(() => collection(firestore, 'sales'), [firestore]);
   const { data: sales = [] } = useCollection<Sale>(salesRef);
+
+  const familiesRef = useMemoFirebase(() => collection(firestore, 'families'), [firestore]);
+  const { data: families = [] } = useCollection<Family>(familiesRef);
 
   const isLoading = isLoadingProducts || isLoadingCustomers || isLoadingPendingOrders;
   
@@ -553,7 +556,7 @@ export default function POSPage() {
                             <Button variant="secondary">
                                 <Archive className="mr-2 h-4 w-4" />
                                 Pedidos Pendientes
-                                {(pendingOrders || []).length > 0 && <Badge variant="destructive" className="ml-2">{(pendingOrders || []).length}</Badge>}
+                                {pendingOrders.length > 0 && <Badge variant="destructive" className="ml-2">{pendingOrders.length}</Badge>}
                             </Button>
                         </DialogTrigger>
                         <DialogContent>
@@ -565,11 +568,11 @@ export default function POSPage() {
                             </DialogHeader>
                             <div className="py-4 max-h-96 overflow-y-auto">
                                 {isLoadingPendingOrders && <p>Cargando pedidos...</p>}
-                                {!isLoadingPendingOrders && (pendingOrders || []).length === 0 ? (
+                                {!isLoadingPendingOrders && pendingOrders.length === 0 ? (
                                     <p className="text-center text-muted-foreground py-8">No hay pedidos pendientes.</p>
                                 ) : (
                                     <div className="space-y-4">
-                                    {(pendingOrders || []).map(order => (
+                                    {pendingOrders.map(order => (
                                         <div key={order.id} className="p-4 border rounded-lg">
                                             <div className="flex justify-between items-start">
                                                 <div>
@@ -616,7 +619,7 @@ export default function POSPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas las familias</SelectItem>
-                  {initialFamilies.map(family => (
+                  {families.map(family => (
                     <SelectItem key={family.id} value={family.name}>
                       {family.name}
                     </SelectItem>

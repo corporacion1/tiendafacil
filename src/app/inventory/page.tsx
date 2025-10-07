@@ -35,7 +35,7 @@ import { ProductForm } from "@/components/product-form";
 import { useSettings } from "@/contexts/settings-context";
 import { format, parseISO } from "date-fns";
 import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase";
-import { collection, doc, writeBatch } from "firebase/firestore";
+import { collection, doc, orderBy, query, writeBatch } from "firebase/firestore";
 
 const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewMovements, setProductToDelete }: {
     product: Product;
@@ -133,8 +133,8 @@ export default function InventoryPage() {
   const salesRef = useMemoFirebase(() => collection(firestore, 'sales'), [firestore]);
   const { data: sales = [], isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
 
-  const inventoryMovementsRef = useMemoFirebase(() => collection(firestore, 'inventory_movements'), [firestore]);
-  const { data: inventoryMovements = [], isLoading: isLoadingMovements } = useCollection<InventoryMovement>(inventoryMovementsRef);
+  const inventoryMovementsQuery = useMemoFirebase(() => query(collection(firestore, 'inventory_movements'), orderBy('date', 'desc')), [firestore]);
+  const { data: inventoryMovements = [], isLoading: isLoadingMovements } = useCollection<InventoryMovement>(inventoryMovementsQuery);
 
   const isLoading = isLoadingProducts || isLoadingSales || isLoadingMovements;
   
@@ -613,7 +613,7 @@ export default function InventoryPage() {
               <TableBody>
                   {productMovements.length > 0 ? productMovements.map((movement) => (
                       <TableRow key={movement.id}>
-                          <TableCell>{movement.date ? format(parseISO(movement.date as string), 'dd/MM/yyyy') : 'N/A'}</TableCell>
+                          <TableCell>{movement.date ? format(parseISO(movement.date as string), 'dd/MM/yyyy HH:mm') : 'N/A'}</TableCell>
                           <TableCell>
                               <Badge variant={movement.type === "sale" ? "destructive" : movement.type === "purchase" ? "secondary" : "outline"}>
                                   {getMovementLabel(movement.type)}
@@ -641,5 +641,3 @@ export default function InventoryPage() {
     </>
   );
 }
-
-    

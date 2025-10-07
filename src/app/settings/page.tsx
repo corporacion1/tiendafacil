@@ -19,9 +19,9 @@ import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { mockProducts, initialUnits as defaultUnits, initialFamilies as defaultFamilies, initialWarehouses as defaultWarehouses, mockCurrencyRates, factoryReset, businessCategories } from "@/lib/data";
+import { factoryReset, businessCategories } from "@/lib/data";
 import { seedDatabase } from "@/lib/seed";
-import { collection } from "firebase/firestore";
+import { collection, orderBy, query } from "firebase/firestore";
 
 
 function ChangePinDialog() {
@@ -118,10 +118,19 @@ export default function SettingsPage() {
     const firestore = useFirestore();
     
     const [localSettings, setLocalSettings] = useState(settings);
-    const [localUnits, setLocalUnits] = useState(defaultUnits);
-    const [localFamilies, setLocalFamilies] = useState(defaultFamilies);
-    const [localWarehouses, setLocalWarehouses] = useState(defaultWarehouses);
-    const [localCurrencyRates, setLocalCurrencyRates] = useState(currencyRates);
+
+    const { data: units = [] } = useCollection<Unit>(useMemoFirebase(() => collection(firestore, 'units'), [firestore]));
+    const { data: families = [] } = useCollection<Family>(useMemoFirebase(() => collection(firestore, 'families'), [firestore]));
+    const { data: warehouses = [] } = useCollection<Warehouse>(useMemoFirebase(() => collection(firestore, 'warehouses'), [firestore]));
+
+    const [localUnits, setLocalUnits] = useState<Unit[]>([]);
+    const [localFamilies, setLocalFamilies] = useState<Family[]>([]);
+    const [localWarehouses, setLocalWarehouses] = useState<Warehouse[]>([]);
+    const [localCurrencyRates, setLocalCurrencyRates] = useState<CurrencyRate[]>([]);
+    
+    const ratesQuery = useMemoFirebase(() => query(collection(firestore, 'currencyRates'), orderBy('date', 'desc')), [firestore]);
+    const { data: fetchedRates } = useCollection<CurrencyRate>(ratesQuery);
+
 
     const [isDirty, setIsDirty] = useState(false);
     const [newPin, setNewPin] = useState('');
@@ -141,16 +150,34 @@ export default function SettingsPage() {
      useEffect(() => {
         setLocalSettings(settings);
     }, [settings]);
+
+    useEffect(() => {
+        setLocalUnits(units);
+    }, [units]);
+
+    useEffect(() => {
+        setLocalFamilies(families);
+    }, [families]);
+
+    useEffect(() => {
+        setLocalWarehouses(warehouses);
+    }, [warehouses]);
+    
+    useEffect(() => {
+      if (fetchedRates) {
+        setLocalCurrencyRates(fetchedRates);
+      }
+    }, [fetchedRates]);
     
     useEffect(() => {
         const mainSettingsChanged = JSON.stringify(localSettings) !== JSON.stringify(settings);
-        const unitsChanged = JSON.stringify(localUnits) !== JSON.stringify(defaultUnits);
-        const familiesChanged = JSON.stringify(localFamilies) !== JSON.stringify(defaultFamilies);
-        const warehousesChanged = JSON.stringify(localWarehouses) !== JSON.stringify(defaultWarehouses);
-        const ratesChanged = JSON.stringify(localCurrencyRates) !== JSON.stringify(currencyRates);
+        const unitsChanged = JSON.stringify(localUnits) !== JSON.stringify(units);
+        const familiesChanged = JSON.stringify(localFamilies) !== JSON.stringify(families);
+        const warehousesChanged = JSON.stringify(localWarehouses) !== JSON.stringify(warehouses);
+        const ratesChanged = JSON.stringify(localCurrencyRates) !== JSON.stringify(fetchedRates);
 
         setIsDirty(mainSettingsChanged || unitsChanged || familiesChanged || warehousesChanged || ratesChanged);
-    }, [localSettings, settings, localUnits, localFamilies, localWarehouses, localCurrencyRates, currencyRates]);
+    }, [localSettings, settings, localUnits, localFamilies, localWarehouses, localCurrencyRates, units, families, warehouses, fetchedRates]);
 
     const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
@@ -169,10 +196,6 @@ export default function SettingsPage() {
     const saveAllSettings = () => {
         setSettings(localSettings);
         // Here you would also save units, families, warehouses, and rates to your persistent storage.
-        // For this mock app, we can update the context if we were to create one for them, or just consider it "saved".
-        Object.assign(defaultUnits, localUnits);
-        Object.assign(defaultFamilies, localFamilies);
-        Object.assign(defaultWarehouses, localWarehouses);
         setCurrencyRates(localCurrencyRates);
         
         setIsDirty(false);

@@ -21,14 +21,16 @@ import { paymentMethods } from "@/lib/data";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc, writeBatch } from "firebase/firestore";
+import { collection, doc, orderBy, query, writeBatch } from "firebase/firestore";
 
 export default function CreditsPage() {
     const { toast } = useToast();
     const firestore = useFirestore();
     const { settings, activeSymbol, activeRate } = useSettings();
 
-    const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(useMemoFirebase(() => collection(firestore, 'sales'), [firestore]));
+    const salesQuery = useMemoFirebase(() => query(collection(firestore, 'sales'), orderBy('date', 'desc')), [firestore]);
+    const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
+
     const { data: productsData, isLoading: isLoadingProducts } = useCollection<Product>(useMemoFirebase(() => collection(firestore, 'products'), [firestore]));
     const isLoading = isLoadingSales || isLoadingProducts;
 
@@ -424,5 +426,3 @@ export default function CreditsPage() {
         </>
     );
 }
-
-    

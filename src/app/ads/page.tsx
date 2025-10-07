@@ -16,8 +16,9 @@ import { useToast } from "@/hooks/use-toast";
 import type { Ad } from "@/lib/types";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { AdForm } from "@/components/ad-form";
-import { mockAds } from "@/lib/ads";
 import { format, isPast } from "date-fns";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, deleteDoc, doc, orderBy, query, setDoc, writeBatch } from "firebase/firestore";
 
 const AdRow = ({ ad, handleEdit, setAdToDelete }: {
     ad: Ad;
@@ -29,12 +30,12 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
     const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate)) : false;
 
     const getStatusVariant = (status: Ad['status']) => {
-        if (isExpired && status === 'inactive') return 'secondary';
+        if (isExpired) return 'secondary';
         return status === 'active' ? 'outline' : 'secondary';
     }
     
     const getStatusLabel = (status: Ad['status']) => {
-        if (isExpired && status === 'inactive') return 'Vencido';
+        if (isExpired) return 'Vencido';
         return status === 'active' ? 'Activo' : 'Inactivo';
     }
     
@@ -101,8 +102,10 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
 
 export default function AdsPage() {
   const { toast } = useToast();
-  const [ads, setAds] = useState<Ad[]>(mockAds);
-  const [isLoading, setIsLoading] = useState(true);
+  const firestore = useFirestore();
+  
+  const adsQuery = useMemoFirebase(() => query(collection(firestore, 'ads'), orderBy('createdAt', 'desc')), [firestore]);
+  const { data: ads = [], isLoading } = useCollection<Ad>(adsQuery);
 
   const [adToEdit, setAdToEdit] = useState<Ad | null>(null);
   const [adToDelete, setAdToDelete] = useState<Ad | null>(null);
@@ -110,39 +113,32 @@ export default function AdsPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   useEffect(() => {
-    // Check for expired ads on load
-    const updatedAds = mockAds.map(ad => {
+    // Check for expired ads on load and update them if necessary
+    const batch = writeBatch(firestore);
+    let hasUpdates = false;
+
+    ads.forEach(ad => {
         if (ad.status === 'active' && ad.expiryDate && isPast(new Date(ad.expiryDate))) {
-            return { ...ad, status: 'inactive' };
+            const adRef = doc(firestore, 'ads', ad.id);
+            batch.update(adRef, { status: 'inactive' });
+            hasUpdates = true;
         }
-        return ad;
     });
 
-    setAds(updatedAds);
-    Object.assign(mockAds, updatedAds); // Keep mock data in sync for demo
-    
-    setTimeout(() => {
-        setIsLoading(false);
-    }, 500);
-  }, []);
+    if (hasUpdates) {
+        batch.commit().catch(console.error);
+    }
+  }, [ads, firestore]);
 
   const handleEdit = (ad: Ad) => {
     setAdToEdit(ad);
   };
   
-  function handleUpdateAd(data: Omit<Ad, 'id' | 'views'> & { id?: string }) {
+  async function handleUpdateAd(data: Omit<Ad, 'id' | 'views' | 'createdAt'> & { id?: string }) {
     if (!data.id) return false;
 
-    setAds(prevAds => {
-        const updatedAds = prevAds.map(ad => 
-            ad.id === data.id ? { ...ad, ...data } : ad
-        );
-        const adIndex = mockAds.findIndex(ad => ad.id === data.id);
-        if (adIndex > -1) {
-            mockAds[adIndex] = { ...mockAds[adIndex], ...data } as Ad;
-        }
-        return updatedAds;
-    });
+    const adRef = doc(firestore, 'ads', data.id);
+    await setDoc(adRef, data, { merge: true });
 
     toast({
         title: "Anuncio Actualizado",
@@ -152,15 +148,16 @@ export default function AdsPage() {
     return true;
   }
 
-  function handleCreateAd(data: Omit<Ad, 'id' | 'views'>) {
+  async function handleCreateAd(data: Omit<Ad, 'id' | 'views' | 'createdAt'>) {
     const newAd: Ad = {
       ...data,
       id: `ad-${Date.now()}`,
       views: 0,
+      createdAt: new Date().toISOString(),
     };
 
-    mockAds.unshift(newAd);
-    setAds([newAd, ...ads]);
+    const adRef = doc(firestore, 'ads', newAd.id);
+    await setDoc(adRef, newAd);
     
     toast({
       title: "Anuncio Creado",
@@ -171,15 +168,9 @@ export default function AdsPage() {
     return true;
   }
   
-  const handleDelete = (adId: string) => {
-    setAds(prevAds => {
-        const updatedAds = prevAds.filter(ad => ad.id !== adId);
-        const adIndex = mockAds.findIndex(ad => ad.id === adId);
-        if (adIndex > -1) {
-            mockAds.splice(adIndex, 1);
-        }
-        return updatedAds;
-    });
+  const handleDelete = async (adId: string) => {
+    const adRef = doc(firestore, 'ads', adId);
+    await deleteDoc(adRef);
 
     toast({
       title: "Anuncio Eliminado",
@@ -225,6 +216,7 @@ export default function AdsPage() {
                         <AdForm
                             onSubmit={handleCreateAd}
                             onCancel={() => setIsCreateDialogOpen(false)}
+                            allAds={ads}
                         />
                     </div>
                 </DialogContent>
@@ -293,6 +285,7 @@ export default function AdsPage() {
                         ad={adToEdit}
                         onSubmit={handleUpdateAd}
                         onCancel={() => setAdToEdit(null)}
+                        allAds={ads}
                     />
                 )}
             </div>
