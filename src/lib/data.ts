@@ -123,9 +123,9 @@ export const mockInventoryMovements: InventoryMovement[] = [
 ];
 
 export const mockCurrencyRates: CurrencyRate[] = [
-    { id: 'rate-1', rate: 39.50, date: new Date().toISOString() },
-    { id: 'rate-2', rate: 39.45, date: subDays(new Date(), 1).toISOString() },
-    { id: 'rate-3', rate: 39.30, date: subDays(new Date(), 2).toISOString() },
+    { id: 'rate-1', rate: 182.50, date: new Date().toISOString() },
+    { id: 'rate-2', rate: 180.25, date: subDays(new Date(), 1).toISOString() },
+    { id: 'rate-3', rate: 178.90, date: subDays(new Date(), 2).toISOString() },
 ];
 
 export const paymentMethods = [
