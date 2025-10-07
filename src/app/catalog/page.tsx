@@ -390,7 +390,6 @@ export default function CatalogPage() {
                                 }
                             }
                         `}</style>
-                        <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">Explora nuestra selección de componentes de alta gama para tu próxima computadora.</p>
                     </div>
                     
                     <div className="mb-8">
