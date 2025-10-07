@@ -81,10 +81,10 @@ export default function POSPage() {
   const pendingOrdersQuery = useMemoFirebase(() => query(collection(firestore, 'pendingOrders'), orderBy('date', 'desc')), [firestore]);
   const { data: pendingOrders = [], isLoading: isLoadingPendingOrders } = useCollection<PendingOrder>(pendingOrdersQuery);
   
-  const salesRef = useMemoFirebase(() => collection(firestore, 'sales'), [firestore]);
+  const salesRef = useMemoFirebase(() => query(collection(firestore, 'sales'), orderBy('date', 'desc')), [firestore]);
   const { data: sales = [] } = useCollection<Sale>(salesRef);
 
-  const familiesRef = useMemoFirebase(() => collection(firestore, 'families'), [firestore]);
+  const familiesRef = useMemoFirebase(() => query(collection(firestore, 'families'), orderBy('name', 'asc')), [firestore]);
   const { data: families = [] } = useCollection<Family>(familiesRef);
 
   const isLoading = isLoadingProducts || isLoadingCustomers || isLoadingPendingOrders;
@@ -998,3 +998,5 @@ export default function POSPage() {
   </Dialog>
   );
 }
+
+    
