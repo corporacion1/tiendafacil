@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { Boxes, FileText, Home, PackagePlus, PanelLeft, Settings, ShoppingCart, Store, CreditCard, Coins, UserCircle, LogOut, LayoutGrid } from "lucide-react";
+import { Boxes, FileText, Home, PackagePlus, PanelLeft, Settings, ShoppingCart, Store, CreditCard, Coins, UserCircle, LogOut, LayoutGrid, Music, MusicOff } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +25,7 @@ import { ThemeToggle } from "./theme-toggle";
 import { useSettings } from "@/contexts/settings-context";
 import { Logo } from "./logo";
 import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect } from "react";
 
 const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: Home },
@@ -44,6 +45,34 @@ export function SiteHeader() {
   const pathname = usePathname();
   const router = useRouter();
   const { settings, activeCurrency, toggleDisplayCurrency } = useSettings();
+  
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    // Ensure Audio object is only available on the client
+    if (typeof window !== 'undefined') {
+        audioRef.current = new Audio("https://stream.zeno.fm/fvr822g62d0uv");
+        audioRef.current.loop = true;
+    }
+
+    return () => {
+      // Cleanup: pause and nullify on component unmount
+      audioRef.current?.pause();
+      audioRef.current = null;
+    };
+  }, []);
+
+  const toggleMusic = () => {
+    if (audioRef.current) {
+        if (isPlaying) {
+            audioRef.current.pause();
+        } else {
+            audioRef.current.play().catch(error => console.error("Audio playback failed:", error));
+        }
+        setIsPlaying(!isPlaying);
+    }
+  };
   
   // Mock user for offline mode
   const user = {
@@ -116,6 +145,18 @@ export function SiteHeader() {
             </TooltipTrigger>
             <TooltipContent>
               <p>Cambiar a {inactiveCurrencyName}</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={toggleMusic}>
+                    {isPlaying ? <MusicOff /> : <Music />}
+                    <span className="sr-only">Toggle Music</span>
+                </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+                <p>{isPlaying ? 'Detener música' : 'Reproducir música'}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
