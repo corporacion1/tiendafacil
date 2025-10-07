@@ -591,16 +591,13 @@ export default function CatalogPage() {
                 
                 {/* Product Details Dialog */}
                 <DialogContent className="sm:max-w-2xl">
-                    <DialogTrigger asChild>
-                        <button className="hidden" />
-                    </DialogTrigger>
+                    <DialogHeader>
+                        <DialogTitle>Detalles del Producto</DialogTitle>
+                        <DialogDescription>Información detallada del producto seleccionado.</DialogDescription>
+                    </DialogHeader>
                      {productDetails && (
                         <>
-                        <DialogHeader>
-                            <DialogTitle>{productDetails?.name}</DialogTitle>
-                            <DialogDescription>SKU: {productDetails?.sku}</DialogDescription>
-                        </DialogHeader>
-                        <div className="grid md:grid-cols-2 gap-6 items-start">
+                        <div className="grid md:grid-cols-2 gap-6 items-start pt-4">
                              <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
                                 {getDisplayImageUrl(productDetails.imageUrl) && !productImageError ? (
                                     <Image
@@ -617,7 +614,9 @@ export default function CatalogPage() {
                                 )}
                              </div>
                              <div className="grid gap-2">
-                                <h3 className="text-lg font-semibold">Detalles</h3>
+                                <h3 className="text-lg font-semibold">{productDetails.name}</h3>
+                                <p className="text-sm text-muted-foreground">SKU: {productDetails?.sku}</p>
+                                <Separator />
                                 <div className="flex justify-between">
                                     <span className="text-muted-foreground">Disponibilidad:</span>
                                     <span className="font-semibold">{productDetails.stock} unidades</span>

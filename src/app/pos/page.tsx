@@ -944,7 +944,7 @@ export default function POSPage() {
                             sizes="300px"
                             className="object-cover"
                             data-ai-hint={productDetails.imageHint}
-                            onError={() => setProductImageError(true)}
+                            onError={() => setImageError(true)}
                         />
                         ) : (
                         <Package className="w-16 h-16 text-muted-foreground" />
