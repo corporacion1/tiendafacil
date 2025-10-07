@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
-import { File, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X, Package, Check, ImageOff, FileText, FileSpreadsheet, FileJson, Store } from "lucide-react";
+import { File, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X, Package, Check, ImageOff, FileText, FileSpreadsheet, FileJson, Store, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,7 @@ import type { Ad } from "@/lib/types";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { AdForm } from "@/components/ad-form";
 import { mockAds } from "@/lib/ads";
+import { format, isPast } from "date-fns";
 
 const AdRow = ({ ad, handleEdit, setAdToDelete }: {
     ad: Ad;
@@ -25,17 +26,25 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
 }) => {
     const [imageError, setImageError] = useState(false);
     const imageUrl = getDisplayImageUrl(ad.imageUrl);
+    const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate)) : false;
 
     const getStatusVariant = (status: Ad['status']) => {
+        if (isExpired && status === 'inactive') return 'secondary';
         return status === 'active' ? 'outline' : 'secondary';
     }
     
     const getStatusLabel = (status: Ad['status']) => {
+        if (isExpired && status === 'inactive') return 'Vencido';
         return status === 'active' ? 'Activo' : 'Inactivo';
     }
+    
+    const getFormattedDate = (date: any) => {
+        if (!date) return 'Nunca';
+        return format(new Date(date), "dd/MM/yyyy");
+    };
 
     return (
-        <TableRow>
+        <TableRow className={cn(isExpired && "text-muted-foreground")}>
             <TableCell className="hidden sm:table-cell">
                 <div className="relative flex items-center justify-center w-10 h-10 bg-muted rounded-md overflow-hidden isolate">
                     {imageUrl && !imageError ? (
@@ -63,6 +72,12 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
                 <div className="flex items-center gap-2">
                     <Store className="h-4 w-4 text-muted-foreground" />
                     <span>{ad.storeIds.length} Tienda(s)</span>
+                </div>
+            </TableCell>
+            <TableCell className="hidden md:table-cell">
+                <div className="flex items-center gap-1">
+                    {isExpired && <AlertTriangle className="h-4 w-4 text-amber-500" />}
+                    <span>{getFormattedDate(ad.expiryDate)}</span>
                 </div>
             </TableCell>
             <TableCell className="hidden md:table-cell">
@@ -101,8 +116,18 @@ export default function AdsPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   useEffect(() => {
+    // Check for expired ads on load
+    const updatedAds = mockAds.map(ad => {
+        if (ad.status === 'active' && ad.expiryDate && isPast(new Date(ad.expiryDate))) {
+            return { ...ad, status: 'inactive' };
+        }
+        return ad;
+    });
+
+    setAds(updatedAds);
+    Object.assign(mockAds, updatedAds); // Keep mock data in sync for demo
+    
     setTimeout(() => {
-        setAds(mockAds);
         setIsLoading(false);
     }, 500);
   }, []);
@@ -234,6 +259,7 @@ export default function AdsPage() {
                 <TableHead>Nombre</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="hidden md:table-cell">Tiendas</TableHead>
+                <TableHead className="hidden md:table-cell">Vence</TableHead>
                 <TableHead className="hidden md:table-cell">Vistas</TableHead>
                 <TableHead>
                   <span className="sr-only">Acciones</span>

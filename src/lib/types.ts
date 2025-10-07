@@ -148,6 +148,7 @@ export type Ad = {
   views: number;
   status: 'active' | 'inactive';
   storeIds: string[];
+  expiryDate?: string;
 };
 
 export type AdClick = {

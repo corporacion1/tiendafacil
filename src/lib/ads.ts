@@ -1,5 +1,6 @@
 
 import type { Ad } from './types';
+import { subDays, addDays } from 'date-fns';
 
 // This data is now just for initial demonstration.
 // The actual data will be managed in the /ads page.
@@ -16,6 +17,7 @@ export const mockAds: Ad[] = [
     views: 1024,
     status: 'active',
     storeIds: ['store-1'],
+    expiryDate: addDays(new Date(), 30).toISOString(),
   },
   {
     id: "ad-2",
@@ -29,5 +31,19 @@ export const mockAds: Ad[] = [
     views: 512,
     status: 'active',
     storeIds: ['store-1'],
+  },
+  {
+    id: "ad-3",
+    sku: "EXPIRED-001",
+    name: "Oferta Pasada",
+    description: "Esta oferta ya no es válida.",
+    price: 0,
+    imageUrl: "https://images.unsplash.com/photo-1576680590355-32033c563339?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    imageHint: "expired sale",
+    targetBusinessType: "Tecnologia",
+    views: 2048,
+    status: 'active', // Will be automatically set to inactive
+    storeIds: ['store-1'],
+    expiryDate: subDays(new Date(), 5).toISOString(),
   },
 ];

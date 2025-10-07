@@ -23,6 +23,7 @@ import { getDisplayImageUrl } from "@/lib/utils";
 import { MultiSelect } from "./ui/multi-select";
 import { mockStores } from "@/lib/stores";
 import { businessCategories } from "@/lib/data";
+import { DatePicker } from "./ui/date-picker";
 
 
 const adSchema = z.object({
@@ -36,6 +37,7 @@ const adSchema = z.object({
   imageHint: z.string().optional(),
   targetBusinessType: z.string().min(1, "Debes seleccionar un tipo de negocio."),
   storeIds: z.array(z.string()).min(1, "Debes seleccionar al menos una tienda."),
+  expiryDate: z.string().optional(),
 });
 
 type AdFormValues = z.infer<typeof adSchema>;
@@ -57,6 +59,7 @@ const getInitialValues = (ad?: Ad): AdFormValues => {
         imageHint: '',
         targetBusinessType: '',
         storeIds: [],
+        expiryDate: '',
     };
 };
 
@@ -231,7 +234,7 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
                     </FormItem>
                   )}
                 />
-                <FormField
+                 <FormField
                     control={form.control}
                     name="status"
                     render={({ field }) => (
@@ -294,6 +297,25 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
                                 onChange={field.onChange}
                                 placeholder="Selecciona una o más tiendas..."
                             />
+                             <FormMessage />
+                        </FormItem>
+                    )}
+                   />
+                   <FormField
+                    control={form.control}
+                    name="expiryDate"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Fecha de Vencimiento (Opcional)</FormLabel>
+                            <FormControl>
+                                <DatePicker 
+                                    date={field.value ? new Date(field.value) : undefined}
+                                    setDate={(date) => field.onChange(date?.toISOString())}
+                                />
+                            </FormControl>
+                            <FormDescription>
+                                El anuncio se desactivará después de esta fecha.
+                            </FormDescription>
                              <FormMessage />
                         </FormItem>
                     )}
