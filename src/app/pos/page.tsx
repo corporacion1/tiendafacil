@@ -73,10 +73,10 @@ export default function POSPage() {
   const { settings, setSettings, activeSymbol, activeRate } = useSettings();
   
   const productsRef = useMemoFirebase(() => collection(firestore, 'products'), [firestore]);
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
+  const { data: products = [], isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
 
   const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
-  const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersRef);
+  const { data: customers = [], isLoading: isLoadingCustomers } = useCollection<Customer>(customersRef);
   
   const pendingOrdersQuery = useMemoFirebase(() => query(collection(firestore, 'pendingOrders'), orderBy('date', 'desc')), [firestore]);
   const { data: pendingOrders = [], isLoading: isLoadingPendingOrders } = useCollection<PendingOrder>(pendingOrdersQuery);
