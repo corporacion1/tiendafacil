@@ -91,9 +91,9 @@ export default function CatalogPage() {
                     if (scrollIntervalRef.current) clearInterval(scrollIntervalRef.current);
                     scrollIntervalRef.current = null;
                 } else {
-                    window.scrollBy({ top: 1, behavior: 'smooth' });
+                    window.scrollBy({ top: 2, behavior: 'smooth' });
                 }
-            }, 50); // Adjust for scroll speed
+            }, 30); // Adjust for scroll speed
         };
 
         const stopAutoScroll = () => {
