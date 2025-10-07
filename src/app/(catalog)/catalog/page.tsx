@@ -239,7 +239,7 @@ export default function CatalogPage() {
     const subtotal = useMemo(() => cart.reduce((acc, item) => acc + item.price * item.quantity, 0), [cart]);
 
     const sortedAndFilteredProducts = useMemo(() => {
-        return products
+        return (products || [])
           .filter(
             (product) =>
               (product.status === 'active' || product.status === 'promotion') &&
@@ -675,5 +675,7 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
+
+    
 
     
