@@ -272,15 +272,7 @@ export default function InventoryPage() {
     return baseFilter;
   }
 
-  const exportData = (format: 'csv' | 'json' | 'txt' | 'pdf') => {
-    if (format === 'pdf') {
-        toast({
-            variant: 'destructive',
-            title: 'Función no disponible',
-            description: 'La exportación a PDF aún no está implementada.'
-        });
-        return;
-    }
+  const exportData = (format: 'csv' | 'json' | 'txt') => {
     const data = getVisibleProducts();
     if (data.length === 0) {
       toast({ variant: 'destructive', title: 'No hay datos para exportar' });
@@ -432,10 +424,6 @@ export default function InventoryPage() {
                     <FileText className="mr-2 h-4 w-4" />
                     <span>TXT (Texto Plano)</span>
                 </DropdownMenuItem>
-                 <DropdownMenuItem onSelect={() => exportData('pdf')}>
-                    <FileText className="mr-2 h-4 w-4" />
-                    <span>PDF (Próximamente)</span>
-                </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -537,13 +525,13 @@ export default function InventoryPage() {
         </div>
       </div>
       <TabsContent value="all">
-        {renderProductsTable(filteredProducts)}
+        {renderProductsTable(getVisibleProducts())}
       </TabsContent>
       <TabsContent value="active">
-        {renderProductsTable(filteredProducts.filter(p => p.status === 'active'))}
+        {renderProductsTable(getVisibleProducts())}
       </TabsContent>
       <TabsContent value="inactive">
-        {renderProductsTable(filteredProducts.filter(p => p.status === 'inactive'))}
+        {renderProductsTable(getVisibleProducts())}
       </TabsContent>
     </Tabs>
 

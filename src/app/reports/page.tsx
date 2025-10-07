@@ -108,16 +108,7 @@ export default function ReportsPage() {
         return typeof date === 'string' ? parseISO(date) : date; // Already a Date object
     }
     
-    const handleExport = (format: 'csv' | 'json' | 'txt' | 'pdf') => {
-        if (format === 'pdf') {
-            toast({
-                variant: 'destructive',
-                title: 'Función no disponible',
-                description: 'La exportación a PDF aún no está implementada.'
-            });
-            return;
-        }
-
+    const handleExport = (format: 'csv' | 'json' | 'txt') => {
         const date = new Date().toISOString().split('T')[0];
         let dataToExport: object[] = [];
         let filename = `${activeTab}-report-${date}.${format}`;
@@ -335,10 +326,6 @@ export default function ReportsPage() {
                 <DropdownMenuItem onSelect={() => handleExport('txt')}>
                     <FileText className="mr-2 h-4 w-4" />
                     <span>TXT (Texto Plano)</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => handleExport('pdf')}>
-                    <FileText className="mr-2 h-4 w-4" />
-                    <span>PDF (Próximamente)</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
