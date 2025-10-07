@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
-import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid, Instagram, Star } from "lucide-react";
+import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid, Instagram, Star, Search } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 
 import { Button } from "@/components/ui/button";
@@ -13,11 +13,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import type { Product, CartItem } from "@/lib/types";
-import { mockProducts, initialFamilies, pendingOrders } from "@/lib/data";
+import type { Product, CartItem, Sale } from "@/lib/types";
+import { mockProducts, initialFamilies, pendingOrders, mockSales } from "@/lib/data";
 import { useSettings } from "@/contexts/settings-context";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 
 const CatalogProductCard = ({ product, onAddToCart }: { product: Product; onAddToCart: (p: Product) => void; }) => {
     const { activeSymbol, activeRate } = useSettings();
@@ -43,6 +45,12 @@ const CatalogProductCard = ({ product, onAddToCart }: { product: Product; onAddT
                         <Package className="w-16 h-16 text-muted-foreground" />
                     </div>
                 )}
+                 {product.status === 'promotion' && (
+                    <Badge variant="destructive" className="absolute top-2 left-2 z-20 shadow-lg">
+                        <Star className="mr-1 h-3 w-3" />
+                        OFERTA
+                    </Badge>
+                 )}
                  <div className="absolute bottom-0 left-0 right-0 p-4 z-20 flex justify-between items-end">
                     <div>
                          <h3 className="text-lg font-bold text-white drop-shadow-md">{product.name}</h3>
@@ -66,11 +74,13 @@ const CatalogProductCard = ({ product, onAddToCart }: { product: Product; onAddT
 export default function CatalogPage() {
     const { toast } = useToast();
     const [products, setProducts] = useState<Product[]>([]);
+    const [sales, setSales] = useState<Sale[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         setTimeout(() => {
             setProducts(mockProducts);
+            setSales(mockSales);
             setIsLoading(false);
         }, 500);
     }, []);
@@ -115,15 +125,47 @@ export default function CatalogPage() {
     };
 
     const subtotal = useMemo(() => cart.reduce((acc, item) => acc + item.price * item.quantity, 0), [cart]);
+    
+    const bestSellers = useMemo(() => {
+        const productSaleCounts = sales.reduce((acc, sale) => {
+            const productsInSale = new Set(sale.items.map(item => item.productId));
+            productsInSale.forEach(productId => {
+                acc[productId] = (acc[productId] || 0) + 1;
+            });
+            return acc;
+        }, {} as Record<string, number>);
 
-    const filteredProducts = useMemo(() => {
-        return products.filter(product =>
+        return Object.entries(productSaleCounts)
+            .sort((a, b) => b[1] - a[1])
+            .map(entry => entry[0]);
+    }, [sales]);
+
+
+    const sortedAndFilteredProducts = useMemo(() => {
+        const filtered = products.filter(product =>
             (product.status === 'active' || product.status === 'promotion') &&
             (selectedFamily === 'all' || product.family === selectedFamily) &&
             (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase())))
         );
-    }, [products, searchTerm, selectedFamily]);
+
+        return filtered.sort((a, b) => {
+            // 1. Promotions first
+            if (a.status === 'promotion' && b.status !== 'promotion') return -1;
+            if (a.status !== 'promotion' && b.status === 'promotion') return 1;
+
+            // 2. Best sellers
+            const aIndex = bestSellers.indexOf(a.id);
+            const bIndex = bestSellers.indexOf(b.id);
+            if (aIndex > -1 && bIndex > -1) return aIndex - bIndex;
+            if (aIndex > -1) return -1;
+            if (bIndex > -1) return 1;
+
+            // 3. Active products (default order)
+            return 0;
+        });
+
+    }, [products, searchTerm, selectedFamily, bestSellers]);
     
     const familyFilters = ["all", ...initialFamilies.map(f => f.name)];
     
@@ -231,32 +273,48 @@ export default function CatalogPage() {
 
             <main className="container py-8">
                  <div className="text-center mb-12">
-                    <h1 className="text-4xl md:text-5xl font-extrabold tracking-tighter">Nuestro Catálogo</h1>
+                    <h1 
+                        className="text-4xl md:text-6xl font-extrabold tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-primary animate-[shine_5s_linear_infinite]"
+                        style={{ backgroundSize: '200% auto' }}
+                    >
+                        Nuestro Catálogo
+                    </h1>
+                    <style jsx>{`
+                        @keyframes shine {
+                            to {
+                                background-position: 200% center;
+                            }
+                        }
+                    `}</style>
                     <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">Explora nuestra selección de componentes de alta gama para tu próxima computadora.</p>
                 </div>
                 
                 <div className="mb-8">
-                    <div className="flex flex-col sm:flex-row gap-4">
-                        <div className="relative flex-grow">
-                             <input
+                     <div className="flex flex-col sm:flex-row gap-4 items-center">
+                        <div className="relative flex-grow w-full">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                             <Input
                                 type="search"
                                 placeholder="Buscar productos por nombre o SKU..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-4 pr-4 py-2 border rounded-full"
+                                className="w-full pl-12 pr-4 py-3 text-base rounded-full h-12"
                             />
                         </div>
-                        <div className="flex items-center gap-2 overflow-x-auto pb-2">
-                             {familyFilters.map(family => (
-                                <Button
-                                    key={family}
-                                    variant={selectedFamily === family ? "default" : "outline"}
-                                    onClick={() => setSelectedFamily(family)}
-                                    className="rounded-full shrink-0"
-                                >
-                                    {family === 'all' ? 'Todas' : family}
-                                </Button>
-                            ))}
+                        <div className="w-full sm:w-auto">
+                             <Select value={selectedFamily} onValueChange={setSelectedFamily}>
+                                <SelectTrigger className="h-12 rounded-full text-base sm:w-[220px]">
+                                    <SelectValue placeholder="Filtrar por familia" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                <SelectItem value="all">Todas las familias</SelectItem>
+                                    {initialFamilies.map(family => (
+                                        <SelectItem key={family.id} value={family.name}>
+                                        {family.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
                 </div>
@@ -269,12 +327,12 @@ export default function CatalogPage() {
                     </div>
                 ) : (
                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        {filteredProducts.map((product) => (
+                        {sortedAndFilteredProducts.map((product) => (
                             <CatalogProductCard key={product.id} product={product} onAddToCart={addToCart} />
                         ))}
                     </div>
                 )}
-                 {filteredProducts.length === 0 && !isLoading && (
+                 {sortedAndFilteredProducts.length === 0 && !isLoading && (
                     <div className="text-center py-16 text-muted-foreground">
                         <Package className="mx-auto h-12 w-12 mb-4" />
                         <h3 className="text-lg font-semibold">No se encontraron productos</h3>
@@ -300,3 +358,5 @@ export default function CatalogPage() {
         </div>
     );
 }
+
+    
