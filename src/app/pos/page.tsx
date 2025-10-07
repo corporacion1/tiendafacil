@@ -16,7 +16,7 @@ import type { Product, CartItem, Customer, Sale, InventoryMovement, Family, Paym
 import { TicketPreview } from "@/components/ticket-preview";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { cn } from "@/lib/utils";
+import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
@@ -35,6 +35,8 @@ const generateSaleId = () => {
 
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
     const { activeSymbol, activeRate } = useSettings();
+    const [imageError, setImageError] = useState(false);
+    const imageUrl = getDisplayImageUrl(product.imageUrl);
 
     return (
         <Card className="overflow-hidden group">
@@ -47,14 +49,15 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
                         </Button>
                     </DialogTrigger>
                 </div>
-                {product.imageUrl ? (
+                {imageUrl && !imageError ? (
                     <Image
-                        src={product.imageUrl}
+                        src={imageUrl}
                         alt={product.name}
                         fill
                         sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
                         className="object-cover transition-transform group-hover:scale-105"
                         data-ai-hint={product.imageHint}
+                        onError={() => setImageError(true)}
                     />
                 ) : (
                     <Package className="w-12 h-12 text-muted-foreground" />
@@ -109,6 +112,7 @@ export default function POSPage() {
   const [ticketType, setTicketType] = useState<'sale' | 'quote'>('sale');
   
   const [productDetails, setProductDetails] = useState<Product | null>(null);
+  const [productImageError, setProductImageError] = useState(false);
 
   const customerList = useMemo(() => [{ id: 'eventual', name: 'Cliente Eventual', phone: '' }, ...customers], [customers]);
   const selectedCustomer = customerList.find(c => c.id === selectedCustomerId) ?? null;
@@ -394,7 +398,7 @@ export default function POSPage() {
   const isNewCustomerFormDirty = newCustomer.name.trim() !== '' || newCustomer.id.trim() !== '' || newCustomer.phone.trim() !== '' || newCustomer.address.trim() !== '';
 
   return (
-    <Dialog onOpenChange={(open) => !open && setProductDetails(null)}>
+    <Dialog onOpenChange={(open) => { if (!open) setProductDetails(null); setProductImageError(false); }}>
     <div className="grid flex-1 auto-rows-max gap-4 md:grid-cols-3 lg:gap-8">
       <div className="grid auto-rows-max items-start gap-4 md:col-span-2 lg:gap-8">
         <Card>
@@ -730,14 +734,15 @@ export default function POSPage() {
         {productDetails && (
             <div className="grid gap-4">
                  <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
-                    {productDetails.imageUrl ? (
+                    {getDisplayImageUrl(productDetails.imageUrl) && !productImageError ? (
                         <Image
-                            src={productDetails.imageUrl}
+                            src={getDisplayImageUrl(productDetails.imageUrl)}
                             alt={productDetails.name}
                             fill
                             sizes="300px"
                             className="object-cover"
                             data-ai-hint={productDetails.imageHint}
+                            onError={() => setProductImageError(true)}
                         />
                         ) : (
                         <Package className="w-16 h-16 text-muted-foreground" />
@@ -790,5 +795,3 @@ export default function POSPage() {
   </Dialog>
   );
 }
-
-    

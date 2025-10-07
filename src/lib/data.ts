@@ -38,84 +38,76 @@ export let initialWarehouses: Warehouse[] = [
     { id: 'wh-2', name: 'Depósito Secundario' },
 ];
 
-const getDisplayImageUrl = (url?: string): string => {
-    if (!url) return '';
-    if (url.includes('dropbox.com')) {
-      return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '&raw=1');
-    }
-    return url;
-};
-
 export const mockProducts: Product[] = [
   {
     id: "prod-1", name: "Refresco Coca-Cola 2L", sku: "CC-2L-001", stock: 50, price: 2.5, wholesalePrice: 2.2, cost: 1.8, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Bebidas", warehouse: "Almacén Principal",
     description: "Refresco carbonatado sabor cola, botella de 2 litros.",
-    imageUrl: getDisplayImageUrl(PlaceHolderImages.find(p => p.id === '1')?.imageUrl), imageHint: PlaceHolderImages.find(p => p.id === '1')?.imageHint,
+    imageUrl: PlaceHolderImages.find(p => p.id === '1')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '1')?.imageHint,
   },
   {
     id: "prod-2", name: "Papas Fritas Lays 150g", sku: "LAYS-150G-002", stock: 120, price: 1.5, wholesalePrice: 1.2, cost: 0.9, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Snacks", warehouse: "Almacén Principal",
     description: "Papas fritas naturales en bolsa de 150g.",
-    imageUrl: getDisplayImageUrl(PlaceHolderImages.find(p => p.id === '2')?.imageUrl), imageHint: PlaceHolderImages.find(p => p.id === '2')?.imageHint,
+    imageUrl: PlaceHolderImages.find(p => p.id === '2')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '2')?.imageHint,
   },
   {
     id: "prod-3", name: "Leche Completa 1L", sku: "LECHE-1L-003", stock: 80, price: 1.8, wholesalePrice: 1.6, cost: 1.2, status: "active", tax1: true, tax2: false, unit: "Litro", family: "Lácteos y Huevos", warehouse: "Almacén Principal",
     description: "Leche de vaca pasteurizada, cartón de 1 litro.",
-    imageUrl: getDisplayImageUrl(PlaceHolderImages.find(p => p.id === '3')?.imageUrl), imageHint: PlaceHolderImages.find(p => p.id === '3')?.imageHint,
+    imageUrl: PlaceHolderImages.find(p => p.id === '3')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '3')?.imageHint,
   },
   {
     id: "prod-4", name: "Detergente en Polvo 1kg", sku: "DET-1KG-004", stock: 60, price: 4.5, wholesalePrice: 4.0, cost: 3.2, status: "active", tax1: true, tax2: false, unit: "Kg", family: "Limpieza", warehouse: "Almacén Principal",
     description: "Detergente en polvo para ropa, bolsa de 1 kilogramo.",
-    imageUrl: getDisplayImageUrl(PlaceHolderImages.find(p => p.id === '13')?.imageUrl), imageHint: PlaceHolderImages.find(p => p.id === '13')?.imageHint,
+    imageUrl: PlaceHolderImages.find(p => p.id === '4')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '4')?.imageHint,
   },
   {
     id: "prod-5", name: "Pan de Sándwich Blanco", sku: "PAN-SW-005", stock: 40, price: 2.0, wholesalePrice: 1.8, cost: 1.3, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Panadería", warehouse: "Almacén Principal",
     description: "Pan de molde blanco, ideal para sándwiches.",
-    imageUrl: getDisplayImageUrl(PlaceHolderImages.find(p => p.id === '5')?.imageUrl), imageHint: PlaceHolderImages.find(p => p.id === '5')?.imageHint,
+    imageUrl: PlaceHolderImages.find(p => p.id === '5')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '5')?.imageHint,
   },
   {
     id: "prod-6", name: "Huevos (Cartón de 12)", sku: "HUEVOS-12-006", stock: 30, price: 3.5, wholesalePrice: 3.1, cost: 2.5, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Lácteos y Huevos", warehouse: "Almacén Principal",
     description: "Cartón con 12 huevos de gallina frescos.",
-    imageUrl: getDisplayImageUrl(PlaceHolderImages.find(p => p.id === '6')?.imageUrl), imageHint: PlaceHolderImages.find(p => p.id === '6')?.imageHint,
+    imageUrl: PlaceHolderImages.find(p => p.id === '6')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '6')?.imageHint,
   },
   {
     id: "prod-7", name: "Café en Grano 500g", sku: "CAFE-500G-007", stock: 45, price: 5.0, wholesalePrice: 4.5, cost: 3.8, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Viveres", warehouse: "Almacén Principal",
     description: "Café en grano tostado oscuro, bolsa de 500 gramos.",
-    imageUrl: getDisplayImageUrl(PlaceHolderImages.find(p => p.id === '7')?.imageUrl), imageHint: PlaceHolderImages.find(p => p.id === '7')?.imageHint,
+    imageUrl: PlaceHolderImages.find(p => p.id === '7')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '7')?.imageHint,
   },
   {
     id: "prod-8", name: "Atún en Aceite 140g", sku: "ATUN-140G-008", stock: 90, price: 1.2, wholesalePrice: 1.0, cost: 0.8, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Viveres", warehouse: "Almacén Principal",
     description: "Lata de atún en aceite vegetal de 140 gramos.",
-    imageUrl: getDisplayImageUrl(PlaceHolderImages.find(p => p.id === '8')?.imageUrl), imageHint: PlaceHolderImages.find(p => p.id === '8')?.imageHint,
+    imageUrl: PlaceHolderImages.find(p => p.id === '8')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '8')?.imageHint,
   },
   {
     id: "prod-9", name: "Pasta Larga (Spaghetti) 1kg", sku: "PASTA-1KG-009", stock: 70, price: 1.9, wholesalePrice: 1.7, cost: 1.4, status: "active", tax1: false, tax2: false, unit: "Kg", family: "Viveres", warehouse: "Almacén Principal",
     description: "Paquete de pasta tipo spaghetti de 1 kilogramo.",
-    imageUrl: getDisplayImageUrl(PlaceHolderImages.find(p => p.id === '9')?.imageUrl), imageHint: PlaceHolderImages.find(p => p.id === '9')?.imageHint,
+    imageUrl: PlaceHolderImages.find(p => p.id === '9')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '9')?.imageHint,
   },
   {
     id: "prod-10", name: "Salsa de Tomate 500g", sku: "SALSA-500G-010", stock: 65, price: 1.3, wholesalePrice: 1.1, cost: 0.9, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Viveres", warehouse: "Almacén Principal",
     description: "Salsa de tomate para pastas, frasco de 500 gramos.",
-    imageUrl: getDisplayImageUrl(PlaceHolderImages.find(p => p.id === '10')?.imageUrl), imageHint: PlaceHolderImages.find(p => p.id === '10')?.imageHint,
+    imageUrl: PlaceHolderImages.find(p => p.id === '10')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '10')?.imageHint,
   },
   {
     id: "prod-11", name: "Jabón de Baño", sku: "JABON-B-011", stock: 150, price: 0.8, wholesalePrice: 0.6, cost: 0.4, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Cuidado Personal", warehouse: "Almacén Principal",
     description: "Barra de jabón de baño con fragancia neutra.",
-    imageUrl: getDisplayImageUrl(PlaceHolderImages.find(p => p.id === '11')?.imageUrl), imageHint: PlaceHolderImages.find(p => p.id === '11')?.imageHint,
+    imageUrl: PlaceHolderImages.find(p => p.id === '11')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '11')?.imageHint,
   },
   {
     id: "prod-12", name: "Shampoo 400ml", sku: "SHAMP-400ML-012", stock: 55, price: 3.2, wholesalePrice: 2.8, cost: 2.2, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Cuidado Personal", warehouse: "Almacén Principal",
     description: "Botella de shampoo para todo tipo de cabello, 400ml.",
-    imageUrl: getDisplayImageUrl(PlaceHolderImages.find(p => p.id === '12')?.imageUrl), imageHint: PlaceHolderImages.find(p => p.id === '12')?.imageHint,
+    imageUrl: PlaceHolderImages.find(p => p.id === '12')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '12')?.imageHint,
   },
   {
     id: "prod-13", name: "Harina de Maíz 1kg", sku: "HARINA-1KG-013", stock: 200, price: 1.1, wholesalePrice: 0.9, cost: 0.7, status: "active", tax1: false, tax2: false, unit: "Kg", family: "Viveres", warehouse: "Almacén Principal",
     description: "Harina de maíz precocida, paquete de 1 kilogramo.",
-    imageUrl: getDisplayImageUrl("https://www.dropbox.com/scl/fi/f0k5w5vj3v2x5j5a4f4v1/626574a49c2a8.png?rlkey=v686tt2l0f4b3p4i8a1g5f0w0&raw=1"), imageHint: "corn flour",
+    imageUrl: PlaceHolderImages.find(p => p.id === '13')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '13')?.imageHint,
   },
   {
     id: "prod-14", name: "Arroz Blanco 1kg", sku: "ARROZ-1KG-014", stock: 180, price: 1.4, wholesalePrice: 1.2, cost: 0.95, status: "active", tax1: false, tax2: false, unit: "Kg", family: "Viveres", warehouse: "Almacén Principal",
     description: "Arroz blanco de grano largo, paquete de 1 kilogramo.",
-    imageUrl: getDisplayImageUrl(PlaceHolderImages.find(p => p.id === '14')?.imageUrl), imageHint: PlaceHolderImages.find(p => p.id === '14')?.imageHint,
+    imageUrl: PlaceHolderImages.find(p => p.id === '14')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '14')?.imageHint,
   },
 ];
 
@@ -232,5 +224,3 @@ export function factoryReset() {
     
     console.log("Factory reset complete.");
 }
-
-    
