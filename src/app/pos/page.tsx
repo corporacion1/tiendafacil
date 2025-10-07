@@ -24,21 +24,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useUser } from "@/firebase";
 import { mockProducts, defaultCustomers, initialFamilies, mockSales, mockInventoryMovements, paymentMethods } from "@/lib/data";
 
-const generateSaleId = () => {
-    if (!mockSales || mockSales.length === 0) {
-        return "SALE-001";
-    }
-
-    const highestId = mockSales.reduce((max, sale) => {
-        const parts = sale.id.split('-');
-        const currentNum = parseInt(parts[1], 10);
-        return currentNum > max ? currentNum : max;
-    }, 0);
-
-    const newNumber = highestId + 1;
-    return `SALE-${String(newNumber).padStart(3, '0')}`;
-};
-
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
     const { activeSymbol, activeRate } = useSettings();
     const [imageError, setImageError] = useState(false);
@@ -81,7 +66,7 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
 
 export default function POSPage() {
   const { toast } = useToast();
-  const { settings, activeSymbol, activeRate } = useSettings();
+  const { settings, setSettings, activeSymbol, activeRate } = useSettings();
   const { user } = useUser();
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -119,6 +104,12 @@ export default function POSPage() {
   
   const [productDetails, setProductDetails] = useState<Product | null>(null);
   const [productImageError, setProductImageError] = useState(false);
+  
+  const generateSaleId = () => {
+    const series = settings.saleSeries || 'SALE';
+    const nextCorrelative = settings.saleCorrelative || 1;
+    return `${series}-${String(nextCorrelative).padStart(3, '0')}`;
+  };
 
   const customerList = useMemo(() => [{ id: 'eventual', name: 'Cliente Eventual', phone: '' }, ...customers], [customers]);
   const selectedCustomer = customerList.find(c => c.id === selectedCustomerId) ?? null;
@@ -327,6 +318,9 @@ export default function POSPage() {
     }
     
     setLastSale(newSale);
+    
+    // Update correlative in settings
+    setSettings({ ...settings, saleCorrelative: settings.saleCorrelative + 1 });
     
     toast({
         title: "Venta Procesada",

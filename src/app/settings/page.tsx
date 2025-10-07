@@ -138,6 +138,10 @@ export default function SettingsPage() {
     const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
     const [resetPin, setResetPin] = useState('');
     const [resetConfirmationText, setResetConfirmationText] = useState('');
+
+     useEffect(() => {
+        setLocalSettings(settings);
+    }, [settings]);
     
     useEffect(() => {
         const mainSettingsChanged = JSON.stringify(localSettings) !== JSON.stringify(settings);
@@ -471,6 +475,20 @@ export default function SettingsPage() {
                             <Input id="storeSlogan" value={localSettings.storeSlogan} onChange={handleSettingsChange} placeholder="¡Gracias por tu compra!" />
                         </div>
                     </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="saleSeries">Serie de Venta</Label>
+                            <Input id="saleSeries" value={localSettings.saleSeries} onChange={handleSettingsChange} placeholder="Ej: SALE" />
+                            <CardDescription>Prefijo para los números de control de venta.</CardDescription>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="saleCorrelative">Próximo Correlativo</Label>
+                            <Input id="saleCorrelative" type="number" value={localSettings.saleCorrelative} readOnly />
+                             <CardDescription>El número de la próxima venta. Se actualiza automáticamente.</CardDescription>
+                        </div>
+                    </div>
+
 
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                         <div className="space-y-2">
@@ -727,5 +745,3 @@ export default function SettingsPage() {
         </div>
     );
 }
-
-    

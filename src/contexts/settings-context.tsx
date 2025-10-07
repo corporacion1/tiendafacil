@@ -4,13 +4,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import type { CurrencyRate } from '@/lib/types';
-import { mockCurrencyRates } from '@/lib/data';
+import { mockCurrencyRates, mockSales } from '@/lib/data';
 
 export interface Settings {
     storeName: string;
     storeAddress: string;
     storePhone: string;
     storeSlogan: string;
+    saleSeries: string;
+    saleCorrelative: number;
     tax1: number;
     tax2: number;
     primaryCurrencyName: string;
@@ -38,11 +40,26 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 const SETTINGS_STORAGE_KEY = 'tienda_facil_settings';
 const CURRENCY_PREF_STORAGE_KEY = 'tienda_facil_currency_pref';
 
+const findHighestSaleCorrelative = () => {
+    if (!mockSales || mockSales.length === 0) {
+        return 1;
+    }
+    const highestId = mockSales.reduce((max, sale) => {
+        const parts = sale.id.split('-');
+        const currentNum = parseInt(parts[parts.length - 1], 10);
+        return !isNaN(currentNum) && currentNum > max ? currentNum : max;
+    }, 0);
+    return highestId + 1;
+};
+
+
 const defaultSettings: Settings = {
     storeName: 'TIENDA FACIL WEB',
     storeAddress: 'Calle Falsa 123',
     storePhone: '+1 (555) 123-4567',
     storeSlogan: '¡Gracias por tu compra!',
+    saleSeries: 'SALE',
+    saleCorrelative: 1, // Will be updated on client
     tax1: 16,
     tax2: 0,
     primaryCurrencyName: 'Dólar',
@@ -60,11 +77,15 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   useEffect(() => {
     try {
       const storedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      const nextCorrelative = findHighestSaleCorrelative();
+      
       if (storedSettings) {
         const parsedSettings = JSON.parse(storedSettings);
-        setSettings(prev => ({ ...prev, ...parsedSettings }));
+        setSettings(prev => ({ ...prev, ...parsedSettings, saleCorrelative: parsedSettings.saleCorrelative > nextCorrelative ? parsedSettings.saleCorrelative : nextCorrelative }));
       } else {
-        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(defaultSettings));
+        const initialSettings = { ...defaultSettings, saleCorrelative: nextCorrelative };
+        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(initialSettings));
+        setSettings(initialSettings);
       }
 
       const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY) as DisplayCurrency;
