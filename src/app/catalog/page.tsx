@@ -95,6 +95,33 @@ export default function CatalogPage() {
     const [newCustomer, setNewCustomer] = useState({ name: '', phone: '' });
     const [orderIdForQr, setOrderIdForQr] = useState<string | null>(null);
     const [qrCodeUrl, setQrCodeUrl] = useState('');
+    
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+
+    useEffect(() => {
+        // Initialize audio only on client
+        if (typeof window !== 'undefined') {
+            audioRef.current = new Audio("https://stream.zeno.fm/fvr822g62d0uv");
+            audioRef.current.loop = true;
+        }
+
+        // Play on first user interaction
+        const handleFirstInteraction = () => {
+            if (audioRef.current && audioRef.current.paused) {
+                audioRef.current.play().catch(error => console.error("Audio playback failed:", error));
+            }
+            // Remove listener after first interaction
+            window.removeEventListener('click', handleFirstInteraction);
+        };
+        
+        window.addEventListener('click', handleFirstInteraction);
+
+        return () => {
+            window.removeEventListener('click', handleFirstInteraction);
+            audioRef.current?.pause();
+        };
+    }, []);
+
 
     useEffect(() => {
         const INACTIVITY_TIMEOUT = 5000; // 5 seconds
@@ -659,5 +686,7 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
+
+    
 
     
