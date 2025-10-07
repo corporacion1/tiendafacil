@@ -325,11 +325,12 @@ export default function POSPage() {
         batch.update(productRef, { stock: newStock });
 
         const movementRef = doc(collection(firestore, "inventory_movements"));
-        const newMovement: Omit<InventoryMovement, 'id'> = {
+        const newMovement: Omit<InventoryMovement, 'id' | 'date'> & { date: string } = {
             productName: item.product.name,
             type: 'sale',
             quantity: -item.quantity,
             date: new Date().toISOString(),
+            responsible: 'Sistema POS',
         };
         batch.set(movementRef, newMovement);
     }
@@ -458,7 +459,7 @@ export default function POSPage() {
                     name: item.productName,
                     price: item.price,
                     stock: 0,
-                    sku: 'N/A', cost: 0, status: 'inactive', tax1: false, tax2: false, wholesalePrice: 0, storeId: '',
+                    sku: 'N/A', cost: 0, status: 'inactive', tax1: false, tax2: false, wholesalePrice: 0, storeId: '', createdAt: new Date().toISOString()
                 },
                 quantity: item.quantity,
                 price: item.price,
