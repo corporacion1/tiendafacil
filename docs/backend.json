@@ -2,71 +2,69 @@
   "entities": {
     "Store": {
       "title": "Store",
-      "description": "Represents a single store or tenant in the SaaS platform.",
+      "description": "Representa una única tienda o inquilino en la plataforma SaaS.",
       "type": "object",
       "properties": {
-        "name": { "type": "string", "description": "Name of the store." },
-        "description": { "type": "string", "description": "Public description of the store." },
-        "ownerId": { "type": "string", "description": "The UID of the user who owns this store." },
-        "logoUrl": { "type": "string", "format": "uri" }
+        "name": { "type": "string", "description": "Nombre de la tienda." },
+        "description": { "type": "string", "description": "Descripción pública de la tienda." },
+        "ownerId": { "type": "string", "description": "El UID del usuario (storeAdmin) que posee esta tienda." },
+        "logoUrl": { "type": "string", "format": "uri", "description": "URL del logo de la tienda." }
       },
       "required": ["name", "ownerId"]
     },
     "UserProfile": {
       "title": "User Profile",
-      "description": "Represents a user's public profile and role information.",
+      "description": "Representa el perfil de un usuario, incluyendo su rol y la tienda que gestiona si aplica.",
       "type": "object",
       "properties": {
         "displayName": { "type": "string" },
         "email": { "type": "string", "format": "email" },
-        "role": { "type": "string", "enum": ["customer", "storeAdmin", "superAdmin"] },
-        "storeId": { "type": "string", "description": "The ID of the store this user manages, if they are a storeAdmin." }
+        "role": { "type": "string", "enum": ["customer", "storeAdmin", "superAdmin"], "description": "Rol del usuario: 'customer' (cliente final), 'storeAdmin' (dueño de tienda), or 'superAdmin' (administrador de la plataforma)." },
+        "storeId": { "type": "string", "description": "El ID de la tienda que este usuario gestiona, aplicable solo si el rol es 'storeAdmin'." }
       },
       "required": ["displayName", "email", "role"]
     },
     "Product": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Product",
       "type": "object",
-      "description": "Represents a product in the inventory. This can be in a specific store's collection or in the public-facing aggregated collection.",
+      "description": "Representa un producto del inventario. Puede existir en la colección de una tienda específica o en la colección pública agregada.",
       "properties": {
-        "name": { "type": "string", "description": "Name of the product." },
-        "description": { "type": "string", "description": "Detailed description of the product." },
-        "price": { "type": "number", "description": "Price of the product." },
-        "wholesalePrice": { "type": "number", "description": "Wholesale price of the product." },
-        "cost": { "type": "number", "description": "Cost of the product." },
-        "stock": { "type": "number", "description": "Available stock quantity." },
-        "sku": { "type": "string", "description": "Stock Keeping Unit." },
-        "status": { "type": "string", "enum": ["active", "inactive"], "description": "Status of the product." },
+        "name": { "type": "string", "description": "Nombre del producto." },
+        "description": { "type": "string", "description": "Descripción detallada del producto." },
+        "price": { "type": "number", "description": "Precio de venta al detal." },
+        "wholesalePrice": { "type": "number", "description": "Precio de venta al por mayor." },
+        "cost": { "type": "number", "description": "Costo del producto para la tienda." },
+        "stock": { "type": "number", "description": "Cantidad de stock disponible." },
+        "sku": { "type": "string", "description": "Stock Keeping Unit (SKU)." },
+        "status": { "type": "string", "enum": ["active", "inactive"], "description": "Estado del producto (activo o inactivo)." },
         "tax1": { "type": "boolean" },
         "tax2": { "type": "boolean" },
         "unit": { "type": "string" },
         "family": { "type": "string" },
         "warehouse": { "type": "string" },
-        "imageUrl": { "type": "string", "description": "URL of the product image.", "format": "uri" },
+        "imageUrl": { "type": "string", "description": "URL de la imagen del producto.", "format": "uri" },
         "imageHint": { "type": "string" },
-        "storeId": { "type": "string", "description": "The ID of the store this product belongs to." }
+        "storeId": { "type": "string", "description": "El ID de la tienda a la que pertenece este producto." }
       },
       "required": ["name", "price", "stock", "sku", "status", "storeId"]
     },
     "Sale": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Sale",
       "type": "object",
-      "description": "Represents a sale transaction within a specific store.",
+      "description": "Representa una transacción de venta dentro de una tienda específica.",
       "properties": {
         "id": { "type": "string" },
         "customerId": { "type": "string" },
         "saleDate": { "type": "string", "format": "date-time" },
-        "totalAmount": { "type": "number" }
+        "totalAmount": { "type": "number" },
+        "storeId": { "type": "string", "description": "El ID de la tienda donde se realizó la venta." }
       },
-      "required": ["id", "customerId", "saleDate", "totalAmount"]
+      "required": ["id", "customerId", "saleDate", "totalAmount", "storeId"]
     },
     "SaleItem": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "SaleItem",
       "type": "object",
-      "description": "Represents an item within a sale transaction.",
+      "description": "Representa un artículo dentro de una transacción de venta.",
       "properties": {
         "id": { "type": "string" },
         "saleId": { "type": "string" },
@@ -77,31 +75,32 @@
       "required": ["id", "saleId", "productId", "quantity", "unitPrice"]
     },
     "Customer": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Customer",
       "type": "object",
-      "description": "Represents a customer of a specific store.",
+      "description": "Representa un cliente de una tienda específica. Puede ser un cliente recurrente o un cliente eventual.",
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
         "email": { "type": "string", "format": "email" },
-        "phone": { "type": "string" }
+        "phone": { "type": "string" },
+        "storeId": { "type": "string", "description": "El ID de la tienda a la que está asociado este cliente." }
       },
-      "required": ["id", "name"]
+      "required": ["id", "name", "storeId"]
     },
     "Chat": {
       "title": "Chat",
-      "description": "Represents a chat room.",
+      "description": "Representa una sala de chat entre un cliente y los administradores de tienda/plataforma.",
       "type": "object",
       "properties": {
-        "name": { "type": "string", "description": "Name of the chat room." },
+        "name": { "type": "string", "description": "Nombre de la sala de chat." },
+        "participants": { "type": "array", "items": { "type": "string" }, "description": "Arreglo de UIDs de los participantes." },
         "lastMessage": { "type": "string" },
         "lastMessageTimestamp": { "type": "string", "format": "date-time" }
       }
     },
     "ChatMessage": {
       "title": "ChatMessage",
-      "description": "Represents a single message in a chat.",
+      "description": "Representa un único mensaje dentro de un chat.",
       "type": "object",
       "properties": {
         "senderId": { "type": "string" },
@@ -118,35 +117,35 @@
   "firestore": {
     "/stores": {
       "schema": { "$ref": "#/entities/Store" },
-      "description": "Collection of all stores (tenants) in the platform."
+      "description": "Colección de todas las tiendas (inquilinos) en la plataforma."
     },
     "/stores/{storeId}/products": {
       "schema": { "$ref": "#/entities/Product" },
-      "description": "Collection of products specific to a single store."
+      "description": "Colección de productos específica de una sola tienda."
     },
     "/stores/{storeId}/sales": {
       "schema": { "$ref": "#/entities/Sale" },
-      "description": "Collection of sales specific to a single store."
+      "description": "Colección de ventas específica de una sola tienda."
     },
     "/stores/{storeId}/customers": {
       "schema": { "$ref": "#/entities/Customer" },
-      "description": "Collection of customers specific to a single store."
+      "description": "Colección de clientes específica de una sola tienda."
     },
     "/products": {
       "schema": { "$ref": "#/entities/Product" },
-      "description": "Aggregated, public-facing collection of products from all stores for the marketplace view."
+      "description": "Colección agregada y pública de productos de todas las tiendas para la vista de mercado (marketplace)."
     },
     "/users": {
       "schema": { "$ref": "#/entities/UserProfile" },
-      "description": "Collection of all user profiles, including their roles."
+      "description": "Colección de todos los perfiles de usuario, incluyendo sus roles (customer, storeAdmin, superAdmin)."
     },
     "/chats": {
       "schema": { "$ref": "#/entities/Chat" },
-      "description": "Collection of all chat rooms."
+      "description": "Colección de todas las salas de chat."
     },
     "/chats/{chatId}/messages": {
       "schema": { "$ref": "#/entities/ChatMessage" },
-      "description": "Sub-collection of messages for a specific chat."
+      "description": "Sub-colección de mensajes para un chat específico."
     }
   }
 }
