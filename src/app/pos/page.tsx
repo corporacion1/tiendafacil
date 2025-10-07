@@ -25,16 +25,18 @@ import { useUser } from "@/firebase";
 import { mockProducts, defaultCustomers, initialFamilies, mockSales, mockInventoryMovements, paymentMethods } from "@/lib/data";
 
 const generateSaleId = () => {
-    const lastSale = mockSales[0];
-    if (!lastSale) {
+    if (!mockSales || mockSales.length === 0) {
         return "SALE-001";
     }
-    const lastId = lastSale.id;
-    const parts = lastId.split('-');
-    const lastNumber = parseInt(parts[1], 10);
-    const newNumber = lastNumber + 1;
-    const newId = `SALE-${String(newNumber).padStart(3, '0')}`;
-    return newId;
+
+    const highestId = mockSales.reduce((max, sale) => {
+        const parts = sale.id.split('-');
+        const currentNum = parseInt(parts[1], 10);
+        return currentNum > max ? currentNum : max;
+    }, 0);
+
+    const newNumber = highestId + 1;
+    return `SALE-${String(newNumber).padStart(3, '0')}`;
 };
 
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
