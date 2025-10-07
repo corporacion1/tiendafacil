@@ -1,6 +1,7 @@
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -69,7 +70,11 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '4mb',
     },
+    allowedDevOrigins: [
+        'http://localhost:3000',
+        'https://*.cloudworkstations.dev',
+    ]
   },
 };
 
-module.exports = nextConfig;
+export default nextConfig;
