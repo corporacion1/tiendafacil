@@ -33,9 +33,18 @@ const generateSaleId = () => {
     return result;
 }
 
+const getDisplayImageUrl = (url?: string) => {
+    if (!url) return '';
+    if (url.includes('dropbox.com')) {
+        return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace(/&dl=0$/, '').replace(/\?dl=0$/, '') + '?raw=1';
+    }
+    return url;
+};
+
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
     const { activeSymbol, activeRate } = useSettings();
     const [imageError, setImageError] = useState(false);
+    const displayUrl = getDisplayImageUrl(product.imageUrl);
 
     return (
         <Card className="overflow-hidden group">
@@ -48,9 +57,9 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
                         </Button>
                     </DialogTrigger>
                 </div>
-                {product.imageUrl && !imageError ? (
+                {displayUrl && !imageError ? (
                     <Image
-                        src={product.imageUrl}
+                        src={displayUrl}
                         alt={product.name}
                         fill
                         sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
@@ -734,13 +743,12 @@ export default function POSPage() {
                  <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
                     {productDetails.imageUrl ? (
                         <Image
-                            src={productDetails.imageUrl}
+                            src={getDisplayImageUrl(productDetails.imageUrl)}
                             alt={productDetails.name}
                             fill
                             sizes="300px"
                             className="object-cover"
                             data-ai-hint={productDetails.imageHint}
-                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
                         />
                         ) : (
                         <Package className="w-16 h-16 text-muted-foreground" />
@@ -793,3 +801,5 @@ export default function POSPage() {
   </Dialog>
   );
 }
+
+    

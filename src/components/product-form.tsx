@@ -77,6 +77,13 @@ const calculateProfit = (currentPrice: number, cost: number): string => {
     return '0.00';
 };
 
+const getDisplayImageUrl = (url?: string) => {
+  if (!url) return '';
+  if (url.includes('dropbox.com')) {
+    return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace(/&dl=0$/, '').replace(/\?dl=0$/, '') + '?raw=1';
+  }
+  return url;
+};
 
 export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onCancel }) => {
   const { toast } = useToast();
@@ -97,11 +104,11 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
   const wholesalePrice = watch("wholesalePrice");
 
   // State to manage the image preview and handle errors
-  const [previewUrl, setPreviewUrl] = useState(watchedImageUrl);
+  const [previewUrl, setPreviewUrl] = useState(getDisplayImageUrl(watchedImageUrl));
   const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
-    setPreviewUrl(watchedImageUrl);
+    setPreviewUrl(getDisplayImageUrl(watchedImageUrl));
     setImageError(false);
   }, [watchedImageUrl]);
 
@@ -144,7 +151,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
           description: "La URL debe tener un formato válido (ej: https://...).",
         });
         setValue("imageUrl", "", { shouldDirty: true });
-        setPreviewUrl("");
       }
     }
   };
@@ -316,18 +322,14 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                                 toast({
                                     variant: "destructive",
                                     title: "URL de imagen inválida",
-                                    description: "No se pudo cargar la imagen. Revisa la URL o el dominio.",
+                                    description: "No se pudo cargar la imagen. Revisa la URL.",
                                 });
                                 setValue("imageUrl", "", { shouldDirty: true });
                                 setImageError(true);
                               }}
                             />
                           ) : (
-                            imageError ? (
-                              <ImageOff className="h-16 w-16 text-destructive" />
-                            ) : (
-                              <Package className="h-16 w-16 text-muted-foreground" />
-                            )
+                            <Package className="h-16 w-16 text-muted-foreground" />
                           )}
                         </div>
                         <FormMessage />
@@ -486,3 +488,5 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     </Form>
   );
 };
+
+    

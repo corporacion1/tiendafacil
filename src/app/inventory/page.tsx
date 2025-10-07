@@ -197,6 +197,14 @@ export default function InventoryPage() {
   }, [products, searchTerm]);
 
   const isMovementFormValid = movementProduct && movementType && movementQuantity > 0 && movementResponsible.trim() !== '';
+
+  const getDisplayImageUrl = (url?: string) => {
+    if (!url) return '';
+    if (url.includes('dropbox.com')) {
+      return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace(/&dl=0$/, '').replace(/\?dl=0$/, '') + '?raw=1';
+    }
+    return url;
+  };
   
   return (
     <>
@@ -357,19 +365,19 @@ export default function InventoryPage() {
               </TableHeader>
               <TableBody>
                 {filteredProducts.map((product) => {
+                    const displayUrl = getDisplayImageUrl(product.imageUrl);
                     return (
                     <TableRow key={product.id}>
                         <TableCell className="hidden sm:table-cell">
                         <div className="relative flex items-center justify-center w-10 h-10 bg-muted rounded-md overflow-hidden isolate">
-                            {product.imageUrl ? (
+                            {displayUrl ? (
                             <Image
-                                src={product.imageUrl}
+                                src={displayUrl}
                                 alt={product.name}
                                 fill
                                 sizes="40px"
                                 className="object-cover"
                                 data-ai-hint={product.imageHint}
-                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
                             />
                             ) : (
                             <Package className="h-5 w-5 text-muted-foreground" />
@@ -509,3 +517,5 @@ export default function InventoryPage() {
     </>
   );
 }
+
+    
