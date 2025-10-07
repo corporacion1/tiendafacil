@@ -112,7 +112,7 @@ export default function POSPage() {
   const [ticketType, setTicketType] = useState<'sale' | 'quote'>('sale');
   
   const [productDetails, setProductDetails] = useState<Product | null>(null);
-  const [productImageError, setProductImageError] = useState(false);
+  const [productImageError, setImageError] = useState(false);
   
   const generateSaleId = () => {
     const series = settings.saleSeries || 'SALE';
