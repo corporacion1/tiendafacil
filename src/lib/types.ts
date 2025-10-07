@@ -146,6 +146,7 @@ export type Ad = {
   url: string; // The destination link for the ad
   views: number;
   status: 'active' | 'inactive';
+  storeIds: string[];
 };
 
 export type AdClick = {

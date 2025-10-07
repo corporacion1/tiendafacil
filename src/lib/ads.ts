@@ -15,6 +15,7 @@ export const mockAds: Ad[] = [
     url: "https://instagram.com/corporacion1plus",
     views: 1024,
     status: 'active',
+    storeIds: ['store-1'],
   },
   {
     id: "ad-2",
@@ -27,5 +28,6 @@ export const mockAds: Ad[] = [
     url: "https://tiktok.com/@corporacion1+",
     views: 512,
     status: 'active',
+    storeIds: ['store-1'],
   },
 ];

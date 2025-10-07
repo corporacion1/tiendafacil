@@ -20,6 +20,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useSettings } from "@/contexts/settings-context";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { getDisplayImageUrl } from "@/lib/utils";
+import { MultiSelect } from "./ui/multi-select";
+import { mockStores } from "@/lib/stores";
+
 
 const adSchema = z.object({
   id: z.string().optional(),
@@ -31,6 +34,7 @@ const adSchema = z.object({
   imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
   imageHint: z.string().optional(),
   url: z.string().url("El enlace de destino debe ser una URL válida."),
+  storeIds: z.array(z.string()).min(1, "Debes seleccionar al menos una tienda."),
 });
 
 type AdFormValues = z.infer<typeof adSchema>;
@@ -51,6 +55,7 @@ const getInitialValues = (ad?: Ad): AdFormValues => {
         description: '',
         imageHint: '',
         url: '',
+        storeIds: [],
     };
 };
 
@@ -126,6 +131,11 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
       form.reset(getInitialValues());
     }
   };
+  
+  const storeOptions = useMemo(() => mockStores.map(store => ({
+    value: store.id,
+    label: store.name,
+  })), []);
 
   return (
     <Form {...form}>
@@ -260,6 +270,22 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    control={form.control}
+                    name="storeIds"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Tiendas de Destino</FormLabel>
+                            <MultiSelect
+                                options={storeOptions}
+                                selected={field.value}
+                                onChange={field.onChange}
+                                placeholder="Selecciona una o más tiendas..."
+                            />
+                             <FormMessage />
+                        </FormItem>
+                    )}
+                   />
               </div>
             </CardContent>
           </Card>

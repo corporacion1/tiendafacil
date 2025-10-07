@@ -3,21 +3,20 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
-import { File, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X, Package, Check, ImageOff, FileText, FileSpreadsheet, FileJson } from "lucide-react";
+import { File, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X, Package, Check, ImageOff, FileText, FileSpreadsheet, FileJson, Store } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import type { Ad } from "@/lib/types";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { AdForm } from "@/components/ad-form";
 import { mockAds } from "@/lib/ads";
-import { trackAdClick } from "@/lib/data";
 
 const AdRow = ({ ad, handleEdit, setAdToDelete }: {
     ad: Ad;
@@ -59,6 +58,12 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
                 <Badge variant={getStatusVariant(ad.status)}>
                     {getStatusLabel(ad.status)}
                 </Badge>
+            </TableCell>
+             <TableCell className="hidden md:table-cell">
+                <div className="flex items-center gap-2">
+                    <Store className="h-4 w-4 text-muted-foreground" />
+                    <span>{ad.storeIds.length} Tienda(s)</span>
+                </div>
             </TableCell>
             <TableCell className="hidden md:table-cell">
                 {ad.views}
@@ -228,6 +233,7 @@ export default function AdsPage() {
                 </TableHead>
                 <TableHead>Nombre</TableHead>
                 <TableHead>Estado</TableHead>
+                <TableHead className="hidden md:table-cell">Tiendas</TableHead>
                 <TableHead className="hidden md:table-cell">Vistas</TableHead>
                 <TableHead>
                   <span className="sr-only">Acciones</span>
