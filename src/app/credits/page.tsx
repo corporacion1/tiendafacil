@@ -300,6 +300,7 @@ export default function CreditsPage() {
                                     <TableRow>
                                         <TableHead>Fecha</TableHead>
                                         <TableHead>Método</TableHead>
+                                        <TableHead>Referencia</TableHead>
                                         <TableHead className="text-right">Monto</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -308,11 +309,12 @@ export default function CreditsPage() {
                                         <TableRow key={p.id}>
                                             <TableCell>{getFormattedDateTime(p.date)}</TableCell>
                                             <TableCell>{p.method}</TableCell>
+                                            <TableCell>{p.reference || 'N/A'}</TableCell>
                                             <TableCell className="text-right">{activeSymbol}{(p.amount * activeRate).toFixed(2)}</TableCell>
                                         </TableRow>
                                     )) : (
                                         <TableRow>
-                                            <TableCell colSpan={3} className="text-center text-muted-foreground">No hay pagos registrados.</TableCell>
+                                            <TableCell colSpan={4} className="text-center text-muted-foreground">No hay pagos registrados.</TableCell>
                                         </TableRow>
                                     )}
                                 </TableBody>
