@@ -460,26 +460,26 @@ export default function SettingsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="storeName">Nombre de la Tienda</Label>
-                            <Input id="storeName" value={localSettings.storeName} onChange={handleSettingsChange} placeholder="Mi Tienda Increíble" />
+                            <Input id="storeName" value={localSettings.storeName} onChange={handleSettingsChange} placeholder="Mi Tienda Increíble" maxLength={120} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="storeAddress">Dirección</Label>
-                            <Input id="storeAddress" value={localSettings.storeAddress} onChange={handleSettingsChange} placeholder="Calle Falsa 123" />
+                            <Input id="storeAddress" value={localSettings.storeAddress} onChange={handleSettingsChange} placeholder="Calle Falsa 123" maxLength={220} />
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="storePhone">Teléfono</Label>
-                            <Input id="storePhone" value={localSettings.storePhone} onChange={handleSettingsChange} placeholder="+1 (555) 123-4567" />
+                            <Input id="storePhone" value={localSettings.storePhone} onChange={handleSettingsChange} placeholder="+1 (555) 123-4567" maxLength={13} />
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="storeSlogan">Slogan o Mensaje para el Ticket</Label>
-                            <Input id="storeSlogan" value={localSettings.storeSlogan} onChange={handleSettingsChange} placeholder="¡Gracias por tu compra!" />
+                            <Input id="storeSlogan" value={localSettings.storeSlogan} onChange={handleSettingsChange} placeholder="¡Gracias por tu compra!" maxLength={120} />
                         </div>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                         <div className="space-y-2">
                             <Label htmlFor="saleSeries">Serie de Venta</Label>
-                            <Input id="saleSeries" value={localSettings.saleSeries} onChange={handleSettingsChange} placeholder="Ej: SALE" />
+                            <Input id="saleSeries" value={localSettings.saleSeries} onChange={handleSettingsChange} placeholder="Ej: SALE" maxLength={11} />
                             <CardDescription>Prefijo para los números de control de venta.</CardDescription>
                         </div>
                         <div className="space-y-2">
@@ -526,22 +526,22 @@ export default function SettingsPage() {
                             <h3 className="font-semibold text-lg">Moneda Principal</h3>
                             <div className="space-y-2">
                                 <Label htmlFor="primaryCurrencyName">Nombre de la Moneda</Label>
-                                <Input id="primaryCurrencyName" value={localSettings.primaryCurrencyName} onChange={handleSettingsChange} placeholder="Dólar" />
+                                <Input id="primaryCurrencyName" value={localSettings.primaryCurrencyName} onChange={handleSettingsChange} placeholder="Dólar" maxLength={20} />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="primaryCurrencySymbol">Símbolo</Label>
-                                <Input id="primaryCurrencySymbol" value={localSettings.primaryCurrencySymbol} onChange={handleSettingsChange} placeholder="$" />
+                                <Input id="primaryCurrencySymbol" value={localSettings.primaryCurrencySymbol} onChange={handleSettingsChange} placeholder="$" maxLength={4} />
                             </div>
                         </div>
                         <div className="space-y-4 p-4 border rounded-lg">
                             <h3 className="font-semibold text-lg">Moneda Secundaria</h3>
                             <div className="space-y-2">
                                 <Label htmlFor="secondaryCurrencyName">Nombre de la Moneda</Label>
-                                <Input id="secondaryCurrencyName" value={localSettings.secondaryCurrencyName} onChange={handleSettingsChange} placeholder="Bolívares" />
+                                <Input id="secondaryCurrencyName" value={localSettings.secondaryCurrencyName} onChange={handleSettingsChange} placeholder="Bolívares" maxLength={20} />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="secondaryCurrencySymbol">Símbolo</Label>
-                                <Input id="secondaryCurrencySymbol" value={localSettings.secondaryCurrencySymbol} onChange={handleSettingsChange} placeholder="Bs." />
+                                <Input id="secondaryCurrencySymbol" value={localSettings.secondaryCurrencySymbol} onChange={handleSettingsChange} placeholder="Bs." maxLength={4} />
                             </div>
                         </div>
                     </div>
@@ -569,7 +569,7 @@ export default function SettingsPage() {
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>¿Confirmar Nueva Tasa?</AlertDialogTitle>
                                             <AlertDialogDescription>
-                                                Estás a punto de guardar una nueva tasa de cambio de {newRate.toFixed(6)} {localSettings.secondaryCurrencySymbol}. ¿Estás seguro?
+                                                Estás a punto de guardar una nueva tasa de cambio de ${newRate.toFixed(6)} {localSettings.secondaryCurrencySymbol}. ¿Estás seguro?
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
