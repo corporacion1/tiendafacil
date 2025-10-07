@@ -38,21 +38,7 @@ const productSchema = z.object({
   family: z.string().optional(),
   warehouse: z.string().optional(),
   description: z.string().optional(),
-  imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')).refine(
-    (url) => {
-        if (!url) return true; // Allows empty URL
-        try {
-            const { hostname } = new URL(url);
-            const allowedHostnames = ['images.unsplash.com', 'www.dropbox.com', 'dl.dropboxusercontent.com'];
-            return allowedHostnames.some(allowedHost => hostname.includes(allowedHost));
-        } catch (e) {
-            return false;
-        }
-    },
-    {
-        message: "La URL debe ser de un dominio permitido (Unsplash, Dropbox)."
-    }
-  ),
+  imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
   imageHint: z.string().optional(),
 });
 
@@ -148,9 +134,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
         toast({
           variant: "destructive",
           title: "URL de imagen inválida",
-          description: form.formState.errors.imageUrl?.message || "La URL ha sido eliminada. Por favor, ingresa una URL válida.",
+          description: form.formState.errors.imageUrl?.message || "Por favor, ingresa una URL válida.",
         });
-        setValue("imageUrl", "");
       }
     }
   };
@@ -472,3 +457,5 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     </Form>
   );
 };
+
+    

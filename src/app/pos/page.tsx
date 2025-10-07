@@ -1,5 +1,4 @@
 
-
 "use client"
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
@@ -791,3 +790,5 @@ export default function POSPage() {
   </Dialog>
   );
 }
+
+    
