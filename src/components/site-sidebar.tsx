@@ -17,8 +17,8 @@ const navItems = [
     { href: "/catalog", label: "Catálogo", icon: LayoutGrid },
     { href: "/products", label: "Productos", icon: PackagePlus },
     { href: "/inventory", label: "Inventario", icon: Boxes },
-    { href: "/pos", label: "Punto de Venta", icon: ShoppingCart },
     { href: "/purchases", label: "Compras", icon: Store },
+    { href: "/pos", label: "Punto de Venta", icon: ShoppingCart },
     { href: "/credits", label: "Créditos", icon: CreditCard },
     { href: "/reports", label: "Reportes", icon: FileText },
 ];
