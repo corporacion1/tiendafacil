@@ -2,7 +2,7 @@
 "use client"
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
-import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle } from "lucide-react"
+import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -33,17 +33,9 @@ const generateSaleId = () => {
     return result;
 }
 
-const getDisplayImageUrl = (url?: string): string | undefined => {
-  if (!url) return undefined;
-  if (url.includes('dropbox.com')) {
-    return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '') + '?raw=1';
-  }
-  return url;
-};
-
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
     const { activeSymbol, activeRate } = useSettings();
-    const displayImageUrl = getDisplayImageUrl(product.imageUrl);
+    const [imageError, setImageError] = useState(false);
 
     return (
         <Card className="overflow-hidden group">
@@ -56,14 +48,15 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
                         </Button>
                     </DialogTrigger>
                 </div>
-                {displayImageUrl ? (
+                {product.imageUrl && !imageError ? (
                     <Image
-                        src={displayImageUrl}
+                        src={product.imageUrl}
                         alt={product.name}
                         fill
                         sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
                         className="object-cover transition-transform group-hover:scale-105"
                         data-ai-hint={product.imageHint}
+                        onError={() => setImageError(true)}
                     />
                 ) : (
                     <Package className="w-12 h-12 text-muted-foreground" />
@@ -739,14 +732,15 @@ export default function POSPage() {
         {productDetails && (
             <div className="grid gap-4">
                  <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
-                    {getDisplayImageUrl(productDetails.imageUrl) ? (
+                    {productDetails.imageUrl ? (
                         <Image
-                            src={getDisplayImageUrl(productDetails.imageUrl)!}
+                            src={productDetails.imageUrl}
                             alt={productDetails.name}
                             fill
                             sizes="300px"
                             className="object-cover"
                             data-ai-hint={productDetails.imageHint}
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
                         />
                         ) : (
                         <Package className="w-16 h-16 text-muted-foreground" />

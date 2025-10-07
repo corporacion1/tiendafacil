@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Image from "next/image";
-import { Package } from "lucide-react";
+import { Package, ImageOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -96,6 +96,15 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
   const price = watch("price");
   const wholesalePrice = watch("wholesalePrice");
 
+  // State to manage the image preview and handle errors
+  const [previewUrl, setPreviewUrl] = useState(watchedImageUrl);
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setPreviewUrl(watchedImageUrl);
+    setImageError(false);
+  }, [watchedImageUrl]);
+
   useEffect(() => {
     form.reset(getInitialValues(product));
   }, [product, form]);
@@ -132,8 +141,10 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
         toast({
           variant: "destructive",
           title: "URL de imagen inválida",
-          description: form.formState.errors.imageUrl?.message || "Por favor, ingresa una URL válida.",
+          description: "La URL debe tener un formato válido (ej: https://...).",
         });
+        setValue("imageUrl", "", { shouldDirty: true });
+        setPreviewUrl("");
       }
     }
   };
@@ -145,6 +156,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     const result = await onSubmit(data);
     if (!product && result === true) {
       form.reset(getInitialValues());
+      setPreviewUrl("");
     }
   };
 
@@ -293,10 +305,29 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                           <Input placeholder="https://..." {...field} onBlur={handleImageUrlBlur} />
                         </FormControl>
                         <div className="aspect-square relative bg-muted rounded-md flex items-center justify-center mt-2 overflow-hidden">
-                          {field.value ? (
-                            <Image src={field.value} alt="Vista previa del producto" fill sizes="300px" className="object-cover" />
+                          {previewUrl && !imageError ? (
+                            <Image 
+                              src={previewUrl} 
+                              alt="Vista previa del producto" 
+                              fill 
+                              sizes="300px" 
+                              className="object-cover"
+                              onError={() => {
+                                toast({
+                                    variant: "destructive",
+                                    title: "URL de imagen inválida",
+                                    description: "No se pudo cargar la imagen. Revisa la URL o el dominio.",
+                                });
+                                setValue("imageUrl", "", { shouldDirty: true });
+                                setImageError(true);
+                              }}
+                            />
                           ) : (
-                            <Package className="h-16 w-16 text-muted-foreground" />
+                            imageError ? (
+                              <ImageOff className="h-16 w-16 text-destructive" />
+                            ) : (
+                              <Package className="h-16 w-16 text-muted-foreground" />
+                            )
                           )}
                         </div>
                         <FormMessage />

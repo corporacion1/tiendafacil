@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
-import { File, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X, Package, Check } from "lucide-react";
+import { File, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X, Package, Check, ImageOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,14 +35,6 @@ import { ProductForm } from "@/components/product-form";
 import { useSettings } from "@/contexts/settings-context";
 import { mockProducts, mockSales, mockInventoryMovements } from "@/lib/data";
 import { format, parseISO } from "date-fns";
-
-const getDisplayImageUrl = (url?: string): string | undefined => {
-  if (!url) return undefined;
-  if (url.includes('dropbox.com')) {
-    return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '') + '?raw=1';
-  }
-  return url;
-};
 
 export default function InventoryPage() {
   const { toast } = useToast();
@@ -365,19 +357,19 @@ export default function InventoryPage() {
               </TableHeader>
               <TableBody>
                 {filteredProducts.map((product) => {
-                    const displayImageUrl = getDisplayImageUrl(product.imageUrl);
                     return (
                     <TableRow key={product.id}>
                         <TableCell className="hidden sm:table-cell">
                         <div className="relative flex items-center justify-center w-10 h-10 bg-muted rounded-md overflow-hidden isolate">
-                            {displayImageUrl ? (
+                            {product.imageUrl ? (
                             <Image
-                                src={displayImageUrl}
+                                src={product.imageUrl}
                                 alt={product.name}
                                 fill
                                 sizes="40px"
                                 className="object-cover"
                                 data-ai-hint={product.imageHint}
+                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
                             />
                             ) : (
                             <Package className="h-5 w-5 text-muted-foreground" />
