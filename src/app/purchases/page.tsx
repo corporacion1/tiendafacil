@@ -1,6 +1,6 @@
 
 "use client"
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import { Package, PackagePlus, PlusCircle, Trash2, ArrowUpDown, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { Product, PurchaseItem, Supplier, Purchase, InventoryMovement, Family } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { initialFamilies } from "@/lib/data";
+import { mockProducts, defaultSuppliers, initialFamilies, mockPurchases, mockInventoryMovements } from "@/lib/data";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
@@ -19,9 +19,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings } from "@/contexts/settings-context";
-import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase/provider";
-import { errorEmitter, FirestorePermissionError } from "@/firebase";
-import { collection, addDoc, doc, writeBatch, serverTimestamp } from "firebase/firestore";
+import { useUser } from "@/firebase";
 
 const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
 
@@ -42,20 +40,20 @@ const getDisplayImageUrl = (imageUrl?: string) => {
 export default function PurchasesPage() {
   const { toast } = useToast();
   const { settings, activeSymbol, activeRate } = useSettings();
-  const firestore = useFirestore();
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
 
-  const productsCollection = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return collection(firestore, "products");
-  }, [firestore, user]);
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollection, isUserLoading);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const suppliersCollection = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return collection(firestore, "suppliers");
-  }, [firestore, user]);
-  const { data: suppliers, isLoading: isLoadingSuppliers } = useCollection<Supplier>(suppliersCollection, isUserLoading);
+  useEffect(() => {
+    // Simulate fetching data
+    setTimeout(() => {
+        setProducts(mockProducts);
+        setSuppliers(defaultSuppliers);
+        setIsLoading(false);
+    }, 500);
+  }, []);
 
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -69,10 +67,10 @@ export default function PurchasesPage() {
   const [documentNumber, setDocumentNumber] = useState('');
   const [responsible, setResponsible] = useState('');
 
-  const selectedSupplier = (suppliers || []).find(s => s.id === selectedSupplierId) ?? null;
+  const selectedSupplier = suppliers.find(s => s.id === selectedSupplierId) ?? null;
 
   const filteredProducts = useMemo(() => {
-    return (products || []).filter(product =>
+    return products.filter(product =>
       (selectedFamily === 'all' || product.family === selectedFamily) &&
       (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase())))
@@ -130,7 +128,7 @@ export default function PurchasesPage() {
     let tax2Amount = 0;
     
     purchaseItems.forEach(item => {
-        const product = (products || []).find(p => p.id === item.productId);
+        const product = products.find(p => p.id === item.productId);
         if (product) {
             const itemSubtotal = item.cost * item.quantity;
             if(product.tax1 && settings.tax1 > 0) {
@@ -150,34 +148,24 @@ export default function PurchasesPage() {
 
 
   const handleAddNewSupplier = () => {
-    if (newSupplier.name.trim() === "" || !firestore) {
+    if (newSupplier.name.trim() === "") {
         toast({ variant: "destructive", title: "Nombre inválido" });
         return;
     }
     const newId = newSupplier.id.trim() || `sup-${Date.now()}`;
-    const suppliersCol = collection(firestore, 'suppliers');
-
-    const supplierToAdd: Omit<Supplier, 'id'> = { name: newSupplier.name, phone: newSupplier.phone, address: newSupplier.address };
+    const supplierToAdd: Supplier = { id: newId, name: newSupplier.name, phone: newSupplier.phone, address: newSupplier.address };
     
-    addDoc(suppliersCol, supplierToAdd)
-      .then((docRef) => {
-        setSelectedSupplierId(docRef.id);
-        setNewSupplier({ id: '', name: '', phone: '', address: '' });
-        setIsSupplierDialogOpen(false);
-        toast({ title: "Proveedor Agregado", description: `El proveedor "${supplierToAdd.name}" ha sido agregado.` });
-      })
-      .catch(serverError => {
-        const permissionError = new FirestorePermissionError({
-          path: 'suppliers',
-          operation: 'create',
-          requestResourceData: supplierToAdd
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      })
+    defaultSuppliers.push(supplierToAdd);
+    setSuppliers([...defaultSuppliers]);
+    
+    setSelectedSupplierId(newId);
+    setNewSupplier({ id: '', name: '', phone: '', address: '' });
+    setIsSupplierDialogOpen(false);
+    toast({ title: "Proveedor Agregado", description: `El proveedor "${supplierToAdd.name}" ha sido agregado.` });
   };
   
-  const handleProcessPurchase = async () => {
-    if (purchaseItems.length === 0 || !firestore) {
+  const handleProcessPurchase = () => {
+    if (purchaseItems.length === 0) {
       toast({ variant: "destructive", title: "Orden vacía", description: "Agrega productos para procesar la compra." });
       return;
     }
@@ -191,54 +179,44 @@ export default function PurchasesPage() {
     }
 
     const purchaseId = generatePurchaseId();
-    const newPurchase: Omit<Purchase, 'id'> = {
+    const newPurchase: Purchase = {
+        id: purchaseId,
         supplierId: selectedSupplier.id,
         supplierName: selectedSupplier.name,
         items: purchaseItems,
         total: totalCost,
-        date: serverTimestamp(),
+        date: new Date().toISOString(),
         documentNumber: documentNumber,
         responsible: responsible,
     };
     
-    const batch = writeBatch(firestore);
-    const purchaseRef = doc(collection(firestore, "purchases"), purchaseId);
-    batch.set(purchaseRef, newPurchase);
+    mockPurchases.unshift(newPurchase);
 
     for (const item of purchaseItems) {
-        const productRef = doc(firestore, "products", item.productId);
-        const product = (products || []).find(p => p.id === item.productId);
-        if (product) {
-            batch.update(productRef, { stock: product.stock + item.quantity, cost: item.cost });
-
-            const movement: Omit<InventoryMovement, 'id'> = {
-                productName: item.productName,
-                type: 'purchase',
-                quantity: item.quantity,
-                date: serverTimestamp(),
-                responsible: responsible,
-            };
-            const movementRef = doc(collection(firestore, "inventoryMovements"));
-            batch.set(movementRef, movement);
+        const productIndex = mockProducts.findIndex(p => p.id === item.productId);
+        if (productIndex > -1) {
+            const product = mockProducts[productIndex];
+            product.stock += item.quantity;
+            product.cost = item.cost;
         }
-    }
 
-    try {
-        await batch.commit();
-        toast({ title: "Compra Procesada", description: `La compra con ID #${purchaseId} ha sido registrada.` });
-        
-        setPurchaseItems([]);
-        setSelectedSupplierId('');
-        setDocumentNumber('');
-        setResponsible('');
-    } catch(serverError) {
-        const permissionError = new FirestorePermissionError({
-          path: `purchases/${purchaseId}`,
-          operation: 'create',
-          requestResourceData: newPurchase
-        });
-        errorEmitter.emit('permission-error', permissionError);
+        const movement: InventoryMovement = {
+            id: `mov-pur-${purchaseId}-${item.productId}`,
+            productName: item.productName,
+            type: 'purchase',
+            quantity: item.quantity,
+            date: new Date().toISOString(),
+            responsible: responsible,
+        };
+        mockInventoryMovements.unshift(movement);
     }
+    
+    toast({ title: "Compra Procesada", description: `La compra con ID #${purchaseId} ha sido registrada.` });
+    
+    setPurchaseItems([]);
+    setSelectedSupplierId('');
+    setDocumentNumber('');
+    setResponsible('');
   };
 
   const isFormComplete = useMemo(() => {
@@ -246,8 +224,7 @@ export default function PurchasesPage() {
   }, [purchaseItems, selectedSupplierId, responsible]);
 
   const isNewSupplierFormDirty = newSupplier.name.trim() !== '' || newSupplier.id.trim() !== '' || newSupplier.phone.trim() !== '' || newSupplier.address.trim() !== '';
-  const isLoading = isLoadingProducts || isLoadingSuppliers;
-
+  
   return (
     <div className="grid flex-1 auto-rows-max gap-4 md:grid-cols-3 lg:gap-8">
       <div className="grid auto-rows-max items-start gap-4 md:col-span-2 lg:gap-8">
@@ -339,7 +316,7 @@ export default function PurchasesPage() {
                     <Popover open={isSupplierSearchOpen} onOpenChange={setIsSupplierSearchOpen}>
                         <PopoverTrigger asChild>
                             <Button variant="outline" role="combobox" className="w-full justify-between">
-                                { isLoadingSuppliers ? "Cargando..." : (selectedSupplier ? selectedSupplier.name : "Seleccionar proveedor...") }
+                                { isLoading ? "Cargando..." : (selectedSupplier ? selectedSupplier.name : "Seleccionar proveedor...") }
                                 <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                         </PopoverTrigger>
@@ -349,7 +326,7 @@ export default function PurchasesPage() {
                                 <CommandList>
                                     <CommandEmpty>No se encontraron proveedores.</CommandEmpty>
                                     <CommandGroup>
-                                        {(suppliers || []).map((supplier) => (
+                                        {suppliers.map((supplier) => (
                                             <CommandItem
                                                 key={supplier.id}
                                                 value={supplier.name}
@@ -506,3 +483,5 @@ export default function PurchasesPage() {
     </div>
   );
 }
+
+    

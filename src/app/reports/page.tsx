@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { File, MoreHorizontal, Search } from "lucide-react";
 import { format, subDays, startOfWeek, startOfMonth, startOfYear, parseISO } from "date-fns";
 
@@ -46,16 +46,22 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/settings-context";
-import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase/provider";
-import { collection, query, where, Timestamp } from "firebase/firestore";
+import { useUser } from "@/firebase";
+import { mockSales, mockPurchases, mockInventoryMovements, mockProducts, defaultCustomers } from "@/lib/data";
 
 
 type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
 
 export default function ReportsPage() {
     const { settings, activeSymbol, activeRate } = useSettings();
-    const firestore = useFirestore();
-    const { user, isUserLoading } = useUser();
+    const { user } = useUser();
+    
+    const [salesData, setSalesData] = useState<Sale[]>([]);
+    const [purchasesData, setPurchasesData] = useState<Purchase[]>([]);
+    const [movementsData, setMovementsData] = useState<InventoryMovement[]>([]);
+    const [products, setProducts] = useState<Product[]>([]);
+    const [customers, setCustomers] = useState<Customer[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     
     const [selectedSaleDetails, setSelectedSaleDetails] = useState<Sale | null>(null);
     const [saleForTicket, setSaleForTicket] = useState<Sale | null>(null);
@@ -65,59 +71,28 @@ export default function ReportsPage() {
     const [timeRange, setTimeRange] = useState<TimeRange>(null);
     const { toast } = useToast();
     
-    const productsQuery = useMemoFirebase(() => {
-        if (!firestore || !user) return null;
-        return collection(firestore, 'products');
-    }, [firestore, user]);
-    const { data: products } = useCollection<Product>(productsQuery, isUserLoading);
-
-    const customersQuery = useMemoFirebase(() => {
-        if (!firestore || !user) return null;
-        return collection(firestore, 'customers');
-    }, [firestore, user]);
-    const { data: customers } = useCollection<Customer>(customersQuery, isUserLoading);
+    useEffect(() => {
+        // Simulate fetching data
+        setTimeout(() => {
+            setSalesData(mockSales);
+            setPurchasesData(mockPurchases);
+            setMovementsData(mockInventoryMovements);
+            setProducts(mockProducts);
+            setCustomers(defaultCustomers);
+            setIsLoading(false);
+        }, 500);
+    }, []);
 
     const dateFilterQuery = useMemo(() => {
+        if (!timeRange) return null;
         const now = new Date();
         let startDate: Date | null = null;
         if (timeRange === 'day') startDate = subDays(now, 1);
         if (timeRange === 'week') startDate = startOfWeek(now);
         if (timeRange === 'month') startDate = startOfMonth(now);
         if (timeRange === 'year') startDate = startOfYear(now);
-        return startDate ? Timestamp.fromDate(startDate) : null;
+        return startDate;
     }, [timeRange]);
-
-    const salesQuery = useMemoFirebase(() => {
-        if (!firestore || !user) return null;
-        const colRef = collection(firestore, 'sales');
-        if (dateFilterQuery) {
-            return query(colRef, where("date", ">=", dateFilterQuery));
-        }
-        return colRef;
-    }, [firestore, user, dateFilterQuery]);
-    const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery, isUserLoading);
-
-    const purchasesQuery = useMemoFirebase(() => {
-        if (!firestore || !user) return null;
-        const colRef = collection(firestore, 'purchases');
-        if (dateFilterQuery) {
-            return query(colRef, where("date", ">=", dateFilterQuery));
-        }
-        return colRef;
-    }, [firestore, user, dateFilterQuery]);
-    const { data: purchasesData, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery, isUserLoading);
-    
-    const movementsQuery = useMemoFirebase(() => {
-        if (!firestore || !user) return null;
-        const colRef = collection(firestore, 'inventoryMovements');
-        if (dateFilterQuery) {
-            return query(colRef, where("date", ">=", dateFilterQuery));
-        }
-        return colRef;
-    }, [firestore, user, dateFilterQuery]);
-    const { data: movementsData, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsQuery, isUserLoading);
-    
-    const isLoading = isLoadingSales || isLoadingPurchases || isLoadingMovements;
 
     const handleViewDetails = (sale: Sale) => {
         setSelectedSaleDetails(sale);
@@ -172,6 +147,11 @@ export default function ReportsPage() {
         });
     };
     
+    const getDate = (date: any) => {
+        if (!date) return 'N/A';
+        return typeof date === 'string' ? parseISO(date) : date; // Already a Date object
+    }
+    
     const handleExport = () => {
         const date = new Date().toISOString().split('T')[0];
         let dataToExport: object[] = [];
@@ -182,7 +162,7 @@ export default function ReportsPage() {
                 dataToExport = filteredSales.map(s => ({
                     id: s.id,
                     cliente: s.customerName,
-                    fecha: s.date instanceof Timestamp ? s.date.toDate().toISOString() : s.date,
+                    fecha: getDate(s.date).toISOString(),
                     total: (s.total * activeRate).toFixed(2),
                     tipo: s.transactionType,
                     estado: s.status
@@ -192,14 +172,14 @@ export default function ReportsPage() {
                 dataToExport = filteredPurchases.map(p => ({
                   id: p.id,
                   proveedor: p.supplierName,
-                  fecha: p.date instanceof Timestamp ? p.date.toDate().toISOString() : p.date,
+                  fecha: getDate(p.date).toISOString(),
                   total: (p.total * activeRate).toFixed(2),
                   documento: p.documentNumber,
                   responsable: p.responsible
                 }));
                 break;
             case 'movements':
-                dataToExport = filteredMovements.map(m => ({ ...m, date: m.date instanceof Timestamp ? m.date.toDate().toISOString() : m.date }));
+                dataToExport = filteredMovements.map(m => ({ ...m, date: getDate(m.date).toISOString() }));
                 break;
             case 'inventory':
                 dataToExport = filteredProducts.map(p => ({
@@ -234,28 +214,34 @@ export default function ReportsPage() {
         return customers.find(c => c.name === sale.customerName) || { id: 'unknown', name: sale.customerName, phone: '', address: '' };
     }
 
+    const filterByDate = (data: (Sale | Purchase | InventoryMovement)[]) => {
+        if (!dateFilterQuery) return data;
+        return data.filter(item => getDate(item.date) >= dateFilterQuery!);
+    };
+
     const filteredSales = useMemo(() => {
-        return (salesData || []).filter(sale =>
-            sale.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            sale.customerName.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [salesData, searchTerm]);
+        return filterByDate(salesData).filter(s =>
+            (s.id as string).toLowerCase().includes(searchTerm.toLowerCase()) ||
+            s.customerName.toLowerCase().includes(searchTerm.toLowerCase())
+        ) as Sale[];
+    }, [salesData, searchTerm, dateFilterQuery]);
 
     const filteredPurchases = useMemo(() => {
-        return (purchasesData || []).filter(purchase =>
-            purchase.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            purchase.supplierName.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [purchasesData, searchTerm]);
+        return filterByDate(purchasesData).filter(p =>
+            (p.id as string).toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.supplierName.toLowerCase().includes(searchTerm.toLowerCase())
+        ) as Purchase[];
+    }, [purchasesData, searchTerm, dateFilterQuery]);
 
     const filteredMovements = useMemo(() => {
-        return (movementsData || []).filter(movement =>
-            movement.productName.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [movementsData, searchTerm]);
+        return filterByDate(movementsData).filter(m =>
+            m.productName.toLowerCase().includes(searchTerm.toLowerCase())
+        ) as InventoryMovement[];
+    }, [movementsData, searchTerm, dateFilterQuery]);
 
     const filteredProducts = useMemo(() => {
-        return (products || []).filter(p => 
+        if (!products) return [];
+        return products.filter(p => 
             p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (p.sku && p.sku.toLowerCase().includes(searchTerm.toLowerCase())) ||
             (p.description && p.description.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -304,11 +290,6 @@ export default function ReportsPage() {
 
         return { subtotal: calculatedSubtotal, tax1Amount, tax2Amount, totalTaxes };
     };
-
-    const getDate = (date: any) => {
-      if (!date) return 'N/A';
-      return date instanceof Timestamp ? date.toDate() : parseISO(date);
-    }
 
   return (
     <>
@@ -600,3 +581,5 @@ export default function ReportsPage() {
     </>
   );
 }
+
+    

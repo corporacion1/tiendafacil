@@ -17,8 +17,7 @@ import { Pencil, PlusCircle, Trash2, AlertTriangle } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
-import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase/provider";
-import { collection, getDocs, writeBatch } from "firebase/firestore";
+import { useUser } from "@/firebase";
 
 import { mockProducts, initialUnits as defaultUnits, initialFamilies as defaultFamilies, initialWarehouses as defaultWarehouses, mockCurrencyRates, factoryReset } from "@/lib/data";
 
@@ -114,8 +113,7 @@ function ChangePinDialog() {
 export default function SettingsPage() {
     const { hasPin, setPin, removePin, checkPin } = useSecurity();
     const { settings, setSettings, currencyRates, setCurrencyRates } = useSettings();
-    const firestore = useFirestore();
-    const { user, isUserLoading } = useUser();
+    const { user } = useUser();
     
     const [localSettings, setLocalSettings] = useState(settings);
     const [localUnits, setLocalUnits] = useState(defaultUnits);
@@ -128,12 +126,12 @@ export default function SettingsPage() {
     const [confirmPin, setConfirmPin] = useState('');
     const { toast } = useToast();
     
-    const productsCollection = useMemoFirebase(() => {
-        if (!firestore || !user) return null;
-        return collection(firestore, "products");
-    }, [firestore, user]);
+    const [products, setProducts] = useState<Product[]>([]);
     
-    const { data: products } = useCollection<Product>(productsCollection, isUserLoading);
+    useEffect(() => {
+        // Simulate fetching products for offline mode
+        setProducts(mockProducts);
+    }, []);
 
     const [newRate, setNewRate] = useState<number>(0);
 
@@ -259,59 +257,31 @@ export default function SettingsPage() {
             return;
         }
 
-        if (!firestore) {
-            toast({
-                variant: "destructive",
-                title: "Error de Conexión",
-                description: "No se pudo conectar a la base de datos para el reinicio."
-            });
-            return;
-        }
+        toast({
+            title: 'Restaurando...',
+            description: 'Por favor, espera mientras se eliminan los datos.',
+        });
 
-        try {
-            toast({
-                title: 'Restaurando...',
-                description: 'Por favor, espera mientras se eliminan los datos.',
-            });
+        // Reset mock data for other sections that might still use it
+        factoryReset();
+        
+        // Clear settings from localStorage
+        localStorage.removeItem('tienda_facil_settings');
+        localStorage.removeItem('tienda_facil_currency_pref');
+        localStorage.removeItem('tienda_facil_pin');
+        
+        setIsResetConfirmOpen(false);
 
-            // Delete all products from Firestore
-            if (productsCollection) {
-              const productsSnapshot = await getDocs(productsCollection);
-              const batch = writeBatch(firestore);
-              productsSnapshot.forEach((doc) => {
-                  batch.delete(doc.ref);
-              });
-              await batch.commit();
-            }
+        toast({
+            title: 'Restauración Completa',
+            description: 'Todos los datos de productos han sido eliminados. La página se recargará.',
+        });
 
-            // Reset mock data for other sections that might still use it
-            factoryReset();
-            
-            // Clear settings from localStorage
-            localStorage.removeItem('tienda_facil_settings');
-            localStorage.removeItem('tienda_facil_currency_pref');
-            localStorage.removeItem('tienda_facil_pin');
-            
-            setIsResetConfirmOpen(false);
+        // Reload the page to apply changes everywhere
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
 
-            toast({
-                title: 'Restauración Completa',
-                description: 'Todos los datos de productos han sido eliminados. La página se recargará.',
-            });
-
-            // Reload the page to apply changes everywhere
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
-
-        } catch (error) {
-            console.error("Error during factory reset: ", error);
-            toast({
-                variant: "destructive",
-                title: 'Error en la Restauración',
-                description: 'No se pudieron eliminar los datos de la base de datos.',
-            });
-        }
     };
 
     const renderManagementCard = (
@@ -757,3 +727,5 @@ export default function SettingsPage() {
         </div>
     );
 }
+
+    

@@ -1,7 +1,6 @@
 
 "use client"
 import { useState, useEffect, useMemo } from "react";
-import { usePathname, useRouter } from 'next/navigation';
 import Image from "next/image";
 import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package } from "lucide-react"
 
@@ -22,10 +21,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useFirestore, useCollection, useMemoFirebase, useUser } from "@/firebase/provider";
-import { errorEmitter, FirestorePermissionError } from "@/firebase";
-import { collection, addDoc, serverTimestamp, writeBatch, doc } from "firebase/firestore";
-import { initialFamilies } from "@/lib/data";
+import { useUser } from "@/firebase";
+import { mockProducts, defaultCustomers, initialFamilies, mockSales, mockInventoryMovements } from "@/lib/data";
 
 const generateSaleId = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -89,20 +86,20 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
 export default function POSPage() {
   const { toast } = useToast();
   const { settings, activeSymbol, activeRate } = useSettings();
-  const firestore = useFirestore();
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
 
-  const productsCollection = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return collection(firestore, "products");
-  }, [firestore, user]);
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsCollection, isUserLoading);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const customersCollection = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return collection(firestore, "customers");
-  }, [firestore, user]);
-  const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersCollection, isUserLoading);
+  useEffect(() => {
+    // Simulate fetching data for offline mode
+    setTimeout(() => {
+      setProducts(mockProducts);
+      setCustomers(defaultCustomers);
+      setIsLoading(false);
+    }, 500);
+  }, []);
   
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -111,7 +108,7 @@ export default function POSPage() {
   
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('eventual');
   const [newCustomer, setNewCustomer] = useState({ id: '', name: '', phone: '', address: '' });
-  const [isCustomerDialogOpen, setIsCustomerDialogOpen] useState(false);
+  const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [isCustomerSearchOpen, setIsCustomerSearchOpen] = useState(false);
 
   const [isProcessSaleDialogOpen, setIsProcessSaleDialogOpen] = useState(false);
@@ -121,7 +118,7 @@ export default function POSPage() {
   
   const [productDetails, setProductDetails] = useState<Product | null>(null);
 
-  const customerList = useMemo(() => [{ id: 'eventual', name: 'Cliente Eventual' }, ...(customers || [])], [customers]);
+  const customerList = useMemo(() => [{ id: 'eventual', name: 'Cliente Eventual' }, ...customers], [customers]);
   const selectedCustomer = customerList.find(c => c.id === selectedCustomerId) ?? null;
 
   const addToCart = (product: Product) => {
@@ -213,8 +210,8 @@ export default function POSPage() {
   const total = subtotal + totalTaxes;
 
 
-  const handleProcessSale = async (andPrint: boolean) => {
-     if (cartItems.length === 0 || !firestore) {
+  const handleProcessSale = (andPrint: boolean) => {
+     if (cartItems.length === 0) {
       toast({
         variant: "destructive",
         title: "Carrito vacío",
@@ -244,7 +241,7 @@ export default function POSPage() {
             price: item.price
         })),
         total: total,
-        date: serverTimestamp(),
+        date: new Date().toISOString(),
         transactionType: transactionType,
         paymentMethod: transactionType === 'contado' ? paymentMethod : undefined,
         status: transactionType === 'credito' ? 'unpaid' : 'paid',
@@ -252,57 +249,44 @@ export default function POSPage() {
         payments: transactionType === 'credito' ? [] : undefined,
     }
 
-    const batch = writeBatch(firestore);
-    
-    // 1. Add the sale
-    const saleRef = doc(firestore, "sales", saleId);
-    batch.set(saleRef, newSale);
+    // Update mock data for offline mode
+    mockSales.unshift(newSale);
 
-    // 2. Update product stock and create inventory movements
     for (const item of cartItems) {
-        const productRef = doc(firestore, "products", item.product.id);
-        const newStock = item.product.stock - item.quantity;
-        batch.update(productRef, { stock: newStock });
+        const productIndex = mockProducts.findIndex(p => p.id === item.product.id);
+        if (productIndex > -1) {
+            mockProducts[productIndex].stock -= item.quantity;
+        }
 
-        const movement: Omit<InventoryMovement, 'id'> = {
+        const movement: InventoryMovement = {
+            id: `mov-sale-${saleId}-${item.product.id}`,
             productName: item.product.name,
             type: 'sale',
             quantity: -item.quantity,
-            date: serverTimestamp(),
+            date: new Date().toISOString(),
         };
-        const movementRef = doc(collection(firestore, "inventoryMovements"));
-        batch.set(movementRef, movement);
+        mockInventoryMovements.unshift(movement);
     }
+    
+    setLastSale(newSale);
+    
+    toast({
+        title: "Venta Procesada",
+        description: `La venta con control #${saleId} ha sido registrada.`,
+    });
+    
+    setCartItems([]);
+    setIsProcessSaleDialogOpen(false);
 
-    try {
-        await batch.commit();
-        setLastSale(newSale);
-        
-        toast({
-          title: "Venta Procesada",
-          description: `La venta con control #${saleId} ha sido registrada.`,
-        });
-        
-        setCartItems([]);
-        setIsProcessSaleDialogOpen(false);
-
-        if (andPrint) {
-          setTimeout(() => {
-            setIsPrintPreviewOpen(true);
-          }, 100);
-        }
-    } catch(serverError) {
-        const permissionError = new FirestorePermissionError({
-            path: `sales/${saleId}`,
-            operation: 'create',
-            requestResourceData: newSale
-        });
-        errorEmitter.emit('permission-error', permissionError);
+    if (andPrint) {
+        setTimeout(() => {
+        setIsPrintPreviewOpen(true);
+        }, 100);
     }
   }
 
   const handleAddNewCustomer = () => {
-    if (newCustomer.name.trim() === "" || !firestore) {
+    if (newCustomer.name.trim() === "") {
         toast({
             variant: "destructive",
             title: "Nombre inválido",
@@ -312,37 +296,28 @@ export default function POSPage() {
     }
     
     const newId = newCustomer.id.trim() || `cust-${Date.now()}`;
-    const customersCol = collection(firestore, 'customers');
-    const customerDoc = doc(customersCol, newId);
-
-    const customerToAdd: Omit<Customer, 'id'> = {
+    const customerToAdd: Customer = {
+        id: newId,
         name: newCustomer.name,
         phone: newCustomer.phone,
         address: newCustomer.address,
     };
-
-    addDoc(customersCol, customerToAdd)
-        .then((docRef) => {
-            setSelectedCustomerId(docRef.id);
-            setNewCustomer({ id: '', name: '', phone: '', address: '' });
-            setIsCustomerDialogOpen(false);
-            toast({
-                title: "Cliente Agregado",
-                description: `El cliente "${customerToAdd.name}" ha sido agregado y seleccionado.`,
-            });
-        })
-        .catch(serverError => {
-            const permissionError = new FirestorePermissionError({
-                path: 'customers',
-                operation: 'create',
-                requestResourceData: customerToAdd
-            });
-            errorEmitter.emit('permission-error', permissionError);
-        });
+    
+    // Add to mock data
+    defaultCustomers.push(customerToAdd);
+    setCustomers([...defaultCustomers]);
+    
+    setSelectedCustomerId(newId);
+    setNewCustomer({ id: '', name: '', phone: '', address: '' });
+    setIsCustomerDialogOpen(false);
+    toast({
+        title: "Cliente Agregado",
+        description: `El cliente "${customerToAdd.name}" ha sido agregado y seleccionado.`,
+    });
   };
 
   const filteredProducts = useMemo(() => {
-    return (products || [])
+    return products
       .filter(product =>
         product.status === 'active' &&
         (selectedFamily === 'all' || product.family === selectedFamily) &&
@@ -366,8 +341,6 @@ export default function POSPage() {
   }, [productDetails]);
 
   const isNewCustomerFormDirty = newCustomer.name.trim() !== '' || newCustomer.id.trim() !== '' || newCustomer.phone.trim() !== '' || newCustomer.address.trim() !== '';
-
-  const isLoading = isLoadingProducts || isLoadingCustomers;
 
   return (
     <Dialog onOpenChange={(open) => !open && setProductDetails(null)}>
@@ -451,7 +424,7 @@ export default function POSPage() {
                                 aria-expanded={isCustomerSearchOpen}
                                 className="w-full justify-between"
                             >
-                                {isLoadingCustomers ? "Cargando..." : (selectedCustomer ? selectedCustomer.name : "Seleccionar cliente...")}
+                                {isLoading ? "Cargando..." : (selectedCustomer ? selectedCustomer.name : "Seleccionar cliente...")}
                                 <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                         </PopoverTrigger>
@@ -735,7 +708,7 @@ export default function POSPage() {
       <TicketPreview
         isOpen={isPrintPreviewOpen}
         onOpenChange={setIsPrintPreviewOpen}
-        cartItems={lastSale ? lastSale.items.map(item => ({ product: (products || []).find(p => p.id === item.productId)!, quantity: item.quantity, price: item.price })) : cartItems}
+        cartItems={lastSale ? lastSale.items.map(item => ({ product: products.find(p => p.id === item.productId)!, quantity: item.quantity, price: item.price })) : cartItems}
         saleId={lastSale?.id}
         customer={selectedCustomer}
       />
@@ -743,3 +716,5 @@ export default function POSPage() {
   </Dialog>
   );
 }
+
+    
