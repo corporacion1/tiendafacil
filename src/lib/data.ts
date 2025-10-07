@@ -83,14 +83,14 @@ export const mockSales: Sale[] = [
     {
         id: "SALE-001", customerId: "cust-1", customerName: "John Doe",
         items: [ { productId: "prod-1", productName: "Tarjeta Gráfica RTX 4090", quantity: 1, price: 1799.99 } ],
-        total: 1799.99, date: subDays(new Date(), 2).toISOString(), transactionType: 'contado', status: 'paid', paidAmount: 1799.99,
-        payments: [{ id: 'pay-sale-001', amount: 1799.99, date: subDays(new Date(), 2).toISOString(), method: 'tarjeta', reference: '1234' }]
+        total: 1799.99, date: subDays(new Date(), 8).toISOString(), transactionType: 'contado', status: 'paid', paidAmount: 1799.99,
+        payments: [{ id: 'pay-sale-001', amount: 1799.99, date: subDays(new Date(), 8).toISOString(), method: 'tarjeta', reference: '1234' }]
     },
     {
         id: "SALE-002", customerId: "cust-2", customerName: "Jane Smith",
         items: [ { productId: "prod-2", productName: "Procesador Intel Core i9-13900K", quantity: 1, price: 589.00 }, { productId: "prod-5", productName: "Tarjeta Madre Z790", quantity: 1, price: 349.99 } ],
-        total: 938.99, date: subDays(new Date(), 8).toISOString(), transactionType: 'credito', status: 'unpaid', paidAmount: 500,
-        payments: [{ id: 'pay-sale-002', amount: 500, date: subDays(new Date(), 7).toISOString(), method: 'pago-movil', reference: '012345' }]
+        total: 938.99, date: subDays(new Date(), 5).toISOString(), transactionType: 'credito', status: 'unpaid', paidAmount: 500,
+        payments: [{ id: 'pay-sale-002', amount: 500, date: subDays(new Date(), 4).toISOString(), method: 'pago-movil', reference: '012345' }]
     },
     {
         id: "SALE-003", customerId: "eventual", customerName: "Cliente Eventual",
@@ -109,7 +109,7 @@ export const mockPurchases: Purchase[] = [
     {
         id: "PUR-002", supplierId: "sup-2", supplierName: "PC Components LLC",
         items: [ { productId: "prod-2", productName: "Procesador Intel Core i9-13900K", quantity: 20, cost: 520.00 }, { productId: "prod-3", productName: "Memoria RAM 32GB DDR5", quantity: 30, cost: 100.00 } ],
-        total: 13400, date: subDays(new Date(), 5).toISOString(), documentNumber: "INV-PCC-1122", responsible: "Usuario Demo",
+        total: 13400, date: subDays(new Date(), 10).toISOString(), documentNumber: "INV-PCC-1122", responsible: "Usuario Demo",
     },
 ];
 
