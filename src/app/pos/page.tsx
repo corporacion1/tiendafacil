@@ -21,10 +21,11 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useUser } from "@/firebase";
-import { mockProducts, defaultCustomers, initialFamilies, mockSales, mockInventoryMovements, paymentMethods, pendingOrders as initialPendingOrders } from "@/lib/data";
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { mockProducts, defaultCustomers, initialFamilies, paymentMethods } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { collection, doc, writeBatch } from "firebase/firestore";
 
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
     const { activeSymbol, activeRate } = useSettings();
@@ -68,24 +69,24 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
 
 export default function POSPage() {
   const { toast } = useToast();
+  const firestore = useFirestore();
   const { settings, setSettings, activeSymbol, activeRate } = useSettings();
-  const { user } = useUser();
+  
+  const productsRef = useMemoFirebase(() => collection(firestore, 'products'), [firestore]);
+  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>(initialPendingOrders);
-  const [isLoading, setIsLoading] = useState(true);
+  const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
+  const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersRef);
+  
+  const pendingOrdersRef = useMemoFirebase(() => collection(firestore, 'pendingOrders'), [firestore]);
+  const { data: pendingOrders, isLoading: isLoadingPendingOrders } = useCollection<PendingOrder>(pendingOrdersRef);
+  
+  const salesRef = useMemoFirebase(() => collection(firestore, 'sales'), [firestore]);
+  const { data: sales = [] } = useCollection<Sale>(salesRef);
+
+  const isLoading = isLoadingProducts || isLoadingCustomers || isLoadingPendingOrders;
   
   const [scannedOrderId, setScannedOrderId] = useState('');
-
-  useEffect(() => {
-    // Simulate fetching data for offline mode
-    setTimeout(() => {
-      setProducts(mockProducts);
-      setCustomers(defaultCustomers);
-      setIsLoading(false);
-    }, 500);
-  }, []);
   
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -112,7 +113,7 @@ export default function POSPage() {
   
   const generateSaleId = () => {
     const series = settings.saleSeries || 'SALE';
-    const highestId = mockSales.reduce((max, sale) => {
+    const highestId = sales.reduce((max, sale) => {
         if (!sale.id.startsWith(series + '-')) return max;
         const parts = sale.id.split('-');
         const currentNum = parseInt(parts[parts.length - 1], 10);
@@ -122,7 +123,7 @@ export default function POSPage() {
     return `${series}-${String(nextCorrelative).padStart(3, '0')}`;
   };
 
-  const customerList = useMemo(() => [{ id: 'eventual', name: 'Cliente Eventual', phone: '' }, ...customers], [customers]);
+  const customerList = useMemo(() => [{ id: 'eventual', name: 'Cliente Eventual', phone: '' }, ...(customers || [])], [customers]);
   const selectedCustomer = customerList.find(c => c.id === selectedCustomerId) ?? null;
 
   const addToCart = (product: Product) => {
@@ -226,12 +227,10 @@ export default function POSPage() {
 
   const isReferenceDuplicate = (reference: string, method: string) => {
     if (!reference || !method) return false;
-    // Check current unsaved payments
     if (payments.some(p => p.method === method && p.reference === reference)) {
         return true;
     }
-    // Check all past sales
-    for (const sale of mockSales) {
+    for (const sale of sales) {
         if (sale.payments && sale.payments.some(p => p.method === method && p.reference === reference)) {
             return true;
         }
@@ -272,7 +271,7 @@ export default function POSPage() {
     setCurrentPaymentMethod('efectivo');
   }
 
-  const handleProcessSale = (andPrint: boolean) => {
+  const handleProcessSale = async (andPrint: boolean) => {
      if (cartItems.length === 0) {
       toast({ variant: "destructive", title: "Carrito vacío"});
       return;
@@ -310,44 +309,59 @@ export default function POSPage() {
         payments: finalPayments,
     }
 
-    // Update mock data for offline mode
-    mockSales.unshift(newSale);
+    const batch = writeBatch(firestore);
 
+    // 1. Create Sale
+    const saleRef = doc(firestore, "sales", newSale.id);
+    batch.set(saleRef, newSale);
+
+    // 2. Update product stock and create inventory movements
     for (const item of cartItems) {
-        const productIndex = mockProducts.findIndex(p => p.id === item.product.id);
-        if (productIndex > -1) {
-            mockProducts[productIndex].stock -= item.quantity;
-        }
-        const movement: InventoryMovement = {
-            id: `mov-sale-${saleId}-${item.product.id}`,
+        const productRef = doc(firestore, "products", item.product.id);
+        const newStock = item.product.stock - item.quantity;
+        batch.update(productRef, { stock: newStock });
+
+        const movementRef = doc(collection(firestore, "inventory_movements"));
+        const newMovement: Omit<InventoryMovement, 'id'> = {
             productName: item.product.name,
             type: 'sale',
             quantity: -item.quantity,
             date: new Date().toISOString(),
         };
-        mockInventoryMovements.unshift(movement);
+        batch.set(movementRef, newMovement);
     }
     
-    setLastSale(newSale);
-    
-    // Update correlative in settings
+    // 3. Update correlative in settings
     setSettings({ ...settings, saleCorrelative: settings.saleCorrelative + 1 });
     
-    toast({
-        title: "Venta Procesada",
-        description: `La venta #${saleId} ha sido registrada.`,
-    });
-    
-    setCartItems([]);
-    setIsProcessSaleDialogOpen(false);
-    resetPaymentModal();
-    setSelectedCustomerId('eventual');
+    try {
+        await batch.commit();
 
-    if (andPrint) {
-        setTimeout(() => {
-        setTicketType('sale');
-        setIsPrintPreviewOpen(true);
-        }, 100);
+        setLastSale(newSale);
+        
+        toast({
+            title: "Venta Procesada",
+            description: `La venta #${saleId} ha sido registrada.`,
+        });
+        
+        setCartItems([]);
+        setIsProcessSaleDialogOpen(false);
+        resetPaymentModal();
+        setSelectedCustomerId('eventual');
+
+        if (andPrint) {
+            setTimeout(() => {
+                setTicketType('sale');
+                setIsPrintPreviewOpen(true);
+            }, 100);
+        }
+    } catch (error) {
+        console.error("Error processing sale:", error);
+        toast({
+            variant: "destructive",
+            title: "Error al procesar la venta",
+            description: (error as Error).message,
+        });
     }
   }
 
@@ -365,7 +379,7 @@ export default function POSPage() {
     setIsPrintPreviewOpen(true);
   };
 
-  const handleAddNewCustomer = () => {
+  const handleAddNewCustomer = async () => {
     if (newCustomer.name.trim() === "" || newCustomer.phone.trim() === "") {
         toast({
             variant: "destructive",
@@ -376,28 +390,38 @@ export default function POSPage() {
     }
     
     const newId = newCustomer.id.trim() || `cust-${Date.now()}`;
-    const customerToAdd: Customer = {
-        id: newId,
+    const customerToAdd: Omit<Customer, 'id'> = {
         name: newCustomer.name,
         phone: newCustomer.phone,
         address: newCustomer.address,
     };
     
-    // Add to mock data
-    defaultCustomers.push(customerToAdd);
-    setCustomers([...defaultCustomers]);
+    const customerRef = doc(firestore, 'customers', newId);
     
-    setSelectedCustomerId(newId);
-    setNewCustomer({ id: '', name: '', phone: '', address: '' });
-    setIsCustomerDialogOpen(false);
-    toast({
-        title: "Cliente Agregado",
-        description: `El cliente "${customerToAdd.name}" ha sido agregado y seleccionado.`,
-    });
+    const batch = writeBatch(firestore);
+    batch.set(customerRef, customerToAdd);
+
+    try {
+        await batch.commit();
+        setSelectedCustomerId(newId);
+        setNewCustomer({ id: '', name: '', phone: '', address: '' });
+        setIsCustomerDialogOpen(false);
+        toast({
+            title: "Cliente Agregado",
+            description: `El cliente "${customerToAdd.name}" ha sido agregado y seleccionado.`,
+        });
+    } catch (error) {
+        console.error("Error adding new customer:", error);
+        toast({
+            variant: "destructive",
+            title: "Error al agregar cliente",
+            description: (error as Error).message,
+        });
+    }
   };
 
   const filteredProducts = useMemo(() => {
-    return products
+    return (products || [])
       .filter(product =>
         (product.status === 'active' || product.status === 'promotion') &&
         (selectedFamily === 'all' || product.family === selectedFamily) &&
@@ -408,7 +432,7 @@ export default function POSPage() {
 
   const isNewCustomerFormDirty = newCustomer.name.trim() !== '' || newCustomer.id.trim() !== '' || newCustomer.phone.trim() !== '' || newCustomer.address.trim() !== '';
   
-  const loadPendingOrder = (order: PendingOrder) => {
+  const loadPendingOrder = async (order: PendingOrder) => {
     if (cartItems.length > 0) {
         toast({
             variant: "destructive",
@@ -417,18 +441,22 @@ export default function POSPage() {
         });
         return;
     }
+    if (!products) {
+        toast({ variant: "destructive", title: "Productos no cargados" });
+        return;
+    }
+
     const orderCartItems: CartItem[] = order.items.map(item => {
         const product = products.find(p => p.id === item.productId);
         if (!product) {
-            // Create a fallback product representation if not found
             return {
                 product: {
                     id: item.productId,
                     name: item.productName,
                     price: item.price,
                     stock: 0,
-                    sku: 'N/A', cost: 0, status: 'inactive', tax1: false, tax2: false, wholesalePrice: 0,
-                } as Product,
+                    sku: 'N/A', cost: 0, status: 'inactive', tax1: false, tax2: false, wholesalePrice: 0, storeId: '',
+                },
                 quantity: item.quantity,
                 price: item.price,
             };
@@ -438,7 +466,7 @@ export default function POSPage() {
 
     setCartItems(orderCartItems);
 
-    const customer = customers.find(c => c.phone === order.customerPhone);
+    const customer = (customers || []).find(c => c.phone === order.customerPhone);
     if(customer) {
         setSelectedCustomerId(customer.id);
     } else {
@@ -447,17 +475,23 @@ export default function POSPage() {
             name: order.customerName,
             phone: order.customerPhone,
         }
-        defaultCustomers.push(newCustomerFromOrder);
-        setCustomers([...defaultCustomers]);
+        const customerRef = doc(firestore, 'customers', newCustomerFromOrder.id);
+        const batch = writeBatch(firestore);
+        batch.set(customerRef, newCustomerFromOrder);
+        await batch.commit();
+        
         setSelectedCustomerId(newCustomerFromOrder.id);
     }
 
-    setPendingOrders(prev => prev.filter(p => p.id !== order.id)); // Remove from pending list
+    const orderRef = doc(firestore, 'pendingOrders', order.id);
+    const deleteBatch = writeBatch(firestore);
+    deleteBatch.delete(orderRef);
+    await deleteBatch.commit();
+    
     toast({
         title: "Pedido Cargado",
         description: `El pedido ${order.id} está listo para facturar.`
     });
-    // This will close the dialog
     document.getElementById('pending-orders-close-button')?.click();
   };
 
@@ -466,7 +500,7 @@ export default function POSPage() {
         toast({ variant: "destructive", title: "Carrito no está vacío" });
         return;
     }
-    const order = pendingOrders.find(o => o.id === scannedOrderId);
+    const order = (pendingOrders || []).find(o => o.id === scannedOrderId);
     if (order) {
         loadPendingOrder(order);
         setScannedOrderId('');
@@ -519,7 +553,7 @@ export default function POSPage() {
                             <Button variant="secondary">
                                 <Archive className="mr-2 h-4 w-4" />
                                 Pedidos Pendientes
-                                {pendingOrders.length > 0 && <Badge variant="destructive" className="ml-2">{pendingOrders.length}</Badge>}
+                                {(pendingOrders || []).length > 0 && <Badge variant="destructive" className="ml-2">{(pendingOrders || []).length}</Badge>}
                             </Button>
                         </DialogTrigger>
                         <DialogContent>
@@ -530,16 +564,17 @@ export default function POSPage() {
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="py-4 max-h-96 overflow-y-auto">
-                                {pendingOrders.length === 0 ? (
+                                {isLoadingPendingOrders && <p>Cargando pedidos...</p>}
+                                {!isLoadingPendingOrders && (pendingOrders || []).length === 0 ? (
                                     <p className="text-center text-muted-foreground py-8">No hay pedidos pendientes.</p>
                                 ) : (
                                     <div className="space-y-4">
-                                    {pendingOrders.map(order => (
+                                    {(pendingOrders || []).map(order => (
                                         <div key={order.id} className="p-4 border rounded-lg">
                                             <div className="flex justify-between items-start">
                                                 <div>
                                                     <h4 className="font-semibold">{order.id}</h4>
-                                                    <p className="text-sm text-muted-foreground">{order.customerName} - {format(new Date(order.date), 'dd/MM/yyyy HH:mm')}</p>
+                                                    <p className="text-sm text-muted-foreground">{order.customerName} - {format(new Date(order.date as string), 'dd/MM/yyyy HH:mm')}</p>
                                                 </div>
                                                 <Button size="sm" onClick={() => loadPendingOrder(order)}>Cargar</Button>
                                             </div>
@@ -643,7 +678,7 @@ export default function POSPage() {
                                 aria-expanded={isCustomerSearchOpen}
                                 className="w-full justify-between"
                             >
-                                {isLoading ? "Cargando..." : (selectedCustomer ? selectedCustomer.name : "Seleccionar cliente...")}
+                                {isLoadingCustomers ? "Cargando..." : (selectedCustomer ? selectedCustomer.name : "Seleccionar cliente...")}
                                 <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                         </PopoverTrigger>
@@ -950,7 +985,7 @@ export default function POSPage() {
         isOpen={isPrintPreviewOpen}
         onOpenChange={setIsPrintPreviewOpen}
         ticketType={ticketType}
-        cartItems={ticketType === 'quote' || !lastSale ? cartItems : lastSale.items.map(item => ({ product: products.find(p => p.id === item.productId)!, quantity: item.quantity, price: item.price }))}
+        cartItems={ticketType === 'quote' || !lastSale ? cartItems : lastSale.items.map(item => ({ product: (products || []).find(p => p.id === item.productId)!, quantity: item.quantity, price: item.price }))}
         saleId={ticketType === 'sale' ? lastSale?.id : undefined}
         customer={selectedCustomer}
         payments={ticketType === 'sale' ? lastSale?.payments : undefined}

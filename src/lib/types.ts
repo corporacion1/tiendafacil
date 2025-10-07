@@ -29,7 +29,7 @@ export type CartItem = {
 
 export type PendingOrder = {
   id: string;
-  date: string;
+  date: Timestamp | string;
   customerName: string;
   customerPhone: string;
   items: {

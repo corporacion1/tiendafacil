@@ -33,9 +33,8 @@ import {
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { ProductForm } from "@/components/product-form";
 import { useSettings } from "@/contexts/settings-context";
-import { mockProducts, mockSales, mockInventoryMovements } from "@/lib/data";
 import { format, parseISO } from "date-fns";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase";
 import { collection, doc, writeBatch } from "firebase/firestore";
 
 const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewMovements, setProductToDelete }: {
@@ -168,24 +167,13 @@ export default function InventoryPage() {
     if (!data.id) return false;
 
     const productRef = doc(firestore, 'products', data.id);
-    const batch = writeBatch(firestore);
-    batch.set(productRef, data, { merge: true });
+    setDocumentNonBlocking(productRef, data, { merge: true });
 
-    batch.commit().then(() => {
-        toast({
-            title: "Producto Actualizado",
-            description: `El producto "${data.name}" ha sido actualizado.`,
-        });
-        setProductToEdit(null); // Close the dialog
-    }).catch(error => {
-        console.error("Error updating product: ", error);
-        toast({
-            variant: "destructive",
-            title: "Error al actualizar",
-            description: error.message,
-        });
+    toast({
+        title: "Producto Actualizado",
+        description: `El producto "${data.name}" ha sido actualizado.`,
     });
-
+    setProductToEdit(null);
     return true;
   }
   
@@ -203,23 +191,13 @@ export default function InventoryPage() {
     }
     
     const productRef = doc(firestore, 'products', productId);
-    const batch = writeBatch(firestore);
-    batch.delete(productRef);
+    deleteDocumentNonBlocking(productRef);
 
-    batch.commit().then(() => {
-        toast({
-            title: "Producto Eliminado",
-            description: "El producto ha sido eliminado del inventario.",
-        });
-        setProductToDelete(null);
-    }).catch(error => {
-        console.error("Error deleting product: ", error);
-        toast({
-            variant: "destructive",
-            title: "Error al eliminar",
-            description: error.message,
-        });
+    toast({
+        title: "Producto Eliminado",
+        description: "El producto ha sido eliminado del inventario.",
     });
+    setProductToDelete(null);
   };
 
   const resetMovementForm = () => {
@@ -229,7 +207,7 @@ export default function InventoryPage() {
       setMovementResponsible('');
   }
 
-  const handleMoveInventory = () => {
+  const handleMoveInventory = async () => {
     if (!movementProduct || !movementType || movementQuantity <= 0 || !movementResponsible.trim()) {
       toast({
         variant: "destructive",
@@ -254,14 +232,14 @@ export default function InventoryPage() {
       case 'adjustment': newStock = movementQuantity; break;
       default: newStock = currentStock; break;
     }
-
+    
     const batch = writeBatch(firestore);
 
     const productRef = doc(firestore, "products", movementProduct.id);
     batch.update(productRef, { stock: newStock });
     
     const movementRef = doc(collection(firestore, "inventory_movements"));
-    const newMovement: Omit<InventoryMovement, 'id'> = {
+    const newMovement: Omit<InventoryMovement, 'id' | 'date'> & {date: string} = {
         productName: movementProduct.name,
         type: movementType,
         quantity: movementType === 'sale' ? -movementQuantity : (movementType === 'purchase' ? movementQuantity : newStock),
@@ -270,20 +248,21 @@ export default function InventoryPage() {
     };
     batch.set(movementRef, newMovement);
 
-    batch.commit().then(() => {
+    try {
+        await batch.commit();
         toast({
             title: "Movimiento Registrado",
             description: `El stock de "${movementProduct.name}" ha sido actualizado a ${newStock}.`,
         });
         resetMovementForm();
-    }).catch(error => {
-         console.error("Error moving inventory: ", error);
+    } catch (error) {
+        console.error("Error moving inventory: ", error);
         toast({
             variant: "destructive",
             title: "Error al registrar movimiento",
-            description: error.message,
+            description: (error as Error).message,
         });
-    });
+    }
   };
   
   const getMovementLabel = (type: 'sale' | 'purchase' | 'adjustment') => {
@@ -556,9 +535,7 @@ export default function InventoryPage() {
                     <DialogClose asChild>
                         <Button variant="outline" onClick={resetMovementForm}>Cancelar</Button>
                     </DialogClose>
-                    <DialogClose asChild>
-                        <Button onClick={handleMoveInventory} disabled={!isMovementFormValid}>Registrar Movimiento</Button>
-                    </DialogClose>
+                    <Button onClick={handleMoveInventory} disabled={!isMovementFormValid}>Registrar Movimiento</Button>
                 </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -662,5 +639,3 @@ export default function InventoryPage() {
     </>
   );
 }
-
-    

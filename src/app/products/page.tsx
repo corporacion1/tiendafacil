@@ -5,19 +5,23 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { ProductForm } from "@/components/product-form";
 import type { Product } from "@/lib/types";
-import { mockProducts } from "@/lib/data";
+import { useFirestore, setDocumentNonBlocking } from "@/firebase";
+import { doc } from "firebase/firestore";
 
 export default function ProductsPage() {
   const { toast } = useToast();
+  const firestore = useFirestore();
 
-  function onSubmit(data: Omit<Product, 'id'>) {
+  function onSubmit(data: Omit<Product, 'id' | 'storeId'>) {
+    const newProductId = `prod-${Date.now()}`;
     const newProduct: Product = {
       ...data,
-      id: `prod-${Date.now()}`,
+      id: newProductId,
+      storeId: "store-1", // Replace with dynamic store ID later
     };
-
-    // In offline mode, we just add it to the mock data array
-    mockProducts.unshift(newProduct);
+    
+    const productRef = doc(firestore, 'products', newProductId);
+    setDocumentNonBlocking(productRef, newProduct, {});
     
     toast({
       title: "Producto Creado",
