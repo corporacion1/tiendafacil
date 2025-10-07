@@ -30,8 +30,8 @@ import { useState, useRef, useEffect } from "react";
 const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: Home },
     { href: "/catalog", label: "Catálogo", icon: LayoutGrid },
-    { href: "/inventory", label: "Inventario", icon: Boxes },
     { href: "/products", label: "Productos", icon: PackagePlus },
+    { href: "/inventory", label: "Inventario", icon: Boxes },
     { href: "/pos", label: "Punto de Venta", icon: ShoppingCart },
     { href: "/purchases", label: "Compras", icon: Store },
     { href: "/credits", label: "Créditos", icon: CreditCard },
