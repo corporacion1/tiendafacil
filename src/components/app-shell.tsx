@@ -7,6 +7,7 @@ import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { AuthGuard } from './auth-guard';
 import { cn } from '@/lib/utils';
+import { AppLoader } from './app-loader';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -33,7 +34,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <SiteHeader toggleSidebar={toggleSidebar} isSidebarExpanded={isSidebarExpanded} />
             <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
                 <AuthGuard>
+                  <AppLoader>
                     {children}
+                  </AppLoader>
                 </AuthGuard>
             </main>
         </div>
