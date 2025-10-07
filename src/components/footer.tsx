@@ -1,8 +1,19 @@
 
 import { Instagram, Facebook, Twitter } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FaWhatsapp, FaTiktok } from "react-icons/fa";
 
 const socialLinks = [
+  {
+    name: "WhatsApp",
+    icon: FaWhatsapp,
+    url: "https://wa.me/584126915593",
+  },
+  {
+    name: "TikTok",
+    icon: FaTiktok,
+    url: "https://www.tiktok.com/@corporacion1plus",
+  },
   {
     name: "Instagram",
     icon: Instagram,
