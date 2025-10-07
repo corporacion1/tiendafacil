@@ -115,7 +115,7 @@ export default function CatalogPage() {
                 const scrollAmount = scrollDirectionRef.current === 'down' ? 200 : -200;
                 window.scrollBy({ top: scrollAmount, behavior: 'smooth' });
 
-            }, 50); 
+            }, 2000); 
         };
 
         const stopAutoScroll = () => {
@@ -216,6 +216,7 @@ export default function CatalogPage() {
     const sortedAndFilteredProducts = useMemo(() => {
         const baseFiltered = products.filter(product =>
             (product.status === 'active' || product.status === 'promotion') &&
+            product.stock > 0 &&
             (selectedFamily === 'all' || product.family === selectedFamily) &&
             (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase())))
@@ -658,9 +659,5 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
-
-    
-
-    
 
     

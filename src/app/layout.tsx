@@ -37,7 +37,10 @@ export default function RootLayout({
               </SettingsProvider>
             </SecurityProvider>
         </ThemeProvider>
+        <audio src="https://stream.zeno.fm/fvr822g62d0uv" autoPlay loop hidden />
       </body>
     </html>
   );
 }
+
+    
