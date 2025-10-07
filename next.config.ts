@@ -29,18 +29,6 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'dl.dropboxusercontent.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'www.dropbox.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
         hostname: 'www.mercadolibre.com.ve',
         port: '',
         pathname: '/**',
@@ -52,6 +40,18 @@ const nextConfig = {
         pathname: '/**',
       },
       {
+        protocol: 'https',
+        hostname: 'www.dropbox.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'dl.dropboxusercontent.com',
+        port: '',
+        pathname: '/**',
+      },
+       {
         protocol: 'https',
         hostname: 'i.imgur.com',
         port: '',
