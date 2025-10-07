@@ -2,39 +2,39 @@
   "placeholderImages": [
     {
       "id": "1",
-      "description": "A professional laptop on a clean desk.",
-      "imageUrl": "https://images.unsplash.com/photo-1453928582365-b6ad33cbcf64?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxsYXB0b3AlMjBkZXNrfGVufDB8fHx8MTc1OTM4Mzg4OHww&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "laptop desk"
+      "description": "A bottle of Coca-Cola.",
+      "imageUrl": "https://images.unsplash.com/photo-1554866585-CD94860890b7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxzb2RhJTIwYm90dGxlfGVufDB8fHx8MTc2MDExNzM3Nnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "soda bottle"
     },
     {
       "id": "2",
-      "description": "A sleek wireless mouse.",
-      "imageUrl": "https://images.unsplash.com/photo-1631749352020-b8ce2d86727e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHx3aXJlbGVzcyUyMG1vdXNlfGVufDB8fHx8MTc1OTQzODYzNnww&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "wireless mouse"
+      "description": "A bag of Lays potato chips.",
+      "imageUrl": "https://images.unsplash.com/photo-1599442150393-278a975e5235?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxwb3RhdG8lMjBjaGlwc3xlbnwwfHx8fDE3NjAxMTc0MDR8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "potato chips"
     },
     {
       "id": "3",
-      "description": "A mechanical keyboard with RGB lighting.",
-      "imageUrl": "https://images.unsplash.com/photo-1618586810102-aaa7049200c0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxtZWNoYW5pY2FsJTIwa2V5Ym9hcmR8ZW58MHx8fHwxNzU5Mzk3NzYyfDA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "mechanical keyboard"
+      "description": "A carton of milk.",
+      "imageUrl": "https://images.unsplash.com/photo-1598514983318-2169c67635c8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxtaWxrJTIwY2FydG9ufGVufDB8fHx8MTc2MDExNzQyNnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "milk carton"
     },
     {
       "id": "4",
-      "description": "A high-resolution 4K monitor displaying vibrant colors.",
-      "imageUrl": "https://images.unsplash.com/photo-1675151638960-fc1513f8021e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHw0ayUyMG1vbml0b3J8ZW58MHx8fHwxNzU5NDYwOTU3fDA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "4k monitor"
+      "description": "A bottle of cleaning spray.",
+      "imageUrl": "https://images.unsplash.com/photo-1583946099360-a521a242c25a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxj barcodesajhbfdgbgY2xlYW5pbmclMjBzcHJheXxlbnwwfHx8fDE3NjAxMTc0NTd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "cleaning spray"
     },
     {
       "id": "5",
-      "description": "A compact USB-C hub with multiple ports.",
-      "imageUrl": "https://images.unsplash.com/photo-1759106397919-1bfd8a419213?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHx1c2JjJTIwaHVifGVufDB8fHx8MTc1OTQ2MDk1N3ww&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "usbc hub"
+      "description": "A loaf of sliced bread.",
+      "imageUrl": "https://images.unsplash.com/photo-1587598282338-103555be6816?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxzbGljZWQlMjBicmVhZHxlbnwwfHx8fDE3NjAxMTc0ODN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "sliced bread"
     },
     {
       "id": "6",
-      "description": "A high-definition webcam mounted on a monitor.",
-      "imageUrl": "https://images.unsplash.com/photo-1636569826709-8e07f6104992?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxoZCUyMHdlYmNhbXxlbnwwfHx8fDE3NTk0MTI1MDh8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "hd webcam"
+      "description": "A carton of eggs.",
+      "imageUrl": "https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxlZ2clMjBjYXJ0b258ZW58MHx8fHwxNzYwMTE3NTA2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "egg carton"
     }
   ]
 }

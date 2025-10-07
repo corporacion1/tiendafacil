@@ -9,8 +9,8 @@ export const defaultCustomers: Customer[] = [
 ];
 
 export const defaultSuppliers: Supplier[] = [
-    { id: 'sup-1', name: 'Global Tech', phone: '111-2222', address: '789 Tech Rd' },
-    { id: 'sup-2', name: 'Componentes C.A.', phone: '333-4444', address: '101 Component Ln' },
+    { id: 'sup-1', name: 'Distribuidora Alimentos Polar', phone: '111-2222', address: '789 Food Rd' },
+    { id: 'sup-2', name: 'Coca-Cola FEMSA', phone: '333-4444', address: '101 Beverage Ln' },
 ];
 
 export let initialUnits: Unit[] = [
@@ -20,10 +20,11 @@ export let initialUnits: Unit[] = [
 ];
 
 export let initialFamilies: Family[] = [
-    { id: 'fam-1', name: 'Laptops' },
-    { id: 'fam-2', name: 'Periféricos' },
-    { id: 'fam-3', name: 'Monitores' },
-    { id: 'fam-4', name: 'Componentes' },
+    { id: 'fam-1', name: 'Bebidas' },
+    { id: 'fam-2', name: 'Snacks' },
+    { id: 'fam-3', name: 'Lácteos y Huevos' },
+    { id: 'fam-4', name: 'Limpieza' },
+    { id: 'fam-5', name: 'Panadería' },
 ];
 
 export let initialWarehouses: Warehouse[] = [
@@ -34,109 +35,109 @@ export let initialWarehouses: Warehouse[] = [
 export const mockProducts: Product[] = [
   {
     id: "prod-1",
-    name: "Laptop Pro X1",
-    sku: "LPX1-001",
-    stock: 25,
-    price: 1200,
-    wholesalePrice: 1100,
-    cost: 850,
+    name: "Refresco Coca-Cola 2L",
+    sku: "CC-2L-001",
+    stock: 50,
+    price: 2.5,
+    wholesalePrice: 2.2,
+    cost: 1.8,
     status: "active",
     tax1: true,
     tax2: false,
     unit: "Unidad",
-    family: "Laptops",
+    family: "Bebidas",
     warehouse: "Almacén Principal",
-    description: "Laptop de alto rendimiento para profesionales.",
+    description: "Refresco carbonatado sabor cola, botella de 2 litros.",
     imageUrl: PlaceHolderImages[0].imageUrl,
     imageHint: PlaceHolderImages[0].imageHint,
   },
   {
     id: "prod-2",
-    name: "Mouse Inalámbrico Silencioso",
-    sku: "MWS-002",
-    stock: 150,
-    price: 25,
-    wholesalePrice: 20,
-    cost: 12,
+    name: "Papas Fritas Lays 150g",
+    sku: "LAYS-150G-002",
+    stock: 120,
+    price: 1.5,
+    wholesalePrice: 1.2,
+    cost: 0.9,
     status: "active",
     tax1: true,
     tax2: false,
     unit: "Unidad",
-    family: "Periféricos",
+    family: "Snacks",
     warehouse: "Almacén Principal",
-    description: "Mouse ergonómico con clicks silenciosos.",
+    description: "Papas fritas naturales en bolsa de 150g.",
     imageUrl: PlaceHolderImages[1].imageUrl,
     imageHint: PlaceHolderImages[1].imageHint,
   },
   {
     id: "prod-3",
-    name: "Teclado Mecánico RGB",
-    sku: "KBD-RGB-003",
-    stock: 75,
-    price: 80,
-    wholesalePrice: 70,
-    cost: 50,
+    name: "Leche Completa 1L",
+    sku: "LECHE-1L-003",
+    stock: 80,
+    price: 1.8,
+    wholesalePrice: 1.6,
+    cost: 1.2,
     status: "active",
     tax1: true,
-    tax2: true,
+    tax2: false,
     unit: "Unidad",
-    family: "Periféricos",
+    family: "Lácteos y Huevos",
     warehouse: "Almacén Principal",
-    description: "Teclado mecánico con switches rojos e iluminación RGB personalizable.",
+    description: "Leche de vaca pasteurizada, cartón de 1 litro.",
     imageUrl: PlaceHolderImages[2].imageUrl,
     imageHint: PlaceHolderImages[2].imageHint,
   },
    {
     id: "prod-4",
-    name: "Monitor 4K 27 pulgadas",
-    sku: "MON-4K-004",
-    stock: 40,
-    price: 450,
-    wholesalePrice: 420,
-    cost: 300,
+    name: "Limpiador Multiuso Mistolin 1L",
+    sku: "MIST-1L-004",
+    stock: 60,
+    price: 3.0,
+    wholesalePrice: 2.7,
+    cost: 2.1,
     status: "active",
     tax1: true,
     tax2: false,
     unit: "Unidad",
-    family: "Monitores",
+    family: "Limpieza",
     warehouse: "Almacén Principal",
-    description: "Monitor de alta resolución con colores vibrantes.",
+    description: "Limpiador desinfectante para todo tipo de superficies, aroma a lavanda.",
     imageUrl: PlaceHolderImages[3].imageUrl,
     imageHint: PlaceHolderImages[3].imageHint,
   },
   {
     id: "prod-5",
-    name: "Hub USB-C 7-en-1",
-    sku: "HUB-C-005",
-    stock: 120,
-    price: 45,
-    wholesalePrice: 40,
-    cost: 25,
+    name: "Pan de Sándwich Blanco",
+    sku: "PAN-SW-005",
+    stock: 40,
+    price: 2.0,
+    wholesalePrice: 1.8,
+    cost: 1.3,
     status: "active",
     tax1: true,
     tax2: false,
     unit: "Unidad",
-    family: "Periféricos",
+    family: "Panadería",
     warehouse: "Almacén Principal",
-    description: "Hub multipuerto para expandir la conectividad.",
+    description: "Pan de molde blanco, ideal para sándwiches.",
     imageUrl: PlaceHolderImages[4].imageUrl,
     imageHint: PlaceHolderImages[4].imageHint,
   },
   {
     id: "prod-6",
-    name: "Webcam Full HD 1080p",
-    sku: "WC-HD-006",
-    stock: 90,
-    price: 60,
-    wholesalePrice: 50,
-    cost: 35,
+    name: "Huevos (Cartón de 12)",
+    sku: "HUEVOS-12-006",
+    stock: 30,
+    price: 3.5,
+    wholesalePrice: 3.1,
+    cost: 2.5,
     status: "active",
     tax1: true,
     tax2: false,
     unit: "Unidad",
-    family: "Periféricos",
+    family: "Lácteos y Huevos",
     warehouse: "Almacén Principal",
-    description: "Webcam de alta definición para videollamadas claras.",
+    description: "Cartón con 12 huevos de gallina frescos.",
     imageUrl: PlaceHolderImages[5].imageUrl,
     imageHint: PlaceHolderImages[5].imageHint,
   },
@@ -149,44 +150,43 @@ export const mockSales: Sale[] = [
         customerId: "cust-1",
         customerName: "John Doe",
         items: [
-            { productId: "prod-1", productName: "Laptop Pro X1", quantity: 1, price: 1200 },
-            { productId: "prod-2", productName: "Mouse Inalámbrico Silencioso", quantity: 1, price: 25 }
+            { productId: "prod-1", productName: "Refresco Coca-Cola 2L", quantity: 2, price: 2.5 },
+            { productId: "prod-2", productName: "Papas Fritas Lays 150g", quantity: 3, price: 1.5 }
         ],
-        total: 1225,
-        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+        total: 9.5,
+        date: new Date('2025-01-15T14:30:00Z').toISOString(), // 2025
         transactionType: 'contado',
         status: 'paid',
-        paidAmount: 1225,
-        payments: [{ id: 'pay-sale-001', amount: 1225, date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), method: 'tarjeta' }]
+        paidAmount: 9.5,
+        payments: [{ id: 'pay-sale-001', amount: 9.5, date: new Date('2025-01-15T14:30:00Z').toISOString(), method: 'efectivo' }]
     },
     {
         id: "SALE-002",
         customerId: "cust-2",
         customerName: "Jane Smith",
         items: [
-            { productId: "prod-3", productName: "Teclado Mecánico RGB", quantity: 2, price: 70 } // wholesale
+            { productId: "prod-3", productName: "Leche Completa 1L", quantity: 6, price: 1.6 } // wholesale
         ],
-        total: 140,
-        date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
+        total: 9.6,
+        date: new Date('2025-02-20T10:00:00Z').toISOString(), // 2025
         transactionType: 'credito',
         status: 'unpaid',
-        paidAmount: 50,
-        payments: [{ id: 'pay-sale-002', amount: 50, date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(), method: 'efectivo' }]
+        paidAmount: 5,
+        payments: [{ id: 'pay-sale-002', amount: 5, date: new Date('2025-02-21T18:00:00Z').toISOString(), method: 'pago-movil', reference: '012345' }]
     }
 ];
 
 export const mockPurchases: Purchase[] = [
     {
         id: "PUR-001",
-        supplierId: "sup-1",
-        supplierName: "Global Tech",
+        supplierId: "sup-2",
+        supplierName: "Coca-Cola FEMSA",
         items: [
-            { productId: "prod-1", productName: "Laptop Pro X1", quantity: 10, cost: 850 },
-            { productId: "prod-4", productName: "Monitor 4K 27 pulgadas", quantity: 20, cost: 300 }
+            { productId: "prod-1", productName: "Refresco Coca-Cola 2L", quantity: 100, cost: 1.8 }
         ],
-        total: 14500,
-        date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), // 10 days ago
-        documentNumber: "INV-GT-5582",
+        total: 180,
+        date: new Date('2025-01-10T09:00:00Z').toISOString(), // 2025
+        documentNumber: "INV-CC-8899",
         responsible: "Admin",
     }
 ];
@@ -211,9 +211,9 @@ export const mockInventoryMovements: InventoryMovement[] = [
 ];
 
 export const mockCurrencyRates: CurrencyRate[] = [
-    { id: 'rate-1', rate: 39.50, date: new Date().toISOString() },
-    { id: 'rate-2', rate: 39.45, date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
-    { id: 'rate-3', rate: 39.30, date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+    { id: 'rate-1', rate: 39.50, date: new Date('2025-01-01T12:00:00Z').toISOString() },
+    { id: 'rate-2', rate: 39.45, date: new Date('2025-01-02T12:00:00Z').toISOString() },
+    { id: 'rate-3', rate: 39.30, date: new Date('2025-01-03T12:00:00Z').toISOString() },
 ];
 
 export const paymentMethods = [
