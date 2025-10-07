@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid, Instagram, Star, Search, UserPlus, QrCode, ZoomIn, Pencil, ArrowRight } from "lucide-react";
+import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid, Instagram, Star, Search, UserPlus, QrCode, ZoomIn, Pencil, ArrowRight, RefreshCw } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
@@ -117,6 +117,7 @@ export default function CatalogPage() {
     const { toast } = useToast();
     const { settings, activeSymbol, activeRate } = useSettings();
     const [products, setProducts] = useState<Product[]>([]);
+    const [families, setFamilies] = useState([...initialFamilies]);
     const [sales, setSales] = useState<Sale[]>([]);
     const [customers, setCustomers] = useState<Customer[]>(defaultCustomers);
     const [allAds, setAllAds] = useState<Ad[]>([]);
@@ -136,6 +137,25 @@ export default function CatalogPage() {
     const [orderIdForQr, setOrderIdForQr] = useState<string | null>(null);
     const [qrCodeUrl, setQrCodeUrl] = useState('');
     const [shareQrCodeUrl, setShareQrCodeUrl] = useState('');
+
+    const loadData = () => {
+        setIsLoading(true);
+        // In a real app, you'd filter by the current store's ID on the backend.
+        // Here, we simulate it on the client.
+        const currentStoreId = "store-1"; // Replace with dynamic store ID later
+        const storeProducts = mockProducts.filter(p => p.storeId === currentStoreId);
+        
+        setProducts(storeProducts);
+        setFamilies([...initialFamilies]);
+        setSales([...mockSales]);
+        setAllAds([...mockAds]);
+        setIsLoading(false);
+    };
+
+    const handleRefreshData = () => {
+        loadData();
+        toast({ title: "Catálogo actualizado", description: "Los productos y anuncios han sido recargados." });
+    };
 
     useEffect(() => {
         const INACTIVITY_TIMEOUT = 3000; // 3 seconds
@@ -192,15 +212,7 @@ export default function CatalogPage() {
 
     useEffect(() => {
         setTimeout(() => {
-            // In a real app, you'd filter by the current store's ID on the backend.
-            // Here, we simulate it on the client.
-            const currentStoreId = "store-1"; // Replace with dynamic store ID later
-            const storeProducts = mockProducts.filter(p => p.storeId === currentStoreId);
-            
-            setProducts(storeProducts);
-            setSales(mockSales);
-            setAllAds(mockAds);
-            setIsLoading(false);
+            loadData();
         }, 500);
     }, []);
 
@@ -289,7 +301,7 @@ export default function CatalogPage() {
         // 1. Filter ads based on criteria
         const relevantAds = allAds.filter(ad => {
             const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate)) : false;
-            return ad.status === 'active' && !isExpired && ad.targetBusinessType === settings.businessType;
+            return ad.status === 'active' && !isExpired && ad.targetBusinessTypes.includes(settings.businessType);
         });
         
         // 2. Shuffle the relevant ads for randomness
@@ -308,7 +320,7 @@ export default function CatalogPage() {
         return items;
     }, [sortedAndFilteredProducts, allAds, settings.businessType]);
 
-    const familyFilters = ["all", ...initialFamilies.map(f => f.name)];
+    const familyFilters = ["all", ...families.map(f => f.name)];
     
     const handleOpenOrderDialog = () => {
         if(cart.length === 0) {
@@ -441,11 +453,15 @@ export default function CatalogPage() {
                     <div className="container flex h-16 items-center justify-between">
                         <Logo className="w-32 h-10" />
                         <div className="flex items-center gap-2">
+                             <Button variant="outline" onClick={handleRefreshData}>
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                Actualizar
+                            </Button>
                              <Dialog>
                                 <DialogTrigger asChild>
                                     <Button variant="outline" onClick={generateShareQrCode}>
                                         <QrCode className="mr-2 h-4 w-4" />
-                                        Compartir Catálogo
+                                        Compartir
                                     </Button>
                                 </DialogTrigger>
                                 <DialogContent>
@@ -599,9 +615,9 @@ export default function CatalogPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                     <SelectItem value="all">Todas las familias</SelectItem>
-                                        {initialFamilies.map(family => (
-                                            <SelectItem key={family.id} value={family.name}>
-                                            {family.name}
+                                        {familyFilters.map(family => (
+                                            <SelectItem key={family} value={family}>
+                                            {family === 'all' ? 'Todas las familias' : family}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
