@@ -116,6 +116,7 @@ export default function SettingsPage() {
     const { hasPin, setPin, removePin, checkPin } = useSecurity();
     const { settings, setSettings, currencyRates, setCurrencyRates } = useSettings();
     const firestore = useFirestore();
+    const user = { email: "corporacion1@gmail.com" }; // Mock user for demo
     
     const [localSettings, setLocalSettings] = useState(settings);
 
@@ -146,6 +147,8 @@ export default function SettingsPage() {
     const [resetPin, setResetPin] = useState('');
     const [resetConfirmationText, setResetConfirmationText] = useState('');
     const [isSeeding, setIsSeeding] = useState(false);
+
+    const isSuperAdmin = user?.email === 'corporacion1@gmail.com';
 
      useEffect(() => {
         setLocalSettings(settings);
@@ -791,56 +794,58 @@ export default function SettingsPage() {
                 </CardContent>
             </Card>
             
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-destructive">
-                        <AlertTriangle />
-                        Ajustes Avanzados
-                    </CardTitle>
-                    <CardDescription>
-                       Acciones peligrosas que pueden resultar en la pérdida de datos.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                     <div className="flex items-center justify-between rounded-lg border p-4">
-                        <div>
-                            <p className="font-medium">Poblar Base de Datos</p>
-                            <p className="text-sm text-muted-foreground">
-                                Carga los datos de demostración a Firestore. Úsalo solo una vez.
-                            </p>
+            {isSuperAdmin && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-destructive">
+                            <AlertTriangle />
+                            Ajustes Avanzados
+                        </CardTitle>
+                        <CardDescription>
+                        Acciones peligrosas que pueden resultar en la pérdida de datos.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between rounded-lg border p-4">
+                            <div>
+                                <p className="font-medium">Poblar Base de Datos</p>
+                                <p className="text-sm text-muted-foreground">
+                                    Carga los datos de demostración a Firestore. Úsalo solo una vez.
+                                </p>
+                            </div>
+                            <Button variant="secondary" onClick={handleSeedDatabase} disabled={isSeeding}>
+                                <Database className="mr-2 h-4 w-4" />
+                                {isSeeding ? 'Poblando...' : 'Poblar Base de Datos de Demostración'}
+                            </Button>
                         </div>
-                        <Button variant="secondary" onClick={handleSeedDatabase} disabled={isSeeding}>
-                            <Database className="mr-2 h-4 w-4" />
-                            {isSeeding ? 'Poblando...' : 'Poblar Base de Datos de Demostración'}
-                        </Button>
-                    </div>
-                    <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
-                        <div>
-                            <p className="font-medium text-destructive">Restaurar Datos de Fábrica</p>
-                            <p className="text-sm text-muted-foreground">
-                                Borra todos los datos locales y de la base de datos.
-                            </p>
+                        <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
+                            <div>
+                                <p className="font-medium text-destructive">Restaurar Datos de Fábrica</p>
+                                <p className="text-sm text-muted-foreground">
+                                    Borra todos los datos locales y de la base de datos.
+                                </p>
+                            </div>
+                            <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive">Restaurar Datos de Fábrica</Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Esta acción es irreversible y borrará todos los datos.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => setIsResetConfirmOpen(true)} className="bg-destructive hover:bg-destructive/90">Sí, estoy seguro</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
                         </div>
-                        <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="destructive">Restaurar Datos de Fábrica</Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    Esta acción es irreversible y borrará todos los datos.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => setIsResetConfirmOpen(true)} className="bg-destructive hover:bg-destructive/90">Sí, estoy seguro</AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+            )}
 
             <Dialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
                 <DialogContent>
