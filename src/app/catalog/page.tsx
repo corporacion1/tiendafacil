@@ -107,9 +107,9 @@ export default function CatalogPage() {
                     if (scrollIntervalRef.current) clearInterval(scrollIntervalRef.current);
                     scrollIntervalRef.current = null;
                 } else {
-                    window.scrollBy({ top: 1, behavior: 'smooth' });
+                    window.scrollBy({ top: 200, behavior: 'smooth' });
                 }
-            }, 50); // Scroll 1px every 50ms for a smooth "breeze" effect
+            }, 50); // Scroll 200px every 50ms for a smooth effect
         };
 
         const stopAutoScroll = () => {
@@ -652,5 +652,7 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
+
+    
 
     
