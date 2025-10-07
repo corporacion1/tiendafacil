@@ -129,7 +129,7 @@ export default function InventoryPage() {
   const firestore = useFirestore();
 
   const productsRef = useMemoFirebase(() => collection(firestore, 'products'), [firestore]);
-  const { data: products = [], isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
+  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
 
   const salesRef = useMemoFirebase(() => collection(firestore, 'sales'), [firestore]);
   const { data: sales = [], isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
@@ -298,8 +298,7 @@ export default function InventoryPage() {
   const productMovements = selectedProduct ? inventoryMovements.filter(m => m.productName === selectedProduct.name) : [];
 
   const filteredProducts = useMemo(() => {
-    if (!products) return [];
-    return products.filter(product =>
+    return (products || []).filter(product =>
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase()))
     );
@@ -426,7 +425,7 @@ export default function InventoryPage() {
       </CardContent>
       <CardFooter>
         <div className="text-xs text-muted-foreground">
-          Mostrando <strong>1-{productsToRender.length}</strong> de <strong>{products.length}</strong> productos
+          Mostrando <strong>1-{productsToRender.length}</strong> de <strong>{(products || []).length}</strong> productos
         </div>
       </CardFooter>
     </Card>
@@ -508,12 +507,12 @@ export default function InventoryPage() {
                                     <CommandList>
                                         <CommandEmpty>No se encontraron productos.</CommandEmpty>
                                         <CommandGroup>
-                                            {products.map((product) => (
+                                            {(products || []).map((product) => (
                                                 <CommandItem
                                                 key={product.id}
                                                 value={product.name}
                                                 onSelect={(currentValue) => {
-                                                    const product = products.find(p => p.name.toLowerCase() === currentValue.toLowerCase());
+                                                    const product = (products || []).find(p => p.name.toLowerCase() === currentValue.toLowerCase());
                                                     setMovementProduct(product || null);
                                                     setIsProductComboboxOpen(false)
                                                 }}
@@ -663,3 +662,5 @@ export default function InventoryPage() {
     </>
   );
 }
+
+    
