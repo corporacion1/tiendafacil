@@ -257,7 +257,7 @@ export default function CatalogPage() {
     
     const itemsForGrid = useMemo(() => {
         // 1. Filter ads based on criteria
-        const relevantAds = allAds.filter(ad => {
+        const relevantAds = (allAds || []).filter(ad => {
             const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
             return ad.status === 'active' && !isExpired && ad.targetBusinessTypes.includes(settings.businessType);
         });
@@ -675,6 +675,8 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
+
+    
 
     
 
