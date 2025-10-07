@@ -421,9 +421,9 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                     name="stock"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Stock Inicial</FormLabel>
+                        <FormLabel>{product ? 'Stock Actual' : 'Stock Inicial'}</FormLabel>
                         <FormControl>
-                            <Input type="number" {...field} />
+                            <Input type="number" {...field} readOnly={!!product} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
