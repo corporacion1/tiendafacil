@@ -2,86 +2,86 @@
   "placeholderImages": [
     {
       "id": "1",
-      "description": "A bottle of Coca-Cola.",
-      "imageUrl": "https://images.unsplash.com/photo-1554866585-CD94860890b7?q=80&w=1080",
+      "description": "Refresco Coca-Cola 2L",
+      "imageUrl": "https://www.dropbox.com/scl/fi/f8vy2m52b6n7n0r0j3j0j/coke-bottle.jpg?rlkey=fchp9u4g3zgf2p71f84nqudya&raw=1",
       "imageHint": "soda bottle"
     },
     {
       "id": "2",
-      "description": "A bag of Lays potato chips.",
-      "imageUrl": "https://images.unsplash.com/photo-1599442150393-278a975e5235?q=80&w=1080",
+      "description": "Papas Fritas Lays 150g",
+      "imageUrl": "https://www.dropbox.com/scl/fi/v623j3n17q5i5r1f1e1j3/lays-chips.jpg?rlkey=j3lqf0h6d0s9v7k2y3c1f9d5n&raw=1",
       "imageHint": "potato chips"
     },
     {
       "id": "3",
-      "description": "A carton of milk.",
-      "imageUrl": "https://images.unsplash.com/photo-1598514983318-2169c67635c8?q=80&w=1080",
+      "description": "Leche Completa 1L",
+      "imageUrl": "https://www.dropbox.com/scl/fi/t0v7b9x2w8k8q2m8j1n1n/milk-carton.jpg?rlkey=a5s4d8g2f1h9j3k7l2m8n5p4q&raw=1",
       "imageHint": "milk carton"
     },
     {
       "id": "4",
-      "description": "A bottle of cleaning spray.",
-      "imageUrl": "https://images.unsplash.com/photo-1583946099360-a521a242c25a?q=80&w=1080",
-      "imageHint": "cleaning spray"
+      "description": "Detergente en Polvo 1kg",
+      "imageUrl": "https://www.dropbox.com/scl/fi/w9j8f7v6e5d4c3b2a1z1y/detergent.jpg?rlkey=b1n3m5k7l9f8j7h6g5d4c3b2a&raw=1",
+      "imageHint": "detergent bottle"
     },
     {
       "id": "5",
-      "description": "A loaf of sliced bread.",
-      "imageUrl": "https://images.unsplash.com/photo-1587598282338-103555be6816?q=80&w=1080",
+      "description": "Pan de Sándwich Blanco",
+      "imageUrl": "https://www.dropbox.com/scl/fi/b1n2m3k4j5h6g7f8d9s0a/sliced-bread.jpg?rlkey=p9o8n7m6l5k4j3h2g1f0e9d8c&raw=1",
       "imageHint": "sliced bread"
     },
     {
       "id": "6",
-      "description": "A carton of eggs.",
-      "imageUrl": "https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?q=80&w=1080",
+      "description": "Huevos (Cartón de 12)",
+      "imageUrl": "https://www.dropbox.com/scl/fi/a1b2c3d4e5f6g7h8j9k0l/egg-carton.jpg?rlkey=k1j2h3g4f5d6s7a8b9n0m9l8k&raw=1",
       "imageHint": "egg carton"
     },
     {
       "id": "7",
-      "description": "A bag of coffee beans.",
-      "imageUrl": "https://images.unsplash.com/photo-1599158998239-555554d19335?q=80&w=1080",
+      "description": "Café en Grano 500g",
+      "imageUrl": "https://www.dropbox.com/scl/fi/l1k2j3h4g5f6d7s8a9b0n/coffee-beans.jpg?rlkey=s1a2d3f4g5h6j7k8l9m0n8b7v&raw=1",
       "imageHint": "coffee beans"
     },
     {
       "id": "8",
-      "description": "A can of tuna.",
-      "imageUrl": "https://images.unsplash.com/photo-1625164678170-761b0f5e4b6c?q=80&w=1080",
+      "description": "Atún en Aceite 140g",
+      "imageUrl": "https://www.dropbox.com/scl/fi/m1n2b3v4c5x6z7a8s9d0f/tuna-can.jpg?rlkey=z1x2c3v4b5n6m7a8s9d0f9g8h&raw=1",
       "imageHint": "tuna can"
     },
     {
       "id": "9",
-      "description": "A package of pasta.",
-      "imageUrl": "https://images.unsplash.com/photo-1621996346565-e326e7e2444e?q=80&w=1080",
+      "description": "Pasta Larga (Spaghetti) 1kg",
+      "imageUrl": "https://www.dropbox.com/scl/fi/h1j2k3l4m5n6b7v8c9x0z/pasta-package.jpg?rlkey=x1c2v3b4n5m6l7k8j9h0g9f8d&raw=1",
       "imageHint": "pasta package"
     },
     {
       "id": "10",
-      "description": "A jar of tomato sauce.",
-      "imageUrl": "https://images.unsplash.com/photo-1580991472533-356d2a819a16?q=80&w=1080",
+      "description": "Salsa de Tomate 500g",
+      "imageUrl": "https://www.dropbox.com/scl/fi/g1h2j3k4l5m6n7b8v9c0x/tomato-sauce.jpg?rlkey=d1f2g3h4j5k6l7m8n9b0v8c7x&raw=1",
       "imageHint": "tomato sauce"
     },
     {
       "id": "11",
-      "description": "A bar of soap.",
-      "imageUrl": "https://images.unsplash.com/photo-1600950346366-c73a113a3b5a?q=80&w=1080",
+      "description": "Jabón de Baño",
+      "imageUrl": "https://www.dropbox.com/scl/fi/f1g2h3j4k5l6m7n8b9v0c/soap-bar.jpg?rlkey=v1b2n3m4l5k6j7h8g9f0d9c8x&raw=1",
       "imageHint": "soap bar"
     },
     {
       "id": "12",
-      "description": "A bottle of shampoo.",
-      "imageUrl": "https://images.unsplash.com/photo-1556912922-3594b281c7e9?q=80&w=1080",
+      "description": "Shampoo 400ml",
+      "imageUrl": "https://www.dropbox.com/scl/fi/c1x2v3b4n5m6l7k8j9h0g/shampoo-bottle.jpg?rlkey=j1h2g3f4d5s6a7m8n9b0v8c7x&raw=1",
       "imageHint": "shampoo bottle"
     },
     {
       "id": "13",
-      "description": "A bottle of detergent.",
-      "imageUrl": "https://images.unsplash.com/photo-1624322476569-6d165f12443a?q=80&w=1080",
-      "imageHint": "detergent bottle"
+      "description": "Harina de Maíz 1kg (P.A.N.)",
+      "imageUrl": "https://www.dropbox.com/scl/fi/f0k5w5vj3v2x5j5a4f4v1/626574a49c2a8.png?rlkey=v686tt2l0f4b3p4i8a1g5f0w0&raw=1",
+      "imageHint": "corn flour"
     },
     {
       "id": "14",
-      "description": "A bag of rice.",
-      "imageUrl": "https://images.unsplash.com/photo-1586201375765-c124a953b6ab?q=80&w=1080",
+      "description": "Arroz Blanco 1kg",
+      "imageUrl": "https://www.dropbox.com/scl/fi/x1c2v3b4n5m6l7k8j9h0g/rice-bag.jpg?rlkey=g1f2d3s4a5m6n7b8v9c0x8j7k&raw=1",
       "imageHint": "rice bag"
     }
   ]
