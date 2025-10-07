@@ -62,7 +62,7 @@ const defaultSettings: Settings = {
     storePhone: '+58-412-6915593',
     storeWhatsapp: '+58-412-6915593',
     storeSlogan: '¡Gracias por tu compra!',
-    storeTiktok: '@corporacion1plus',
+    storeTiktok: '@corporacion1+',
     storeMeta: '@corporacion1plus',
     saleSeries: 'SALE',
     saleCorrelative: 1, // Will be updated on client
