@@ -9,7 +9,7 @@ export type Product = {
   price: number;
   wholesalePrice: number;
   cost: number;
-  status: 'active' | 'inactive';
+  status: 'active' | 'inactive' | 'promotion';
   tax1: boolean;
   tax2: boolean;
   unit?: string;

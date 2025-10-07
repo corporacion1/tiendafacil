@@ -111,6 +111,7 @@ export default function POSPage() {
   const generateSaleId = () => {
     const series = settings.saleSeries || 'SALE';
     const highestId = mockSales.reduce((max, sale) => {
+        if (!sale.id.startsWith(series + '-')) return max;
         const parts = sale.id.split('-');
         const currentNum = parseInt(parts[parts.length - 1], 10);
         return !isNaN(currentNum) && currentNum > max ? currentNum : max;
@@ -396,7 +397,7 @@ export default function POSPage() {
   const filteredProducts = useMemo(() => {
     return products
       .filter(product =>
-        product.status === 'active' &&
+        (product.status === 'active' || product.status === 'promotion') &&
         (selectedFamily === 'all' || product.family === selectedFamily) &&
         (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase())))
@@ -424,8 +425,8 @@ export default function POSPage() {
                     name: item.productName,
                     price: item.price,
                     stock: 0,
-                    sku: 'N/A', cost: 0, status: 'inactive', tax1: false, tax2: false, wholesalePrice: 0,
-                },
+                    sku: 'N/A', cost: 0, status: 'inactive', tax1: false, tax2: false, wholesalePrice: 0, promotion: false,
+                } as Product,
                 quantity: item.quantity,
                 price: item.price,
             };

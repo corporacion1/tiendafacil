@@ -36,7 +36,7 @@
         "cost": { "type": "number", "description": "Costo del producto para la tienda." },
         "stock": { "type": "number", "description": "Cantidad de stock disponible." },
         "sku": { "type": "string", "description": "Stock Keeping Unit (SKU)." },
-        "status": { "type": "string", "enum": ["active", "inactive"], "description": "Estado del producto (activo o inactivo)." },
+        "status": { "type": "string", "enum": ["active", "inactive", "promotion"], "description": "Estado del producto (activo, inactivo o en promoción)." },
         "tax1": { "type": "boolean" },
         "tax2": { "type": "boolean" },
         "unit": { "type": "string" },

@@ -47,6 +47,24 @@ const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewM
     const [imageError, setImageError] = useState(false);
     const imageUrl = getDisplayImageUrl(product.imageUrl);
 
+    const getStatusVariant = (status: Product['status']) => {
+        switch (status) {
+            case 'active': return 'outline';
+            case 'inactive': return 'secondary';
+            case 'promotion': return 'default'; // Or 'destructive', 'secondary', etc.
+            default: return 'outline';
+        }
+    }
+    
+    const getStatusLabel = (status: Product['status']) => {
+        switch (status) {
+            case 'active': return 'Activo';
+            case 'inactive': return 'Inactivo';
+            case 'promotion': return 'Promoción';
+            default: return status;
+        }
+    }
+
     return (
         <TableRow>
             <TableCell className="hidden sm:table-cell">
@@ -68,8 +86,8 @@ const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewM
             </TableCell>
             <TableCell className="font-medium">{product.name}</TableCell>
             <TableCell>
-                <Badge variant={product.status === 'active' ? 'outline' : 'secondary'}>
-                    {product.status === 'active' ? 'Activo' : 'Inactivo'}
+                <Badge variant={getStatusVariant(product.status)}>
+                    {getStatusLabel(product.status)}
                 </Badge>
             </TableCell>
             <TableCell className="hidden md:table-cell">
@@ -155,7 +173,7 @@ export default function InventoryPage() {
         // Also update the "global" mockProducts for consistency across the app in this demo
         const productIndex = mockProducts.findIndex(p => p.id === data.id);
         if (productIndex > -1) {
-            mockProducts[productIndex] = { ...mockProducts[productIndex], ...data };
+            mockProducts[productIndex] = { ...mockProducts[productIndex], ...data } as Product;
         }
         return updatedProducts;
     });
@@ -219,9 +237,12 @@ export default function InventoryPage() {
     let newStock: number;
     
     setProducts(prevProducts => {
-        const productToUpdate = prevProducts.find(p => p.id === movementProduct.id);
-        if (!productToUpdate) return prevProducts;
+        const productsCopy = [...prevProducts];
+        const productToUpdateIndex = productsCopy.findIndex(p => p.id === movementProduct.id);
 
+        if (productToUpdateIndex === -1) return prevProducts;
+
+        const productToUpdate = { ...productsCopy[productToUpdateIndex] };
         const currentStock = productToUpdate.stock;
         
         switch (movementType) {
@@ -237,15 +258,14 @@ export default function InventoryPage() {
           default: newStock = currentStock; break;
         }
 
-        const updatedProducts = prevProducts.map(p => 
-            p.id === movementProduct.id ? { ...p, stock: newStock } : p
-        );
+        productToUpdate.stock = newStock;
+        productsCopy[productToUpdateIndex] = productToUpdate;
 
         const newMovement: InventoryMovement = {
             id: `mov-${Date.now()}`,
             productName: movementProduct.name,
             type: movementType,
-            quantity: movementType === 'sale' ? -movementQuantity : movementQuantity,
+            quantity: movementType === 'sale' ? -movementQuantity : (movementType === 'purchase' ? movementQuantity : newStock),
             date: new Date().toISOString(),
             responsible: movementResponsible,
         };
@@ -264,7 +284,7 @@ export default function InventoryPage() {
         });
         
         resetMovementForm();
-        return updatedProducts;
+        return productsCopy;
     });
   };
   
@@ -287,9 +307,10 @@ export default function InventoryPage() {
   }, [products, searchTerm]);
   
   const getVisibleProducts = () => {
-    const baseFilter = filteredProducts;
-    if (activeTab === 'active') return baseFilter.filter(p => p.status === 'active');
-    if (activeTab === 'inactive') return baseFilter.filter(p => p.status === 'inactive');
+    let baseFilter = filteredProducts;
+    if (activeTab === 'active') baseFilter = baseFilter.filter(p => p.status === 'active');
+    if (activeTab === 'inactive') baseFilter = baseFilter.filter(p => p.status === 'inactive');
+    if (activeTab === 'promotion') baseFilter = baseFilter.filter(p => p.status === 'promotion');
     return baseFilter;
   }
 
@@ -420,6 +441,7 @@ export default function InventoryPage() {
           <TabsTrigger value="all">Todo</TabsTrigger>
           <TabsTrigger value="active">Activo</TabsTrigger>
           <TabsTrigger value="inactive">Inactivo</TabsTrigger>
+          <TabsTrigger value="promotion">Promoción</TabsTrigger>
         </TabsList>
         <div className="ml-auto flex items-center gap-2">
           <DropdownMenu>
@@ -552,6 +574,9 @@ export default function InventoryPage() {
         {renderProductsTable(getVisibleProducts())}
       </TabsContent>
       <TabsContent value="inactive">
+        {renderProductsTable(getVisibleProducts())}
+      </TabsContent>
+       <TabsContent value="promotion">
         {renderProductsTable(getVisibleProducts())}
       </TabsContent>
     </Tabs>

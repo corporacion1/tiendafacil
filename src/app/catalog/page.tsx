@@ -118,7 +118,7 @@ export default function CatalogPage() {
 
     const filteredProducts = useMemo(() => {
         return products.filter(product =>
-            product.status === 'active' &&
+            (product.status === 'active' || product.status === 'promotion') &&
             (selectedFamily === 'all' || product.family === selectedFamily) &&
             (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase())))
