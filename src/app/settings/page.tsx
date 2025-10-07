@@ -475,24 +475,6 @@ export default function SettingsPage() {
                             <Input id="storeSlogan" value={localSettings.storeSlogan} onChange={handleSettingsChange} placeholder="¡Gracias por tu compra!" maxLength={55} />
                         </div>
                     </div>
-
-                    <Separator />
-                    <h3 className="text-lg font-medium">Redes Sociales</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="storeWhatsapp">WhatsApp</Label>
-                            <Input id="storeWhatsapp" value={localSettings.storePhone} readOnly disabled />
-                            <CardDescription>El número de WhatsApp es el mismo que el teléfono de la tienda.</CardDescription>
-                        </div>
-                         <div className="space-y-2">
-                            <Label htmlFor="storeTiktok">Usuario de TikTok</Label>
-                            <Input id="storeTiktok" value={localSettings.storeTiktok} onChange={handleSettingsChange} placeholder="@tu-usuario-tiktok" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="storeMeta">Usuario de Meta (Instagram, Facebook, X)</Label>
-                            <Input id="storeMeta" value={localSettings.storeMeta} onChange={handleSettingsChange} placeholder="@tu-usuario-meta" />
-                        </div>
-                    </div>
                     
                     <Separator />
                     <h3 className="text-lg font-medium">Correlativos de Venta</h3>
@@ -533,6 +515,33 @@ export default function SettingsPage() {
                 </CardContent>
                 <CardFooter className="border-t px-6 py-4 flex justify-end">
                     <Button className="bg-primary hover:bg-primary/90" onClick={saveAllSettings} disabled={!isDirty}>Guardar Configuración</Button>
+                </CardFooter>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Redes Sociales</CardTitle>
+                    <CardDescription>Configura los enlaces a tus perfiles de redes sociales.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="storeWhatsapp">WhatsApp</Label>
+                            <Input id="storeWhatsapp" value={localSettings.storePhone} readOnly disabled />
+                            <CardDescription>El número de WhatsApp es el mismo que el teléfono de la tienda.</CardDescription>
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="storeTiktok">Usuario de TikTok</Label>
+                            <Input id="storeTiktok" value={localSettings.storeTiktok} onChange={handleSettingsChange} placeholder="@tu-usuario-tiktok" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="storeMeta">Usuario de Meta (Instagram, Facebook, X)</Label>
+                            <Input id="storeMeta" value={localSettings.storeMeta} onChange={handleSettingsChange} placeholder="@tu-usuario-meta" />
+                        </div>
+                    </div>
+                </CardContent>
+                 <CardFooter className="border-t px-6 py-4 flex justify-end">
+                    <Button className="bg-primary hover:bg-primary/90" onClick={saveAllSettings} disabled={!isDirty}>Guardar Cambios de Redes</Button>
                 </CardFooter>
             </Card>
 
@@ -767,5 +776,3 @@ export default function SettingsPage() {
         </div>
     );
 }
-
-    
