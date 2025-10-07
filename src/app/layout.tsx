@@ -30,7 +30,7 @@ export default function RootLayout({
          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <SecurityProvider>
               <SettingsProvider>
-                {children}
+                <AppShell>{children}</AppShell>
                 <Toaster />
               </SettingsProvider>
             </SecurityProvider>
