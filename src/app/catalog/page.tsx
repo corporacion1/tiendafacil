@@ -95,40 +95,9 @@ export default function CatalogPage() {
     const [newCustomer, setNewCustomer] = useState({ name: '', phone: '' });
     const [orderIdForQr, setOrderIdForQr] = useState<string | null>(null);
     const [qrCodeUrl, setQrCodeUrl] = useState('');
-    
-    const audioRef = useRef<HTMLAudioElement | null>(null);
 
     useEffect(() => {
-        if (typeof window !== 'undefined') {
-            audioRef.current = new Audio("https://stream.zeno.fm/fvr822g62d0uv");
-            audioRef.current.loop = true;
-
-            const playAudio = () => {
-                if (audioRef.current && audioRef.current.paused) {
-                    audioRef.current.play().catch(error => {
-                        console.error("Audio playback failed, will retry on next interaction.", error);
-                    });
-                }
-                window.removeEventListener('click', playAudio);
-                window.removeEventListener('keydown', playAudio);
-            };
-
-            window.addEventListener('click', playAudio);
-            window.addEventListener('keydown', playAudio);
-
-            return () => {
-                window.removeEventListener('click', playAudio);
-                window.removeEventListener('keydown', playAudio);
-                if (audioRef.current) {
-                    audioRef.current.pause();
-                }
-            };
-        }
-    }, []);
-
-
-    useEffect(() => {
-        const INACTIVITY_TIMEOUT = 5000; // 5 seconds
+        const INACTIVITY_TIMEOUT = 3000; // 3 seconds
         
         const startAutoScroll = () => {
             if (scrollIntervalRef.current) return;
