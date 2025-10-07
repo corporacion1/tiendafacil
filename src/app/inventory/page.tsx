@@ -36,10 +36,10 @@ import { useSettings } from "@/contexts/settings-context";
 import { mockProducts, mockSales, mockInventoryMovements } from "@/lib/data";
 import { format, parseISO } from "date-fns";
 
-const getDisplayImageUrl = (url?: string) => {
+const getDisplayImageUrl = (url?: string): string => {
   if (!url) return '';
   if (url.includes('dropbox.com')) {
-    return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace(/&dl=0$/, '').replace(/\?dl=0$/, '') + '?raw=1';
+    return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace(/&dl=0$/, '').replace(/\?dl=0$/, '') + '&raw=1';
   }
   return url;
 };
@@ -517,3 +517,5 @@ export default function InventoryPage() {
     </>
   );
 }
+
+    

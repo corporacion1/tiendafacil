@@ -77,10 +77,10 @@ const calculateProfit = (currentPrice: number, cost: number): string => {
     return '0.00';
 };
 
-const getDisplayImageUrl = (url?: string) => {
+const getDisplayImageUrl = (url?: string): string => {
   if (!url) return '';
   if (url.includes('dropbox.com')) {
-    return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace(/&dl=0$/, '').replace(/\?dl=0$/, '') + '?raw=1';
+    return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace(/&dl=0$/, '').replace(/\?dl=0$/, '') + '&raw=1';
   }
   return url;
 };
@@ -487,3 +487,5 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     </Form>
   );
 };
+
+    
