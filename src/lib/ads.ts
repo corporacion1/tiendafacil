@@ -6,19 +6,6 @@ import { subDays, addDays } from 'date-fns';
 // The actual data will be managed in the /ads page.
 export const mockAds: Ad[] = [
   {
-    id: "ad-1",
-    sku: "PROMO-001",
-    name: "Servicio Técnico Especializado",
-    description: "Reparamos tu PC con los mejores componentes.",
-    price: 0,
-    imageUrl: "https://images.unsplash.com/photo-1593344484962-796b02d7a21f?q=80&w=600&auto=format&fit=crop",
-    imageHint: "computer repair",
-    views: 1024,
-    status: 'active',
-    targetBusinessTypes: ['Tecnologia', 'Servicios Profesionales'],
-    expiryDate: addDays(new Date(), 30).toISOString(),
-  },
-  {
     id: "ad-2",
     sku: "PROMO-002",
     name: "Potencia tu PC con Nosotros",
@@ -30,19 +17,6 @@ export const mockAds: Ad[] = [
     status: 'active',
     targetBusinessTypes: ['Tecnologia'],
     expiryDate: addDays(new Date(), 60).toISOString(),
-  },
-  {
-    id: "ad-4",
-    sku: "FARM-001",
-    name: "20% de Descuento en Vitaminas",
-    description: "Cuida tu salud con nuestras vitaminas en oferta.",
-    price: 0,
-    imageUrl: "https://images.unsplash.com/photo-1576092762791-d0e8ad12dd4f?q=80&w=600&auto=format&fit=crop",
-    imageHint: "vitamins pharmacy",
-    views: 840,
-    status: 'active',
-    targetBusinessTypes: ['Salud y Belleza'],
-    expiryDate: addDays(new Date(), 45).toISOString(),
   },
   {
     id: "ad-5",
