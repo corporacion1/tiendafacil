@@ -1,5 +1,6 @@
 
-import type { Product, InventoryMovement, Sale, Unit, Family, Warehouse, Customer, Purchase, Supplier, CurrencyRate, Payment, PendingOrder, AdClick } from '@/lib/types';
+
+import type { Product, InventoryMovement, Sale, Unit, Family, Warehouse, Customer, Purchase, Supplier, CurrencyRate, Payment, PendingOrder, AdClick, Ad } from '@/lib/types';
 import { PlaceHolderImages } from './placeholder-images';
 import { subDays, subHours } from 'date-fns';
 import { mockAds } from './ads';
