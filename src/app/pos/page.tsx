@@ -34,11 +34,11 @@ const generateSaleId = () => {
 }
 
 const getDisplayImageUrl = (url?: string) => {
-    if (!url) return '';
-    if (url.includes('dropbox.com')) {
-        return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace(/&dl=0$/, '').replace(/\?dl=0$/, '') + '?raw=1';
-    }
-    return url;
+  if (!url) return '';
+  if (url.includes('dropbox.com')) {
+    return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace(/&dl=0$/, '').replace(/\?dl=0$/, '') + '?raw=1';
+  }
+  return url;
 };
 
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
@@ -741,9 +741,9 @@ export default function POSPage() {
         {productDetails && (
             <div className="grid gap-4">
                  <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
-                    {productDetails.imageUrl ? (
+                    {getDisplayImageUrl(productDetails.imageUrl) ? (
                         <Image
-                            src={getDisplayImageUrl(productDetails.imageUrl)}
+                            src={getDisplayImageUrl(productDetails.imageUrl)!}
                             alt={productDetails.name}
                             fill
                             sizes="300px"
@@ -801,7 +801,3 @@ export default function POSPage() {
   </Dialog>
   );
 }
-
-    
-
-    

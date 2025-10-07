@@ -104,13 +104,13 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
   const wholesalePrice = watch("wholesalePrice");
 
   // State to manage the image preview and handle errors
-  const [previewUrl, setPreviewUrl] = useState(getDisplayImageUrl(watchedImageUrl));
   const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
-    setPreviewUrl(getDisplayImageUrl(watchedImageUrl));
     setImageError(false);
   }, [watchedImageUrl]);
+
+  const displayUrl = useMemo(() => getDisplayImageUrl(watchedImageUrl), [watchedImageUrl]);
 
   useEffect(() => {
     form.reset(getInitialValues(product));
@@ -162,7 +162,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     const result = await onSubmit(data);
     if (!product && result === true) {
       form.reset(getInitialValues());
-      setPreviewUrl("");
     }
   };
 
@@ -311,9 +310,9 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                           <Input placeholder="https://..." {...field} onBlur={handleImageUrlBlur} />
                         </FormControl>
                         <div className="aspect-square relative bg-muted rounded-md flex items-center justify-center mt-2 overflow-hidden">
-                          {previewUrl && !imageError ? (
+                          {displayUrl && !imageError ? (
                             <Image 
-                              src={previewUrl} 
+                              src={displayUrl} 
                               alt="Vista previa del producto" 
                               fill 
                               sizes="300px" 
@@ -488,5 +487,3 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     </Form>
   );
 };
-
-    

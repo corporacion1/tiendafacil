@@ -517,7 +517,3 @@ export default function InventoryPage() {
     </>
   );
 }
-
-    
-
-    
