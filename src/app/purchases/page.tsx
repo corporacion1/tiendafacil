@@ -157,6 +157,10 @@ export default function PurchasesPage() {
       toast({ variant: "destructive", title: "Proveedor no seleccionado", description: "Por favor, selecciona un proveedor." });
       return;
     }
+     if (!documentNumber.trim()) {
+      toast({ variant: "destructive", title: "Falta N° de Documento", description: "Por favor, ingresa el número de factura o guía." });
+      return;
+    }
     if (!responsible.trim()) {
         toast({ variant: "destructive", title: "Falta responsable", description: "Por favor, ingresa el nombre del responsable de la compra." });
         return;
@@ -204,8 +208,8 @@ export default function PurchasesPage() {
   };
 
   const isFormComplete = useMemo(() => {
-      return purchaseItems.length > 0 && selectedSupplierId && responsible.trim() !== '';
-  }, [purchaseItems, selectedSupplierId, responsible]);
+      return purchaseItems.length > 0 && selectedSupplierId && responsible.trim() !== '' && documentNumber.trim() !== '';
+  }, [purchaseItems, selectedSupplierId, responsible, documentNumber]);
 
   const isNewSupplierFormDirty = newSupplier.name.trim() !== '' || newSupplier.id.trim() !== '' || newSupplier.phone.trim() !== '' || newSupplier.address.trim() !== '';
   
@@ -369,8 +373,8 @@ export default function PurchasesPage() {
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="document-number">Número de Documento</Label>
-                <Input id="document-number" value={documentNumber} onChange={(e) => setDocumentNumber(e.target.value)} placeholder="Ej: FACT-00123" />
+                <Label htmlFor="document-number">Número de Documento *</Label>
+                <Input id="document-number" value={documentNumber} onChange={(e) => setDocumentNumber(e.target.value)} placeholder="Ej: FACT-00123" required/>
             </div>
 
             <div className="space-y-2">
@@ -463,14 +467,29 @@ export default function PurchasesPage() {
             )}
           </CardContent>
           <CardFooter>
-            <Button className="w-full bg-primary hover:bg-primary/90" size="lg" onClick={handleProcessPurchase} disabled={!isFormComplete}>
-                Procesar Compra
-            </Button>
+            <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button className="w-full bg-primary hover:bg-primary/90" size="lg" disabled={!isFormComplete}>
+                        Procesar Compra
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Confirmar Compra?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Estás a punto de registrar una compra por un total de <span className="font-bold">{activeSymbol}{(totalCost * activeRate).toFixed(2)}</span>. 
+                            Esta acción actualizará el stock y el costo de los productos. ¿Estás seguro?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleProcessPurchase}>Sí, procesar compra</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
           </CardFooter>
         </Card>
       </div>
     </div>
   );
 }
-
-    
