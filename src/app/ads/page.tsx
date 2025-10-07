@@ -117,7 +117,7 @@ export default function AdsPage() {
     const batch = writeBatch(firestore);
     let hasUpdates = false;
 
-    ads.forEach(ad => {
+    (ads || []).forEach(ad => {
         if (ad.status === 'active' && ad.expiryDate && isPast(new Date(ad.expiryDate))) {
             const adRef = doc(firestore, 'ads', ad.id);
             batch.update(adRef, { status: 'inactive' });
@@ -181,7 +181,7 @@ export default function AdsPage() {
   };
 
   const filteredAds = useMemo(() => {
-    return ads.filter(ad =>
+    return (ads || []).filter(ad =>
       ad.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (ad.sku && ad.sku.toLowerCase().includes(searchTerm.toLowerCase()))
     );
@@ -266,7 +266,7 @@ export default function AdsPage() {
       </CardContent>
       <CardFooter>
         <div className="text-xs text-muted-foreground">
-          Mostrando <strong>1-{filteredAds.length}</strong> de <strong>{ads.length}</strong> anuncios
+          Mostrando <strong>1-{filteredAds.length}</strong> de <strong>{(ads || []).length}</strong> anuncios
         </div>
       </CardFooter>
     </Card>
