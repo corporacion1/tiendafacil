@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Store": {
@@ -11,7 +12,7 @@
         "logoUrl": { "type": "string", "format": "uri", "description": "URL del logo de la tienda." },
         "businessType": { "type": "string", "description": "Categoría o tipo de negocio de la tienda (ej: 'tecnología', 'restaurante', 'ropa')." }
       },
-      "required": ["name", "ownerId"]
+      "required": ["name", "ownerId", "businessType"]
     },
     "UserProfile": {
       "title": "User Profile",

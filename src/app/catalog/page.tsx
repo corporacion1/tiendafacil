@@ -27,7 +27,7 @@ import { Label } from "@/components/ui/label";
 
 const AdCard = ({ ad }: { ad: Ad }) => {
     return (
-        <a href={ad.url} target="_blank" rel="noopener noreferrer" className="block group" onClick={() => trackAdClick(ad.id)}>
+        <div className="block group" onClick={() => trackAdClick(ad.id)}>
             <Card className="overflow-hidden group flex flex-col bg-accent/20 border-accent/50 hover:border-accent transition-all">
                 <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative cursor-pointer">
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent z-10" />
@@ -57,7 +57,7 @@ const AdCard = ({ ad }: { ad: Ad }) => {
                     <ArrowRight className="w-4 h-4 text-accent-foreground/80" />
                 </CardFooter>
             </Card>
-        </a>
+        </div>
     );
 };
 
@@ -279,7 +279,7 @@ export default function CatalogPage() {
     }, [products, searchTerm, selectedFamily, bestSellers]);
     
     const itemsForGrid = useMemo(() => {
-        const activeAds = ads.filter(ad => ad.status === 'active');
+        const activeAds = ads.filter(ad => ad.status === 'active' && ad.targetBusinessType === settings.businessType);
         const items: (Product | Ad)[] = [...sortedAndFilteredProducts];
         
         for (let i = 0; i < activeAds.length; i++) {
@@ -291,7 +291,7 @@ export default function CatalogPage() {
             }
         }
         return items;
-    }, [sortedAndFilteredProducts, ads]);
+    }, [sortedAndFilteredProducts, ads, settings.businessType]);
 
     const familyFilters = ["all", ...initialFamilies.map(f => f.name)];
     
@@ -565,7 +565,7 @@ export default function CatalogPage() {
                     ) : (
                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                             {itemsForGrid.map((item, index) => {
-                                if ('url' in item) { // This is an Ad
+                                if ('targetBusinessType' in item) { // This is an Ad
                                     return <AdCard key={`ad-${item.id}-${index}`} ad={item} />;
                                 }
                                 // This is a Product

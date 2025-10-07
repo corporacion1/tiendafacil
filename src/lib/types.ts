@@ -144,7 +144,7 @@ export type Ad = {
   price: number; // For promotional price display
   imageUrl: string;
   imageHint?: string;
-  url: string; // The destination link for the ad
+  targetBusinessType: string; // The type of business this ad is for
   views: number;
   status: 'active' | 'inactive';
   storeIds: string[];

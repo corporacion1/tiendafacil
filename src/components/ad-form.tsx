@@ -22,6 +22,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { getDisplayImageUrl } from "@/lib/utils";
 import { MultiSelect } from "./ui/multi-select";
 import { mockStores } from "@/lib/stores";
+import { businessCategories } from "@/lib/data";
 
 
 const adSchema = z.object({
@@ -33,7 +34,7 @@ const adSchema = z.object({
   description: z.string().optional(),
   imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
   imageHint: z.string().optional(),
-  url: z.string().url("El enlace de destino debe ser una URL válida."),
+  targetBusinessType: z.string().min(1, "Debes seleccionar un tipo de negocio."),
   storeIds: z.array(z.string()).min(1, "Debes seleccionar al menos una tienda."),
 });
 
@@ -54,7 +55,7 @@ const getInitialValues = (ad?: Ad): AdFormValues => {
         imageUrl: '',
         description: '',
         imageHint: '',
-        url: '',
+        targetBusinessType: '',
         storeIds: [],
     };
 };
@@ -206,15 +207,26 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
                     </FormItem>
                   )}
                 />
-                 <FormField
+                <FormField
                   control={form.control}
-                  name="url"
+                  name="targetBusinessType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>URL de Destino</FormLabel>
-                      <FormControl>
-                        <Input placeholder="https://ejemplo.com/oferta" {...field} />
-                      </FormControl>
+                      <FormLabel>Tipo de Negocio de Destino</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Selecciona un tipo de negocio" />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {businessCategories.map(category => (
+                                    <SelectItem key={category} value={category}>
+                                        {category}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                       <FormMessage />
                     </FormItem>
                   )}
