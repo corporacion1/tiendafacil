@@ -7,6 +7,8 @@ import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid,
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, doc, writeBatch, deleteDoc } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -16,9 +18,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import type { Product, CartItem, Sale, Customer, PendingOrder, Ad } from "@/lib/types";
-import { mockProducts, initialFamilies, mockSales, defaultCustomers, trackAdClick } from "@/lib/data";
-import { mockAds } from "@/lib/ads";
+import type { Product, CartItem, Sale, Customer, PendingOrder, Ad, Family } from "@/lib/types";
+import { trackAdClick } from "@/lib/data";
 import { useSettings } from "@/contexts/settings-context";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
@@ -115,14 +116,28 @@ const CatalogProductCard = ({ product, onAddToCart, onImageClick }: { product: P
 
 export default function CatalogPage() {
     const { toast } = useToast();
+    const firestore = useFirestore();
     const { settings, activeSymbol, activeRate } = useSettings();
-    const [products, setProducts] = useState<Product[]>([]);
-    const [families, setFamilies] = useState([...initialFamilies]);
-    const [sales, setSales] = useState<Sale[]>([]);
-    const [customers, setCustomers] = useState<Customer[]>(defaultCustomers);
-    const [allAds, setAllAds] = useState<Ad[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
+
+    const productsRef = useMemoFirebase(() => collection(firestore, 'products'), [firestore]);
+    const { data: products = [], isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
+
+    const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
+    const { data: customers = [], isLoading: isLoadingCustomers } = useCollection<Customer>(customersRef);
+    
+    const familiesRef = useMemoFirebase(() => collection(firestore, 'families'), [firestore]);
+    const { data: families = [], isLoading: isLoadingFamilies } = useCollection<Family>(familiesRef);
+
+    const salesRef = useMemoFirebase(() => collection(firestore, 'sales'), [firestore]);
+    const { data: sales = [], isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
+    
+    const adsRef = useMemoFirebase(() => collection(firestore, 'ads'), [firestore]);
+    const { data: allAds = [], isLoading: isLoadingAds } = useCollection<Ad>(adsRef);
+    
+    const pendingOrdersRef = useMemoFirebase(() => collection(firestore, 'pendingOrders'), [firestore]);
+    const { data: pendingOrders = [], isLoading: isLoadingPendingOrders } = useCollection<PendingOrder>(pendingOrdersRef);
+    
+    const isLoading = isLoadingProducts || isLoadingCustomers || isLoadingFamilies || isLoadingSales || isLoadingAds || isLoadingPendingOrders;
     
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
     const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -137,25 +152,6 @@ export default function CatalogPage() {
     const [orderIdForQr, setOrderIdForQr] = useState<string | null>(null);
     const [qrCodeUrl, setQrCodeUrl] = useState('');
     const [shareQrCodeUrl, setShareQrCodeUrl] = useState('');
-
-    const loadData = () => {
-        setIsLoading(true);
-        // In a real app, you'd filter by the current store's ID on the backend.
-        // Here, we simulate it on the client.
-        const currentStoreId = "store-1"; // Replace with dynamic store ID later
-        const storeProducts = mockProducts.filter(p => p.storeId === currentStoreId);
-        
-        setProducts(storeProducts);
-        setFamilies([...initialFamilies]);
-        setSales([...mockSales]);
-        setAllAds([...mockAds]);
-        setIsLoading(false);
-    };
-
-    const handleRefreshData = () => {
-        loadData();
-        toast({ title: "Catálogo actualizado", description: "Los productos y anuncios han sido recargados." });
-    };
 
     useEffect(() => {
         const INACTIVITY_TIMEOUT = 3000; // 3 seconds
@@ -209,12 +205,6 @@ export default function CatalogPage() {
         };
     }, [isLoading]);
 
-
-    useEffect(() => {
-        setTimeout(() => {
-            loadData();
-        }, 500);
-    }, []);
 
     const [cart, setCart] = useState<CartItem[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
@@ -300,7 +290,7 @@ export default function CatalogPage() {
     const itemsForGrid = useMemo(() => {
         // 1. Filter ads based on criteria
         const relevantAds = allAds.filter(ad => {
-            const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate)) : false;
+            const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
             return ad.status === 'active' && !isExpired && ad.targetBusinessTypes.includes(settings.businessType);
         });
         
@@ -320,7 +310,7 @@ export default function CatalogPage() {
         return items;
     }, [sortedAndFilteredProducts, allAds, settings.businessType]);
 
-    const familyFilters = ["all", ...families.map(f => f.name)];
+    const familyFilters = ["all", ...(families || []).map(f => f.name)];
     
     const handleOpenOrderDialog = () => {
         if(cart.length === 0) {
@@ -358,23 +348,23 @@ export default function CatalogPage() {
             return;
         }
 
-        let customer = customers.find(c => c.phone === newCustomer.phone);
-        if (!customer) {
-            customer = {
-                id: `cust-${Date.now()}`,
-                name: newCustomer.name,
-                phone: newCustomer.phone
-            };
-            defaultCustomers.push(customer);
-            setCustomers([...defaultCustomers]);
+        const batch = writeBatch(firestore);
+
+        let customerId = customers.find(c => c.phone === newCustomer.phone)?.id;
+
+        if (!customerId) {
+            const newCustomerRef = doc(collection(firestore, 'customers'));
+            const newCustomerData = { name: newCustomer.name, phone: newCustomer.phone };
+            batch.set(newCustomerRef, newCustomerData);
+            customerId = newCustomerRef.id;
         }
 
         const newOrderId = `ORD-${Date.now()}`;
-        const newOrder: PendingOrder = {
-            id: newOrderId,
+        const newOrderRef = doc(firestore, 'pendingOrders', newOrderId);
+        const newOrder: Omit<PendingOrder, 'id'> = {
             date: new Date().toISOString(),
-            customerName: customer.name,
-            customerPhone: customer.phone,
+            customerName: newCustomer.name,
+            customerPhone: newCustomer.phone,
             items: cart.map(item => ({
                 productId: item.product.id,
                 productName: item.product.name,
@@ -383,19 +373,28 @@ export default function CatalogPage() {
             })),
             total: subtotal,
         };
+        batch.set(newOrderRef, newOrder);
         
-        setPendingOrders(prev => [...prev, newOrder]);
-        
-        await generateQrCode(newOrderId);
+        try {
+            await batch.commit();
+            await generateQrCode(newOrderId);
 
-        setIsOrderDialogOpen(false);
-        setNewCustomer({ name: '', phone: '' });
-        setCart([]);
+            setIsOrderDialogOpen(false);
+            setNewCustomer({ name: '', phone: '' });
+            setCart([]);
 
-        toast({
-            title: "¡Pedido Generado!",
-            description: "Muestra el código QR para facturar.",
-        });
+            toast({
+                title: "¡Pedido Generado!",
+                description: "Muestra el código QR para facturar.",
+            });
+        } catch (error) {
+            console.error("Error generating order: ", error);
+            toast({
+                variant: 'destructive',
+                title: 'Error al generar pedido',
+                description: (error as Error).message,
+            });
+        }
     };
     
     const handleImageClick = (product: Product) => {
@@ -431,7 +430,9 @@ export default function CatalogPage() {
         });
 
         setCart(orderCartItems);
-        setPendingOrders(prev => prev.filter(p => p.id !== orderToEdit.id));
+        const orderRef = doc(firestore, 'pendingOrders', orderToEdit.id);
+        deleteDoc(orderRef);
+        
         toast({
             title: "Pedido Cargado para Edición",
             description: `El pedido ${orderToEdit.id} está de nuevo en tu carrito.`
@@ -439,7 +440,8 @@ export default function CatalogPage() {
     };
 
     const handleDeleteOrder = (orderId: string) => {
-        setPendingOrders(prev => prev.filter(p => p.id !== orderId));
+        const orderRef = doc(firestore, 'pendingOrders', orderId);
+        deleteDoc(orderRef);
         toast({
             title: "Pedido Eliminado",
             description: `El pedido ${orderId} ha sido eliminado.`,
@@ -510,7 +512,7 @@ export default function CatalogPage() {
                                                     </div>
                                                     <div className="flex-1">
                                                         <h4 className="font-semibold">{item.product.name}</h4>
-                                                        <p className="text-sm text-muted-foreground">${item.price.toFixed(2)}</p>
+                                                        <p className="text-sm text-muted-foreground">${(item.price * activeRate).toFixed(2)}</p>
                                                         <div className="flex items-center gap-2 mt-2">
                                                                 <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(item.product.id, item.quantity - 1)}><Minus className="h-4 w-4" /></Button>
                                                                 <span>{item.quantity}</span>
@@ -518,7 +520,7 @@ export default function CatalogPage() {
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
-                                                            <p className="font-bold">${(item.price * item.quantity).toFixed(2)}</p>
+                                                            <p className="font-bold">${(item.price * item.quantity * activeRate).toFixed(2)}</p>
                                                             <Button variant="ghost" size="icon" className="h-8 w-8 mt-2 text-muted-foreground hover:text-destructive" onClick={() => removeFromCart(item.product.id)}>
                                                                 <Trash2 className="h-4 w-4" />
                                                             </Button>
@@ -560,7 +562,7 @@ export default function CatalogPage() {
                                             <div className="w-full space-y-4">
                                                 <div className="flex justify-between font-bold text-lg">
                                                     <span>Subtotal</span>
-                                                    <span>${subtotal.toFixed(2)}</span>
+                                                    <span>${(subtotal * activeRate).toFixed(2)}</span>
                                                 </div>
                                                 <Button size="lg" className="w-full" onClick={handleOpenOrderDialog}>
                                                     <Send className="mr-2" /> Generar Pedido
@@ -611,9 +613,9 @@ export default function CatalogPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                     <SelectItem value="all">Todas las familias</SelectItem>
-                                        {familyFilters.map(family => (
-                                            <SelectItem key={family} value={family}>
-                                            {family === 'all' ? 'Todas las familias' : family}
+                                        {(families || []).map(family => (
+                                            <SelectItem key={family.id} value={family.name}>
+                                            {family.name}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -784,3 +786,5 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
+
+    
