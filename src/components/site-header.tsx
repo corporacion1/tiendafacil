@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { Boxes, FileText, Home, PackagePlus, PanelLeft, Settings, ShoppingCart, Store, CreditCard, Coins, UserCircle, LogOut, LayoutGrid } from "lucide-react";
+import { PanelLeft, UserCircle, LogOut } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,21 +25,7 @@ import { ThemeToggle } from "./theme-toggle";
 import { useSettings } from "@/contexts/settings-context";
 import { Logo } from "./logo";
 import { useRouter } from "next/navigation";
-import { useState, useRef, useEffect } from "react";
-
-const navItems = [
-    { href: "/dashboard", label: "Dashboard", icon: Home },
-    { href: "/catalog", label: "Catálogo", icon: LayoutGrid },
-    { href: "/products", label: "Productos", icon: PackagePlus },
-    { href: "/inventory", label: "Inventario", icon: Boxes },
-    { href: "/purchases", label: "Compras", icon: Store },
-    { href: "/pos", label: "Punto de Venta", icon: ShoppingCart },
-    { href: "/credits", label: "Créditos", icon: CreditCard },
-    { href: "/reports", label: "Reportes", icon: FileText },
-];
-
-const settingsNav = { href: "/settings", label: "Configuración", icon: Settings };
-
+import { navItems, settingsNav } from "@/lib/navigation";
 
 export function SiteHeader() {
   const pathname = usePathname();
@@ -81,7 +67,7 @@ export function SiteHeader() {
                   href="#"
                   className="group flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:text-base"
                 >
-                  <Store className="h-5 w-5" />
+                  <Logo className="h-5 w-5" />
                   <span className="sr-only">Tienda Facil</span>
                 </Link>
                 {navItems.map((item) => (

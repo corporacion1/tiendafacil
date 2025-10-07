@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Boxes, FileText, Home, PackagePlus, Settings, ShoppingCart, Store, CreditCard, LayoutGrid, Megaphone } from "lucide-react";
+import { Store } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -11,23 +11,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useUser } from "@/firebase";
-
-const navItems = [
-    { href: "/dashboard", label: "Dashboard", icon: Home },
-    { href: "/catalog", label: "Catálogo", icon: LayoutGrid },
-    { href: "/products", label: "Productos", icon: PackagePlus },
-    { href: "/inventory", label: "Inventario", icon: Boxes },
-    { href: "/purchases", label: "Compras", icon: Store },
-    { href: "/pos", label: "Punto de Venta", icon: ShoppingCart },
-    { href: "/credits", label: "Créditos", icon: CreditCard },
-    { href: "/reports", label: "Reportes", icon: FileText },
-];
-
-const adminNavItems = [
-    { href: "/ads", label: "Anuncios", icon: Megaphone, role: "superAdmin" },
-];
-
-const settingsNav = { href: "/settings", label: "Configuración", icon: Settings };
+import { navItems, adminNavItems, settingsNav } from "@/lib/navigation";
+import { Logo } from "./logo";
 
 
 export function SiteSidebar() {
@@ -46,7 +31,7 @@ export function SiteSidebar() {
                 href="#"
                 className="group flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-full bg-primary text-lg font-semibold text-primary-foreground md:h-8 md:w-8 md:text-base"
             >
-                <Store className="h-4 w-4 transition-all group-hover:scale-110" />
+                <Logo className="h-4 w-4 transition-all group-hover:scale-110" />
                 <span className="sr-only">Tienda Facil</span>
             </Link>
 
