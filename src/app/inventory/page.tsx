@@ -36,14 +36,6 @@ import { useSettings } from "@/contexts/settings-context";
 import { mockProducts, mockSales, mockInventoryMovements } from "@/lib/data";
 import { format, parseISO } from "date-fns";
 
-const getDisplayImageUrl = (url?: string): string => {
-  if (!url) return '';
-  if (url.includes('dropbox.com')) {
-    return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '&raw=1');
-  }
-  return url;
-};
-
 export default function InventoryPage() {
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>(mockProducts);
@@ -365,25 +357,22 @@ export default function InventoryPage() {
               </TableHeader>
               <TableBody>
                 {filteredProducts.map((product) => {
-                    const displayUrl = getDisplayImageUrl(product.imageUrl);
                     return (
                     <TableRow key={product.id}>
                         <TableCell className="hidden sm:table-cell">
                         <div className="relative flex items-center justify-center w-10 h-10 bg-muted rounded-md overflow-hidden isolate">
-                            {displayUrl ? (
+                            {product.imageUrl ? (
                             <Image
-                                src={displayUrl}
+                                src={product.imageUrl}
                                 alt={product.name}
                                 fill
                                 sizes="40px"
                                 className="object-cover"
                                 data-ai-hint={product.imageHint}
-                                onError={(e) => e.currentTarget.style.display = 'none'}
                             />
                             ) : (
                             <Package className="h-5 w-5 text-muted-foreground" />
                             )}
-                            {!displayUrl && <Package className="h-5 w-5 text-muted-foreground" />}
                         </div>
                         </TableCell>
                         <TableCell className="font-medium">{product.name}</TableCell>
@@ -519,3 +508,5 @@ export default function InventoryPage() {
     </>
   );
 }
+
+    

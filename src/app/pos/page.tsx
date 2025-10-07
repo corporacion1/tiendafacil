@@ -33,18 +33,8 @@ const generateSaleId = () => {
     return result;
 }
 
-const getDisplayImageUrl = (url?: string): string => {
-  if (!url) return '';
-  if (url.includes('dropbox.com')) {
-    return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '&raw=1');
-  }
-  return url;
-};
-
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
     const { activeSymbol, activeRate } = useSettings();
-    const [imageError, setImageError] = useState(false);
-    const displayUrl = getDisplayImageUrl(product.imageUrl);
 
     return (
         <Card className="overflow-hidden group">
@@ -57,15 +47,14 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
                         </Button>
                     </DialogTrigger>
                 </div>
-                {displayUrl && !imageError ? (
+                {product.imageUrl ? (
                     <Image
-                        src={displayUrl}
+                        src={product.imageUrl}
                         alt={product.name}
                         fill
                         sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
                         className="object-cover transition-transform group-hover:scale-105"
                         data-ai-hint={product.imageHint}
-                        onError={() => setImageError(true)}
                     />
                 ) : (
                     <Package className="w-12 h-12 text-muted-foreground" />
@@ -741,9 +730,9 @@ export default function POSPage() {
         {productDetails && (
             <div className="grid gap-4">
                  <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
-                    {getDisplayImageUrl(productDetails.imageUrl) ? (
+                    {productDetails.imageUrl ? (
                         <Image
-                            src={getDisplayImageUrl(productDetails.imageUrl)!}
+                            src={productDetails.imageUrl}
                             alt={productDetails.name}
                             fill
                             sizes="300px"
@@ -801,3 +790,5 @@ export default function POSPage() {
   </Dialog>
   );
 }
+
+    

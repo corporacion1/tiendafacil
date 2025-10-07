@@ -22,14 +22,6 @@ import { useSettings } from "@/contexts/settings-context";
 
 const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
 
-const getDisplayImageUrl = (url?: string): string => {
-    if (!url) return '';
-    if (url.includes('dropbox.com')) {
-      return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '&raw=1');
-    }
-    return url;
-};
-
 export default function PurchasesPage() {
   const { toast } = useToast();
   const { settings, activeSymbol, activeRate } = useSettings();
@@ -249,27 +241,24 @@ export default function PurchasesPage() {
             {isLoading && <p>Cargando productos...</p>}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
               {filteredProducts.map((product) => {
-                  const displayUrl = getDisplayImageUrl(product.imageUrl);
                     return (
                     <Card key={product.id} className="overflow-hidden group cursor-pointer" onClick={() => addProductToPurchase(product)}>
                     <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative isolate">
                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
                             <Button size="sm">Agregar</Button>
                         </div>
-                        {displayUrl ? (
+                        {product.imageUrl ? (
                             <Image 
-                              src={displayUrl} 
+                              src={product.imageUrl} 
                               alt={product.name} 
                               fill 
                               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw" 
                               className="object-cover transition-transform group-hover:scale-105" 
                               data-ai-hint={product.imageHint}
-                              onError={(e) => e.currentTarget.style.display = 'none'} 
                             />
                             ) : (
                             <Package className="w-12 h-12 text-muted-foreground" />
                         )}
-                        {!displayUrl && <Package className="w-12 h-12 text-muted-foreground" />}
                         <div className="absolute top-2 left-2 bg-secondary text-secondary-foreground text-xs font-bold px-2 py-1 rounded">
                         Costo: {activeSymbol}{(product.cost * activeRate).toFixed(2)}
                         </div>
@@ -483,3 +472,5 @@ export default function PurchasesPage() {
     </div>
   );
 }
+
+    
