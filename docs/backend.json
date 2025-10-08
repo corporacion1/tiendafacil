@@ -547,6 +547,22 @@
             }
           ]
         }
+      },
+      {
+        "path": "/currencyRates/{rateId}",
+        "definition": {
+          "entityName": "CurrencyRate",
+          "schema": {
+            "$ref": "#/backend/entities/CurrencyRate"
+          },
+          "description": "Stores the history of currency exchange rates.",
+          "params": [
+            {
+              "name": "rateId",
+              "description": "The unique identifier for the currency rate entry."
+            }
+          ]
+        }
       }
     ],
     "reasoning": "The Firestore structure is designed to support the inventory and point-of-sale web application \"TIENDA FACIL WEB\" using a flat structure that emphasizes authorization independence and straightforward security rules.  The design focuses on clarity and scalability, making it easy to secure individual documents and collections.\n\nAuthorization Independence is achieved through denormalization. While not explicitly needed based on the current entities, if future requirements dictate subcollections with access dependent on a parent document's attributes, those attributes will be copied into the subcollection documents.  This avoids `get()` calls in security rules, maintaining atomicity.\n\nQAPs (Rules are not Filters) is supported through structural segregation. Each top-level collection contains only documents with similar security requirements, ensuring that `list` operations can be secured effectively without complex filtering in rules.\n\nGiven that authentication will use `password` and `anonymous` methods, role-based access control will not be implemented using custom claims. If there is a need to limit access to any documents we will have to use DBAC.\n\nThe design uses descriptive naming conventions for all collections and documents, making it easy to understand the purpose of each part of the database. The structure leverages path-based ownership where appropriate (e.g., configuration)."

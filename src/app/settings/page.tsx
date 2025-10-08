@@ -130,9 +130,8 @@ export default function SettingsPage() {
     const [localCurrencyRates, setLocalCurrencyRates] = useState<CurrencyRate[]>([]);
     
     const ratesQuery = useMemoFirebase(() => {
-        if (!settings?.id) return null;
-        return query(collection(firestore, 'stores', settings.id, 'currencyRates'), orderBy('date', 'desc'));
-    }, [firestore, settings?.id]);
+        return query(collection(firestore, 'currencyRates'), orderBy('date', 'desc'));
+    }, [firestore]);
     const { data: fetchedRates } = useCollection<CurrencyRate>(ratesQuery);
 
 
@@ -250,16 +249,14 @@ export default function SettingsPage() {
             date: new Date().toISOString(),
         };
 
-        if (settings?.id) {
-            const rateRef = doc(firestore, 'stores', settings.id, 'currencyRates', newRateEntry.id);
-            setDocumentNonBlocking(rateRef, newRateEntry, {});
-            
-            setNewRate(0);
-            toast({
-                title: "Tasa Guardada",
-                description: `La nueva tasa de ${newRate} ha sido registrada.`,
-            });
-        }
+        const rateRef = doc(firestore, 'currencyRates', newRateEntry.id);
+        setDocumentNonBlocking(rateRef, newRateEntry, {});
+        
+        setNewRate(0);
+        toast({
+            title: "Tasa Guardada",
+            description: `La nueva tasa de ${newRate} ha sido registrada.`,
+        });
     };
 
     const isItemInUse = (type: 'unit' | 'family' | 'warehouse', id: string) => {
