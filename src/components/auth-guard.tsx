@@ -37,6 +37,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         // If user is logged in, but their profile is still loading, we wait.
         // Once the profile is loaded, check their role.
         if (isAuthCheckComplete && user && userProfile) {
+            
+            // TEMPORARY SUPERADMIN OVERRIDE
+            if (userProfile.email === 'corporacion1@gmail.com') {
+                // This user is now a super admin, do not redirect.
+                return;
+            }
+
             // If a basic 'user' tries to access the backend, send them to the catalog
             if (userProfile.role === 'user') {
                 router.replace('/catalog');
@@ -56,8 +63,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         );
     }
     
-    // If the user is authenticated and has a role that is not 'user', render the protected content.
-    if (user && userProfile && userProfile.role !== 'user') {
+    // If the user is authenticated and has a role that is not 'user' (or is the overridden user), render the protected content.
+    if (user && userProfile && (userProfile.role !== 'user' || userProfile.email === 'corporacion1@gmail.com')) {
         return <>{children}</>;
     }
 
