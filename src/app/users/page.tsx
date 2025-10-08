@@ -43,7 +43,10 @@ export default function UsersPage() {
   const router = useRouter();
   const { switchStore, activeStoreId } = useSettings();
 
-  const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users'), orderBy('createdAt', 'desc')), [firestore]);
+  const usersQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'users'), orderBy('createdAt', 'desc'));
+  }, [firestore]);
   const { data: users = [], isLoading } = useCollection<UserProfile>(usersQuery);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -63,7 +66,7 @@ export default function UsersPage() {
   };
 
   const confirmAction = async () => {
-    if (!userToAction || !actionType) return;
+    if (!userToAction || !actionType || !firestore) return;
 
     if (actionType === 'promote') {
       const batch = writeBatch(firestore);
