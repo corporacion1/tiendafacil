@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { CurrencyRate, Settings } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc, query, orderBy } from 'firebase/firestore';
+import { Logo } from '@/components/logo';
 
 type DisplayCurrency = 'primary' | 'secondary';
 
@@ -45,6 +46,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const isLoginPage = pathname === '/login';
 
   useEffect(() => {
+      if (isUserLoading) return; // Wait until user is loaded
       const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_KEY);
       if (user?.role === 'admin' && user.storeId) {
           setActiveStoreId(user.storeId);
@@ -53,10 +55,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       } else {
           setActiveStoreId('tiendafacil'); // Fallback to default
       }
-  }, [user]);
+  }, [user, isUserLoading]);
 
   const settingsDocRef = useMemoFirebase(() => {
-    // CRITICAL FIX: Also wait for user loading to complete.
     if (isLoginPage || !firestore || !activeStoreId || isUserLoading) return null;
     return doc(firestore, 'stores', activeStoreId);
   }, [firestore, activeStoreId, isLoginPage, isUserLoading]);
@@ -64,7 +65,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { data: remoteSettings, isLoading: isLoadingSettings, error } = useDoc<Settings>(settingsDocRef);
   
   const currencyRatesQuery = useMemoFirebase(() => {
-    // CRITICAL FIX: Also wait for user loading to complete.
     if (isLoginPage || !firestore || !activeStoreId || isUserLoading) return null;
     return query(collection(firestore, `stores/${activeStoreId}/currencyRates`), orderBy('date', 'desc'));
   }, [firestore, activeStoreId, isLoginPage, isUserLoading]);
@@ -136,10 +136,17 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const latestRate = currencyRates?.[0]?.rate;
   const activeRate = activeCurrency === 'primary' ? 1 : (latestRate && latestRate > 0 ? latestRate : 1);
 
-  const finalIsLoading = isLoadingSettings || isLoadingRates || isUserLoading;
+  const finalIsLoading = isLoadingSettings || isLoadingRates;
 
-  if (!isLoginPage && finalIsLoading) {
-    return null; // Render nothing until settings and user are resolved
+  // This is the definitive loading barrier.
+  // Don't render children until both the user and the settings are fully resolved.
+  if (!isLoginPage && (isUserLoading || finalIsLoading)) {
+      return (
+         <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
+            <Logo className="w-64 h-20" />
+            <p className="text-muted-foreground animate-pulse">Cargando configuración de la tienda...</p>
+        </div>
+      );
   }
 
   return (
