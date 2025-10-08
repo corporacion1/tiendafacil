@@ -58,9 +58,11 @@ export default function UsersPage() {
 
 
   useEffect(() => {
-    const userProfile = users.find(u => u.uid === currentUser?.uid);
-    if (userProfile) {
-        setCurrentUserProfile(userProfile);
+    if (users && currentUser) {
+      const userProfile = users.find(u => u.uid === currentUser.uid);
+      if (userProfile) {
+          setCurrentUserProfile(userProfile);
+      }
     }
   }, [users, currentUser]);
 
@@ -165,6 +167,16 @@ export default function UsersPage() {
     return (
         <div className="flex items-center justify-center h-full">
             <p className="text-muted-foreground">Cargando y verificando permisos...</p>
+        </div>
+    );
+  }
+
+  if (currentUserProfile.role !== 'superAdmin') {
+    // This part should ideally not be reached due to the useEffect redirect,
+    // but it's a good safeguard.
+    return (
+        <div className="flex items-center justify-center h-full">
+            <p className="text-muted-foreground">No tienes permiso para ver esta página.</p>
         </div>
     );
   }
@@ -319,3 +331,5 @@ export default function UsersPage() {
     </>
   );
 }
+
+    
