@@ -146,7 +146,7 @@ export default function SettingsPage() {
     const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
     const [resetPin, setResetPin] = useState('');
     const [resetConfirmationText, setResetConfirmationText] = useState('');
-    const [isSeeding, setIsSeeding] = useState(isSeeding);
+    const [isSeeding, setIsSeeding] = useState(false);
 
     const isSuperAdmin = user?.role === 'superAdmin';
 
@@ -901,7 +901,3 @@ export default function SettingsPage() {
         </div>
     );
 }
-
-    
-
-    
