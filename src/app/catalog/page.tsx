@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid, Instagram, Star, Search, UserPlus, QrCode, ZoomIn, Pencil, ArrowRight, RefreshCw } from "lucide-react";
+import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid, Instagram, Star, Search, UserPlus, QrCode, ZoomIn, Pencil, ArrowRight, RefreshCw, UserCircle } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
@@ -386,6 +386,14 @@ export default function CatalogPage() {
                     <div className="container flex h-16 items-center justify-between">
                         <Logo className="w-32 h-10" />
                         <div className="flex items-center gap-2">
+                            {!user && (
+                                <Button asChild variant="ghost" size="icon">
+                                    <Link href="/login">
+                                        <UserCircle className="h-6 w-6" />
+                                        <span className="sr-only">Iniciar Sesión</span>
+                                    </Link>
+                                </Button>
+                            )}
                              <Dialog>
                                 <DialogTrigger asChild>
                                     <Button variant="outline" onClick={generateShareQrCode}>
