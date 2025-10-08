@@ -5,7 +5,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import type { CurrencyRate, Settings } from '@/lib/types';
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc, query, orderBy } from 'firebase/firestore';
 
 type DisplayCurrency = 'primary' | 'secondary';
@@ -27,9 +27,8 @@ interface SettingsContextType {
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
-const SETTINGS_STORAGE_KEY_PREFIX = 'tienda_facil_settings_';
-const CURRENCY_PREF_STORAGE_KEY = 'tienda_facil_currency_pref';
 const ACTIVE_STORE_ID_KEY = 'tienda_facil_active_store_id';
+const CURRENCY_PREF_STORAGE_KEY = 'tienda_facil_currency_pref';
 
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
@@ -38,43 +37,50 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const pathname = usePathname();
 
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [activeStoreId, setActiveStoreId] = useState<string>('tiendafacil'); // Default demo store
+  const [activeStoreId, setActiveStoreId] = useState<string>('tiendafacil');
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   
   const { toast } = useToast();
   
-  // Conditionally disable hooks on login page
   const isLoginPage = pathname === '/login';
 
   const settingsDocRef = useMemoFirebase(() => {
-    if (isLoginPage || !firestore || !activeStoreId || !user) return null;
+    if (isLoginPage || !firestore || !activeStoreId) return null;
     return doc(firestore, 'stores', activeStoreId);
-  }, [firestore, activeStoreId, user, isLoginPage]);
+  }, [firestore, activeStoreId, isLoginPage]);
 
-  const { data: remoteSettings, isLoading: isLoadingSettings } = useDoc<Settings>(settingsDocRef);
+  const { data: remoteSettings, isLoading: isLoadingSettings, error } = useDoc<Settings>(settingsDocRef);
   
   const currencyRatesQuery = useMemoFirebase(() => {
-    if (isLoginPage || !firestore || !activeStoreId || !user) return null;
+    if (isLoginPage || !firestore || !activeStoreId) return null;
     return query(collection(firestore, `stores/${activeStoreId}/currencyRates`), orderBy('date', 'desc'));
-  }, [firestore, activeStoreId, user, isLoginPage]);
+  }, [firestore, activeStoreId, isLoginPage]);
 
   const { data: currencyRates = [], isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
 
   useEffect(() => {
-      // Load active store from local storage on startup
       const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_KEY);
       if (user?.role === 'admin' && user.storeId) {
           setActiveStoreId(user.storeId);
       } else if (storedStoreId) {
           setActiveStoreId(storedStoreId);
+      } else {
+          setActiveStoreId('tiendafacil'); // Fallback to default
       }
   }, [user]);
 
   useEffect(() => {
     if (remoteSettings) {
       setSettings(remoteSettings);
+    } else if (!isLoadingSettings && error) {
+      console.error("Error loading remote settings:", error);
+      toast({
+          variant: "destructive",
+          title: "Error de Configuración",
+          description: "No se pudo cargar la configuración de la tienda. Usando valores por defecto."
+      });
     }
-  }, [remoteSettings]);
+  }, [remoteSettings, isLoadingSettings, error, toast]);
 
 
   useEffect(() => {
@@ -88,13 +94,21 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, []);
   
-  // CRITICAL: Do not render children if the core dependencies are not ready on protected pages.
   if (!isLoginPage && (isUserLoading || isLoadingSettings)) {
-    return null; // Or a full-page loader
+    return null;
   }
 
   const handleSetSettings = (newSettings: Settings) => {
+    if (!settingsDocRef) {
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "No se puede guardar la configuración porque la referencia de la tienda no está disponible."
+        });
+        return;
+    }
     setSettings(newSettings);
+    setDocumentNonBlocking(settingsDocRef, newSettings, { merge: true });
   };
 
   const switchStore = (storeId: string) => {
@@ -102,6 +116,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
           setActiveStoreId(storeId);
           localStorage.setItem(ACTIVE_STORE_ID_KEY, storeId);
           toast({ title: `Cambiado a la tienda ${storeId}` });
+          // The settings will auto-update because the settingsDocRef dependency changes
       } else {
           toast({ variant: 'destructive', title: "No autorizado" });
       }
