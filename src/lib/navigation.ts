@@ -1,5 +1,5 @@
 
-import { Boxes, FileText, Home, PackagePlus, Settings, ShoppingCart, Store, CreditCard, LayoutGrid, Megaphone } from "lucide-react";
+import { Boxes, FileText, Home, PackagePlus, Settings, ShoppingCart, Store, CreditCard, LayoutGrid, Megaphone, Users } from "lucide-react";
 
 export const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: Home },
@@ -14,6 +14,7 @@ export const navItems = [
 
 export const adminNavItems = [
     { href: "/ads", label: "Anuncios", icon: Megaphone, role: "superAdmin" },
+    { href: "/users", label: "Usuarios", icon: Users, role: "superAdmin" },
 ];
 
 export const settingsNav = { href: "/settings", label: "Configuración", icon: Settings };

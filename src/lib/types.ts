@@ -1,6 +1,27 @@
 
 import { Timestamp } from 'firebase/firestore';
 
+export type UserRole = 'superAdmin' | 'admin' | 'user';
+
+export type UserProfile = {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+  role: UserRole;
+  storeId?: string; // The store this user owns/manages (if role is 'admin')
+  storeRequest?: boolean; // Flag to indicate a user wants a store
+  createdAt: string;
+};
+
+export type Store = {
+    id: string;
+    name: string;
+    ownerId: string; // UID of the admin user who owns it
+    status: 'active' | 'inactive';
+    businessType: string;
+};
+
 export type Product = {
   id: string;
   name: string;
@@ -18,7 +39,7 @@ export type Product = {
   description?: string;
   imageUrl?: string;
   imageHint?: string;
-  storeId: string;
+  storeId: string; // Each product belongs to a store
   createdAt: string;
 };
 
@@ -33,6 +54,7 @@ export type PendingOrder = {
   date: Timestamp | string;
   customerName: string;
   customerPhone: string;
+  customerEmail?: string; // Added email
   items: {
       productId: string;
       productName: string;
@@ -40,6 +62,7 @@ export type PendingOrder = {
       price: number;
   }[];
   total: number;
+  storeId: string; // Know which store this order belongs to
 };
 
 export type InventoryMovement = {
@@ -47,8 +70,9 @@ export type InventoryMovement = {
   productName: string;
   type: 'sale' | 'purchase' | 'adjustment';
   quantity: number;
-  date: Timestamp | string; // Support both for optimistic updates
+  date: Timestamp | string;
   responsible?: string;
+  storeId: string; // Each movement belongs to a store
 };
 
 export type Payment = {
@@ -72,10 +96,10 @@ export type Sale = {
   total: number;
   date: Timestamp | string;
   transactionType: 'contado' | 'credito';
-  paymentMethod?: string; // Kept for simple legacy sales, but new ones will use payments array
   status: 'paid' | 'unpaid';
   paidAmount: number;
-  payments: Payment[]; // Now this will hold all payment info
+  payments: Payment[];
+  storeId: string; // Each sale belongs to a store
 };
 
 export type PurchaseItem = {
@@ -94,6 +118,7 @@ export type Purchase = {
     date: Timestamp | string;
     documentNumber?: string;
     responsible?: string;
+    storeId: string; // Each purchase belongs to a store
 };
 
 export type Customer = {
@@ -101,6 +126,7 @@ export type Customer = {
     name: string;
     phone?: string;
     address?: string;
+    storeId: string; // Each customer belongs to a store
 }
 
 export type Supplier = {
@@ -108,21 +134,25 @@ export type Supplier = {
     name: string;
     phone?: string;
     address?: string;
+    storeId: string; // Each supplier belongs to a store
 }
 
 export type Unit = {
     id: string;
     name: string;
+    storeId: string;
 };
 
 export type Family = {
     id: string;
     name: string;
+    storeId: string;
 };
 
 export type Warehouse = {
     id: string;
     name: string;
+    storeId: string;
 };
 
 export type CurrencyRate = {
@@ -131,19 +161,12 @@ export type CurrencyRate = {
     date: Timestamp | string;
 };
 
-export type Store = {
-    id: string;
-    name: string;
-    status: 'active' | 'inactive';
-    businessType: string;
-};
-
 export type Ad = {
   id: string;
   sku: string;
   name: string;
   description?: string;
-  price: number; // For promotional price display
+  price: number;
   imageUrl: string;
   imageHint?: string;
   views: number;
@@ -158,5 +181,4 @@ export type AdClick = {
     adId: string;
     timestamp: string;
     userAgent: string;
-    // In a real app, you might capture IP and other details on the server side
 };
