@@ -3,7 +3,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useUser } from "@/firebase";
+import { useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase";
+import { doc } from "firebase/firestore";
+import type { UserProfile } from "@/lib/types";
+
 import { navItems, adminNavItems, settingsNav } from "@/lib/navigation";
 import { Logo } from "./logo";
 import {
@@ -20,11 +23,17 @@ interface SiteSidebarProps {
 
 export function SiteSidebar({ isExpanded }: SiteSidebarProps) {
     const pathname = usePathname();
-    const user = { email: "corporacion1@gmail.com" }; // Mock user for demo
+    const { user } = useUser();
+    const firestore = useFirestore();
 
-    // In a real app, the user object would have a `role` property.
-    // We'll simulate it for "corporacion1@gmail.com".
-    const userRole = user?.email === 'corporacion1@gmail.com' ? 'superAdmin' : 'admin';
+    const userProfileRef = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        return doc(firestore, 'users', user.uid);
+    }, [user, firestore]);
+
+    const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
+
+    const userRole = userProfile?.role;
 
     const renderLink = (item: typeof navItems[0]) => (
       <TooltipProvider delayDuration={100}>
@@ -50,13 +59,6 @@ export function SiteSidebar({ isExpanded }: SiteSidebarProps) {
         </Tooltip>
       </TooltipProvider>
     );
-    
-    const renderAdminLink = (item: typeof adminNavItems[0]) => {
-        if (item.role && userRole !== item.role) {
-            return null;
-        }
-        return renderLink(item);
-    }
 
     return (
         <aside className={cn(
@@ -73,8 +75,8 @@ export function SiteSidebar({ isExpanded }: SiteSidebarProps) {
                 {navItems.map((item) => (
                     <div key={item.href}>{renderLink(item)}</div>
                 ))}
-                {adminNavItems.map((item) => (
-                    <div key={item.href}>{renderAdminLink(item)}</div>
+                {userRole === 'superAdmin' && adminNavItems.map((item) => (
+                    <div key={item.href}>{renderLink(item)}</div>
                 ))}
             </nav>
             <nav className="mt-auto flex flex-col gap-2 p-2 font-medium">
@@ -83,5 +85,3 @@ export function SiteSidebar({ isExpanded }: SiteSidebarProps) {
         </aside>
     );
 }
-
-    

@@ -4,14 +4,14 @@
 import { useState, useMemo, useEffect } from "react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, doc, writeBatch, query, orderBy, setDoc } from "firebase/firestore";
-import type { UserProfile, Store } from "@/lib/types";
+import type { UserProfile, Store, UserRole } from "@/lib/types";
 import { MoreHorizontal, Search, UserPlus, Shield, Check, Mail, Phone, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -48,22 +48,50 @@ export default function UsersPage() {
     return query(collection(firestore, 'users'), orderBy('createdAt', 'desc'));
   }, [firestore]);
   const { data: users = [], isLoading } = useCollection<UserProfile>(usersQuery);
+  
+  const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [userToAction, setUserToAction] = useState<UserProfile | null>(null);
-  const [actionType, setActionType] = useState<'promote' | 'delete' | null>(null);
+  const [actionType, setActionType] = useState<'promote' | 'delete' | 'changeRole' | null>(null);
+  const [newRole, setNewRole] = useState<UserRole>('user');
+
 
   useEffect(() => {
-    // This is a protected route, only for superAdmin
-    if (currentUser && currentUser.email !== "corporacion1@gmail.com") {
+    const userProfile = users.find(u => u.uid === currentUser?.uid);
+    if (userProfile) {
+        setCurrentUserProfile(userProfile);
+    }
+  }, [users, currentUser]);
+
+
+  useEffect(() => {
+    if (currentUser && !isLoading && currentUserProfile && currentUserProfile.role !== 'superAdmin') {
       router.replace('/dashboard');
     }
-  }, [currentUser, router]);
+  }, [currentUser, isLoading, currentUserProfile, router]);
 
-  const handleAction = (user: UserProfile, type: 'promote' | 'delete') => {
+  const handleAction = (user: UserProfile, type: 'promote' | 'delete' | 'changeRole', role?: UserRole) => {
     setUserToAction(user);
     setActionType(type);
+    if (role) {
+      setNewRole(role);
+    }
   };
+  
+  const handleChangeRole = async (user: UserProfile, role: UserRole) => {
+      const userRef = doc(firestore, 'users', user.uid);
+      try {
+        await setDoc(userRef, { role: role }, { merge: true });
+        toast({
+            title: 'Rol Actualizado',
+            description: `${user.displayName} ahora es ${role}.`
+        });
+      } catch (error) {
+        console.error("Error changing role: ", error);
+        toast({ variant: 'destructive', title: "Error al cambiar el rol" });
+      }
+  }
 
   const confirmAction = async () => {
     if (!userToAction || !actionType || !firestore) return;
@@ -133,10 +161,10 @@ export default function UsersPage() {
       return stores;
   }, [users]);
 
-  if (!currentUser || currentUser.email !== "corporacion1@gmail.com") {
+  if (isLoading || !currentUserProfile) {
     return (
         <div className="flex items-center justify-center h-full">
-            <p className="text-muted-foreground">Verificando permisos...</p>
+            <p className="text-muted-foreground">Cargando y verificando permisos...</p>
         </div>
     );
   }
@@ -181,9 +209,7 @@ export default function UsersPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading && <p>Cargando usuarios...</p>}
-          {!isLoading && (
-            <Table>
+          <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="hidden sm:table-cell">Avatar</TableHead>
@@ -246,6 +272,16 @@ export default function UsersPage() {
                                         <Shield className="mr-2 h-4 w-4" /> Promover a Admin
                                     </DropdownMenuItem>
                                 )}
+                                <DropdownMenuSub>
+                                    <DropdownMenuSubTrigger>Cambiar Rol</DropdownMenuSubTrigger>
+                                    <DropdownMenuSubContent>
+                                        <DropdownMenuRadioGroup value={user.role} onValueChange={(role) => handleChangeRole(user, role as UserRole)}>
+                                            <DropdownMenuRadioItem value="user">User</DropdownMenuRadioItem>
+                                            <DropdownMenuRadioItem value="admin">Admin</DropdownMenuRadioItem>
+                                            <DropdownMenuRadioItem value="superAdmin">SuperAdmin</DropdownMenuRadioItem>
+                                        </DropdownMenuRadioGroup>
+                                    </DropdownMenuSubContent>
+                                </DropdownMenuSub>
                                 {user.storeId && 
                                     <DropdownMenuItem onSelect={() => switchStore(user.storeId)}>
                                         <ExternalLink className="mr-2 h-4 w-4" /> Ver como este usuario
@@ -262,11 +298,10 @@ export default function UsersPage() {
                 ))}
               </TableBody>
             </Table>
-          )}
         </CardContent>
       </Card>
       
-      <AlertDialog open={!!userToAction} onOpenChange={(isOpen) => !isOpen && setUserToAction(null)}>
+      <AlertDialog open={!!userToAction && actionType !== 'changeRole'} onOpenChange={(isOpen) => !isOpen && setUserToAction(null)}>
         <AlertDialogContent>
             <AlertDialogHeader>
                 <AlertDialogTitle>¿Confirmar Acción?</AlertDialogTitle>
@@ -284,5 +319,3 @@ export default function UsersPage() {
     </>
   );
 }
-
-    
