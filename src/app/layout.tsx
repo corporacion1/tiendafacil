@@ -6,7 +6,6 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { SettingsProvider } from '@/contexts/settings-context';
 import { SecurityProvider } from '@/contexts/security-context';
-import { SidebarProvider } from '@/components/ui/sidebar';
 import { FirebaseClientProvider } from '@/firebase';
 import { AuthGuard } from '@/components/auth-guard';
 
@@ -32,16 +31,14 @@ export default function RootLayout({
       <body className="font-body antialiased">
          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <FirebaseClientProvider>
-                <AuthGuard>
-                  <SecurityProvider>
-                    <SettingsProvider>
-                      <SidebarProvider>
-                        <AppShell>{children}</AppShell>
-                        <Toaster />
-                      </SidebarProvider>
-                    </SettingsProvider>
-                  </SecurityProvider>
-                </AuthGuard>
+              <AuthGuard>
+                <SecurityProvider>
+                  <SettingsProvider>
+                    <AppShell>{children}</AppShell>
+                    <Toaster />
+                  </SettingsProvider>
+                </SecurityProvider>
+              </AuthGuard>
             </FirebaseClientProvider>
         </ThemeProvider>
       </body>

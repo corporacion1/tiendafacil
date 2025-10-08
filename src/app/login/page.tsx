@@ -5,13 +5,10 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FcGoogle } from 'react-icons/fc';
 import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
   signInWithPopup, 
   GoogleAuthProvider 
 } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Logo } from '@/components/logo';
-import { useAuth, useFirestore, useUser } from '@/firebase';
+import { useAuth, useFirestore, useUser, initiateEmailSignUp, initiateEmailSignIn } from '@/firebase';
 import type { UserProfile } from '@/lib/types';
 
 export default function LoginPage() {
@@ -28,7 +25,7 @@ export default function LoginPage() {
   const { toast } = useToast();
   const auth = useAuth();
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -37,12 +34,12 @@ export default function LoginPage() {
 
   // If user is already logged in, redirect to dashboard
   useEffect(() => {
-    if (user) {
+    if (!isUserLoading && user) {
       router.replace('/dashboard');
     }
-  }, [user, router]);
+  }, [user, isUserLoading, router]);
 
-  const createUserProfile = async (user: any) => {
+  const createUserProfile = async (user: any, merge = false) => {
     const userRef = doc(firestore, 'users', user.uid);
     const newUserProfile: UserProfile = {
       uid: user.uid,
@@ -50,10 +47,11 @@ export default function LoginPage() {
       displayName: user.displayName || email.split('@')[0],
       photoURL: user.photoURL,
       role: 'user', // All new users start with this role
+      status: 'active',
       createdAt: serverTimestamp(),
       storeRequest: false,
     };
-    await setDoc(userRef, newUserProfile, { merge: true });
+    await setDoc(userRef, newUserProfile, { merge });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -62,16 +60,15 @@ export default function LoginPage() {
 
     try {
       if (isSignUp) {
-        // Handle Sign Up
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        await createUserProfile(userCredential.user);
-        toast({ title: '¡Registro Exitoso!', description: 'Tu cuenta ha sido creada.' });
+        // Non-blocking sign-up, user will be created and then auth state will change
+        initiateEmailSignUp(auth, email, password);
+        toast({ title: '¡Registro Enviado!', description: 'Serás redirigido en breve.' });
       } else {
-        // Handle Login
-        await signInWithEmailAndPassword(auth, email, password);
-        toast({ title: 'Inicio de Sesión Exitoso', description: '¡Bienvenido de nuevo!' });
+        // Non-blocking sign-in
+        initiateEmailSignIn(auth, email, password);
+        toast({ title: 'Iniciando Sesión...', description: '¡Bienvenido de nuevo!' });
       }
-      router.replace('/dashboard');
+      // The useEffect will handle the redirect once auth state changes
     } catch (error: any) {
       console.error(error);
       const errorCode = error.code;
@@ -90,7 +87,6 @@ export default function LoginPage() {
         title: isSignUp ? 'Error en el Registro' : 'Error al Iniciar Sesión',
         description: message,
       });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -101,11 +97,17 @@ export default function LoginPage() {
     try {
       const result = await signInWithPopup(auth, provider);
       // Check if user is new and create a profile if so
-      // Firestore security rules might prevent getDoc, so we use setDoc with merge:true
-      await createUserProfile(result.user);
-      
-      toast({ title: 'Inicio de Sesión con Google Exitoso' });
-      router.replace('/dashboard');
+      const userRef = doc(firestore, "users", result.user.uid);
+      const userDoc = await getDoc(userRef);
+
+      if (!userDoc.exists()) {
+        await createUserProfile(result.user);
+        toast({ title: '¡Bienvenido! Cuenta creada con Google.' });
+      } else {
+        await createUserProfile(result.user, true); // Merge to update photoURL etc.
+        toast({ title: 'Inicio de Sesión con Google Exitoso' });
+      }
+      // The useEffect will handle the redirect
     } catch (error: any) {
       console.error(error);
       toast({
@@ -113,10 +115,18 @@ export default function LoginPage() {
         title: 'Error con Google',
         description: 'No se pudo iniciar sesión con Google.',
       });
-    } finally {
       setIsLoading(false);
     }
   };
+  
+  if (isUserLoading || user) {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
+            <Logo className="w-64 h-20" />
+            <p className="text-muted-foreground animate-pulse">Cargando...</p>
+        </div>
+    );
+  }
   
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-muted/40">

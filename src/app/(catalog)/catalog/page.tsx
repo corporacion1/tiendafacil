@@ -7,8 +7,8 @@ import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid,
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc, writeBatch, deleteDoc } from "firebase/firestore";
+import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
+import { collection, doc, writeBatch, deleteDoc, query, where } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -26,6 +26,8 @@ import { Logo } from "@/components/logo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { isPast } from "date-fns";
+import { useRouter } from "next/navigation";
+
 
 const AdCard = ({ ad }: { ad: Ad }) => {
     return (
@@ -117,12 +119,20 @@ const CatalogProductCard = ({ product, onAddToCart, onImageClick }: { product: P
 export default function CatalogPage() {
     const { toast } = useToast();
     const firestore = useFirestore();
-    const { settings, activeSymbol, activeRate } = useSettings();
+    const { user } = useUser();
+    const router = useRouter();
+    const { settings, activeStoreId, activeSymbol, activeRate } = useSettings();
 
-    const productsRef = useMemoFirebase(() => collection(firestore, 'products'), [firestore]);
+    const productsRef = useMemoFirebase(() => {
+        if (!firestore || !activeStoreId) return null;
+        return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
+    }, [firestore, activeStoreId]);
     const { data: products = [], isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
     
-    const familiesRef = useMemoFirebase(() => collection(firestore, 'families'), [firestore]);
+    const familiesRef = useMemoFirebase(() => {
+        if (!firestore || !activeStoreId) return null;
+        return query(collection(firestore, 'families'), where('storeId', '==', activeStoreId));
+    }, [firestore, activeStoreId]);
     const { data: families = [], isLoading: isLoadingFamilies } = useCollection<Family>(familiesRef);
     
     const adsRef = useMemoFirebase(() => collection(firestore, 'ads'), [firestore]);
@@ -137,15 +147,13 @@ export default function CatalogPage() {
     const [productDetails, setProductDetails] = useState<Product | null>(null);
     const [productImageError, setProductImageError] = useState(false);
     
-    // Order generation state
     const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
-    const [newCustomer, setNewCustomer] = useState({ name: '', phone: '' });
     const [orderIdForQr, setOrderIdForQr] = useState<string | null>(null);
     const [qrCodeUrl, setQrCodeUrl] = useState('');
     const [shareQrCodeUrl, setShareQrCodeUrl] = useState('');
 
     useEffect(() => {
-        const INACTIVITY_TIMEOUT = 3000; // 3 seconds
+        const INACTIVITY_TIMEOUT = 3000; 
         
         const startAutoScroll = () => {
             if (scrollIntervalRef.current) return;
@@ -256,17 +264,14 @@ export default function CatalogPage() {
       }, [products, searchTerm, selectedFamily]);
     
     const itemsForGrid = useMemo(() => {
-        // 1. Filter ads based on criteria
         const relevantAds = (allAds || []).filter(ad => {
             if (!settings?.businessType) return false;
             const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
             return ad.status === 'active' && !isExpired && ad.targetBusinessTypes.includes(settings.businessType);
         });
         
-        // 2. Shuffle the relevant ads for randomness
         const shuffledAds = [...relevantAds].sort(() => Math.random() - 0.5);
 
-        // 3. Intersperse ads with products
         const items: (Product | Ad)[] = [...sortedAndFilteredProducts];
         for (let i = 0; i < shuffledAds.length; i++) {
             const adIndex = (i + 1) * 9 - 1; // Position 8, 17, 26...
@@ -284,6 +289,14 @@ export default function CatalogPage() {
     const handleOpenOrderDialog = () => {
         if(cart.length === 0) {
             toast({ variant: 'destructive', title: 'Tu pedido está vacío' });
+            return;
+        }
+        if (!user) {
+            toast({
+                title: "Inicio de Sesión Requerido",
+                description: "Por favor, inicia sesión para generar un pedido.",
+                action: <Button onClick={() => router.push('/login')}>Iniciar Sesión</Button>
+            });
             return;
         }
         setIsOrderDialogOpen(true);
@@ -312,23 +325,25 @@ export default function CatalogPage() {
     }
 
     const handleGenerateOrder = async () => {
-        if (newCustomer.name.trim() === '' || newCustomer.phone.trim() === '') {
-            toast({ variant: 'destructive', title: 'Datos de cliente requeridos' });
+        if (!user) {
+            toast({ variant: 'destructive', title: 'Debes iniciar sesión' });
+            return;
+        }
+        if (!activeStoreId) {
+            toast({ variant: 'destructive', title: 'No se pudo identificar la tienda.' });
             return;
         }
 
         const batch = writeBatch(firestore);
         
-        // This part needs adjustment, as we can't query customers here.
-        // For now, we will create a new customer every time. 
-        // This is a limitation of a public catalog without user login.
-        
         const newOrderId = `ORD-${Date.now()}`;
         const newOrderRef = doc(firestore, 'pendingOrders', newOrderId);
         const newOrder: Omit<PendingOrder, 'id'> = {
             date: new Date().toISOString(),
-            customerName: newCustomer.name,
-            customerPhone: newCustomer.phone,
+            customerName: user.displayName || 'Usuario sin nombre',
+            customerPhone: user.phoneNumber || 'Sin teléfono',
+            customerEmail: user.email || 'Sin email',
+            storeId: activeStoreId,
             items: cart.map(item => ({
                 productId: item.product.id,
                 productName: item.product.name,
@@ -344,7 +359,6 @@ export default function CatalogPage() {
             await generateQrCode(newOrderId);
 
             setIsOrderDialogOpen(false);
-            setNewCustomer({ name: '', phone: '' });
             setCart([]);
 
             toast({
@@ -540,34 +554,26 @@ export default function CatalogPage() {
                     )}
                 </main>
 
-                {/* Customer Data and Order Dialog */}
                 <Dialog open={isOrderDialogOpen} onOpenChange={setIsOrderDialogOpen}>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Completa tu Pedido</DialogTitle>
+                            <DialogTitle>Confirmar Pedido</DialogTitle>
                             <DialogDescription>
-                                Necesitamos tus datos para registrar el pedido.
+                                Tu pedido se generará con los datos de tu perfil. Serás notificado cuando esté listo.
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="customer-name" className="text-right">Nombre*</Label>
-                                <Input id="customer-name" value={newCustomer.name} onChange={(e) => setNewCustomer(prev => ({ ...prev, name: e.target.value }))} className="col-span-3" placeholder="Tu nombre completo" required />
-                            </div>
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="customer-phone" className="text-right">Teléfono*</Label>
-                                <Input id="customer-phone" value={newCustomer.phone} onChange={(e) => setNewCustomer(prev => ({ ...prev, phone: e.target.value }))} className="col-span-3" placeholder="Tu número de teléfono" required/>
-                            </div>
+                        <div className="py-4">
+                            <p><strong>Usuario:</strong> {user?.displayName}</p>
+                            <p><strong>Correo:</strong> {user?.email}</p>
                         </div>
                         <DialogFooter>
                             <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-                            <Button onClick={handleGenerateOrder} disabled={!newCustomer.name || !newCustomer.phone}>Confirmar Pedido</Button>
+                            <Button onClick={handleGenerateOrder}>Confirmar Pedido</Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
 
-                 {/* QR Code Dialog */}
-                <Dialog open={!!orderIdForQr} onOpenChange={(isOpen) => !isOpen && setOrderIdForQr(null)}>
+                 <Dialog open={!!orderIdForQr} onOpenChange={(isOpen) => !isOpen && setOrderIdForQr(null)}>
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>¡Pedido Generado con Éxito!</DialogTitle>
@@ -590,7 +596,6 @@ export default function CatalogPage() {
                     </DialogContent>
                 </Dialog>
                 
-                {/* Product Details Dialog */}
                 <DialogContent className="sm:max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>Detalles del Producto</DialogTitle>
@@ -675,5 +680,3 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
-
-    

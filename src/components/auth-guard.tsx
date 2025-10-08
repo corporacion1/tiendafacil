@@ -1,46 +1,79 @@
 
 "use client";
 
-import { useUser } from "@/firebase";
+import { useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
+import { doc } from "firebase/firestore";
+import type { UserProfile } from "@/lib/types";
 import { Logo } from "./logo";
 
 /**
- * AuthGuard's primary responsibility is to ensure a user is authenticated
- * *after* the initial Firebase user loading is complete.
- * It gates the rendering of the entire authenticated app.
+ * AuthGuard is the single source of truth for authentication and authorization.
+ * It ensures a user is logged in for protected routes and has the correct role.
  */
 export function AuthGuard({ children }: { children: React.ReactNode }) {
     const { isUserLoading, user } = useUser();
+    const firestore = useFirestore();
     const router = useRouter();
     const pathname = usePathname();
 
-    const isPublicPage = pathname === '/login' || pathname.startsWith('/catalog');
+    const isPublicPage = pathname.startsWith('/catalog');
+
+    // Fetch user profile from Firestore
+    const userProfileRef = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        return doc(firestore, 'users', user.uid);
+    }, [user, firestore]);
+    const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
     useEffect(() => {
-        // If loading is finished, there's no user, and we are not on a public page, redirect to login.
-        if (!isUserLoading && !user && !isPublicPage) {
+        const isAuthCheckComplete = !isUserLoading && !isProfileLoading;
+        
+        // If auth check is done and there's no user, redirect to login (unless on a public page)
+        if (isAuthCheckComplete && !user && !isPublicPage) {
             router.replace('/login');
+            return;
         }
-    }, [isUserLoading, user, router, pathname, isPublicPage]);
 
-    // If it's a public page, render it immediately without waiting for user state.
-    if (isPublicPage) {
-        return <>{children}</>;
-    }
+        // If user is logged in, but we are on a public page, check their role.
+        if (isAuthCheckComplete && user && isPublicPage) {
+            // No action needed, public pages are for everyone.
+            return;
+        }
 
-    // While Firebase is determining the auth state for protected routes, show a global loading screen.
-    if (isUserLoading) {
+        // If user is logged in and tries to access a protected page
+        if (isAuthCheckComplete && user && !isPublicPage) {
+            // If the profile exists, check the role
+            if (userProfile) {
+                // If a basic 'user' tries to access the backend, send them to the catalog
+                if (userProfile.role === 'user') {
+                    router.replace('/catalog');
+                }
+                // 'admin' and 'superAdmin' are allowed, so we do nothing.
+            } else {
+                // Profile is still loading or doesn't exist. This case is covered by the loading screen.
+                // If it doesn't exist after loading, they might be stuck, but the loading screen handles it.
+            }
+        }
+
+    }, [isUserLoading, isProfileLoading, user, userProfile, router, pathname, isPublicPage]);
+
+    // Show a loading screen while user/profile data is being fetched for any page.
+    if (isUserLoading || (user && isProfileLoading)) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
                 <Logo className="w-64 h-20" />
-                <p className="text-muted-foreground animate-pulse">Verificando sesión...</p>
+                <p className="text-muted-foreground animate-pulse">Verificando sesión y permisos...</p>
             </div>
         );
     }
     
-    // If a user exists for a protected route, render the children.
-    // If there's no user, we are in the process of redirecting, so return null.
-    return user ? <>{children}</> : null;
+    // If it's a public page, render it immediately if auth is done (or not needed).
+    if (isPublicPage) {
+        return <>{children}</>;
+    }
+
+    // For protected routes, only render if the user exists and has a valid profile with a role other than 'user'.
+    return user && userProfile && userProfile.role !== 'user' ? <>{children}</> : null;
 }

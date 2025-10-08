@@ -16,12 +16,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setIsSidebarExpanded(prev => !prev);
   };
 
-  // The login page and catalog have their own layouts and are handled by AuthGuard.
-  if (pathname === '/login' || pathname.startsWith('/catalog')) {
+  // The login page has its own minimal layout.
+  if (pathname === '/login') {
     return <>{children}</>;
   }
 
-  // The main layout structure for authenticated routes.
+  // The catalog page has a public-facing layout.
+  if (pathname.startsWith('/catalog')) {
+      return <>{children}</>;
+  }
+
+  // The main layout structure for authenticated backend routes.
   return (
       <div className="flex min-h-screen w-full flex-col bg-muted/40">
           <SiteSidebar isExpanded={isSidebarExpanded} />

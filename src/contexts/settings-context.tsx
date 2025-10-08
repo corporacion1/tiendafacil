@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
-import type { CurrencyRate, Settings } from '@/lib/types';
+import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc, query, orderBy } from 'firebase/firestore';
 import { Logo } from '@/components/logo';
@@ -24,6 +24,7 @@ interface SettingsContextType {
   activeStoreId: string;
   switchStore: (storeId: string) => void;
   isLoadingSettings: boolean;
+  userProfile: UserProfile | null;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -31,54 +32,46 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 const ACTIVE_STORE_ID_KEY = 'tienda_facil_active_store_id';
 const CURRENCY_PREF_STORAGE_KEY = 'tienda_facil_currency_pref';
 
-
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
   const firestore = useFirestore();
-  const pathname = usePathname();
+  const { toast } = useToast();
 
-  const [settings, setSettings] = useState<Settings | null>(null);
+  const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
+  const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
+
   const [activeStoreId, setActiveStoreId] = useState<string>('tiendafacil');
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   
-  const { toast } = useToast();
-  
-  const isLoginPage = pathname === '/login';
-
   useEffect(() => {
-      if (isUserLoading) return; // Wait until user is loaded
-      const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_KEY);
-      if (user?.role === 'admin' && user.storeId) {
-          setActiveStoreId(user.storeId);
-      } else if (storedStoreId) {
-          setActiveStoreId(storedStoreId);
-      } else {
-          setActiveStoreId('tiendafacil'); // Fallback to default
-      }
-  }, [user, isUserLoading]);
+    if (isLoadingProfile || !userProfile) return;
+
+    const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_KEY);
+    
+    if (userProfile.role === 'admin' && userProfile.storeId) {
+        setActiveStoreId(userProfile.storeId);
+    } else if (userProfile.role === 'superAdmin' && storedStoreId) {
+        setActiveStoreId(storedStoreId);
+    } else {
+        setActiveStoreId('tiendafacil'); // Fallback for 'user' role or unassigned admins
+    }
+  }, [userProfile, isLoadingProfile]);
 
   const settingsDocRef = useMemoFirebase(() => {
-    if (isLoginPage || !firestore || !activeStoreId || isUserLoading) return null;
+    if (!firestore || !activeStoreId) return null;
     return doc(firestore, 'stores', activeStoreId);
-  }, [firestore, activeStoreId, isLoginPage, isUserLoading]);
+  }, [firestore, activeStoreId]);
 
-  const { data: remoteSettings, isLoading: isLoadingDoc } = useDoc<Settings>(settingsDocRef);
+  const { data: settings, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(settingsDocRef);
   
   const currencyRatesQuery = useMemoFirebase(() => {
-    if (isLoginPage || !firestore || !activeStoreId || isUserLoading) return null;
+    if (!firestore || !activeStoreId) return null;
     return query(collection(firestore, `stores/${activeStoreId}/currencyRates`), orderBy('date', 'desc'));
-  }, [firestore, activeStoreId, isLoginPage, isUserLoading]);
+  }, [firestore, activeStoreId]);
 
   const { data: currencyRates = [], isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
 
-  const isLoadingSettings = isLoadingDoc || isLoadingRates;
-
-  useEffect(() => {
-    if (remoteSettings) {
-      setSettings(remoteSettings);
-    }
-  }, [remoteSettings]);
-
+  const isLoadingSettings = isLoadingProfile || isLoadingSettingsDoc || isLoadingRates;
 
   useEffect(() => {
     try {
@@ -91,7 +84,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, []);
   
-
   const handleSetSettings = (newSettings: Settings) => {
     if (!settingsDocRef) {
         toast({
@@ -101,15 +93,15 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         });
         return;
     }
-    setSettings(newSettings);
     setDocumentNonBlocking(settingsDocRef, newSettings, { merge: true });
   };
 
   const switchStore = (storeId: string) => {
-      if (user?.role === 'superAdmin') {
+      if (userProfile?.role === 'superAdmin') {
           setActiveStoreId(storeId);
           localStorage.setItem(ACTIVE_STORE_ID_KEY, storeId);
           toast({ title: `Cambiado a la tienda ${storeId}` });
+          window.location.reload(); // Reload to fetch all data for the new store
       } else {
           toast({ variant: 'destructive', title: "No autorizado" });
       }
@@ -131,9 +123,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const latestRate = currencyRates?.[0]?.rate;
   const activeRate = activeCurrency === 'primary' ? 1 : (latestRate && latestRate > 0 ? latestRate : 1);
 
-  // This is the definitive loading barrier.
-  // Don't render children until both the user and the settings are fully resolved.
-  if (!isLoginPage && (isUserLoading || isLoadingSettings)) {
+  if (isLoadingSettings) {
       return (
          <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
             <Logo className="w-64 h-20" />
@@ -152,10 +142,11 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         activeSymbol, 
         activeRate, 
         currencyRates: currencyRates || [], 
-        setCurrencyRates: () => {},
+        setCurrencyRates: () => {}, // This is a read-only view from settings page now
         activeStoreId,
         switchStore,
         isLoadingSettings,
+        userProfile: userProfile || null,
     }}>
       {children}
     </SettingsContext.Provider>
