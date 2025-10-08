@@ -26,6 +26,8 @@ import { useSettings } from "@/contexts/settings-context";
 import { Logo } from "./logo";
 import { useRouter } from "next/navigation";
 import { navItems, settingsNav } from "@/lib/navigation";
+import { useAuth } from "@/firebase";
+import { signOut } from "firebase/auth";
 
 interface SiteHeaderProps {
   toggleSidebar: () => void;
@@ -35,27 +37,23 @@ interface SiteHeaderProps {
 export function SiteHeader({ toggleSidebar, isSidebarExpanded }: SiteHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const auth = useAuth();
   const { settings, activeCurrency, toggleDisplayCurrency } = useSettings();
   
-  // Mock user for offline mode
-  const user = {
-    displayName: "Usuario Demo",
-    email: "demo@tiendafacil.com",
-    photoURL: null,
-  };
+  const user = auth.currentUser;
 
-  const handleSignOut = () => {
-    // In offline mode, just redirect to a simulated login
+  const handleSignOut = async () => {
+    await signOut(auth);
     router.push('/login');
   }
 
   const inactiveSymbol = activeCurrency === 'primary' 
-    ? settings.secondaryCurrencySymbol 
-    : settings.primaryCurrencySymbol;
+    ? settings?.secondaryCurrencySymbol || '...'
+    : settings?.primaryCurrencySymbol || '$';
 
   const inactiveCurrencyName = activeCurrency === 'primary'
-    ? settings.secondaryCurrencyName
-    : settings.primaryCurrencyName;
+    ? settings?.secondaryCurrencyName || 'Moneda Secundaria'
+    : settings?.primaryCurrencyName || 'Moneda Principal';
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
