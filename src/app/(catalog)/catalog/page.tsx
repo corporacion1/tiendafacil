@@ -258,6 +258,7 @@ export default function CatalogPage() {
     const itemsForGrid = useMemo(() => {
         // 1. Filter ads based on criteria
         const relevantAds = (allAds || []).filter(ad => {
+            if (!settings?.businessType) return false;
             const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
             return ad.status === 'active' && !isExpired && ad.targetBusinessTypes.includes(settings.businessType);
         });
@@ -276,7 +277,7 @@ export default function CatalogPage() {
             }
         }
         return items;
-    }, [sortedAndFilteredProducts, allAds, settings.businessType]);
+    }, [sortedAndFilteredProducts, allAds, settings]);
 
     const familyFilters = ["all", ...(families || []).map(f => f.name)];
     
@@ -658,13 +659,13 @@ export default function CatalogPage() {
 
                 <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
                     <Button asChild size="icon" className="rounded-full h-14 w-14 bg-[#25D366] hover:bg-[#128C7E] shadow-lg">
-                        <a href={`https://wa.me/${settings.storeWhatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">
+                        <a href={`https://wa.me/${settings?.storeWhatsapp?.replace(/\D/g, '') || ''}`} target="_blank" rel="noopener noreferrer">
                             <FaWhatsapp className="h-7 w-7" />
                             <span className="sr-only">WhatsApp</span>
                         </a>
                     </Button>
                     <Button asChild size="icon" className="rounded-full h-14 w-14 bg-gradient-to-br from-purple-400 to-pink-600 text-white shadow-lg">
-                        <a href={`https://www.instagram.com/${settings.storeMeta.replace('@', '')}`} target="_blank" rel="noopener noreferrer">
+                        <a href={`https://www.instagram.com/${settings?.storeMeta?.replace('@', '') || ''}`} target="_blank" rel="noopener noreferrer">
                             <Instagram className="h-7 w-7" />
                             <span className="sr-only">Instagram</span>
                         </a>
@@ -674,9 +675,5 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
-
-    
-
-    
 
     

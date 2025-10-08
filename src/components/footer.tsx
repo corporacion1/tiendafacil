@@ -13,32 +13,32 @@ export function Footer() {
     {
       name: "WhatsApp",
       icon: FaWhatsapp,
-      url: `https://wa.me/${settings.storeWhatsapp.replace(/\D/g, '')}`,
-      enabled: !!settings.storeWhatsapp
+      url: `https://wa.me/${settings?.storeWhatsapp?.replace(/\D/g, '') || ''}`,
+      enabled: !!settings?.storeWhatsapp
     },
     {
       name: "TikTok",
       icon: FaTiktok,
-      url: `https://www.tiktok.com/${settings.storeTiktok.replace('@', '')}`,
-      enabled: !!settings.storeTiktok
+      url: `https://www.tiktok.com/${settings?.storeTiktok?.replace('@', '') || ''}`,
+      enabled: !!settings?.storeTiktok
     },
     {
       name: "Instagram",
       icon: Instagram,
-      url: `https://www.instagram.com/${settings.storeMeta.replace('@', '')}`,
-      enabled: !!settings.storeMeta
+      url: `https://www.instagram.com/${settings?.storeMeta?.replace('@', '') || ''}`,
+      enabled: !!settings?.storeMeta
     },
     {
       name: "Facebook",
       icon: Facebook,
-      url: `https://www.facebook.com/${settings.storeMeta.replace('@', '')}`,
-      enabled: !!settings.storeMeta
+      url: `https://www.facebook.com/${settings?.storeMeta?.replace('@', '') || ''}`,
+      enabled: !!settings?.storeMeta
     },
     {
       name: "X",
       icon: Twitter,
-      url: `https://x.com/${settings.storeMeta.replace('@', '')}`,
-      enabled: !!settings.storeMeta
+      url: `https://x.com/${settings?.storeMeta?.replace('@', '') || ''}`,
+      enabled: !!settings?.storeMeta
     },
   ];
 
@@ -72,3 +72,5 @@ export function Footer() {
     </footer>
   );
 }
+
+    
