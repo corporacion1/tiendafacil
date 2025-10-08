@@ -44,6 +44,17 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   
   const isLoginPage = pathname === '/login';
 
+  useEffect(() => {
+      const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_KEY);
+      if (user?.role === 'admin' && user.storeId) {
+          setActiveStoreId(user.storeId);
+      } else if (storedStoreId) {
+          setActiveStoreId(storedStoreId);
+      } else {
+          setActiveStoreId('tiendafacil'); // Fallback to default
+      }
+  }, [user?.uid, user?.role, user?.storeId]);
+
   const settingsDocRef = useMemoFirebase(() => {
     if (isLoginPage || !firestore || !activeStoreId) return null;
     return doc(firestore, 'stores', activeStoreId);
@@ -57,17 +68,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [firestore, activeStoreId, isLoginPage]);
 
   const { data: currencyRates = [], isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
-
-  useEffect(() => {
-      const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_KEY);
-      if (user?.role === 'admin' && user.storeId) {
-          setActiveStoreId(user.storeId);
-      } else if (storedStoreId) {
-          setActiveStoreId(storedStoreId);
-      } else {
-          setActiveStoreId('tiendafacil'); // Fallback to default
-      }
-  }, [user?.uid, user?.role, user?.storeId]);
 
   useEffect(() => {
     if (remoteSettings) {

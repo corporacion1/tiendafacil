@@ -129,7 +129,10 @@ export default function SettingsPage() {
     const [localWarehouses, setLocalWarehouses] = useState<Warehouse[]>([]);
     const [localCurrencyRates, setLocalCurrencyRates] = useState<CurrencyRate[]>([]);
     
-    const ratesQuery = useMemoFirebase(() => query(collection(firestore, 'currencyRates'), orderBy('date', 'desc')), [firestore]);
+    const ratesQuery = useMemoFirebase(() => {
+        if (!settings?.id) return null;
+        return query(collection(firestore, 'stores', settings.id, 'currencyRates'), orderBy('date', 'desc'));
+    }, [firestore, settings?.id]);
     const { data: fetchedRates } = useCollection<CurrencyRate>(ratesQuery);
 
 
@@ -151,10 +154,10 @@ export default function SettingsPage() {
     const isSuperAdmin = user?.role === 'superAdmin';
 
      useEffect(() => {
-        if (settings) {
+        if (settings && !localSettings) {
             setLocalSettings(settings);
         }
-    }, [settings]);
+    }, [settings, localSettings]);
 
     useEffect(() => {
         setLocalUnits(units);
@@ -247,14 +250,16 @@ export default function SettingsPage() {
             date: new Date().toISOString(),
         };
 
-        const rateRef = doc(firestore, 'currencyRates', newRateEntry.id);
-        setDocumentNonBlocking(rateRef, newRateEntry, {});
-        
-        setNewRate(0);
-        toast({
-            title: "Tasa Guardada",
-            description: `La nueva tasa de ${newRate} ha sido registrada.`,
-        });
+        if (settings?.id) {
+            const rateRef = doc(firestore, 'stores', settings.id, 'currencyRates', newRateEntry.id);
+            setDocumentNonBlocking(rateRef, newRateEntry, {});
+            
+            setNewRate(0);
+            toast({
+                title: "Tasa Guardada",
+                description: `La nueva tasa de ${newRate} ha sido registrada.`,
+            });
+        }
     };
 
     const isItemInUse = (type: 'unit' | 'family' | 'warehouse', id: string) => {
@@ -707,7 +712,7 @@ export default function SettingsPage() {
                                         {localCurrencyRates.length > 0 ? localCurrencyRates.map(rate => (
                                             <TableRow key={rate.id}>
                                                 <TableCell>{rate.date ? format(parseISO(rate.date as string), "dd/MM/yy HH:mm") : 'N/A'}</TableCell>
-                                                <TableCell className="text-right font-mono">{`${rate.rate.toFixed(6)} ${localSettings?.secondaryCurrencySymbol}`}</TableCell>
+                                                <TableCell className="text-right font-mono">{`${rate.rate.toFixed(6)} ${localSettings?.secondaryCurrencySymbol || ''}`}</TableCell>
                                             </TableRow>
                                         )) : (
                                             <TableRow>
@@ -904,5 +909,3 @@ export default function SettingsPage() {
         </div>
     );
 }
-
-    
