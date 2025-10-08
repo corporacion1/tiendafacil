@@ -7,6 +7,7 @@ import { Firestore } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import type { UserAuthResult } from './auth/use-user';
+import { Logo } from '@/components/logo';
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -102,7 +103,12 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   // This prevents any downstream component from trying to access Firestore before
   // the user state is definitively known.
   if (userAuthState.isUserLoading) {
-    return null; // or a full-page loader if preferred
+    return (
+        <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
+            <Logo className="w-64 h-20" />
+            <p className="text-muted-foreground animate-pulse">Conectando a los servicios...</p>
+        </div>
+    );
   }
 
   return (
