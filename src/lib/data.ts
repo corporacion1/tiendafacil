@@ -1,10 +1,20 @@
 
 
-import type { Product, InventoryMovement, Sale, Unit, Family, Warehouse, Customer, Purchase, Supplier, CurrencyRate, Payment, PendingOrder, AdClick, Ad } from '@/lib/types';
+import type { Product, InventoryMovement, Sale, Unit, Family, Warehouse, Customer, Purchase, Supplier, CurrencyRate, Payment, PendingOrder, AdClick, Ad, UserProfile } from '@/lib/types';
 import { PlaceHolderImages } from './placeholder-images';
 import { subDays, subHours } from 'date-fns';
 import { mockAds } from './ads';
-import { collection, deleteDoc, getDocs, Firestore, WriteBatch, writeBatch } from 'firebase/firestore';
+import { collection, deleteDoc, getDocs, Firestore, WriteBatch, writeBatch, query, where } from 'firebase/firestore';
+
+export const defaultUsers: Omit<UserProfile, 'createdAt' | 'uid' | 'photoURL'>[] = [
+    {
+        email: 'corporacion1@gmail.com',
+        displayName: 'Super Admin',
+        role: 'superAdmin',
+        status: 'active',
+        storeId: 'tiendafacil',
+    }
+];
 
 export const defaultCustomers: Customer[] = [
     { id: 'eventual', name: 'Cliente Eventual', phone: '', address: '' },
@@ -189,11 +199,19 @@ export function trackAdClick(adId: string) {
     mockAdClicks.push(newClick);
 }
 
-// Function to delete all documents in a collection
-async function deleteCollection(db: Firestore, collectionName: string, batch: WriteBatch) {
+async function deleteCollection(
+    db: Firestore,
+    collectionName: string,
+    batch: WriteBatch,
+    exclude: { field: string; value: any } | null = null
+) {
     const collectionRef = collection(db, collectionName);
     const snapshot = await getDocs(collectionRef);
     snapshot.docs.forEach(doc => {
+        if (exclude && doc.data()[exclude.field] === exclude.value) {
+            // Skip this document
+            return;
+        }
         batch.delete(doc.ref);
     });
 }
@@ -217,11 +235,17 @@ export async function factoryReset(db: Firestore) {
         'ads'
     ];
 
-    // Firestore allows a maximum of 500 operations in a single batch.
-    // We will create multiple batches if needed.
     const commitPromises: Promise<void>[] = [];
     let batch = writeBatch(db);
     let operationCount = 0;
+
+    // Special handling for the 'users' collection
+    const usersQuery = query(collection(db, "users"), where("email", "!=", "corporacion1@gmail.com"));
+    const usersSnapshot = await getDocs(usersQuery);
+    usersSnapshot.forEach(doc => {
+        batch.delete(doc.ref);
+        operationCount++;
+    });
 
     for (const collectionName of collectionsToDelete) {
         const collectionRef = collection(db, collectionName);
