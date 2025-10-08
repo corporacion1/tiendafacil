@@ -53,26 +53,28 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       } else {
           setActiveStoreId('tiendafacil'); // Fallback to default
       }
-  }, [user?.uid, user?.role, user?.storeId]);
+  }, [user]);
 
   const settingsDocRef = useMemoFirebase(() => {
-    if (isLoginPage || !firestore || !activeStoreId) return null;
+    // CRITICAL FIX: Also wait for user loading to complete.
+    if (isLoginPage || !firestore || !activeStoreId || isUserLoading) return null;
     return doc(firestore, 'stores', activeStoreId);
-  }, [firestore, activeStoreId, isLoginPage]);
+  }, [firestore, activeStoreId, isLoginPage, isUserLoading]);
 
   const { data: remoteSettings, isLoading: isLoadingSettings, error } = useDoc<Settings>(settingsDocRef);
   
   const currencyRatesQuery = useMemoFirebase(() => {
-    if (isLoginPage || !firestore || !activeStoreId) return null;
+    // CRITICAL FIX: Also wait for user loading to complete.
+    if (isLoginPage || !firestore || !activeStoreId || isUserLoading) return null;
     return query(collection(firestore, `stores/${activeStoreId}/currencyRates`), orderBy('date', 'desc'));
-  }, [firestore, activeStoreId, isLoginPage]);
+  }, [firestore, activeStoreId, isLoginPage, isUserLoading]);
 
   const { data: currencyRates = [], isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
 
   useEffect(() => {
     if (remoteSettings) {
       setSettings(remoteSettings);
-    } else if (!isLoadingSettings && error) {
+    } else if (!isLoadingSettings && error && !isLoginPage) {
       console.error("Error loading remote settings:", error);
       toast({
           variant: "destructive",
@@ -80,7 +82,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
           description: "No se pudo cargar la configuración de la tienda. Usando valores por defecto."
       });
     }
-  }, [remoteSettings, isLoadingSettings, error, toast]);
+  }, [remoteSettings, isLoadingSettings, error, toast, isLoginPage]);
 
 
   useEffect(() => {
@@ -94,9 +96,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, []);
   
-  if (!isLoginPage && (isUserLoading || isLoadingSettings)) {
-    return null;
-  }
 
   const handleSetSettings = (newSettings: Settings) => {
     if (!settingsDocRef) {
@@ -116,7 +115,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
           setActiveStoreId(storeId);
           localStorage.setItem(ACTIVE_STORE_ID_KEY, storeId);
           toast({ title: `Cambiado a la tienda ${storeId}` });
-          // The settings will auto-update because the settingsDocRef dependency changes
       } else {
           toast({ variant: 'destructive', title: "No autorizado" });
       }
@@ -138,6 +136,11 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const latestRate = currencyRates?.[0]?.rate;
   const activeRate = activeCurrency === 'primary' ? 1 : (latestRate && latestRate > 0 ? latestRate : 1);
 
+  const finalIsLoading = isLoadingSettings || isLoadingRates || isUserLoading;
+
+  if (!isLoginPage && finalIsLoading) {
+    return null; // Render nothing until settings and user are resolved
+  }
 
   return (
     <SettingsContext.Provider value={{ 
@@ -152,7 +155,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         setCurrencyRates: () => {},
         activeStoreId,
         switchStore,
-        isLoadingSettings: isLoadingSettings || isLoadingRates,
+        isLoadingSettings: finalIsLoading,
     }}>
       {children}
     </SettingsContext.Provider>
