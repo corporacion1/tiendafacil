@@ -151,7 +151,9 @@ export default function SettingsPage() {
     const isSuperAdmin = user?.role === 'superAdmin';
 
      useEffect(() => {
-        setLocalSettings(settings);
+        if (settings) {
+            setLocalSettings(settings);
+        }
     }, [settings]);
 
     useEffect(() => {
@@ -173,6 +175,7 @@ export default function SettingsPage() {
     }, [fetchedRates]);
     
     useEffect(() => {
+        if (!localSettings) return;
         const mainSettingsChanged = JSON.stringify(localSettings) !== JSON.stringify(settings);
         const unitsChanged = JSON.stringify(localUnits) !== JSON.stringify(units);
         const familiesChanged = JSON.stringify(localFamilies) !== JSON.stringify(families);
@@ -536,7 +539,7 @@ export default function SettingsPage() {
         });
     }
 
-    if (isLoadingSettings) {
+    if (isLoadingSettings || !localSettings) {
         return <div>Cargando configuración...</div>;
     }
 
@@ -901,3 +904,5 @@ export default function SettingsPage() {
         </div>
     );
 }
+
+    
