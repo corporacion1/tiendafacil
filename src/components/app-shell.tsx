@@ -18,28 +18,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   // The login page does not need the main authenticated layout.
-  // The catalog has its own simplified layout.
-  if (pathname === '/login' || pathname.startsWith('/catalog')) {
+  if (pathname === '/login') {
     return <>{children}</>;
   }
+  
+  // The catalog has its own simplified layout without the AppShell structure
+  if (pathname.startsWith('/catalog')) {
+      return (
+        <AuthGuard>
+            {children}
+        </AuthGuard>
+      );
+  }
+
 
   // The main layout structure for authenticated routes.
+  // The AuthGuard is now the primary wrapper for all protected content.
   return (
-    <div className="flex min-h-screen w-full flex-col bg-muted/40">
-        <SiteSidebar isExpanded={isSidebarExpanded} />
-        <div className={cn(
-          "flex flex-col sm:gap-4 sm:py-4 transition-all duration-300",
-          isSidebarExpanded ? "sm:pl-56" : "sm:pl-20"
-        )}>
-            <SiteHeader toggleSidebar={toggleSidebar} isSidebarExpanded={isSidebarExpanded} />
-            <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
-                <AuthGuard>
+    <AuthGuard>
+      <div className="flex min-h-screen w-full flex-col bg-muted/40">
+          <SiteSidebar isExpanded={isSidebarExpanded} />
+          <div className={cn(
+            "flex flex-col sm:gap-4 sm:py-4 transition-all duration-300",
+            isSidebarExpanded ? "sm:pl-56" : "sm:pl-20"
+          )}>
+              <SiteHeader toggleSidebar={toggleSidebar} isSidebarExpanded={isSidebarExpanded} />
+              <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
                   <AppLoader>
                     {children}
                   </AppLoader>
-                </AuthGuard>
-            </main>
-        </div>
-    </div>
+              </main>
+          </div>
+      </div>
+    </AuthGuard>
   );
 }

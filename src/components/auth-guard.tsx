@@ -2,39 +2,42 @@
 "use client";
 
 import { useUser } from "@/firebase";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { useEffect } from "react";
 import { Logo } from "./logo";
-import { useSecurity } from "@/contexts/security-context";
-import { PinModal } from "./pin-modal";
 
 /**
- * AuthGuard is the FIRST checkpoint for authentication.
- * Its only job is to wait for the Firebase auth state to be resolved AND for a user to exist.
- * If there is no user, it would redirect. In this demo, we assume a user
- * will always exist for the main app. Once the user state is confirmed,
- * it renders its children (which should include the AppLoader).
+ * AuthGuard is the FIRST and ONLY checkpoint for authentication.
+ * Its sole responsibility is to ensure a user is authenticated before any
+ * part of the protected application is rendered.
+ * If there is no user after the initial check, it redirects to the login page.
  */
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-    // We can simulate an authenticated user or use the real one.
     const { isUserLoading, user } = useUser();
     const router = useRouter();
-    
-    // This effect can be used to redirect if the user is not logged in after loading.
-    // For this demo, we are assuming a logged-in state for all protected routes.
+    const pathname = usePathname();
 
-    // Primary loading state: wait for Firebase to confirm auth status AND for the user object to be available.
-    // This is the key fix: we don't proceed until 'user' is truthy.
-    if (isUserLoading || !user) {
+    useEffect(() => {
+        // If loading is finished and there's still no user, redirect to login.
+        // We also check to prevent a redirect loop if we're already on the login page.
+        if (!isUserLoading && !user && pathname !== '/login') {
+            router.replace('/login');
+        }
+    }, [isUserLoading, user, router, pathname]);
+
+    // While Firebase is determining the auth state, show a global loading screen.
+    // This is the critical step that prevents any child components from rendering
+    // and attempting to access Firestore prematurely.
+    if (isUserLoading) {
         return (
-            <div className="flex flex-col items-center justify-center pt-20 gap-4">
+            <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
                 <Logo className="w-64 h-20" />
                 <p className="text-muted-foreground animate-pulse">Verificando sesión...</p>
             </div>
         );
     }
     
-    // If all checks pass (i.e., user is "loaded" and exists), render the children.
-    // The AppLoader inside will then handle PIN logic.
-    return <>{children}</>;
+    // If a user exists, render the children (the rest of the app).
+    // If no user exists, this will be null for a brief moment before the useEffect redirects.
+    return user ? <>{children}</> : null;
 }
