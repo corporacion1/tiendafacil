@@ -47,7 +47,7 @@ export default function UsersPage() {
     if (!firestore) return null;
     return query(collection(firestore, 'users'), orderBy('createdAt', 'desc'));
   }, [firestore]);
-  const { data: users = [], isLoading } = useCollection<UserProfile>(usersQuery);
+  const { data: users, isLoading } = useCollection<UserProfile>(usersQuery);
   
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
 
@@ -303,5 +303,3 @@ export default function UsersPage() {
     </>
   );
 }
-
-    
