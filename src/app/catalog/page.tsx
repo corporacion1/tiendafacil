@@ -119,7 +119,7 @@ const CatalogProductCard = ({ product, onAddToCart, onImageClick }: { product: P
 export default function CatalogPage() {
     const { toast } = useToast();
     const firestore = useFirestore();
-    const { user } = useUser();
+    const { user, isUserLoading } = useUser();
     const router = useRouter();
     const { settings, activeStoreId, activeSymbol, activeRate } = useSettings();
 
@@ -386,7 +386,7 @@ export default function CatalogPage() {
                     <div className="container flex h-16 items-center justify-between">
                         <Logo className="w-32 h-10" />
                         <div className="flex items-center gap-2">
-                            {!user && (
+                            {!isUserLoading && !user && (
                                 <Button asChild variant="ghost" size="icon">
                                     <Link href="/login">
                                         <UserCircle className="h-6 w-6" />
