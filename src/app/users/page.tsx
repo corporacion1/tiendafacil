@@ -4,8 +4,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, doc, writeBatch, query, orderBy } from "firebase/firestore";
-import type { UserProfile } from "@/lib/types";
-import { MoreHorizontal, Search, UserPlus, Shield, Store, Check, X, Mail, Phone, ExternalLink } from "lucide-react";
+import type { UserProfile, Store } from "@/lib/types";
+import { MoreHorizontal, Search, UserPlus, Shield, Check, Mail, Phone, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -277,3 +277,5 @@ export default function UsersPage() {
     </>
   );
 }
+
+    
