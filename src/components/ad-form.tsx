@@ -14,7 +14,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { Ad } from "@/lib/types";
-import { mockAds } from "@/lib/ads";
 import { businessCategories } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
@@ -91,7 +90,9 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
     const sku = e.target.value;
     if (!sku) return;
 
+    // This is a simplified check. In a real app, you'd query the database.
     if (!ad || ad.sku.toLowerCase() !== sku.toLowerCase()) {
+        /*
         const existingAd = mockAds.find(a => a.sku.toLowerCase() === sku.toLowerCase());
         if (existingAd) {
             form.setError("sku", {
@@ -108,6 +109,7 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
                 form.clearErrors("sku");
             }
         }
+        */
     }
   };
 
@@ -191,7 +193,7 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
                   name="price"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Precio Promocional ({settings.primaryCurrencySymbol})</FormLabel>
+                      <FormLabel>Precio Promocional ({settings?.primaryCurrencySymbol})</FormLabel>
                       <FormControl>
                         <Input type="number" step="0.01" {...field} />
                       </FormControl>
@@ -323,3 +325,5 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
     </Form>
   );
 };
+
+    

@@ -28,7 +28,7 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
 }) => {
     const [imageError, setImageError] = useState(false);
     const imageUrl = getDisplayImageUrl(ad.imageUrl);
-    const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate)) : false;
+    const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
 
     const getStatusVariant = (status: Ad['status']) => {
         if (isExpired) return 'secondary';
@@ -118,7 +118,7 @@ export default function AdsPage() {
   
   useEffect(() => {
     // This is a protected route, only for superAdmin
-    if (user?.role !== 'superAdmin') {
+    if (user && user.email !== "corporacion1@gmail.com") {
       router.replace('/dashboard');
     }
   }, [user, router]);
@@ -199,10 +199,10 @@ export default function AdsPage() {
     );
   }, [ads, searchTerm]);
   
-  if (user?.role !== 'superAdmin') {
+  if (!user || user.email !== "corporacion1@gmail.com") {
     return (
         <div className="flex items-center justify-center h-full">
-            <p className="text-muted-foreground">Cargando...</p>
+            <p className="text-muted-foreground">Verificando permisos...</p>
         </div>
     );
   }
@@ -236,7 +236,6 @@ export default function AdsPage() {
                         <AdForm
                             onSubmit={handleCreateAd}
                             onCancel={() => setIsCreateDialogOpen(false)}
-                            allAds={ads}
                         />
                     </div>
                 </DialogContent>
@@ -305,7 +304,6 @@ export default function AdsPage() {
                         ad={adToEdit}
                         onSubmit={handleUpdateAd}
                         onCancel={() => setAdToEdit(null)}
-                        allAds={ads}
                     />
                 )}
             </div>
@@ -331,3 +329,5 @@ export default function AdsPage() {
     </>
   );
 }
+
+    

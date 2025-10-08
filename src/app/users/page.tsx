@@ -55,7 +55,7 @@ export default function UsersPage() {
 
   useEffect(() => {
     // This is a protected route, only for superAdmin
-    if (currentUser?.role !== 'superAdmin') {
+    if (currentUser && currentUser.email !== "corporacion1@gmail.com") {
       router.replace('/dashboard');
     }
   }, [currentUser, router]);
@@ -133,10 +133,10 @@ export default function UsersPage() {
       return stores;
   }, [users]);
 
-  if (currentUser?.role !== 'superAdmin') {
+  if (!currentUser || currentUser.email !== "corporacion1@gmail.com") {
     return (
         <div className="flex items-center justify-center h-full">
-            <p className="text-muted-foreground">Cargando...</p>
+            <p className="text-muted-foreground">Verificando permisos...</p>
         </div>
     );
   }
@@ -284,3 +284,5 @@ export default function UsersPage() {
     </>
   );
 }
+
+    
