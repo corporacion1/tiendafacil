@@ -33,11 +33,16 @@ const ACTIVE_STORE_ID_KEY = 'tienda_facil_active_store_id';
 const CURRENCY_PREF_STORAGE_KEY = 'tienda_facil_currency_pref';
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
+  const userProfileRef = useMemoFirebase(() => {
+    // Only create ref if user is loaded and exists
+    if (isUserLoading || !user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [user, isUserLoading, firestore]);
+
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
 
   const [activeStoreId, setActiveStoreId] = useState<string>('tiendafacil');
@@ -58,20 +63,22 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [userProfile, isLoadingProfile]);
 
   const settingsDocRef = useMemoFirebase(() => {
-    if (!firestore || !activeStoreId) return null;
+    // CRITICAL FIX: Do not create the reference until authentication is complete.
+    if (!firestore || !activeStoreId || isUserLoading) return null;
     return doc(firestore, 'stores', activeStoreId);
-  }, [firestore, activeStoreId]);
+  }, [firestore, activeStoreId, isUserLoading]);
 
   const { data: settings, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(settingsDocRef);
   
   const currencyRatesQuery = useMemoFirebase(() => {
-    if (!firestore || !activeStoreId) return null;
+    // CRITICAL FIX: Do not create the query until authentication is complete.
+    if (!firestore || !activeStoreId || isUserLoading) return null;
     return query(collection(firestore, `stores/${activeStoreId}/currencyRates`), orderBy('date', 'desc'));
-  }, [firestore, activeStoreId]);
+  }, [firestore, activeStoreId, isUserLoading]);
 
   const { data: currencyRates = [], isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
 
-  const isLoadingSettings = isLoadingProfile || isLoadingSettingsDoc || isLoadingRates;
+  const isLoading = isLoadingProfile || isLoadingSettingsDoc || isLoadingRates;
 
   useEffect(() => {
     try {
@@ -123,7 +130,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const latestRate = currencyRates?.[0]?.rate;
   const activeRate = activeCurrency === 'primary' ? 1 : (latestRate && latestRate > 0 ? latestRate : 1);
 
-  if (isLoadingSettings) {
+  if (isLoading) {
       return (
          <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
             <Logo className="w-64 h-20" />
@@ -145,7 +152,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         setCurrencyRates: () => {}, // This is a read-only view from settings page now
         activeStoreId,
         switchStore,
-        isLoadingSettings,
+        isLoadingSettings: isLoading,
         userProfile: userProfile || null,
     }}>
       {children}
