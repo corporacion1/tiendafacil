@@ -16,14 +16,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setIsSidebarExpanded(prev => !prev);
   };
 
-  // The login page does not need the main authenticated layout.
-  if (pathname === '/login') {
+  // The login page and catalog have their own layouts and are handled by AuthGuard.
+  if (pathname === '/login' || pathname.startsWith('/catalog')) {
     return <>{children}</>;
-  }
-  
-  // The catalog has its own simplified layout without the AppShell structure
-  if (pathname.startsWith('/catalog')) {
-      return <>{children}</>;
   }
 
   // The main layout structure for authenticated routes.

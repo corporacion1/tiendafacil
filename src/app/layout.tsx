@@ -8,6 +8,7 @@ import { SettingsProvider } from '@/contexts/settings-context';
 import { SecurityProvider } from '@/contexts/security-context';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { FirebaseClientProvider } from '@/firebase';
+import { AuthGuard } from '@/components/auth-guard';
 
 export const metadata: Metadata = {
   title: 'TIENDA FACIL - Tu Comercio',
@@ -31,14 +32,16 @@ export default function RootLayout({
       <body className="font-body antialiased">
          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <FirebaseClientProvider>
-              <SecurityProvider>
-                <SettingsProvider>
-                  <SidebarProvider>
-                    <AppShell>{children}</AppShell>
-                    <Toaster />
-                  </SidebarProvider>
-                </SettingsProvider>
-              </SecurityProvider>
+                <AuthGuard>
+                  <SecurityProvider>
+                    <SettingsProvider>
+                      <SidebarProvider>
+                        <AppShell>{children}</AppShell>
+                        <Toaster />
+                      </SidebarProvider>
+                    </SettingsProvider>
+                  </SecurityProvider>
+                </AuthGuard>
             </FirebaseClientProvider>
         </ThemeProvider>
       </body>
