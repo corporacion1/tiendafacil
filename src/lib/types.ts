@@ -1,4 +1,4 @@
-import { Timestamp } from 'firebase/firestore';
+import { FieldValue } from 'firebase/firestore';
 
 export type UserRole = 'superAdmin' | 'admin' | 'user';
 
@@ -10,7 +10,7 @@ export type UserProfile = {
   role: UserRole;
   storeId?: string; // The store this user owns/manages (if role is 'admin')
   storeRequest?: boolean; // Flag to indicate a user wants a store
-  createdAt: string;
+  createdAt: FieldValue;
   phone?: string;
 };
 
@@ -51,7 +51,7 @@ export type CartItem = {
 
 export type PendingOrder = {
   id: string;
-  date: Timestamp | string;
+  date: string;
   customerName: string;
   customerPhone: string;
   customerEmail?: string; // Added email
@@ -70,7 +70,7 @@ export type InventoryMovement = {
   productName: string;
   type: 'sale' | 'purchase' | 'adjustment';
   quantity: number;
-  date: Timestamp | string;
+  date: string;
   responsible?: string;
   storeId: string; // Each movement belongs to a store
 };
@@ -78,7 +78,7 @@ export type InventoryMovement = {
 export type Payment = {
     id: string;
     amount: number;
-    date: Timestamp | string;
+    date: string;
     method: string;
     reference?: string;
 }
@@ -94,7 +94,7 @@ export type Sale = {
     price: number;
   }[];
   total: number;
-  date: Timestamp | string;
+  date: string;
   transactionType: 'contado' | 'credito';
   status: 'paid' | 'unpaid';
   paidAmount: number;
@@ -115,7 +115,7 @@ export type Purchase = {
     supplierName: string;
     items: PurchaseItem[];
     total: number;
-    date: Timestamp | string;
+    date: string;
     documentNumber?: string;
     responsible?: string;
     storeId: string; // Each purchase belongs to a store
@@ -158,7 +158,7 @@ export type Warehouse = {
 export type CurrencyRate = {
     id: string;
     rate: number;
-    date: Timestamp | string;
+    date: string;
 };
 
 export type Ad = {
