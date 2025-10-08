@@ -37,6 +37,17 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const firestore = useFirestore();
   const { toast } = useToast();
 
+  const [activeStoreId, setActiveStoreId] = useState<string>('tiendafacil');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_KEY);
+      if (storedStoreId) {
+        setActiveStoreId(storedStoreId);
+      }
+    }
+  }, []);
+
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
     return doc(firestore, 'users', user.uid);
@@ -44,42 +55,18 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
 
-  // Simplified and robust way to handle activeStoreId
-  const [activeStoreId, setActiveStoreId] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-        const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_KEY);
-        // Only superAdmin can switch stores, so we only trust the stored value for them initially.
-        // The useEffect below will correct this based on the loaded profile.
-        if (storedStoreId) {
-            return storedStoreId;
-        }
-    }
-    return 'tiendafacil'; // Default fallback
-  });
-  
-  const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
-  
   useEffect(() => {
     if (!isLoadingProfile && userProfile) {
         if (userProfile.role === 'admin' && userProfile.storeId) {
-            setActiveStoreId(userProfile.storeId);
-            localStorage.setItem(ACTIVE_STORE_ID_KEY, userProfile.storeId);
-        } else if (userProfile.role === 'superAdmin') {
-            const storedId = localStorage.getItem(ACTIVE_STORE_ID_KEY) || 'tiendafacil';
-            setActiveStoreId(storedId);
-        } else {
-            // Default for regular users or unforeseen cases
-            setActiveStoreId('tiendafacil');
-            localStorage.setItem(ACTIVE_STORE_ID_KEY, 'tiendafacil');
+            if (activeStoreId !== userProfile.storeId) {
+                setActiveStoreId(userProfile.storeId);
+                localStorage.setItem(ACTIVE_STORE_ID_KEY, userProfile.storeId);
+            }
         }
-    } else if (!isUserLoading && !userProfile) {
-        // Handle logged out state - default to public store
-        setActiveStoreId('tiendafacil');
     }
-  }, [userProfile, isLoadingProfile, isUserLoading]);
+  }, [userProfile, isLoadingProfile, activeStoreId]);
 
-
-  const canFetchStoreData = !isUserLoading && !!activeStoreId;
+  const canFetchStoreData = !isUserLoading && !!user;
 
   const settingsDocRef = useMemoFirebase(() => {
     if (!canFetchStoreData) return null;
@@ -95,8 +82,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const { data: currencyRates = [], isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
 
-  const isLoading = isUserLoading || isLoadingProfile || (canFetchStoreData && (isLoadingSettingsDoc || isLoadingRates));
-
+  const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
+  
   useEffect(() => {
     try {
       const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY) as DisplayCurrency;
@@ -108,6 +95,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, []);
   
+  const isLoading = isUserLoading || (user && (isLoadingProfile || isLoadingSettingsDoc || isLoadingRates));
+
   const handleSetSettings = (newSettings: Settings) => {
     if (!settingsDocRef) {
         toast({
@@ -148,9 +137,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const activeRate = activeCurrency === 'primary' ? 1 : (latestRate && latestRate > 0 ? latestRate : 1);
 
   const pathname = usePathname();
-  const isPublicPage = pathname.startsWith('/catalog');
+  const isPublicPage = pathname === '/login' || pathname.startsWith('/catalog');
 
-  // Do not show loading screen for public pages that don't need user data
   if (isLoading && !isPublicPage) {
       return (
          <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
