@@ -13,12 +13,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import type { Ad } from "@/lib/types";
+import type { Ad, UserProfile } from "@/lib/types";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { AdForm } from "@/components/ad-form";
 import { format, isPast } from "date-fns";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { collection, deleteDoc, doc, orderBy, query, setDoc, writeBatch } from "firebase/firestore";
+import { useRouter } from "next/navigation";
 
 const AdRow = ({ ad, handleEdit, setAdToDelete }: {
     ad: Ad;
@@ -41,7 +42,8 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
     
     const getFormattedDate = (date: any) => {
         if (!date) return 'Nunca';
-        return format(new Date(date), "dd/MM/yyyy");
+        const dateObj = typeof date === 'string' ? new Date(date) : date.toDate();
+        return format(dateObj, "dd/MM/yyyy");
     };
 
     return (
@@ -103,6 +105,8 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
 export default function AdsPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
+  const { user } = useUser();
+  const router = useRouter();
   
   const adsQuery = useMemoFirebase(() => query(collection(firestore, 'ads'), orderBy('createdAt', 'desc')), [firestore]);
   const { data: ads = [], isLoading } = useCollection<Ad>(adsQuery);
@@ -111,6 +115,14 @@ export default function AdsPage() {
   const [adToDelete, setAdToDelete] = useState<Ad | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  
+  useEffect(() => {
+    // This is a protected route, only for superAdmin
+    if (user?.role !== 'superAdmin') {
+      router.replace('/dashboard');
+    }
+  }, [user, router]);
+
 
   useEffect(() => {
     // Check for expired ads on load and update them if necessary
@@ -118,7 +130,7 @@ export default function AdsPage() {
     let hasUpdates = false;
 
     (ads || []).forEach(ad => {
-        if (ad.status === 'active' && ad.expiryDate && isPast(new Date(ad.expiryDate))) {
+        if (ad.status === 'active' && ad.expiryDate && isPast(new Date(ad.expiryDate as string))) {
             const adRef = doc(firestore, 'ads', ad.id);
             batch.update(adRef, { status: 'inactive' });
             hasUpdates = true;
@@ -186,6 +198,14 @@ export default function AdsPage() {
       (ad.sku && ad.sku.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [ads, searchTerm]);
+  
+  if (user?.role !== 'superAdmin') {
+    return (
+        <div className="flex items-center justify-center h-full">
+            <p className="text-muted-foreground">Cargando...</p>
+        </div>
+    );
+  }
 
   return (
     <>
