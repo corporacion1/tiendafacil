@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuRadioGroup, DropdownMenuRadioItem } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -74,17 +74,21 @@ export default function UsersPage() {
     }
   };
   
-  const handleChangeRole = async (user: UserProfile, role: UserRole) => {
-      const userRef = doc(firestore, 'users', user.uid);
+  const confirmRoleChange = async () => {
+      if (!userToAction) return;
+      const userRef = doc(firestore, 'users', userToAction.uid);
       try {
-        await setDoc(userRef, { role: role }, { merge: true });
+        await setDoc(userRef, { role: newRole }, { merge: true });
         toast({
             title: 'Rol Actualizado',
-            description: `${user.displayName} ahora es ${role}.`
+            description: `${userToAction.displayName} ahora es ${newRole}.`
         });
       } catch (error) {
         console.error("Error changing role: ", error);
         toast({ variant: 'destructive', title: "Error al cambiar el rol" });
+      } finally {
+        setUserToAction(null);
+        setActionType(null);
       }
   }
 
@@ -102,7 +106,6 @@ export default function UsersPage() {
           storeRequest: false, // Reset the request flag
       });
 
-      // Create a store document
       const storeRef = doc(firestore, 'stores', newStoreId);
       const newStore: Store = {
         id: newStoreId,
@@ -125,9 +128,6 @@ export default function UsersPage() {
       }
 
     } else if (actionType === 'delete') {
-      // Deleting users is complex due to Firebase Auth.
-      // For now, we will just mark them as 'inactive' or similar.
-      // This is a placeholder for a more complex backend function.
        toast({
         variant: 'destructive',
         title: "Función no implementada",
@@ -140,7 +140,8 @@ export default function UsersPage() {
   };
 
   const filteredUsers = useMemo(() => {
-    return (users || []).filter(u =>
+    if (!users) return [];
+    return users.filter(u =>
       (u.displayName && u.displayName.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (u.email && u.email.toLowerCase().includes(searchTerm.toLowerCase()))
     );
@@ -148,11 +149,13 @@ export default function UsersPage() {
   
   const allStores = useMemo(() => {
       const stores: { id: string; name: string; }[] = [{ id: 'tiendafacil', name: 'Tienda Facil DEMO' }];
-      (users || []).forEach(u => {
-          if (u.role === 'admin' && u.storeId && u.displayName) {
-              stores.push({ id: u.storeId, name: `${u.displayName}'s Store` });
-          }
-      });
+      if (users) {
+        users.forEach(u => {
+            if (u.role === 'admin' && u.storeId && u.displayName) {
+                stores.push({ id: u.storeId, name: `${u.displayName}'s Store` });
+            }
+        });
+      }
       return stores;
   }, [users]);
 
@@ -164,24 +167,6 @@ export default function UsersPage() {
             <div>
                 <CardTitle>Gestión de Usuarios</CardTitle>
                 <CardDescription>Administra los usuarios y sus roles en el sistema.</CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-                 <span className="text-sm text-muted-foreground">Viendo como:</span>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline">
-                            {allStores.find(s => s.id === activeStoreId)?.name || 'Seleccionar Tienda'}
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                        {allStores.map(store => (
-                             <DropdownMenuItem key={store.id} onSelect={() => switchStore(store.id)}>
-                                <Check className={`mr-2 h-4 w-4 ${activeStoreId === store.id ? 'opacity-100' : 'opacity-0'}`} />
-                                {store.name}
-                            </DropdownMenuItem>
-                        ))}
-                    </DropdownMenuContent>
-                </DropdownMenu>
             </div>
           </div>
           <div className="relative w-full max-w-sm mt-4">
@@ -261,13 +246,22 @@ export default function UsersPage() {
                                 )}
                                 <DropdownMenuSub>
                                     <DropdownMenuSubTrigger>Cambiar Rol</DropdownMenuSubTrigger>
-                                    <DropdownMenuSubContent>
-                                        <DropdownMenuRadioGroup value={user.role} onValueChange={(role) => handleChangeRole(user, role as UserRole)}>
-                                            <DropdownMenuRadioItem value="user">User</DropdownMenuRadioItem>
-                                            <DropdownMenuRadioItem value="admin">Admin</DropdownMenuRadioItem>
-                                            <DropdownMenuRadioItem value="superAdmin">SuperAdmin</DropdownMenuRadioItem>
-                                        </DropdownMenuRadioGroup>
-                                    </DropdownMenuSubContent>
+                                    <DropdownMenuPortal>
+                                        <DropdownMenuSubContent>
+                                            <DropdownMenuItem onSelect={() => handleAction(user, 'changeRole', 'user')}>
+                                                <Check className={`mr-2 h-4 w-4 ${user.role === 'user' ? 'opacity-100' : 'opacity-0'}`} />
+                                                User
+                                            </DropdownMenuItem>
+                                             <DropdownMenuItem onSelect={() => handleAction(user, 'changeRole', 'admin')}>
+                                                <Check className={`mr-2 h-4 w-4 ${user.role === 'admin' ? 'opacity-100' : 'opacity-0'}`} />
+                                                Admin
+                                            </DropdownMenuItem>
+                                             <DropdownMenuItem onSelect={() => handleAction(user, 'changeRole', 'superAdmin')}>
+                                                <Check className={`mr-2 h-4 w-4 ${user.role === 'superAdmin' ? 'opacity-100' : 'opacity-0'}`} />
+                                                SuperAdmin
+                                            </DropdownMenuItem>
+                                        </DropdownMenuSubContent>
+                                    </DropdownMenuPortal>
                                 </DropdownMenuSub>
                                 {user.storeId && 
                                     <DropdownMenuItem onSelect={() => switchStore(user.storeId)}>
@@ -288,21 +282,26 @@ export default function UsersPage() {
         </CardContent>
       </Card>
       
-      <AlertDialog open={!!userToAction && actionType !== 'changeRole'} onOpenChange={(isOpen) => !isOpen && setUserToAction(null)}>
+      <AlertDialog open={!!userToAction} onOpenChange={(isOpen) => !isOpen && setUserToAction(null)}>
         <AlertDialogContent>
             <AlertDialogHeader>
                 <AlertDialogTitle>¿Confirmar Acción?</AlertDialogTitle>
                 <AlertDialogDescription>
                     {actionType === 'promote' && `Estás a punto de promover a "${userToAction?.displayName}" a administrador. Se le asignará una nueva tienda. ¿Estás seguro?`}
                     {actionType === 'delete' && `Esta acción es irreversible y podría tener consecuencias. ¿Estás seguro de que quieres eliminar a "${userToAction?.displayName}"?`}
+                    {actionType === 'changeRole' && `¿Estás seguro de que quieres cambiar el rol de "${userToAction?.displayName}" a ${newRole}?`}
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogCancel onClick={() => setUserToAction(null)}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={confirmAction}>Sí, confirmar</AlertDialogAction>
+                <AlertDialogAction onClick={actionType === 'changeRole' ? confirmRoleChange : confirmAction}>
+                    Sí, confirmar
+                </AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
   );
 }
+
+    
