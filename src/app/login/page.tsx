@@ -32,7 +32,7 @@ export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // If user is already logged in, redirect to dashboard
+  // If user becomes available (e.g., after successful login), redirect them.
   useEffect(() => {
     if (!isUserLoading && user) {
       router.replace('/dashboard');
@@ -40,6 +40,7 @@ export default function LoginPage() {
   }, [user, isUserLoading, router]);
 
   const createUserProfile = async (user: any, merge = false) => {
+    if (!firestore) return;
     const userRef = doc(firestore, 'users', user.uid);
     const newUserProfile: UserProfile = {
       uid: user.uid,
@@ -56,6 +57,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!auth) return;
     setIsLoading(true);
 
     try {
@@ -92,6 +94,7 @@ export default function LoginPage() {
   };
 
   const handleGoogleSignIn = async () => {
+    if (!auth || !firestore) return;
     setIsLoading(true);
     const provider = new GoogleAuthProvider();
     try {
@@ -118,15 +121,6 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
-  
-  if (isUserLoading || user) {
-    return (
-        <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
-            <Logo className="w-64 h-20" />
-            <p className="text-muted-foreground animate-pulse">Cargando...</p>
-        </div>
-    );
-  }
   
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-muted/40">
