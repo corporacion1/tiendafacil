@@ -67,7 +67,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       } else {
           setActiveStoreId('tiendafacil'); // Fallback to default
       }
-  }, [user]);
+  }, [user?.uid, user?.role, user?.storeId]);
 
   useEffect(() => {
     if (remoteSettings) {
