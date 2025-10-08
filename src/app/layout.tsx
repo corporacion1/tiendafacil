@@ -35,8 +35,8 @@ export default function RootLayout({
                 <SettingsProvider>
                   <SidebarProvider>
                     <AppShell>{children}</AppShell>
+                    <Toaster />
                   </SidebarProvider>
-                  <Toaster />
                 </SettingsProvider>
               </SecurityProvider>
             </FirebaseClientProvider>

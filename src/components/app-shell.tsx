@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
-import { AuthGuard } from './auth-guard';
 import { cn } from '@/lib/utils';
 import { AppLoader } from './app-loader';
 
@@ -24,18 +23,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   
   // The catalog has its own simplified layout without the AppShell structure
   if (pathname.startsWith('/catalog')) {
-      return (
-        <AuthGuard>
-            {children}
-        </AuthGuard>
-      );
+      return <>{children}</>;
   }
 
-
   // The main layout structure for authenticated routes.
-  // The AuthGuard is now the primary wrapper for all protected content.
   return (
-    <AuthGuard>
       <div className="flex min-h-screen w-full flex-col bg-muted/40">
           <SiteSidebar isExpanded={isSidebarExpanded} />
           <div className={cn(
@@ -50,6 +42,5 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </main>
           </div>
       </div>
-    </AuthGuard>
   );
 }

@@ -62,7 +62,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     return doc(firestore, 'stores', activeStoreId);
   }, [firestore, activeStoreId, isLoginPage, isUserLoading]);
 
-  const { data: remoteSettings, isLoading: isLoadingSettings, error } = useDoc<Settings>(settingsDocRef);
+  const { data: remoteSettings, isLoading: isLoadingDoc } = useDoc<Settings>(settingsDocRef);
   
   const currencyRatesQuery = useMemoFirebase(() => {
     if (isLoginPage || !firestore || !activeStoreId || isUserLoading) return null;
@@ -71,18 +71,13 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const { data: currencyRates = [], isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
 
+  const isLoadingSettings = isLoadingDoc || isLoadingRates;
+
   useEffect(() => {
     if (remoteSettings) {
       setSettings(remoteSettings);
-    } else if (!isLoadingSettings && error && !isLoginPage) {
-      console.error("Error loading remote settings:", error);
-      toast({
-          variant: "destructive",
-          title: "Error de Configuración",
-          description: "No se pudo cargar la configuración de la tienda. Usando valores por defecto."
-      });
     }
-  }, [remoteSettings, isLoadingSettings, error, toast, isLoginPage]);
+  }, [remoteSettings]);
 
 
   useEffect(() => {
@@ -136,11 +131,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const latestRate = currencyRates?.[0]?.rate;
   const activeRate = activeCurrency === 'primary' ? 1 : (latestRate && latestRate > 0 ? latestRate : 1);
 
-  const finalIsLoading = isLoadingSettings || isLoadingRates;
-
   // This is the definitive loading barrier.
   // Don't render children until both the user and the settings are fully resolved.
-  if (!isLoginPage && (isUserLoading || finalIsLoading)) {
+  if (!isLoginPage && (isUserLoading || isLoadingSettings)) {
       return (
          <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
             <Logo className="w-64 h-20" />
@@ -162,7 +155,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         setCurrencyRates: () => {},
         activeStoreId,
         switchStore,
-        isLoadingSettings: finalIsLoading,
+        isLoadingSettings,
     }}>
       {children}
     </SettingsContext.Provider>
