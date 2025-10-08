@@ -32,7 +32,7 @@ const ACTIVE_STORE_ID_KEY = 'tienda_facil_active_store_id';
 
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -42,16 +42,16 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { toast } = useToast();
 
   const settingsDocRef = useMemoFirebase(() => {
-    if (!firestore || !activeStoreId) return null;
+    if (!firestore || !activeStoreId || isUserLoading) return null;
     return doc(firestore, 'stores', activeStoreId);
-  }, [firestore, activeStoreId]);
+  }, [firestore, activeStoreId, isUserLoading]);
 
   const { data: remoteSettings, isLoading: isLoadingSettings } = useDoc<Settings>(settingsDocRef);
   
   const currencyRatesQuery = useMemoFirebase(() => {
-    if (!firestore || !activeStoreId) return null;
+    if (!firestore || !activeStoreId || isUserLoading) return null;
     return query(collection(firestore, `stores/${activeStoreId}/currencyRates`), orderBy('date', 'desc'));
-  }, [firestore, activeStoreId]);
+  }, [firestore, activeStoreId, isUserLoading]);
 
   const { data: currencyRates = [], isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
 
@@ -82,6 +82,10 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       console.error("Could not access localStorage for currency preference", error);
     }
   }, []);
+  
+  if (isUserLoading) {
+    return null;
+  }
 
   const handleSetSettings = (newSettings: Settings) => {
     // This function will be handled by direct Firestore updates now
