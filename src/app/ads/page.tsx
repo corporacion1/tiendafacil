@@ -18,7 +18,7 @@ import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { AdForm } from "@/components/ad-form";
 import { format, isPast } from "date-fns";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
-import { collection, deleteDoc, doc, orderBy, query, setDoc, writeBatch } from "firebase/firestore";
+import { collection, deleteDoc, doc, orderBy, setDoc, writeBatch } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
 const AdRow = ({ ad, handleEdit, setAdToDelete }: {
@@ -115,14 +115,6 @@ export default function AdsPage() {
   const [adToDelete, setAdToDelete] = useState<Ad | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  
-  useEffect(() => {
-    // This is a protected route, only for superAdmin
-    if (user && user.email !== "corporacion1@gmail.com") {
-      router.replace('/dashboard');
-    }
-  }, [user, router]);
-
 
   useEffect(() => {
     // Check for expired ads on load and update them if necessary
@@ -199,14 +191,6 @@ export default function AdsPage() {
     );
   }, [ads, searchTerm]);
   
-  if (!user || user.email !== "corporacion1@gmail.com") {
-    return (
-        <div className="flex items-center justify-center h-full">
-            <p className="text-muted-foreground">Verificando permisos...</p>
-        </div>
-    );
-  }
-
   return (
     <>
     <Card>
@@ -329,5 +313,3 @@ export default function AdsPage() {
     </>
   );
 }
-
-    

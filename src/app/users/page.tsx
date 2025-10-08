@@ -66,13 +66,6 @@ export default function UsersPage() {
     }
   }, [users, currentUser]);
 
-
-  useEffect(() => {
-    if (currentUser && !isLoading && currentUserProfile && currentUserProfile.role !== 'superAdmin') {
-      router.replace('/dashboard');
-    }
-  }, [currentUser, isLoading, currentUserProfile, router]);
-
   const handleAction = (user: UserProfile, type: 'promote' | 'delete' | 'changeRole', role?: UserRole) => {
     setUserToAction(user);
     setActionType(type);
@@ -162,24 +155,6 @@ export default function UsersPage() {
       });
       return stores;
   }, [users]);
-
-  if (isLoading || !currentUserProfile) {
-    return (
-        <div className="flex items-center justify-center h-full">
-            <p className="text-muted-foreground">Cargando y verificando permisos...</p>
-        </div>
-    );
-  }
-
-  if (currentUserProfile.role !== 'superAdmin') {
-    // This part should ideally not be reached due to the useEffect redirect,
-    // but it's a good safeguard.
-    return (
-        <div className="flex items-center justify-center h-full">
-            <p className="text-muted-foreground">No tienes permiso para ver esta página.</p>
-        </div>
-    );
-  }
 
   return (
     <>
@@ -331,5 +306,3 @@ export default function UsersPage() {
     </>
   );
 }
-
-    
