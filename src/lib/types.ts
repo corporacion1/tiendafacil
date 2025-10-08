@@ -1,4 +1,3 @@
-
 import { Timestamp } from 'firebase/firestore';
 
 export type UserRole = 'superAdmin' | 'admin' | 'user';
@@ -12,6 +11,7 @@ export type UserProfile = {
   storeId?: string; // The store this user owns/manages (if role is 'admin')
   storeRequest?: boolean; // Flag to indicate a user wants a store
   createdAt: string;
+  phone?: string;
 };
 
 export type Store = {

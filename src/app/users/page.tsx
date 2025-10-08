@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, doc, writeBatch, query, orderBy } from "firebase/firestore";
+import { collection, doc, writeBatch, query, orderBy, setDoc } from "firebase/firestore";
 import type { UserProfile, Store } from "@/lib/types";
 import { MoreHorizontal, Search, UserPlus, Shield, Check, Mail, Phone, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,7 +30,7 @@ const getRoleVariant = (role: UserProfile['role']) => {
 const getRoleIcon = (role: UserProfile['role']) => {
   switch (role) {
     case 'superAdmin': return <Shield className="h-4 w-4 mr-2" />;
-    case 'admin': return <Store className="h-4 w-4 mr-2" />;
+    case 'admin': return <UserPlus className="h-4 w-4 mr-2" />; // Changed for consistency, Store icon is now for 'ver como'
     case 'user':
     default: return <UserPlus className="h-4 w-4 mr-2" />;
   }
@@ -76,15 +76,16 @@ export default function UsersPage() {
           storeRequest: false, // Reset the request flag
       });
 
-      // Optionally, create a store document
+      // Create a store document
       const storeRef = doc(firestore, 'stores', newStoreId);
-      batch.set(storeRef, {
+      const newStore: Store = {
         id: newStoreId,
         name: `${userToAction.displayName}'s Store`,
         ownerId: userToAction.uid,
         status: 'active',
-        createdAt: new Date().toISOString(),
-      });
+        businessType: 'Otro', // Default business type
+      };
+      batch.set(storeRef, newStore);
       
       try {
         await batch.commit();
@@ -93,6 +94,7 @@ export default function UsersPage() {
           description: `${userToAction.displayName} ahora es un administrador con la tienda ${newStoreId}.`,
         });
       } catch (error) {
+        console.error("Error promoting user: ", error);
         toast({ variant: 'destructive', title: "Error al promover usuario" });
       }
 
@@ -121,7 +123,7 @@ export default function UsersPage() {
   const allStores = useMemo(() => {
       const stores: { id: string; name: string; }[] = [{ id: 'tiendafacil', name: 'Tienda Facil DEMO' }];
       (users || []).forEach(u => {
-          if (u.role === 'admin' && u.storeId) {
+          if (u.role === 'admin' && u.storeId && u.displayName) {
               stores.push({ id: u.storeId, name: `${u.displayName}'s Store` });
           }
       });
@@ -236,7 +238,7 @@ export default function UsersPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                {user.role === 'user' && (
+                                {user.role === 'user' && user.storeRequest && (
                                     <DropdownMenuItem onSelect={() => handleAction(user, 'promote')}>
                                         <Shield className="mr-2 h-4 w-4" /> Promover a Admin
                                     </DropdownMenuItem>
@@ -277,5 +279,3 @@ export default function UsersPage() {
     </>
   );
 }
-
-    
