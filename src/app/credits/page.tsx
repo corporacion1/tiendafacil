@@ -356,7 +356,7 @@ export default function CreditsPage() {
                     <DialogHeader>
                         <DialogTitle>Registrar Abono para Venta {selectedSale?.id}</DialogTitle>
                         <DialogDescription>
-                            Cliente: {selectedSale?.customerName}. El monto se registrará en tu moneda principal ({settings.primaryCurrencyName}).
+                            Cliente: {selectedSale?.customerName}. El monto se registrará en tu moneda principal ({settings?.primaryCurrencyName || '...'}).
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid md:grid-cols-2 gap-6 py-4 items-start">
@@ -372,7 +372,7 @@ export default function CreditsPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label>Monto del Abono ({settings.primaryCurrencySymbol})</Label>
+                                <Label>Monto del Abono ({settings?.primaryCurrencySymbol || '$'})</Label>
                                 <Input type="number" placeholder="0.00" value={currentPaymentAmount} onChange={e => setCurrentPaymentAmount(e.target.value)} />
                             </div>
                             {paymentMethods.find(m => m.id === currentPaymentMethod)?.requiresRef && (
@@ -426,3 +426,5 @@ export default function CreditsPage() {
         </>
     );
 }
+
+    
