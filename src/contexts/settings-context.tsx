@@ -42,16 +42,16 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { toast } = useToast();
 
   const settingsDocRef = useMemoFirebase(() => {
-    if (!firestore || !activeStoreId || isUserLoading) return null;
+    if (!firestore || !activeStoreId || !user) return null; // Wait for user
     return doc(firestore, 'stores', activeStoreId);
-  }, [firestore, activeStoreId, isUserLoading]);
+  }, [firestore, activeStoreId, user]);
 
   const { data: remoteSettings, isLoading: isLoadingSettings } = useDoc<Settings>(settingsDocRef);
   
   const currencyRatesQuery = useMemoFirebase(() => {
-    if (!firestore || !activeStoreId || isUserLoading) return null;
+    if (!firestore || !activeStoreId || !user) return null; // Wait for user
     return query(collection(firestore, `stores/${activeStoreId}/currencyRates`), orderBy('date', 'desc'));
-  }, [firestore, activeStoreId, isUserLoading]);
+  }, [firestore, activeStoreId, user]);
 
   const { data: currencyRates = [], isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
 
@@ -83,8 +83,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, []);
   
-  if (isUserLoading) {
-    return null;
+  // CRITICAL: Do not render children if the core dependencies are not ready.
+  if (isUserLoading || isLoadingSettings) {
+    return null; // Or a full-page loader
   }
 
   const handleSetSettings = (newSettings: Settings) => {
