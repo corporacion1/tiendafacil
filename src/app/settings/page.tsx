@@ -114,7 +114,7 @@ function ChangePinDialog() {
 
 export default function SettingsPage() {
     const { hasPin, setPin, removePin, checkPin } = useSecurity();
-    const { settings, setSettings, currencyRates, setCurrencyRates } = useSettings();
+    const { settings, setSettings, currencyRates, setCurrencyRates, isLoadingSettings } = useSettings();
     const firestore = useFirestore();
     const { user } = useUser();
     
@@ -146,9 +146,9 @@ export default function SettingsPage() {
     const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
     const [resetPin, setResetPin] = useState('');
     const [resetConfirmationText, setResetConfirmationText] = useState('');
-    const [isSeeding, setIsSeeding] = useState(false);
+    const [isSeeding, setIsSeeding] = useState(isSeeding);
 
-    const isSuperAdmin = user?.email === 'corporacion1@gmail.com';
+    const isSuperAdmin = user?.role === 'superAdmin';
 
      useEffect(() => {
         setLocalSettings(settings);
@@ -536,6 +536,10 @@ export default function SettingsPage() {
         });
     }
 
+    if (isLoadingSettings) {
+        return <div>Cargando configuración...</div>;
+    }
+
     return (
         <div className="grid gap-6">
             <Card>
@@ -897,5 +901,7 @@ export default function SettingsPage() {
         </div>
     );
 }
+
+    
 
     
