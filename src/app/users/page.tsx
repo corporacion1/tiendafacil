@@ -30,7 +30,7 @@ const getRoleVariant = (role: UserProfile['role']) => {
 const getRoleIcon = (role: UserProfile['role']) => {
   switch (role) {
     case 'superAdmin': return <Shield className="h-4 w-4 mr-2" />;
-    case 'admin': return <UserPlus className="h-4 w-4 mr-2" />; // Changed for consistency, Store icon is now for 'ver como'
+    case 'admin': return <UserPlus className="h-4 w-4 mr-2" />;
     case 'user':
     default: return <UserPlus className="h-4 w-4 mr-2" />;
   }
@@ -243,9 +243,11 @@ export default function UsersPage() {
                                         <Shield className="mr-2 h-4 w-4" /> Promover a Admin
                                     </DropdownMenuItem>
                                 )}
-                                <DropdownMenuItem onSelect={() => switchStore(user.storeId || 'tiendafacil')}>
-                                    <ExternalLink className="mr-2 h-4 w-4" /> Ver como este usuario
-                                </DropdownMenuItem>
+                                {user.storeId && 
+                                    <DropdownMenuItem onSelect={() => switchStore(user.storeId)}>
+                                        <ExternalLink className="mr-2 h-4 w-4" /> Ver como este usuario
+                                    </DropdownMenuItem>
+                                }
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem className="text-destructive" onSelect={() => handleAction(user, 'delete')}>
                                     Eliminar Usuario

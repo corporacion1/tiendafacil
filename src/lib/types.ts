@@ -39,7 +39,6 @@ export type Product = {
   description?: string;
   imageUrl?: string;
   imageHint?: string;
-  storeId: string; // Each product belongs to a store
   createdAt: string;
 };
 
@@ -62,7 +61,6 @@ export type PendingOrder = {
       price: number;
   }[];
   total: number;
-  storeId: string; // Know which store this order belongs to
 };
 
 export type InventoryMovement = {
@@ -72,7 +70,6 @@ export type InventoryMovement = {
   quantity: number;
   date: string;
   responsible?: string;
-  storeId: string; // Each movement belongs to a store
 };
 
 export type Payment = {
@@ -99,7 +96,6 @@ export type Sale = {
   status: 'paid' | 'unpaid';
   paidAmount: number;
   payments: Payment[];
-  storeId: string; // Each sale belongs to a store
 };
 
 export type PurchaseItem = {
@@ -118,7 +114,6 @@ export type Purchase = {
     date: string;
     documentNumber?: string;
     responsible?: string;
-    storeId: string; // Each purchase belongs to a store
 };
 
 export type Customer = {
@@ -126,7 +121,6 @@ export type Customer = {
     name: string;
     phone?: string;
     address?: string;
-    storeId: string; // Each customer belongs to a store
 }
 
 export type Supplier = {
@@ -134,25 +128,21 @@ export type Supplier = {
     name: string;
     phone?: string;
     address?: string;
-    storeId: string; // Each supplier belongs to a store
 }
 
 export type Unit = {
     id: string;
     name: string;
-    storeId: string;
 };
 
 export type Family = {
     id: string;
     name: string;
-    storeId: string;
 };
 
 export type Warehouse = {
     id: string;
     name: string;
-    storeId: string;
 };
 
 export type CurrencyRate = {
@@ -182,3 +172,22 @@ export type AdClick = {
     timestamp: string;
     userAgent: string;
 };
+
+export interface Settings {
+  storeName: string;
+  storeAddress: string;
+  storePhone: string;
+  storeSlogan: string;
+  storeWhatsapp: string;
+  storeTiktok: string;
+  storeMeta: string;
+  saleSeries: string;
+  saleCorrelative: number;
+  primaryCurrencyName: string;
+  primaryCurrencySymbol: string;
+  secondaryCurrencyName: string;
+  secondaryCurrencySymbol: string;
+  tax1: number;
+  tax2: number;
+  businessType: string;
+}
