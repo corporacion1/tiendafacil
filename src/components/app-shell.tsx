@@ -7,6 +7,7 @@ import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { cn } from '@/lib/utils';
 import { AppLoader } from './app-loader';
+import { AuthGuard } from './auth-guard';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -16,18 +17,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setIsSidebarExpanded(prev => !prev);
   };
 
-  // The login page has its own minimal layout.
-  if (pathname === '/login') {
+  const isPublicPage = pathname === '/login' || pathname.startsWith('/catalog');
+
+  // If it's a public page, render it directly without the main app shell structure.
+  if (isPublicPage) {
     return <>{children}</>;
   }
 
-  // The catalog page has a public-facing layout.
-  if (pathname.startsWith('/catalog')) {
-      return <>{children}</>;
-  }
-
-  // The main layout structure for authenticated backend routes.
+  // The main layout for authenticated, protected routes.
   return (
+    <AuthGuard>
       <div className="flex min-h-screen w-full flex-col bg-muted/40">
           <SiteSidebar isExpanded={isSidebarExpanded} />
           <div className={cn(
@@ -42,5 +41,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </main>
           </div>
       </div>
+    </AuthGuard>
   );
 }
