@@ -38,7 +38,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { toast } = useToast();
 
   const userProfileRef = useMemoFirebase(() => {
-    // Only create ref if user is loaded and exists
     if (isUserLoading || !user) return null;
     return doc(firestore, 'users', user.uid);
   }, [user, isUserLoading, firestore]);
@@ -58,27 +57,27 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     } else if (userProfile.role === 'superAdmin' && storedStoreId) {
         setActiveStoreId(storedStoreId);
     } else {
-        setActiveStoreId('tiendafacil'); // Fallback for 'user' role or unassigned admins
+        setActiveStoreId('tiendafacil');
     }
   }, [userProfile, isLoadingProfile]);
 
+  const canFetchStoreData = !isUserLoading && !isLoadingProfile && !!activeStoreId;
+
   const settingsDocRef = useMemoFirebase(() => {
-    // CRITICAL FIX: Do not create the reference until authentication is complete.
-    if (!firestore || !activeStoreId || isUserLoading) return null;
+    if (!canFetchStoreData) return null;
     return doc(firestore, 'stores', activeStoreId);
-  }, [firestore, activeStoreId, isUserLoading]);
+  }, [firestore, activeStoreId, canFetchStoreData]);
 
   const { data: settings, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(settingsDocRef);
   
   const currencyRatesQuery = useMemoFirebase(() => {
-    // CRITICAL FIX: Do not create the query until authentication is complete.
-    if (!firestore || !activeStoreId || isUserLoading) return null;
+    if (!canFetchStoreData) return null;
     return query(collection(firestore, `stores/${activeStoreId}/currencyRates`), orderBy('date', 'desc'));
-  }, [firestore, activeStoreId, isUserLoading]);
+  }, [firestore, activeStoreId, canFetchStoreData]);
 
   const { data: currencyRates = [], isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
 
-  const isLoading = isLoadingProfile || isLoadingSettingsDoc || isLoadingRates;
+  const isLoading = isUserLoading || isLoadingProfile || isLoadingSettingsDoc || isLoadingRates;
 
   useEffect(() => {
     try {
@@ -108,7 +107,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
           setActiveStoreId(storeId);
           localStorage.setItem(ACTIVE_STORE_ID_KEY, storeId);
           toast({ title: `Cambiado a la tienda ${storeId}` });
-          window.location.reload(); // Reload to fetch all data for the new store
+          window.location.reload(); 
       } else {
           toast({ variant: 'destructive', title: "No autorizado" });
       }
@@ -134,7 +133,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       return (
          <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
             <Logo className="w-64 h-20" />
-            <p className="text-muted-foreground animate-pulse">Cargando configuración de la tienda...</p>
+            <p className="text-muted-foreground animate-pulse">Cargando configuración y datos de usuario...</p>
         </div>
       );
   }
@@ -149,7 +148,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         activeSymbol, 
         activeRate, 
         currencyRates: currencyRates || [], 
-        setCurrencyRates: () => {}, // This is a read-only view from settings page now
+        setCurrencyRates: () => {}, 
         activeStoreId,
         switchStore,
         isLoadingSettings: isLoading,
