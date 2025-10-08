@@ -2,6 +2,7 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import type { CurrencyRate, Settings } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
@@ -34,24 +35,28 @@ const ACTIVE_STORE_ID_KEY = 'tienda_facil_active_store_id';
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const pathname = usePathname();
 
   const [settings, setSettings] = useState<Settings | null>(null);
   const [activeStoreId, setActiveStoreId] = useState<string>('tiendafacil'); // Default demo store
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   
   const { toast } = useToast();
+  
+  // Conditionally disable hooks on login page
+  const isLoginPage = pathname === '/login';
 
   const settingsDocRef = useMemoFirebase(() => {
-    if (!firestore || !activeStoreId || !user) return null; // Wait for user
+    if (isLoginPage || !firestore || !activeStoreId || !user) return null;
     return doc(firestore, 'stores', activeStoreId);
-  }, [firestore, activeStoreId, user]);
+  }, [firestore, activeStoreId, user, isLoginPage]);
 
   const { data: remoteSettings, isLoading: isLoadingSettings } = useDoc<Settings>(settingsDocRef);
   
   const currencyRatesQuery = useMemoFirebase(() => {
-    if (!firestore || !activeStoreId || !user) return null; // Wait for user
+    if (isLoginPage || !firestore || !activeStoreId || !user) return null;
     return query(collection(firestore, `stores/${activeStoreId}/currencyRates`), orderBy('date', 'desc'));
-  }, [firestore, activeStoreId, user]);
+  }, [firestore, activeStoreId, user, isLoginPage]);
 
   const { data: currencyRates = [], isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
 
@@ -83,14 +88,12 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, []);
   
-  // CRITICAL: Do not render children if the core dependencies are not ready.
-  if (isUserLoading || isLoadingSettings) {
+  // CRITICAL: Do not render children if the core dependencies are not ready on protected pages.
+  if (!isLoginPage && (isUserLoading || isLoadingSettings)) {
     return null; // Or a full-page loader
   }
 
   const handleSetSettings = (newSettings: Settings) => {
-    // This function will be handled by direct Firestore updates now
-    // but we keep it in context for potential local-only changes in the future
     setSettings(newSettings);
   };
 
@@ -131,7 +134,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         activeSymbol, 
         activeRate, 
         currencyRates: currencyRates || [], 
-        setCurrencyRates: () => {}, // This will be handled by direct firestore updates
+        setCurrencyRates: () => {},
         activeStoreId,
         switchStore,
         isLoadingSettings: isLoadingSettings || isLoadingRates,
