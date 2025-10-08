@@ -76,15 +76,19 @@ export default function LoginPage() {
     }
   }, [user, isUserLoading, router]);
 
-  const createUserProfile = async (user: any, merge = false) => {
+  const createUserProfile = async (firebaseUser: any, merge = false) => {
     if (!firestore) return;
-    const userRef = doc(firestore, 'users', user.uid);
+    const userRef = doc(firestore, 'users', firebaseUser.uid);
+    
+    // TEMPORARY: Elevate current user to superAdmin
+    const role = (user && firebaseUser.email === user.email) ? 'superAdmin' : 'user';
+
     const newUserProfile: UserProfile = {
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName || email.split('@')[0],
-      photoURL: user.photoURL,
-      role: 'user', // All new users start with this role
+      uid: firebaseUser.uid,
+      email: firebaseUser.email,
+      displayName: firebaseUser.displayName || email.split('@')[0],
+      photoURL: firebaseUser.photoURL,
+      role: role, // Assign role conditionally
       status: 'active',
       createdAt: serverTimestamp(),
       storeRequest: false,
