@@ -5,7 +5,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FcGoogle } from 'react-icons/fc';
 import { 
-  signInWithPopup, 
+  signInWithRedirect, 
+  getRedirectResult,
   GoogleAuthProvider 
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
@@ -31,6 +32,42 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Handle redirect result from Google sign-in
+  useEffect(() => {
+    const processRedirect = async () => {
+        if (!auth || !firestore || isLoading) return;
+        
+        setIsLoading(true);
+        try {
+            const result = await getRedirectResult(auth);
+            if (result && result.user) {
+                const userRef = doc(firestore, "users", result.user.uid);
+                const userDoc = await getDoc(userRef);
+
+                if (!userDoc.exists()) {
+                    await createUserProfile(result.user);
+                    toast({ title: '¡Bienvenido! Cuenta creada con Google.' });
+                } else {
+                    await createUserProfile(result.user, true); // Merge to update photoURL etc.
+                    toast({ title: 'Inicio de Sesión con Google Exitoso' });
+                }
+                // The main useEffect will handle the redirect to the dashboard
+            }
+        } catch (error) {
+            console.error("Google sign-in redirect error:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Error con Google',
+                description: 'No se pudo completar el inicio de sesión con Google.',
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    processRedirect();
+  }, [auth, firestore]);
 
   // If user becomes available (e.g., after successful login), redirect them.
   useEffect(() => {
@@ -94,31 +131,20 @@ export default function LoginPage() {
   };
 
   const handleGoogleSignIn = async () => {
-    if (!auth || !firestore) return;
+    if (!auth) return;
     setIsLoading(true);
     const provider = new GoogleAuthProvider();
     try {
-      const result = await signInWithPopup(auth, provider);
-      // Check if user is new and create a profile if so
-      const userRef = doc(firestore, "users", result.user.uid);
-      const userDoc = await getDoc(userRef);
-
-      if (!userDoc.exists()) {
-        await createUserProfile(result.user);
-        toast({ title: '¡Bienvenido! Cuenta creada con Google.' });
-      } else {
-        await createUserProfile(result.user, true); // Merge to update photoURL etc.
-        toast({ title: 'Inicio de Sesión con Google Exitoso' });
-      }
-      // The useEffect will handle the redirect
-    } catch (error: any) {
-      console.error(error);
-      toast({
-        variant: 'destructive',
-        title: 'Error con Google',
-        description: 'No se pudo iniciar sesión con Google.',
-      });
-      setIsLoading(false);
+        await signInWithRedirect(auth, provider);
+        // The browser will redirect. The result is handled by the useEffect.
+    } catch (error) {
+        console.error(error);
+        toast({
+            variant: 'destructive',
+            title: 'Error con Google',
+            description: 'No se pudo iniciar el proceso de autenticación con Google.',
+        });
+        setIsLoading(false);
     }
   };
   
