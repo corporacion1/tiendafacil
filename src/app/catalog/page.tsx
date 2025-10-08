@@ -3,12 +3,13 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid, Instagram, Star, Search, UserPlus, QrCode, ZoomIn, Pencil, ArrowRight, RefreshCw, UserCircle } from "lucide-react";
+import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid, Instagram, Star, Search, UserPlus, QrCode, ZoomIn, Pencil, ArrowRight, RefreshCw, UserCircle, LogOut } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
-import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, useUser, useAuth } from "@/firebase";
 import { collection, doc, writeBatch, deleteDoc, query, where } from "firebase/firestore";
+import { signOut } from "firebase/auth";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -27,6 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { isPast } from "date-fns";
 import { useRouter } from "next/navigation";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 
 const AdCard = ({ ad }: { ad: Ad }) => {
@@ -118,6 +120,7 @@ const CatalogProductCard = ({ product, onAddToCart, onImageClick }: { product: P
 
 export default function CatalogPage() {
     const { toast } = useToast();
+    const auth = useAuth();
     const firestore = useFirestore();
     const { user, isUserLoading } = useUser();
     const router = useRouter();
@@ -379,6 +382,12 @@ export default function CatalogPage() {
         setProductDetails(product);
     };
 
+    const handleSignOut = async () => {
+        await signOut(auth);
+        router.push('/catalog');
+        toast({ title: 'Has cerrado sesión.' });
+    };
+
     return (
         <Dialog onOpenChange={(open) => { if (!open) setProductDetails(null); setProductImageError(false); }}>
             <div className="w-full min-h-screen bg-background">
@@ -386,14 +395,6 @@ export default function CatalogPage() {
                     <div className="container flex h-16 items-center justify-between">
                         <Logo className="w-32 h-10" />
                         <div className="flex items-center gap-2">
-                            {!isUserLoading && !user && (
-                                <Button asChild variant="ghost" size="icon">
-                                    <Link href="/login">
-                                        <UserCircle className="h-6 w-6" />
-                                        <span className="sr-only">Iniciar Sesión</span>
-                                    </Link>
-                                </Button>
-                            )}
                              <Dialog>
                                 <DialogTrigger asChild>
                                     <Button variant="outline" onClick={generateShareQrCode}>
@@ -485,6 +486,37 @@ export default function CatalogPage() {
                                     )}
                                 </SheetContent>
                             </Sheet>
+                            
+                            {isUserLoading ? (
+                                <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
+                            ) : user ? (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="rounded-full">
+                                            {user.photoURL ? (
+                                                <Image src={user.photoURL} width={32} height={32} alt="User Avatar" className="rounded-full" />
+                                            ) : (
+                                                <UserCircle className="h-6 w-6" />
+                                            )}
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuLabel>{user.displayName || user.email}</DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onSelect={handleSignOut}>
+                                            <LogOut className="mr-2 h-4 w-4" />
+                                            Cerrar Sesión
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            ) : (
+                                <Button asChild variant="ghost" size="icon">
+                                    <Link href="/login">
+                                        <UserCircle className="h-6 w-6" />
+                                        <span className="sr-only">Iniciar Sesión</span>
+                                    </Link>
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </header>
@@ -688,3 +720,4 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
+
