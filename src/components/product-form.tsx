@@ -223,7 +223,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                   name="cost"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Costo ({settings.primaryCurrencySymbol})</FormLabel>
+                      <FormLabel>Costo ({settings?.primaryCurrencySymbol || '$'})</FormLabel>
                       <FormControl>
                         <Input type="number" step="0.01" {...field} />
                       </FormControl>
@@ -344,7 +344,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                     name="price"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Precio Detal ({settings.primaryCurrencySymbol})</FormLabel>
+                        <FormLabel>Precio Detal ({settings?.primaryCurrencySymbol || '$'})</FormLabel>
                         <FormControl>
                             <Input type="number" step="0.01" {...field} />
                         </FormControl>
@@ -360,7 +360,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                     name="wholesalePrice"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Precio Mayorista ({settings.primaryCurrencySymbol})</FormLabel>
+                        <FormLabel>Precio Mayorista ({settings?.primaryCurrencySymbol || '$'})</FormLabel>
                         <FormControl>
                             <Input type="number" step="0.01" {...field} />
                         </FormControl>
@@ -379,7 +379,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm h-fit">
                           <div className="space-y-0.5">
-                            <FormLabel>Impuesto 1 ({settings.tax1}%)</FormLabel>
+                            <FormLabel>Impuesto 1 ({settings?.tax1 || 0}%)</FormLabel>
                           </div>
                           <FormControl>
                             <Switch
@@ -396,7 +396,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm h-fit">
                           <div className="space-y-0.5">
-                            <FormLabel>Impuesto 2 ({settings.tax2}%)</FormLabel>
+                            <FormLabel>Impuesto 2 ({settings?.tax2 || 0}%)</FormLabel>
                           </div>
                           <FormControl>
                             <Switch
