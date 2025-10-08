@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, doc, writeBatch, query, orderBy, setDoc } from "firebase/firestore";
 import type { UserProfile, Store, UserRole } from "@/lib/types";
-import { MoreHorizontal, Search, UserPlus, Shield, Check, Mail, Phone, ExternalLink } from "lucide-react";
+import { MoreHorizontal, Search, UserPlus, Shield, Check, Mail, Phone, ExternalLink, UserX } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,10 @@ const getRoleIcon = (role: UserProfile['role']) => {
   }
 };
 
+const getStatusVariant = (status: UserProfile['status'] | undefined) => {
+    return status === 'disabled' ? 'destructive' : 'outline';
+}
+
 export default function UsersPage() {
   const { user: currentUser } = useUser();
   const firestore = useFirestore();
@@ -53,7 +57,7 @@ export default function UsersPage() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [userToAction, setUserToAction] = useState<UserProfile | null>(null);
-  const [actionType, setActionType] = useState<'promote' | 'delete' | 'changeRole' | null>(null);
+  const [actionType, setActionType] = useState<'promote' | 'disable' | 'changeRole' | null>(null);
   const [newRole, setNewRole] = useState<UserRole>('user');
 
 
@@ -66,7 +70,7 @@ export default function UsersPage() {
     }
   }, [users, currentUser]);
 
-  const handleAction = (user: UserProfile, type: 'promote' | 'delete' | 'changeRole', role?: UserRole) => {
+  const handleAction = (user: UserProfile, type: 'promote' | 'disable' | 'changeRole', role?: UserRole) => {
     setUserToAction(user);
     setActionType(type);
     if (role) {
@@ -127,12 +131,19 @@ export default function UsersPage() {
         toast({ variant: 'destructive', title: "Error al promover usuario" });
       }
 
-    } else if (actionType === 'delete') {
-       toast({
-        variant: 'destructive',
-        title: "Función no implementada",
-        description: "La eliminación de usuarios debe hacerse desde una función de backend o la consola de Firebase.",
-      });
+    } else if (actionType === 'disable') {
+       const userRef = doc(firestore, 'users', userToAction.uid);
+       const newStatus = userToAction.status === 'disabled' ? 'active' : 'disabled';
+       try {
+        await setDoc(userRef, { status: newStatus }, { merge: true });
+         toast({
+            title: `Usuario ${newStatus === 'disabled' ? 'Deshabilitado' : 'Habilitado'}`,
+            description: `La cuenta de "${userToAction.displayName}" ha sido ${newStatus === 'disabled' ? 'deshabilitada' : 'habilitada'}.`,
+        });
+       } catch(error) {
+            console.error("Error disabling user: ", error);
+            toast({ variant: 'destructive', title: "Error al cambiar estado del usuario" });
+       }
     }
 
     setUserToAction(null);
@@ -187,6 +198,7 @@ export default function UsersPage() {
                   <TableHead className="hidden sm:table-cell">Avatar</TableHead>
                   <TableHead>Usuario</TableHead>
                   <TableHead>Rol / Tienda</TableHead>
+                  <TableHead>Estado</TableHead>
                   <TableHead>Contacto</TableHead>
                   <TableHead>Solicitud</TableHead>
                   <TableHead><span className="sr-only">Acciones</span></TableHead>
@@ -194,7 +206,7 @@ export default function UsersPage() {
               </TableHeader>
               <TableBody>
                 {filteredUsers.map((user) => (
-                  <TableRow key={user.uid}>
+                  <TableRow key={user.uid} className={user.status === 'disabled' ? 'opacity-50' : ''}>
                      <TableCell className="hidden sm:table-cell">
                         <div className="relative flex items-center justify-center w-10 h-10 bg-muted rounded-full overflow-hidden">
                           {user.photoURL ? (
@@ -216,6 +228,11 @@ export default function UsersPage() {
                       {user.storeId && user.role === 'admin' && (
                         <div className="text-xs text-muted-foreground mt-1">{user.storeId}</div>
                       )}
+                    </TableCell>
+                    <TableCell>
+                        <Badge variant={getStatusVariant(user.status)}>
+                            {user.status === 'disabled' ? 'Deshabilitado' : 'Activo'}
+                        </Badge>
                     </TableCell>
                     <TableCell>
                         <div className="flex flex-col gap-1">
@@ -269,8 +286,9 @@ export default function UsersPage() {
                                     </DropdownMenuItem>
                                 }
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-destructive" onSelect={() => handleAction(user, 'delete')}>
-                                    Eliminar Usuario
+                                <DropdownMenuItem className="text-destructive" onSelect={() => handleAction(user, 'disable')}>
+                                    <UserX className="mr-2 h-4 w-4" />
+                                    {user.status === 'disabled' ? 'Habilitar Usuario' : 'Deshabilitar Usuario'}
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -288,7 +306,7 @@ export default function UsersPage() {
                 <AlertDialogTitle>¿Confirmar Acción?</AlertDialogTitle>
                 <AlertDialogDescription>
                     {actionType === 'promote' && `Estás a punto de promover a "${userToAction?.displayName}" a administrador. Se le asignará una nueva tienda. ¿Estás seguro?`}
-                    {actionType === 'delete' && `Esta acción es irreversible y podría tener consecuencias. ¿Estás seguro de que quieres eliminar a "${userToAction?.displayName}"?`}
+                    {actionType === 'disable' && `Estás a punto de ${userToAction?.status === 'disabled' ? 'habilitar' : 'deshabilitar'} la cuenta de "${userToAction?.displayName}".`}
                     {actionType === 'changeRole' && `¿Estás seguro de que quieres cambiar el rol de "${userToAction?.displayName}" a ${newRole}?`}
                 </AlertDialogDescription>
             </AlertDialogHeader>

@@ -1,6 +1,7 @@
 import { FieldValue } from 'firebase/firestore';
 
 export type UserRole = 'superAdmin' | 'admin' | 'user';
+export type UserStatus = 'active' | 'disabled';
 
 export type UserProfile = {
   uid: string;
@@ -8,6 +9,7 @@ export type UserProfile = {
   displayName: string | null;
   photoURL: string | null;
   role: UserRole;
+  status: UserStatus;
   storeId?: string; // The store this user owns/manages (if role is 'admin')
   storeRequest?: boolean; // Flag to indicate a user wants a store
   createdAt: FieldValue;
