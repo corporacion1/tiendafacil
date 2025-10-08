@@ -75,7 +75,7 @@ export function SiteSidebar({ isExpanded }: SiteSidebarProps) {
                 {navItems.map((item) => (
                     <div key={item.href}>{renderLink(item)}</div>
                 ))}
-                {userRole === 'superAdmin' && adminNavItems.map((item) => (
+                {adminNavItems.map((item) => (
                     <div key={item.href}>{renderLink(item)}</div>
                 ))}
             </nav>
