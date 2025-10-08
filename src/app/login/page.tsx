@@ -122,6 +122,15 @@ export default function LoginPage() {
     }
   };
   
+  if (isUserLoading || user) {
+    return (
+       <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
+          <Logo className="w-64 h-20" />
+          <p className="text-muted-foreground animate-pulse">Verificando sesión...</p>
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-muted/40">
       <Card className="w-full max-w-sm">

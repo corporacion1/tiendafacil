@@ -19,6 +19,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
 
     const isPublicPage = pathname.startsWith('/catalog');
+    const isLoginPage = pathname === '/login';
 
     // Fetch user profile from Firestore
     const userProfileRef = useMemoFirebase(() => {
@@ -28,6 +29,12 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
     useEffect(() => {
+        // If it's the login page, we let it render without checks for now.
+        // The login page itself will handle redirecting logged-in users.
+        if (isLoginPage) {
+            return;
+        }
+
         const isAuthCheckComplete = !isUserLoading && !isProfileLoading;
         
         // If auth check is done and there's no user, redirect to login (unless on a public page)
@@ -57,9 +64,14 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
             }
         }
 
-    }, [isUserLoading, isProfileLoading, user, userProfile, router, pathname, isPublicPage]);
+    }, [isUserLoading, isProfileLoading, user, userProfile, router, pathname, isPublicPage, isLoginPage]);
+    
+    // If it's the login page and we're not loading, just render it.
+    if (isLoginPage && !isUserLoading) {
+        return <>{children}</>;
+    }
 
-    // Show a loading screen while user/profile data is being fetched for any page.
+    // Show a loading screen while user/profile data is being fetched for any other page.
     if (isUserLoading || (user && isProfileLoading)) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
@@ -69,11 +81,16 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         );
     }
     
-    // If it's a public page, render it immediately if auth is done (or not needed).
+    // If it's a public page, render it immediately if auth is done.
     if (isPublicPage) {
         return <>{children}</>;
     }
 
     // For protected routes, only render if the user exists and has a valid profile with a role other than 'user'.
-    return user && userProfile && userProfile.role !== 'user' ? <>{children}</> : null;
+    if (user && userProfile && userProfile.role !== 'user') {
+        return <>{children}</>;
+    }
+
+    // Fallback in case of an invalid state, prevents rendering protected content.
+    return null;
 }
