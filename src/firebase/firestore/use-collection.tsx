@@ -42,7 +42,7 @@ export interface UseCollectionResult<T> {
  * @returns {UseCollectionResult<T>} Object with data, isLoading, error.
  */
 export function useCollection<T = any>(
-    memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo?: boolean})  | null | undefined,
+    memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>))  | null | undefined,
 ): UseCollectionResult<T> {
   type ResultItemType = WithId<T>;
   type StateDataType = ResultItemType[] | null;
@@ -76,11 +76,21 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (error: FirestoreError) => {
-        const path = (memoizedTargetRefOrQuery as CollectionReference).path || 'desconocido';
+        let path = 'desconocido';
+        // A Query might not have a .path, but a CollectionReference will.
+        // We can check if it's a CollectionReference before accessing .path.
+        if ('path' in memoizedTargetRefOrQuery) {
+            path = (memoizedTargetRefOrQuery as CollectionReference).path;
+        } else {
+            // For complex queries, we might not have a simple path.
+            // We can indicate this is a query error without a specific path.
+            path = `Query on collection: ${(memoizedTargetRefOrQuery as any)._query.path.segments.join('/')}`;
+        }
+        
 
         const contextualError = new FirestorePermissionError({
           operation: 'list',
-          path,
+          path: path,
         })
 
         setError(contextualError)
@@ -96,3 +106,5 @@ export function useCollection<T = any>(
 
   return { data, isLoading: isLoading || isUserLoading, error };
 }
+
+    
