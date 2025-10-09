@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Unit, Family, Warehouse, CurrencyRate, Product } from "@/lib/types";
-import { Pencil, PlusCircle, Trash2, AlertTriangle, Database } from "lucide-react";
+import { Pencil, PlusCircle, Trash2, AlertTriangle, Database, Package, ImageOff } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
@@ -22,6 +22,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { factoryReset, businessCategories } from "@/lib/data";
 import { seedDatabase } from "@/lib/seed";
 import { collection, orderBy, query, writeBatch, doc } from "firebase/firestore";
+import Image from "next/image";
+import { getDisplayImageUrl } from "@/lib/utils";
 
 
 function ChangePinDialog() {
@@ -114,12 +116,12 @@ function ChangePinDialog() {
 
 export default function SettingsPage() {
     const { hasPin, setPin, removePin, checkPin } = useSecurity();
-    const { settings, setSettings, currencyRates, setCurrencyRates } = useSettings();
+    const { settings, setSettings, activeStoreId } = useSettings();
     const firestore = useFirestore();
     const user = { email: "corporacion1@gmail.com" }; // Mock user for demo
     
-    const [localSettings, setLocalSettings] = useState(settings);
-
+    const [localSettings, setLocalSettings] = useState(settings || {});
+    
     const { data: units = [] } = useCollection<Unit>(useMemoFirebase(() => query(collection(firestore, 'units'), orderBy('name', 'asc')), [firestore]));
     const { data: families = [] } = useCollection<Family>(useMemoFirebase(() => query(collection(firestore, 'families'), orderBy('name', 'asc')), [firestore]));
     const { data: warehouses = [] } = useCollection<Warehouse>(useMemoFirebase(() => query(collection(firestore, 'warehouses'), orderBy('name', 'asc')), [firestore]));
@@ -127,10 +129,12 @@ export default function SettingsPage() {
     const [localUnits, setLocalUnits] = useState<Unit[]>([]);
     const [localFamilies, setLocalFamilies] = useState<Family[]>([]);
     const [localWarehouses, setLocalWarehouses] = useState<Warehouse[]>([]);
-    const [localCurrencyRates, setLocalCurrencyRates] = useState<CurrencyRate[]>([]);
     
-    const ratesQuery = useMemoFirebase(() => query(collection(firestore, 'currencyRates'), orderBy('date', 'desc')), [firestore]);
-    const { data: fetchedRates } = useCollection<CurrencyRate>(ratesQuery);
+    const ratesQuery = useMemoFirebase(() => {
+        if (!activeStoreId) return null;
+        return query(collection(firestore, `stores/${activeStoreId}/currencyRates`), orderBy('date', 'desc'));
+    }, [firestore, activeStoreId]);
+    const { data: localCurrencyRates = [] } = useCollection<CurrencyRate>(ratesQuery);
 
 
     const [isDirty, setIsDirty] = useState(false);
@@ -142,6 +146,7 @@ export default function SettingsPage() {
     const { data: products = [] } = useCollection<Product>(productsRef);
     
     const [newRate, setNewRate] = useState<number>(0);
+    const [imageError, setImageError] = useState(false);
 
     const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
     const [resetPin, setResetPin] = useState('');
@@ -150,8 +155,13 @@ export default function SettingsPage() {
 
     const isSuperAdmin = user?.email === 'corporacion1@gmail.com';
 
+    const watchedImageUrl = localSettings?.logoUrl || '';
+    const displayUrl = useMemo(() => getDisplayImageUrl(watchedImageUrl), [watchedImageUrl]);
+
      useEffect(() => {
-        setLocalSettings(settings);
+        if (settings) {
+            setLocalSettings(settings);
+        }
     }, [settings]);
 
     useEffect(() => {
@@ -167,20 +177,24 @@ export default function SettingsPage() {
     }, [warehouses]);
     
     useEffect(() => {
-      if (fetchedRates) {
-        setLocalCurrencyRates(fetchedRates);
-      }
-    }, [fetchedRates]);
-    
-    useEffect(() => {
+        if (!settings) return;
         const mainSettingsChanged = JSON.stringify(localSettings) !== JSON.stringify(settings);
         const unitsChanged = JSON.stringify(localUnits) !== JSON.stringify(units);
         const familiesChanged = JSON.stringify(localFamilies) !== JSON.stringify(families);
         const warehousesChanged = JSON.stringify(localWarehouses) !== JSON.stringify(warehouses);
-        const ratesChanged = JSON.stringify(localCurrencyRates) !== JSON.stringify(fetchedRates);
-
-        setIsDirty(mainSettingsChanged || unitsChanged || familiesChanged || warehousesChanged || ratesChanged);
-    }, [localSettings, settings, localUnits, localFamilies, localWarehouses, localCurrencyRates, units, families, warehouses, fetchedRates]);
+        
+        setIsDirty(mainSettingsChanged || unitsChanged || familiesChanged || warehousesChanged);
+    }, [localSettings, settings, localUnits, localFamilies, localWarehouses, units, families, warehouses]);
+    
+    useEffect(() => {
+      setImageError(false);
+    }, [watchedImageUrl]);
+    
+    useEffect(() => {
+        if (localCurrencyRates.length > 0) {
+            setNewRate(localCurrencyRates[0].rate);
+        }
+    }, [localCurrencyRates]);
 
     const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
@@ -197,10 +211,11 @@ export default function SettingsPage() {
     };
 
     const saveAllSettings = async () => {
+        if (!localSettings) return;
         const batch = writeBatch(firestore);
 
         // Save main settings
-        setSettings(localSettings);
+        setSettings(localSettings as any);
 
         // Save units, families, warehouses
         (localUnits || []).forEach(unit => {
@@ -227,6 +242,10 @@ export default function SettingsPage() {
     };
 
     const handleSaveNewRate = () => {
+        if (!activeStoreId) {
+            toast({ variant: 'destructive', title: 'Error', description: 'ID de tienda no disponible.' });
+            return;
+        }
         if(newRate <= 0) {
             toast({
                 variant: 'destructive',
@@ -242,10 +261,9 @@ export default function SettingsPage() {
             date: new Date().toISOString(),
         };
 
-        const rateRef = doc(firestore, 'currencyRates', newRateEntry.id);
+        const rateRef = doc(firestore, `stores/${activeStoreId}/currencyRates`, newRateEntry.id);
         setDocumentNonBlocking(rateRef, newRateEntry, {});
         
-        setNewRate(0);
         toast({
             title: "Tasa Guardada",
             description: `La nueva tasa de ${newRate} ha sido registrada.`,
@@ -534,6 +552,10 @@ export default function SettingsPage() {
         });
     }
 
+    if (!localSettings) {
+        return <div>Cargando configuración...</div>
+    }
+
     return (
         <div className="grid gap-6">
             <Card>
@@ -542,37 +564,57 @@ export default function SettingsPage() {
                     <CardDescription>Configura la información de tu tienda que aparecerá en los tickets y gestiona las clasificaciones de productos.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="storeName">Nombre de la Tienda</Label>
-                            <Input id="storeName" value={localSettings.storeName} onChange={handleSettingsChange} placeholder="Mi Tienda Increíble" maxLength={45} />
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                             <div className="space-y-2">
+                                <Label htmlFor="storeId">ID de la Tienda (Solo Lectura)</Label>
+                                <Input id="storeId" value={localSettings.id || ''} readOnly />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="storeName">Nombre de la Tienda</Label>
+                                <Input id="name" value={localSettings.name || ''} onChange={handleSettingsChange} placeholder="Mi Tienda Increíble" maxLength={45} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="storeAddress">Dirección</Label>
+                                <Input id="address" value={localSettings.address || ''} onChange={handleSettingsChange} placeholder="Calle Falsa 123" maxLength={55} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="phone">Teléfono (para el ticket)</Label>
+                                <Input id="phone" value={localSettings.phone || ''} onChange={handleSettingsChange} placeholder="+58-412-1234567" maxLength={15} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="businessType">Tipo de Negocio</Label>
+                                <Select value={localSettings.businessType || ''} onValueChange={(value) => handleSelectChange('businessType', value)}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecciona un tipo de negocio" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {businessCategories.map(category => (
+                                            <SelectItem key={category} value={category}>
+                                                {category}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="businessType">Tipo de Negocio</Label>
-                            <Select value={localSettings.businessType} onValueChange={(value) => handleSelectChange('businessType', value)}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Selecciona un tipo de negocio" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {businessCategories.map(category => (
-                                        <SelectItem key={category} value={category}>
-                                            {category}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2 md:col-span-2">
-                            <Label htmlFor="storeAddress">Dirección</Label>
-                            <Input id="storeAddress" value={localSettings.storeAddress} onChange={handleSettingsChange} placeholder="Calle Falsa 123" maxLength={55} />
-                        </div>
-                         <div className="space-y-2">
-                            <Label htmlFor="storePhone">Teléfono (para el ticket)</Label>
-                            <Input id="storePhone" value={localSettings.storePhone} onChange={handleSettingsChange} placeholder="+58-412-1234567" maxLength={15} />
-                        </div>
-                         <div className="space-y-2">
-                            <Label htmlFor="storeSlogan">Slogan o Mensaje para el Ticket</Label>
-                            <Input id="storeSlogan" value={localSettings.storeSlogan} onChange={handleSettingsChange} placeholder="¡Gracias por tu compra!" maxLength={55} />
+                        <div className="space-y-4">
+                            <Label>Logo de la Tienda</Label>
+                            <Input id="logoUrl" value={localSettings.logoUrl || ''} onChange={handleSettingsChange} placeholder="https://ejemplo.com/logo.png" />
+                             <div className="aspect-square relative bg-muted rounded-md flex items-center justify-center mt-2 overflow-hidden">
+                                {displayUrl && !imageError ? (
+                                    <Image 
+                                    src={displayUrl} 
+                                    alt="Vista previa del logo" 
+                                    fill 
+                                    sizes="300px" 
+                                    className="object-contain"
+                                    onError={() => setImageError(true)}
+                                    />
+                                ) : (
+                                    <Package className="h-16 w-16 text-muted-foreground" />
+                                )}
+                            </div>
                         </div>
                     </div>
                     
@@ -581,12 +623,12 @@ export default function SettingsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="saleSeries">Serie de Venta</Label>
-                            <Input id="saleSeries" value={localSettings.saleSeries} onChange={handleSettingsChange} placeholder="Ej: SALE" maxLength={11} />
+                            <Input id="saleSeries" value={localSettings.saleSeries || ''} onChange={handleSettingsChange} placeholder="Ej: SALE" maxLength={11} />
                             <CardDescription>Prefijo para los números de control de venta.</CardDescription>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="saleCorrelative">Próximo Correlativo</Label>
-                            <Input id="saleCorrelative" type="number" value={localSettings.saleCorrelative} readOnly />
+                            <Input id="saleCorrelative" type="number" value={localSettings.saleCorrelative || 0} readOnly />
                              <CardDescription>El número de la próxima venta. Se actualiza automáticamente.</CardDescription>
                         </div>
                     </div>
@@ -596,12 +638,12 @@ export default function SettingsPage() {
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="tax1">Impuesto 1 (%)</Label>
-                            <Input id="tax1" type="number" value={localSettings.tax1} onChange={handleNumberSettingsChange} placeholder="Ej: 16" />
+                            <Input id="tax1" type="number" value={localSettings.tax1 || 0} onChange={handleNumberSettingsChange} placeholder="Ej: 16" />
                             <CardDescription>Impuesto general sobre las ventas (IVA).</CardDescription>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="tax2">Impuesto 2 (%)</Label>
-                            <Input id="tax2" type="number" value={localSettings.tax2} onChange={handleNumberSettingsChange} placeholder="Ej: 5" />
+                            <Input id="tax2" type="number" value={localSettings.tax2 || 0} onChange={handleNumberSettingsChange} placeholder="Ej: 5" />
                              <CardDescription>Impuesto especial o selectivo.</CardDescription>
                         </div>
                     </div>
@@ -630,22 +672,22 @@ export default function SettingsPage() {
                             <h3 className="font-semibold text-lg">Moneda Principal</h3>
                             <div className="space-y-2">
                                 <Label htmlFor="primaryCurrencyName">Nombre de la Moneda</Label>
-                                <Input id="primaryCurrencyName" value={localSettings.primaryCurrencyName} onChange={handleSettingsChange} placeholder="Dólar" maxLength={20} />
+                                <Input id="primaryCurrencyName" value={localSettings.primaryCurrencyName || ''} onChange={handleSettingsChange} placeholder="Dólar" maxLength={20} />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="primaryCurrencySymbol">Símbolo</Label>
-                                <Input id="primaryCurrencySymbol" value={localSettings.primaryCurrencySymbol} onChange={handleSettingsChange} placeholder="$" maxLength={4} />
+                                <Input id="primaryCurrencySymbol" value={localSettings.primaryCurrencySymbol || ''} onChange={handleSettingsChange} placeholder="$" maxLength={4} />
                             </div>
                         </div>
                         <div className="space-y-4 p-4 border rounded-lg">
                             <h3 className="font-semibold text-lg">Moneda Secundaria</h3>
                             <div className="space-y-2">
                                 <Label htmlFor="secondaryCurrencyName">Nombre de la Moneda</Label>
-                                <Input id="secondaryCurrencyName" value={localSettings.secondaryCurrencyName} onChange={handleSettingsChange} placeholder="Bolívares" maxLength={20} />
+                                <Input id="secondaryCurrencyName" value={localSettings.secondaryCurrencyName || ''} onChange={handleSettingsChange} placeholder="Bolívares" maxLength={20} />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="secondaryCurrencySymbol">Símbolo</Label>
-                                <Input id="secondaryCurrencySymbol" value={localSettings.secondaryCurrencySymbol} onChange={handleSettingsChange} placeholder="Bs." maxLength={4} />
+                                <Input id="secondaryCurrencySymbol" value={localSettings.secondaryCurrencySymbol || ''} onChange={handleSettingsChange} placeholder="Bs." maxLength={4} />
                             </div>
                         </div>
                     </div>
@@ -725,17 +767,17 @@ export default function SettingsPage() {
                 <CardContent className="space-y-6">
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="storeWhatsapp">Teléfono de WhatsApp</Label>
-                            <Input id="storeWhatsapp" value={localSettings.storeWhatsapp} onChange={handleSettingsChange} placeholder="+58-412-1112233" />
+                            <Label htmlFor="whatsapp">Teléfono de WhatsApp</Label>
+                            <Input id="whatsapp" value={localSettings.whatsapp || ''} onChange={handleSettingsChange} placeholder="+58-412-1112233" />
                             <CardDescription>Este número se usará para los enlaces de WhatsApp.</CardDescription>
                         </div>
                          <div className="space-y-2">
-                            <Label htmlFor="storeTiktok">Usuario de TikTok</Label>
-                            <Input id="storeTiktok" value={localSettings.storeTiktok} onChange={handleSettingsChange} placeholder="@tu-usuario-tiktok" />
+                            <Label htmlFor="tiktok">Usuario de TikTok</Label>
+                            <Input id="tiktok" value={localSettings.tiktok || ''} onChange={handleSettingsChange} placeholder="@tu-usuario-tiktok" />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="storeMeta">Usuario de Meta (Instagram, Facebook, X)</Label>
-                            <Input id="storeMeta" value={localSettings.storeMeta} onChange={handleSettingsChange} placeholder="@tu-usuario-meta" />
+                            <Label htmlFor="meta">Usuario de Meta (Instagram, Facebook, X)</Label>
+                            <Input id="meta" value={localSettings.meta || ''} onChange={handleSettingsChange} placeholder="@tu-usuario-meta" />
                         </div>
                     </div>
                 </CardContent>
@@ -895,3 +937,5 @@ export default function SettingsPage() {
         </div>
     );
 }
+
+    
