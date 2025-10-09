@@ -17,43 +17,49 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const { isUserLoading, user } = useUser();
     const firestore = useFirestore();
     const router = useRouter();
+    const pathname = usePathname();
 
-    // Fetch user profile from Firestore
     const userProfileRef = useMemoFirebase(() => {
-        if (!user || !firestore) return null;
+        if (!user) return null;
         return doc(firestore, 'users', user.uid);
     }, [user, firestore]);
+
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
     useEffect(() => {
-        const isAuthCheckComplete = !isUserLoading;
-        
-        // If auth check is done and there's no user, redirect to login.
-        if (isAuthCheckComplete && !user) {
-            router.replace('/login');
-            return;
-        }
-
-        // If user is logged in, but their profile is still loading, we wait.
-        // Once the profile is loaded, check their role.
-        if (isAuthCheckComplete && user && userProfile) {
+        // When auth is done loading...
+        if (!isUserLoading) {
+            // ...and there is no user, redirect to login.
+            if (!user) {
+                router.replace('/login');
+                return;
+            }
             
-            // TEMPORARY SUPERADMIN OVERRIDE
-            if (userProfile.email === 'corporacion1@gmail.com') {
-                // This user is now a super admin, do not redirect.
+            // SUPER ADMIN OVERRIDE: If the user is the super admin, they have access.
+            // Do not perform any other checks or redirects.
+            if (user.email === 'corporacion1@gmail.com') {
                 return;
             }
 
-            // If a basic 'user' tries to access the backend, send them to the catalog
-            if (userProfile.role === 'user') {
-                router.replace('/catalog');
+            // ...if there IS a user, but we are still waiting for their profile from Firestore...
+            if (isProfileLoading) {
+                // ...we do nothing and wait for the profile to load.
+                // The loading screen below will be displayed.
+                return;
             }
-            // 'admin' and 'superAdmin' are allowed, so we do nothing.
-        }
 
-    }, [isUserLoading, isProfileLoading, user, userProfile, router]);
-    
-    // While checking for user or loading their profile, show a loading screen.
+            // ...if we have the user and their profile...
+            if (userProfile) {
+                // ...and their role is just 'user', redirect them to the catalog.
+                if (userProfile.role === 'user') {
+                    router.replace('/catalog');
+                }
+                // 'admin' and 'superAdmin' roles are allowed, so we do nothing.
+            }
+        }
+    }, [isUserLoading, isProfileLoading, user, userProfile, router, pathname]);
+
+    // Show loading screen while auth is resolving or profile is fetching
     if (isUserLoading || (user && isProfileLoading)) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
@@ -63,13 +69,17 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         );
     }
     
-    // If the user is authenticated and has a role that is not 'user' (or is the overridden user), render the protected content.
-    if (user && userProfile && (userProfile.role !== 'user' || userProfile.email === 'corporacion1@gmail.com')) {
+    // Once everything is loaded, if the user is the Super Admin, grant access.
+    if (user && user.email === 'corporacion1@gmail.com') {
         return <>{children}</>;
     }
 
-    // Fallback: This will show the loading screen until a redirect happens,
-    // preventing any accidental rendering of protected content.
+    // Or if the user has a profile and is an admin, grant access.
+    if (userProfile && userProfile.role !== 'user') {
+        return <>{children}</>;
+    }
+    
+    // Fallback loading screen to prevent any content flashing until redirect is complete.
     return (
       <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
         <Logo className="w-64 h-20" />
