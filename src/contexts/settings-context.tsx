@@ -72,38 +72,28 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
             setActiveStoreId(userProfile.storeId);
             localStorage.setItem(ACTIVE_STORE_ID_KEY, userProfile.storeId);
         }
-    } else {
+    } else if (!isPublicPage) { // Only force default if not on a public page
         if (activeStoreId !== defaultStoreId) {
             setActiveStoreId(defaultStoreId);
             localStorage.setItem(ACTIVE_STORE_ID_KEY, defaultStoreId);
         }
     }
-  }, [isUserLoading, isLoadingProfile, userProfile, activeStoreId]);
-
-  const canFetchStoreData = useMemo(() => {
-      if(isUserLoading || !firestore) return false;
-      // On public pages, only fetch if the user is already loaded (and potentially logged in)
-      if (isPublicPage) {
-          return !!user;
-      }
-      // On private pages, we can assume we want to fetch once the user is loaded.
-      return true;
-  }, [isUserLoading, firestore, isPublicPage, user]);
-
+  }, [isUserLoading, isLoadingProfile, userProfile, activeStoreId, isPublicPage]);
 
   const settingsDocRef = useMemo(() => {
-    if (!canFetchStoreData) return null;
+    if (!firestore || !activeStoreId) return null;
     return doc(firestore, 'stores', activeStoreId);
-  }, [firestore, activeStoreId, canFetchStoreData]);
+  }, [firestore, activeStoreId]);
 
   const { data: settings, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(settingsDocRef);
   
   const currencyRatesQuery = useMemo(() => {
-    if (!canFetchStoreData) return null;
-    return query(collection(firestore, `stores/${activeStoreId}/currencyRates`), orderBy('date', 'desc'));
-  }, [firestore, canFetchStoreData, activeStoreId]);
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'stores', activeStoreId, 'currencyRates'), orderBy('date', 'desc'));
+  }, [firestore, activeStoreId]);
 
   const { data: currencyRatesData = [], isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
+
 
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   
@@ -118,11 +108,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, []);
   
-  const isLoading = useMemo(() => {
-      // Don't consider it "loading" on public pages if we aren't fetching data
-      if (isPublicPage && !user) return false;
-      return isLoadingSettingsDoc || isLoadingRates || isLoadingProfile;
-  }, [isLoadingSettingsDoc, isLoadingRates, isLoadingProfile, isPublicPage, user]);
+  const isLoading = isUserLoading || isLoadingSettingsDoc || isLoadingRates || isLoadingProfile;
   
   const handleSetSettings = (newSettings: Settings) => {
     if (!settingsDocRef) {
