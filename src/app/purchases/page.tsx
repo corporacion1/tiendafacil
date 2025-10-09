@@ -19,37 +19,46 @@ import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings } from "@/contexts/settings-context";
 import { useCollection, useFirestore } from "@/firebase";
-import { collection, doc, writeBatch, query, orderBy, where } from "firebase/firestore";
+import { collection, doc, writeBatch, query, orderBy, where, collectionGroup } from "firebase/firestore";
 
 const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
 
 export default function PurchasesPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
-  const { settings, activeSymbol, activeRate, activeStoreId } = useSettings();
+  const { settings, activeSymbol, activeRate, activeStoreId, userProfile } = useSettings();
+  const isSuperAdmin = userProfile?.role === 'superAdmin';
 
   const productsRef = useMemo(() => {
-    if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId]);
+    if (!firestore) return null;
+    return isSuperAdmin
+        ? query(collectionGroup(firestore, 'products'))
+        : query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId, isSuperAdmin]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
 
   const suppliersRef = useMemo(() => {
-    if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'suppliers'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId]);
+    if (!firestore) return null;
+    return isSuperAdmin
+        ? query(collectionGroup(firestore, 'suppliers'))
+        : query(collection(firestore, 'suppliers'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId, isSuperAdmin]);
   const { data: suppliers, isLoading: isLoadingSuppliers } = useCollection<Supplier>(suppliersRef);
 
   const familiesRef = useMemo(() => {
-    if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'families'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId]);
+    if (!firestore) return null;
+    return isSuperAdmin
+        ? query(collectionGroup(firestore, 'families'))
+        : query(collection(firestore, 'families'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId, isSuperAdmin]);
   const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesRef);
 
   const purchasesRef = useMemo(() => {
-    if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId]);
+    if (!firestore) return null;
+    return isSuperAdmin
+        ? query(collectionGroup(firestore, 'purchases'))
+        : query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId, isSuperAdmin]);
   const { data: purchasesData, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesRef);
 
   const purchases = useMemo(() => {

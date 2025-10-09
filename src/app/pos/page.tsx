@@ -25,7 +25,7 @@ import { useUser, useFirestore, useCollection } from "@/firebase";
 import { paymentMethods } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { collection, doc, writeBatch, query, where, orderBy } from "firebase/firestore";
+import { collection, doc, writeBatch, query, where, orderBy, collectionGroup } from "firebase/firestore";
 
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
     const { activeSymbol, activeRate } = useSettings();
@@ -70,30 +70,40 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
 export default function POSPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
-  const { settings, setSettings, activeSymbol, activeRate, activeStoreId } = useSettings();
+  const { settings, setSettings, activeSymbol, activeRate, activeStoreId, userProfile } = useSettings();
   
+  const isSuperAdmin = userProfile?.role === 'superAdmin';
+
   const productsRef = useMemo(() => {
-    if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId]);
+    if (!firestore) return null;
+    return isSuperAdmin
+        ? query(collectionGroup(firestore, 'products'))
+        : query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId, isSuperAdmin]);
   const { data: products = [], isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
 
   const customersRef = useMemo(() => {
-    if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId]);
+    if (!firestore) return null;
+    return isSuperAdmin
+        ? query(collectionGroup(firestore, 'customers'))
+        : query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId, isSuperAdmin]);
   const { data: customers = [], isLoading: isLoadingCustomers } = useCollection<Customer>(customersRef);
   
   const pendingOrdersQuery = useMemo(() => {
-    if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'pendingOrders'), where('storeId', '==', activeStoreId), orderBy('date', 'desc'));
-  }, [firestore, activeStoreId]);
+    if (!firestore) return null;
+    return isSuperAdmin
+        ? query(collectionGroup(firestore, 'pendingOrders'), orderBy('date', 'desc'))
+        : query(collection(firestore, 'pendingOrders'), where('storeId', '==', activeStoreId), orderBy('date', 'desc'));
+  }, [firestore, activeStoreId, isSuperAdmin]);
   const { data: pendingOrders = [], isLoading: isLoadingPendingOrders } = useCollection<PendingOrder>(pendingOrdersQuery);
   
   const salesRef = useMemo(() => {
-    if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId]);
+    if (!firestore) return null;
+    return isSuperAdmin
+        ? query(collectionGroup(firestore, 'sales'))
+        : query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId, isSuperAdmin]);
   const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
 
   const sales = useMemo(() => {
@@ -102,9 +112,11 @@ export default function POSPage() {
   }, [salesData]);
 
   const familiesRef = useMemo(() => {
-    if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'families'), where('storeId', '==', activeStoreId), orderBy('name', 'asc'));
-  }, [firestore, activeStoreId]);
+    if (!firestore) return null;
+    return isSuperAdmin
+        ? query(collectionGroup(firestore, 'families'), orderBy('name', 'asc'))
+        : query(collection(firestore, 'families'), where('storeId', '==', activeStoreId), orderBy('name', 'asc'));
+  }, [firestore, activeStoreId, isSuperAdmin]);
   const { data: families = [], isLoading: isLoadingFamilies } = useCollection<Family>(familiesRef);
 
   const isLoading = isLoadingProducts || isLoadingCustomers || isLoadingPendingOrders || isLoadingSales || isLoadingFamilies;

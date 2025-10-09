@@ -35,7 +35,7 @@ import { ProductForm } from "@/components/product-form";
 import { useSettings } from "@/contexts/settings-context";
 import { format, parseISO } from "date-fns";
 import { useCollection, useFirestore, deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase";
-import { collection, doc, orderBy, query, where, writeBatch } from "firebase/firestore";
+import { collection, doc, orderBy, query, where, writeBatch, collectionGroup } from "firebase/firestore";
 
 const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewMovements, setProductToDelete }: {
     product: Product;
@@ -126,24 +126,32 @@ const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewM
 export default function InventoryPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
-  const { activeSymbol, activeRate, activeStoreId } = useSettings();
+  const { activeSymbol, activeRate, activeStoreId, userProfile } = useSettings();
   
+  const isSuperAdmin = userProfile?.role === 'superAdmin';
+
   const productsRef = useMemo(() => {
-      if (!firestore || !activeStoreId) return null;
-      return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId), orderBy('createdAt', 'desc'));
-  }, [firestore, activeStoreId]);
+    if (!firestore) return null;
+    return isSuperAdmin
+        ? query(collectionGroup(firestore, 'products'), orderBy('createdAt', 'desc'))
+        : query(collection(firestore, 'products'), where('storeId', '==', activeStoreId), orderBy('createdAt', 'desc'));
+  }, [firestore, activeStoreId, isSuperAdmin]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
 
   const salesRef = useMemo(() => {
-    if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId]);
+    if (!firestore) return null;
+    return isSuperAdmin
+        ? query(collectionGroup(firestore, 'sales'))
+        : query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId, isSuperAdmin]);
   const { data: sales = [], isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
 
   const inventoryMovementsQuery = useMemo(() => {
-    if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'inventory_movements'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId]);
+    if (!firestore) return null;
+    return isSuperAdmin
+        ? query(collectionGroup(firestore, 'inventory_movements'))
+        : query(collection(firestore, 'inventory_movements'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId, isSuperAdmin]);
   const { data: movementsData = [], isLoading: isLoadingMovements } = useCollection<InventoryMovement>(inventoryMovementsQuery);
 
   const inventoryMovements = useMemo(() => {
@@ -655,7 +663,5 @@ export default function InventoryPage() {
     </>
   );
 }
-
-    
 
     

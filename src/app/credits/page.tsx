@@ -20,23 +20,28 @@ import { paymentMethods } from "@/lib/data";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useCollection, useFirestore } from "@/firebase";
-import { collection, doc, orderBy, query, where, writeBatch } from "firebase/firestore";
+import { collection, doc, orderBy, query, where, writeBatch, collectionGroup } from "firebase/firestore";
 
 export default function CreditsPage() {
     const { toast } = useToast();
     const firestore = useFirestore();
-    const { settings, activeSymbol, activeRate, activeStoreId } = useSettings();
+    const { settings, activeSymbol, activeRate, activeStoreId, userProfile } = useSettings();
+    const isSuperAdmin = userProfile?.role === 'superAdmin';
 
     const salesQuery = useMemo(() => {
-        if (!firestore || !activeStoreId) return null;
-        return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
-    }, [firestore, activeStoreId]);
+        if (!firestore) return null;
+        return isSuperAdmin
+            ? query(collectionGroup(firestore, 'sales'))
+            : query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
+    }, [firestore, activeStoreId, isSuperAdmin]);
     const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
     
     const { data: productsData, isLoading: isLoadingProducts } = useCollection<Product>(useMemo(() => {
-        if (!firestore || !activeStoreId) return null;
-        return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
-    }, [firestore, activeStoreId]));
+        if (!firestore) return null;
+        return isSuperAdmin
+            ? query(collectionGroup(firestore, 'products'))
+            : query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
+    }, [firestore, activeStoreId, isSuperAdmin]));
 
     const sales = useMemo(() => {
         if (!salesData) return [];
