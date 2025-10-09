@@ -43,25 +43,25 @@ export const defaultUsers: Omit<UserProfile, 'createdAt' | 'uid' | 'photoURL'>[]
 
 // --- DATOS DE MUESTRA (TODOS CONECTADOS AL storeId por defecto) ---
 
-export const defaultCustomers: Customer[] = [
+export const defaultCustomers: Omit<Customer, 'storeId'>[] = [
     { id: 'eventual', name: 'Cliente Eventual', phone: '', address: '' },
     { id: 'cust-1', name: 'John Doe', phone: '555-1234', address: '123 Main St' },
     { id: 'cust-2', name: 'Jane Smith', phone: '555-5678', address: '456 Oak Ave' },
 ];
 
-export const defaultSuppliers: Supplier[] = [
+export const defaultSuppliers: Omit<Supplier, 'storeId'>[] = [
     { id: 'sup-1', name: 'TechData Corp', phone: '111-2222', address: '789 Tech Rd' },
     { id: 'sup-2', name: 'PC Components LLC', phone: '333-4444', address: '101 Component Ln' },
     { id: 'sup-3', name: 'Global Microchips', phone: '555-5555', address: '202 Silicon St' },
 ];
 
-export const initialUnits: Unit[] = [
+export const initialUnits: Omit<Unit, 'storeId'>[] = [
     { id: 'unit-1', name: 'Unidad' },
     { id: 'unit-2', name: 'Caja' },
     { id: 'unit-3', name: 'Paquete' },
 ];
 
-export const initialFamilies: Family[] = [
+export const initialFamilies: Omit<Family, 'storeId'>[] = [
     { id: 'fam-1', name: 'Tarjetas Gráficas' },
     { id: 'fam-2', name: 'Procesadores' },
     { id: 'fam-3', name: 'Memoria RAM' },
@@ -70,55 +70,55 @@ export const initialFamilies: Family[] = [
     { id: 'fam-6', name: 'Fuentes de Poder' },
 ];
 
-export const initialWarehouses: Warehouse[] = [
+export const initialWarehouses: Omit<Warehouse, 'storeId'>[] = [
     { id: 'wh-1', name: 'Almacén Principal' },
     { id: 'wh-2', name: 'Depósito Secundario' },
 ];
 
-export const mockProducts: Omit<Product, 'createdAt'>[] = [
+export const mockProducts: Omit<Product, 'createdAt' | 'storeId'>[] = [
   {
-    id: "prod-1", name: "Tarjeta Gráfica RTX 4090", sku: "NV-RTX4090-01", stock: 15, price: 1799.99, wholesalePrice: 1750.00, cost: 1600.00, status: "active", tax1: true, tax2: true, unit: "Unidad", family: "Tarjetas Gráficas", warehouse: "Almacén Principal", storeId: defaultStoreId,
+    id: "prod-1", name: "Tarjeta Gráfica RTX 4090", sku: "NV-RTX4090-01", stock: 15, price: 1799.99, wholesalePrice: 1750.00, cost: 1600.00, status: "active", tax1: true, tax2: true, unit: "Unidad", family: "Tarjetas Gráficas", warehouse: "Almacén Principal",
     description: "La GPU más potente para gaming y creación de contenido.",
     imageUrl: PlaceHolderImages.find(p => p.id === '1')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '1')?.imageHint,
   },
   {
-    id: "prod-2", name: "Procesador Intel Core i9-13900K", sku: "INT-i9-13900K-02", stock: 25, price: 589.00, wholesalePrice: 570.00, cost: 520.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Procesadores", warehouse: "Almacén Principal", storeId: defaultStoreId,
+    id: "prod-2", name: "Procesador Intel Core i9-13900K", sku: "INT-i9-13900K-02", stock: 25, price: 589.00, wholesalePrice: 570.00, cost: 520.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Procesadores", warehouse: "Almacén Principal",
     description: "Procesador de alto rendimiento para gaming y productividad.",
     imageUrl: PlaceHolderImages.find(p => p.id === '2')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '2')?.imageHint,
   },
   {
-    id: "prod-3", name: "Memoria RAM 32GB DDR5", sku: "RAM-DDR5-32G-03", stock: 50, price: 129.99, wholesalePrice: 120.00, cost: 100.00, status: "promotion", tax1: true, tax2: false, unit: "Paquete", family: "Memoria RAM", warehouse: "Almacén Principal", storeId: defaultStoreId,
+    id: "prod-3", name: "Memoria RAM 32GB DDR5", sku: "RAM-DDR5-32G-03", stock: 50, price: 129.99, wholesalePrice: 120.00, cost: 100.00, status: "promotion", tax1: true, tax2: false, unit: "Paquete", family: "Memoria RAM", warehouse: "Almacén Principal",
     description: "Kit de 2x16GB de memoria RAM DDR5 a 6000MHz.",
     imageUrl: PlaceHolderImages.find(p => p.id === '3')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '3')?.imageHint,
   },
   {
-    id: "prod-4", name: "SSD NVMe 2TB", sku: "SSD-NVME-2TB-04", stock: 40, price: 149.99, wholesalePrice: 140.00, cost: 125.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Almacenamiento", warehouse: "Almacén Principal", storeId: defaultStoreId,
+    id: "prod-4", name: "SSD NVMe 2TB", sku: "SSD-NVME-2TB-04", stock: 40, price: 149.99, wholesalePrice: 140.00, cost: 125.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Almacenamiento", warehouse: "Almacén Principal",
     description: "Unidad de estado sólido de 2TB con velocidades de lectura/escritura ultrarrápidas.",
     imageUrl: PlaceHolderImages.find(p => p.id === '4')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '4')?.imageHint,
   },
   {
-    id: "prod-5", name: "Tarjeta Madre Z790", sku: "MB-Z790-WIFI-05", stock: 30, price: 349.99, wholesalePrice: 330.00, cost: 300.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Tarjetas Madre", warehouse: "Almacén Principal", storeId: defaultStoreId,
+    id: "prod-5", name: "Tarjeta Madre Z790", sku: "MB-Z790-WIFI-05", stock: 30, price: 349.99, wholesalePrice: 330.00, cost: 300.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Tarjetas Madre", warehouse: "Almacén Principal",
     description: "Tarjeta madre con chipset Z790, soporte para DDR5 y WiFi 6E.",
     imageUrl: PlaceHolderImages.find(p => p.id === '5')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '5')?.imageHint,
   },
   {
-    id: "prod-6", name: "Fuente de Poder 1000W Gold", sku: "PSU-1000W-G-06", stock: 35, price: 199.99, wholesalePrice: 185.00, cost: 160.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Fuentes de Poder", warehouse: "Almacén Principal", storeId: defaultStoreId,
+    id: "prod-6", name: "Fuente de Poder 1000W Gold", sku: "PSU-1000W-G-06", stock: 35, price: 199.99, wholesalePrice: 185.00, cost: 160.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Fuentes de Poder", warehouse: "Almacén Principal",
     description: "Fuente de poder de 1000W con certificación 80 Plus Gold, completamente modular.",
     imageUrl: PlaceHolderImages.find(p => p.id === '6')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '6')?.imageHint,
   },
   {
-    id: "prod-7", name: "Tarjeta Gráfica RX 7900 XTX", sku: "AMD-RX7900XTX-07", stock: 20, price: 999.99, wholesalePrice: 950.00, cost: 880.00, status: "promotion", tax1: true, tax2: true, unit: "Unidad", family: "Tarjetas Gráficas", warehouse: "Almacén Principal", storeId: defaultStoreId,
+    id: "prod-7", name: "Tarjeta Gráfica RX 7900 XTX", sku: "AMD-RX7900XTX-07", stock: 20, price: 999.99, wholesalePrice: 950.00, cost: 880.00, status: "promotion", tax1: true, tax2: true, unit: "Unidad", family: "Tarjetas Gráficas", warehouse: "Almacén Principal",
     description: "GPU de alta gama de AMD, excelente para gaming en 4K.",
     imageUrl: PlaceHolderImages.find(p => p.id === '7')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '7')?.imageHint,
   },
   {
-    id: "prod-8", name: "Procesador AMD Ryzen 9 7950X", sku: "AMD-R9-7950X-08", stock: 22, price: 549.00, wholesalePrice: 530.00, cost: 490.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Procesadores", warehouse: "Almacén Principal", storeId: defaultStoreId,
+    id: "prod-8", name: "Procesador AMD Ryzen 9 7950X", sku: "AMD-R9-7950X-08", stock: 22, price: 549.00, wholesalePrice: 530.00, cost: 490.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Procesadores", warehouse: "Almacén Principal",
     description: "Procesador de 16 núcleos y 32 hilos para máxima productividad.",
     imageUrl: PlaceHolderImages.find(p => p.id === '8')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '8')?.imageHint,
   },
 ];
 
-export const mockPurchases: Purchase[] = [
+export const mockPurchases: Omit<Purchase, 'storeId'>[] = [
     {
         id: "PUR-001", supplierId: "sup-1", supplierName: "TechData Corp",
         items: [ { productId: "prod-1", productName: "Tarjeta Gráfica RTX 4090", quantity: 10, cost: 1600.00 } ],
@@ -131,7 +131,7 @@ export const mockPurchases: Purchase[] = [
     },
 ];
 
-export const mockSales: Sale[] = [
+export const mockSales: Omit<Sale, 'storeId'>[] = [
     {
         id: "SALE-001", customerId: "cust-1", customerName: "John Doe",
         items: [ { productId: "prod-1", productName: "Tarjeta Gráfica RTX 4090", quantity: 1, price: 1799.99 } ],
