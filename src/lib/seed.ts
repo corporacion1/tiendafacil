@@ -6,9 +6,6 @@ import {
   getDocs,
   Firestore,
   serverTimestamp,
-  query,
-  where,
-  getDoc
 } from 'firebase/firestore';
 import {
   defaultStore,
@@ -31,10 +28,8 @@ import {
  * This is the simplest, most robust way to ensure a clean slate.
  */
 export async function factoryReset(db: Firestore) {
-  console.log("Starting Firestore factory reset (scorched earth)...");
+  console.log("Starting Firestore factory reset...");
 
-  // Explicit list of all top-level collections to be wiped clean.
-  // This now includes 'currency_rates' at the top level to fix the bug.
   const collectionsToDelete = [
     'products', 'customers', 'suppliers', 'units', 'families', 
     'warehouses', 'sales', 'purchases', 'inventory_movements', 
@@ -51,7 +46,6 @@ export async function factoryReset(db: Firestore) {
       continue;
     }
 
-    // A new batch for each collection to avoid hitting the 500-op limit in large collections.
     const batch = writeBatch(db);
     snapshot.docs.forEach(doc => {
       batch.delete(doc.ref);
@@ -73,22 +67,23 @@ export async function factoryReset(db: Firestore) {
 export async function seedDatabase(db: Firestore) {
   const batch = writeBatch(db);
 
-  // 1. Create/overwrite the default store.
+  // 1. Create the default store. This is now the very first step and is unconditional.
   const storeDocRef = doc(db, 'stores', defaultStoreId);
   batch.set(storeDocRef, defaultStore);
+  console.log(`Scheduled creation of default store: ${defaultStoreId}`);
 
-  // 2. Create/overwrite the superAdmin user.
-  // Using a predictable UID for the superAdmin for consistency.
+  // 2. Create the superAdmin user and link it to the store.
   const superAdminUser = defaultUsers.find(u => u.role === 'superAdmin');
   if (superAdminUser) {
       const superAdminUID = 'super_admin_main_user_001';
       const userRef = doc(db, 'users', superAdminUID);
       batch.set(userRef, { 
         ...superAdminUser, 
-        uid: superAdminUID, // Ensure UID is set in the document
-        storeId: defaultStoreId, // Ensure storeId is correctly linked
+        uid: superAdminUID,
+        storeId: defaultStoreId, // Explicitly link to the default store
         createdAt: serverTimestamp() 
       });
+      console.log(`Scheduled creation of superAdmin user: ${superAdminUID}`);
   }
 
   // 3. Seed all other collections, ensuring they are linked to the default store.
@@ -98,7 +93,6 @@ export async function seedDatabase(db: Firestore) {
   });
 
   defaultCustomers.forEach((customer) => {
-      if(customer.id === 'eventual') return;
       const docRef = doc(db, 'customers', customer.id);
       batch.set(docRef, customer);
   });
@@ -130,5 +124,7 @@ export async function seedDatabase(db: Firestore) {
       batch.set(docRef, { ...ad, createdAt: serverTimestamp() });
   });
 
+  console.log("Committing all seed data to Firestore...");
   await batch.commit();
+  console.log("Seed data successfully committed.");
 }
