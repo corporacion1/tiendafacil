@@ -50,12 +50,9 @@ export function useDoc<T = any>(
   const [data, setData] = useState<StateDataType>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
-  // Determine if fetching should occur
   const shouldFetch = !!memoizedDocRef && !isUserLoading;
 
   useEffect(() => {
-    // CRITICAL: If we shouldn't fetch, do nothing.
-    // This prevents race conditions on initial render.
     if (!shouldFetch) {
       setData(null);
       return;
@@ -69,10 +66,9 @@ export function useDoc<T = any>(
         if (snapshot.exists()) {
           setData({ ...(snapshot.data() as T), id: snapshot.id });
         } else {
-          // Document does not exist
           setData(null);
         }
-        setError(null); // Clear any previous error on successful snapshot
+        setError(null);
       },
       (error: FirestoreError) => {
         const contextualError = new FirestorePermissionError({
@@ -88,6 +84,7 @@ export function useDoc<T = any>(
     );
 
     return () => unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memoizedDocRef, shouldFetch]);
 
   return { data, isLoading: !shouldFetch && data === null, error };

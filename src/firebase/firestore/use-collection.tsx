@@ -51,17 +51,14 @@ export function useCollection<T = any>(
   const [data, setData] = useState<StateDataType>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
-  // Determine if fetching should occur
   const shouldFetch = !!memoizedTargetRefOrQuery && !isUserLoading;
 
   useEffect(() => {
-    // CRITICAL: If we shouldn't fetch, do nothing.
-    // This prevents race conditions on initial render and when dependencies change.
     if (!shouldFetch) {
       setData(null);
       return;
     }
-
+    
     setError(null);
 
     const unsubscribe = onSnapshot(
@@ -76,17 +73,12 @@ export function useCollection<T = any>(
       },
       (error: FirestoreError) => {
         let path = 'desconocido';
-        // A Query might not have a .path, but a CollectionReference will.
-        // We can check if it's a CollectionReference before accessing .path.
         if ('path' in memoizedTargetRefOrQuery) {
             path = (memoizedTargetRefOrQuery as CollectionReference).path;
         } else {
-            // For complex queries, we might not have a simple path.
-            // We can indicate this is a query error without a specific path.
             path = `Query on collection: ${(memoizedTargetRefOrQuery as any)._query?.path?.segments?.join('/') || ''}`;
         }
         
-
         const contextualError = new FirestorePermissionError({
           operation: 'list',
           path: path,
@@ -100,6 +92,7 @@ export function useCollection<T = any>(
     );
 
     return () => unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memoizedTargetRefOrQuery, shouldFetch]);
 
   return { data, isLoading: !shouldFetch && data === null, error };
