@@ -1,4 +1,3 @@
-
 'use client';
 import {
   collection,
@@ -10,6 +9,7 @@ import {
   query,
   where,
   serverTimestamp,
+  getDoc,
 } from 'firebase/firestore';
 import {
   defaultStore,
@@ -22,6 +22,8 @@ import {
   mockSales,
   mockPurchases,
   mockAds,
+  defaultUsers,
+  defaultStoreId
 } from './data';
 
 async function isCollectionEmpty(db: Firestore, collectionName: string): Promise<boolean> {
@@ -33,14 +35,28 @@ async function isCollectionEmpty(db: Firestore, collectionName: string): Promise
 export async function seedDatabase(db: Firestore) {
   const batch = writeBatch(db);
 
-  // Seed Store
-  const storeDocRef = doc(db, 'stores', defaultStore.id);
-  const storeSnapshot = await getDocs(query(collection(db, 'stores'), where('id', '==', defaultStore.id)));
-  if (storeSnapshot.empty) {
-    batch.set(storeDocRef, defaultStore);
+  // 1. Ensure Super Admin User exists and has storeId
+  const superAdminUserQuery = query(collection(db, 'users'), where('email', '==', 'corporacion1@gmail.com'));
+  const superAdminSnapshot = await getDocs(superAdminUserQuery);
+
+  if (superAdminSnapshot.empty) {
+      throw new Error("Super Admin user not found. Please log in with corporacion1@gmail.com first.");
+  }
+  const superAdminDoc = superAdminSnapshot.docs[0];
+  const superAdminRef = superAdminDoc.ref;
+  const superAdminData = superAdminDoc.data();
+
+  // Ensure storeId is set
+  if (superAdminData.storeId !== defaultStoreId) {
+      batch.update(superAdminRef, { storeId: defaultStoreId });
   }
 
-  // Seed Products
+  // 2. Seed Store (guaranteed to run)
+  const storeDocRef = doc(db, 'stores', defaultStoreId);
+  // We don't check if it's empty, we just set it to ensure it's correct.
+  batch.set(storeDocRef, { ...defaultStore, ownerId: superAdminDoc.id });
+  
+  // 3. Seed Products
   if (await isCollectionEmpty(db, 'products')) {
     mockProducts.forEach((product) => {
       const docRef = doc(db, 'products', product.id);
@@ -48,48 +64,31 @@ export async function seedDatabase(db: Firestore) {
     });
   }
 
-  // Seed Customers
+  // 4. Seed Customers
   if (await isCollectionEmpty(db, 'customers')) {
     defaultCustomers.forEach((customer) => {
-        if(customer.id === 'eventual') return;
+        if(customer.id === 'eventual') return; // Do not save 'eventual' customer in DB
         const docRef = doc(db, 'customers', customer.id);
         batch.set(docRef, customer);
     });
   }
 
-  // Seed Suppliers
-  if (await isCollectionEmpty(db, 'suppliers')) {
-      defaultSuppliers.forEach((supplier) => {
-          const docRef = doc(db, 'suppliers', supplier.id);
-          batch.set(docRef, supplier);
-      });
-  }
+  // 5. Seed Suppliers, Units, Families, Warehouses
+  const seedSimpleCollection = async (collectionName: string, data: any[]) => {
+      if (await isCollectionEmpty(db, collectionName)) {
+          data.forEach((item) => {
+              const docRef = doc(db, collectionName, item.id);
+              batch.set(docRef, item);
+          });
+      }
+  };
 
-  // Seed Units
-  if (await isCollectionEmpty(db, 'units')) {
-      initialUnits.forEach((unit) => {
-          const docRef = doc(db, 'units', unit.id);
-          batch.set(docRef, unit);
-      });
-  }
+  await seedSimpleCollection('suppliers', defaultSuppliers);
+  await seedSimpleCollection('units', initialUnits);
+  await seedSimpleCollection('families', initialFamilies);
+  await seedSimpleCollection('warehouses', initialWarehouses);
 
-  // Seed Families
-  if (await isCollectionEmpty(db, 'families')) {
-    initialFamilies.forEach((family) => {
-        const docRef = doc(db, 'families', family.id);
-        batch.set(docRef, family);
-    });
-  }
-
-  // Seed Warehouses
-  if (await isCollectionEmpty(db, 'warehouses')) {
-      initialWarehouses.forEach((warehouse) => {
-          const docRef = doc(db, 'warehouses', warehouse.id);
-          batch.set(docRef, warehouse);
-      });
-  }
-
-  // Seed Sales
+  // 6. Seed Sales and Purchases
   if (await isCollectionEmpty(db, 'sales')) {
       mockSales.forEach((sale) => {
           const docRef = doc(db, 'sales', sale.id);
@@ -97,7 +96,6 @@ export async function seedDatabase(db: Firestore) {
       });
   }
 
-  // Seed Purchases
   if (await isCollectionEmpty(db, 'purchases')) {
     mockPurchases.forEach((purchase) => {
         const docRef = doc(db, 'purchases', purchase.id);
@@ -105,7 +103,7 @@ export async function seedDatabase(db: Firestore) {
     });
   }
 
-  // Seed Ads
+  // 7. Seed Ads
   if (await isCollectionEmpty(db, 'ads')) {
     mockAds.forEach((ad) => {
         const docRef = doc(db, 'ads', ad.id);
@@ -117,10 +115,35 @@ export async function seedDatabase(db: Firestore) {
 }
 
 
+async function deleteCollection(db: Firestore, collectionPath: string, batch: WriteBatch): Promise<WriteBatch> {
+    const collectionRef = collection(db, collectionPath);
+    const snapshot = await getDocs(collectionRef);
+    let newBatch = batch;
+    let operationCount = 0;
+
+    for (const doc of snapshot.docs) {
+        // If there are subcollections, recurse
+        const subcollections = await getDocs(collection(doc.ref, 'currencyRates')); // Specifically check for currencyRates
+        if (!subcollections.empty) {
+            newBatch = await deleteCollection(db, `${doc.ref.path}/currencyRates`, newBatch);
+        }
+
+        newBatch.delete(doc.ref);
+        operationCount++;
+        if (operationCount >= 499) {
+            await newBatch.commit();
+            newBatch = writeBatch(db);
+            operationCount = 0;
+        }
+    }
+    return newBatch;
+}
+
+
 export async function factoryReset(db: Firestore) {
     console.log("Performing Firestore factory reset...");
 
-    const collectionsToDelete = [
+    const topLevelCollections = [
         'products',
         'customers',
         'suppliers',
@@ -130,43 +153,33 @@ export async function factoryReset(db: Firestore) {
         'sales',
         'purchases',
         'inventory_movements',
-        'currencyRates',
         'pendingOrders',
         'ads',
-        'stores',
+        'stores', // This will trigger recursive delete for its subcollections
     ];
 
-    const commitPromises: Promise<void>[] = [];
     let batch = writeBatch(db);
-    let operationCount = 0;
 
     // Special handling for the 'users' collection
     const usersQuery = query(collection(db, "users"), where("email", "!=", "corporacion1@gmail.com"));
     const usersSnapshot = await getDocs(usersQuery);
     usersSnapshot.forEach(doc => {
         batch.delete(doc.ref);
-        operationCount++;
     });
 
-    for (const collectionName of collectionsToDelete) {
+    // Delete top-level collections and their subcollections
+    for (const collectionName of topLevelCollections) {
         const collectionRef = collection(db, collectionName);
         const snapshot = await getDocs(collectionRef);
-        snapshot.docs.forEach(doc => {
-            batch.delete(doc.ref);
-            operationCount++;
-            if (operationCount >= 499) {
-                commitPromises.push(batch.commit());
-                batch = writeBatch(db);
-                operationCount = 0;
-            }
+        snapshot.docs.forEach(async (docSnapshot) => {
+             // Specifically look for and delete the nested currencyRates collection
+            const currencyRatesPath = `${collectionName}/${docSnapshot.id}/currencyRates`;
+            await deleteCollection(db, currencyRatesPath, batch);
+            batch.delete(docSnapshot.ref);
         });
     }
 
-    if (operationCount > 0) {
-        commitPromises.push(batch.commit());
-    }
-
-    await Promise.all(commitPromises);
+    await batch.commit();
     
     console.log("Firestore factory reset complete.");
 }
