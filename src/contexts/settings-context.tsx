@@ -37,16 +37,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const firestore = useFirestore();
   const { toast } = useToast();
 
+  // Initialize with a default, but it will be overwritten by the logic below.
   const [activeStoreId, setActiveStoreId] = useState<string>('tiendafacil');
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_KEY);
-      if (storedStoreId) {
-        setActiveStoreId(storedStoreId);
-      }
-    }
-  }, []);
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -56,15 +48,34 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
 
   useEffect(() => {
-    if (!isLoadingProfile && userProfile) {
-        if (userProfile.role === 'admin' && userProfile.storeId) {
-            if (activeStoreId !== userProfile.storeId) {
-                setActiveStoreId(userProfile.storeId);
-                localStorage.setItem(ACTIVE_STORE_ID_KEY, userProfile.storeId);
-            }
+    if (isLoadingProfile || !userProfile) return;
+
+    let determinedStoreId: string | null = null;
+    
+    // Priority 1: User's own store if they are an admin/superAdmin
+    if (userProfile.role === 'admin' || userProfile.role === 'superAdmin') {
+        if (userProfile.storeId) {
+            determinedStoreId = userProfile.storeId;
         }
     }
+    
+    // Priority 2: Check localStorage (useful for superAdmin switching)
+    if (!determinedStoreId && userProfile.role === 'superAdmin') {
+        const storedId = localStorage.getItem(ACTIVE_STORE_ID_KEY);
+        if (storedId) {
+            determinedStoreId = storedId;
+        }
+    }
+    
+    // Priority 3: Fallback to the default store ID.
+    const finalStoreId = determinedStoreId || 'tiendafacil';
+
+    if (finalStoreId !== activeStoreId) {
+        setActiveStoreId(finalStoreId);
+        localStorage.setItem(ACTIVE_STORE_ID_KEY, finalStoreId);
+    }
   }, [userProfile, isLoadingProfile, activeStoreId]);
+
 
   const canFetchStoreData = !isUserLoading && !!user;
 
@@ -95,8 +106,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, []);
   
-  // Simplified and corrected loading logic
-  const isLoading = isUserLoading || (canFetchStoreData && (isLoadingSettingsDoc || isLoadingRates));
+  const isLoading = isUserLoading || isLoadingProfile || (canFetchStoreData && (isLoadingSettingsDoc || isLoadingRates));
 
   const handleSetSettings = (newSettings: Settings) => {
     if (!settingsDocRef) {

@@ -16,15 +16,16 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const isPublicPage = pathname === '/login' || pathname.startsWith('/catalog');
 
     const userProfileRef = useMemoFirebase(() => {
-        if (!user || isPublicPage) return null;
+        // We fetch the profile even for public pages to facilitate smooth transitions
+        if (!user) return null;
         return doc(firestore, 'users', user.uid);
-    }, [user, firestore, isPublicPage]);
+    }, [user, firestore]);
 
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
     useEffect(() => {
         // This effect only handles redirection for protected pages
-        if (isPublicPage || isUserLoading) {
+        if (isPublicPage || isUserLoading || isProfileLoading) {
             return;
         }
 
@@ -33,17 +34,20 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
             router.replace('/login');
             return;
         }
-
-        // Super admin check
-        if (user.email === 'corporacion1@gmail.com') {
+        
+        // Super admin can access everything
+        if (userProfile && userProfile.email === 'corporacion1@gmail.com') {
             return;
         }
         
-        // When profile is loaded, check roles
-        if (!isProfileLoading && userProfile) {
+        // When profile is loaded, check roles for protected pages
+        if (userProfile) {
             if (userProfile.role === 'user') {
                 router.replace('/catalog');
             }
+        } else {
+            // If there's a user but no profile, they likely need to login again or something is wrong
+            router.replace('/login');
         }
 
     }, [isUserLoading, isProfileLoading, user, userProfile, router, pathname, isPublicPage]);
@@ -54,7 +58,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
 
     // For protected pages, show a loading screen while we verify auth and profile.
-    if (isUserLoading || (user && isProfileLoading && user.email !== 'corporacion1@gmail.com')) {
+    if (isUserLoading || isProfileLoading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
                 <Logo className="w-64 h-20" />
@@ -63,8 +67,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         );
     }
 
-    // If the user is authenticated and has the correct role (or is superAdmin), render the protected content.
-    if (user && (user.email === 'corporacion1@gmail.com' || (userProfile && userProfile.role !== 'user'))) {
+    // If the user is authenticated and has the correct role render the protected content.
+    if (user && userProfile && (userProfile.role === 'admin' || userProfile.role === 'superAdmin')) {
         return <>{children}</>;
     }
 
