@@ -5,11 +5,9 @@ import {
   writeBatch,
   getDocs,
   Firestore,
-  WriteBatch,
   query,
   where,
   serverTimestamp,
-  getDoc,
   setDoc,
 } from 'firebase/firestore';
 import {
@@ -33,7 +31,6 @@ async function isCollectionEmpty(db: Firestore, collectionName: string): Promise
   return snapshot.empty;
 }
 
-
 export async function seedDatabase(db: Firestore) {
   const batch = writeBatch(db);
 
@@ -46,7 +43,6 @@ export async function seedDatabase(db: Firestore) {
   }
   const superAdminDoc = superAdminSnapshot.docs[0];
   const superAdminRef = superAdminDoc.ref;
-  const superAdminDataFromDb = superAdminDoc.data();
   
   // Get the template for the super admin user from our data file
   const superAdminTemplate = defaultUsers.find(u => u.email === 'corporacion1@gmail.com');
@@ -54,14 +50,13 @@ export async function seedDatabase(db: Firestore) {
       throw new Error("Default super admin user is not defined in data.ts");
   }
 
-  // Merge existing data with our required template data (especially storeId)
+  // Merge existing data with our required template data to ensure storeId is set
   const finalSuperAdminData = { 
-      ...superAdminDataFromDb, 
+      ...superAdminDoc.data(), 
       ...superAdminTemplate,
-      uid: superAdminDoc.id, // ensure UID is correct
-      createdAt: superAdminDataFromDb.createdAt || serverTimestamp() // Preserve original creation date
+      uid: superAdminDoc.id,
+      createdAt: superAdminDoc.data().createdAt || serverTimestamp() 
   };
-
   // Use `set` with `merge: true` to guarantee the storeId is added or updated.
   batch.set(superAdminRef, finalSuperAdminData, { merge: true });
 
@@ -129,44 +124,36 @@ export async function seedDatabase(db: Firestore) {
   await batch.commit();
 }
 
-
-async function deleteCollection(db: Firestore, collectionPath: string, batch: WriteBatch): Promise<WriteBatch> {
-    const collectionRef = collection(db, collectionPath);
-    const q = query(collectionRef);
-    const snapshot = await getDocs(q);
-
-    if (snapshot.empty) {
-        return batch;
-    }
-
-    let currentBatch = batch;
-    let operationCount = 0;
-
-    for (const doc of snapshot.docs) {
-        // Recursive call to delete subcollections first
-        const subcollections = await doc.ref.listCollections?.(); // Note: This is an admin SDK feature, might not work on client
-        if (subcollections) {
-            for (const sub of subcollections) {
-               currentBatch = await deleteCollection(db, sub.path, currentBatch);
-            }
-        }
-        
-        currentBatch.delete(doc.ref);
-        operationCount++;
-
-        // Firestore batches have a limit of 500 operations.
-        if (operationCount >= 499) {
-            await currentBatch.commit();
-            currentBatch = writeBatch(db);
-            operationCount = 0;
-        }
-    }
-    return currentBatch;
-}
-
-
 export async function factoryReset(db: Firestore) {
     console.log("Performing Firestore factory reset...");
+
+    let batch = writeBatch(db);
+    let operationCount = 0;
+
+    const commitBatchIfFull = async () => {
+        if (operationCount >= 490) {
+            await batch.commit();
+            batch = writeBatch(db);
+            operationCount = 0;
+        }
+    };
+    
+    // Special handling for the 'stores' collection to delete subcollections first
+    const storesCollectionRef = collection(db, 'stores');
+    const storesSnapshot = await getDocs(storesCollectionRef);
+    for (const storeDoc of storesSnapshot.docs) {
+        const ratesCollectionPath = `stores/${storeDoc.id}/currencyRates`;
+        const ratesSnapshot = await getDocs(collection(db, ratesCollectionPath));
+        ratesSnapshot.forEach(rateDoc => {
+            batch.delete(rateDoc.ref);
+            operationCount++;
+        });
+        await commitBatchIfFull();
+        // Now delete the store doc itself
+        batch.delete(storeDoc.ref);
+        operationCount++;
+        await commitBatchIfFull();
+    }
 
     const topLevelCollections = [
         'products',
@@ -180,37 +167,32 @@ export async function factoryReset(db: Firestore) {
         'inventory_movements',
         'pendingOrders',
         'ads',
-        'stores',
+        // 'stores' is handled above
     ];
-
-    let batch = writeBatch(db);
+    
+    for (const collectionName of topLevelCollections) {
+        const collectionRef = collection(db, collectionName);
+        const snapshot = await getDocs(collectionRef);
+        snapshot.forEach(docSnapshot => {
+            batch.delete(docSnapshot.ref);
+            operationCount++;
+        });
+        await commitBatchIfFull();
+    }
 
     // Special handling for the 'users' collection: delete all except superAdmin
     const usersQuery = query(collection(db, "users"), where("email", "!=", "corporacion1@gmail.com"));
     const usersSnapshot = await getDocs(usersQuery);
     usersSnapshot.forEach(doc => {
         batch.delete(doc.ref);
+        operationCount++;
     });
-    
-    // Delete all documents in top-level collections
-    for (const collectionName of topLevelCollections) {
-        const collectionRef = collection(db, collectionName);
-        const snapshot = await getDocs(collectionRef);
-        for (const docSnapshot of snapshot.docs) {
-             // Specifically delete the nested 'currencyRates' collection for each store
-            if (collectionName === 'stores') {
-                const ratesCollectionPath = `stores/${docSnapshot.id}/currencyRates`;
-                const ratesSnapshot = await getDocs(collection(db, ratesCollectionPath));
-                ratesSnapshot.forEach(rateDoc => {
-                    batch.delete(rateDoc.ref);
-                });
-            }
-            batch.delete(docSnapshot.ref);
-        }
+    await commitBatchIfFull();
+
+    // Commit any remaining operations
+    if (operationCount > 0) {
+        await batch.commit();
     }
-    
-    // Commit the batch to execute all delete operations
-    await batch.commit();
     
     console.log("Firestore factory reset complete.");
 }
