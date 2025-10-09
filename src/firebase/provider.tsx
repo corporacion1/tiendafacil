@@ -90,7 +90,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
         if (userAuthState.isUserLoading) {
             setHasTimedOut(true);
         }
-    }, 10000); // 10-second timeout
+    }, 20000); // 20-second timeout
 
     return () => {
       unsubscribe(); // Cleanup
