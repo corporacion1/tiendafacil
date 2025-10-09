@@ -376,32 +376,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
-        <div className="grid gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Prueba de Datos de Productos</CardTitle>
-              <CardDescription>
-                Lista de productos cargados desde Firestore para verificar la conexión.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {isLoadingProducts ? (
-                <p>Cargando productos...</p>
-              ) : products && products.length > 0 ? (
-                <ul className="list-disc pl-5">
-                  {products.map(product => (
-                    <li key={product.id}>{product.name}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p>No se encontraron productos para la tienda actual ({activeStoreId}).</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
       </main>
     </div>
   );
 }
-
-    

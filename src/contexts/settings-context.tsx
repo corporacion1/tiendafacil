@@ -37,7 +37,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  const [activeStoreId, setActiveStoreId] = useState<string>('');
+  const [activeStoreId, setActiveStoreId] = useState<string>(''); // INICIALIZAR VACÍO
   const [isLoading, setIsLoading] = useState(true);
 
   const userProfileRef = useMemo(() => {
@@ -48,21 +48,22 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
 
   useEffect(() => {
-    if (isLoadingProfile || isUserLoading) {
-      return; // Wait until user profile and auth state are resolved
+    if (isUserLoading || isLoadingProfile) {
+        return; // Esperar a que el usuario y el perfil estén listos
     }
 
+    // Lógica para determinar el storeId
     const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_KEY);
-
+    
     if (userProfile?.role === 'superAdmin' && storedStoreId) {
-      setActiveStoreId(storedStoreId);
+        setActiveStoreId(storedStoreId);
     } else if (userProfile?.storeId) {
-      setActiveStoreId(userProfile.storeId);
+        setActiveStoreId(userProfile.storeId);
     } else {
-      // Fallback for users without a store or during initial load before profile is fetched
-      setActiveStoreId('tiendafacil'); 
+        // Como último recurso, si no hay nada, usar 'tiendafacil'
+        setActiveStoreId('tiendafacil');
     }
-  }, [userProfile, isLoadingProfile, isUserLoading]);
+  }, [isUserLoading, isLoadingProfile, userProfile]);
 
 
   const canFetchStoreData = !!firestore && !!activeStoreId;
