@@ -8,6 +8,7 @@ import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc, query, orderBy } from 'firebase/firestore';
 import { Package } from 'lucide-react';
+import { defaultStoreId } from '@/lib/data';
 
 type DisplayCurrency = 'primary' | 'secondary';
 
@@ -47,12 +48,11 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
 
-  useEffect(() => {
+ useEffect(() => {
     if (isUserLoading || isLoadingProfile) {
         return; // Esperar a que el usuario y el perfil estén listos
     }
 
-    // Lógica para determinar el storeId
     const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_KEY);
     
     if (userProfile?.role === 'superAdmin' && storedStoreId) {
@@ -60,8 +60,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     } else if (userProfile?.storeId) {
         setActiveStoreId(userProfile.storeId);
     } else {
-        // Como último recurso, si no hay nada, usar 'tiendafacil'
-        setActiveStoreId('tiendafacil');
+        // Como último recurso, si no hay nada, usar el ID por defecto real.
+        setActiveStoreId(defaultStoreId);
     }
   }, [isUserLoading, isLoadingProfile, userProfile]);
 
