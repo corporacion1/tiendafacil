@@ -26,6 +26,7 @@ export type Store = {
     address?: string;
     phone?: string;
     slogan?: string;
+    logoUrl?: string;
     whatsapp?: string;
     tiktok?: string;
     meta?: string;
@@ -195,5 +196,3 @@ export type AdClick = {
     timestamp: string;
     userAgent: string;
 };
-
-    

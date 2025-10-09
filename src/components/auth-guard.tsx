@@ -8,59 +8,53 @@ import { doc } from "firebase/firestore";
 import type { UserProfile } from "@/lib/types";
 import { Logo } from "./logo";
 
-/**
- * AuthGuard is the gatekeeper for PROTECTED routes.
- * It assumes it will only be used on routes that require authentication.
- * It ensures a user is logged in and has the correct role.
- */
 export function AuthGuard({ children }: { children: React.ReactNode }) {
     const { isUserLoading, user } = useUser();
     const firestore = useFirestore();
     const router = useRouter();
     const pathname = usePathname();
+    const isPublicPage = pathname === '/login' || pathname.startsWith('/catalog');
 
     const userProfileRef = useMemoFirebase(() => {
-        if (!user) return null;
+        if (!user || isPublicPage) return null;
         return doc(firestore, 'users', user.uid);
-    }, [user, firestore]);
+    }, [user, firestore, isPublicPage]);
 
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
     useEffect(() => {
-        // When auth is done loading...
-        if (!isUserLoading) {
-            // ...and there is no user, redirect to login.
-            if (!user) {
-                router.replace('/login');
-                return;
-            }
-            
-            // SUPER ADMIN OVERRIDE: If the user is the super admin, they have access.
-            // Do not perform any other checks or redirects.
-            if (user.email === 'corporacion1@gmail.com') {
-                return;
-            }
+        // This effect only handles redirection for protected pages
+        if (isPublicPage || isUserLoading) {
+            return;
+        }
 
-            // ...if there IS a user, but we are still waiting for their profile from Firestore...
-            if (isProfileLoading) {
-                // ...we do nothing and wait for the profile to load.
-                // The loading screen below will be displayed.
-                return;
-            }
+        // If auth is done and there's no user, redirect to login
+        if (!user) {
+            router.replace('/login');
+            return;
+        }
 
-            // ...if we have the user and their profile...
-            if (userProfile) {
-                // ...and their role is just 'user', redirect them to the catalog.
-                if (userProfile.role === 'user') {
-                    router.replace('/catalog');
-                }
-                // 'admin' and 'superAdmin' roles are allowed, so we do nothing.
+        // Super admin check
+        if (user.email === 'corporacion1@gmail.com') {
+            return;
+        }
+        
+        // When profile is loaded, check roles
+        if (!isProfileLoading && userProfile) {
+            if (userProfile.role === 'user') {
+                router.replace('/catalog');
             }
         }
-    }, [isUserLoading, isProfileLoading, user, userProfile, router, pathname]);
 
-    // Show loading screen while auth is resolving or profile is fetching
-    if (isUserLoading || (user && isProfileLoading)) {
+    }, [isUserLoading, isProfileLoading, user, userProfile, router, pathname, isPublicPage]);
+
+    // If it's a public page, render it immediately.
+    if (isPublicPage) {
+        return <>{children}</>;
+    }
+
+    // For protected pages, show a loading screen while we verify auth and profile.
+    if (isUserLoading || (user && isProfileLoading && user.email !== 'corporacion1@gmail.com')) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
                 <Logo className="w-64 h-20" />
@@ -68,18 +62,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
             </div>
         );
     }
-    
-    // Once everything is loaded, if the user is the Super Admin, grant access.
-    if (user && user.email === 'corporacion1@gmail.com') {
+
+    // If the user is authenticated and has the correct role (or is superAdmin), render the protected content.
+    if (user && (user.email === 'corporacion1@gmail.com' || (userProfile && userProfile.role !== 'user'))) {
         return <>{children}</>;
     }
 
-    // Or if the user has a profile and is an admin, grant access.
-    if (userProfile && userProfile.role !== 'user') {
-        return <>{children}</>;
-    }
-    
-    // Fallback loading screen to prevent any content flashing until redirect is complete.
+    // Fallback loading screen to prevent content flashing during redirects.
     return (
       <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
         <Logo className="w-64 h-20" />

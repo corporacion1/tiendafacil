@@ -20,6 +20,7 @@ import { Separator } from '@/components/ui/separator';
 import { Logo } from '@/components/logo';
 import { useAuth, useFirestore, useUser, initiateEmailSignUp, initiateEmailSignIn } from '@/firebase';
 import type { UserProfile } from '@/lib/types';
+import { useSettings } from '@/contexts/settings-context';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,6 +28,7 @@ export default function LoginPage() {
   const auth = useAuth();
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
+  const { settings } = useSettings();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -167,7 +169,7 @@ export default function LoginPage() {
         <CardHeader className="text-center">
           <Logo className="w-64 h-20 mx-auto mb-4" />
           <CardTitle className="text-2xl">
-            {isSignUp ? 'Crea tu Cuenta' : 'Bienvenido a Tienda Facil'}
+            {isSignUp ? 'Crea tu Cuenta' : `Bienvenido a ${settings?.name || 'Tienda Facil'}`}
           </CardTitle>
           <CardDescription>
             {isSignUp ? 'Ingresa tus datos para registrarte' : 'Ingresa a tu cuenta para continuar'}

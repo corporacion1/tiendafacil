@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Product": {
@@ -129,6 +130,7 @@
         "address": { "type": "string" },
         "phone": { "type": "string" },
         "slogan": { "type": "string" },
+        "logoUrl": { "type": "string", "format": "uri" },
         "whatsapp": { "type": "string" },
         "tiktok": { "type": "string" },
         "meta": { "type": "string" },
@@ -242,5 +244,3 @@
     "/currencyRates/{rateId}": { "schema": { "$ref": "#/entities/CurrencyRate" }, "description": "Stores historical currency exchange rates." }
   }
 }
-
-    

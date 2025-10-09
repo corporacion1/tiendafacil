@@ -31,6 +31,7 @@ const settingsSchema = z.object({
   address: z.string().optional(),
   phone: z.string().optional(),
   slogan: z.string().optional(),
+  logoUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
   tax1: z.coerce.number().min(0, "El impuesto no puede ser negativo.").max(100, "El impuesto no puede ser mayor a 100."),
   tax2: z.coerce.number().min(0, "El impuesto no puede ser negativo.").max(100, "El impuesto no puede ser mayor a 100."),
   primaryCurrencyName: z.string().optional(),
@@ -58,6 +59,7 @@ export default function SettingsPage() {
       address: "",
       phone: "",
       slogan: "",
+      logoUrl: "",
       tax1: 0,
       tax2: 0,
       primaryCurrencyName: "USD",
@@ -79,6 +81,7 @@ export default function SettingsPage() {
         address: settings.address || "",
         phone: settings.phone || "",
         slogan: settings.slogan || "",
+        logoUrl: settings.logoUrl || "",
         tax1: settings.tax1 || 0,
         tax2: settings.tax2 || 0,
         primaryCurrencyName: settings.primaryCurrencyName || "USD",
@@ -114,6 +117,7 @@ export default function SettingsPage() {
         address: settings.address || "",
         phone: settings.phone || "",
         slogan: settings.slogan || "",
+        logoUrl: settings.logoUrl || "",
         tax1: settings.tax1 || 0,
         tax2: settings.tax2 || 0,
         primaryCurrencyName: settings.primaryCurrencyName || "USD",
@@ -167,6 +171,19 @@ export default function SettingsPage() {
                           <FormLabel>Nombre de la Tienda</FormLabel>
                           <FormControl>
                             <Input placeholder="Mi Tienda Fantástica" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={form.control}
+                      name="logoUrl"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>URL del Logo</FormLabel>
+                          <FormControl>
+                            <Input placeholder="https://ejemplo.com/logo.png" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -415,5 +432,3 @@ export default function SettingsPage() {
     </Form>
   );
 }
-
-    
