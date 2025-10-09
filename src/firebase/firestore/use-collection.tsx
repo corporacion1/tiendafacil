@@ -52,14 +52,12 @@ export function useCollection<T = any>(
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
-  const shouldFetch = !isUserLoading && !!memoizedTargetRefOrQuery;
-
   useEffect(() => {
-    // If we shouldn't fetch (either due to user loading or null query),
-    // ensure loading state is correct and stop execution.
-    if (!shouldFetch) {
-      setIsLoading(isUserLoading);
-      return; 
+    // If there's no query or the user is still authenticating, wait.
+    if (!memoizedTargetRefOrQuery || isUserLoading) {
+      setIsLoading(isUserLoading); // Reflect auth loading state
+      setData(null);
+      return;
     }
 
     setIsLoading(true);
@@ -103,9 +101,7 @@ export function useCollection<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery, shouldFetch, isUserLoading]);
+  }, [memoizedTargetRefOrQuery, isUserLoading]);
 
-  return { data, isLoading: isLoading || isUserLoading, error };
+  return { data, isLoading, error };
 }
-
-    
