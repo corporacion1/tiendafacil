@@ -15,7 +15,7 @@ import {
   Legend,
   CartesianGrid
 } from "recharts";
-import { subDays, parseISO, format, toDate } from "date-fns";
+import { subDays, parseISO, format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -38,9 +38,20 @@ import { useSettings } from "@/contexts/settings-context";
 import { InventoryMovement, Product, Purchase, Sale } from "@/lib/types";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy, where } from "firebase/firestore";
+import { collection, query, where } from "firebase/firestore";
 
 type TimeFilter = 'day' | 'week' | 'month';
+
+const getDate = (d: any): Date => {
+  if (!d) return new Date();
+  // Firestore Timestamps have a toDate() method, strings do not.
+  if (typeof d.toDate === 'function') {
+    return d.toDate();
+  }
+  // Otherwise, it's likely an ISO string
+  return parseISO(d as string);
+}
+
 
 export default function Dashboard() {
   const { activeSymbol, activeRate, activeStoreId } = useSettings();
@@ -73,17 +84,17 @@ export default function Dashboard() {
 
   const sales = useMemo(() => {
     if (!salesData) return [];
-    return [...salesData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return [...salesData].sort((a, b) => getDate(b.date).getTime() - getDate(a.date).getTime());
   }, [salesData]);
   
   const purchases = useMemo(() => {
     if (!purchasesData) return [];
-    return [...purchasesData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return [...purchasesData].sort((a, b) => getDate(b.date).getTime() - getDate(a.date).getTime());
   }, [purchasesData]);
 
   const recentMovements = useMemo(() => {
     if (!movementsData) return [];
-    return [...movementsData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return [...movementsData].sort((a, b) => getDate(b.date).getTime() - getDate(a.date).getTime());
   }, [movementsData]);
 
   const isLoading = isLoadingSales || isLoadingPurchases || isLoadingProducts || isLoadingMovements;
@@ -98,15 +109,13 @@ export default function Dashboard() {
     }
   }, [timeFilter]);
 
-  const filteredSales = useMemo(() => (sales || []).filter(s => toDate(parseISO(s.date as string)) >= cutoffDate), [sales, cutoffDate]);
-  const filteredPurchases = useMemo(() => (purchases || []).filter(p => toDate(parseISO(p.date as string)) >= cutoffDate), [purchases, cutoffDate]);
+  const filteredSales = useMemo(() => (sales || []).filter(s => getDate(s.date) >= cutoffDate), [sales, cutoffDate]);
+  const filteredPurchases = useMemo(() => (purchases || []).filter(p => getDate(p.date) >= cutoffDate), [purchases, cutoffDate]);
 
   const chartData = useMemo(() => {
     const dataByDate: { [key: string]: { date: string, sales: number, profit: number, unitsSold: number, unitsPurchased: number } } = {};
     const dateFormat = timeFilter === 'month' ? 'dd-MMM' : 'eee dd';
     
-    const getDate = (d: any) => parseISO(d as string);
-
     filteredSales.forEach(sale => {
         const saleDate = getDate(sale.date);
         const dateKey = format(saleDate, 'yyyy-MM-dd');
@@ -364,3 +373,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
+    
