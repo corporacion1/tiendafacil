@@ -28,6 +28,7 @@ import { useRouter } from "next/navigation";
 import { navItems, settingsNav } from "@/lib/navigation";
 import { useAuth } from "@/firebase";
 import { signOut } from "firebase/auth";
+import { Badge } from "./ui/badge";
 
 interface SiteHeaderProps {
   toggleSidebar: () => void;
@@ -38,7 +39,7 @@ export function SiteHeader({ toggleSidebar, isSidebarExpanded }: SiteHeaderProps
   const pathname = usePathname();
   const router = useRouter();
   const auth = useAuth();
-  const { settings, activeCurrency, toggleDisplayCurrency } = useSettings();
+  const { settings, activeCurrency, toggleDisplayCurrency, activeStoreId } = useSettings();
   
   const user = auth.currentUser;
 
@@ -108,6 +109,9 @@ export function SiteHeader({ toggleSidebar, isSidebarExpanded }: SiteHeaderProps
         </Button>
 
       <div className="relative ml-auto flex items-center gap-2 md:grow-0">
+        <Badge variant="outline" className="text-xs text-muted-foreground">
+          Tienda Activa: {activeStoreId}
+        </Badge>
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
