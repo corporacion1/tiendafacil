@@ -53,6 +53,7 @@ export function useDoc<T = any>(
   const shouldFetch = !!memoizedDocRef && !isUserLoading;
 
   useEffect(() => {
+    // Critical Guard: Do not proceed if the document reference is not ready or user is loading.
     if (!shouldFetch) {
       setData(null);
       return;
@@ -79,6 +80,7 @@ export function useDoc<T = any>(
         setError(contextualError)
         setData(null)
 
+        // Emit for global error handling (e.g., Next.js error overlay)
         errorEmitter.emit('permission-error', contextualError);
       }
     );
@@ -86,6 +88,9 @@ export function useDoc<T = any>(
     return () => unsubscribe();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memoizedDocRef, shouldFetch]);
+  
+  // isLoading is true if we don't have a valid ref/user yet AND we haven't loaded any data before.
+  const isLoading = !shouldFetch && data === null;
 
-  return { data, isLoading: !shouldFetch && data === null, error };
+  return { data, isLoading, error };
 }

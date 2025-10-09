@@ -41,16 +41,16 @@ const getStatusVariant = (status: UserProfile['status'] | undefined) => {
 }
 
 export default function UsersPage() {
-  const { user: currentUser } = useUser();
+  const { user: currentUser, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   const router = useRouter();
   const { switchStore, activeStoreId } = useSettings();
 
   const usersQuery = useMemo(() => {
-    if (!firestore) return null;
+    if (isUserLoading || !firestore) return null;
     return query(collection(firestore, 'users'), orderBy('createdAt', 'desc'));
-  }, [firestore]);
+  }, [firestore, isUserLoading]);
   const { data: users, isLoading } = useCollection<UserProfile>(usersQuery);
   
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
@@ -79,7 +79,7 @@ export default function UsersPage() {
   };
   
   const confirmRoleChange = async () => {
-      if (!userToAction) return;
+      if (!userToAction || !firestore) return;
       const userRef = doc(firestore, 'users', userToAction.uid);
       try {
         await setDoc(userRef, { role: newRole }, { merge: true });
@@ -321,5 +321,3 @@ export default function UsersPage() {
     </>
   );
 }
-
-    

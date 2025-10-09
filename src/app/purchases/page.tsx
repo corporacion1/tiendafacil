@@ -18,7 +18,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings } from "@/contexts/settings-context";
-import { useCollection, useFirestore } from "@/firebase";
+import { useCollection, useFirestore, useUser } from "@/firebase";
 import { collection, doc, writeBatch, query, orderBy, where, collectionGroup } from "firebase/firestore";
 
 const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
@@ -26,39 +26,40 @@ const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
 export default function PurchasesPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
-  const { settings, activeSymbol, activeRate, activeStoreId, userProfile } = useSettings();
+  const { settings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
+  const { isUserLoading } = useUser();
   const isSuperAdmin = userProfile?.role === 'superAdmin';
 
   const productsRef = useMemo(() => {
-    if (!firestore) return null;
+    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
     return isSuperAdmin
         ? query(collectionGroup(firestore, 'products'))
         : query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin]);
+  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
 
   const suppliersRef = useMemo(() => {
-    if (!firestore) return null;
+    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
     return isSuperAdmin
         ? query(collectionGroup(firestore, 'suppliers'))
         : query(collection(firestore, 'suppliers'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin]);
+  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
   const { data: suppliers, isLoading: isLoadingSuppliers } = useCollection<Supplier>(suppliersRef);
 
   const familiesRef = useMemo(() => {
-    if (!firestore) return null;
+    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
     return isSuperAdmin
         ? query(collectionGroup(firestore, 'families'))
         : query(collection(firestore, 'families'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin]);
+  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
   const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesRef);
 
   const purchasesRef = useMemo(() => {
-    if (!firestore) return null;
+    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
     return isSuperAdmin
         ? query(collectionGroup(firestore, 'purchases'))
         : query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin]);
+  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
   const { data: purchasesData, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesRef);
 
   const purchases = useMemo(() => {
@@ -173,12 +174,12 @@ export default function PurchasesPage() {
     
     purchaseItems.forEach(item => {
         const product = products.find(p => p.id === item.productId);
-        if (product) {
+        if (product && settings) {
             const itemSubtotal = item.cost * item.quantity;
-            if(product.tax1 && settings.tax1 > 0) {
+            if(product.tax1 && settings.tax1 && settings.tax1 > 0) {
                 tax1Amount += itemSubtotal * (settings.tax1 / 100);
             }
-            if(product.tax2 && settings.tax2 > 0) {
+            if(product.tax2 && settings.tax2 && settings.tax2 > 0) {
                 tax2Amount += itemSubtotal * (settings.tax2 / 100);
             }
         }
@@ -192,6 +193,7 @@ export default function PurchasesPage() {
 
 
   const handleAddNewSupplier = async () => {
+    if (!firestore || !activeStoreId) return;
     if (newSupplier.name.trim() === "") {
         toast({ variant: "destructive", title: "Nombre inválido" });
         return;
@@ -216,6 +218,7 @@ export default function PurchasesPage() {
   };
   
   const handleProcessPurchase = async () => {
+    if (!firestore || !activeStoreId) return;
     if (purchaseItems.length === 0) {
       toast({ variant: "destructive", title: "Orden vacía", description: "Agrega productos para procesar la compra." });
       return;
@@ -536,13 +539,13 @@ export default function PurchasesPage() {
                             <span>Subtotal</span>
                             <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
                         </div>
-                        {settings.tax1 > 0 && tax1Amount > 0 && (
+                        {settings?.tax1 && settings.tax1 > 0 && tax1Amount > 0 && (
                             <div className="flex justify-between">
                                 <span>Impuesto {settings.tax1}%</span>
                                 <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</span>
                             </div>
                         )}
-                        {settings.tax2 > 0 && tax2Amount > 0 && (
+                        {settings?.tax2 && settings.tax2 > 0 && tax2Amount > 0 && (
                             <div className="flex justify-between">
                                 <span>Impuesto {settings.tax2}%</span>
                                 <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
@@ -584,5 +587,3 @@ export default function PurchasesPage() {
     </div>
   );
 }
-
-    

@@ -105,13 +105,13 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
 export default function AdsPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const router = useRouter();
   
   const adsQuery = useMemo(() => {
-    if (!firestore) return null;
+    if (isUserLoading || !firestore) return null;
     return query(collection(firestore, 'ads'));
-  }, [firestore]);
+  }, [firestore, isUserLoading]);
   const { data: adsData = [], isLoading } = useCollection<Ad>(adsQuery);
 
   const ads = useMemo(() => {
@@ -129,7 +129,7 @@ export default function AdsPage() {
   };
   
   async function handleUpdateAd(data: Omit<Ad, 'id' | 'views' | 'createdAt'> & { id?: string }) {
-    if (!data.id) return false;
+    if (!data.id || !firestore) return false;
 
     const adRef = doc(firestore, 'ads', data.id);
     await setDoc(adRef, data, { merge: true });
@@ -143,6 +143,7 @@ export default function AdsPage() {
   }
 
   async function handleCreateAd(data: Omit<Ad, 'id' | 'views' | 'createdAt'>) {
+    if (!firestore) return false;
     const newAd: Ad = {
       ...data,
       id: `ad-${Date.now()}`,
@@ -163,6 +164,7 @@ export default function AdsPage() {
   }
   
   const handleDelete = async (adId: string) => {
+    if (!firestore) return;
     const adRef = doc(firestore, 'ads', adId);
     await deleteDoc(adRef);
 
@@ -303,5 +305,3 @@ export default function AdsPage() {
     </>
   );
 }
-
-    

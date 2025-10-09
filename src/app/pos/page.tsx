@@ -70,40 +70,41 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
 export default function POSPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
-  const { settings, setSettings, activeSymbol, activeRate, activeStoreId, userProfile } = useSettings();
+  const { settings, setSettings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
+  const { isUserLoading } = useUser();
   
   const isSuperAdmin = userProfile?.role === 'superAdmin';
 
   const productsRef = useMemo(() => {
-    if (!firestore) return null;
+    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
     return isSuperAdmin
         ? query(collectionGroup(firestore, 'products'))
         : query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin]);
+  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
   const { data: products = [], isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
 
   const customersRef = useMemo(() => {
-    if (!firestore) return null;
+    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
     return isSuperAdmin
         ? query(collectionGroup(firestore, 'customers'))
         : query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin]);
+  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
   const { data: customers = [], isLoading: isLoadingCustomers } = useCollection<Customer>(customersRef);
   
   const pendingOrdersQuery = useMemo(() => {
-    if (!firestore) return null;
+    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
     return isSuperAdmin
         ? query(collectionGroup(firestore, 'pendingOrders'), orderBy('date', 'desc'))
         : query(collection(firestore, 'pendingOrders'), where('storeId', '==', activeStoreId), orderBy('date', 'desc'));
-  }, [firestore, activeStoreId, isSuperAdmin]);
+  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
   const { data: pendingOrders = [], isLoading: isLoadingPendingOrders } = useCollection<PendingOrder>(pendingOrdersQuery);
   
   const salesRef = useMemo(() => {
-    if (!firestore) return null;
+    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
     return isSuperAdmin
         ? query(collectionGroup(firestore, 'sales'))
         : query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin]);
+  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
   const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
 
   const sales = useMemo(() => {
@@ -112,11 +113,11 @@ export default function POSPage() {
   }, [salesData]);
 
   const familiesRef = useMemo(() => {
-    if (!firestore) return null;
+    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
     return isSuperAdmin
         ? query(collectionGroup(firestore, 'families'), orderBy('name', 'asc'))
         : query(collection(firestore, 'families'), where('storeId', '==', activeStoreId), orderBy('name', 'asc'));
-  }, [firestore, activeStoreId, isSuperAdmin]);
+  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
   const { data: families = [], isLoading: isLoadingFamilies } = useCollection<Family>(familiesRef);
 
   const isLoading = isLoadingProducts || isLoadingCustomers || isLoadingPendingOrders || isLoadingSales || isLoadingFamilies;
@@ -147,7 +148,7 @@ export default function POSPage() {
   const [productImageError, setImageError] = useState(false);
   
   const generateSaleId = () => {
-    const series = settings.saleSeries || 'SALE';
+    const series = settings?.saleSeries || 'SALE';
     const highestId = (sales || []).reduce((max, sale) => {
         if (!sale.id.startsWith(series + '-')) return max;
         const parts = sale.id.split('-');
@@ -234,10 +235,10 @@ export default function POSPage() {
     let tax2Amount = 0;
     
     cartItems.forEach(item => {
-      if(item.product.tax1 && settings.tax1 > 0) {
+      if(item.product.tax1 && settings && settings.tax1 && settings.tax1 > 0) {
         tax1Amount += item.price * item.quantity * (settings.tax1 / 100);
       }
-      if(item.product.tax2 && settings.tax2 > 0) {
+      if(item.product.tax2 && settings && settings.tax2 && settings.tax2 > 0) {
         tax2Amount += item.price * item.quantity * (settings.tax2 / 100);
       }
     });
@@ -310,6 +311,10 @@ export default function POSPage() {
       toast({ variant: "destructive", title: "Carrito vacío"});
       return;
     }
+    if (!firestore || !activeStoreId || !settings) {
+        toast({ variant: "destructive", title: "Error", description: "La configuración de la tienda no está disponible."});
+        return;
+    }
     
     const isCreditSale = remainingBalance > 0;
 
@@ -369,7 +374,7 @@ export default function POSPage() {
     }
     
     // 3. Update correlative in settings
-    setSettings({ ...settings, saleCorrelative: settings.saleCorrelative + 1 });
+    setSettings({ ...settings, saleCorrelative: (settings.saleCorrelative || 0) + 1 });
     
     try {
         await batch.commit();
@@ -417,6 +422,7 @@ export default function POSPage() {
   };
 
   const handleAddNewCustomer = async () => {
+    if (!firestore || !activeStoreId) return;
     if (newCustomer.name.trim() === "" || newCustomer.phone.trim() === "") {
         toast({
             variant: "destructive",
@@ -470,6 +476,7 @@ export default function POSPage() {
   const isNewCustomerFormDirty = newCustomer.name.trim() !== '' || newCustomer.id.trim() !== '' || newCustomer.phone.trim() !== '' || newCustomer.address.trim() !== '';
   
   const loadPendingOrder = async (order: PendingOrder) => {
+    if (!firestore || !activeStoreId) return;
     if (cartItems.length > 0) {
         toast({
             variant: "destructive",
@@ -852,13 +859,13 @@ export default function POSPage() {
                         <span>Subtotal</span>
                         <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
                     </div>
-                     {settings.tax1 > 0 && (
+                     {settings?.tax1 && settings.tax1 > 0 && (
                         <div className="flex justify-between">
                             <span>Impuesto {settings.tax1}%</span>
                             <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</span>
                         </div>
                     )}
-                    {settings.tax2 > 0 && (
+                    {settings?.tax2 && settings.tax2 > 0 && (
                         <div className="flex justify-between">
                             <span>Impuesto {settings.tax2}%</span>
                             <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
@@ -1032,5 +1039,3 @@ export default function POSPage() {
   </Dialog>
   );
 }
-
-    

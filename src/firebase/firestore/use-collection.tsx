@@ -54,6 +54,7 @@ export function useCollection<T = any>(
   const shouldFetch = !!memoizedTargetRefOrQuery && !isUserLoading;
 
   useEffect(() => {
+    // Critical Guard: Do not proceed if the query is not ready or user is loading.
     if (!shouldFetch) {
       setData(null);
       return;
@@ -76,6 +77,7 @@ export function useCollection<T = any>(
         if ('path' in memoizedTargetRefOrQuery) {
             path = (memoizedTargetRefOrQuery as CollectionReference).path;
         } else {
+            // Attempt to reconstruct path for a query. This might be brittle.
             path = `Query on collection: ${(memoizedTargetRefOrQuery as any)._query?.path?.segments?.join('/') || ''}`;
         }
         
@@ -87,6 +89,7 @@ export function useCollection<T = any>(
         setError(contextualError)
         setData(null)
 
+        // Emit for global error handling (e.g., Next.js error overlay)
         errorEmitter.emit('permission-error', contextualError);
       }
     );
@@ -95,5 +98,8 @@ export function useCollection<T = any>(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memoizedTargetRefOrQuery, shouldFetch]);
 
-  return { data, isLoading: !shouldFetch && data === null, error };
+  // isLoading is true if we don't have a valid query/user yet AND we haven't loaded any data before.
+  const isLoading = !shouldFetch && data === null;
+
+  return { data, isLoading, error };
 }

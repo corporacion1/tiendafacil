@@ -19,29 +19,30 @@ import { useSettings } from "@/contexts/settings-context";
 import { paymentMethods } from "@/lib/data";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { useCollection, useFirestore } from "@/firebase";
+import { useCollection, useFirestore, useUser } from "@/firebase";
 import { collection, doc, orderBy, query, where, writeBatch, collectionGroup } from "firebase/firestore";
 
 export default function CreditsPage() {
     const { toast } = useToast();
     const firestore = useFirestore();
-    const { settings, activeSymbol, activeRate, activeStoreId, userProfile } = useSettings();
+    const { settings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
+    const { isUserLoading } = useUser();
     const isSuperAdmin = userProfile?.role === 'superAdmin';
 
     const salesQuery = useMemo(() => {
-        if (!firestore) return null;
+        if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
         return isSuperAdmin
             ? query(collectionGroup(firestore, 'sales'))
             : query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
-    }, [firestore, activeStoreId, isSuperAdmin]);
+    }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
     const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
     
     const { data: productsData, isLoading: isLoadingProducts } = useCollection<Product>(useMemo(() => {
-        if (!firestore) return null;
+        if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
         return isSuperAdmin
             ? query(collectionGroup(firestore, 'products'))
             : query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
-    }, [firestore, activeStoreId, isSuperAdmin]));
+    }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]));
 
     const sales = useMemo(() => {
         if (!salesData) return [];
@@ -127,7 +128,7 @@ export default function CreditsPage() {
     }
 
     const handleSavePayments = async () => {
-        if (!selectedSale || payments.length === 0) {
+        if (!selectedSale || payments.length === 0 || !firestore) {
             toast({ variant: "destructive", title: "No hay pagos que guardar." });
             return;
         }
@@ -442,5 +443,3 @@ export default function CreditsPage() {
         </>
     );
 }
-
-    
