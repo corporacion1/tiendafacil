@@ -17,7 +17,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
     const { isSecurityReady, isLocked, hasPin, lockApp } = useSecurity();
-    const { isLoadingSettings } = useSettings();
+    const { isLoadingSettings, switchStore } = useSettings();
     
     const isPublicPage = pathname === '/login' || pathname.startsWith('/catalog');
 
@@ -29,30 +29,16 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
     useEffect(() => {
-        const isLoading = isUserLoading || isProfileLoading || isLoadingSettings || !isSecurityReady;
-        if (isLoading) return;
-
-        // If trying to access a protected page without being logged in, redirect to login
-        if (!isPublicPage && !user) {
-            router.replace('/login');
-            return;
+        // This effect handles store switching based on user profile
+        if (userProfile && userProfile.storeId && localStorage.getItem('tienda_facil_active_store_id') !== userProfile.storeId) {
+             if (userProfile.role === 'admin') {
+                switchStore(userProfile.storeId);
+             }
         }
+    }, [userProfile, switchStore]);
 
-        // If logged in, handle role-based redirection
-        if (user && userProfile) {
-            if (pathname === '/login') {
-                router.replace('/dashboard');
-                return;
-            }
-            if (userProfile.role === 'user' && !pathname.startsWith('/catalog')) {
-                router.replace('/catalog');
-                return;
-            }
-        }
-        
-    }, [isUserLoading, isProfileLoading, isLoadingSettings, isSecurityReady, user, userProfile, router, pathname, isPublicPage]);
-    
-    useEffect(() => {
+     useEffect(() => {
+        // This effect handles POS locking
         if (!isSecurityReady || !hasPin) return;
         if (pathname !== '/pos' && localStorage.getItem('last_path_was_pos') === 'true') {
             lockApp();
@@ -70,7 +56,26 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
             </div>
         );
     }
+
+    // --- All loading is complete at this point ---
+
+    // Handle redirections
+    if (!isPublicPage && !user) {
+        router.replace('/login');
+        return null; // Render nothing while redirecting
+    }
+
+    if (user && pathname === '/login') {
+        router.replace('/dashboard');
+        return null; // Render nothing while redirecting
+    }
     
+    if (user && userProfile && userProfile.role === 'user' && !pathname.startsWith('/catalog')) {
+        router.replace('/catalog');
+        return null; // Render nothing while redirecting
+    }
+    
+    // Handle security lock
     if (isLocked && !isPublicPage) {
         return <PinModal />;
     }
