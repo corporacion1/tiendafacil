@@ -15,7 +15,7 @@ export const defaultStore: Store = {
   address: "Av. Principal, Local 1, Ciudad",
   phone: "+58 212-555-1234",
   slogan: "¡Gracias por tu compra!",
-  logoUrl: "https://www.dropbox.com/scl/fi/apl8e6ymm6wel3coa10a9/tienda_facil_logo.svg?rlkey=jn7j3dezgn1ovbl35vapk5ap5&raw=1",
+  logoUrl: "/tienda_facil_logo.svg",
   status: 'active',
   primaryCurrencyName: "Dólar Americano",
   primaryCurrencySymbol: "$",
