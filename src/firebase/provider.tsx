@@ -8,6 +8,7 @@ import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import type { UserAuthResult } from './auth/use-user';
 import { Package } from 'lucide-react';
+import { Logo } from '@/components/logo';
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -103,7 +104,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   if (contextValue.isUserLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
-          <Package className="w-16 h-16 text-primary animate-pulse" />
+          <Logo className="w-64 h-20" />
           <p className="text-muted-foreground animate-pulse">Conectando a los servicios...</p>
       </div>
     );

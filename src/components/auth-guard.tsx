@@ -6,7 +6,6 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { doc } from "firebase/firestore";
 import type { UserProfile } from "@/lib/types";
-import { Logo } from "./logo";
 import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
 import { PinModal } from "./pin-modal";
@@ -17,27 +16,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
     const { isSecurityReady, isLocked, hasPin, lockApp } = useSecurity();
-    const { isLoadingSettings, switchStore } = useSettings();
+    const { isLoadingSettings, userProfile } = useSettings();
     
-    const isPublicPage = pathname === '/' || pathname.startsWith('/catalog');
-
-    const userProfileRef = useMemo(() => {
-        if (!user) return null;
-        return doc(firestore, 'users', user.uid);
-    }, [user, firestore]);
-
-    const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
+    const isPublicPage = pathname === '/' || pathname.startsWith('/catalog') || pathname.startsWith('/login');
 
     useEffect(() => {
-        // This effect handles store switching based on user profile
-        if (userProfile && userProfile.storeId && localStorage.getItem('tienda_facil_active_store_id') !== userProfile.storeId) {
-             if (userProfile.role === 'admin') {
-                switchStore(userProfile.storeId);
-             }
-        }
-    }, [userProfile, switchStore]);
-
-     useEffect(() => {
         // This effect handles POS locking
         if (!isSecurityReady || !hasPin) return;
         if (pathname !== '/pos' && localStorage.getItem('last_path_was_pos') === 'true') {
@@ -46,7 +29,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         localStorage.setItem('last_path_was_pos', (pathname === '/pos').toString());
     }, [pathname, lockApp, hasPin, isSecurityReady]);
 
-    const isLoading = isUserLoading || isProfileLoading || isLoadingSettings || !isSecurityReady;
+    const isLoading = isUserLoading || isLoadingSettings || !isSecurityReady;
     
     // Handle redirections after loading is complete
     useEffect(() => {
@@ -56,26 +39,18 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
             router.replace('/');
         }
     
-        if (user && pathname === '/') {
+        if (user && (pathname === '/' || pathname === '/login')) {
             router.replace('/dashboard');
         }
         
+        // This check needs to happen after we know the user's role.
         if (user && userProfile && userProfile.role === 'user' && !pathname.startsWith('/catalog') && pathname !== '/') {
             router.replace('/catalog');
         }
 
     }, [isLoading, isPublicPage, user, userProfile, pathname, router]);
 
-    if (isLoading) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
-                <Logo className="w-64 h-20" />
-                <p className="text-muted-foreground animate-pulse">Verificando sesión y permisos...</p>
-            </div>
-        );
-    }
-    
-    // Handle security lock
+    // The main loading screen is now in FirebaseProvider. AuthGuard assumes services are ready.
     if (isLocked && !isPublicPage) {
         return <PinModal />;
     }

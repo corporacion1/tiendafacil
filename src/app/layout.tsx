@@ -32,10 +32,10 @@ export default function RootLayout({
           <FirebaseClientProvider>
             <SettingsProvider>
               <SecurityProvider>
-                <div className="flex min-h-screen w-full flex-col">
-                  <AppShell>{children}</AppShell>
-                  <Toaster />
-                </div>
+                <AppShell>
+                  {children}
+                </AppShell>
+                <Toaster />
               </SecurityProvider>
             </SettingsProvider>
           </FirebaseClientProvider>

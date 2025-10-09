@@ -7,7 +7,6 @@ import { useToast } from "@/hooks/use-toast";
 import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc, query, orderBy } from 'firebase/firestore';
-import { Package } from 'lucide-react';
 import { defaultStoreId } from '@/lib/data';
 
 type DisplayCurrency = 'primary' | 'secondary';
@@ -38,7 +37,15 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  const [activeStoreId, setActiveStoreId] = useState<string>(''); // INICIALIZAR VACÍO
+  // Initialize activeStoreId synchronously
+  const getInitialStoreId = () => {
+      if (typeof window !== 'undefined') {
+          return localStorage.getItem(ACTIVE_STORE_ID_KEY) || defaultStoreId;
+      }
+      return defaultStoreId;
+  };
+  
+  const [activeStoreId, setActiveStoreId] = useState<string>(getInitialStoreId);
   const [isLoading, setIsLoading] = useState(true);
 
   const userProfileRef = useMemo(() => {
@@ -48,23 +55,33 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
 
- useEffect(() => {
+  // This effect synchronizes the storeId based on user profile changes
+  useEffect(() => {
     if (isUserLoading || isLoadingProfile) {
-        return; // Esperar a que el usuario y el perfil estén listos
+        return;
     }
 
     const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_KEY);
     
+    // If the user is a superAdmin and has a stored storeId, respect it.
     if (userProfile?.role === 'superAdmin' && storedStoreId) {
-        setActiveStoreId(storedStoreId);
+        if (activeStoreId !== storedStoreId) {
+            setActiveStoreId(storedStoreId);
+        }
+    // If the user has a specific storeId in their profile (e.g., an admin)
     } else if (userProfile?.storeId) {
-        setActiveStoreId(userProfile.storeId);
+        if (activeStoreId !== userProfile.storeId) {
+            setActiveStoreId(userProfile.storeId);
+            localStorage.setItem(ACTIVE_STORE_ID_KEY, userProfile.storeId);
+        }
+    // Fallback for logged-in users without a specific store, or logged-out users
     } else {
-        // Como último recurso, si no hay nada, usar el ID por defecto real.
-        setActiveStoreId(defaultStoreId);
+        if (activeStoreId !== defaultStoreId) {
+            setActiveStoreId(defaultStoreId);
+            localStorage.setItem(ACTIVE_STORE_ID_KEY, defaultStoreId);
+        }
     }
-  }, [isUserLoading, isLoadingProfile, userProfile]);
-
+  }, [isUserLoading, isLoadingProfile, userProfile, activeStoreId]);
 
   const canFetchStoreData = !!firestore && !!activeStoreId;
 
@@ -84,7 +101,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   
-
   useEffect(() => {
     try {
       const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY) as DisplayCurrency;
@@ -97,10 +113,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, []);
   
   useEffect(() => {
-    // A consolidated loading state
-    const overallLoading = isLoadingSettingsDoc || isLoadingRates || isLoadingProfile || isUserLoading || !activeStoreId;
+    const overallLoading = isLoadingSettingsDoc || isLoadingRates || isLoadingProfile || isUserLoading;
     setIsLoading(overallLoading);
-  }, [isLoadingSettingsDoc, isLoadingRates, isLoadingProfile, isUserLoading, activeStoreId]);
+  }, [isLoadingSettingsDoc, isLoadingRates, isLoadingProfile, isUserLoading]);
   
   const handleSetSettings = (newSettings: Settings) => {
     if (!settingsDocRef) {
@@ -140,15 +155,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   
   const latestRate = currencyRatesData?.[0]?.rate;
   const activeRate = activeCurrency === 'primary' ? 1 : (latestRate && latestRate > 0 ? latestRate : 1);
-
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
-        <Package className="w-16 h-16 text-primary animate-pulse" />
-        <p className="text-muted-foreground animate-pulse">Cargando configuración de la tienda...</p>
-      </div>
-    );
-  }
 
   return (
     <SettingsContext.Provider value={{ 
