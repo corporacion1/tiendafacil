@@ -58,6 +58,8 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '4mb',
     },
+    // This allows cross-origin requests in development, which is necessary for Firebase Studio.
+    allowedDevOrigins: ["https://*.cloudworkstations.dev"],
   },
 };
 
