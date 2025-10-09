@@ -18,7 +18,7 @@ import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { AdForm } from "@/components/ad-form";
 import { format, isPast } from "date-fns";
 import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
-import { collection, deleteDoc, doc, orderBy, setDoc, writeBatch } from "firebase/firestore";
+import { collection, deleteDoc, doc, orderBy, query, setDoc, writeBatch } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
 const AdRow = ({ ad, handleEdit, setAdToDelete }: {
