@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Unit, Family, Warehouse, CurrencyRate, Product } from "@/lib/types";
+import { Unit, Family, Warehouse, CurrencyRate, Product, Settings } from "@/lib/types";
 import { Pencil, PlusCircle, Trash2, AlertTriangle, Database } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { factoryReset, businessCategories } from "@/lib/data";
 import { seedDatabase } from "@/lib/seed";
 import { collection, orderBy, query, writeBatch, doc } from "firebase/firestore";
+import _ from 'lodash';
 
 
 function ChangePinDialog() {
@@ -117,7 +118,8 @@ export default function SettingsPage() {
     const { settings, setSettings, currencyRates, isLoadingSettings, userProfile } = useSettings();
     const firestore = useFirestore();
     
-    const [localSettings, setLocalSettings] = useState(settings);
+    // State to hold the form data. Initialized from the context.
+    const [localSettings, setLocalSettings] = useState<Settings | null>(settings);
 
     const { data: units = [] } = useCollection<Unit>(useMemoFirebase(() => query(collection(firestore, 'units'), orderBy('name', 'asc')), [firestore]));
     const { data: families = [] } = useCollection<Family>(useMemoFirebase(() => query(collection(firestore, 'families'), orderBy('name', 'asc')), [firestore]));
@@ -151,13 +153,23 @@ export default function SettingsPage() {
 
     const isSuperAdmin = userProfile?.role === 'superAdmin';
 
-     useEffect(() => {
-        // This effect now ONLY runs when the initial settings from the context change.
-        // It initializes the form's state. Subsequent user edits will not be overridden.
+    // This effect synchronizes the local form state with the settings from the context.
+    // It runs whenever the 'settings' from the context changes.
+    useEffect(() => {
         if (settings) {
             setLocalSettings(settings);
         }
     }, [settings]);
+
+    // This effect calculates if the form is "dirty" (has changes)
+    useEffect(() => {
+        if (!settings || !localSettings) {
+            setIsDirty(false);
+            return;
+        }
+        // Use a deep comparison to check for any changes in the form data.
+        setIsDirty(!_.isEqual(settings, localSettings));
+    }, [localSettings, settings]);
 
     useEffect(() => {
         setLocalUnits(units);
@@ -176,20 +188,6 @@ export default function SettingsPage() {
         setLocalCurrencyRates(fetchedRates);
       }
     }, [fetchedRates]);
-    
-    useEffect(() => {
-        if (!localSettings || !settings) {
-            setIsDirty(false);
-            return;
-        };
-        const mainSettingsChanged = JSON.stringify(localSettings) !== JSON.stringify(settings);
-        const unitsChanged = JSON.stringify(localUnits) !== JSON.stringify(units);
-        const familiesChanged = JSON.stringify(localFamilies) !== JSON.stringify(families);
-        const warehousesChanged = JSON.stringify(localWarehouses) !== JSON.stringify(warehouses);
-        const ratesChanged = JSON.stringify(localCurrencyRates) !== JSON.stringify(fetchedRates);
-
-        setIsDirty(mainSettingsChanged || unitsChanged || familiesChanged || warehousesChanged || ratesChanged);
-    }, [localSettings, settings, localUnits, localFamilies, localWarehouses, localCurrencyRates, units, families, warehouses, fetchedRates]);
 
     const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
@@ -212,20 +210,6 @@ export default function SettingsPage() {
 
         // Save main settings
         setSettings(localSettings);
-
-        // Save units, families, warehouses
-        (localUnits || []).forEach(unit => {
-            const unitRef = doc(firestore, 'units', unit.id);
-            batch.set(unitRef, unit, { merge: true });
-        });
-        (localFamilies || []).forEach(family => {
-            const familyRef = doc(firestore, 'families', family.id);
-            batch.set(familyRef, family, { merge: true });
-        });
-        (localWarehouses || []).forEach(wh => {
-            const whRef = doc(firestore, 'warehouses', wh.id);
-            batch.set(whRef, wh, { merge: true });
-        });
         
         try {
             await batch.commit();
@@ -545,8 +529,8 @@ export default function SettingsPage() {
         });
     }
 
-    if (isLoadingSettings || !localSettings) {
-        return <div className="text-center p-8">Cargando configuración...</div>
+    if (!localSettings) {
+        return null;
     }
 
     return (
@@ -560,11 +544,11 @@ export default function SettingsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="storeName">Nombre de la Tienda</Label>
-                            <Input id="storeName" value={localSettings?.storeName || ''} onChange={handleSettingsChange} placeholder="Mi Tienda Increíble" maxLength={45} />
+                            <Input id="storeName" value={localSettings.storeName || ''} onChange={handleSettingsChange} placeholder="Mi Tienda Increíble" maxLength={45} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="businessType">Tipo de Negocio</Label>
-                            <Select value={localSettings?.businessType || ''} onValueChange={(value) => handleSelectChange('businessType', value)}>
+                            <Select value={localSettings.businessType || ''} onValueChange={(value) => handleSelectChange('businessType', value)}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Selecciona un tipo de negocio" />
                                 </SelectTrigger>
@@ -579,15 +563,15 @@ export default function SettingsPage() {
                         </div>
                         <div className="space-y-2 md:col-span-2">
                             <Label htmlFor="storeAddress">Dirección</Label>
-                            <Input id="storeAddress" value={localSettings?.storeAddress || ''} onChange={handleSettingsChange} placeholder="Calle Falsa 123" maxLength={55} />
+                            <Input id="storeAddress" value={localSettings.storeAddress || ''} onChange={handleSettingsChange} placeholder="Calle Falsa 123" maxLength={55} />
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="storePhone">Teléfono (para el ticket)</Label>
-                            <Input id="storePhone" value={localSettings?.storePhone || ''} onChange={handleSettingsChange} placeholder="+58-412-1234567" maxLength={15} />
+                            <Input id="storePhone" value={localSettings.storePhone || ''} onChange={handleSettingsChange} placeholder="+58-412-1234567" maxLength={15} />
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="storeSlogan">Slogan o Mensaje para el Ticket</Label>
-                            <Input id="storeSlogan" value={localSettings?.storeSlogan || ''} onChange={handleSettingsChange} placeholder="¡Gracias por tu compra!" maxLength={55} />
+                            <Input id="storeSlogan" value={localSettings.storeSlogan || ''} onChange={handleSettingsChange} placeholder="¡Gracias por tu compra!" maxLength={55} />
                         </div>
                     </div>
                     
@@ -596,12 +580,12 @@ export default function SettingsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="saleSeries">Serie de Venta</Label>
-                            <Input id="saleSeries" value={localSettings?.saleSeries || ''} onChange={handleSettingsChange} placeholder="Ej: SALE" maxLength={11} />
+                            <Input id="saleSeries" value={localSettings.saleSeries || ''} onChange={handleSettingsChange} placeholder="Ej: SALE" maxLength={11} />
                             <CardDescription>Prefijo para los números de control de venta.</CardDescription>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="saleCorrelative">Próximo Correlativo</Label>
-                            <Input id="saleCorrelative" type="number" value={localSettings?.saleCorrelative || 0} readOnly />
+                            <Input id="saleCorrelative" type="number" value={localSettings.saleCorrelative || 0} readOnly />
                              <CardDescription>El número de la próxima venta. Se actualiza automáticamente.</CardDescription>
                         </div>
                     </div>
@@ -611,12 +595,12 @@ export default function SettingsPage() {
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="tax1">Impuesto 1 (%)</Label>
-                            <Input id="tax1" type="number" value={localSettings?.tax1 || 0} onChange={handleNumberSettingsChange} placeholder="Ej: 16" />
+                            <Input id="tax1" type="number" value={localSettings.tax1 || 0} onChange={handleNumberSettingsChange} placeholder="Ej: 16" />
                             <CardDescription>Impuesto general sobre las ventas (IVA).</CardDescription>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="tax2">Impuesto 2 (%)</Label>
-                            <Input id="tax2" type="number" value={localSettings?.tax2 || 0} onChange={handleNumberSettingsChange} placeholder="Ej: 5" />
+                            <Input id="tax2" type="number" value={localSettings.tax2 || 0} onChange={handleNumberSettingsChange} placeholder="Ej: 5" />
                              <CardDescription>Impuesto especial o selectivo.</CardDescription>
                         </div>
                     </div>
@@ -645,22 +629,22 @@ export default function SettingsPage() {
                             <h3 className="font-semibold text-lg">Moneda Principal</h3>
                             <div className="space-y-2">
                                 <Label htmlFor="primaryCurrencyName">Nombre de la Moneda</Label>
-                                <Input id="primaryCurrencyName" value={localSettings?.primaryCurrencyName || ''} onChange={handleSettingsChange} placeholder="Dólar" maxLength={20} />
+                                <Input id="primaryCurrencyName" value={localSettings.primaryCurrencyName || ''} onChange={handleSettingsChange} placeholder="Dólar" maxLength={20} />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="primaryCurrencySymbol">Símbolo</Label>
-                                <Input id="primaryCurrencySymbol" value={localSettings?.primaryCurrencySymbol || ''} onChange={handleSettingsChange} placeholder="$" maxLength={4} />
+                                <Input id="primaryCurrencySymbol" value={localSettings.primaryCurrencySymbol || ''} onChange={handleSettingsChange} placeholder="$" maxLength={4} />
                             </div>
                         </div>
                         <div className="space-y-4 p-4 border rounded-lg">
                             <h3 className="font-semibold text-lg">Moneda Secundaria</h3>
                             <div className="space-y-2">
                                 <Label htmlFor="secondaryCurrencyName">Nombre de la Moneda</Label>
-                                <Input id="secondaryCurrencyName" value={localSettings?.secondaryCurrencyName || ''} onChange={handleSettingsChange} placeholder="Bolívares" maxLength={20} />
+                                <Input id="secondaryCurrencyName" value={localSettings.secondaryCurrencyName || ''} onChange={handleSettingsChange} placeholder="Bolívares" maxLength={20} />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="secondaryCurrencySymbol">Símbolo</Label>
-                                <Input id="secondaryCurrencySymbol" value={localSettings?.secondaryCurrencySymbol || ''} onChange={handleSettingsChange} placeholder="Bs." maxLength={4} />
+                                <Input id="secondaryCurrencySymbol" value={localSettings.secondaryCurrencySymbol || ''} onChange={handleSettingsChange} placeholder="Bs." maxLength={4} />
                             </div>
                         </div>
                     </div>
@@ -669,7 +653,7 @@ export default function SettingsPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
-                            <h4 className="font-medium">Registrar Tasa ({localSettings?.secondaryCurrencyName || '...'})</h4>
+                            <h4 className="font-medium">Registrar Tasa ({localSettings.secondaryCurrencyName || '...'})</h4>
                             <div className="flex items-center gap-2">
                                 <Input 
                                     id="newRate" 
@@ -688,7 +672,7 @@ export default function SettingsPage() {
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>¿Confirmar Nueva Tasa?</AlertDialogTitle>
                                             <AlertDialogDescription>
-                                                Estás a punto de guardar una nueva tasa de cambio de ${newRate.toFixed(6)} {localSettings?.secondaryCurrencySymbol}. ¿Estás seguro?
+                                                Estás a punto de guardar una nueva tasa de cambio de ${newRate.toFixed(6)} {localSettings.secondaryCurrencySymbol}. ¿Estás seguro?
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
@@ -713,7 +697,7 @@ export default function SettingsPage() {
                                         {localCurrencyRates.length > 0 ? localCurrencyRates.map(rate => (
                                             <TableRow key={rate.id}>
                                                 <TableCell>{rate.date ? format(parseISO(rate.date as string), "dd/MM/yy HH:mm") : 'N/A'}</TableCell>
-                                                <TableCell className="text-right font-mono">{`${rate.rate.toFixed(6)} ${localSettings?.secondaryCurrencySymbol || ''}`}</TableCell>
+                                                <TableCell className="text-right font-mono">{`${rate.rate.toFixed(6)} ${localSettings.secondaryCurrencySymbol || ''}`}</TableCell>
                                             </TableRow>
                                         )) : (
                                             <TableRow>
@@ -741,16 +725,16 @@ export default function SettingsPage() {
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="storeWhatsapp">Teléfono de WhatsApp</Label>
-                            <Input id="storeWhatsapp" value={localSettings?.storeWhatsapp || ''} onChange={handleSettingsChange} placeholder="+58-412-1112233" />
+                            <Input id="storeWhatsapp" value={localSettings.storeWhatsapp || ''} onChange={handleSettingsChange} placeholder="+58-412-1112233" />
                             <CardDescription>Este número se usará para los enlaces de WhatsApp.</CardDescription>
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="storeTiktok">Usuario de TikTok</Label>
-                            <Input id="storeTiktok" value={localSettings?.storeTiktok || ''} onChange={handleSettingsChange} placeholder="@tu-usuario-tiktok" />
+                            <Input id="storeTiktok" value={localSettings.storeTiktok || ''} onChange={handleSettingsChange} placeholder="@tu-usuario-tiktok" />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="storeMeta">Usuario de Meta (Instagram, Facebook, X)</Label>
-                            <Input id="storeMeta" value={localSettings?.storeMeta || ''} onChange={handleSettingsChange} placeholder="@tu-usuario-meta" />
+                            <Input id="storeMeta" value={localSettings.storeMeta || ''} onChange={handleSettingsChange} placeholder="@tu-usuario-meta" />
                         </div>
                     </div>
                 </CardContent>
@@ -910,5 +894,3 @@ export default function SettingsPage() {
         </div>
     );
 }
-
-    

@@ -1,3 +1,4 @@
+
 {
   "name": "nextn",
   "version": "1.0.0.1",
@@ -44,6 +45,7 @@
     "embla-carousel-react": "^8.6.0",
     "firebase": "^11.9.1",
     "genkit": "^1.20.0",
+    "lodash": "^4.17.21",
     "lucide-react": "^0.475.0",
     "next": "15.3.3",
     "next-themes": "^0.3.0",
@@ -59,6 +61,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/lodash": "^4.17.4",
     "@types/node": "^20",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^18",
@@ -69,3 +72,4 @@
     "typescript": "^5"
   }
 }
+

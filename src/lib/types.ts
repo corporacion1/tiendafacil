@@ -1,3 +1,4 @@
+
 import { FieldValue } from 'firebase/firestore';
 
 export type UserRole = 'superAdmin' | 'admin' | 'user';
@@ -42,6 +43,7 @@ export type Product = {
   imageUrl?: string;
   imageHint?: string;
   createdAt: string;
+  storeId: string;
 };
 
 export type CartItem = {
@@ -63,6 +65,7 @@ export type PendingOrder = {
       price: number;
   }[];
   total: number;
+  storeId: string;
 };
 
 export type InventoryMovement = {
