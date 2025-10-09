@@ -17,7 +17,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setIsSidebarExpanded(prev => !prev);
   };
 
-  const isPublicPage = pathname === '/login' || pathname.startsWith('/catalog');
+  const isPublicPage = pathname === '/' || pathname.startsWith('/catalog');
 
   return (
     <AuthGuard>

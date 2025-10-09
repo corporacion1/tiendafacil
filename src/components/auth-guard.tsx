@@ -19,7 +19,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const { isSecurityReady, isLocked, hasPin, lockApp } = useSecurity();
     const { isLoadingSettings, switchStore } = useSettings();
     
-    const isPublicPage = pathname === '/login' || pathname.startsWith('/catalog');
+    const isPublicPage = pathname === '/' || pathname.startsWith('/catalog');
 
     const userProfileRef = useMemo(() => {
         if (!user) return null;
@@ -47,6 +47,24 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }, [pathname, lockApp, hasPin, isSecurityReady]);
 
     const isLoading = isUserLoading || isProfileLoading || isLoadingSettings || !isSecurityReady;
+    
+    // Handle redirections after loading is complete
+    useEffect(() => {
+        if (isLoading) return;
+
+        if (!isPublicPage && !user) {
+            router.replace('/');
+        }
+    
+        if (user && pathname === '/') {
+            router.replace('/dashboard');
+        }
+        
+        if (user && userProfile && userProfile.role === 'user' && !pathname.startsWith('/catalog') && pathname !== '/') {
+            router.replace('/catalog');
+        }
+
+    }, [isLoading, isPublicPage, user, userProfile, pathname, router]);
 
     if (isLoading) {
         return (
@@ -56,24 +74,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
             </div>
         );
     }
-
-    // --- All loading is complete at this point ---
-
-    // Handle redirections
-    if (!isPublicPage && !user) {
-        router.replace('/login');
-        return null; // Render nothing while redirecting
-    }
-
-    if (user && pathname === '/login') {
-        router.replace('/dashboard');
-        return null; // Render nothing while redirecting
-    }
-    
-    if (user && userProfile && userProfile.role === 'user' && !pathname.startsWith('/catalog')) {
-        router.replace('/catalog');
-        return null; // Render nothing while redirecting
-    }
     
     // Handle security lock
     if (isLocked && !isPublicPage) {
@@ -82,5 +82,3 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
     return <>{children}</>;
 }
-
-    

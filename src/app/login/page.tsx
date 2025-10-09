@@ -7,7 +7,9 @@ import { FcGoogle } from 'react-icons/fc';
 import { 
   signInWithRedirect, 
   getRedirectResult,
-  GoogleAuthProvider 
+  GoogleAuthProvider,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 
@@ -18,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Logo } from '@/components/logo';
-import { useAuth, useFirestore, useUser, initiateEmailSignUp, initiateEmailSignIn } from '@/firebase';
+import { useAuth, useFirestore, useUser } from '@/firebase';
 import type { UserProfile } from '@/lib/types';
 import { useSettings } from '@/contexts/settings-context';
 
