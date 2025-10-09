@@ -13,7 +13,6 @@ interface SecurityContextType {
   removePin: () => void;
   changePin: (oldPin: string, newPin: string, confirmPin: string) => boolean;
   checkPin: (pin: string) => boolean;
-  isPinLoading: boolean;
   isSecurityReady: boolean;
 }
 
@@ -25,7 +24,6 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
   const [storedPin, setStoredPin] = useState<string | null>(null);
   const [isLocked, setIsLocked] = useState(true); // Default to locked
   const [hasPin, setHasPin] = useState(false);
-  const [isPinLoading, setIsPinLoading] = useState(true);
   const [isSecurityReady, setIsSecurityReady] = useState(false);
 
   useEffect(() => {
@@ -44,7 +42,6 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
       setIsLocked(false);
       setHasPin(false);
     } finally {
-        setIsPinLoading(false);
         setIsSecurityReady(true);
     }
   }, []);
@@ -122,7 +119,6 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
     removePin,
     changePin,
     checkPin,
-    isPinLoading,
     isSecurityReady,
   };
 
