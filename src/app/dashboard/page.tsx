@@ -49,9 +49,9 @@ export default function Dashboard() {
   
   const salesRef = useMemoFirebase(() => {
     if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId), orderBy('date', 'desc'));
+    return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
   }, [firestore, activeStoreId]);
-  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
+  const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
 
   const purchasesRef = useMemoFirebase(() => {
     if (!firestore || !activeStoreId) return null;
@@ -71,8 +71,14 @@ export default function Dashboard() {
   }, [firestore, activeStoreId]);
   const { data: movementsData, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsRef);
 
+  const sales = useMemo(() => {
+    if (!salesData) return [];
+    return [...salesData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [salesData]);
+
   const recentMovements = useMemo(() => {
-    return (movementsData || []).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    if (!movementsData) return [];
+    return [...movementsData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [movementsData]);
 
   const isLoading = isLoadingSales || isLoadingPurchases || isLoadingProducts || isLoadingMovements;
@@ -353,5 +359,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-    

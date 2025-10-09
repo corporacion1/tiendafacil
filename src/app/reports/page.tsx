@@ -58,7 +58,7 @@ export default function ReportsPage() {
     
     const salesRef = useMemoFirebase(() => {
         if (!firestore || !activeStoreId) return null;
-        return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId), orderBy('date', 'desc'));
+        return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
     }, [firestore, activeStoreId]);
     const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
 
@@ -240,13 +240,18 @@ export default function ReportsPage() {
         if (!dateFilterQuery) return data;
         return data.filter(item => getDate(item.date) >= dateFilterQuery!);
     };
+
+    const sortedSales = useMemo(() => {
+        if (!salesData) return [];
+        return [...salesData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [salesData]);
     
     const filteredSales = useMemo(() => {
-        return filterByDate(salesData || []).filter(s =>
+        return filterByDate(sortedSales).filter(s =>
             (s.id as string).toLowerCase().includes(searchTerm.toLowerCase()) ||
             s.customerName.toLowerCase().includes(searchTerm.toLowerCase())
         ) as Sale[];
-    }, [salesData, searchTerm, dateFilterQuery]);
+    }, [sortedSales, searchTerm, dateFilterQuery]);
 
     const filteredPurchases = useMemo(() => {
         return filterByDate(purchasesData || []).filter(p =>
@@ -679,5 +684,3 @@ export default function ReportsPage() {
     </>
   );
 }
-
-    

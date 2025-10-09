@@ -81,8 +81,13 @@ export default function POSPage() {
   const pendingOrdersQuery = useMemoFirebase(() => query(collection(firestore, 'pendingOrders'), where('storeId', '==', activeStoreId), orderBy('date', 'desc')), [firestore, activeStoreId]);
   const { data: pendingOrders = [], isLoading: isLoadingPendingOrders } = useCollection<PendingOrder>(pendingOrdersQuery);
   
-  const salesRef = useMemoFirebase(() => query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId), orderBy('date', 'desc')), [firestore, activeStoreId]);
-  const { data: sales = [], isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
+  const salesRef = useMemoFirebase(() => query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
+  const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
+
+  const sales = useMemo(() => {
+    if (!salesData) return [];
+    return [...salesData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [salesData]);
 
   const familiesRef = useMemoFirebase(() => query(collection(firestore, 'families'), where('storeId', '==', activeStoreId), orderBy('name', 'asc')), [firestore, activeStoreId]);
   const { data: families = [], isLoading: isLoadingFamilies } = useCollection<Family>(familiesRef);

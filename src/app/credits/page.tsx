@@ -29,7 +29,7 @@ export default function CreditsPage() {
 
     const salesQuery = useMemoFirebase(() => {
         if (!firestore || !activeStoreId) return null;
-        return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId), orderBy('date', 'desc'));
+        return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
     }, [firestore, activeStoreId]);
     const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
     
@@ -37,6 +37,11 @@ export default function CreditsPage() {
         if (!firestore || !activeStoreId) return null;
         return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
     }, [firestore, activeStoreId]));
+
+    const sales = useMemo(() => {
+        if (!salesData) return [];
+        return [...salesData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [salesData]);
 
     const isLoading = isLoadingSales || isLoadingProducts;
 
@@ -50,7 +55,7 @@ export default function CreditsPage() {
 
     const [searchTerm, setSearchTerm] = useState("");
     
-    const creditSales = useMemo(() => (salesData || []).filter(s => s.transactionType === 'credito'), [salesData]);
+    const creditSales = useMemo(() => (sales || []).filter(s => s.transactionType === 'credito'), [sales]);
     
     const totalNewPayment = useMemo(() => payments.reduce((sum, p) => sum + p.amount, 0), [payments]);
     const remainingBalance = useMemo(() => selectedSale ? selectedSale.total - (selectedSale.paidAmount || 0) : 0, [selectedSale]);
@@ -432,5 +437,3 @@ export default function CreditsPage() {
         </>
     );
 }
-
-    
