@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc, query, orderBy } from 'firebase/firestore';
-import { Logo } from '@/components/logo';
+import { Package } from 'lucide-react';
 
 type DisplayCurrency = 'primary' | 'secondary';
 
@@ -153,7 +153,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   if (isLoading && !isPublicPage) {
       return (
          <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
-            <Logo className="w-64 h-20" />
+            <div className="w-64 h-20 flex items-center justify-center">
+              <Package className="h-16 w-16 text-muted-foreground" />
+            </div>
             <p className="text-muted-foreground animate-pulse">Cargando configuración y datos de usuario...</p>
         </div>
       );

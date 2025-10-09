@@ -83,6 +83,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         return <>{children}</>;
     }
 
+    // Fallback loading/permission check screen
     return (
       <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
         <Logo className="w-64 h-20" />
