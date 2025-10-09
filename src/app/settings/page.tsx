@@ -117,7 +117,7 @@ export default function SettingsPage() {
     const { hasPin, setPin, removePin, checkPin } = useSecurity();
     const { settings, setSettings: saveContextSettings, isLoadingSettings, userProfile } = useSettings();
     const firestore = useFirestore();
-    const [localSettings, setLocalSettings] = useState<Settings | null>(null);
+    const [localSettings, setLocalSettings] = useState<Settings | null>(settings);
     const [isDirty, setIsDirty] = useState(false);
 
     const { data: units = [] } = useCollection<Unit>(useMemoFirebase(() => query(collection(firestore, 'units'), orderBy('name', 'asc')), [firestore]));
@@ -142,12 +142,14 @@ export default function SettingsPage() {
     const [isSeeding, setIsSeeding] = useState(false);
 
     const isSuperAdmin = userProfile?.role === 'superAdmin';
-
+    
     useEffect(() => {
-        if (settings) {
-            setLocalSettings(settings);
-        }
+      // Sync local state when the main settings from context change
+      if (settings && !_.isEqual(settings, localSettings)) {
+          setLocalSettings(settings);
+      }
     }, [settings]);
+
 
     const handleInputChange = (field: keyof Settings, value: any) => {
         if (localSettings) {
@@ -472,12 +474,9 @@ export default function SettingsPage() {
         });
     }
 
-    if (isLoadingSettings || !localSettings) {
-        return (
-            <div className="flex justify-center items-center h-full">
-                <p className="text-muted-foreground animate-pulse">Cargando configuración...</p>
-            </div>
-        );
+    if (!localSettings) {
+      // This happens while settings are loading, the AppLoader will show a global spinner.
+      return null;
     }
 
     return (
@@ -840,5 +839,3 @@ export default function SettingsPage() {
         </div>
     );
 }
-
-    
