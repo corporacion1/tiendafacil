@@ -36,6 +36,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const pathname = usePathname();
+
+  const isPublicPage = useMemo(() => pathname === '/' || pathname.startsWith('/catalog') || pathname.startsWith('/login'), [pathname]);
 
   const getInitialStoreId = () => {
       if (typeof window !== 'undefined') {
@@ -77,7 +80,16 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, [isUserLoading, isLoadingProfile, userProfile, activeStoreId]);
 
-  const canFetchStoreData = useMemo(() => !isUserLoading && !!firestore && !!activeStoreId, [isUserLoading, firestore, activeStoreId]);
+  const canFetchStoreData = useMemo(() => {
+      if(isUserLoading || !firestore) return false;
+      // On public pages, only fetch if the user is already loaded (and potentially logged in)
+      if (isPublicPage) {
+          return !!user;
+      }
+      // On private pages, we can assume we want to fetch once the user is loaded.
+      return true;
+  }, [isUserLoading, firestore, isPublicPage, user]);
+
 
   const settingsDocRef = useMemo(() => {
     if (!canFetchStoreData) return null;
@@ -107,8 +119,10 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, []);
   
   const isLoading = useMemo(() => {
+      // Don't consider it "loading" on public pages if we aren't fetching data
+      if (isPublicPage && !user) return false;
       return isLoadingSettingsDoc || isLoadingRates || isLoadingProfile;
-  }, [isLoadingSettingsDoc, isLoadingRates, isLoadingProfile]);
+  }, [isLoadingSettingsDoc, isLoadingRates, isLoadingProfile, isPublicPage, user]);
   
   const handleSetSettings = (newSettings: Settings) => {
     if (!settingsDocRef) {
