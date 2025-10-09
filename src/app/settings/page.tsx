@@ -115,7 +115,7 @@ function ChangePinDialog() {
 
 export default function SettingsPage() {
     const { hasPin, setPin, removePin, checkPin } = useSecurity();
-    const { settings, setSettings, userProfile } = useSettings();
+    const { settings, setSettings: saveContextSettings, userProfile } = useSettings();
     const firestore = useFirestore();
     
     const [localSettings, setLocalSettings] = useState<Settings | null>(null);
@@ -124,16 +124,8 @@ export default function SettingsPage() {
     const { data: families = [] } = useCollection<Family>(useMemoFirebase(() => query(collection(firestore, 'families'), orderBy('name', 'asc')), [firestore]));
     const { data: warehouses = [] } = useCollection<Warehouse>(useMemoFirebase(() => query(collection(firestore, 'warehouses'), orderBy('name', 'asc')), [firestore]));
     
-    const [localUnits, setLocalUnits] = useState<Unit[]>([]);
-    const [localFamilies, setLocalFamilies] = useState<Family[]>([]);
-    const [localWarehouses, setLocalWarehouses] = useState<Warehouse[]>([]);
-    const [localCurrencyRates, setLocalCurrencyRates] = useState<CurrencyRate[]>([]);
-    
-    const ratesQuery = useMemoFirebase(() => {
-        return query(collection(firestore, 'currencyRates'), orderBy('date', 'desc'));
-    }, [firestore]);
-    const { data: fetchedRates } = useCollection<CurrencyRate>(ratesQuery);
-
+    const ratesQuery = useMemoFirebase(() => query(collection(firestore, 'currencyRates'), orderBy('date', 'desc')), [firestore]);
+    const { data: currencyRates = [] } = useCollection<CurrencyRate>(ratesQuery);
 
     const [isDirty, setIsDirty] = useState(false);
     const [newPin, setNewPin] = useState('');
@@ -152,37 +144,19 @@ export default function SettingsPage() {
 
     const isSuperAdmin = userProfile?.role === 'superAdmin';
 
+    // Effect to initialize and sync local state from context
     useEffect(() => {
         if (settings) {
             setLocalSettings(settings);
         }
     }, [settings]);
 
+    // Effect to check if form is dirty
     useEffect(() => {
         if (settings && localSettings) {
             setIsDirty(!_.isEqual(settings, localSettings));
-        } else {
-            setIsDirty(false);
         }
     }, [localSettings, settings]);
-
-    useEffect(() => {
-        setLocalUnits(units);
-    }, [units]);
-
-    useEffect(() => {
-        setLocalFamilies(families);
-    }, [families]);
-
-    useEffect(() => {
-        setLocalWarehouses(warehouses);
-    }, [warehouses]);
-    
-    useEffect(() => {
-      if (fetchedRates) {
-        setLocalCurrencyRates(fetchedRates);
-      }
-    }, [fetchedRates]);
 
     const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
@@ -200,7 +174,7 @@ export default function SettingsPage() {
 
     const saveAllSettings = () => {
         if (!localSettings) return;
-        setSettings(localSettings);
+        saveContextSettings(localSettings);
         setIsDirty(false);
         toast({ title: "Configuración guardada", description: "Toda la configuración ha sido actualizada." });
     };
@@ -240,13 +214,13 @@ export default function SettingsPage() {
 
         switch(type) {
             case 'unit': 
-                name = nameFinder(localUnits, id);
+                name = nameFinder(units, id);
                 return name ? itemList.some(p => p.unit === name) : false;
             case 'family':
-                name = nameFinder(localFamilies, id);
+                name = nameFinder(families, id);
                 return name ? itemList.some(p => p.family === name) : false;
             case 'warehouse':
-                name = nameFinder(localWarehouses, id);
+                name = nameFinder(warehouses, id);
                 return name ? itemList.some(p => p.warehouse === name) : false;
             default: return false;
         }
@@ -350,7 +324,6 @@ export default function SettingsPage() {
         title: string,
         description: string,
         items: any[],
-        setItems: React.Dispatch<React.SetStateAction<any[]>>,
         type: 'unit' | 'family' | 'warehouse'
     ) => {
         const [newItemName, setNewItemName] = useState('');
@@ -511,6 +484,7 @@ export default function SettingsPage() {
     }
 
     if (!localSettings) {
+        // AppLoader will show a loading screen, so we can just return null here.
         return null;
     }
 
@@ -588,9 +562,9 @@ export default function SettingsPage() {
                      <Separator />
                      <h3 className="text-lg font-medium">Clasificación de Productos</h3>
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-                        {renderManagementCard("Unidades de Medida", "Gestiona las unidades para tus productos.", localUnits, setLocalUnits, 'unit')}
-                        {renderManagementCard("Familias de Productos", "Organiza tus productos en familias.", localFamilies, setLocalFamilies, 'family')}
-                        {renderManagementCard("Almacenes", "Gestiona los almacenes de destino.", localWarehouses, setLocalWarehouses, 'warehouse')}
+                        {renderManagementCard("Unidades de Medida", "Gestiona las unidades para tus productos.", units, 'unit')}
+                        {renderManagementCard("Familias de Productos", "Organiza tus productos en familias.", families, 'family')}
+                        {renderManagementCard("Almacenes", "Gestiona los almacenes de destino.", warehouses, 'warehouse')}
                     </div>
                 </CardContent>
                 <CardFooter className="border-t px-6 py-4 flex justify-end">
@@ -641,7 +615,7 @@ export default function SettingsPage() {
                                     step="0.000001" 
                                     value={newRate || ''} 
                                     onChange={(e) => setNewRate(parseFloat(e.target.value) || 0)} 
-                                    placeholder={localCurrencyRates[0]?.rate.toFixed(6) || "0.000000"}
+                                    placeholder={currencyRates[0]?.rate.toFixed(6) || "0.000000"}
                                     className="flex-grow"
                                 />
                                 <AlertDialog>
@@ -674,7 +648,7 @@ export default function SettingsPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {localCurrencyRates.length > 0 ? localCurrencyRates.map(rate => (
+                                        {currencyRates.length > 0 ? currencyRates.map(rate => (
                                             <TableRow key={rate.id}>
                                                 <TableCell>{rate.date ? format(parseISO(rate.date as string), "dd/MM/yy HH:mm") : 'N/A'}</TableCell>
                                                 <TableCell className="text-right font-mono">{`${rate.rate.toFixed(6)} ${localSettings.secondaryCurrencySymbol || ''}`}</TableCell>
