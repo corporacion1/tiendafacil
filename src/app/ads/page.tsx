@@ -112,31 +112,14 @@ export default function AdsPage() {
   const { data: adsData = [], isLoading } = useCollection<Ad>(adsQuery);
 
   const ads = useMemo(() => {
-    return [...(adsData || [])].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    if (!adsData) return [];
+    return [...adsData].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [adsData]);
 
   const [adToEdit, setAdToEdit] = useState<Ad | null>(null);
   const [adToDelete, setAdToDelete] = useState<Ad | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-
-  useEffect(() => {
-    // Check for expired ads on load and update them if necessary
-    const batch = writeBatch(firestore);
-    let hasUpdates = false;
-
-    (ads || []).forEach(ad => {
-        if (ad.status === 'active' && ad.expiryDate && isPast(new Date(ad.expiryDate as string))) {
-            const adRef = doc(firestore, 'ads', ad.id);
-            batch.update(adRef, { status: 'inactive' });
-            hasUpdates = true;
-        }
-    });
-
-    if (hasUpdates) {
-        batch.commit().catch(console.error);
-    }
-  }, [ads, firestore]);
 
   const handleEdit = (ad: Ad) => {
     setAdToEdit(ad);
