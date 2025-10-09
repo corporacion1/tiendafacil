@@ -21,7 +21,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { useUser, useFirestore, useCollection } from "@/firebase";
 import { paymentMethods } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -72,16 +72,28 @@ export default function POSPage() {
   const firestore = useFirestore();
   const { settings, setSettings, activeSymbol, activeRate, activeStoreId } = useSettings();
   
-  const productsRef = useMemoFirebase(() => query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
+  const productsRef = useMemo(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId]);
   const { data: products = [], isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
 
-  const customersRef = useMemoFirebase(() => query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
+  const customersRef = useMemo(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId]);
   const { data: customers = [], isLoading: isLoadingCustomers } = useCollection<Customer>(customersRef);
   
-  const pendingOrdersQuery = useMemoFirebase(() => query(collection(firestore, 'pendingOrders'), where('storeId', '==', activeStoreId), orderBy('date', 'desc')), [firestore, activeStoreId]);
+  const pendingOrdersQuery = useMemo(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'pendingOrders'), where('storeId', '==', activeStoreId), orderBy('date', 'desc'));
+  }, [firestore, activeStoreId]);
   const { data: pendingOrders = [], isLoading: isLoadingPendingOrders } = useCollection<PendingOrder>(pendingOrdersQuery);
   
-  const salesRef = useMemoFirebase(() => query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
+  const salesRef = useMemo(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId]);
   const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
 
   const sales = useMemo(() => {
@@ -89,7 +101,10 @@ export default function POSPage() {
     return [...salesData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [salesData]);
 
-  const familiesRef = useMemoFirebase(() => query(collection(firestore, 'families'), where('storeId', '==', activeStoreId), orderBy('name', 'asc')), [firestore, activeStoreId]);
+  const familiesRef = useMemo(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'families'), where('storeId', '==', activeStoreId), orderBy('name', 'asc'));
+  }, [firestore, activeStoreId]);
   const { data: families = [], isLoading: isLoadingFamilies } = useCollection<Family>(familiesRef);
 
   const isLoading = isLoadingProducts || isLoadingCustomers || isLoadingPendingOrders || isLoadingSales || isLoadingFamilies;
@@ -1005,3 +1020,5 @@ export default function POSPage() {
   </Dialog>
   );
 }
+
+    

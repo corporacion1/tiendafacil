@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { useUser, useFirestore, useCollection } from "@/firebase";
 import { collection, doc, writeBatch, query, orderBy, setDoc } from "firebase/firestore";
 import type { UserProfile, Store, UserRole } from "@/lib/types";
 import { MoreHorizontal, Search, UserPlus, Shield, Check, Mail, Phone, ExternalLink, UserX } from "lucide-react";
@@ -47,7 +47,7 @@ export default function UsersPage() {
   const router = useRouter();
   const { switchStore, activeStoreId } = useSettings();
 
-  const usersQuery = useMemoFirebase(() => {
+  const usersQuery = useMemo(() => {
     if (!firestore) return null;
     return query(collection(firestore, 'users'), orderBy('createdAt', 'desc'));
   }, [firestore]);
@@ -321,3 +321,5 @@ export default function UsersPage() {
     </>
   );
 }
+
+    

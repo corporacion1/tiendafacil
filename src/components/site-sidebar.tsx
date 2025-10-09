@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase";
+import { useUser, useDoc, useFirestore } from "@/firebase";
 import { doc } from "firebase/firestore";
 import type { UserProfile } from "@/lib/types";
 
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useSettings } from "@/contexts/settings-context";
+import { useMemo } from "react";
 
 interface SiteSidebarProps {
   isExpanded: boolean;
@@ -28,7 +29,7 @@ export function SiteSidebar({ isExpanded }: SiteSidebarProps) {
     const firestore = useFirestore();
     const { settings } = useSettings();
 
-    const userProfileRef = useMemoFirebase(() => {
+    const userProfileRef = useMemo(() => {
         if (!user || !firestore) return null;
         return doc(firestore, 'users', user.uid);
     }, [user, firestore]);
@@ -87,3 +88,5 @@ export function SiteSidebar({ isExpanded }: SiteSidebarProps) {
         </aside>
     );
 }
+
+    

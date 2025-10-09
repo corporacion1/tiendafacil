@@ -7,7 +7,7 @@ import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid,
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
-import { useCollection, useFirestore, useMemoFirebase, useUser, useAuth } from "@/firebase";
+import { useCollection, useFirestore, useUser, useAuth } from "@/firebase";
 import { collection, doc, writeBatch, deleteDoc, query, where } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 
@@ -126,19 +126,22 @@ export default function CatalogPage() {
     const router = useRouter();
     const { settings, activeStoreId, activeSymbol, activeRate } = useSettings();
 
-    const productsRef = useMemoFirebase(() => {
+    const productsRef = useMemo(() => {
         if (!firestore || !activeStoreId) return null;
         return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
     }, [firestore, activeStoreId]);
     const { data: products = [], isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
     
-    const familiesRef = useMemoFirebase(() => {
+    const familiesRef = useMemo(() => {
         if (!firestore || !activeStoreId) return null;
         return query(collection(firestore, 'families'), where('storeId', '==', activeStoreId));
     }, [firestore, activeStoreId]);
     const { data: families = [], isLoading: isLoadingFamilies } = useCollection<Family>(familiesRef);
     
-    const adsRef = useMemoFirebase(() => collection(firestore, 'ads'), [firestore]);
+    const adsRef = useMemo(() => {
+      if (!firestore) return null;
+      return collection(firestore, 'ads');
+    }, [firestore]);
     const { data: allAds = [], isLoading: isLoadingAds } = useCollection<Ad>(adsRef);
     
     const isLoading = isLoadingProducts || isLoadingFamilies || isLoadingAds;
@@ -726,5 +729,7 @@ export default function CatalogPage() {
 }
 
 
+
+    
 
     

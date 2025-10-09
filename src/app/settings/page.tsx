@@ -17,7 +17,7 @@ import { Pencil, PlusCircle, Trash2, AlertTriangle, Database, Package, ImageOff 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
-import { useUser, useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
+import { useUser, useFirestore, useCollection, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { businessCategories } from "@/lib/data";
 import { seedDatabase, factoryReset } from "@/lib/seed";
@@ -123,19 +123,19 @@ export default function SettingsPage() {
     const [localSettings, setLocalSettings] = useState(settings || {});
     const [imageError, setImageError] = useState(false);
 
-    const unitsQuery = useMemoFirebase(() => {
+    const unitsQuery = useMemo(() => {
         if (!firestore || !activeStoreId) return null;
         return query(collection(firestore, 'units'), where('storeId', '==', activeStoreId));
     }, [firestore, activeStoreId]);
     const { data: units } = useCollection<Unit>(unitsQuery);
 
-    const familiesQuery = useMemoFirebase(() => {
+    const familiesQuery = useMemo(() => {
         if (!firestore || !activeStoreId) return null;
         return query(collection(firestore, 'families'), where('storeId', '==', activeStoreId));
     }, [firestore, activeStoreId]);
     const { data: families } = useCollection<Family>(familiesQuery);
 
-    const warehousesQuery = useMemoFirebase(() => {
+    const warehousesQuery = useMemo(() => {
         if (!firestore || !activeStoreId) return null;
         return query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId));
     }, [firestore, activeStoreId]);
@@ -156,7 +156,7 @@ export default function SettingsPage() {
     const [confirmPin, setConfirmPin] = useState('');
     const { toast } = useToast();
     
-    const productsRef = useMemoFirebase(() => {
+    const productsRef = useMemo(() => {
       if (!firestore || !activeStoreId) return null;
       return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
     }, [firestore, activeStoreId]);
@@ -914,5 +914,7 @@ export default function SettingsPage() {
         </div>
     );
 }
+
+    
 
     

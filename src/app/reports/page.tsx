@@ -46,7 +46,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/settings-context";
-import { useUser, useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useUser, useCollection, useFirestore } from "@/firebase";
 import { collection, query, orderBy, where } from "firebase/firestore";
 
 
@@ -56,31 +56,31 @@ export default function ReportsPage() {
     const { settings, activeSymbol, activeRate, activeStoreId } = useSettings();
     const firestore = useFirestore();
     
-    const salesRef = useMemoFirebase(() => {
+    const salesRef = useMemo(() => {
         if (!firestore || !activeStoreId) return null;
         return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
     }, [firestore, activeStoreId]);
     const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
 
-    const purchasesRef = useMemoFirebase(() => {
+    const purchasesRef = useMemo(() => {
         if (!firestore || !activeStoreId) return null;
         return query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId));
     }, [firestore, activeStoreId]);
     const { data: purchasesData, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesRef);
 
-    const movementsRef = useMemoFirebase(() => {
+    const movementsRef = useMemo(() => {
         if (!firestore || !activeStoreId) return null;
         return query(collection(firestore, 'inventory_movements'), where('storeId', '==', activeStoreId));
     }, [firestore, activeStoreId]);
     const { data: movementsData, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsRef);
 
-    const productsRef = useMemoFirebase(() => {
+    const productsRef = useMemo(() => {
         if (!firestore || !activeStoreId) return null;
         return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
     }, [firestore, activeStoreId]);
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
 
-    const customersRef = useMemoFirebase(() => {
+    const customersRef = useMemo(() => {
         if (!firestore || !activeStoreId) return null;
         return query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId));
     }, [firestore, activeStoreId]);
@@ -689,3 +689,5 @@ export default function ReportsPage() {
     </>
   );
 }
+
+    

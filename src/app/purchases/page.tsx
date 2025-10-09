@@ -18,7 +18,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings } from "@/contexts/settings-context";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useCollection, useFirestore } from "@/firebase";
 import { collection, doc, writeBatch, query, orderBy, where } from "firebase/firestore";
 
 const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
@@ -28,25 +28,25 @@ export default function PurchasesPage() {
   const firestore = useFirestore();
   const { settings, activeSymbol, activeRate, activeStoreId } = useSettings();
 
-  const productsRef = useMemoFirebase(() => {
+  const productsRef = useMemo(() => {
     if (!firestore || !activeStoreId) return null;
     return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
   }, [firestore, activeStoreId]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
 
-  const suppliersRef = useMemoFirebase(() => {
+  const suppliersRef = useMemo(() => {
     if (!firestore || !activeStoreId) return null;
     return query(collection(firestore, 'suppliers'), where('storeId', '==', activeStoreId));
   }, [firestore, activeStoreId]);
   const { data: suppliers, isLoading: isLoadingSuppliers } = useCollection<Supplier>(suppliersRef);
 
-  const familiesRef = useMemoFirebase(() => {
+  const familiesRef = useMemo(() => {
     if (!firestore || !activeStoreId) return null;
     return query(collection(firestore, 'families'), where('storeId', '==', activeStoreId));
   }, [firestore, activeStoreId]);
   const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesRef);
 
-  const purchasesRef = useMemoFirebase(() => {
+  const purchasesRef = useMemo(() => {
     if (!firestore || !activeStoreId) return null;
     return query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId));
   }, [firestore, activeStoreId]);
@@ -575,3 +575,5 @@ export default function PurchasesPage() {
     </div>
   );
 }
+
+    

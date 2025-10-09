@@ -7,7 +7,7 @@ import { Firestore } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import type { UserAuthResult } from './auth/use-user';
-import { Logo } from '@/components/logo';
+import { Package } from 'lucide-react';
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -99,6 +99,16 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     };
   }, [firebaseApp, firestore, auth, userAuthState]);
   
+  // Do not render children until authentication check is complete
+  if (contextValue.isUserLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
+          <Package className="w-16 h-16 text-primary animate-pulse" />
+          <p className="text-muted-foreground animate-pulse">Conectando a los servicios...</p>
+      </div>
+    );
+  }
+
   return (
     <FirebaseContext.Provider value={contextValue}>
       <FirebaseErrorListener />
@@ -149,14 +159,3 @@ export const useFirebaseApp = (): FirebaseApp => {
   const { firebaseApp } = useFirebase();
   return firebaseApp;
 };
-
-type MemoFirebase <T> = T & {__memo?: boolean};
-
-export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | (MemoFirebase<T>) {
-  const memoized = useMemo(factory, deps);
-  
-  if(typeof memoized !== 'object' || memoized === null) return memoized;
-  (memoized as MemoFirebase<T>).__memo = true;
-  
-  return memoized;
-}

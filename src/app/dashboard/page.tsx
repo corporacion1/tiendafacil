@@ -37,7 +37,7 @@ import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/contexts/settings-context";
 import { InventoryMovement, Product, Purchase, Sale } from "@/lib/types";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useCollection, useFirestore } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
 
 type TimeFilter = 'day' | 'week' | 'month';
@@ -65,25 +65,25 @@ export default function Dashboard() {
   const firestore = useFirestore();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
   
-  const salesRef = useMemoFirebase(() => {
+  const salesRef = useMemo(() => {
     if (!firestore || !activeStoreId) return null;
     return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
   }, [firestore, activeStoreId]);
   const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
 
-  const purchasesRef = useMemoFirebase(() => {
+  const purchasesRef = useMemo(() => {
     if (!firestore || !activeStoreId) return null;
     return query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId));
   }, [firestore, activeStoreId]);
   const { data: purchasesData, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesRef);
 
-  const productsRef = useMemoFirebase(() => {
+  const productsRef = useMemo(() => {
     if (!firestore || !activeStoreId) return null;
     return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
   }, [firestore, activeStoreId]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
   
-  const movementsRef = useMemoFirebase(() => {
+  const movementsRef = useMemo(() => {
     if (!firestore || !activeStoreId) return null;
     return query(collection(firestore, 'inventory_movements'), where('storeId', '==', activeStoreId));
   }, [firestore, activeStoreId]);
@@ -380,3 +380,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
+    

@@ -17,7 +17,7 @@ import type { Ad, UserProfile } from "@/lib/types";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { AdForm } from "@/components/ad-form";
 import { format, isPast } from "date-fns";
-import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
+import { useCollection, useFirestore, useUser } from "@/firebase";
 import { collection, deleteDoc, doc, orderBy, query, setDoc, writeBatch } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
@@ -108,7 +108,10 @@ export default function AdsPage() {
   const { user } = useUser();
   const router = useRouter();
   
-  const adsQuery = useMemoFirebase(() => query(collection(firestore, 'ads')), [firestore]);
+  const adsQuery = useMemo(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'ads'));
+  }, [firestore]);
   const { data: adsData = [], isLoading } = useCollection<Ad>(adsQuery);
 
   const ads = useMemo(() => {
@@ -300,3 +303,5 @@ export default function AdsPage() {
     </>
   );
 }
+
+    

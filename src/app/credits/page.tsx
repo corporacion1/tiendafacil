@@ -19,7 +19,7 @@ import { useSettings } from "@/contexts/settings-context";
 import { paymentMethods } from "@/lib/data";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useCollection, useFirestore } from "@/firebase";
 import { collection, doc, orderBy, query, where, writeBatch } from "firebase/firestore";
 
 export default function CreditsPage() {
@@ -27,13 +27,13 @@ export default function CreditsPage() {
     const firestore = useFirestore();
     const { settings, activeSymbol, activeRate, activeStoreId } = useSettings();
 
-    const salesQuery = useMemoFirebase(() => {
+    const salesQuery = useMemo(() => {
         if (!firestore || !activeStoreId) return null;
         return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
     }, [firestore, activeStoreId]);
     const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
     
-    const { data: productsData, isLoading: isLoadingProducts } = useCollection<Product>(useMemoFirebase(() => {
+    const { data: productsData, isLoading: isLoadingProducts } = useCollection<Product>(useMemo(() => {
         if (!firestore || !activeStoreId) return null;
         return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
     }, [firestore, activeStoreId]));
@@ -437,3 +437,5 @@ export default function CreditsPage() {
         </>
     );
 }
+
+    

@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase";
+import { useUser, useDoc, useFirestore } from "@/firebase";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { doc } from "firebase/firestore";
 import type { UserProfile } from "@/lib/types";
 import { Logo } from "./logo";
@@ -21,7 +21,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     
     const isPublicPage = pathname === '/login' || pathname.startsWith('/catalog');
 
-    const userProfileRef = useMemoFirebase(() => {
+    const userProfileRef = useMemo(() => {
         if (!user) return null;
         return doc(firestore, 'users', user.uid);
     }, [user, firestore]);
@@ -82,3 +82,5 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
     return <>{children}</>;
 }
+
+    

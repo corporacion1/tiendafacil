@@ -34,7 +34,7 @@ import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { ProductForm } from "@/components/product-form";
 import { useSettings } from "@/contexts/settings-context";
 import { format, parseISO } from "date-fns";
-import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase";
+import { useCollection, useFirestore, deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase";
 import { collection, doc, orderBy, query, where, writeBatch } from "firebase/firestore";
 
 const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewMovements, setProductToDelete }: {
@@ -128,19 +128,19 @@ export default function InventoryPage() {
   const firestore = useFirestore();
   const { activeSymbol, activeRate, activeStoreId } = useSettings();
   
-  const productsRef = useMemoFirebase(() => {
+  const productsRef = useMemo(() => {
       if (!firestore || !activeStoreId) return null;
       return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId), orderBy('createdAt', 'desc'));
   }, [firestore, activeStoreId]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
 
-  const salesRef = useMemoFirebase(() => {
+  const salesRef = useMemo(() => {
     if (!firestore || !activeStoreId) return null;
     return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
   }, [firestore, activeStoreId]);
   const { data: sales = [], isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
 
-  const inventoryMovementsQuery = useMemoFirebase(() => {
+  const inventoryMovementsQuery = useMemo(() => {
     if (!firestore || !activeStoreId) return null;
     return query(collection(firestore, 'inventory_movements'), where('storeId', '==', activeStoreId));
   }, [firestore, activeStoreId]);
@@ -655,5 +655,7 @@ export default function InventoryPage() {
     </>
   );
 }
+
+    
 
     
