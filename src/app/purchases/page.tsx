@@ -19,19 +19,39 @@ import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings } from "@/contexts/settings-context";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc, writeBatch, query, orderBy } from "firebase/firestore";
+import { collection, doc, writeBatch, query, orderBy, where } from "firebase/firestore";
 
 const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
 
 export default function PurchasesPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
-  const { settings, activeSymbol, activeRate } = useSettings();
+  const { settings, activeSymbol, activeRate, activeStoreId } = useSettings();
 
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(useMemoFirebase(() => query(collection(firestore, 'products'), orderBy('createdAt', 'desc')), [firestore]));
-  const { data: suppliers, isLoading: isLoadingSuppliers } = useCollection<Supplier>(useMemoFirebase(() => query(collection(firestore, 'suppliers'), orderBy('name', 'asc')), [firestore]));
-  const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(useMemoFirebase(() => query(collection(firestore, 'families'), orderBy('name', 'asc')), [firestore]));
-  const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(useMemoFirebase(() => query(collection(firestore, 'purchases'), orderBy('date', 'desc')), [firestore]));
+  const productsRef = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId), orderBy('createdAt', 'desc'));
+  }, [firestore, activeStoreId]);
+  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
+
+  const suppliersRef = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'suppliers'), where('storeId', '==', activeStoreId), orderBy('name', 'asc'));
+  }, [firestore, activeStoreId]);
+  const { data: suppliers, isLoading: isLoadingSuppliers } = useCollection<Supplier>(suppliersRef);
+
+  const familiesRef = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'families'), where('storeId', '==', activeStoreId), orderBy('name', 'asc'));
+  }, [firestore, activeStoreId]);
+  const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesRef);
+
+  const purchasesRef = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId), orderBy('date', 'desc'));
+  }, [firestore, activeStoreId]);
+  const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesRef);
+
 
   const isLoading = isLoadingProducts || isLoadingSuppliers || isLoadingFamilies || isLoadingPurchases;
 
@@ -163,11 +183,11 @@ export default function PurchasesPage() {
         return;
     }
     const newId = newSupplier.id.trim() || `sup-${Date.now()}`;
-    const supplierToAdd: Omit<Supplier, 'id'> = { name: newSupplier.name, phone: newSupplier.phone, address: newSupplier.address };
+    const supplierToAdd: Omit<Supplier, 'id' | 'storeId'> = { name: newSupplier.name, phone: newSupplier.phone, address: newSupplier.address };
     
     const batch = writeBatch(firestore);
     const supplierRef = doc(firestore, 'suppliers', newId);
-    batch.set(supplierRef, supplierToAdd);
+    batch.set(supplierRef, { ...supplierToAdd, storeId: activeStoreId });
 
     try {
         await batch.commit();
@@ -215,6 +235,7 @@ export default function PurchasesPage() {
         date: new Date().toISOString(),
         documentNumber: documentNumber,
         responsible: responsible,
+        storeId: activeStoreId,
     };
     batch.set(purchaseRef, newPurchase);
 
@@ -233,6 +254,7 @@ export default function PurchasesPage() {
             quantity: item.quantity,
             date: new Date().toISOString(),
             responsible: responsible,
+            storeId: activeStoreId,
         };
         batch.set(movementRef, newMovement);
     }
@@ -548,3 +570,5 @@ export default function PurchasesPage() {
     </div>
   );
 }
+
+    

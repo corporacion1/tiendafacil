@@ -47,20 +47,45 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/settings-context";
 import { useUser, useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy } from "firebase/firestore";
+import { collection, query, orderBy, where } from "firebase/firestore";
 
 
 type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
 
 export default function ReportsPage() {
-    const { settings, activeSymbol, activeRate } = useSettings();
+    const { settings, activeSymbol, activeRate, activeStoreId } = useSettings();
     const firestore = useFirestore();
     
-    const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(useMemoFirebase(() => query(collection(firestore, 'sales'), orderBy('date', 'desc')), [firestore]));
-    const { data: purchasesData, isLoading: isLoadingPurchases } = useCollection<Purchase>(useMemoFirebase(() => query(collection(firestore, 'purchases'), orderBy('date', 'desc')), [firestore]));
-    const { data: movementsData, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(useMemoFirebase(() => query(collection(firestore, 'inventory_movements'), orderBy('date', 'desc')), [firestore]));
-    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(useMemoFirebase(() => query(collection(firestore, 'products'), orderBy('createdAt', 'desc')), [firestore]));
-    const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(useMemoFirebase(() => query(collection(firestore, 'customers'), orderBy('name', 'asc')), [firestore]));
+    const salesRef = useMemoFirebase(() => {
+        if (!firestore || !activeStoreId) return null;
+        return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId), orderBy('date', 'desc'));
+    }, [firestore, activeStoreId]);
+    const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
+
+    const purchasesRef = useMemoFirebase(() => {
+        if (!firestore || !activeStoreId) return null;
+        return query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId), orderBy('date', 'desc'));
+    }, [firestore, activeStoreId]);
+    const { data: purchasesData, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesRef);
+
+    const movementsRef = useMemoFirebase(() => {
+        if (!firestore || !activeStoreId) return null;
+        return query(collection(firestore, 'inventory_movements'), where('storeId', '==', activeStoreId), orderBy('date', 'desc'));
+    }, [firestore, activeStoreId]);
+    const { data: movementsData, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsRef);
+
+    const productsRef = useMemoFirebase(() => {
+        if (!firestore || !activeStoreId) return null;
+        return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId), orderBy('createdAt', 'desc'));
+    }, [firestore, activeStoreId]);
+    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
+
+    const customersRef = useMemoFirebase(() => {
+        if (!firestore || !activeStoreId) return null;
+        return query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId), orderBy('name', 'asc'));
+    }, [firestore, activeStoreId]);
+    const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersRef);
+
 
     const isLoading = isLoadingSales || isLoadingPurchases || isLoadingMovements || isLoadingProducts || isLoadingCustomers;
     
@@ -208,7 +233,7 @@ export default function ReportsPage() {
     
     const getTicketCustomer = (sale: Sale | null): Customer | null => {
         if (!sale || !customers) return null;
-        return customers.find(c => c.name === sale.customerName) || { id: 'unknown', name: sale.customerName, phone: '', address: '' };
+        return customers.find(c => c.name === sale.customerName) || { id: 'unknown', name: sale.customerName, phone: '', address: '', storeId: activeStoreId };
     }
 
     const filterByDate = (data: (Sale | Purchase | InventoryMovement | (Payment & { saleId: string; customerName: string; }))[]) => {
@@ -654,3 +679,4 @@ export default function ReportsPage() {
   );
 }
 
+    

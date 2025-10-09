@@ -20,17 +20,24 @@ import { paymentMethods } from "@/lib/data";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc, orderBy, query, writeBatch } from "firebase/firestore";
+import { collection, doc, orderBy, query, where, writeBatch } from "firebase/firestore";
 
 export default function CreditsPage() {
     const { toast } = useToast();
     const firestore = useFirestore();
-    const { settings, activeSymbol, activeRate } = useSettings();
+    const { settings, activeSymbol, activeRate, activeStoreId } = useSettings();
 
-    const salesQuery = useMemoFirebase(() => query(collection(firestore, 'sales'), orderBy('date', 'desc')), [firestore]);
+    const salesQuery = useMemoFirebase(() => {
+        if (!firestore || !activeStoreId) return null;
+        return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId), orderBy('date', 'desc'));
+    }, [firestore, activeStoreId]);
     const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
+    
+    const { data: productsData, isLoading: isLoadingProducts } = useCollection<Product>(useMemoFirebase(() => {
+        if (!firestore || !activeStoreId) return null;
+        return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
+    }, [firestore, activeStoreId]));
 
-    const { data: productsData, isLoading: isLoadingProducts } = useCollection<Product>(useMemoFirebase(() => collection(firestore, 'products'), [firestore]));
     const isLoading = isLoadingSales || isLoadingProducts;
 
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
@@ -425,3 +432,5 @@ export default function CreditsPage() {
         </>
     );
 }
+
+    

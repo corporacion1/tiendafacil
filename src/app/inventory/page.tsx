@@ -35,7 +35,7 @@ import { ProductForm } from "@/components/product-form";
 import { useSettings } from "@/contexts/settings-context";
 import { format, parseISO } from "date-fns";
 import { useCollection, useFirestore, useMemoFirebase, deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase";
-import { collection, doc, orderBy, query, writeBatch } from "firebase/firestore";
+import { collection, doc, orderBy, query, where, writeBatch } from "firebase/firestore";
 
 const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewMovements, setProductToDelete }: {
     product: Product;
@@ -126,19 +126,28 @@ const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewM
 export default function InventoryPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
-
-  const productsRef = useMemoFirebase(() => query(collection(firestore, 'products'), orderBy('createdAt', 'desc')), [firestore]);
+  const { activeSymbol, activeRate, activeStoreId } = useSettings();
+  
+  const productsRef = useMemoFirebase(() => {
+      if (!firestore || !activeStoreId) return null;
+      return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId), orderBy('createdAt', 'desc'));
+  }, [firestore, activeStoreId]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
 
-  const salesRef = useMemoFirebase(() => collection(firestore, 'sales'), [firestore]);
+  const salesRef = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId]);
   const { data: sales = [], isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
 
-  const inventoryMovementsQuery = useMemoFirebase(() => query(collection(firestore, 'inventory_movements'), orderBy('date', 'desc')), [firestore]);
+  const inventoryMovementsQuery = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'inventory_movements'), where('storeId', '==', activeStoreId), orderBy('date', 'desc'));
+  }, [firestore, activeStoreId]);
   const { data: inventoryMovements = [], isLoading: isLoadingMovements } = useCollection<InventoryMovement>(inventoryMovementsQuery);
 
   const isLoading = isLoadingProducts || isLoadingSales || isLoadingMovements;
   
-  const { activeSymbol, activeRate } = useSettings();
   const [isMovementsDialogOpen, setIsMovementsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
@@ -167,7 +176,7 @@ export default function InventoryPage() {
     if (!data.id) return false;
 
     const productRef = doc(firestore, 'products', data.id);
-    setDocumentNonBlocking(productRef, data, { merge: true });
+    setDocumentNonBlocking(productRef, {...data, storeId: activeStoreId}, { merge: true });
 
     toast({
         title: "Producto Actualizado",
@@ -245,6 +254,7 @@ export default function InventoryPage() {
         quantity: movementType === 'sale' ? -movementQuantity : (movementType === 'purchase' ? movementQuantity : newStock),
         date: new Date().toISOString(),
         responsible: movementResponsible,
+        storeId: activeStoreId,
     };
     batch.set(movementRef, newMovement);
 
@@ -641,3 +651,5 @@ export default function InventoryPage() {
     </>
   );
 }
+
+    

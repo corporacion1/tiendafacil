@@ -7,17 +7,19 @@ import { ProductForm } from "@/components/product-form";
 import type { Product } from "@/lib/types";
 import { useFirestore, setDocumentNonBlocking } from "@/firebase";
 import { doc } from "firebase/firestore";
+import { useSettings } from "@/contexts/settings-context";
 
 export default function ProductsPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
+  const { activeStoreId } = useSettings();
 
   function onSubmit(data: Omit<Product, 'id' | 'storeId'>) {
     const newProductId = `prod-${Date.now()}`;
-    const newProduct: Product = {
+    const newProduct: Omit<Product, 'id'> & { id: string, storeId: string } = {
       ...data,
       id: newProductId,
-      storeId: "store-1", // Replace with dynamic store ID later
+      storeId: activeStoreId,
     };
     
     const productRef = doc(firestore, 'products', newProductId);
@@ -45,3 +47,5 @@ export default function ProductsPage() {
     </Card>
   );
 }
+
+    

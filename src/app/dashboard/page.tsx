@@ -38,25 +38,37 @@ import { useSettings } from "@/contexts/settings-context";
 import { InventoryMovement, Product, Purchase, Sale } from "@/lib/types";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, query, orderBy } from "firebase/firestore";
+import { collection, query, orderBy, where } from "firebase/firestore";
 
 type TimeFilter = 'day' | 'week' | 'month';
 
 export default function Dashboard() {
-  const { activeSymbol, activeRate } = useSettings();
+  const { activeSymbol, activeRate, activeStoreId } = useSettings();
   const firestore = useFirestore();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
   
-  const salesRef = useMemoFirebase(() => query(collection(firestore, 'sales'), orderBy('date', 'desc')), [firestore]);
+  const salesRef = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId), orderBy('date', 'desc'));
+  }, [firestore, activeStoreId]);
   const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
 
-  const purchasesRef = useMemoFirebase(() => query(collection(firestore, 'purchases'), orderBy('date', 'desc')), [firestore]);
+  const purchasesRef = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId), orderBy('date', 'desc'));
+  }, [firestore, activeStoreId]);
   const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesRef);
 
-  const productsRef = useMemoFirebase(() => query(collection(firestore, 'products'), orderBy('createdAt', 'desc')), [firestore]);
+  const productsRef = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId), orderBy('createdAt', 'desc'));
+  }, [firestore, activeStoreId]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
   
-  const movementsRef = useMemoFirebase(() => query(collection(firestore, 'inventory_movements'), orderBy('date', 'desc')), [firestore]);
+  const movementsRef = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'inventory_movements'), where('storeId', '==', activeStoreId), orderBy('date', 'desc'));
+  }, [firestore, activeStoreId]);
   const { data: recentMovements, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsRef);
 
   const isLoading = isLoadingSales || isLoadingPurchases || isLoadingProducts || isLoadingMovements;
@@ -337,3 +349,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
+    

@@ -43,10 +43,10 @@ export function TicketPreview({
       if (!item.product) return;
 
       const itemSubtotal = item.price * item.quantity;
-      if (item.product.tax1 && settings.tax1 > 0) {
+      if (item.product.tax1 && settings && settings.tax1 && settings.tax1 > 0) {
         tax1Amount += itemSubtotal * (settings.tax1 / 100);
       }
-      if (item.product.tax2 && settings.tax2 > 0) {
+      if (item.product.tax2 && settings && settings.tax2 && settings.tax2 > 0) {
         tax2Amount += itemSubtotal * (settings.tax2 / 100);
       }
     });
@@ -176,9 +176,9 @@ export function TicketPreview({
             <div className="overflow-y-auto p-2 border rounded-md bg-gray-50 dark:bg-gray-800">
             <div ref={ticketRef} className="ticket font-mono" style={{ fontFamily: "'Inconsolata', monospace", width: '100%', color: '#000', backgroundColor: '#fff', padding: '5px' }}>
                 <div className="header" style={{ textAlign: 'center' }}>
-                <h1 style={{ fontSize: '16px', margin: '0', fontWeight: 'bold' }}>{settings.storeName}</h1>
-                <p style={{ margin: '2px 0', fontSize: '10px' }}>{settings.storeAddress}</p>
-                <p style={{ margin: '2px 0', fontSize: '10px' }}>Tel: {settings.storePhone}</p>
+                <h1 style={{ fontSize: '16px', margin: '0', fontWeight: 'bold' }}>{settings?.name}</h1>
+                <p style={{ margin: '2px 0', fontSize: '10px' }}>{settings?.address}</p>
+                <p style={{ margin: '2px 0', fontSize: '10px' }}>Tel: {settings?.phone}</p>
                 <p style={{ margin: '2px 0', fontSize: '10px' }}>{new Date().toLocaleString()}</p>
                 {ticketType === 'sale' && saleId && <p style={{ margin: '2px 0', fontSize: '10px', fontWeight: 'bold' }}>CONTROL #: {saleId}</p>}
                 </div>
@@ -230,13 +230,13 @@ export function TicketPreview({
                             <div>Subtotal:</div>
                             <div>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</div>
                         </div>
-                        {settings.tax1 > 0 && tax1Amount > 0 && (
+                        {settings?.tax1 && settings.tax1 > 0 && tax1Amount > 0 && (
                           <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}>
                               <div>Impuesto ({settings.tax1}%):</div>
                               <div>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</div>
                           </div>
                         )}
-                        {settings.tax2 > 0 && tax2Amount > 0 && (
+                        {settings?.tax2 && settings.tax2 > 0 && tax2Amount > 0 && (
                           <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}>
                               <div>Impuesto ({settings.tax2}%):</div>
                               <div>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</div>
@@ -265,7 +265,7 @@ export function TicketPreview({
                 
                 <div className="footer" style={{ textAlign: 'center', marginTop: '10px', fontSize: '10px' }}>
                     {ticketType === 'sale' ? 
-                      <p>{settings.storeSlogan || '¡Gracias por tu compra!'}</p> :
+                      <p>{settings?.slogan || '¡Gracias por tu compra!'}</p> :
                       <p>El Presupuesto puede variar sin previo aviso</p>
                     }
                 </div>
@@ -288,3 +288,5 @@ export function TicketPreview({
     </Dialog>
   );
 }
+
+    

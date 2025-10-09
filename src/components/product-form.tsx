@@ -14,13 +14,15 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import type { Product } from "@/lib/types";
-import { initialUnits, initialFamilies, initialWarehouses, mockProducts } from "@/lib/data";
+import type { Product, Unit, Family, Warehouse } from "@/lib/types";
+import { mockProducts } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
+import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
 import { useSettings } from "@/contexts/settings-context";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, query, where } from "firebase/firestore";
 
 const productSchema = z.object({
   id: z.string().optional(),
@@ -77,19 +79,34 @@ const calculateProfit = (currentPrice: number, cost: number): string => {
     return '0.00';
 };
 
-const getDisplayImageUrl = (url?: string): string => {
-  if (!url) return '';
-  if (url.includes('dropbox.com')) {
-    return url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '&raw=1');
-  }
-  return url;
-};
-
 export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onCancel }) => {
   const { toast } = useToast();
-  const { settings } = useSettings();
+  const { settings, activeStoreId } = useSettings();
+  const firestore = useFirestore();
 
-  const [products, setProducts] = useState(mockProducts);
+  const productsRef = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId]);
+  const { data: products } = useCollection<Product>(productsRef);
+
+  const unitsRef = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'units'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId]);
+  const { data: units } = useCollection<Unit>(unitsRef);
+
+  const familiesRef = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'families'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId]);
+  const { data: families } = useCollection<Family>(familiesRef);
+
+  const warehousesRef = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId]);
+  const { data: warehouses } = useCollection<Warehouse>(warehousesRef);
   
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -118,7 +135,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
 
   const handleSkuBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
     const sku = e.target.value;
-    if (!sku) return;
+    if (!sku || !products) return;
 
     if (!product || product.sku.toLowerCase() !== sku.toLowerCase()) {
         const existingProduct = products.find(p => p.sku.toLowerCase() === sku.toLowerCase());
@@ -244,7 +261,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {initialUnits.map(unit => (
+                            {(units || []).map(unit => (
                               <SelectItem key={unit.id} value={unit.name}>{unit.name}</SelectItem>
                             ))}
                           </SelectContent>
@@ -266,7 +283,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {initialFamilies.map(family => (
+                            {(families || []).map(family => (
                               <SelectItem key={family.id} value={family.name}>{family.name}</SelectItem>
                             ))}
                           </SelectContent>
@@ -288,7 +305,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {initialWarehouses.map(wh => (
+                            {(warehouses || []).map(wh => (
                               <SelectItem key={wh.id} value={wh.name}>{wh.name}</SelectItem>
                             ))}
                           </SelectContent>
@@ -482,3 +499,5 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     </Form>
   );
 };
+
+    
