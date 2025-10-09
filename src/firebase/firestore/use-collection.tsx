@@ -84,7 +84,7 @@ export function useCollection<T = any>(
         } else {
             // For complex queries, we might not have a simple path.
             // We can indicate this is a query error without a specific path.
-            path = `Query on collection: ${(memoizedTargetRefOrQuery as any)._query.path.segments.join('/')}`;
+            path = `Query on collection: ${(memoizedTargetRefOrQuery as any)._query?.path?.segments?.join('/') || ''}`;
         }
         
 
