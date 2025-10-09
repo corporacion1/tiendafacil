@@ -64,8 +64,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     userError: null,
   });
 
-  const [hasTimedOut, setHasTimedOut] = useState(false);
-
   // Effect to subscribe to Firebase auth state changes
   useEffect(() => {
     if (!auth) { // If no Auth service instance, cannot determine user state
@@ -86,15 +84,8 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       }
     );
     
-    const timeout = setTimeout(() => {
-        if (userAuthState.isUserLoading) {
-            setHasTimedOut(true);
-        }
-    }, 20000); // 20-second timeout
-
     return () => {
       unsubscribe(); // Cleanup
-      clearTimeout(timeout);
     }
   }, [auth]); // Depends on the auth instance
 
@@ -112,13 +103,8 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     };
   }, [firebaseApp, firestore, auth, userAuthState]);
   
-  const handleProceedOffline = () => {
-    setUserAuthState(prev => ({ ...prev, isUserLoading: false }));
-    setHasTimedOut(false);
-  }
-
   // Do not render children until authentication check is complete
-  if (contextValue.isUserLoading && !hasTimedOut) {
+  if (contextValue.isUserLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
           <div className="p-4 bg-muted rounded-full">
@@ -127,24 +113,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
           <p className="text-muted-foreground animate-pulse">Conectando a los servicios...</p>
       </div>
     );
-  }
-
-  if (hasTimedOut) {
-    return (
-         <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4 text-center p-4">
-          <div className="p-4 bg-destructive/10 rounded-full">
-            <WifiOff className="w-12 h-12 text-destructive" />
-          </div>
-          <h1 className="text-xl font-bold">Error de Conexión</h1>
-          <p className="text-muted-foreground max-w-sm">
-            No se pudo establecer la conexión con los servicios de Firebase. Por favor, revisa tu conexión a internet o la configuración del proyecto.
-          </p>
-          <div className="flex gap-4 mt-4">
-            <Button variant="outline" onClick={() => window.location.reload()}>Reintentar</Button>
-            <Button onClick={handleProceedOffline}>Continuar sin Conexión</Button>
-          </div>
-      </div>
-    )
   }
 
   return (
