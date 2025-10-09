@@ -29,6 +29,10 @@ const settingsSchema = z.object({
   slogan: z.string().optional(),
   tax1: z.coerce.number().min(0, "El impuesto no puede ser negativo.").max(100, "El impuesto no puede ser mayor a 100."),
   tax2: z.coerce.number().min(0, "El impuesto no puede ser negativo.").max(100, "El impuesto no puede ser mayor a 100."),
+  primaryCurrencyName: z.string().optional(),
+  primaryCurrencySymbol: z.string().optional(),
+  secondaryCurrencyName: z.string().optional(),
+  secondaryCurrencySymbol: z.string().optional(),
 });
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
@@ -46,6 +50,10 @@ export default function SettingsPage() {
       slogan: "",
       tax1: 0,
       tax2: 0,
+      primaryCurrencyName: "USD",
+      primaryCurrencySymbol: "$",
+      secondaryCurrencyName: "Bolivares",
+      secondaryCurrencySymbol: "Bs.",
     },
   });
 
@@ -60,6 +68,10 @@ export default function SettingsPage() {
         slogan: settings.slogan || "",
         tax1: settings.tax1 || 0,
         tax2: settings.tax2 || 0,
+        primaryCurrencyName: settings.primaryCurrencyName || "USD",
+        primaryCurrencySymbol: settings.primaryCurrencySymbol || "$",
+        secondaryCurrencyName: settings.secondaryCurrencyName || "Bolivares",
+        secondaryCurrencySymbol: settings.secondaryCurrencySymbol || "Bs.",
       };
       reset(initialData);
     }
@@ -68,7 +80,6 @@ export default function SettingsPage() {
   const onSubmit = (data: SettingsFormValues) => {
     if (!settings) return;
     
-    // Pass only the fields from the form to setSettings
     const updatedSettings = { ...settings, ...data };
     setSettings(updatedSettings);
     
@@ -89,6 +100,10 @@ export default function SettingsPage() {
         slogan: settings.slogan || "",
         tax1: settings.tax1 || 0,
         tax2: settings.tax2 || 0,
+        primaryCurrencyName: settings.primaryCurrencyName || "USD",
+        primaryCurrencySymbol: settings.primaryCurrencySymbol || "$",
+        secondaryCurrencyName: settings.secondaryCurrencyName || "Bolivares",
+        secondaryCurrencySymbol: settings.secondaryCurrencySymbol || "Bs.",
       });
     }
   }
@@ -202,6 +217,69 @@ export default function SettingsPage() {
                   </FormItem>
                 )}
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Configuración de Moneda</CardTitle>
+            <CardDescription>
+              Define las monedas principal y secundaria para tu negocio.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4 p-4 border rounded-md">
+                     <h4 className="font-medium text-center">Moneda Principal</h4>
+                     <FormField
+                        control={form.control}
+                        name="primaryCurrencyName"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Nombre</FormLabel>
+                                <FormControl><Input placeholder="Dólar Americano" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                    <FormField
+                        control={form.control}
+                        name="primaryCurrencySymbol"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Símbolo</FormLabel>
+                                <FormControl><Input placeholder="$" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                </div>
+                 <div className="space-y-4 p-4 border rounded-md">
+                     <h4 className="font-medium text-center">Moneda Secundaria</h4>
+                     <FormField
+                        control={form.control}
+                        name="secondaryCurrencyName"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Nombre</FormLabel>
+                                <FormControl><Input placeholder="Bolívar" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                    <FormField
+                        control={form.control}
+                        name="secondaryCurrencySymbol"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Símbolo</FormLabel>
+                                <FormControl><Input placeholder="Bs." {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                </div>
             </div>
           </CardContent>
         </Card>
