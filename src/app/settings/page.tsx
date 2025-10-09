@@ -123,13 +123,13 @@ export default function SettingsPage() {
     const [localSettings, setLocalSettings] = useState(settings || {});
     const [imageError, setImageError] = useState(false);
 
-    const unitsQuery = useMemoFirebase(() => query(collection(firestore, 'units'), where('storeId', '==', activeStoreId), orderBy('name', 'asc')), [firestore, activeStoreId]);
+    const unitsQuery = useMemoFirebase(() => query(collection(firestore, 'units'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
     const { data: units = [] } = useCollection<Unit>(unitsQuery);
 
-    const familiesQuery = useMemoFirebase(() => query(collection(firestore, 'families'), where('storeId', '==', activeStoreId), orderBy('name', 'asc')), [firestore, activeStoreId]);
+    const familiesQuery = useMemoFirebase(() => query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
     const { data: families = [] } = useCollection<Family>(familiesQuery);
 
-    const warehousesQuery = useMemoFirebase(() => query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId), orderBy('name', 'asc')), [firestore, activeStoreId]);
+    const warehousesQuery = useMemoFirebase(() => query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
     const { data: warehouses = [] } = useCollection<Warehouse>(warehousesQuery);
 
     const [localUnits, setLocalUnits] = useState<Unit[]>([]);
@@ -171,15 +171,15 @@ export default function SettingsPage() {
     }, [settings]);
 
     useEffect(() => {
-        setLocalUnits(units);
+        setLocalUnits(units.sort((a,b) => a.name.localeCompare(b.name)));
     }, [units]);
 
     useEffect(() => {
-        setLocalFamilies(families);
+        setLocalFamilies(families.sort((a,b) => a.name.localeCompare(b.name)));
     }, [families]);
 
     useEffect(() => {
-        setLocalWarehouses(warehouses);
+        setLocalWarehouses(warehouses.sort((a,b) => a.name.localeCompare(b.name)));
     }, [warehouses]);
     
     useEffect(() => {
