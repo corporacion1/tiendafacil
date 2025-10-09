@@ -37,16 +37,33 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  const [activeStoreId, setActiveStoreId] = useState<string>('tiendafacil');
+  const [activeStoreId, setActiveStoreId] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
+
+  const userProfileRef = useMemo(() => {
+    if (!user || !firestore) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [user, firestore]);
+
+  const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
 
   useEffect(() => {
-    let determinedStoreId = localStorage.getItem(ACTIVE_STORE_ID_KEY);
-    if (!determinedStoreId) {
-      determinedStoreId = 'tiendafacil';
-      localStorage.setItem(ACTIVE_STORE_ID_KEY, determinedStoreId);
+    if (isLoadingProfile || isUserLoading) {
+      return; // Wait until user profile and auth state are resolved
     }
-    setActiveStoreId(determinedStoreId);
-  }, []);
+
+    const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_KEY);
+
+    if (userProfile?.role === 'superAdmin' && storedStoreId) {
+      setActiveStoreId(storedStoreId);
+    } else if (userProfile?.storeId) {
+      setActiveStoreId(userProfile.storeId);
+    } else {
+      // Fallback for users without a store or during initial load before profile is fetched
+      setActiveStoreId('tiendafacil'); 
+    }
+  }, [userProfile, isLoadingProfile, isUserLoading]);
+
 
   const canFetchStoreData = !!firestore && !!activeStoreId;
 
@@ -66,12 +83,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   
-  const userProfileRef = useMemo(() => {
-    if (!user || !firestore) return null;
-    return doc(firestore, 'users', user.uid);
-  }, [user, firestore]);
-
-  const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
 
   useEffect(() => {
     try {
@@ -84,7 +95,11 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, []);
   
-  const isLoading = isLoadingSettingsDoc || isLoadingRates || isLoadingProfile;
+  useEffect(() => {
+    // A consolidated loading state
+    const overallLoading = isLoadingSettingsDoc || isLoadingRates || isLoadingProfile || isUserLoading || !activeStoreId;
+    setIsLoading(overallLoading);
+  }, [isLoadingSettingsDoc, isLoadingRates, isLoadingProfile, isUserLoading, activeStoreId]);
   
   const handleSetSettings = (newSettings: Settings) => {
     if (!settingsDocRef) {

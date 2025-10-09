@@ -825,18 +825,6 @@ export default function SettingsPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="flex items-center justify-between rounded-lg border p-4">
-                            <div>
-                                <p className="font-medium">Poblar Base de Datos</p>
-                                <p className="text-sm text-muted-foreground">
-                                    Carga los datos de demostración a Firestore. Úsalo solo una vez.
-                                </p>
-                            </div>
-                            <Button variant="secondary" onClick={handleSeedDatabase} disabled={isSeeding}>
-                                <Database className="mr-2 h-4 w-4" />
-                                {isSeeding ? 'Poblando...' : 'Poblar Base de Datos de Demostración'}
-                            </Button>
-                        </div>
                         <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
                             <div>
                                 <p className="font-medium text-destructive">Restaurar Datos de Fábrica</p>
@@ -914,7 +902,3 @@ export default function SettingsPage() {
         </div>
     );
 }
-
-    
-
-    
