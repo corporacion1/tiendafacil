@@ -95,7 +95,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, []);
   
-  const isLoading = isUserLoading || (user && (isLoadingProfile || isLoadingSettingsDoc || isLoadingRates));
+  const isLoading = isUserLoading || (user && (isLoadingSettingsDoc || isLoadingRates));
 
   const handleSetSettings = (newSettings: Settings) => {
     if (!settingsDocRef) {
