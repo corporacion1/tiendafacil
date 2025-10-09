@@ -118,6 +118,23 @@ export default function SettingsPage() {
     const { settings, setSettings: saveContextSettings, userProfile } = useSettings();
     const firestore = useFirestore();
     
+    const [localSettings, setLocalSettings] = useState<Settings | null>(null);
+    const [isDirty, setIsDirty] = useState(false);
+
+    useEffect(() => {
+        if (settings) {
+            setLocalSettings(settings);
+        }
+    }, [settings]);
+
+    const handleInputChange = (field: keyof Settings, value: any) => {
+        if (localSettings) {
+            const updatedSettings = { ...localSettings, [field]: value };
+            setLocalSettings(updatedSettings);
+            setIsDirty(!_.isEqual(settings, updatedSettings));
+        }
+    };
+    
     const { data: units = [] } = useCollection<Unit>(useMemoFirebase(() => query(collection(firestore, 'units'), orderBy('name', 'asc')), [firestore]));
     const { data: families = [] } = useCollection<Family>(useMemoFirebase(() => query(collection(firestore, 'families'), orderBy('name', 'asc')), [firestore]));
     const { data: warehouses = [] } = useCollection<Warehouse>(useMemoFirebase(() => query(collection(firestore, 'warehouses'), orderBy('name', 'asc')), [firestore]));
@@ -140,6 +157,17 @@ export default function SettingsPage() {
     const [isSeeding, setIsSeeding] = useState(false);
 
     const isSuperAdmin = userProfile?.role === 'superAdmin';
+
+    const handleSaveSettings = () => {
+        if (localSettings) {
+            saveContextSettings(localSettings);
+            setIsDirty(false);
+            toast({
+                title: "Configuración Guardada",
+                description: "Tus cambios han sido guardados exitosamente.",
+            });
+        }
+    };
 
     const handleSaveNewRate = () => {
         if(newRate <= 0) {
@@ -445,8 +473,12 @@ export default function SettingsPage() {
         });
     }
 
-    if (!settings) {
-        return null;
+    if (!localSettings) {
+        return (
+            <div className="flex justify-center items-center h-full">
+                <p className="text-muted-foreground animate-pulse">Cargando configuración...</p>
+            </div>
+        );
     }
 
     return (
@@ -460,11 +492,11 @@ export default function SettingsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="storeName">Nombre de la Tienda</Label>
-                            <Input id="storeName" value={settings.storeName || ''} readOnly placeholder="Mi Tienda Increíble" maxLength={45} />
+                            <Input id="storeName" value={localSettings.storeName || ''} onChange={(e) => handleInputChange('storeName', e.target.value)} placeholder="Mi Tienda Increíble" maxLength={45} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="businessType">Tipo de Negocio</Label>
-                            <Select value={settings.businessType || ''} disabled>
+                            <Select value={localSettings.businessType || ''} onValueChange={(value) => handleInputChange('businessType', value)}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Selecciona un tipo de negocio" />
                                 </SelectTrigger>
@@ -479,15 +511,15 @@ export default function SettingsPage() {
                         </div>
                         <div className="space-y-2 md:col-span-2">
                             <Label htmlFor="storeAddress">Dirección</Label>
-                            <Input id="storeAddress" value={settings.storeAddress || ''} readOnly placeholder="Calle Falsa 123" maxLength={55} />
+                            <Input id="storeAddress" value={localSettings.storeAddress || ''} onChange={(e) => handleInputChange('storeAddress', e.target.value)} placeholder="Calle Falsa 123" maxLength={55} />
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="storePhone">Teléfono (para el ticket)</Label>
-                            <Input id="storePhone" value={settings.storePhone || ''} readOnly placeholder="+58-412-1234567" maxLength={15} />
+                            <Input id="storePhone" value={localSettings.storePhone || ''} onChange={(e) => handleInputChange('storePhone', e.target.value)} placeholder="+58-412-1234567" maxLength={15} />
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="storeSlogan">Slogan o Mensaje para el Ticket</Label>
-                            <Input id="storeSlogan" value={settings.storeSlogan || ''} readOnly placeholder="¡Gracias por tu compra!" maxLength={55} />
+                            <Input id="storeSlogan" value={localSettings.storeSlogan || ''} onChange={(e) => handleInputChange('storeSlogan', e.target.value)} placeholder="¡Gracias por tu compra!" maxLength={55} />
                         </div>
                     </div>
                     
@@ -496,12 +528,12 @@ export default function SettingsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="saleSeries">Serie de Venta</Label>
-                            <Input id="saleSeries" value={settings.saleSeries || ''} readOnly placeholder="Ej: SALE" maxLength={11} />
+                            <Input id="saleSeries" value={localSettings.saleSeries || ''} onChange={(e) => handleInputChange('saleSeries', e.target.value)} placeholder="Ej: SALE" maxLength={11} />
                             <CardDescription>Prefijo para los números de control de venta.</CardDescription>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="saleCorrelative">Próximo Correlativo</Label>
-                            <Input id="saleCorrelative" type="number" value={settings.saleCorrelative || 0} readOnly />
+                            <Input id="saleCorrelative" type="number" value={localSettings.saleCorrelative || 0} onChange={(e) => handleInputChange('saleCorrelative', Number(e.target.value))} />
                              <CardDescription>El número de la próxima venta. Se actualiza automáticamente.</CardDescription>
                         </div>
                     </div>
@@ -511,12 +543,12 @@ export default function SettingsPage() {
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="tax1">Impuesto 1 (%)</Label>
-                            <Input id="tax1" type="number" value={settings.tax1 || 0} readOnly placeholder="Ej: 16" />
+                            <Input id="tax1" type="number" value={localSettings.tax1 || 0} onChange={(e) => handleInputChange('tax1', Number(e.target.value))} placeholder="Ej: 16" />
                             <CardDescription>Impuesto general sobre las ventas (IVA).</CardDescription>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="tax2">Impuesto 2 (%)</Label>
-                            <Input id="tax2" type="number" value={settings.tax2 || 0} readOnly placeholder="Ej: 5" />
+                            <Input id="tax2" type="number" value={localSettings.tax2 || 0} onChange={(e) => handleInputChange('tax2', Number(e.target.value))} placeholder="Ej: 5" />
                              <CardDescription>Impuesto especial o selectivo.</CardDescription>
                         </div>
                     </div>
@@ -529,7 +561,7 @@ export default function SettingsPage() {
                     </div>
                 </CardContent>
                 <CardFooter className="border-t px-6 py-4 flex justify-end">
-                    <Button className="bg-primary hover:bg-primary/90" disabled>Guardar Configuración</Button>
+                    <Button onClick={handleSaveSettings} className="bg-primary hover:bg-primary/90" disabled={!isDirty}>Guardar Configuración</Button>
                 </CardFooter>
             </Card>
 
@@ -544,22 +576,22 @@ export default function SettingsPage() {
                             <h3 className="font-semibold text-lg">Moneda Principal</h3>
                             <div className="space-y-2">
                                 <Label htmlFor="primaryCurrencyName">Nombre de la Moneda</Label>
-                                <Input id="primaryCurrencyName" value={settings.primaryCurrencyName || ''} readOnly placeholder="Dólar" maxLength={20} />
+                                <Input id="primaryCurrencyName" value={localSettings.primaryCurrencyName || ''} onChange={(e) => handleInputChange('primaryCurrencyName', e.target.value)} placeholder="Dólar" maxLength={20} />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="primaryCurrencySymbol">Símbolo</Label>
-                                <Input id="primaryCurrencySymbol" value={settings.primaryCurrencySymbol || ''} readOnly placeholder="$" maxLength={4} />
+                                <Input id="primaryCurrencySymbol" value={localSettings.primaryCurrencySymbol || ''} onChange={(e) => handleInputChange('primaryCurrencySymbol', e.target.value)} placeholder="$" maxLength={4} />
                             </div>
                         </div>
                         <div className="space-y-4 p-4 border rounded-lg">
                             <h3 className="font-semibold text-lg">Moneda Secundaria</h3>
                             <div className="space-y-2">
                                 <Label htmlFor="secondaryCurrencyName">Nombre de la Moneda</Label>
-                                <Input id="secondaryCurrencyName" value={settings.secondaryCurrencyName || ''} readOnly placeholder="Bolívares" maxLength={20} />
+                                <Input id="secondaryCurrencyName" value={localSettings.secondaryCurrencyName || ''} onChange={(e) => handleInputChange('secondaryCurrencyName', e.target.value)} placeholder="Bolívares" maxLength={20} />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="secondaryCurrencySymbol">Símbolo</Label>
-                                <Input id="secondaryCurrencySymbol" value={settings.secondaryCurrencySymbol || ''} readOnly placeholder="Bs." maxLength={4} />
+                                <Input id="secondaryCurrencySymbol" value={localSettings.secondaryCurrencySymbol || ''} onChange={(e) => handleInputChange('secondaryCurrencySymbol', e.target.value)} placeholder="Bs." maxLength={4} />
                             </div>
                         </div>
                     </div>
@@ -568,7 +600,7 @@ export default function SettingsPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
-                            <h4 className="font-medium">Registrar Tasa ({settings.secondaryCurrencyName || '...'})</h4>
+                            <h4 className="font-medium">Registrar Tasa ({localSettings.secondaryCurrencyName || '...'})</h4>
                             <div className="flex items-center gap-2">
                                 <Input 
                                     id="newRate" 
@@ -587,7 +619,7 @@ export default function SettingsPage() {
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>¿Confirmar Nueva Tasa?</AlertDialogTitle>
                                             <AlertDialogDescription>
-                                                Estás a punto de guardar una nueva tasa de cambio de ${newRate.toFixed(6)} {settings.secondaryCurrencySymbol}. ¿Estás seguro?
+                                                Estás a punto de guardar una nueva tasa de cambio de ${newRate.toFixed(6)} {localSettings.secondaryCurrencySymbol}. ¿Estás seguro?
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
@@ -612,7 +644,7 @@ export default function SettingsPage() {
                                         {currencyRates.length > 0 ? currencyRates.map(rate => (
                                             <TableRow key={rate.id}>
                                                 <TableCell>{rate.date ? format(parseISO(rate.date as string), "dd/MM/yy HH:mm") : 'N/A'}</TableCell>
-                                                <TableCell className="text-right font-mono">{`${rate.rate.toFixed(6)} ${settings.secondaryCurrencySymbol || ''}`}</TableCell>
+                                                <TableCell className="text-right font-mono">{`${rate.rate.toFixed(6)} ${localSettings.secondaryCurrencySymbol || ''}`}</TableCell>
                                             </TableRow>
                                         )) : (
                                             <TableRow>
@@ -627,7 +659,7 @@ export default function SettingsPage() {
 
                 </CardContent>
                  <CardFooter className="border-t px-6 py-4 flex justify-end">
-                    <Button className="bg-primary hover:bg-primary/90" disabled>Guardar Configuración de Monedas</Button>
+                    <Button onClick={handleSaveSettings} className="bg-primary hover:bg-primary/90" disabled={!isDirty}>Guardar Configuración de Monedas</Button>
                 </CardFooter>
             </Card>
 
@@ -640,21 +672,21 @@ export default function SettingsPage() {
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label htmlFor="storeWhatsapp">Teléfono de WhatsApp</Label>
-                            <Input id="storeWhatsapp" value={settings.storeWhatsapp || ''} readOnly placeholder="+58-412-1112233" />
+                            <Input id="storeWhatsapp" value={localSettings.storeWhatsapp || ''} onChange={(e) => handleInputChange('storeWhatsapp', e.target.value)} placeholder="+58-412-1112233" />
                             <CardDescription>Este número se usará para los enlaces de WhatsApp.</CardDescription>
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="storeTiktok">Usuario de TikTok</Label>
-                            <Input id="storeTiktok" value={settings.storeTiktok || ''} readOnly placeholder="@tu-usuario-tiktok" />
+                            <Input id="storeTiktok" value={localSettings.storeTiktok || ''} onChange={(e) => handleInputChange('storeTiktok', e.target.value)} placeholder="@tu-usuario-tiktok" />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="storeMeta">Usuario de Meta (Instagram, Facebook, X)</Label>
-                            <Input id="storeMeta" value={settings.storeMeta || ''} readOnly placeholder="@tu-usuario-meta" />
+                            <Input id="storeMeta" value={localSettings.storeMeta || ''} onChange={(e) => handleInputChange('storeMeta', e.target.value)} placeholder="@tu-usuario-meta" />
                         </div>
                     </div>
                 </CardContent>
                  <CardFooter className="border-t px-6 py-4 flex justify-end">
-                    <Button className="bg-primary hover:bg-primary/90" disabled>Guardar Cambios de Redes</Button>
+                    <Button onClick={handleSaveSettings} className="bg-primary hover:bg-primary/90" disabled={!isDirty}>Guardar Cambios de Redes</Button>
                 </CardFooter>
             </Card>
 
@@ -809,5 +841,3 @@ export default function SettingsPage() {
         </div>
     );
 }
-
-    
