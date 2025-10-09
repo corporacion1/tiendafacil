@@ -94,4 +94,3 @@ export function useDoc<T = any>(
 
   return { data, isLoading: isLoading || isUserLoading, error };
 }
-
