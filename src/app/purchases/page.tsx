@@ -30,27 +30,32 @@ export default function PurchasesPage() {
 
   const productsRef = useMemoFirebase(() => {
     if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId), orderBy('createdAt', 'desc'));
+    return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
   }, [firestore, activeStoreId]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
 
   const suppliersRef = useMemoFirebase(() => {
     if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'suppliers'), where('storeId', '==', activeStoreId), orderBy('name', 'asc'));
+    return query(collection(firestore, 'suppliers'), where('storeId', '==', activeStoreId));
   }, [firestore, activeStoreId]);
   const { data: suppliers, isLoading: isLoadingSuppliers } = useCollection<Supplier>(suppliersRef);
 
   const familiesRef = useMemoFirebase(() => {
     if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'families'), where('storeId', '==', activeStoreId), orderBy('name', 'asc'));
+    return query(collection(firestore, 'families'), where('storeId', '==', activeStoreId));
   }, [firestore, activeStoreId]);
   const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesRef);
 
   const purchasesRef = useMemoFirebase(() => {
     if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId), orderBy('date', 'desc'));
+    return query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId));
   }, [firestore, activeStoreId]);
-  const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesRef);
+  const { data: purchasesData, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesRef);
+
+  const purchases = useMemo(() => {
+    if (!purchasesData) return [];
+    return [...purchasesData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [purchasesData]);
 
 
   const isLoading = isLoadingProducts || isLoadingSuppliers || isLoadingFamilies || isLoadingPurchases;
@@ -570,5 +575,3 @@ export default function PurchasesPage() {
     </div>
   );
 }
-
-    

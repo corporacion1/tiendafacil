@@ -64,7 +64,7 @@ export default function ReportsPage() {
 
     const purchasesRef = useMemoFirebase(() => {
         if (!firestore || !activeStoreId) return null;
-        return query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId), orderBy('date', 'desc'));
+        return query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId));
     }, [firestore, activeStoreId]);
     const { data: purchasesData, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesRef);
 
@@ -76,13 +76,13 @@ export default function ReportsPage() {
 
     const productsRef = useMemoFirebase(() => {
         if (!firestore || !activeStoreId) return null;
-        return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId), orderBy('createdAt', 'desc'));
+        return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
     }, [firestore, activeStoreId]);
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
 
     const customersRef = useMemoFirebase(() => {
         if (!firestore || !activeStoreId) return null;
-        return query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId), orderBy('name', 'asc'));
+        return query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId));
     }, [firestore, activeStoreId]);
     const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersRef);
 
@@ -253,12 +253,17 @@ export default function ReportsPage() {
         ) as Sale[];
     }, [sortedSales, searchTerm, dateFilterQuery]);
 
+    const sortedPurchases = useMemo(() => {
+        if (!purchasesData) return [];
+        return [...purchasesData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [purchasesData]);
+    
     const filteredPurchases = useMemo(() => {
-        return filterByDate(purchasesData || []).filter(p =>
+        return filterByDate(sortedPurchases).filter(p =>
             (p.id as string).toLowerCase().includes(searchTerm.toLowerCase()) ||
             p.supplierName.toLowerCase().includes(searchTerm.toLowerCase())
         ) as Purchase[];
-    }, [purchasesData, searchTerm, dateFilterQuery]);
+    }, [sortedPurchases, searchTerm, dateFilterQuery]);
 
     const filteredMovements = useMemo(() => {
         const sortedMovements = (movementsData || []).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

@@ -55,13 +55,13 @@ export default function Dashboard() {
 
   const purchasesRef = useMemoFirebase(() => {
     if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId), orderBy('date', 'desc'));
+    return query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId));
   }, [firestore, activeStoreId]);
-  const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesRef);
+  const { data: purchasesData, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesRef);
 
   const productsRef = useMemoFirebase(() => {
     if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId), orderBy('createdAt', 'desc'));
+    return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
   }, [firestore, activeStoreId]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
   
@@ -75,6 +75,11 @@ export default function Dashboard() {
     if (!salesData) return [];
     return [...salesData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [salesData]);
+  
+  const purchases = useMemo(() => {
+    if (!purchasesData) return [];
+    return [...purchasesData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [purchasesData]);
 
   const recentMovements = useMemo(() => {
     if (!movementsData) return [];
