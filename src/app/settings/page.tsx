@@ -123,13 +123,22 @@ export default function SettingsPage() {
     const [localSettings, setLocalSettings] = useState(settings || {});
     const [imageError, setImageError] = useState(false);
 
-    const unitsQuery = useMemoFirebase(() => query(collection(firestore, 'units'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
+    const unitsQuery = useMemoFirebase(() => {
+        if (!firestore || !activeStoreId) return null;
+        return query(collection(firestore, 'units'), where('storeId', '==', activeStoreId));
+    }, [firestore, activeStoreId]);
     const { data: units = [] } = useCollection<Unit>(unitsQuery);
 
-    const familiesQuery = useMemoFirebase(() => query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
+    const familiesQuery = useMemoFirebase(() => {
+        if (!firestore || !activeStoreId) return null;
+        return query(collection(firestore, 'families'), where('storeId', '==', activeStoreId));
+    }, [firestore, activeStoreId]);
     const { data: families = [] } = useCollection<Family>(familiesQuery);
 
-    const warehousesQuery = useMemoFirebase(() => query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
+    const warehousesQuery = useMemoFirebase(() => {
+        if (!firestore || !activeStoreId) return null;
+        return query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId));
+    }, [firestore, activeStoreId]);
     const { data: warehouses = [] } = useCollection<Warehouse>(warehousesQuery);
 
     const [localUnits, setLocalUnits] = useState<Unit[]>([]);
@@ -171,15 +180,21 @@ export default function SettingsPage() {
     }, [settings]);
 
     useEffect(() => {
-        setLocalUnits(units.sort((a,b) => a.name.localeCompare(b.name)));
+        if (units) {
+            setLocalUnits([...units].sort((a, b) => a.name.localeCompare(b.name)));
+        }
     }, [units]);
 
     useEffect(() => {
-        setLocalFamilies(families.sort((a,b) => a.name.localeCompare(b.name)));
+        if (families) {
+            setLocalFamilies([...families].sort((a, b) => a.name.localeCompare(b.name)));
+        }
     }, [families]);
 
     useEffect(() => {
-        setLocalWarehouses(warehouses.sort((a,b) => a.name.localeCompare(b.name)));
+        if (warehouses) {
+            setLocalWarehouses([...warehouses].sort((a, b) => a.name.localeCompare(b.name)));
+        }
     }, [warehouses]);
     
     useEffect(() => {
