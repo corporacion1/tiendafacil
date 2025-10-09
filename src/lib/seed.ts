@@ -69,6 +69,7 @@ export async function seedDatabase(db: Firestore) {
   });
 
   defaultCustomers.forEach((customer) => {
+      // Do not write the "Cliente Eventual" to the database
       if(customer.id === 'eventual') return;
       const docRef = doc(db, 'customers', customer.id);
       batch.set(docRef, customer);
@@ -137,6 +138,8 @@ export async function factoryReset(db: Firestore) {
     const snapshot = await getDocs(collectionRef);
     if (!snapshot.empty) {
       snapshot.forEach(doc => {
+        // We skip deleting the 'eventual' customer if it exists in the collection
+        if (collectionName === 'customers' && doc.id === 'eventual') return;
         batch.delete(doc.ref);
         operationCount++;
       });

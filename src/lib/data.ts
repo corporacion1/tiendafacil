@@ -1,4 +1,3 @@
-
 import type { Product, Sale, Unit, Family, Warehouse, Customer, Purchase, Ad, UserProfile, Store } from '@/lib/types';
 import { PlaceHolderImages } from './placeholder-images';
 import { subDays, subHours, addDays } from 'date-fns';
@@ -221,3 +220,17 @@ export const businessCategories: string[] = [
     'Salud y Belleza',
     'Otro'
 ];
+
+/**
+ * Función de utilidad para simular el seguimiento de un clic en un anuncio.
+ * En una aplicación real, esto probablemente haría una llamada a la API.
+ */
+export async function trackAdClick(adId: string) {
+  console.log(`Ad with ID ${adId} was clicked.`);
+  // Aquí es donde harías una llamada a Firestore para incrementar las vistas del anuncio.
+  // Por ejemplo:
+  // const adRef = doc(db, 'ads', adId);
+  // await updateDoc(adRef, {
+  //   views: increment(1)
+  // });
+}

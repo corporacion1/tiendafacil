@@ -4,9 +4,17 @@ import { Instagram, Facebook, Twitter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FaWhatsapp, FaTiktok } from "react-icons/fa";
 import { useSettings } from "@/contexts/settings-context";
+import { usePathname } from 'next/navigation';
+
 
 export function Footer() {
   const { settings } = useSettings();
+  const pathname = usePathname();
+  
+  // Do not render the footer on the main catalog page
+  if (pathname === '/catalog') {
+    return null;
+  }
 
   const socialLinks = [
     {
