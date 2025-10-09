@@ -51,7 +51,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
     }, [isUserLoading, isProfileLoading, user, userProfile, router, pathname, isPublicPage]);
     
-    // Lock app logic from previous AppLoader
     useEffect(() => {
         if (!isSecurityReady || !hasPin) return;
         if (pathname !== '/pos' && localStorage.getItem('last_path_was_pos') === 'true') {
@@ -70,7 +69,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
                 <Logo className="w-64 h-20" />
-                <p className="text-muted-foreground animate-pulse">Cargando aplicación...</p>
+                <p className="text-muted-foreground animate-pulse">Verificando sesión y permisos...</p>
             </div>
         );
     }
@@ -83,11 +82,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         return <>{children}</>;
     }
 
-    // Fallback loading/permission check screen
     return (
       <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
         <Logo className="w-64 h-20" />
-        <p className="text-muted-foreground animate-pulse">Verificando sesión y permisos...</p>
+        <p className="text-muted-foreground animate-pulse">Verificando permisos...</p>
       </div>
     );
 }

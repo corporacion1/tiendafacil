@@ -37,7 +37,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  // Initialize with a default, but it will be overwritten by the logic below.
   const [activeStoreId, setActiveStoreId] = useState<string>('tiendafacil');
 
   const userProfileRef = useMemoFirebase(() => {
@@ -52,14 +51,12 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
     let determinedStoreId: string | null = null;
     
-    // Priority 1: User's own store if they are an admin/superAdmin
     if (userProfile.role === 'admin' || userProfile.role === 'superAdmin') {
         if (userProfile.storeId) {
             determinedStoreId = userProfile.storeId;
         }
     }
     
-    // Priority 2: Check localStorage (useful for superAdmin switching)
     if (!determinedStoreId && userProfile.role === 'superAdmin') {
         const storedId = localStorage.getItem(ACTIVE_STORE_ID_KEY);
         if (storedId) {
@@ -67,7 +64,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         }
     }
     
-    // Priority 3: Fallback to the default store ID.
     const finalStoreId = determinedStoreId || 'tiendafacil';
 
     if (finalStoreId !== activeStoreId) {
@@ -146,20 +142,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   
   const latestRate = currencyRates?.[0]?.rate;
   const activeRate = activeCurrency === 'primary' ? 1 : (latestRate && latestRate > 0 ? latestRate : 1);
-
-  const pathname = usePathname();
-  const isPublicPage = pathname === '/login' || pathname.startsWith('/catalog');
-
-  if (isLoading && !isPublicPage) {
-      return (
-         <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
-            <div className="w-64 h-20 flex items-center justify-center">
-              <Package className="h-16 w-16 text-muted-foreground" />
-            </div>
-            <p className="text-muted-foreground animate-pulse">Cargando configuración y datos de usuario...</p>
-        </div>
-      );
-  }
 
   return (
     <SettingsContext.Provider value={{ 
