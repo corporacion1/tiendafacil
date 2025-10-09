@@ -8,7 +8,6 @@ import {
   query,
   where,
   serverTimestamp,
-  setDoc,
 } from 'firebase/firestore';
 import {
   defaultStore,
@@ -25,58 +24,56 @@ import {
   defaultStoreId
 } from './data';
 
-async function isCollectionEmpty(db: Firestore, collectionName: string): Promise<boolean> {
-  const collectionRef = collection(db, collectionName);
-  const snapshot = await getDocs(query(collectionRef));
-  return snapshot.empty;
-}
 
+/**
+ * Seeds the database with the default demo data.
+ * This function is now unconditional to ensure reliability. It will:
+ * 1. Find the superAdmin user.
+ * 2. Force-create or overwrite the default store document.
+ * 3. Force-update the superAdmin user profile with the correct storeId.
+ * 4. Populate all other demo data, linking it to the default store.
+ */
 export async function seedDatabase(db: Firestore) {
   const batch = writeBatch(db);
 
-  // 1. Force update/create the superAdmin user to ensure it has the correct storeId
+  // 1. Find the superAdmin user to get their actual UID
   const superAdminUserQuery = query(collection(db, 'users'), where('email', '==', 'corporacion1@gmail.com'));
   const superAdminSnapshot = await getDocs(superAdminUserQuery);
 
   if (superAdminSnapshot.empty) {
-      throw new Error("Super Admin user 'corporacion1@gmail.com' not found. Please log in with that user first for it to be created.");
+      throw new Error("Super Admin user 'corporacion1@gmail.com' not found. Please log in with that user first for it to be created, then try seeding again.");
   }
   const superAdminDoc = superAdminSnapshot.docs[0];
   const superAdminRef = superAdminDoc.ref;
   
-  const superAdminTemplate = defaultUsers.find(u => u.email === 'corporacion1@gmail.com');
-  if (!superAdminTemplate) {
-      throw new Error("Default super admin user is not defined in data.ts");
-  }
+  // 2. Force create/overwrite the default store document
+  const storeDocRef = doc(db, 'stores', defaultStoreId);
+  // Ensure the ownerId is the actual UID of the superAdmin user
+  batch.set(storeDocRef, { ...defaultStore, ownerId: superAdminDoc.id });
 
+  // 3. Force update the superAdmin user to ensure it has the storeId
+  const superAdminTemplate = defaultUsers.find(u => u.email === 'corporacion1@gmail.com')!;
   const finalSuperAdminData = { 
-      ...superAdminDoc.data(), 
+      ...superAdminDoc.data(),
       ...superAdminTemplate,
-      uid: superAdminDoc.id,
-      storeId: defaultStoreId, // Ensure storeId is set
+      uid: superAdminDoc.id, // Ensure UID is consistent
+      storeId: defaultStoreId, // CRITICAL: Ensure storeId is set
       createdAt: superAdminDoc.data().createdAt || serverTimestamp() 
   };
-  // Use `set` with `merge: true` to guarantee the storeId is added or updated.
   batch.set(superAdminRef, finalSuperAdminData, { merge: true });
 
-  // 2. Force create/overwrite the default store
-  const storeDocRef = doc(db, 'stores', defaultStoreId);
-  batch.set(storeDocRef, { ...defaultStore, ownerId: superAdminDoc.id });
-  
-  // 3. Seed Products
+  // 4. Seed all other collections, ensuring they are linked to the default store.
   mockProducts.forEach((product) => {
     const docRef = doc(db, 'products', product.id);
     batch.set(docRef, { ...product, createdAt: serverTimestamp(), storeId: defaultStoreId });
   });
 
-  // 4. Seed Customers
   defaultCustomers.forEach((customer) => {
-      if(customer.id === 'eventual') return; // Do not save 'eventual' customer in DB
+      if(customer.id === 'eventual') return;
       const docRef = doc(db, 'customers', customer.id);
       batch.set(docRef, customer);
   });
-  
-  // 5. Seed other simple collections
+
   const seedSimpleCollection = (collectionName: string, data: any[]) => {
       data.forEach((item) => {
           const docRef = doc(db, collectionName, item.id);
@@ -89,7 +86,6 @@ export async function seedDatabase(db: Firestore) {
   seedSimpleCollection('families', initialFamilies);
   seedSimpleCollection('warehouses', initialWarehouses);
 
-  // 6. Seed Sales and Purchases
   mockSales.forEach((sale) => {
       const docRef = doc(db, 'sales', sale.id);
       batch.set(docRef, sale);
@@ -100,39 +96,27 @@ export async function seedDatabase(db: Firestore) {
       batch.set(docRef, purchase);
   });
 
-  // 7. Seed Ads
   mockAds.forEach((ad) => {
       const docRef = doc(db, 'ads', ad.id);
       batch.set(docRef, { ...ad, createdAt: serverTimestamp() });
   });
 
-  // Commit all batched writes to Firestore
   await batch.commit();
 }
 
 
-async function deleteCollection(db: Firestore, collectionPath: string, batch: any) {
-  const collectionRef = collection(db, collectionPath);
-  const snapshot = await getDocs(collectionRef);
-
-  if (snapshot.empty) {
-    return batch; // Return the same batch if collection is empty
-  }
-  
-  snapshot.docs.forEach(doc => {
-    batch.delete(doc.ref);
-  });
-  
-  return batch;
-}
-
+/**
+ * Performs a factory reset by deleting all data related to the demo.
+ * This is a safer implementation that targets specific collections and documents.
+ */
 export async function factoryReset(db: Firestore) {
   console.log("Starting Firestore factory reset...");
   let batch = writeBatch(db);
   let operationCount = 0;
+  const MAX_OPS_PER_BATCH = 450;
 
   const commitBatchIfFull = async () => {
-    if (operationCount >= 450) {
+    if (operationCount >= MAX_OPS_PER_BATCH) {
       console.log(`Committing batch with ${operationCount} operations...`);
       await batch.commit();
       batch = writeBatch(db);
@@ -143,12 +127,12 @@ export async function factoryReset(db: Firestore) {
   const collectionsToDelete = [
     'products', 'customers', 'suppliers', 'units', 'families', 
     'warehouses', 'sales', 'purchases', 'inventory_movements', 
-    'pendingOrders', 'ads', 'currency_rates' // Also delete the rogue top-level collection
+    'pendingOrders', 'ads'
   ];
   
-  // Delete all top-level collections
+  // 1. Delete all documents from top-level collections
   for (const collectionName of collectionsToDelete) {
-    console.log(`Deleting collection: ${collectionName}`);
+    console.log(`Queueing deletion for collection: ${collectionName}`);
     const collectionRef = collection(db, collectionName);
     const snapshot = await getDocs(collectionRef);
     if (!snapshot.empty) {
@@ -160,31 +144,27 @@ export async function factoryReset(db: Firestore) {
     }
   }
 
-  // Explicitly delete subcollections within 'stores'
-  console.log("Deleting 'stores' collection and its subcollections...");
-  const storesCollectionRef = collection(db, 'stores');
-  const storesSnapshot = await getDocs(storesCollectionRef);
-  if (!storesSnapshot.empty) {
-    for (const storeDoc of storesSnapshot.docs) {
-      // Delete subcollections like 'currencyRates'
-      const ratesCollectionRef = collection(db, `stores/${storeDoc.id}/currencyRates`);
-      const ratesSnapshot = await getDocs(ratesCollectionRef);
-      if (!ratesSnapshot.empty) {
-        ratesSnapshot.forEach(rateDoc => {
+  // 2. Safely delete the default store and its subcollections
+  console.log(`Queueing deletion for default store: ${defaultStoreId}`);
+  const storeRef = doc(db, 'stores', defaultStoreId);
+  const currencyRatesRef = collection(storeRef, 'currencyRates');
+  const ratesSnapshot = await getDocs(currencyRatesRef);
+  
+  if (!ratesSnapshot.empty) {
+      console.log(`Queueing deletion for subcollection: currencyRates in ${defaultStoreId}`);
+      ratesSnapshot.forEach(rateDoc => {
           batch.delete(rateDoc.ref);
           operationCount++;
-        });
-        await commitBatchIfFull();
-      }
-      // Finally, delete the store document itself
-      batch.delete(storeDoc.ref);
-      operationCount++;
+      });
       await commitBatchIfFull();
-    }
   }
+  
+  // Delete the store document itself
+  batch.delete(storeRef);
+  operationCount++;
 
-  // Delete all users except the superAdmin
-  console.log("Deleting users except superAdmin...");
+  // 3. Delete all users except the superAdmin
+  console.log("Queueing deletion for users (excluding superAdmin)...");
   const usersQuery = query(collection(db, "users"), where("email", "!=", "corporacion1@gmail.com"));
   const usersSnapshot = await getDocs(usersQuery);
   if (!usersSnapshot.empty) {
@@ -194,6 +174,19 @@ export async function factoryReset(db: Firestore) {
     });
     await commitBatchIfFull();
   }
+  
+  // 4. Delete the now-rogue `currency_rates` collection if it exists
+  const rogueRatesRef = collection(db, 'currency_rates');
+  const rogueRatesSnapshot = await getDocs(rogueRatesRef);
+  if (!rogueRatesSnapshot.empty) {
+      console.log("Queueing deletion for rogue top-level 'currency_rates' collection.");
+      rogueRatesSnapshot.forEach(doc => {
+          batch.delete(doc.ref);
+          operationCount++;
+      });
+      await commitBatchIfFull();
+  }
+
 
   // Commit any remaining operations
   if (operationCount > 0) {
