@@ -163,6 +163,15 @@ export default function SettingsPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    <FormItem>
+                        <FormLabel>ID de la Tienda (Store ID)</FormLabel>
+                        <FormControl>
+                            <Input readOnly value={activeStoreId} className="bg-muted" />
+                        </FormControl>
+                        <FormDescription>
+                            Este es el identificador único de tu tienda. No se puede cambiar.
+                        </FormDescription>
+                    </FormItem>
                     <FormField
                       control={form.control}
                       name="name"
@@ -432,3 +441,5 @@ export default function SettingsPage() {
     </Form>
   );
 }
+
+    
