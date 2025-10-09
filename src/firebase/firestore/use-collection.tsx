@@ -53,7 +53,8 @@ export function useCollection<T = any>(
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
-    // If there's no query or the user is still authenticating, wait.
+    // CRITICAL: If the query is not ready or auth is loading, do nothing.
+    // This prevents race conditions on initial render.
     if (!memoizedTargetRefOrQuery || isUserLoading) {
       setIsLoading(isUserLoading); // Reflect auth loading state
       setData(null);
@@ -105,3 +106,4 @@ export function useCollection<T = any>(
 
   return { data, isLoading, error };
 }
+

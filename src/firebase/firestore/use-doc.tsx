@@ -51,11 +51,11 @@ export function useDoc<T = any>(
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
-  const shouldFetch = !isUserLoading && !!memoizedDocRef;
-
   useEffect(() => {
-    if (!shouldFetch) {
-      setIsLoading(true);
+    // CRITICAL: If the docRef is not ready or auth is loading, do nothing.
+    // This prevents race conditions on initial render.
+    if (!memoizedDocRef || isUserLoading) {
+      setIsLoading(isUserLoading);
       setData(null);
       return;
     }
@@ -90,7 +90,8 @@ export function useDoc<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedDocRef, shouldFetch]);
+  }, [memoizedDocRef, isUserLoading]);
 
   return { data, isLoading: isLoading || isUserLoading, error };
 }
+
