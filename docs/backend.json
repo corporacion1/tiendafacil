@@ -213,6 +213,15 @@
             "total": {"type": "number"}
         },
         "required": ["id", "date", "customerName", "customerPhone", "items", "total", "storeId"]
+    },
+    "CurrencyRate": {
+      "title": "CurrencyRate", "type": "object", "description": "Represents an exchange rate at a specific point in time.",
+      "properties": {
+        "id": { "type": "string" },
+        "rate": { "type": "number", "description": "The exchange rate value." },
+        "date": { "type": "string", "format": "date-time", "description": "The date and time when the rate was set." }
+      },
+      "required": ["id", "rate", "date"]
     }
   },
   "auth": { "providers": ["password", "anonymous"] },
@@ -229,6 +238,7 @@
     "/stores/{storeId}": { "schema": { "$ref": "#/entities/Store" }, "description": "Stores application configuration settings for each store." },
     "/users/{userId}": { "schema": { "$ref": "#/entities/UserProfile" }, "description": "Stores user profiles." },
     "/ads/{adId}": { "schema": { "$ref": "#/entities/Ad" }, "description": "Stores marketing advertisements." },
-    "/pendingOrders/{orderId}": { "schema": { "$ref": "#/entities/PendingOrder" }, "description": "Stores orders from the public catalog." }
+    "/pendingOrders/{orderId}": { "schema": { "$ref": "#/entities/PendingOrder" }, "description": "Stores orders from the public catalog." },
+    "/currencyRates/{rateId}": { "schema": { "$ref": "#/entities/CurrencyRate" }, "description": "Stores historical currency exchange rates." }
   }
 }

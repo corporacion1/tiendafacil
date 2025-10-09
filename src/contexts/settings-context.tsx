@@ -77,8 +77,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   
   const currencyRatesQuery = useMemoFirebase(() => {
     if (!canFetchStoreData) return null;
-    return query(collection(firestore, `currencyRates`), orderBy('date', 'desc'));
-  }, [firestore, canFetchStoreData]);
+    return query(collection(firestore, `stores/${activeStoreId}/currencyRates`), orderBy('date', 'desc'));
+  }, [firestore, canFetchStoreData, activeStoreId]);
 
   const { data: currencyRates = [], isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
 
