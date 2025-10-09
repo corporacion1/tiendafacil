@@ -330,7 +330,7 @@ export default function Dashboard() {
         </div>
 
         <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
-          <Card className="w-full xl:col-span-2">
+          <Card className="w-full xl:col-span-3">
             <CardHeader className="flex flex-row items-center">
               <div className="grid gap-2">
                 <CardTitle>Movimientos Recientes</CardTitle>
@@ -376,30 +376,8 @@ export default function Dashboard() {
               </Table>
             </CardContent>
           </Card>
-          
-          <Card className="w-full">
-                <CardHeader>
-                    <CardTitle>Prueba de Datos (Tienda: {activeStoreId})</CardTitle>
-                    <CardDescription>Lista de productos crudos para verificar la conexión.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {isLoadingProducts ? (
-                        <p>Cargando productos...</p>
-                    ) : products && products.length > 0 ? (
-                        <ul className="list-disc pl-5">
-                            {products.slice(0, 5).map(p => (
-                                <li key={p.id} className="text-sm">{p.name}</li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className="text-sm text-muted-foreground">No se encontraron productos para la tienda actual.</p>
-                    )}
-                </CardContent>
-            </Card>
         </div>
       </main>
     </div>
   );
 }
-
-    
