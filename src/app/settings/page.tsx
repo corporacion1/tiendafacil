@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
 import { Button } from "@/components/ui/button";
@@ -115,11 +115,10 @@ function ChangePinDialog() {
 
 export default function SettingsPage() {
     const { hasPin, setPin, removePin, checkPin } = useSecurity();
-    const { settings, setSettings, currencyRates, isLoadingSettings, userProfile } = useSettings();
+    const { settings, setSettings, userProfile } = useSettings();
     const firestore = useFirestore();
     
-    // State to hold the form data. Initialized from the context.
-    const [localSettings, setLocalSettings] = useState<Settings | null>(settings);
+    const [localSettings, setLocalSettings] = useState<Settings | null>(null);
 
     const { data: units = [] } = useCollection<Unit>(useMemoFirebase(() => query(collection(firestore, 'units'), orderBy('name', 'asc')), [firestore]));
     const { data: families = [] } = useCollection<Family>(useMemoFirebase(() => query(collection(firestore, 'families'), orderBy('name', 'asc')), [firestore]));
@@ -153,22 +152,18 @@ export default function SettingsPage() {
 
     const isSuperAdmin = userProfile?.role === 'superAdmin';
 
-    // This effect synchronizes the local form state with the settings from the context.
-    // It runs whenever the 'settings' from the context changes.
     useEffect(() => {
         if (settings) {
             setLocalSettings(settings);
         }
     }, [settings]);
 
-    // This effect calculates if the form is "dirty" (has changes)
     useEffect(() => {
-        if (!settings || !localSettings) {
+        if (settings && localSettings) {
+            setIsDirty(!_.isEqual(settings, localSettings));
+        } else {
             setIsDirty(false);
-            return;
         }
-        // Use a deep comparison to check for any changes in the form data.
-        setIsDirty(!_.isEqual(settings, localSettings));
     }, [localSettings, settings]);
 
     useEffect(() => {
@@ -203,22 +198,11 @@ export default function SettingsPage() {
         setLocalSettings(prev => prev ? ({ ...prev, [id]: parseFloat(value) || 0 }) : null);
     };
 
-    const saveAllSettings = async () => {
+    const saveAllSettings = () => {
         if (!localSettings) return;
-
-        const batch = writeBatch(firestore);
-
-        // Save main settings
         setSettings(localSettings);
-        
-        try {
-            await batch.commit();
-            setIsDirty(false);
-            toast({ title: "Configuración guardada", description: "Toda la configuración ha sido actualizada." });
-        } catch (error) {
-            console.error("Error saving settings:", error);
-            toast({ variant: 'destructive', title: 'Error al guardar la configuración' });
-        }
+        setIsDirty(false);
+        toast({ title: "Configuración guardada", description: "Toda la configuración ha sido actualizada." });
     };
 
     const handleSaveNewRate = () => {
@@ -314,7 +298,6 @@ export default function SettingsPage() {
         try {
             await factoryReset(firestore);
             
-            // Clear settings from localStorage
             localStorage.removeItem('tienda_facil_settings');
             localStorage.removeItem('tienda_facil_currency_pref');
             localStorage.removeItem('tienda_facil_pin');
@@ -326,7 +309,6 @@ export default function SettingsPage() {
                 description: 'Todos los datos han sido eliminados. La página se recargará.',
             });
 
-            // Reload the page to apply changes everywhere
             setTimeout(() => {
                 window.location.reload();
             }, 1500);
@@ -467,7 +449,6 @@ export default function SettingsPage() {
                         </DialogContent>
                     </Dialog>
                     
-                    {/* Edit Dialog */}
                     <Dialog open={!!editingItem} onOpenChange={(isOpen) => !isOpen && setEditingItem(null)}>
                         <DialogContent>
                              <DialogHeader>
@@ -617,7 +598,6 @@ export default function SettingsPage() {
                 </CardFooter>
             </Card>
 
-            {/* Currency Management Card */}
             <Card>
                 <CardHeader>
                     <CardTitle>Gestión de Monedas y Tasa de Cambio</CardTitle>
@@ -894,3 +874,5 @@ export default function SettingsPage() {
         </div>
     );
 }
+
+    
