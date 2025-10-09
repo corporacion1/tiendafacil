@@ -1,4 +1,3 @@
-
 import { FieldValue } from 'firebase/firestore';
 
 export type UserRole = 'superAdmin' | 'admin' | 'user';
@@ -17,13 +16,32 @@ export type UserProfile = {
   phone?: string;
 };
 
+// This is the main settings/configuration object for a store
 export type Store = {
     id: string;
-    name: string;
-    ownerId: string; // UID of the admin user who owns it
+    name: string; // This will be used as storeName
+    ownerId: string;
     status: 'active' | 'inactive';
     businessType: string;
+    address?: string;
+    phone?: string;
+    slogan?: string;
+    whatsapp?: string;
+    tiktok?: string;
+    meta?: string;
+    saleSeries?: string;
+    saleCorrelative?: number;
+    primaryCurrencyName?: string;
+    primaryCurrencySymbol?: string;
+    secondaryCurrencyName?: string;
+    secondaryCurrencySymbol?: string;
+    tax1?: number;
+    tax2?: number;
 };
+
+// The Settings type is now an alias for Store for consistency in the context
+export type Settings = Store;
+
 
 export type Product = {
   id: string;
@@ -177,22 +195,3 @@ export type AdClick = {
     timestamp: string;
     userAgent: string;
 };
-
-export interface Settings {
-  storeName: string;
-  storeAddress: string;
-  storePhone: string;
-  storeSlogan: string;
-  storeWhatsapp: string;
-  storeTiktok: string;
-  storeMeta: string;
-  saleSeries: string;
-  saleCorrelative: number;
-  primaryCurrencyName: string;
-  primaryCurrencySymbol: string;
-  secondaryCurrencyName: string;
-  secondaryCurrencySymbol: string;
-  tax1: number;
-  tax2: number;
-  businessType: string;
-}

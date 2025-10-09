@@ -23,10 +23,10 @@ import { useSettings } from "@/contexts/settings-context";
 import { useToast } from "@/hooks/use-toast";
 
 const settingsSchema = z.object({
-  storeName: z.string().min(1, "El nombre de la tienda es requerido."),
-  storeAddress: z.string().optional(),
-  storePhone: z.string().optional(),
-  storeSlogan: z.string().optional(),
+  name: z.string().min(1, "El nombre de la tienda es requerido."),
+  address: z.string().optional(),
+  phone: z.string().optional(),
+  slogan: z.string().optional(),
   tax1: z.coerce.number().min(0, "El impuesto no puede ser negativo.").max(100, "El impuesto no puede ser mayor a 100."),
   tax2: z.coerce.number().min(0, "El impuesto no puede ser negativo.").max(100, "El impuesto no puede ser mayor a 100."),
 });
@@ -40,10 +40,10 @@ export default function SettingsPage() {
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema),
     defaultValues: {
-      storeName: "",
-      storeAddress: "",
-      storePhone: "",
-      storeSlogan: "",
+      name: "",
+      address: "",
+      phone: "",
+      slogan: "",
       tax1: 0,
       tax2: 0,
     },
@@ -51,15 +51,13 @@ export default function SettingsPage() {
 
   const { reset, formState: { isDirty } } = form;
 
-  // This effect runs only when the settings from the context are loaded or changed.
-  // It updates the form with the new values.
   useEffect(() => {
     if (settings) {
       const initialData: SettingsFormValues = {
-        storeName: settings.storeName || "",
-        storeAddress: settings.storeAddress || "",
-        storePhone: settings.storePhone || "",
-        storeSlogan: settings.storeSlogan || "",
+        name: settings.name || "",
+        address: settings.address || "",
+        phone: settings.phone || "",
+        slogan: settings.slogan || "",
         tax1: settings.tax1 || 0,
         tax2: settings.tax2 || 0,
       };
@@ -70,10 +68,10 @@ export default function SettingsPage() {
   const onSubmit = (data: SettingsFormValues) => {
     if (!settings) return;
     
-    const newSettings = { ...settings, ...data };
-    setSettings(newSettings);
+    // Pass only the fields from the form to setSettings
+    const updatedSettings = { ...settings, ...data };
+    setSettings(updatedSettings);
     
-    // After saving, reset the form with the new data to mark it as "not dirty"
     reset(data);
 
     toast({
@@ -85,10 +83,10 @@ export default function SettingsPage() {
   const handleReset = () => {
     if (settings) {
        reset({
-        storeName: settings.storeName || "",
-        storeAddress: settings.storeAddress || "",
-        storePhone: settings.storePhone || "",
-        storeSlogan: settings.storeSlogan || "",
+        name: settings.name || "",
+        address: settings.address || "",
+        phone: settings.phone || "",
+        slogan: settings.slogan || "",
         tax1: settings.tax1 || 0,
         tax2: settings.tax2 || 0,
       });
@@ -124,7 +122,7 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             <FormField
               control={form.control}
-              name="storeName"
+              name="name"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Nombre de la Tienda</FormLabel>
@@ -137,7 +135,7 @@ export default function SettingsPage() {
             />
             <FormField
               control={form.control}
-              name="storeAddress"
+              name="address"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Dirección</FormLabel>
@@ -150,7 +148,7 @@ export default function SettingsPage() {
             />
             <FormField
               control={form.control}
-              name="storePhone"
+              name="phone"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Teléfono</FormLabel>
@@ -163,7 +161,7 @@ export default function SettingsPage() {
             />
             <FormField
               control={form.control}
-              name="storeSlogan"
+              name="slogan"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Mensaje o Eslogan para el Ticket</FormLabel>
