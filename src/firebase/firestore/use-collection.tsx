@@ -13,6 +13,7 @@ import {
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { useUser } from '../auth/use-user';
+import { useSettings } from '@/contexts/settings-context';
 
 /** Utility type to add an 'id' field to a given type T. */
 export type WithId<T> = T & { id: string };
@@ -48,16 +49,15 @@ export function useCollection<T = any>(
   type StateDataType = ResultItemType[] | null;
 
   const { isUserLoading } = useUser();
+  const { isLoadingSettings } = useSettings();
   const [data, setData] = useState<StateDataType>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
-  const shouldFetch = !!memoizedTargetRefOrQuery && !isUserLoading;
+  const shouldFetch = !!memoizedTargetRefOrQuery && !isUserLoading && !isLoadingSettings;
 
   useEffect(() => {
-    // Critical Guard: Do not proceed if the query is not ready or user is loading.
+    // Critical Guard: Do not proceed if the query is not ready or user/settings are loading.
     if (!shouldFetch) {
-      // If we shouldn't fetch, ensure we don't hold onto stale data.
-      // However, we only set data to null if it's not already null to avoid unnecessary re-renders.
       if (data !== null) {
         setData(null);
       }
@@ -81,7 +81,6 @@ export function useCollection<T = any>(
         if ('path' in memoizedTargetRefOrQuery) {
             path = (memoizedTargetRefOrQuery as CollectionReference).path;
         } else {
-            // Attempt to reconstruct path for a query. This might be brittle.
             path = `Query on collection: ${(memoizedTargetRefOrQuery as any)._query?.path?.segments?.join('/') || ''}`;
         }
         
@@ -93,18 +92,15 @@ export function useCollection<T = any>(
         setError(contextualError)
         setData(null)
 
-        // Emit for global error handling (e.g., Next.js error overlay)
         errorEmitter.emit('permission-error', contextualError);
       }
     );
 
     return () => unsubscribe();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [memoizedTargetRefOrQuery, isUserLoading]); // Depend on isUserLoading
+  }, [memoizedTargetRefOrQuery, isUserLoading, isLoadingSettings]);
 
-  // isLoading is true if we are in a state where we should be fetching but haven't received data or an error yet.
-  // OR if the user is still loading and we don't have any data yet.
-  const isLoading = (shouldFetch && data === null && error === null) || (isUserLoading && data === null);
+  const isLoading = (shouldFetch && data === null && error === null) || isUserLoading || isLoadingSettings;
 
   return { data, isLoading, error };
 }
