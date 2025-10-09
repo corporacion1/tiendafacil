@@ -27,20 +27,17 @@ export default function LoginPage() {
   const { toast } = useToast();
   const auth = useAuth();
   const firestore = useFirestore();
-  const { user, isUserLoading } = useUser();
-  const { settings } = useSettings();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Start as true to handle redirect check
 
   // Handle redirect result from Google sign-in
   useEffect(() => {
     const processRedirect = async () => {
-        if (!auth || !firestore || isLoading) return;
+        if (!auth || !firestore) return;
         
-        setIsLoading(true);
         try {
             const result = await getRedirectResult(auth);
             if (result && result.user) {
@@ -54,7 +51,7 @@ export default function LoginPage() {
                     await createUserProfile(result.user, true); // Merge to update photoURL etc.
                     toast({ title: 'Inicio de Sesión con Google Exitoso' });
                 }
-                // The main useEffect will handle the redirect to the dashboard
+                router.replace('/dashboard');
             }
         } catch (error) {
             console.error("Google sign-in redirect error:", error);
@@ -69,57 +66,48 @@ export default function LoginPage() {
     };
 
     processRedirect();
-  }, [auth, firestore]);
-
-  // If user becomes available (e.g., after successful login), redirect them.
-  useEffect(() => {
-    if (!isUserLoading && user) {
-      router.replace('/dashboard');
-    }
-  }, [user, isUserLoading, router]);
+  }, [auth, firestore, router, toast]);
 
   const createUserProfile = async (firebaseUser: any, merge = false) => {
     if (!firestore) return;
     const userRef = doc(firestore, 'users', firebaseUser.uid);
     
-    // TEMPORARY: Elevate current user to superAdmin
-    const role = (user && firebaseUser.email === user.email) ? 'superAdmin' : 'user';
+    const role = 'user'; // Default role
 
-    const newUserProfile: UserProfile = {
+    const newUserProfile: Omit<UserProfile, 'createdAt'> = {
       uid: firebaseUser.uid,
       email: firebaseUser.email,
       displayName: firebaseUser.displayName || email.split('@')[0],
       photoURL: firebaseUser.photoURL,
-      role: role, // Assign role conditionally
+      role: role,
       status: 'active',
-      createdAt: serverTimestamp(),
       storeRequest: false,
     };
-    await setDoc(userRef, newUserProfile, { merge });
+
+    await setDoc(userRef, { ...newUserProfile, createdAt: serverTimestamp() }, { merge });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth) return;
+    if (!auth || !firestore) return;
     setIsLoading(true);
 
     try {
       if (isSignUp) {
-        // Non-blocking sign-up, user will be created and then auth state will change
-        initiateEmailSignUp(auth, email, password);
-        toast({ title: '¡Registro Enviado!', description: 'Serás redirigido en breve.' });
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await createUserProfile(userCredential.user);
+        toast({ title: '¡Registro Exitoso!', description: 'Serás redirigido en breve.' });
       } else {
-        // Non-blocking sign-in
-        initiateEmailSignIn(auth, email, password);
+        await signInWithEmailAndPassword(auth, email, password);
         toast({ title: 'Iniciando Sesión...', description: '¡Bienvenido de nuevo!' });
       }
-      // The useEffect will handle the redirect once auth state changes
+      router.replace('/dashboard');
     } catch (error: any) {
       console.error(error);
       const errorCode = error.code;
       let message = "Ocurrió un error. Por favor, intenta de nuevo.";
-      if (errorCode === 'auth/wrong-password') {
-          message = 'La contraseña es incorrecta.';
+      if (errorCode === 'auth/wrong-password' || errorCode === 'auth/invalid-credential') {
+          message = 'La contraseña o el correo son incorrectos.';
       } else if (errorCode === 'auth/user-not-found') {
           message = 'No se encontró un usuario con ese correo electrónico.';
       } else if (errorCode === 'auth/email-already-in-use') {
@@ -132,6 +120,7 @@ export default function LoginPage() {
         title: isSignUp ? 'Error en el Registro' : 'Error al Iniciar Sesión',
         description: message,
       });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -142,7 +131,6 @@ export default function LoginPage() {
     const provider = new GoogleAuthProvider();
     try {
         await signInWithRedirect(auth, provider);
-        // The browser will redirect. The result is handled by the useEffect.
     } catch (error) {
         console.error(error);
         toast({
@@ -154,7 +142,8 @@ export default function LoginPage() {
     }
   };
   
-  if (isUserLoading || user) {
+  // Render a loading state while checking for redirect result.
+  if (isLoading) {
     return (
        <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
           <Logo className="w-64 h-20" />
@@ -169,7 +158,7 @@ export default function LoginPage() {
         <CardHeader className="text-center">
           <Logo className="w-64 h-20 mx-auto mb-4" />
           <CardTitle className="text-2xl">
-            {isSignUp ? 'Crea tu Cuenta' : `Bienvenido a ${settings?.name || 'Tienda Facil'}`}
+            {isSignUp ? 'Crea tu Cuenta' : `Bienvenido`}
           </CardTitle>
           <CardDescription>
             {isSignUp ? 'Ingresa tus datos para registrarte' : 'Ingresa a tu cuenta para continuar'}

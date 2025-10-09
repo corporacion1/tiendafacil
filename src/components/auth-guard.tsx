@@ -18,6 +18,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const { isSecurityReady, isLocked, hasPin, lockApp } = useSecurity();
     const { isLoadingSettings } = useSettings();
+    
     const isPublicPage = pathname === '/login' || pathname.startsWith('/catalog');
 
     const userProfileRef = useMemoFirebase(() => {
@@ -28,28 +29,28 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
     useEffect(() => {
-        if (isPublicPage || isUserLoading || isProfileLoading) {
-            return;
-        }
+        const isLoading = isUserLoading || isProfileLoading || isLoadingSettings || !isSecurityReady;
+        if (isLoading) return;
 
-        if (!user) {
+        // If trying to access a protected page without being logged in, redirect to login
+        if (!isPublicPage && !user) {
             router.replace('/login');
             return;
         }
-        
-        if (userProfile && userProfile.email === 'corporacion1@gmail.com') {
-            return;
-        }
-        
-        if (userProfile) {
-            if (userProfile.role === 'user') {
-                router.replace('/catalog');
+
+        // If logged in, handle role-based redirection
+        if (user && userProfile) {
+            if (pathname === '/login') {
+                router.replace('/dashboard');
+                return;
             }
-        } else {
-            router.replace('/login');
+            if (userProfile.role === 'user' && !pathname.startsWith('/catalog')) {
+                router.replace('/catalog');
+                return;
+            }
         }
-
-    }, [isUserLoading, isProfileLoading, user, userProfile, router, pathname, isPublicPage]);
+        
+    }, [isUserLoading, isProfileLoading, isLoadingSettings, isSecurityReady, user, userProfile, router, pathname, isPublicPage]);
     
     useEffect(() => {
         if (!isSecurityReady || !hasPin) return;
@@ -59,12 +60,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         localStorage.setItem('last_path_was_pos', (pathname === '/pos').toString());
     }, [pathname, lockApp, hasPin, isSecurityReady]);
 
-    if (isPublicPage) {
-        return <>{children}</>;
-    }
-
     const isLoading = isUserLoading || isProfileLoading || isLoadingSettings || !isSecurityReady;
-    
+
     if (isLoading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
@@ -74,18 +71,9 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         );
     }
     
-    if (isLocked) {
+    if (isLocked && !isPublicPage) {
         return <PinModal />;
     }
 
-    if (user && userProfile && (userProfile.role === 'admin' || userProfile.role === 'superAdmin')) {
-        return <>{children}</>;
-    }
-
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
-        <Logo className="w-64 h-20" />
-        <p className="text-muted-foreground animate-pulse">Verificando permisos...</p>
-      </div>
-    );
+    return <>{children}</>;
 }
