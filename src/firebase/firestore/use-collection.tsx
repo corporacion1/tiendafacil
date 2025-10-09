@@ -56,7 +56,7 @@ export function useCollection<T = any>(
 
   useEffect(() => {
     if (!shouldFetch) {
-      setIsLoading(true);
+      setIsLoading(isUserLoading); // Set loading based on user auth state
       setData(null);
       return;
     }
@@ -102,7 +102,7 @@ export function useCollection<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery, shouldFetch]);
+  }, [memoizedTargetRefOrQuery, shouldFetch, isUserLoading]);
 
   return { data, isLoading: isLoading || isUserLoading, error };
 }
