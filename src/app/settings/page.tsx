@@ -25,9 +25,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking } from "@/firebase";
 import { collection, doc, orderBy, query } from "firebase/firestore";
 import type { CurrencyRate } from "@/lib/types";
+import { businessCategories } from "@/lib/data";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const settingsSchema = z.object({
   name: z.string().min(1, "El nombre de la tienda es requerido."),
+  businessType: z.string().min(1, "El tipo de negocio es requerido."),
   address: z.string().optional(),
   phone: z.string().optional(),
   slogan: z.string().optional(),
@@ -69,6 +72,7 @@ export default function SettingsPage() {
       whatsapp: "",
       tiktok: "",
       meta: "",
+      businessType: "",
     },
   });
 
@@ -91,6 +95,7 @@ export default function SettingsPage() {
         whatsapp: settings.whatsapp || "",
         tiktok: settings.tiktok || "",
         meta: settings.meta || "",
+        businessType: settings.businessType || "",
       };
       reset(initialData);
     }
@@ -127,6 +132,7 @@ export default function SettingsPage() {
         whatsapp: settings.whatsapp || "",
         tiktok: settings.tiktok || "",
         meta: settings.meta || "",
+        businessType: settings.businessType || "",
       });
     }
   }
@@ -181,6 +187,28 @@ export default function SettingsPage() {
                           <FormControl>
                             <Input placeholder="Mi Tienda Fantástica" {...field} />
                           </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="businessType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tipo de Tienda</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecciona el tipo de tu negocio" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {businessCategories.map(category => (
+                                <SelectItem key={category} value={category}>{category}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}

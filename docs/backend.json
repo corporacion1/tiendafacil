@@ -241,6 +241,6 @@
     "/users/{userId}": { "schema": { "$ref": "#/entities/UserProfile" }, "description": "Stores user profiles." },
     "/ads/{adId}": { "schema": { "$ref": "#/entities/Ad" }, "description": "Stores marketing advertisements." },
     "/pendingOrders/{orderId}": { "schema": { "$ref": "#/entities/PendingOrder" }, "description": "Stores orders from the public catalog." },
-    "/currencyRates/{rateId}": { "schema": { "$ref": "#/entities/CurrencyRate" }, "description": "Stores historical currency exchange rates." }
+    "/stores/{storeId}/currencyRates/{rateId}": { "schema": { "$ref": "#/entities/CurrencyRate" }, "description": "Stores historical currency exchange rates for a specific store." }
   }
 }
