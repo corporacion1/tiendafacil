@@ -16,7 +16,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
     const { isSecurityReady, isLocked, hasPin, lockApp } = useSecurity();
-    const { isLoadingSettings, userProfile } = useSettings();
+    const { userProfile } = useSettings();
     
     const isPublicPage = pathname === '/' || pathname.startsWith('/catalog') || pathname.startsWith('/login');
 
@@ -29,7 +29,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         localStorage.setItem('last_path_was_pos', (pathname === '/pos').toString());
     }, [pathname, lockApp, hasPin, isSecurityReady]);
 
-    const isLoading = isUserLoading || isLoadingSettings || !isSecurityReady;
+    const isLoading = isUserLoading || !isSecurityReady;
     
     // Handle redirections after loading is complete
     useEffect(() => {
@@ -50,7 +50,12 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
     }, [isLoading, isPublicPage, user, userProfile, pathname, router]);
 
-    // The main loading screen is now in FirebaseProvider. AuthGuard assumes services are ready.
+    if (isLoading && !isPublicPage) {
+        // The main loading screen is now in FirebaseProvider. AuthGuard assumes services are ready.
+        // It should not render its own loading state to prevent cascading loaders.
+        return null;
+    }
+
     if (isLocked && !isPublicPage) {
         return <PinModal />;
     }

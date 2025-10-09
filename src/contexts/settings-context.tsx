@@ -37,7 +37,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  // Initialize activeStoreId synchronously
   const getInitialStoreId = () => {
       if (typeof window !== 'undefined') {
           return localStorage.getItem(ACTIVE_STORE_ID_KEY) || defaultStoreId;
@@ -46,8 +45,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   };
   
   const [activeStoreId, setActiveStoreId] = useState<string>(getInitialStoreId);
-  const [isLoading, setIsLoading] = useState(true);
-
+  
   const userProfileRef = useMemo(() => {
     if (!user || !firestore) return null;
     return doc(firestore, 'users', user.uid);
@@ -55,7 +53,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
 
-  // This effect synchronizes the storeId based on user profile changes
   useEffect(() => {
     if (isUserLoading || isLoadingProfile) {
         return;
@@ -63,18 +60,15 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
     const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_KEY);
     
-    // If the user is a superAdmin and has a stored storeId, respect it.
     if (userProfile?.role === 'superAdmin' && storedStoreId) {
         if (activeStoreId !== storedStoreId) {
             setActiveStoreId(storedStoreId);
         }
-    // If the user has a specific storeId in their profile (e.g., an admin)
     } else if (userProfile?.storeId) {
         if (activeStoreId !== userProfile.storeId) {
             setActiveStoreId(userProfile.storeId);
             localStorage.setItem(ACTIVE_STORE_ID_KEY, userProfile.storeId);
         }
-    // Fallback for logged-in users without a specific store, or logged-out users
     } else {
         if (activeStoreId !== defaultStoreId) {
             setActiveStoreId(defaultStoreId);
@@ -112,10 +106,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, []);
   
-  useEffect(() => {
-    const overallLoading = isLoadingSettingsDoc || isLoadingRates || isLoadingProfile || isUserLoading;
-    setIsLoading(overallLoading);
-  }, [isLoadingSettingsDoc, isLoadingRates, isLoadingProfile, isUserLoading]);
+  const isLoading = useMemo(() => {
+      return isLoadingSettingsDoc || isLoadingRates || isLoadingProfile;
+  }, [isLoadingSettingsDoc, isLoadingRates, isLoadingProfile]);
   
   const handleSetSettings = (newSettings: Settings) => {
     if (!settingsDocRef) {
@@ -155,6 +148,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   
   const latestRate = currencyRatesData?.[0]?.rate;
   const activeRate = activeCurrency === 'primary' ? 1 : (latestRate && latestRate > 0 ? latestRate : 1);
+  
+  const isLoadingContext = isUserLoading || isLoading;
 
   return (
     <SettingsContext.Provider value={{ 
@@ -169,7 +164,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         setCurrencyRates: () => {}, 
         activeStoreId,
         switchStore,
-        isLoadingSettings: isLoading,
+        isLoadingSettings: isLoadingContext,
         userProfile: userProfile || null,
     }}>
       {children}
