@@ -55,10 +55,11 @@ export function useCollection<T = any>(
   const shouldFetch = !isUserLoading && !!memoizedTargetRefOrQuery;
 
   useEffect(() => {
+    // If we shouldn't fetch (either due to user loading or null query),
+    // ensure loading state is correct and stop execution.
     if (!shouldFetch) {
-      setIsLoading(isUserLoading); // Set loading based on user auth state
-      setData(null);
-      return;
+      setIsLoading(isUserLoading);
+      return; // <-- **THE FIX**: Immediately exit the effect.
     }
 
     setIsLoading(true);
