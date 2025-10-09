@@ -115,26 +115,11 @@ function ChangePinDialog() {
 
 export default function SettingsPage() {
     const { hasPin, setPin, removePin, checkPin } = useSecurity();
-    const { settings, setSettings: saveContextSettings, userProfile } = useSettings();
+    const { settings, setSettings: saveContextSettings, isLoadingSettings, userProfile } = useSettings();
     const firestore = useFirestore();
-    
     const [localSettings, setLocalSettings] = useState<Settings | null>(null);
     const [isDirty, setIsDirty] = useState(false);
 
-    useEffect(() => {
-        if (settings) {
-            setLocalSettings(settings);
-        }
-    }, [settings]);
-
-    const handleInputChange = (field: keyof Settings, value: any) => {
-        if (localSettings) {
-            const updatedSettings = { ...localSettings, [field]: value };
-            setLocalSettings(updatedSettings);
-            setIsDirty(!_.isEqual(settings, updatedSettings));
-        }
-    };
-    
     const { data: units = [] } = useCollection<Unit>(useMemoFirebase(() => query(collection(firestore, 'units'), orderBy('name', 'asc')), [firestore]));
     const { data: families = [] } = useCollection<Family>(useMemoFirebase(() => query(collection(firestore, 'families'), orderBy('name', 'asc')), [firestore]));
     const { data: warehouses = [] } = useCollection<Warehouse>(useMemoFirebase(() => query(collection(firestore, 'warehouses'), orderBy('name', 'asc')), [firestore]));
@@ -158,6 +143,20 @@ export default function SettingsPage() {
 
     const isSuperAdmin = userProfile?.role === 'superAdmin';
 
+    useEffect(() => {
+        if (settings) {
+            setLocalSettings(settings);
+        }
+    }, [settings]);
+
+    const handleInputChange = (field: keyof Settings, value: any) => {
+        if (localSettings) {
+            const updatedSettings = { ...localSettings, [field]: value };
+            setLocalSettings(updatedSettings);
+            setIsDirty(!_.isEqual(settings, updatedSettings));
+        }
+    };
+    
     const handleSaveSettings = () => {
         if (localSettings) {
             saveContextSettings(localSettings);
@@ -473,7 +472,7 @@ export default function SettingsPage() {
         });
     }
 
-    if (!localSettings) {
+    if (isLoadingSettings || !localSettings) {
         return (
             <div className="flex justify-center items-center h-full">
                 <p className="text-muted-foreground animate-pulse">Cargando configuración...</p>
@@ -841,3 +840,5 @@ export default function SettingsPage() {
         </div>
     );
 }
+
+    
