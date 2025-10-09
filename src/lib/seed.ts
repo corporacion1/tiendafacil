@@ -1,3 +1,4 @@
+
 'use client';
 import {
   collection,
@@ -82,15 +83,14 @@ export async function seedDatabase(db: Firestore) {
   // 2. Create the superAdmin user and link it to the store.
   const superAdminUser = defaultUsers.find(u => u.role === 'superAdmin');
   if (superAdminUser) {
-      // NOTE: Using a predictable UID for the super admin for consistency in seeding.
-      const superAdminUID = 'super_admin_main_user_001'; 
+      const superAdminUID = '5QLaiiIr4mcGsjRXVGeGx50nrpk1'; 
       const userRef = doc(db, 'users', superAdminUID);
       batch.set(userRef, { 
         ...superAdminUser, 
         uid: superAdminUID,
         storeId: defaultStoreId,
         createdAt: serverTimestamp() 
-      }, { merge: true }); // Use merge to be safe, but it will create if not exists
+      }, { merge: true });
       console.log(`Scheduled creation/update of superAdmin user: ${superAdminUID}`);
   }
 

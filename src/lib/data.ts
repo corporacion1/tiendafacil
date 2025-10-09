@@ -10,7 +10,7 @@ export const defaultStoreId = 'store_clifp94l0000008l3b1z9f8j7';
 export const defaultStore: Store = {
   id: defaultStoreId,
   name: "Tienda Facil DEMO",
-  ownerId: "user_superadmin_01", // Este se actualizará con el UID real del Super Admin en la siembra
+  ownerId: "5QLaiiIr4mcGsjRXVGeGx50nrpk1", // Actualizado al UID del super admin
   businessType: "Tecnologia",
   address: "Av. Principal, Local 1, Ciudad",
   phone: "+58 212-555-1234",
@@ -34,7 +34,7 @@ export const defaultStore: Store = {
 export const defaultUsers: Omit<UserProfile, 'createdAt' | 'uid' | 'photoURL'>[] = [
     {
         email: 'corporacion1@gmail.com',
-        displayName: 'Super Admin',
+        displayName: 'Jorge Negrete',
         role: 'superAdmin',
         status: 'active',
         storeId: defaultStoreId, // Conectado a la tienda por defecto

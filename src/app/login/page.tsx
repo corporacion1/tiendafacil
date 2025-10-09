@@ -74,7 +74,11 @@ export default function LoginPage() {
     if (!firestore) return;
     const userRef = doc(firestore, 'users', firebaseUser.uid);
     
-    const role = 'user'; // Default role
+    // Check if document already exists, if so, don't override role.
+    const userDoc = await getDoc(userRef);
+    const existingData = userDoc.data() as UserProfile;
+    
+    const role = existingData?.role || 'user'; // Keep existing role or default to 'user'
 
     const newUserProfile: Omit<UserProfile, 'createdAt'> = {
       uid: firebaseUser.uid,
@@ -85,8 +89,15 @@ export default function LoginPage() {
       status: 'active',
       storeRequest: false,
     };
-
-    await setDoc(userRef, { ...newUserProfile, createdAt: serverTimestamp() }, { merge });
+    
+    if (merge) {
+        await setDoc(userRef, {
+            displayName: newUserProfile.displayName,
+            photoURL: newUserProfile.photoURL,
+        }, { merge: true });
+    } else {
+        await setDoc(userRef, { ...newUserProfile, createdAt: serverTimestamp() });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
