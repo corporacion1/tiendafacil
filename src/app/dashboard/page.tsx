@@ -37,7 +37,7 @@ import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/contexts/settings-context";
 import { InventoryMovement, Product, Purchase, Sale } from "@/lib/types";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { useCollection, useFirestore } from "@/firebase";
+import { useCollection, useFirestore, useUser } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
 
 type TimeFilter = 'day' | 'week' | 'month';
@@ -63,30 +63,31 @@ const getDate = (d: any): Date => {
 export default function Dashboard() {
   const { activeSymbol, activeRate, activeStoreId } = useSettings();
   const firestore = useFirestore();
+  const { user, isUserLoading } = useUser();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
   
   const salesRef = useMemo(() => {
-    if (!firestore || !activeStoreId) return null;
+    if (!firestore || !activeStoreId || isUserLoading || !user) return null;
     return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId]);
+  }, [firestore, activeStoreId, isUserLoading, user]);
   const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
 
   const purchasesRef = useMemo(() => {
-    if (!firestore || !activeStoreId) return null;
+    if (!firestore || !activeStoreId || isUserLoading || !user) return null;
     return query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId]);
+  }, [firestore, activeStoreId, isUserLoading, user]);
   const { data: purchasesData, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesRef);
 
   const productsRef = useMemo(() => {
-    if (!firestore || !activeStoreId) return null;
+    if (!firestore || !activeStoreId || isUserLoading || !user) return null;
     return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId]);
+  }, [firestore, activeStoreId, isUserLoading, user]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
   
   const movementsRef = useMemo(() => {
-    if (!firestore || !activeStoreId) return null;
+    if (!firestore || !activeStoreId || isUserLoading || !user) return null;
     return query(collection(firestore, 'inventory_movements'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId]);
+  }, [firestore, activeStoreId, isUserLoading, user]);
   const { data: movementsData, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsRef);
 
   const sales = useMemo(() => {
@@ -400,3 +401,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
+    
