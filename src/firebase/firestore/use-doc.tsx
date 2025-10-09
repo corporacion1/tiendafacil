@@ -89,9 +89,11 @@ export function useDoc<T = any>(
 
     return () => unsubscribe();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [memoizedDocRef, shouldFetch]);
+  }, [memoizedDocRef, isUserLoading]);
   
   const isLoading = (shouldFetch && data === null && error === null) || (isUserLoading && data === null);
 
   return { data, isLoading, error };
 }
+
+    

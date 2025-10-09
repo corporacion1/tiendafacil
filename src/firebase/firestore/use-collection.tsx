@@ -100,7 +100,7 @@ export function useCollection<T = any>(
 
     return () => unsubscribe();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [memoizedTargetRefOrQuery, shouldFetch]);
+  }, [memoizedTargetRefOrQuery, isUserLoading]); // Depend on isUserLoading
 
   // isLoading is true if we are in a state where we should be fetching but haven't received data or an error yet.
   // OR if the user is still loading and we don't have any data yet.
@@ -108,3 +108,5 @@ export function useCollection<T = any>(
 
   return { data, isLoading, error };
 }
+
+    
