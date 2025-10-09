@@ -58,42 +58,43 @@ const getDate = (d: any): Date => {
 
 
 export default function Dashboard() {
-  const { activeSymbol, activeRate, activeStoreId, userProfile } = useSettings();
+  const { activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
   const firestore = useFirestore();
+  const { isUserLoading } = useUser();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
   
   const isSuperAdmin = userProfile?.role === 'superAdmin';
 
   const salesRef = useMemo(() => {
-    if (!firestore) return null;
+    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
     return isSuperAdmin
       ? query(collectionGroup(firestore, 'sales'))
       : query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin]);
+  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
   const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
 
   const purchasesRef = useMemo(() => {
-    if (!firestore) return null;
+    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
     return isSuperAdmin
       ? query(collectionGroup(firestore, 'purchases'))
       : query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin]);
+  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
   const { data: purchasesData, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesRef);
 
   const productsRef = useMemo(() => {
-    if (!firestore) return null;
+    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
     return isSuperAdmin
       ? query(collectionGroup(firestore, 'products'))
       : query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin]);
+  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
   
   const movementsRef = useMemo(() => {
-    if (!firestore) return null;
+    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
     return isSuperAdmin
       ? query(collectionGroup(firestore, 'inventory_movements'))
       : query(collection(firestore, 'inventory_movements'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin]);
+  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
   const { data: movementsData, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsRef);
 
   const sales = useMemo(() => {
@@ -387,5 +388,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-    

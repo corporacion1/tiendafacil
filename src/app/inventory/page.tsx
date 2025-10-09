@@ -34,7 +34,7 @@ import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { ProductForm } from "@/components/product-form";
 import { useSettings } from "@/contexts/settings-context";
 import { format, parseISO } from "date-fns";
-import { useCollection, useFirestore, deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase";
+import { useCollection, useFirestore, deleteDocumentNonBlocking, setDocumentNonBlocking, useUser } from "@/firebase";
 import { collection, doc, orderBy, query, where, writeBatch, collectionGroup } from "firebase/firestore";
 
 const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewMovements, setProductToDelete }: {
@@ -126,32 +126,33 @@ const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewM
 export default function InventoryPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
-  const { activeSymbol, activeRate, activeStoreId, userProfile } = useSettings();
+  const { activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
+  const { isUserLoading } = useUser();
   
   const isSuperAdmin = userProfile?.role === 'superAdmin';
 
   const productsRef = useMemo(() => {
-    if (!firestore) return null;
+    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
     return isSuperAdmin
         ? query(collectionGroup(firestore, 'products'), orderBy('createdAt', 'desc'))
         : query(collection(firestore, 'products'), where('storeId', '==', activeStoreId), orderBy('createdAt', 'desc'));
-  }, [firestore, activeStoreId, isSuperAdmin]);
+  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
 
   const salesRef = useMemo(() => {
-    if (!firestore) return null;
+    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
     return isSuperAdmin
         ? query(collectionGroup(firestore, 'sales'))
         : query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin]);
+  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
   const { data: sales = [], isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
 
   const inventoryMovementsQuery = useMemo(() => {
-    if (!firestore) return null;
+    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
     return isSuperAdmin
         ? query(collectionGroup(firestore, 'inventory_movements'))
         : query(collection(firestore, 'inventory_movements'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin]);
+  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
   const { data: movementsData = [], isLoading: isLoadingMovements } = useCollection<InventoryMovement>(inventoryMovementsQuery);
 
   const inventoryMovements = useMemo(() => {
@@ -185,7 +186,7 @@ export default function InventoryPage() {
   };
 
   function handleUpdateProduct(data: Omit<Product, 'id'> & { id?: string }) {
-    if (!data.id) return false;
+    if (!data.id || !firestore || !activeStoreId) return false;
 
     const productRef = doc(firestore, 'products', data.id);
     setDocumentNonBlocking(productRef, {...data, storeId: activeStoreId}, { merge: true });
@@ -199,6 +200,7 @@ export default function InventoryPage() {
   }
   
   const handleDelete = (productId: string) => {
+    if (!firestore) return;
     const isProductInSale = sales.some(sale => sale.items.some(item => item.productId === productId));
 
     if (isProductInSale) {
@@ -229,7 +231,7 @@ export default function InventoryPage() {
   }
 
   const handleMoveInventory = async () => {
-    if (!movementProduct || !movementType || movementQuantity <= 0 || !movementResponsible.trim()) {
+    if (!movementProduct || !movementType || movementQuantity <= 0 || !movementResponsible.trim() || !firestore || !activeStoreId) {
       toast({
         variant: "destructive",
         title: "Datos incompletos",
@@ -663,5 +665,3 @@ export default function InventoryPage() {
     </>
   );
 }
-
-    

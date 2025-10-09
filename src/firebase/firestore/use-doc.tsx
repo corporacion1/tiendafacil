@@ -50,12 +50,13 @@ export function useDoc<T = any>(
   const [data, setData] = useState<StateDataType>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
-  const isLoading = !memoizedDocRef || isUserLoading;
+  // Determine if fetching should occur
+  const shouldFetch = !!memoizedDocRef && !isUserLoading;
 
   useEffect(() => {
-    // CRITICAL: If the docRef is not ready or auth is loading, do nothing.
+    // CRITICAL: If we shouldn't fetch, do nothing.
     // This prevents race conditions on initial render.
-    if (!memoizedDocRef || isUserLoading) {
+    if (!shouldFetch) {
       setData(null);
       return;
     }
@@ -87,7 +88,7 @@ export function useDoc<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedDocRef, isUserLoading]);
+  }, [memoizedDocRef, shouldFetch]);
 
-  return { data, isLoading, error };
+  return { data, isLoading: !shouldFetch && data === null, error };
 }

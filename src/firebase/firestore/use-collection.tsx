@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Query,
   onSnapshot,
@@ -37,7 +37,7 @@ export interface UseCollectionResult<T> {
  * references
  *  
  * @template T Optional type for document data. Defaults to any.
- * @param {CollectionReference<DocumentData> | Query<DocumentData> | null | undefined} targetRefOrQuery -
+ * @param {CollectionReference<DocumentData> | Query<DocumentData> | null | undefined} memoizedTargetRefOrQuery -
  * The Firestore CollectionReference or Query. Waits if null/undefined.
  * @returns {UseCollectionResult<T>} Object with data, isLoading, error.
  */
@@ -51,16 +51,13 @@ export function useCollection<T = any>(
   const [data, setData] = useState<StateDataType>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
-  // We derive isLoading from multiple sources.
-  // The query is not ready OR firebase auth is still initializing.
-  const isLoading = !memoizedTargetRefOrQuery || isUserLoading;
+  // Determine if fetching should occur
+  const shouldFetch = !!memoizedTargetRefOrQuery && !isUserLoading;
 
   useEffect(() => {
-    // CRITICAL: If the query is not ready or auth is loading, do nothing.
+    // CRITICAL: If we shouldn't fetch, do nothing.
     // This prevents race conditions on initial render and when dependencies change.
-    if (!memoizedTargetRefOrQuery || isUserLoading) {
-      // While waiting for a valid query or user, ensure we are in a loading state
-      // and data is cleared.
+    if (!shouldFetch) {
       setData(null);
       return;
     }
@@ -103,7 +100,7 @@ export function useCollection<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery, isUserLoading]);
+  }, [memoizedTargetRefOrQuery, shouldFetch]);
 
-  return { data, isLoading, error };
+  return { data, isLoading: !shouldFetch && data === null, error };
 }
