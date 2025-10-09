@@ -2,6 +2,7 @@
 "use client"
 
 import { useState, useEffect } from "react";
+import _ from 'lodash';
 import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { factoryReset, businessCategories } from "@/lib/data";
 import { seedDatabase } from "@/lib/seed";
 import { collection, orderBy, query, writeBatch, doc } from "firebase/firestore";
-import _ from 'lodash';
 
 
 function ChangePinDialog() {
@@ -115,7 +115,7 @@ function ChangePinDialog() {
 
 export default function SettingsPage() {
     const { hasPin, setPin, removePin, checkPin } = useSecurity();
-    const { settings, setSettings: saveContextSettings, isLoadingSettings, userProfile } = useSettings();
+    const { settings, setSettings: saveContextSettings, userProfile } = useSettings();
     const firestore = useFirestore();
     const [localSettings, setLocalSettings] = useState<Settings | null>(settings);
     const [isDirty, setIsDirty] = useState(false);
@@ -144,11 +144,11 @@ export default function SettingsPage() {
     const isSuperAdmin = userProfile?.role === 'superAdmin';
     
     useEffect(() => {
-      // Sync local state when the main settings from context change
-      if (settings && !_.isEqual(settings, localSettings)) {
+      // Sync local state when the main settings from context change, but only if not dirty
+      if (settings && !isDirty) {
           setLocalSettings(settings);
       }
-    }, [settings]);
+    }, [settings, isDirty]);
 
 
     const handleInputChange = (field: keyof Settings, value: any) => {
@@ -475,7 +475,7 @@ export default function SettingsPage() {
     }
 
     if (!localSettings) {
-      // This happens while settings are loading, the AppLoader will show a global spinner.
+      // The AppLoader will show a spinner until settings are available.
       return null;
     }
 
@@ -839,3 +839,5 @@ export default function SettingsPage() {
         </div>
     );
 }
+
+    
