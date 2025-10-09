@@ -94,6 +94,7 @@ export type InventoryMovement = {
   quantity: number;
   date: string;
   responsible?: string;
+  storeId: string;
 };
 
 export type Payment = {
@@ -120,6 +121,7 @@ export type Sale = {
   status: 'paid' | 'unpaid';
   paidAmount: number;
   payments: Payment[];
+  storeId: string;
 };
 
 export type PurchaseItem = {
@@ -138,6 +140,7 @@ export type Purchase = {
     date: string;
     documentNumber?: string;
     responsible?: string;
+    storeId: string;
 };
 
 export type Customer = {
@@ -145,6 +148,7 @@ export type Customer = {
     name: string;
     phone?: string;
     address?: string;
+    storeId: string;
 }
 
 export type Supplier = {
@@ -152,21 +156,25 @@ export type Supplier = {
     name: string;
     phone?: string;
     address?: string;
+    storeId: string;
 }
 
 export type Unit = {
     id: string;
     name: string;
+    storeId: string;
 };
 
 export type Family = {
     id: string;
     name: string;
+    storeId: string;
 };
 
 export type Warehouse = {
     id: string;
     name: string;
+    storeId: string;
 };
 
 export type CurrencyRate = {

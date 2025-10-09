@@ -6,6 +6,10 @@ import {
   getDocs,
   Firestore,
   serverTimestamp,
+  Query,
+  query,
+  where,
+  CollectionReference,
 } from 'firebase/firestore';
 import {
   defaultStore,
@@ -23,47 +27,40 @@ import {
 } from './data';
 
 
-/**
- * Performs a "scorched earth" factory reset by deleting all documents in all known collections.
- * This is the simplest, most robust way to ensure a clean slate.
- */
-export async function factoryReset(db: Firestore) {
-  console.log("Starting Firestore factory reset...");
-
-  const collectionsToDelete = [
-    'products', 'customers', 'suppliers', 'units', 'families', 
-    'warehouses', 'sales', 'purchases', 'inventory_movements', 
-    'pendingOrders', 'ads', 'stores', 'users', 'currency_rates'
-  ];
-
-  for (const collectionName of collectionsToDelete) {
-    console.log(`Deleting all documents from collection: ${collectionName}`);
-    const collectionRef = collection(db, collectionName);
-    const snapshot = await getDocs(collectionRef);
-    
-    if (snapshot.empty) {
-      console.log(`Collection ${collectionName} is already empty.`);
-      continue;
-    }
-
-    const batch = writeBatch(db);
-    snapshot.docs.forEach(doc => {
-      batch.delete(doc.ref);
-    });
-    
-    await batch.commit();
-    console.log(`Successfully deleted all documents from ${collectionName}.`);
+async function deleteCollection(db: Firestore, collectionPath: string, batch: any) {
+  const collectionRef = collection(db, collectionPath);
+  const snapshot = await getDocs(collectionRef);
+  if (snapshot.empty) {
+    console.log(`Collection ${collectionPath} is already empty.`);
+    return;
   }
-    
-  console.log("Firestore factory reset complete. The database is now empty.");
+  snapshot.docs.forEach(doc => {
+    batch.delete(doc.ref);
+  });
+  console.log(`Scheduled deletion for all ${snapshot.size} documents in ${collectionPath}.`);
 }
 
 
-/**
- * Seeds the database with the default demo data from a clean slate.
- * This function is now unconditional. It will create all
- * necessary documents, assuming it's running on an empty or pre-reset database.
- */
+export async function factoryReset(db: Firestore) {
+  console.log("Starting Firestore factory reset...");
+  const batch = writeBatch(db);
+
+  // Explicitly list all top-level collections to be cleared
+  const collectionsToDelete = [
+    'products', 'customers', 'suppliers', 'units', 'families', 
+    'warehouses', 'sales', 'purchases', 'inventory_movements', 
+    'pendingOrders', 'ads', 'stores', 'users', 'currency_rates' 
+  ];
+  
+  for (const collectionName of collectionsToDelete) {
+      await deleteCollection(db, collectionName, batch);
+  }
+
+  await batch.commit();
+  console.log("Firestore factory reset complete. The database should now be empty.");
+}
+
+
 export async function seedDatabase(db: Firestore) {
   const batch = writeBatch(db);
 
@@ -80,10 +77,10 @@ export async function seedDatabase(db: Firestore) {
       batch.set(userRef, { 
         ...superAdminUser, 
         uid: superAdminUID,
-        storeId: defaultStoreId, // Explicitly link to the default store
+        storeId: defaultStoreId,
         createdAt: serverTimestamp() 
-      });
-      console.log(`Scheduled creation of superAdmin user: ${superAdminUID}`);
+      }, { merge: true }); // Use merge to be safe, but it will create if not exists
+      console.log(`Scheduled creation/update of superAdmin user: ${superAdminUID}`);
   }
 
   // 3. Seed all other collections, ensuring they are linked to the default store.
@@ -94,13 +91,13 @@ export async function seedDatabase(db: Firestore) {
 
   defaultCustomers.forEach((customer) => {
       const docRef = doc(db, 'customers', customer.id);
-      batch.set(docRef, customer);
+      batch.set(docRef, { ...customer, storeId: defaultStoreId });
   });
 
   const seedSimpleCollection = (collectionName: string, data: any[]) => {
       data.forEach((item) => {
           const docRef = doc(db, collectionName, item.id);
-          batch.set(docRef, item);
+          batch.set(docRef, { ...item, storeId: defaultStoreId });
       });
   };
 
@@ -111,14 +108,15 @@ export async function seedDatabase(db: Firestore) {
 
   mockSales.forEach((sale) => {
       const docRef = doc(db, 'sales', sale.id);
-      batch.set(docRef, sale);
+      batch.set(docRef, { ...sale, storeId: defaultStoreId });
   });
 
   mockPurchases.forEach((purchase) => {
       const docRef = doc(db, 'purchases', purchase.id);
-      batch.set(docRef, purchase);
+      batch.set(docRef, { ...purchase, storeId: defaultStoreId });
   });
 
+  // Ads are global for now, so no storeId needed unless specified.
   mockAds.forEach((ad) => {
       const docRef = doc(db, 'ads', ad.id);
       batch.set(docRef, { ...ad, createdAt: serverTimestamp() });

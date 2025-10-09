@@ -21,7 +21,7 @@ import { useUser, useFirestore, useCollection, useMemoFirebase, setDocumentNonBl
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { businessCategories } from "@/lib/data";
 import { seedDatabase, factoryReset } from "@/lib/seed";
-import { collection, orderBy, query, writeBatch, doc } from "firebase/firestore";
+import { collection, orderBy, query, where, writeBatch, doc } from "firebase/firestore";
 import Image from "next/image";
 import { getDisplayImageUrl } from "@/lib/utils";
 
@@ -123,9 +123,14 @@ export default function SettingsPage() {
     const [localSettings, setLocalSettings] = useState(settings || {});
     const [imageError, setImageError] = useState(false);
 
-    const { data: units = [] } = useCollection<Unit>(useMemoFirebase(() => query(collection(firestore, 'units'), orderBy('name', 'asc')), [firestore]));
-    const { data: families = [] } = useCollection<Family>(useMemoFirebase(() => query(collection(firestore, 'families'), orderBy('name', 'asc')), [firestore]));
-    const { data: warehouses = [] } = useCollection<Warehouse>(useMemoFirebase(() => query(collection(firestore, 'warehouses'), orderBy('name', 'asc')), [firestore]));
+    const unitsQuery = useMemoFirebase(() => query(collection(firestore, 'units'), where('storeId', '==', activeStoreId), orderBy('name', 'asc')), [firestore, activeStoreId]);
+    const { data: units = [] } = useCollection<Unit>(unitsQuery);
+
+    const familiesQuery = useMemoFirebase(() => query(collection(firestore, 'families'), where('storeId', '==', activeStoreId), orderBy('name', 'asc')), [firestore, activeStoreId]);
+    const { data: families = [] } = useCollection<Family>(familiesQuery);
+
+    const warehousesQuery = useMemoFirebase(() => query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId), orderBy('name', 'asc')), [firestore, activeStoreId]);
+    const { data: warehouses = [] } = useCollection<Warehouse>(warehousesQuery);
 
     const [localUnits, setLocalUnits] = useState<Unit[]>([]);
     const [localFamilies, setLocalFamilies] = useState<Family[]>([]);
@@ -149,7 +154,7 @@ export default function SettingsPage() {
     const [confirmPin, setConfirmPin] = useState('');
     const { toast } = useToast();
     
-    const productsRef = useMemoFirebase(() => collection(firestore, 'products'), [firestore]);
+    const productsRef = useMemoFirebase(() => query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
     const { data: products = [] } = useCollection<Product>(productsRef);
     
     const [newRate, setNewRate] = useState<number>(0);
@@ -216,15 +221,15 @@ export default function SettingsPage() {
         // Save units, families, warehouses
         (localUnits || []).forEach(unit => {
             const unitRef = doc(firestore, 'units', unit.id);
-            batch.set(unitRef, unit, { merge: true });
+            batch.set(unitRef, {...unit, storeId: activeStoreId}, { merge: true });
         });
         (localFamilies || []).forEach(family => {
             const familyRef = doc(firestore, 'families', family.id);
-            batch.set(familyRef, family, { merge: true });
+            batch.set(familyRef, {...family, storeId: activeStoreId}, { merge: true });
         });
         (localWarehouses || []).forEach(wh => {
             const whRef = doc(firestore, 'warehouses', wh.id);
-            batch.set(whRef, wh, { merge: true });
+            batch.set(whRef, {...wh, storeId: activeStoreId}, { merge: true });
         });
         
         try {
@@ -398,7 +403,7 @@ export default function SettingsPage() {
                 return;
             }
             const newId = `${type}-${Date.now()}`;
-            const newEntry = { id: newId, name: newItemName.trim() };
+            const newEntry = { id: newId, name: newItemName.trim(), storeId: activeStoreId };
             const itemRef = doc(firestore, `${type}s`, newId);
             setDocumentNonBlocking(itemRef, newEntry, {});
             
@@ -412,7 +417,7 @@ export default function SettingsPage() {
             }
             
             const itemRef = doc(firestore, `${type}s`, editingItem.id);
-            setDocumentNonBlocking(itemRef, editingItem, { merge: true });
+            setDocumentNonBlocking(itemRef, {...editingItem, storeId: activeStoreId}, { merge: true });
 
             setEditingItem(null);
         };

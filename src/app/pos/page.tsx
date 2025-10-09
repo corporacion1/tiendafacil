@@ -25,7 +25,7 @@ import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebas
 import { paymentMethods } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { collection, doc, writeBatch, query, orderBy } from "firebase/firestore";
+import { collection, doc, writeBatch, query, where, orderBy } from "firebase/firestore";
 
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
     const { activeSymbol, activeRate } = useSettings();
@@ -70,21 +70,21 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
 export default function POSPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
-  const { settings, setSettings, activeSymbol, activeRate } = useSettings();
+  const { settings, setSettings, activeSymbol, activeRate, activeStoreId } = useSettings();
   
-  const productsRef = useMemoFirebase(() => collection(firestore, 'products'), [firestore]);
+  const productsRef = useMemoFirebase(() => query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
   const { data: products = [], isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
 
-  const customersRef = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
+  const customersRef = useMemoFirebase(() => query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
   const { data: customers = [], isLoading: isLoadingCustomers } = useCollection<Customer>(customersRef);
   
-  const pendingOrdersQuery = useMemoFirebase(() => query(collection(firestore, 'pendingOrders'), orderBy('date', 'desc')), [firestore]);
+  const pendingOrdersQuery = useMemoFirebase(() => query(collection(firestore, 'pendingOrders'), where('storeId', '==', activeStoreId), orderBy('date', 'desc')), [firestore, activeStoreId]);
   const { data: pendingOrders = [], isLoading: isLoadingPendingOrders } = useCollection<PendingOrder>(pendingOrdersQuery);
   
-  const salesRef = useMemoFirebase(() => query(collection(firestore, 'sales'), orderBy('date', 'desc')), [firestore]);
+  const salesRef = useMemoFirebase(() => query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId), orderBy('date', 'desc')), [firestore, activeStoreId]);
   const { data: sales = [], isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
 
-  const familiesRef = useMemoFirebase(() => query(collection(firestore, 'families'), orderBy('name', 'asc')), [firestore]);
+  const familiesRef = useMemoFirebase(() => query(collection(firestore, 'families'), where('storeId', '==', activeStoreId), orderBy('name', 'asc')), [firestore, activeStoreId]);
   const { data: families = [], isLoading: isLoadingFamilies } = useCollection<Family>(familiesRef);
 
   const isLoading = isLoadingProducts || isLoadingCustomers || isLoadingPendingOrders || isLoadingSales || isLoadingFamilies;
@@ -126,7 +126,7 @@ export default function POSPage() {
     return `${series}-${String(nextCorrelative).padStart(3, '0')}`;
   };
 
-  const customerList = useMemo(() => [{ id: 'eventual', name: 'Cliente Eventual', phone: '' }, ...(customers || [])], [customers]);
+  const customerList = useMemo(() => [{ id: 'eventual', name: 'Cliente Eventual', phone: '', storeId: activeStoreId }, ...(customers || [])], [customers, activeStoreId]);
   const selectedCustomer = customerList.find(c => c.id === selectedCustomerId) ?? null;
 
   const addToCart = (product: Product) => {
@@ -309,6 +309,7 @@ export default function POSPage() {
         status: isCreditSale ? 'unpaid' : 'paid',
         paidAmount: totalPaid,
         payments: finalPayments,
+        storeId: activeStoreId,
     }
 
     const batch = writeBatch(firestore);
@@ -330,6 +331,7 @@ export default function POSPage() {
             quantity: -item.quantity,
             date: new Date().toISOString(),
             responsible: 'Sistema POS',
+            storeId: activeStoreId,
         };
         batch.set(movementRef, newMovement);
     }
@@ -393,7 +395,7 @@ export default function POSPage() {
     }
     
     const newId = newCustomer.id.trim() || `cust-${Date.now()}`;
-    const customerToAdd: Omit<Customer, 'id'> = {
+    const customerToAdd: Omit<Customer, 'id' | 'storeId'> = {
         name: newCustomer.name,
         phone: newCustomer.phone,
         address: newCustomer.address,
@@ -402,7 +404,7 @@ export default function POSPage() {
     const customerRef = doc(firestore, 'customers', newId);
     
     const batch = writeBatch(firestore);
-    batch.set(customerRef, customerToAdd);
+    batch.set(customerRef, { ...customerToAdd, storeId: activeStoreId });
 
     try {
         await batch.commit();
@@ -458,7 +460,7 @@ export default function POSPage() {
                     name: item.productName,
                     price: item.price,
                     stock: 0,
-                    sku: 'N/A', cost: 0, status: 'inactive', tax1: false, tax2: false, wholesalePrice: 0, storeId: '', createdAt: new Date().toISOString()
+                    sku: 'N/A', cost: 0, status: 'inactive', tax1: false, tax2: false, wholesalePrice: 0, storeId: activeStoreId, createdAt: new Date().toISOString()
                 },
                 quantity: item.quantity,
                 price: item.price,
@@ -477,6 +479,7 @@ export default function POSPage() {
             id: `cust-${Date.now()}`,
             name: order.customerName,
             phone: order.customerPhone,
+            storeId: activeStoreId,
         }
         const customerRef = doc(firestore, 'customers', newCustomerFromOrder.id);
         const batch = writeBatch(firestore);
