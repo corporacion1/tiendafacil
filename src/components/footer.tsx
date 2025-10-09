@@ -49,6 +49,7 @@ export function Footer() {
     },
   ];
 
+  const enabledSocialLinks = socialLinks.filter(link => link.enabled);
 
   return (
     <footer className="mt-auto border-t bg-background px-4 py-4 sm:px-6">
@@ -56,25 +57,27 @@ export function Footer() {
         <p className="text-center text-sm leading-loose text-muted-foreground sm:text-left">
           © {new Date().getFullYear()} Corporación 1 Plus, CA. Todos los derechos reservados.
         </p>
-        <div className="flex items-center gap-2">
-          {socialLinks.filter(social => social.enabled).map((social) => (
-            <Button
-              key={social.name}
-              variant="ghost"
-              size="icon"
-              asChild
-            >
-              <a
-                href={social.url}
-                target="_blank"
-                rel="noopener noreferrer"
+        {enabledSocialLinks.length > 0 && (
+          <div className="flex items-center gap-2">
+            {enabledSocialLinks.map((social) => (
+              <Button
+                key={social.name}
+                variant="ghost"
+                size="icon"
+                asChild
               >
-                <social.icon className="h-4 w-4" />
-                <span className="sr-only">{social.name}</span>
-              </a>
-            </Button>
-          ))}
-        </div>
+                <a
+                  href={social.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <social.icon className="h-4 w-4" />
+                  <span className="sr-only">{social.name}</span>
+                </a>
+              </Button>
+            ))}
+          </div>
+        )}
       </div>
     </footer>
   );
