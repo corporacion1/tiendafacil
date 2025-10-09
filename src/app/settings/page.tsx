@@ -163,7 +163,10 @@ export default function SettingsPage() {
     const [confirmPin, setConfirmPin] = useState('');
     const { toast } = useToast();
     
-    const productsRef = useMemoFirebase(() => query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
+    const productsRef = useMemoFirebase(() => {
+      if (!firestore || !activeStoreId) return null;
+      return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
+    }, [firestore, activeStoreId]);
     const { data: products = [] } = useCollection<Product>(productsRef);
     
     const [newRate, setNewRate] = useState<number>(0);
@@ -181,19 +184,19 @@ export default function SettingsPage() {
 
     useEffect(() => {
         if (units) {
-            setLocalUnits([...units].sort((a, b) => a.name.localeCompare(b.name)));
+          setLocalUnits([...units].sort((a, b) => a.name.localeCompare(b.name)));
         }
     }, [units]);
 
     useEffect(() => {
         if (families) {
-            setLocalFamilies([...families].sort((a, b) => a.name.localeCompare(b.name)));
+          setLocalFamilies([...families].sort((a, b) => a.name.localeCompare(b.name)));
         }
     }, [families]);
 
     useEffect(() => {
         if (warehouses) {
-            setLocalWarehouses([...warehouses].sort((a, b) => a.name.localeCompare(b.name)));
+          setLocalWarehouses([...warehouses].sort((a, b) => a.name.localeCompare(b.name)));
         }
     }, [warehouses]);
     
