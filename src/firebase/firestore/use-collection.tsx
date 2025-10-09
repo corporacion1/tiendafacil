@@ -56,7 +56,11 @@ export function useCollection<T = any>(
   useEffect(() => {
     // Critical Guard: Do not proceed if the query is not ready or user is loading.
     if (!shouldFetch) {
-      setData(null);
+      // If we shouldn't fetch, ensure we don't hold onto stale data.
+      // However, we only set data to null if it's not already null to avoid unnecessary re-renders.
+      if (data !== null) {
+        setData(null);
+      }
       return;
     }
     
@@ -98,8 +102,9 @@ export function useCollection<T = any>(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memoizedTargetRefOrQuery, shouldFetch]);
 
-  // isLoading is true if we don't have a valid query/user yet AND we haven't loaded any data before.
-  const isLoading = !shouldFetch && data === null;
+  // isLoading is true if we are in a state where we should be fetching but haven't received data or an error yet.
+  // OR if the user is still loading and we don't have any data yet.
+  const isLoading = (shouldFetch && data === null && error === null) || (isUserLoading && data === null);
 
   return { data, isLoading, error };
 }

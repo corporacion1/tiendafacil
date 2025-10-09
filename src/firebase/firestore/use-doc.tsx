@@ -55,7 +55,9 @@ export function useDoc<T = any>(
   useEffect(() => {
     // Critical Guard: Do not proceed if the document reference is not ready or user is loading.
     if (!shouldFetch) {
-      setData(null);
+       if (data !== null) {
+        setData(null);
+      }
       return;
     }
 
@@ -89,8 +91,7 @@ export function useDoc<T = any>(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [memoizedDocRef, shouldFetch]);
   
-  // isLoading is true if we don't have a valid ref/user yet AND we haven't loaded any data before.
-  const isLoading = !shouldFetch && data === null;
+  const isLoading = (shouldFetch && data === null && error === null) || (isUserLoading && data === null);
 
   return { data, isLoading, error };
 }
