@@ -8,6 +8,7 @@ import { SiteHeader } from "@/components/site-header";
 import { cn } from '@/lib/utils';
 import { AppLoader } from './app-loader';
 import { AuthGuard } from './auth-guard';
+import { Footer } from './footer';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -28,7 +29,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen w-full flex-col bg-muted/40">
         {!isPublicPage && <SiteSidebar isExpanded={isSidebarExpanded} />}
         <div className={cn(
-          "flex flex-col sm:gap-4 sm:py-4 transition-all duration-300",
+          "flex flex-1 flex-col sm:gap-4 sm:py-4 transition-all duration-300",
           !isPublicPage && (isSidebarExpanded ? "sm:pl-56" : "sm:pl-20")
         )}>
           {!isPublicPage && <SiteHeader toggleSidebar={toggleSidebar} isSidebarExpanded={isSidebarExpanded} />}
@@ -39,6 +40,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {/* AppLoader will handle the loading state for protected pages */}
             {isPublicPage ? children : <AppLoader>{children}</AppLoader>}
           </main>
+          <Footer />
         </div>
       </div>
     </AuthGuard>

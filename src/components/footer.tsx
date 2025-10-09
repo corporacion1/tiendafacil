@@ -1,3 +1,4 @@
+
 "use client"
 
 import { Instagram, Facebook, Twitter } from "lucide-react";
@@ -20,32 +21,26 @@ export function Footer() {
     {
       name: "WhatsApp",
       icon: FaWhatsapp,
-      url: `https://wa.me/${settings?.whatsapp?.replace(/\D/g, '') || ''}`,
-      enabled: !!settings?.whatsapp
+      url: `https://wa.me/584126915593`,
+      enabled: true, // Always show this based on user request
     },
     {
       name: "TikTok",
       icon: FaTiktok,
-      url: `https://www.tiktok.com/@${settings?.tiktok?.replace('@', '') || ''}`,
-      enabled: !!settings?.tiktok
+      url: `https://www.tiktok.com/@corporacion1+`,
+      enabled: true, // Always show this based on user request
     },
     {
       name: "Instagram",
       icon: Instagram,
-      url: `https://www.instagram.com/${settings?.meta?.replace('@', '') || ''}`,
-      enabled: !!settings?.meta
+      url: `https://www.instagram.com/corporacion1plus`,
+      enabled: true, // Always show this based on user request
     },
     {
       name: "Facebook",
       icon: Facebook,
-      url: `https://www.facebook.com/${settings?.meta?.replace('@', '') || ''}`,
-      enabled: !!settings?.meta
-    },
-    {
-      name: "X",
-      icon: Twitter,
-      url: `https://x.com/${settings?.meta?.replace('@', '') || ''}`,
-      enabled: !!settings?.meta
+      url: `https://www.facebook.com/corporacion1plus`,
+      enabled: true, // Always show this based on user request
     },
   ];
 
