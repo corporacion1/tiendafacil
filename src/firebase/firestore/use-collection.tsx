@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Query,
   onSnapshot,
@@ -49,19 +49,22 @@ export function useCollection<T = any>(
 
   const { isUserLoading } = useUser();
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
+
+  // We derive isLoading from multiple sources.
+  // The query is not ready OR firebase auth is still initializing.
+  const isLoading = !memoizedTargetRefOrQuery || isUserLoading;
 
   useEffect(() => {
     // CRITICAL: If the query is not ready or auth is loading, do nothing.
-    // This prevents race conditions on initial render.
+    // This prevents race conditions on initial render and when dependencies change.
     if (!memoizedTargetRefOrQuery || isUserLoading) {
-      setIsLoading(isUserLoading); // Reflect auth loading state
+      // While waiting for a valid query or user, ensure we are in a loading state
+      // and data is cleared.
       setData(null);
       return;
     }
 
-    setIsLoading(true);
     setError(null);
 
     const unsubscribe = onSnapshot(
@@ -73,7 +76,6 @@ export function useCollection<T = any>(
         }
         setData(results);
         setError(null);
-        setIsLoading(false);
       },
       (error: FirestoreError) => {
         let path = 'desconocido';
@@ -95,7 +97,6 @@ export function useCollection<T = any>(
 
         setError(contextualError)
         setData(null)
-        setIsLoading(false)
 
         errorEmitter.emit('permission-error', contextualError);
       }

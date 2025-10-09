@@ -48,19 +48,18 @@ export function useDoc<T = any>(
 
   const { isUserLoading } = useUser();
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
+
+  const isLoading = !memoizedDocRef || isUserLoading;
 
   useEffect(() => {
     // CRITICAL: If the docRef is not ready or auth is loading, do nothing.
     // This prevents race conditions on initial render.
     if (!memoizedDocRef || isUserLoading) {
-      setIsLoading(isUserLoading);
       setData(null);
       return;
     }
 
-    setIsLoading(true);
     setError(null);
     
     const unsubscribe = onSnapshot(
@@ -73,7 +72,6 @@ export function useDoc<T = any>(
           setData(null);
         }
         setError(null); // Clear any previous error on successful snapshot
-        setIsLoading(false);
       },
       (error: FirestoreError) => {
         const contextualError = new FirestorePermissionError({
@@ -83,7 +81,6 @@ export function useDoc<T = any>(
 
         setError(contextualError)
         setData(null)
-        setIsLoading(false)
 
         errorEmitter.emit('permission-error', contextualError);
       }
@@ -92,5 +89,5 @@ export function useDoc<T = any>(
     return () => unsubscribe();
   }, [memoizedDocRef, isUserLoading]);
 
-  return { data, isLoading: isLoading || isUserLoading, error };
+  return { data, isLoading, error };
 }
