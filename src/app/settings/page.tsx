@@ -144,13 +144,12 @@ export default function SettingsPage() {
     const [localUnits, setLocalUnits] = useState<Unit[]>([]);
     const [localFamilies, setLocalFamilies] = useState<Family[]>([]);
     const [localWarehouses, setLocalWarehouses] = useState<Warehouse[]>([]);
-    const [localCurrencyRates, setLocalCurrencyRates] = useState<CurrencyRate[]>([]);
     
     const ratesQuery = useMemoFirebase(() => {
         if (!activeStoreId) return null;
         return query(collection(firestore, `stores/${activeStoreId}/currencyRates`), orderBy('date', 'desc'));
     }, [firestore, activeStoreId]);
-    const { data: fetchedRates } = useCollection<CurrencyRate>(ratesQuery);
+    const { data: currencyRates = [] } = useCollection<CurrencyRate>(ratesQuery);
 
     const displayUrl = useMemo(() => getDisplayImageUrl(localSettings?.logoUrl), [localSettings?.logoUrl]);
 
@@ -169,7 +168,7 @@ export default function SettingsPage() {
     }, [firestore, activeStoreId]);
     const { data: products = [] } = useCollection<Product>(productsRef);
     
-    const [newRate, setNewRate] = useState<number>(0);
+    const [newRate, setNewRate] = useState<string>("");
 
     const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
     const [resetPin, setResetPin] = useState('');
@@ -200,21 +199,15 @@ export default function SettingsPage() {
         }
     }, [warehouses]);
     
-    useEffect(() => {
-      if (fetchedRates) {
-        setLocalCurrencyRates(fetchedRates);
-      }
-    }, [fetchedRates]);
     
     useEffect(() => {
         const mainSettingsChanged = JSON.stringify(localSettings) !== JSON.stringify(settings);
         const unitsChanged = JSON.stringify(localUnits) !== JSON.stringify(units);
         const familiesChanged = JSON.stringify(localFamilies) !== JSON.stringify(families);
         const warehousesChanged = JSON.stringify(localWarehouses) !== JSON.stringify(warehouses);
-        const ratesChanged = JSON.stringify(localCurrencyRates) !== JSON.stringify(fetchedRates);
 
-        setIsDirty(mainSettingsChanged || unitsChanged || familiesChanged || warehousesChanged || ratesChanged);
-    }, [localSettings, settings, localUnits, localFamilies, localWarehouses, localCurrencyRates, units, families, warehouses, fetchedRates]);
+        setIsDirty(mainSettingsChanged || unitsChanged || familiesChanged || warehousesChanged);
+    }, [localSettings, settings, localUnits, localFamilies, localWarehouses, units, families, warehouses]);
 
     const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
@@ -261,7 +254,8 @@ export default function SettingsPage() {
     };
 
     const handleSaveNewRate = () => {
-        if(newRate <= 0) {
+        const rateValue = parseFloat(newRate);
+        if(isNaN(rateValue) || rateValue <= 0) {
             toast({
                 variant: 'destructive',
                 title: 'Tasa inválida',
@@ -272,17 +266,17 @@ export default function SettingsPage() {
 
         const newRateEntry: CurrencyRate = {
             id: `rate-${Date.now()}`,
-            rate: newRate,
+            rate: rateValue,
             date: new Date().toISOString(),
         };
 
         const rateRef = doc(firestore, `stores/${activeStoreId}/currencyRates`, newRateEntry.id);
         setDocumentNonBlocking(rateRef, newRateEntry, {});
         
-        setNewRate(0);
+        setNewRate("");
         toast({
             title: "Tasa Guardada",
-            description: `La nueva tasa de ${newRate} ha sido registrada.`,
+            description: `La nueva tasa de ${rateValue} ha sido registrada.`,
         });
     };
 
@@ -717,21 +711,21 @@ export default function SettingsPage() {
                                 <Input 
                                     id="newRate" 
                                     type="number" 
-                                    step="0.000001" 
-                                    value={newRate || ''} 
-                                    onChange={(e) => setNewRate(parseFloat(e.target.value) || 0)} 
-                                    placeholder={localCurrencyRates?.[0]?.rate ? localCurrencyRates[0].rate.toFixed(6) : "0.000000"}
+                                    step="any"
+                                    value={newRate} 
+                                    onChange={(e) => setNewRate(e.target.value)} 
+                                    placeholder={currencyRates?.[0]?.rate ? currencyRates[0].rate.toFixed(6) : "0.000000"}
                                     className="flex-grow"
                                 />
                                 <AlertDialog>
                                     <AlertDialogTrigger asChild>
-                                        <Button disabled={newRate <= 0}>Guardar Tasa</Button>
+                                        <Button disabled={!newRate || parseFloat(newRate) <= 0}>Guardar Tasa</Button>
                                     </AlertDialogTrigger>
                                     <AlertDialogContent>
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>¿Confirmar Nueva Tasa?</AlertDialogTitle>
                                             <AlertDialogDescription>
-                                                Estás a punto de guardar una nueva tasa de cambio de {newRate.toFixed(6)} {localSettings?.secondaryCurrencySymbol}. ¿Estás seguro?
+                                                Estás a punto de guardar una nueva tasa de cambio de {parseFloat(newRate || '0').toFixed(6)} {localSettings?.secondaryCurrencySymbol}. ¿Estás seguro?
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
@@ -753,7 +747,7 @@ export default function SettingsPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {localCurrencyRates.length > 0 ? localCurrencyRates.map(rate => (
+                                        {currencyRates.length > 0 ? currencyRates.map(rate => (
                                             <TableRow key={rate.id}>
                                                 <TableCell>{rate.date ? format(parseISO(rate.date as string), "dd/MM/yy HH:mm") : 'N/A'}</TableCell>
                                                 <TableCell className="text-right font-mono">{`${rate.rate.toFixed(6)} ${localSettings?.secondaryCurrencySymbol}`}</TableCell>
@@ -926,5 +920,7 @@ export default function SettingsPage() {
         </div>
     );
 }
+
+    
 
     
