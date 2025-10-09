@@ -108,8 +108,12 @@ export default function AdsPage() {
   const { user } = useUser();
   const router = useRouter();
   
-  const adsQuery = useMemoFirebase(() => query(collection(firestore, 'ads'), orderBy('createdAt', 'desc')), [firestore]);
-  const { data: ads = [], isLoading } = useCollection<Ad>(adsQuery);
+  const adsQuery = useMemoFirebase(() => query(collection(firestore, 'ads')), [firestore]);
+  const { data: adsData = [], isLoading } = useCollection<Ad>(adsQuery);
+
+  const ads = useMemo(() => {
+    return [...(adsData || [])].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [adsData]);
 
   const [adToEdit, setAdToEdit] = useState<Ad | null>(null);
   const [adToDelete, setAdToDelete] = useState<Ad | null>(null);
