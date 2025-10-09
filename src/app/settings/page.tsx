@@ -112,6 +112,12 @@ export default function SettingsPage() {
     }
   }, [settings, reset]);
 
+  useEffect(() => {
+    if (currencyRates && currencyRates.length > 0) {
+        setNewRate(currencyRates[0].rate.toFixed(2));
+    }
+  }, [currencyRates]);
+
   const onSubmit = (data: SettingsFormValues) => {
     if (!settings) return;
     
