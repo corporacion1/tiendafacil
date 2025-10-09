@@ -49,12 +49,13 @@ export function useCollection<T = any>(
 
   const { isUserLoading } = useUser();
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true); // Start as true
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
+  const shouldFetch = !isUserLoading && !!memoizedTargetRefOrQuery;
+
   useEffect(() => {
-    // Wait for auth to be ready and for a valid query
-    if (isUserLoading || !memoizedTargetRefOrQuery) {
+    if (!shouldFetch) {
       setIsLoading(true);
       setData(null);
       return;
@@ -75,7 +76,6 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (error: FirestoreError) => {
-        // Simplified path retrieval for broader compatibility
         const path = (memoizedTargetRefOrQuery as CollectionReference).path || 'desconocido';
 
         const contextualError = new FirestorePermissionError({
@@ -92,7 +92,7 @@ export function useCollection<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery, isUserLoading]);
+  }, [memoizedTargetRefOrQuery, shouldFetch]);
 
   return { data, isLoading: isLoading || isUserLoading, error };
 }

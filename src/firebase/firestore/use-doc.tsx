@@ -51,9 +51,10 @@ export function useDoc<T = any>(
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
+  const shouldFetch = !isUserLoading && !!memoizedDocRef;
+
   useEffect(() => {
-    // Wait for auth to be ready and for a valid doc ref
-    if (isUserLoading || !memoizedDocRef) {
+    if (!shouldFetch) {
       setIsLoading(true);
       setData(null);
       return;
@@ -89,7 +90,7 @@ export function useDoc<T = any>(
     );
 
     return () => unsubscribe();
-  }, [memoizedDocRef, isUserLoading]);
+  }, [memoizedDocRef, shouldFetch]);
 
   return { data, isLoading: isLoading || isUserLoading, error };
 }
