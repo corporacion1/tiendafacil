@@ -21,7 +21,7 @@ import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
 import { useSettings } from "@/contexts/settings-context";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useCollection, useFirestore } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
 
 const productSchema = z.object({
@@ -84,25 +84,25 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
   const { settings, activeStoreId } = useSettings();
   const firestore = useFirestore();
 
-  const productsRef = useMemoFirebase(() => {
+  const productsRef = useMemo(() => {
     if (!firestore || !activeStoreId) return null;
     return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
   }, [firestore, activeStoreId]);
   const { data: products } = useCollection<Product>(productsRef);
 
-  const unitsRef = useMemoFirebase(() => {
+  const unitsRef = useMemo(() => {
     if (!firestore || !activeStoreId) return null;
     return query(collection(firestore, 'units'), where('storeId', '==', activeStoreId));
   }, [firestore, activeStoreId]);
   const { data: units } = useCollection<Unit>(unitsRef);
 
-  const familiesRef = useMemoFirebase(() => {
+  const familiesRef = useMemo(() => {
     if (!firestore || !activeStoreId) return null;
     return query(collection(firestore, 'families'), where('storeId', '==', activeStoreId));
   }, [firestore, activeStoreId]);
   const { data: families } = useCollection<Family>(familiesRef);
 
-  const warehousesRef = useMemoFirebase(() => {
+  const warehousesRef = useMemo(() => {
     if (!firestore || !activeStoreId) return null;
     return query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId));
   }, [firestore, activeStoreId]);
@@ -499,5 +499,3 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     </Form>
   );
 };
-
-    
