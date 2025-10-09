@@ -114,16 +114,15 @@ function ChangePinDialog() {
 
 export default function SettingsPage() {
     const { hasPin, setPin, removePin, checkPin } = useSecurity();
-    const { settings, setSettings, currencyRates, setCurrencyRates, isLoadingSettings } = useSettings();
+    const { settings, setSettings, currencyRates, isLoadingSettings, userProfile } = useSettings();
     const firestore = useFirestore();
-    const { user } = useUser();
     
     const [localSettings, setLocalSettings] = useState(settings);
 
     const { data: units = [] } = useCollection<Unit>(useMemoFirebase(() => query(collection(firestore, 'units'), orderBy('name', 'asc')), [firestore]));
     const { data: families = [] } = useCollection<Family>(useMemoFirebase(() => query(collection(firestore, 'families'), orderBy('name', 'asc')), [firestore]));
     const { data: warehouses = [] } = useCollection<Warehouse>(useMemoFirebase(() => query(collection(firestore, 'warehouses'), orderBy('name', 'asc')), [firestore]));
-
+    
     const [localUnits, setLocalUnits] = useState<Unit[]>([]);
     const [localFamilies, setLocalFamilies] = useState<Family[]>([]);
     const [localWarehouses, setLocalWarehouses] = useState<Warehouse[]>([]);
@@ -150,13 +149,13 @@ export default function SettingsPage() {
     const [resetConfirmationText, setResetConfirmationText] = useState('');
     const [isSeeding, setIsSeeding] = useState(false);
 
-    const isSuperAdmin = user?.role === 'superAdmin';
+    const isSuperAdmin = userProfile?.role === 'superAdmin';
 
      useEffect(() => {
-        if (settings && !localSettings) {
+        if (settings) {
             setLocalSettings(settings);
         }
-    }, [settings, localSettings]);
+    }, [settings]);
 
     useEffect(() => {
         setLocalUnits(units);
@@ -541,10 +540,6 @@ export default function SettingsPage() {
         });
     }
 
-    if (isLoadingSettings || !localSettings) {
-        return <div>Cargando configuración...</div>;
-    }
-
     return (
         <div className="grid gap-6">
             <Card>
@@ -906,3 +901,5 @@ export default function SettingsPage() {
         </div>
     );
 }
+
+    
