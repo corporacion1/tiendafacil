@@ -50,13 +50,16 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
     }, [isLoading, isPublicPage, user, userProfile, pathname, router]);
 
-    if (isLoading && !isPublicPage) {
-        // The main loading screen is now in FirebaseProvider. AuthGuard assumes services are ready.
-        // It should not render its own loading state to prevent cascading loaders.
+    if (isPublicPage) {
+        return <>{children}</>;
+    }
+
+    if (isLoading) {
+        // This is handled by the FirebaseProvider's global loading screen
         return null;
     }
 
-    if (isLocked && !isPublicPage) {
+    if (isLocked) {
         return <PinModal />;
     }
 
