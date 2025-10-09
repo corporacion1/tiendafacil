@@ -48,8 +48,15 @@ const getDate = (d: any): Date => {
   if (typeof d.toDate === 'function') {
     return d.toDate();
   }
-  // Otherwise, it's likely an ISO string
-  return parseISO(d as string);
+  if (typeof d === 'string') {
+    return parseISO(d);
+  }
+  // If it's already a Date object, just return it.
+  if (d instanceof Date) {
+    return d;
+  }
+  // Fallback for unexpected types
+  return new Date();
 }
 
 
@@ -373,5 +380,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-    
