@@ -59,7 +59,7 @@ export function useCollection<T = any>(
     // ensure loading state is correct and stop execution.
     if (!shouldFetch) {
       setIsLoading(isUserLoading);
-      return; // <-- **THE FIX**: Immediately exit the effect.
+      return; 
     }
 
     setIsLoading(true);
