@@ -62,7 +62,7 @@ service cloud.firestore {
       }
       allow get: if isStoreOwner(storeId);
       allow list: if false;
-      allow create: if request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.resource.data.keys().hasAll(['ownerId']) && isCreatingStoreAsOwner(storeId);
       allow update: if isExistingStoreOwner(storeId);
       allow delete: if isExistingStoreOwner(storeId);
     }
@@ -76,8 +76,16 @@ service cloud.firestore {
      * @principle Data can be read by anyone but only edited by store owner.
      */
     match /products/{productId} {
+      function isValidStoreId(storeId) {
+        return request.resource.data.storeId == storeId;
+      }
+      function isExistingStoreOwner(storeId) {
+        return get(/databases/$(database)/documents/stores/$(request.resource.data.storeId)).data.ownerId == request.auth.uid;
+      }
       allow get, list: if true;
-      allow create, update, delete: if request.auth.uid != null;
+      allow create: if request.resource.data.keys().hasAll(['storeId']) && isValidStoreId(storeId) && isExistingStoreOwner(request.resource.data.storeId);
+      allow update: if resource.data.keys().hasAll(['storeId']) && isExistingStoreOwner(resource.data.storeId);
+      allow delete: if resource.data.keys().hasAll(['storeId']) && isExistingStoreOwner(resource.data.storeId);
     }
 
     /**
@@ -88,8 +96,16 @@ service cloud.firestore {
      * @deny (create, update, delete) if the user's UID does not match the store's ownerId.
      */
     match /inventory_movements/{movementId} {
+      function isValidStoreId(storeId) {
+        return request.resource.data.storeId == storeId;
+      }
+      function isExistingStoreOwner(storeId) {
+        return get(/databases/$(database)/documents/stores/$(request.resource.data.storeId)).data.ownerId == request.auth.uid;
+      }
       allow get, list: if true;
-     allow create, update, delete: if request.auth.uid != null;
+      allow create: if request.resource.data.keys().hasAll(['storeId']) && isValidStoreId(storeId) && isExistingStoreOwner(request.resource.data.storeId);
+      allow update: if resource.data.keys().hasAll(['storeId']) && isExistingStoreOwner(resource.data.storeId);
+      allow delete: if resource.data.keys().hasAll(['storeId']) && isExistingStoreOwner(resource.data.storeId);
     }
 
     /**
@@ -100,8 +116,16 @@ service cloud.firestore {
      * @deny (create, update, delete) if the user's UID does not match the store's ownerId.
      */
     match /sales/{saleId} {
+      function isValidStoreId(storeId) {
+        return request.resource.data.storeId == storeId;
+      }
+      function isExistingStoreOwner(storeId) {
+        return get(/databases/$(database)/documents/stores/$(request.resource.data.storeId)).data.ownerId == request.auth.uid;
+      }
       allow get, list: if true;
-     allow create, update, delete: if request.auth.uid != null;
+      allow create: if request.resource.data.keys().hasAll(['storeId']) && isValidStoreId(storeId) && isExistingStoreOwner(request.resource.data.storeId);
+      allow update: if resource.data.keys().hasAll(['storeId']) && isExistingStoreOwner(resource.data.storeId);
+      allow delete: if resource.data.keys().hasAll(['storeId']) && isExistingStoreOwner(resource.data.storeId);
     }
 
     /**
@@ -112,8 +136,16 @@ service cloud.firestore {
      * @deny (create, update, delete) if the user's UID does not match the store's ownerId.
      */
     match /purchases/{purchaseId} {
+      function isValidStoreId(storeId) {
+        return request.resource.data.storeId == storeId;
+      }
+      function isExistingStoreOwner(storeId) {
+        return get(/databases/$(database)/documents/stores/$(request.resource.data.storeId)).data.ownerId == request.auth.uid;
+      }
       allow get, list: if true;
-     allow create, update, delete: if request.auth.uid != null;
+      allow create: if request.resource.data.keys().hasAll(['storeId']) && isValidStoreId(storeId) && isExistingStoreOwner(request.resource.data.storeId);
+      allow update: if resource.data.keys().hasAll(['storeId']) && isExistingStoreOwner(resource.data.storeId);
+      allow delete: if resource.data.keys().hasAll(['storeId']) && isExistingStoreOwner(resource.data.storeId);
     }
 
     /**
@@ -124,8 +156,16 @@ service cloud.firestore {
      * @deny (create, update, delete) if the user's UID does not match the store's ownerId.
      */
     match /customers/{customerId} {
+      function isValidStoreId(storeId) {
+        return request.resource.data.storeId == storeId;
+      }
+      function isExistingStoreOwner(storeId) {
+        return get(/databases/$(database)/documents/stores/$(request.resource.data.storeId)).data.ownerId == request.auth.uid;
+      }
       allow get, list: if true;
-      allow create, update, delete: if request.auth.uid != null;
+      allow create: if request.resource.data.keys().hasAll(['storeId']) && isValidStoreId(storeId) && isExistingStoreOwner(request.resource.data.storeId);
+      allow update: if resource.data.keys().hasAll(['storeId']) && isExistingStoreOwner(resource.data.storeId);
+      allow delete: if resource.data.keys().hasAll(['storeId']) && isExistingStoreOwner(resource.data.storeId);
     }
 
     /**
@@ -136,8 +176,16 @@ service cloud.firestore {
      * @deny (create, update, delete) if the user's UID does not match the store's ownerId.
      */
     match /suppliers/{supplierId} {
+      function isValidStoreId(storeId) {
+        return request.resource.data.storeId == storeId;
+      }
+      function isExistingStoreOwner(storeId) {
+        return get(/databases/$(database)/documents/stores/$(request.resource.data.storeId)).data.ownerId == request.auth.uid;
+      }
       allow get, list: if true;
-       allow create, update, delete: if request.auth.uid != null;
+      allow create: if request.resource.data.keys().hasAll(['storeId']) && isValidStoreId(storeId) && isExistingStoreOwner(request.resource.data.storeId);
+      allow update: if resource.data.keys().hasAll(['storeId']) && isExistingStoreOwner(resource.data.storeId);
+      allow delete: if resource.data.keys().hasAll(['storeId']) && isExistingStoreOwner(resource.data.storeId);
     }
 
     /**
@@ -148,8 +196,16 @@ service cloud.firestore {
      * @deny (create, update, delete) if the user's UID does not match the store's ownerId.
      */
     match /units/{unitId} {
+      function isValidStoreId(storeId) {
+        return request.resource.data.storeId == storeId;
+      }
+      function isExistingStoreOwner(storeId) {
+        return get(/databases/$(database)/documents/stores/$(request.resource.data.storeId)).data.ownerId == request.auth.uid;
+      }
       allow get, list: if true;
-      allow create, update, delete: if request.auth.uid != null;
+      allow create: if request.resource.data.keys().hasAll(['storeId']) && isValidStoreId(storeId) && isExistingStoreOwner(request.resource.data.storeId);
+      allow update: if resource.data.keys().hasAll(['storeId']) && isExistingStoreOwner(resource.data.storeId);
+      allow delete: if resource.data.keys().hasAll(['storeId']) && isExistingStoreOwner(resource.data.storeId);
     }
 
     /**
@@ -160,8 +216,16 @@ service cloud.firestore {
      * @deny (create, update, delete) if the user's UID does not match the store's ownerId.
      */
     match /families/{familyId} {
+      function isValidStoreId(storeId) {
+        return request.resource.data.storeId == storeId;
+      }
+      function isExistingStoreOwner(storeId) {
+        return get(/databases/$(database)/documents/stores/$(request.resource.data.storeId)).data.ownerId == request.auth.uid;
+      }
       allow get, list: if true;
-      allow create, update, delete: if request.auth.uid != null;
+      allow create: if request.resource.data.keys().hasAll(['storeId']) && isValidStoreId(storeId) && isExistingStoreOwner(request.resource.data.storeId);
+      allow update: if resource.data.keys().hasAll(['storeId']) && isExistingStoreOwner(resource.data.storeId);
+      allow delete: if resource.data.keys().hasAll(['storeId']) && isExistingStoreOwner(resource.data.storeId);
     }
 
     /**
@@ -172,8 +236,16 @@ service cloud.firestore {
      * @deny (create, update, delete) if the user's UID does not match the store's ownerId.
      */
     match /warehouses/{warehouseId} {
+      function isValidStoreId(storeId) {
+        return request.resource.data.storeId == storeId;
+      }
+      function isExistingStoreOwner(storeId) {
+        return get(/databases/$(database)/documents/stores/$(request.resource.data.storeId)).data.ownerId == request.auth.uid;
+      }
       allow get, list: if true;
-      allow create, update, delete: if request.auth.uid != null;
+      allow create: if request.resource.data.keys().hasAll(['storeId']) && isValidStoreId(storeId) && isExistingStoreOwner(request.resource.data.storeId);
+      allow update: if resource.data.keys().hasAll(['storeId']) && isExistingStoreOwner(resource.data.storeId);
+      allow delete: if resource.data.keys().hasAll(['storeId']) && isExistingStoreOwner(resource.data.storeId);
     }
     /**
      * @description Allows reading marketing advertisements.
@@ -183,7 +255,7 @@ service cloud.firestore {
      */
     match /ads/{adId} {
         allow get, list: if true;
-        allow create, update, delete: if request.auth.uid != null; // TODO: Add owner validation once the schema is updated with an ownership field.
+        allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
 
     /**
@@ -194,8 +266,16 @@ service cloud.firestore {
      * @deny (create, update, delete) if the user's UID does not match the store's ownerId.
      */
     match /pendingOrders/{orderId} {
+      function isValidStoreId(storeId) {
+        return request.resource.data.storeId == storeId;
+      }
+        function isExistingStoreOwner(storeId) {
+        return get(/databases/$(database)/documents/stores/$(request.resource.data.storeId)).data.ownerId == request.auth.uid;
+      }
       allow get, list: if true;
-     allow create, update, delete: if request.auth.uid != null;
+      allow create: if request.resource.data.keys().hasAll(['storeId']) && isValidStoreId(storeId) && isExistingStoreOwner(request.resource.data.storeId);
+      allow update: if resource.data.keys().hasAll(['storeId']) && isExistingStoreOwner(resource.data.storeId);
+      allow delete: if resource.data.keys().hasAll(['storeId']) && isExistingStoreOwner(resource.data.storeId);
     }
 
     /**
@@ -210,13 +290,13 @@ service cloud.firestore {
         return get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid;
       }
         function isExistingStoreOwner(storeId) {
-        return get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid && resource != null;
+        return get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid;
       }
       allow get: if isStoreOwner(storeId);
-      allow list: if isStoreOwner(storeId);
+      allow list: if false;
       allow create: if isStoreOwner(storeId);
-      allow update: if isStoreOwner(storeId);
-      allow delete: if isStoreOwner(storeId);
+      allow update: if isExistingStoreOwner(storeId);
+      allow delete: if isExistingStoreOwner(storeId);
     }
   }
 }
