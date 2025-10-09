@@ -223,7 +223,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                   name="cost"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Costo ({settings?.primaryCurrencySymbol || '$'})</FormLabel>
+                      <FormLabel>Costo ({settings?.primaryCurrencySymbol})</FormLabel>
                       <FormControl>
                         <Input type="number" step="0.01" {...field} />
                       </FormControl>
@@ -344,7 +344,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                     name="price"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Precio Detal ({settings?.primaryCurrencySymbol || '$'})</FormLabel>
+                        <FormLabel>Precio Detal ({settings?.primaryCurrencySymbol})</FormLabel>
                         <FormControl>
                             <Input type="number" step="0.01" {...field} />
                         </FormControl>
@@ -360,7 +360,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                     name="wholesalePrice"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Precio Mayorista ({settings?.primaryCurrencySymbol || '$'})</FormLabel>
+                        <FormLabel>Precio Mayorista ({settings?.primaryCurrencySymbol})</FormLabel>
                         <FormControl>
                             <Input type="number" step="0.01" {...field} />
                         </FormControl>

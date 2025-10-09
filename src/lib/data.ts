@@ -1,20 +1,48 @@
 
-
-import type { Product, InventoryMovement, Sale, Unit, Family, Warehouse, Customer, Purchase, Supplier, CurrencyRate, Payment, PendingOrder, AdClick, Ad, UserProfile } from '@/lib/types';
+import type { Product, Sale, Unit, Family, Warehouse, Customer, Purchase, Ad, UserProfile, Store } from '@/lib/types';
 import { PlaceHolderImages } from './placeholder-images';
-import { subDays, subHours } from 'date-fns';
-import { mockAds } from './ads';
-import { collection, deleteDoc, getDocs, Firestore, WriteBatch, writeBatch, query, where } from 'firebase/firestore';
+import { subDays, subHours, addDays } from 'date-fns';
 
+// --- IDs ÚNICOS Y CONSTANTES ---
+// ID único y robusto para la tienda por defecto.
+export const defaultStoreId = 'store_clifp94l0000008l3b1z9f8j7';
+
+// --- CONFIGURACIÓN DE LA TIENDA POR DEFECTO ---
+export const defaultStore: Store = {
+  id: defaultStoreId,
+  name: "Tienda Facil DEMO",
+  ownerId: "user_superadmin_01", // Este se actualizará con el UID real del Super Admin en la siembra
+  businessType: "Tecnologia",
+  address: "Av. Principal, Local 1, Ciudad",
+  phone: "+58 212-555-1234",
+  slogan: "¡Gracias por tu compra!",
+  logoUrl: "https://www.dropbox.com/scl/fi/apl8e6ymm6wel3coa10a9/tienda_facil_logo.svg?rlkey=jn7j3dezgn1ovbl35vapk5ap5&raw=1",
+  status: 'active',
+  primaryCurrencyName: "Dólar Americano",
+  primaryCurrencySymbol: "$",
+  secondaryCurrencyName: "Bolívar Digital",
+  secondaryCurrencySymbol: "Bs.",
+  saleSeries: "VENTA",
+  saleCorrelative: 1,
+  tax1: 16,
+  tax2: 0,
+  whatsapp: "+584125555555",
+  tiktok: "@tiendafacil",
+  meta: "@tiendafacil",
+};
+
+// --- USUARIOS POR DEFECTO ---
 export const defaultUsers: Omit<UserProfile, 'createdAt' | 'uid' | 'photoURL'>[] = [
     {
         email: 'corporacion1@gmail.com',
         displayName: 'Super Admin',
         role: 'superAdmin',
         status: 'active',
-        storeId: 'tiendafacil',
+        storeId: defaultStoreId, // Conectado a la tienda por defecto
     }
 ];
+
+// --- DATOS DE MUESTRA (TODOS CONECTADOS AL storeId por defecto) ---
 
 export const defaultCustomers: Customer[] = [
     { id: 'eventual', name: 'Cliente Eventual', phone: '', address: '' },
@@ -28,13 +56,13 @@ export const defaultSuppliers: Supplier[] = [
     { id: 'sup-3', name: 'Global Microchips', phone: '555-5555', address: '202 Silicon St' },
 ];
 
-export let initialUnits: Unit[] = [
+export const initialUnits: Unit[] = [
     { id: 'unit-1', name: 'Unidad' },
     { id: 'unit-2', name: 'Caja' },
     { id: 'unit-3', name: 'Paquete' },
 ];
 
-export let initialFamilies: Family[] = [
+export const initialFamilies: Family[] = [
     { id: 'fam-1', name: 'Tarjetas Gráficas' },
     { id: 'fam-2', name: 'Procesadores' },
     { id: 'fam-3', name: 'Memoria RAM' },
@@ -43,74 +71,53 @@ export let initialFamilies: Family[] = [
     { id: 'fam-6', name: 'Fuentes de Poder' },
 ];
 
-export let initialWarehouses: Warehouse[] = [
+export const initialWarehouses: Warehouse[] = [
     { id: 'wh-1', name: 'Almacén Principal' },
     { id: 'wh-2', name: 'Depósito Secundario' },
 ];
 
-export const businessCategories: string[] = [
-    'Tecnologia',
-    'Restaurante',
-    'Tienda de Ropa',
-    'Supermercado',
-    'Servicios Profesionales',
-    'Ferretería',
-    'Repuestos',
-    'Salud y Belleza',
-    'Otro'
-];
-
-export const mockProducts: Product[] = [
+export const mockProducts: Omit<Product, 'createdAt'>[] = [
   {
-    id: "prod-1", name: "Tarjeta Gráfica RTX 4090", sku: "NV-RTX4090-01", stock: 15, price: 1799.99, wholesalePrice: 1750.00, cost: 1600.00, status: "active", tax1: true, tax2: true, unit: "Unidad", family: "Tarjetas Gráficas", warehouse: "Almacén Principal", storeId: "store-1",
+    id: "prod-1", name: "Tarjeta Gráfica RTX 4090", sku: "NV-RTX4090-01", stock: 15, price: 1799.99, wholesalePrice: 1750.00, cost: 1600.00, status: "active", tax1: true, tax2: true, unit: "Unidad", family: "Tarjetas Gráficas", warehouse: "Almacén Principal", storeId: defaultStoreId,
     description: "La GPU más potente para gaming y creación de contenido.",
     imageUrl: PlaceHolderImages.find(p => p.id === '1')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '1')?.imageHint,
-    createdAt: new Date().toISOString(),
   },
   {
-    id: "prod-2", name: "Procesador Intel Core i9-13900K", sku: "INT-i9-13900K-02", stock: 25, price: 589.00, wholesalePrice: 570.00, cost: 520.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Procesadores", warehouse: "Almacén Principal", storeId: "store-1",
+    id: "prod-2", name: "Procesador Intel Core i9-13900K", sku: "INT-i9-13900K-02", stock: 25, price: 589.00, wholesalePrice: 570.00, cost: 520.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Procesadores", warehouse: "Almacén Principal", storeId: defaultStoreId,
     description: "Procesador de alto rendimiento para gaming y productividad.",
     imageUrl: PlaceHolderImages.find(p => p.id === '2')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '2')?.imageHint,
-    createdAt: new Date().toISOString(),
   },
   {
-    id: "prod-3", name: "Memoria RAM 32GB DDR5", sku: "RAM-DDR5-32G-03", stock: 50, price: 129.99, wholesalePrice: 120.00, cost: 100.00, status: "promotion", tax1: true, tax2: false, unit: "Paquete", family: "Memoria RAM", warehouse: "Almacén Principal", storeId: "store-1",
+    id: "prod-3", name: "Memoria RAM 32GB DDR5", sku: "RAM-DDR5-32G-03", stock: 50, price: 129.99, wholesalePrice: 120.00, cost: 100.00, status: "promotion", tax1: true, tax2: false, unit: "Paquete", family: "Memoria RAM", warehouse: "Almacén Principal", storeId: defaultStoreId,
     description: "Kit de 2x16GB de memoria RAM DDR5 a 6000MHz.",
     imageUrl: PlaceHolderImages.find(p => p.id === '3')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '3')?.imageHint,
-    createdAt: new Date().toISOString(),
   },
   {
-    id: "prod-4", name: "SSD NVMe 2TB", sku: "SSD-NVME-2TB-04", stock: 40, price: 149.99, wholesalePrice: 140.00, cost: 125.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Almacenamiento", warehouse: "Almacén Principal", storeId: "store-1",
+    id: "prod-4", name: "SSD NVMe 2TB", sku: "SSD-NVME-2TB-04", stock: 40, price: 149.99, wholesalePrice: 140.00, cost: 125.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Almacenamiento", warehouse: "Almacén Principal", storeId: defaultStoreId,
     description: "Unidad de estado sólido de 2TB con velocidades de lectura/escritura ultrarrápidas.",
     imageUrl: PlaceHolderImages.find(p => p.id === '4')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '4')?.imageHint,
-    createdAt: new Date().toISOString(),
   },
   {
-    id: "prod-5", name: "Tarjeta Madre Z790", sku: "MB-Z790-WIFI-05", stock: 30, price: 349.99, wholesalePrice: 330.00, cost: 300.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Tarjetas Madre", warehouse: "Almacén Principal", storeId: "store-1",
+    id: "prod-5", name: "Tarjeta Madre Z790", sku: "MB-Z790-WIFI-05", stock: 30, price: 349.99, wholesalePrice: 330.00, cost: 300.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Tarjetas Madre", warehouse: "Almacén Principal", storeId: defaultStoreId,
     description: "Tarjeta madre con chipset Z790, soporte para DDR5 y WiFi 6E.",
     imageUrl: PlaceHolderImages.find(p => p.id === '5')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '5')?.imageHint,
-    createdAt: new Date().toISOString(),
   },
   {
-    id: "prod-6", name: "Fuente de Poder 1000W Gold", sku: "PSU-1000W-G-06", stock: 35, price: 199.99, wholesalePrice: 185.00, cost: 160.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Fuentes de Poder", warehouse: "Almacén Principal", storeId: "store-1",
+    id: "prod-6", name: "Fuente de Poder 1000W Gold", sku: "PSU-1000W-G-06", stock: 35, price: 199.99, wholesalePrice: 185.00, cost: 160.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Fuentes de Poder", warehouse: "Almacén Principal", storeId: defaultStoreId,
     description: "Fuente de poder de 1000W con certificación 80 Plus Gold, completamente modular.",
     imageUrl: PlaceHolderImages.find(p => p.id === '6')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '6')?.imageHint,
-    createdAt: new Date().toISOString(),
   },
   {
-    id: "prod-7", name: "Tarjeta Gráfica RX 7900 XTX", sku: "AMD-RX7900XTX-07", stock: 20, price: 999.99, wholesalePrice: 950.00, cost: 880.00, status: "promotion", tax1: true, tax2: true, unit: "Unidad", family: "Tarjetas Gráficas", warehouse: "Almacén Principal", storeId: "store-1",
+    id: "prod-7", name: "Tarjeta Gráfica RX 7900 XTX", sku: "AMD-RX7900XTX-07", stock: 20, price: 999.99, wholesalePrice: 950.00, cost: 880.00, status: "promotion", tax1: true, tax2: true, unit: "Unidad", family: "Tarjetas Gráficas", warehouse: "Almacén Principal", storeId: defaultStoreId,
     description: "GPU de alta gama de AMD, excelente para gaming en 4K.",
     imageUrl: PlaceHolderImages.find(p => p.id === '7')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '7')?.imageHint,
-    createdAt: new Date().toISOString(),
   },
   {
-    id: "prod-8", name: "Procesador AMD Ryzen 9 7950X", sku: "AMD-R9-7950X-08", stock: 22, price: 549.00, wholesalePrice: 530.00, cost: 490.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Procesadores", warehouse: "Almacén Principal", storeId: "store-1",
+    id: "prod-8", name: "Procesador AMD Ryzen 9 7950X", sku: "AMD-R9-7950X-08", stock: 22, price: 549.00, wholesalePrice: 530.00, cost: 490.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Procesadores", warehouse: "Almacén Principal", storeId: defaultStoreId,
     description: "Procesador de 16 núcleos y 32 hilos para máxima productividad.",
     imageUrl: PlaceHolderImages.find(p => p.id === '8')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '8')?.imageHint,
-    createdAt: new Date().toISOString(),
   },
 ];
-
 
 export const mockPurchases: Purchase[] = [
     {
@@ -152,19 +159,46 @@ export const mockSales: Sale[] = [
     },
 ];
 
-export const mockInventoryMovements: InventoryMovement[] = [
-    ...mockSales.flatMap(sale => sale.items.map(item => ({
-        id: `mov-sale-${sale.id}-${item.productId}`, productName: item.productName, type: 'sale' as const, quantity: -item.quantity, date: sale.date, responsible: 'Sistema POS'
-    }))),
-    ...mockPurchases.flatMap(purchase => purchase.items.map(item => ({
-        id: `mov-pur-${purchase.id}-${item.productId}`, productName: item.productName, type: 'purchase' as const, quantity: item.quantity, date: purchase.date, responsible: purchase.responsible || 'N/A'
-    })))
-];
-
-export const mockCurrencyRates: CurrencyRate[] = [
-    { id: 'rate-1', rate: 182.50, date: new Date().toISOString() },
-    { id: 'rate-2', rate: 180.25, date: subDays(new Date(), 1).toISOString() },
-    { id: 'rate-3', rate: 178.90, date: subDays(new Date(), 2).toISOString() },
+export const mockAds: Omit<Ad, 'createdAt'>[] = [
+  {
+    id: "ad-2",
+    sku: "PROMO-002",
+    name: "Potencia tu PC con Nosotros",
+    description: "Los mejores componentes para tu PC gamer.",
+    price: 0,
+    imageUrl: "https://images.unsplash.com/photo-1593640408182-31c70c8268f5?q=80&w=600&auto=format&fit=crop",
+    imageHint: "gaming pc",
+    views: 512,
+    status: 'active',
+    targetBusinessTypes: ['Tecnologia'],
+    expiryDate: addDays(new Date(), 60).toISOString(),
+  },
+  {
+    id: "ad-5",
+    sku: "SUPER-001",
+    name: "Oferta en Súper Mercado",
+    description: "Todo lo que necesitas para tu hogar.",
+    price: 0,
+    imageUrl: "https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=600&auto=format&fit=crop",
+    imageHint: "supermarket groceries",
+    views: 1230,
+    status: 'active',
+    targetBusinessTypes: ['Supermercado'],
+    expiryDate: addDays(new Date(), 20).toISOString(),
+  },
+  {
+    id: "ad-3",
+    sku: "EXPIRED-001",
+    name: "Oferta Pasada",
+    description: "Esta oferta ya no es válida.",
+    price: 0,
+    imageUrl: "https://images.unsplash.com/photo-1555529771-835f59fc5efe?q=80&w=600&auto=format&fit=crop",
+    imageHint: "expired sale",
+    views: 2048,
+    status: 'active', // Será desactivado automáticamente si la fecha de expiración ya pasó
+    targetBusinessTypes: ['Tecnologia'],
+    expiryDate: subDays(new Date(), 5).toISOString(),
+  },
 ];
 
 export const paymentMethods = [
@@ -176,96 +210,14 @@ export const paymentMethods = [
     { id: 'otro', name: 'Otro', requiresRef: false },
 ];
 
-// This will store orders created from the public catalog page
-export let pendingOrders: PendingOrder[] = [];
-
-
-export const mockAdClicks: AdClick[] = [];
-
-export function trackAdClick(adId: string) {
-    const adIndex = mockAds.findIndex(ad => ad.id === adId);
-    if (adIndex > -1) {
-        mockAds[adIndex].views += 1;
-    }
-
-    const newClick: AdClick = {
-        id: `click-${Date.now()}`,
-        adId: adId,
-        timestamp: new Date().toISOString(),
-        // In a real app, you would get this from request headers on the server
-        userAgent: navigator.userAgent, 
-    };
-
-    mockAdClicks.push(newClick);
-}
-
-async function deleteCollection(
-    db: Firestore,
-    collectionName: string,
-    batch: WriteBatch,
-    exclude: { field: string; value: any } | null = null
-) {
-    const collectionRef = collection(db, collectionName);
-    const snapshot = await getDocs(collectionRef);
-    snapshot.docs.forEach(doc => {
-        if (exclude && doc.data()[exclude.field] === exclude.value) {
-            // Skip this document
-            return;
-        }
-        batch.delete(doc.ref);
-    });
-}
-
-// The main factory reset function
-export async function factoryReset(db: Firestore) {
-    console.log("Performing Firestore factory reset...");
-
-    const collectionsToDelete = [
-        'products',
-        'customers',
-        'suppliers',
-        'units',
-        'families',
-        'warehouses',
-        'sales',
-        'purchases',
-        'inventory_movements',
-        'currencyRates',
-        'pendingOrders',
-        'ads'
-    ];
-
-    const commitPromises: Promise<void>[] = [];
-    let batch = writeBatch(db);
-    let operationCount = 0;
-
-    // Special handling for the 'users' collection
-    const usersQuery = query(collection(db, "users"), where("email", "!=", "corporacion1@gmail.com"));
-    const usersSnapshot = await getDocs(usersQuery);
-    usersSnapshot.forEach(doc => {
-        batch.delete(doc.ref);
-        operationCount++;
-    });
-
-    for (const collectionName of collectionsToDelete) {
-        const collectionRef = collection(db, collectionName);
-        const snapshot = await getDocs(collectionRef);
-        snapshot.docs.forEach(doc => {
-            batch.delete(doc.ref);
-            operationCount++;
-            if (operationCount >= 499) {
-                commitPromises.push(batch.commit());
-                batch = writeBatch(db);
-                operationCount = 0;
-            }
-        });
-    }
-
-    if (operationCount > 0) {
-        commitPromises.push(batch.commit());
-    }
-
-    await Promise.all(commitPromises);
-    
-    console.log("Firestore factory reset complete.");
-}
+export const businessCategories: string[] = [
+    'Tecnologia',
+    'Restaurante',
+    'Tienda de Ropa',
+    'Supermercado',
+    'Servicios Profesionales',
+    'Ferretería',
+    'Repuestos',
+    'Salud y Belleza',
+    'Otro'
+];

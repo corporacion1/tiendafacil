@@ -325,5 +325,3 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
     </Form>
   );
 };
-
-    

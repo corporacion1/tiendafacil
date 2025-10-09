@@ -19,8 +19,8 @@ import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
 import { useUser, useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { factoryReset, businessCategories } from "@/lib/data";
-import { seedDatabase } from "@/lib/seed";
+import { businessCategories } from "@/lib/data";
+import { seedDatabase, factoryReset } from "@/lib/seed";
 import { collection, orderBy, query, writeBatch, doc } from "firebase/firestore";
 import Image from "next/image";
 import { getDisplayImageUrl } from "@/lib/utils";
@@ -118,7 +118,7 @@ export default function SettingsPage() {
     const { hasPin, setPin, removePin, checkPin } = useSecurity();
     const { settings, setSettings, activeStoreId } = useSettings();
     const firestore = useFirestore();
-    const user = { email: "corporacion1@gmail.com" }; // Mock user for demo
+    const { user } = useUser();
     
     const [localSettings, setLocalSettings] = useState(settings || {});
     const [imageError, setImageError] = useState(false);
@@ -132,15 +132,17 @@ export default function SettingsPage() {
     const [localWarehouses, setLocalWarehouses] = useState<Warehouse[]>([]);
     const [localCurrencyRates, setLocalCurrencyRates] = useState<CurrencyRate[]>([]);
     
-    const ratesQuery = useMemoFirebase(() => query(collection(firestore, 'currencyRates'), orderBy('date', 'desc')), [firestore]);
+    const ratesQuery = useMemoFirebase(() => {
+        if (!activeStoreId) return null;
+        return query(collection(firestore, `stores/${activeStoreId}/currencyRates`), orderBy('date', 'desc'));
+    }, [firestore, activeStoreId]);
     const { data: fetchedRates } = useCollection<CurrencyRate>(ratesQuery);
 
-    const watchedImageUrl = localSettings?.logoUrl;
-    const displayUrl = useMemo(() => getDisplayImageUrl(watchedImageUrl), [watchedImageUrl]);
+    const displayUrl = useMemo(() => getDisplayImageUrl(localSettings?.logoUrl), [localSettings?.logoUrl]);
 
     useEffect(() => {
         setImageError(false);
-    }, [watchedImageUrl]);
+    }, [localSettings?.logoUrl]);
 
     const [isDirty, setIsDirty] = useState(false);
     const [newPin, setNewPin] = useState('');
@@ -251,7 +253,7 @@ export default function SettingsPage() {
             date: new Date().toISOString(),
         };
 
-        const rateRef = doc(firestore, 'currencyRates', newRateEntry.id);
+        const rateRef = doc(firestore, `stores/${activeStoreId}/currencyRates`, newRateEntry.id);
         setDocumentNonBlocking(rateRef, newRateEntry, {});
         
         setNewRate(0);
@@ -332,6 +334,7 @@ export default function SettingsPage() {
             localStorage.removeItem('tienda_facil_settings');
             localStorage.removeItem('tienda_facil_currency_pref');
             localStorage.removeItem('tienda_facil_pin');
+            localStorage.removeItem('tienda_facil_active_store_id');
             
             setIsResetConfirmOpen(false);
 
@@ -367,6 +370,7 @@ export default function SettingsPage() {
                 title: '¡Éxito!',
                 description: 'La base de datos ha sido poblada con los datos de demostración.',
             });
+            window.location.reload();
         } catch (error: any) {
             toast({
                 variant: 'destructive',
@@ -697,7 +701,7 @@ export default function SettingsPage() {
                                     step="0.000001" 
                                     value={newRate || ''} 
                                     onChange={(e) => setNewRate(parseFloat(e.target.value) || 0)} 
-                                    placeholder={localCurrencyRates?.[0]?.rate.toFixed(6) || "0.000000"}
+                                    placeholder={localCurrencyRates?.[0]?.rate ? localCurrencyRates[0].rate.toFixed(6) : "0.000000"}
                                     className="flex-grow"
                                 />
                                 <AlertDialog>
@@ -708,7 +712,7 @@ export default function SettingsPage() {
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>¿Confirmar Nueva Tasa?</AlertDialogTitle>
                                             <AlertDialogDescription>
-                                                Estás a punto de guardar una nueva tasa de cambio de ${newRate.toFixed(6)} {localSettings?.secondaryCurrencySymbol}. ¿Estás seguro?
+                                                Estás a punto de guardar una nueva tasa de cambio de {newRate.toFixed(6)} {localSettings?.secondaryCurrencySymbol}. ¿Estás seguro?
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
