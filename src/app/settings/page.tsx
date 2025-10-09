@@ -135,8 +135,7 @@ export default function SettingsPage() {
     const ratesQuery = useMemoFirebase(() => query(collection(firestore, 'currencyRates'), orderBy('date', 'desc')), [firestore]);
     const { data: fetchedRates } = useCollection<CurrencyRate>(ratesQuery);
 
-    const { watch } = useForm();
-    const watchedImageUrl = watch("logoUrl");
+    const watchedImageUrl = localSettings?.logoUrl;
     const displayUrl = useMemo(() => getDisplayImageUrl(watchedImageUrl), [watchedImageUrl]);
 
     useEffect(() => {
@@ -563,8 +562,8 @@ export default function SettingsPage() {
                                 <Input id="name" value={localSettings?.name || ''} onChange={handleSettingsChange} placeholder="Mi Tienda Increíble" maxLength={45} />
                             </div>
                              <div className="space-y-2">
-                                <Label htmlFor="storePhone">Teléfono (para el ticket)</Label>
-                                <Input id="storePhone" value={localSettings?.phone || ''} onChange={handleSettingsChange} placeholder="+58-412-1234567" maxLength={15} />
+                                <Label htmlFor="phone">Teléfono (para el ticket)</Label>
+                                <Input id="phone" value={localSettings?.phone || ''} onChange={handleSettingsChange} placeholder="+58-412-1234567" maxLength={15} />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="businessType">Tipo de Negocio</Label>
@@ -698,7 +697,7 @@ export default function SettingsPage() {
                                     step="0.000001" 
                                     value={newRate || ''} 
                                     onChange={(e) => setNewRate(parseFloat(e.target.value) || 0)} 
-                                    placeholder={localCurrencyRates && localCurrencyRates.length > 0 ? localCurrencyRates[0].rate.toFixed(6) : "0.000000"}
+                                    placeholder={localCurrencyRates?.[0]?.rate.toFixed(6) || "0.000000"}
                                     className="flex-grow"
                                 />
                                 <AlertDialog>
@@ -931,5 +930,3 @@ export default function SettingsPage() {
         </div>
     );
 }
-
-    
