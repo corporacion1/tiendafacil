@@ -77,7 +77,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, [isUserLoading, isLoadingProfile, userProfile, activeStoreId]);
 
-  const canFetchStoreData = !!firestore && !!activeStoreId;
+  const canFetchStoreData = useMemo(() => !isUserLoading && !!firestore && !!activeStoreId, [isUserLoading, firestore, activeStoreId]);
 
   const settingsDocRef = useMemo(() => {
     if (!canFetchStoreData) return null;
