@@ -7,6 +7,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import _ from "lodash";
 import { format } from "date-fns";
+import Image from "next/image";
+import { Package } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +29,7 @@ import { collection, doc, orderBy, query } from "firebase/firestore";
 import type { CurrencyRate } from "@/lib/types";
 import { businessCategories } from "@/lib/data";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { getDisplayImageUrl } from "@/lib/utils";
 
 const settingsSchema = z.object({
   name: z.string().min(1, "El nombre de la tienda es requerido."),
@@ -54,6 +57,7 @@ export default function SettingsPage() {
   const { toast } = useToast();
   
   const [newRate, setNewRate] = useState<number | string>("");
+  const [imageError, setImageError] = useState(false);
 
   const form = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema),
@@ -76,7 +80,14 @@ export default function SettingsPage() {
     },
   });
 
-  const { reset, formState: { isDirty } } = form;
+  const { reset, formState: { isDirty }, watch, trigger } = form;
+
+  const watchedImageUrl = watch("logoUrl");
+  const displayUrl = useMemo(() => getDisplayImageUrl(watchedImageUrl), [watchedImageUrl]);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [watchedImageUrl]);
 
   useEffect(() => {
     if (settings) {
@@ -156,6 +167,19 @@ export default function SettingsPage() {
     setNewRate("");
   };
 
+  const handleImageUrlBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
+    const url = e.target.value;
+    if (url) {
+      const isUrlValid = await trigger("logoUrl");
+      if (!isUrlValid) {
+        toast({
+          variant: "destructive",
+          title: "URL de imagen inválida",
+        });
+      }
+    }
+  };
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -168,107 +192,125 @@ export default function SettingsPage() {
                       Ajusta los detalles principales de tu negocio.
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <FormItem>
-                        <FormLabel>ID de la Tienda (Store ID)</FormLabel>
-                        <FormControl>
-                            <Input readOnly value={activeStoreId} className="bg-muted" />
-                        </FormControl>
-                        <FormDescription>
-                            Este es el identificador único de tu tienda. No se puede cambiar.
-                        </FormDescription>
-                    </FormItem>
-                    <FormField
-                      control={form.control}
-                      name="name"
-                      render={({ field }) => (
+                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
                         <FormItem>
-                          <FormLabel>Nombre de la Tienda</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Mi Tienda Fantástica" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="businessType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tipo de Tienda</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormLabel>ID de la Tienda (Store ID)</FormLabel>
                             <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Selecciona el tipo de tu negocio" />
-                              </SelectTrigger>
+                                <Input readOnly value={activeStoreId} className="bg-muted" />
                             </FormControl>
-                            <SelectContent>
-                              {businessCategories.map(category => (
-                                <SelectItem key={category} value={category}>{category}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
+                            <FormDescription>
+                                Este es el identificador único de tu tienda. No se puede cambiar.
+                            </FormDescription>
                         </FormItem>
-                      )}
-                    />
-                     <FormField
-                      control={form.control}
-                      name="logoUrl"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>URL del Logo</FormLabel>
-                          <FormControl>
-                            <Input placeholder="https://ejemplo.com/logo.png" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="address"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Dirección</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Av. Principal 123, Ciudad" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="phone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Teléfono</FormLabel>
-                          <FormControl>
-                            <Input placeholder="+1 (555) 123-4567" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="slogan"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Mensaje o Eslogan para el Ticket</FormLabel>
-                          <FormControl>
-                            <Input placeholder="¡Gracias por tu compra!" {...field} />
-                          </FormControl>
-                           <FormDescription>
-                            Este mensaje aparecerá al final de los tickets impresos.
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Nombre de la Tienda</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Mi Tienda Fantástica" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                         <FormField
+                          control={form.control}
+                          name="address"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Dirección</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Av. Principal 123, Ciudad" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="phone"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Teléfono</FormLabel>
+                              <FormControl>
+                                <Input placeholder="+1 (555) 123-4567" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="businessType"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Tipo de Tienda</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Selecciona el tipo de tu negocio" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {businessCategories.map(category => (
+                                    <SelectItem key={category} value={category}>{category}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                         <FormField
+                          control={form.control}
+                          name="slogan"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Mensaje o Eslogan para el Ticket</FormLabel>
+                              <FormControl>
+                                <Input placeholder="¡Gracias por tu compra!" {...field} />
+                              </FormControl>
+                               <FormDescription>
+                                Este mensaje aparecerá al final de los tickets impresos.
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                    </div>
+                    <div className="space-y-4">
+                        <FormField
+                            control={form.control}
+                            name="logoUrl"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>URL del Logo</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="https://..." {...field} onBlur={handleImageUrlBlur} />
+                                </FormControl>
+                                <div className="aspect-square relative bg-muted rounded-md flex items-center justify-center mt-2 overflow-hidden">
+                                    {displayUrl && !imageError ? (
+                                    <Image 
+                                        src={displayUrl} 
+                                        alt="Vista previa del logo" 
+                                        fill 
+                                        sizes="300px" 
+                                        className="object-contain"
+                                        onError={() => setImageError(true)}
+                                    />
+                                    ) : (
+                                    <Package className="h-16 w-16 text-muted-foreground" />
+                                    )}
+                                </div>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:col-span-2">
                        <FormField
                         control={form.control}
                         name="tax1"
@@ -469,5 +511,3 @@ export default function SettingsPage() {
     </Form>
   );
 }
-
-    
