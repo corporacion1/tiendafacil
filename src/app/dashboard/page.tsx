@@ -67,9 +67,13 @@ export default function Dashboard() {
   
   const movementsRef = useMemoFirebase(() => {
     if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'inventory_movements'), where('storeId', '==', activeStoreId), orderBy('date', 'desc'));
+    return query(collection(firestore, 'inventory_movements'), where('storeId', '==', activeStoreId));
   }, [firestore, activeStoreId]);
-  const { data: recentMovements, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsRef);
+  const { data: movementsData, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsRef);
+
+  const recentMovements = useMemo(() => {
+    return (movementsData || []).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [movementsData]);
 
   const isLoading = isLoadingSales || isLoadingPurchases || isLoadingProducts || isLoadingMovements;
 

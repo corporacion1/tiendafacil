@@ -70,7 +70,7 @@ export default function ReportsPage() {
 
     const movementsRef = useMemoFirebase(() => {
         if (!firestore || !activeStoreId) return null;
-        return query(collection(firestore, 'inventory_movements'), where('storeId', '==', activeStoreId), orderBy('date', 'desc'));
+        return query(collection(firestore, 'inventory_movements'), where('storeId', '==', activeStoreId));
     }, [firestore, activeStoreId]);
     const { data: movementsData, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsRef);
 
@@ -256,7 +256,8 @@ export default function ReportsPage() {
     }, [purchasesData, searchTerm, dateFilterQuery]);
 
     const filteredMovements = useMemo(() => {
-        return filterByDate(movementsData || []).filter(m =>
+        const sortedMovements = (movementsData || []).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        return filterByDate(sortedMovements).filter(m =>
             m.productName.toLowerCase().includes(searchTerm.toLowerCase())
         ) as InventoryMovement[];
     }, [movementsData, searchTerm, dateFilterQuery]);

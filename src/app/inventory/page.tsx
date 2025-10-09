@@ -142,9 +142,13 @@ export default function InventoryPage() {
 
   const inventoryMovementsQuery = useMemoFirebase(() => {
     if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'inventory_movements'), where('storeId', '==', activeStoreId), orderBy('date', 'desc'));
+    return query(collection(firestore, 'inventory_movements'), where('storeId', '==', activeStoreId));
   }, [firestore, activeStoreId]);
-  const { data: inventoryMovements = [], isLoading: isLoadingMovements } = useCollection<InventoryMovement>(inventoryMovementsQuery);
+  const { data: movementsData = [], isLoading: isLoadingMovements } = useCollection<InventoryMovement>(inventoryMovementsQuery);
+
+  const inventoryMovements = useMemo(() => {
+    return (movementsData || []).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [movementsData]);
 
   const isLoading = isLoadingProducts || isLoadingSales || isLoadingMovements;
   
