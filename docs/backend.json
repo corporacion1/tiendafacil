@@ -242,3 +242,5 @@
     "/currencyRates/{rateId}": { "schema": { "$ref": "#/entities/CurrencyRate" }, "description": "Stores historical currency exchange rates." }
   }
 }
+
+    

@@ -37,6 +37,9 @@ const settingsSchema = z.object({
   primaryCurrencySymbol: z.string().optional(),
   secondaryCurrencyName: z.string().optional(),
   secondaryCurrencySymbol: z.string().optional(),
+  whatsapp: z.string().optional(),
+  tiktok: z.string().optional(),
+  meta: z.string().optional(),
 });
 
 type SettingsFormValues = z.infer<typeof settingsSchema>;
@@ -61,6 +64,9 @@ export default function SettingsPage() {
       primaryCurrencySymbol: "$",
       secondaryCurrencyName: "Bolivares",
       secondaryCurrencySymbol: "Bs.",
+      whatsapp: "",
+      tiktok: "",
+      meta: "",
     },
   });
 
@@ -79,6 +85,9 @@ export default function SettingsPage() {
         primaryCurrencySymbol: settings.primaryCurrencySymbol || "$",
         secondaryCurrencyName: settings.secondaryCurrencyName || "Bolivares",
         secondaryCurrencySymbol: settings.secondaryCurrencySymbol || "Bs.",
+        whatsapp: settings.whatsapp || "",
+        tiktok: settings.tiktok || "",
+        meta: settings.meta || "",
       };
       reset(initialData);
     }
@@ -111,6 +120,9 @@ export default function SettingsPage() {
         primaryCurrencySymbol: settings.primaryCurrencySymbol || "$",
         secondaryCurrencyName: settings.secondaryCurrencyName || "Bolivares",
         secondaryCurrencySymbol: settings.secondaryCurrencySymbol || "Bs.",
+        whatsapp: settings.whatsapp || "",
+        tiktok: settings.tiktok || "",
+        meta: settings.meta || "",
       });
     }
   }
@@ -133,22 +145,6 @@ export default function SettingsPage() {
     toast({ title: 'Nueva tasa agregada' });
     setNewRate("");
   };
-
-  if (isLoadingSettings) {
-      return (
-           <Card>
-            <CardHeader>
-                <CardTitle>Configuración</CardTitle>
-                <CardDescription>
-                    Aquí podrás configurar los aspectos básicos de tu tienda.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <p>Cargando configuración...</p>
-            </CardContent>
-           </Card>
-      )
-  }
 
   return (
     <Form {...form}>
@@ -249,6 +245,59 @@ export default function SettingsPage() {
                   </CardContent>
                 </Card>
 
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Redes Sociales y Contacto</CardTitle>
+                    <CardDescription>
+                      Configura los enlaces a tus perfiles sociales y WhatsApp.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                     <FormField
+                      control={form.control}
+                      name="whatsapp"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Número de WhatsApp</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Ej: 584121234567" {...field} />
+                          </FormControl>
+                           <FormDescription>
+                            Incluye el código de país, sin el símbolo de "+".
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="tiktok"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Usuario de TikTok</FormLabel>
+                          <FormControl>
+                            <Input placeholder="@tuusuario" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={form.control}
+                      name="meta"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Usuario de Instagram / Facebook</FormLabel>
+                          <FormControl>
+                            <Input placeholder="tuusuario" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </CardContent>
+                </Card>
+                
                 <Card>
                   <CardHeader>
                     <CardTitle>Configuración de Moneda</CardTitle>
@@ -366,3 +415,5 @@ export default function SettingsPage() {
     </Form>
   );
 }
+
+    

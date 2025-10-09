@@ -195,3 +195,5 @@ export type AdClick = {
     timestamp: string;
     userAgent: string;
 };
+
+    
