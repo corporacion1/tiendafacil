@@ -581,10 +581,6 @@ export default function SettingsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="md:col-span-1 space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="storeId">ID de la Tienda</Label>
-                                <Input id="storeId" value={activeStoreId || ''} readOnly />
-                            </div>
-                            <div className="space-y-2">
                                 <Label htmlFor="name">Nombre de la Tienda</Label>
                                 <Input id="name" value={localSettings?.name || ''} onChange={handleSettingsChange} placeholder="Mi Tienda Increíble" maxLength={45} />
                             </div>
@@ -957,3 +953,5 @@ export default function SettingsPage() {
         </div>
     );
 }
+
+    
