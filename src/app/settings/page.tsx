@@ -116,7 +116,7 @@ function ChangePinDialog() {
 
 export default function SettingsPage() {
     const { hasPin, setPin, removePin, checkPin } = useSecurity();
-    const { settings, setSettings, activeStoreId } = useSettings();
+    const { settings, setSettings, activeStoreId, currencyRates } = useSettings();
     const firestore = useFirestore();
     const { user } = useUser();
     
@@ -145,12 +145,6 @@ export default function SettingsPage() {
     const [localFamilies, setLocalFamilies] = useState<Family[]>([]);
     const [localWarehouses, setLocalWarehouses] = useState<Warehouse[]>([]);
     
-    const ratesQuery = useMemoFirebase(() => {
-        if (!activeStoreId) return null;
-        return query(collection(firestore, `stores/${activeStoreId}/currencyRates`), orderBy('date', 'desc'));
-    }, [firestore, activeStoreId]);
-    const { data: currencyRates = [] } = useCollection<CurrencyRate>(ratesQuery);
-
     const displayUrl = useMemo(() => getDisplayImageUrl(localSettings?.logoUrl), [localSettings?.logoUrl]);
 
     useEffect(() => {
@@ -714,7 +708,7 @@ export default function SettingsPage() {
                                     step="any"
                                     value={newRate} 
                                     onChange={(e) => setNewRate(e.target.value)} 
-                                    placeholder={currencyRates?.[0]?.rate ? currencyRates[0].rate.toFixed(6) : "0.000000"}
+                                    placeholder={(currencyRates && currencyRates.length > 0) ? currencyRates[0].rate.toFixed(6) : "0.000000"}
                                     className="flex-grow"
                                 />
                                 <AlertDialog>
@@ -747,7 +741,7 @@ export default function SettingsPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {currencyRates.length > 0 ? currencyRates.map(rate => (
+                                        {currencyRates && currencyRates.length > 0 ? currencyRates.map(rate => (
                                             <TableRow key={rate.id}>
                                                 <TableCell>{rate.date ? format(parseISO(rate.date as string), "dd/MM/yy HH:mm") : 'N/A'}</TableCell>
                                                 <TableCell className="text-right font-mono">{`${rate.rate.toFixed(6)} ${localSettings?.secondaryCurrencySymbol}`}</TableCell>
@@ -920,7 +914,5 @@ export default function SettingsPage() {
         </div>
     );
 }
-
-    
 
     
