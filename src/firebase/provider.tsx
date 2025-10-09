@@ -104,7 +104,9 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   if (contextValue.isUserLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
-          <Logo className="w-64 h-20" />
+          <div className="p-4 bg-muted rounded-full">
+            <Package className="w-12 h-12 text-muted-foreground" />
+          </div>
           <p className="text-muted-foreground animate-pulse">Conectando a los servicios...</p>
       </div>
     );
