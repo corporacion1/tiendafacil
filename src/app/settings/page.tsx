@@ -152,6 +152,8 @@ export default function SettingsPage() {
     const isSuperAdmin = userProfile?.role === 'superAdmin';
 
      useEffect(() => {
+        // This effect now ONLY runs when the initial settings from the context change.
+        // It initializes the form's state. Subsequent user edits will not be overridden.
         if (settings) {
             setLocalSettings(settings);
         }
@@ -176,7 +178,10 @@ export default function SettingsPage() {
     }, [fetchedRates]);
     
     useEffect(() => {
-        if (!localSettings) return;
+        if (!localSettings || !settings) {
+            setIsDirty(false);
+            return;
+        };
         const mainSettingsChanged = JSON.stringify(localSettings) !== JSON.stringify(settings);
         const unitsChanged = JSON.stringify(localUnits) !== JSON.stringify(units);
         const familiesChanged = JSON.stringify(localFamilies) !== JSON.stringify(families);
@@ -538,6 +543,10 @@ export default function SettingsPage() {
             title: "PIN de seguridad eliminado",
             description: "La aplicación ya no se bloqueará.",
         });
+    }
+
+    if (isLoadingSettings || !localSettings) {
+        return <div className="text-center p-8">Cargando configuración...</div>
     }
 
     return (
