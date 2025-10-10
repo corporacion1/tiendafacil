@@ -671,5 +671,4 @@ export default function CatalogPage() {
     );
 }
 
-
     
