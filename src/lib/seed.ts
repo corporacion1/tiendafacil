@@ -7,11 +7,8 @@ import {
   getDocs,
   Firestore,
   serverTimestamp,
-  Query,
   query,
-  where,
-  CollectionReference,
-  deleteDoc,
+  WriteBatch,
 } from 'firebase/firestore';
 import {
   defaultStore,
@@ -29,24 +26,36 @@ import {
   mockCurrencyRates
 } from './data';
 
-
-async function deleteCollection(db: Firestore, collectionPath: string, batch: any) {
+async function deleteCollection(db: Firestore, collectionPath: string, batch: WriteBatch) {
   const collectionRef = collection(db, collectionPath);
   const snapshot = await getDocs(collectionRef);
   if (snapshot.empty) {
-    console.log(`Collection ${collectionPath} is already empty.`);
-    return;
+    return; // Nothing to delete
   }
   snapshot.docs.forEach(doc => {
     batch.delete(doc.ref);
   });
-  console.log(`Scheduled deletion for all ${snapshot.size} documents in ${collectionPath}.`);
+  console.log(`Scheduled deletion for ${snapshot.size} documents in ${collectionPath}.`);
+}
+
+async function deleteSubcollections(db: Firestore, parentCollection: string, batch: WriteBatch) {
+    const parentCollectionRef = collection(db, parentCollection);
+    const parentSnapshot = await getDocs(parentCollectionRef);
+    if(parentSnapshot.empty) return;
+
+    for (const docSnapshot of parentSnapshot.docs) {
+        // Delete subcollections first
+        await deleteCollection(db, `${parentCollection}/${docSnapshot.id}/currencyRates`, batch);
+    }
 }
 
 
 export async function factoryReset(db: Firestore) {
   console.log("Starting Firestore factory reset...");
   const batch = writeBatch(db);
+
+  // First, handle nested subcollections
+  await deleteSubcollections(db, 'stores', batch);
 
   // Explicitly list all top-level collections to be cleared
   const collectionsToDelete = [
@@ -59,30 +68,37 @@ export async function factoryReset(db: Firestore) {
       await deleteCollection(db, collectionName, batch);
   }
 
-  await batch.commit();
-  console.log("Firestore factory reset complete. The database should now be empty.");
+  try {
+    await batch.commit();
+    console.log("Firestore factory reset complete. The database should now be empty.");
+  } catch (error) {
+    console.error("Error during factory reset commit:", error);
+    throw new Error("Failed to commit factory reset batch.");
+  }
 }
 
 
 export async function seedDatabase(db: Firestore) {
   const batch = writeBatch(db);
 
-  // 1. Create the default store. This is now the very first step and is unconditional.
+  // 1. Create the default store.
   const storeDocRef = doc(db, 'stores', defaultStoreId);
   batch.set(storeDocRef, defaultStore);
   console.log(`Scheduled creation of default store: ${defaultStoreId}`);
   
-  // 2. Add default currency rate to the store's subcollection
-  mockCurrencyRates.forEach((rate) => {
-    const rateRef = doc(db, 'stores', defaultStoreId, 'currencyRates', rate.id);
-    batch.set(rateRef, rate);
+  // 2. Add default currency rates to the store's subcollection
+  mockCurrencyRates.forEach((rate, index) => {
+    const rateId = `rate-${Date.now()}-${index}`;
+    const rateRef = doc(db, 'stores', defaultStoreId, 'currencyRates', rateId);
+    batch.set(rateRef, { ...rate, id: rateId });
   });
-  console.log(`Scheduled creation of default currency rate for store: ${defaultStoreId}`);
+  console.log(`Scheduled creation of ${mockCurrencyRates.length} currency rates for store: ${defaultStoreId}`);
 
 
   // 3. Create the superAdmin user and link it to the store.
   const superAdminUser = defaultUsers.find(u => u.role === 'superAdmin');
   if (superAdminUser) {
+      // NOTE: This UID must be manually created in Firebase Auth for the seed to work correctly for the admin.
       const superAdminUID = '5QLaiiIr4mcGsjRXVGeGx50nrpk1'; 
       const userRef = doc(db, 'users', superAdminUID);
       batch.set(userRef, { 
@@ -95,44 +111,27 @@ export async function seedDatabase(db: Firestore) {
   }
 
   // 4. Seed all other collections, ensuring they are linked to the default store.
-  mockProducts.forEach((product) => {
-    const docRef = doc(db, 'products', product.id);
-    batch.set(docRef, { ...product, createdAt: serverTimestamp(), storeId: defaultStoreId });
-  });
-
-  defaultCustomers.forEach((customer) => {
-      const docRef = doc(db, 'customers', customer.id);
-      batch.set(docRef, { ...customer, storeId: defaultStoreId });
-  });
-
-  const seedSimpleCollection = (collectionName: string, data: any[]) => {
-      data.forEach((item) => {
-          const docRef = doc(db, collectionName, item.id);
-          batch.set(docRef, { ...item, storeId: defaultStoreId });
-      });
+  const seedCollection = (collectionName: string, data: any[], timestampField?: string) => {
+    data.forEach((item) => {
+        const docRef = doc(db, collectionName, item.id);
+        const dataToSet: any = { ...item, storeId: defaultStoreId };
+        if (timestampField) {
+            dataToSet[timestampField] = serverTimestamp();
+        }
+        batch.set(docRef, dataToSet);
+    });
   };
 
-  seedSimpleCollection('suppliers', defaultSuppliers);
-  seedSimpleCollection('units', initialUnits);
-  seedSimpleCollection('families', initialFamilies);
-  seedSimpleCollection('warehouses', initialWarehouses);
-
-  mockSales.forEach((sale) => {
-      const docRef = doc(db, 'sales', sale.id);
-      batch.set(docRef, { ...sale, storeId: defaultStoreId });
-  });
-
-  mockPurchases.forEach((purchase) => {
-      const docRef = doc(db, 'purchases', purchase.id);
-      batch.set(docRef, { ...purchase, storeId: defaultStoreId });
-  });
-
-  // Ads are global for now, so no storeId needed unless specified.
-  mockAds.forEach((ad) => {
-      const docRef = doc(db, 'ads', ad.id);
-      batch.set(docRef, { ...ad, createdAt: serverTimestamp() });
-  });
-
+  seedCollection('products', mockProducts, 'createdAt');
+  seedCollection('customers', defaultCustomers);
+  seedCollection('suppliers', defaultSuppliers);
+  seedCollection('units', initialUnits);
+  seedCollection('families', initialFamilies);
+  seedCollection('warehouses', initialWarehouses);
+  seedCollection('sales', mockSales);
+  seedCollection('purchases', mockPurchases);
+  seedCollection('ads', mockAds, 'createdAt');
+  
   console.log("Committing all seed data to Firestore...");
   await batch.commit();
   console.log("Seed data successfully committed.");

@@ -11,7 +11,7 @@ export const defaultStoreId = 'store_clifp94l0000008l3b1z9f8j7';
 export const defaultStore: Store = {
   id: defaultStoreId,
   name: "Tienda Facil DEMO",
-  ownerId: "5QLaiiIr4mcGsjRXVGeGx50nrpk1", // Actualizado al UID del super admin
+  ownerId: "5QLaiiIr4mcGsjRXVGeGx50nrpk1", // UID del super admin
   businessType: "Tecnologia",
   address: "Av. Principal, Local 1, Ciudad",
   phone: "+58 212-555-1234",
@@ -32,22 +32,22 @@ export const defaultStore: Store = {
 };
 
 // --- USUARIOS POR DEFECTO ---
-export const defaultUsers: Omit<UserProfile, 'createdAt' | 'uid' | 'photoURL'>[] = [
+export const defaultUsers: Omit<UserProfile, 'createdAt' | 'uid' | 'photoURL' | 'phone'>[] = [
     {
         email: 'corporacion1@gmail.com',
         displayName: 'Jorge Negrete',
         role: 'superAdmin',
         status: 'active',
-        storeId: defaultStoreId, // Conectado a la tienda por defecto
+        storeId: defaultStoreId,
     }
 ];
 
 // --- DATOS DE MUESTRA (TODOS CONECTADOS AL storeId por defecto) ---
 
-export const mockCurrencyRates: CurrencyRate[] = [
-    { id: 'rate-1', rate: 182.50, date: new Date().toISOString() },
-    { id: 'rate-2', rate: 180.25, date: subDays(new Date(), 1).toISOString() },
-    { id: 'rate-3', rate: 178.90, date: subDays(new Date(), 2).toISOString() },
+export const mockCurrencyRates: Omit<CurrencyRate, 'id'>[] = [
+    { rate: 39.50, date: new Date().toISOString() },
+    { rate: 39.45, date: subDays(new Date(), 1).toISOString() },
+    { rate: 39.30, date: subDays(new Date(), 2).toISOString() },
 ];
 
 export const defaultCustomers: Omit<Customer, 'storeId'>[] = [
@@ -59,7 +59,6 @@ export const defaultCustomers: Omit<Customer, 'storeId'>[] = [
 export const defaultSuppliers: Omit<Supplier, 'storeId'>[] = [
     { id: 'sup-1', name: 'TechData Corp', phone: '111-2222', address: '789 Tech Rd' },
     { id: 'sup-2', name: 'PC Components LLC', phone: '333-4444', address: '101 Component Ln' },
-    { id: 'sup-3', name: 'Global Microchips', phone: '555-5555', address: '202 Silicon St' },
 ];
 
 export const initialUnits: Omit<Unit, 'storeId'>[] = [
@@ -73,8 +72,6 @@ export const initialFamilies: Omit<Family, 'storeId'>[] = [
     { id: 'fam-2', name: 'Procesadores' },
     { id: 'fam-3', name: 'Memoria RAM' },
     { id: 'fam-4', name: 'Almacenamiento' },
-    { id: 'fam-5', name: 'Tarjetas Madre' },
-    { id: 'fam-6', name: 'Fuentes de Poder' },
 ];
 
 export const initialWarehouses: Omit<Warehouse, 'storeId'>[] = [
@@ -84,7 +81,7 @@ export const initialWarehouses: Omit<Warehouse, 'storeId'>[] = [
 
 export const mockProducts: Omit<Product, 'createdAt' | 'storeId'>[] = [
   {
-    id: "prod-1", name: "Tarjeta Gráfica RTX 4090", sku: "NV-RTX4090-01", stock: 15, price: 1799.99, wholesalePrice: 1750.00, cost: 1600.00, status: "active", tax1: true, tax2: true, unit: "Unidad", family: "Tarjetas Gráficas", warehouse: "Almacén Principal",
+    id: "prod-1", name: "Tarjeta Gráfica RTX 4090", sku: "NV-RTX4090-01", stock: 15, price: 1799.99, wholesalePrice: 1750.00, cost: 1600.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Tarjetas Gráficas", warehouse: "Almacén Principal",
     description: "La GPU más potente para gaming y creación de contenido.",
     imageUrl: PlaceHolderImages.find(p => p.id === '1')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '1')?.imageHint,
   },
@@ -103,39 +100,6 @@ export const mockProducts: Omit<Product, 'createdAt' | 'storeId'>[] = [
     description: "Unidad de estado sólido de 2TB con velocidades de lectura/escritura ultrarrápidas.",
     imageUrl: PlaceHolderImages.find(p => p.id === '4')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '4')?.imageHint,
   },
-  {
-    id: "prod-5", name: "Tarjeta Madre Z790", sku: "MB-Z790-WIFI-05", stock: 30, price: 349.99, wholesalePrice: 330.00, cost: 300.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Tarjetas Madre", warehouse: "Almacén Principal",
-    description: "Tarjeta madre con chipset Z790, soporte para DDR5 y WiFi 6E.",
-    imageUrl: PlaceHolderImages.find(p => p.id === '5')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '5')?.imageHint,
-  },
-  {
-    id: "prod-6", name: "Fuente de Poder 1000W Gold", sku: "PSU-1000W-G-06", stock: 35, price: 199.99, wholesalePrice: 185.00, cost: 160.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Fuentes de Poder", warehouse: "Almacén Principal",
-    description: "Fuente de poder de 1000W con certificación 80 Plus Gold, completamente modular.",
-    imageUrl: PlaceHolderImages.find(p => p.id === '6')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '6')?.imageHint,
-  },
-  {
-    id: "prod-7", name: "Tarjeta Gráfica RX 7900 XTX", sku: "AMD-RX7900XTX-07", stock: 20, price: 999.99, wholesalePrice: 950.00, cost: 880.00, status: "promotion", tax1: true, tax2: true, unit: "Unidad", family: "Tarjetas Gráficas", warehouse: "Almacén Principal",
-    description: "GPU de alta gama de AMD, excelente para gaming en 4K.",
-    imageUrl: PlaceHolderImages.find(p => p.id === '7')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '7')?.imageHint,
-  },
-  {
-    id: "prod-8", name: "Procesador AMD Ryzen 9 7950X", sku: "AMD-R9-7950X-08", stock: 22, price: 549.00, wholesalePrice: 530.00, cost: 490.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Procesadores", warehouse: "Almacén Principal",
-    description: "Procesador de 16 núcleos y 32 hilos para máxima productividad.",
-    imageUrl: PlaceHolderImages.find(p => p.id === '8')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '8')?.imageHint,
-  },
-];
-
-export const mockPurchases: Omit<Purchase, 'storeId'>[] = [
-    {
-        id: "PUR-001", supplierId: "sup-1", supplierName: "TechData Corp",
-        items: [ { productId: "prod-1", productName: "Tarjeta Gráfica RTX 4090", quantity: 10, cost: 1600.00 } ],
-        total: 16000, date: subDays(new Date(), 15).toISOString(), documentNumber: "INV-TD-8899", responsible: "Admin",
-    },
-    {
-        id: "PUR-002", supplierId: "sup-2", supplierName: "PC Components LLC",
-        items: [ { productId: "prod-2", productName: "Procesador Intel Core i9-13900K", quantity: 20, cost: 520.00 }, { productId: "prod-3", productName: "Memoria RAM 32GB DDR5", quantity: 30, cost: 100.00 } ],
-        total: 13400, date: subDays(new Date(), 10).toISOString(), documentNumber: "INV-PCC-1122", responsible: "Usuario Demo",
-    },
 ];
 
 export const mockSales: Omit<Sale, 'storeId'>[] = [
@@ -147,63 +111,26 @@ export const mockSales: Omit<Sale, 'storeId'>[] = [
     },
     {
         id: "SALE-002", customerId: "cust-2", customerName: "Jane Smith",
-        items: [ { productId: "prod-2", productName: "Procesador Intel Core i9-13900K", quantity: 1, price: 589.00 }, { productId: "prod-5", productName: "Tarjeta Madre Z790", quantity: 1, price: 349.99 } ],
-        total: 938.99, date: subDays(new Date(), 4).toISOString(), transactionType: 'credito', status: 'unpaid', paidAmount: 500,
-        payments: [{ id: 'pay-sale-002', amount: 500, date: subDays(new Date(), 4).toISOString(), method: 'pago-movil', reference: '012345' }]
+        items: [ { productId: "prod-2", productName: "Procesador Intel Core i9-13900K", quantity: 1, price: 589.00 } ],
+        total: 589.00, date: subDays(new Date(), 4).toISOString(), transactionType: 'credito', status: 'unpaid', paidAmount: 300,
+        payments: [{ id: 'pay-sale-002', amount: 300, date: subDays(new Date(), 4).toISOString(), method: 'pago-movil', reference: '012345' }]
     },
+];
+
+export const mockPurchases: Omit<Purchase, 'storeId'>[] = [
     {
-        id: "SALE-003", customerId: "eventual", customerName: "Cliente Eventual",
-        items: [ { productId: "prod-3", productName: "Memoria RAM 32GB DDR5", quantity: 2, price: 129.99 } ],
-        total: 259.98, date: subHours(new Date(), 3).toISOString(), transactionType: 'contado', status: 'paid', paidAmount: 259.98,
-        payments: [{ id: 'pay-sale-003', amount: 259.98, date: subHours(new Date(), 3).toISOString(), method: 'efectivo' }]
-    },
-    {
-        id: "SALE-004", customerId: "cust-1", customerName: "John Doe",
-        items: [ { productId: "prod-7", productName: "Tarjeta Gráfica RX 7900 XTX", quantity: 1, price: 999.99 } ],
-        total: 999.99, date: subHours(new Date(), 20).toISOString(), transactionType: 'contado', status: 'paid', paidAmount: 999.99,
-        payments: [{ id: 'pay-sale-004', amount: 999.99, date: subHours(new Date(), 20).toISOString(), method: 'zelle' }]
+        id: "PUR-001", supplierId: "sup-1", supplierName: "TechData Corp",
+        items: [ { productId: "prod-1", productName: "Tarjeta Gráfica RTX 4090", quantity: 10, cost: 1600.00 } ],
+        total: 16000, date: subDays(new Date(), 15).toISOString(), documentNumber: "INV-TD-8899", responsible: "Admin",
     },
 ];
 
 export const mockAds: Omit<Ad, 'createdAt'>[] = [
   {
-    id: "ad-2",
-    sku: "PROMO-002",
-    name: "Potencia tu PC con Nosotros",
-    description: "Los mejores componentes para tu PC gamer.",
-    price: 0,
-    imageUrl: "https://images.unsplash.com/photo-1593640408182-31c70c8268f5?q=80&w=600&auto=format&fit=crop",
-    imageHint: "gaming pc",
-    views: 512,
-    status: 'active',
-    targetBusinessTypes: ['Tecnologia'],
-    expiryDate: addDays(new Date(), 60).toISOString(),
-  },
-  {
-    id: "ad-5",
-    sku: "SUPER-001",
-    name: "Oferta en Súper Mercado",
-    description: "Todo lo que necesitas para tu hogar.",
-    price: 0,
-    imageUrl: "https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=600&auto=format&fit=crop",
-    imageHint: "supermarket groceries",
-    views: 1230,
-    status: 'active',
-    targetBusinessTypes: ['Supermercado'],
-    expiryDate: addDays(new Date(), 20).toISOString(),
-  },
-  {
-    id: "ad-3",
-    sku: "EXPIRED-001",
-    name: "Oferta Pasada",
-    description: "Esta oferta ya no es válida.",
-    price: 0,
-    imageUrl: "https://images.unsplash.com/photo-1555529771-835f59fc5efe?q=80&w=600&auto=format&fit=crop",
-    imageHint: "expired sale",
-    views: 2048,
-    status: 'active', // Será desactivado automáticamente si la fecha de expiración ya pasó
-    targetBusinessTypes: ['Tecnologia'],
-    expiryDate: subDays(new Date(), 5).toISOString(),
+    id: "ad-1", sku: "PROMO-001", name: "Descuento en Laptops", description: "Aprovecha el 20% de descuento en todas las laptops seleccionadas.", price: 999.99,
+    imageUrl: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?q=80&w=600&auto=format&fit=crop", imageHint: "laptop computer",
+    views: 1250, status: 'active', targetBusinessTypes: ['Tecnologia', 'Servicios Profesionales'],
+    expiryDate: addDays(new Date(), 30).toISOString(),
   },
 ];
 
@@ -227,17 +154,3 @@ export const businessCategories: string[] = [
     'Salud y Belleza',
     'Otro'
 ];
-
-/**
- * Función de utilidad para simular el seguimiento de un clic en un anuncio.
- * En una aplicación real, esto probablemente haría una llamada a la API.
- */
-export async function trackAdClick(adId: string) {
-  console.log(`Ad with ID ${adId} was clicked.`);
-  // Aquí es donde harías una llamada a Firestore para incrementar las vistas del anuncio.
-  // Por ejemplo:
-  // const adRef = doc(db, 'ads', adId);
-  // await updateDoc(adRef, {
-  //   views: increment(1)
-  // });
-}

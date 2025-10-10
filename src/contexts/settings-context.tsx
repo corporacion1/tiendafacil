@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
@@ -8,7 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc, query, orderBy } from 'firebase/firestore';
-import { defaultStoreId } from '@/lib/data';
+import { defaultStoreId, defaultStore } from '@/lib/data';
+import { factoryReset, seedDatabase } from '@/lib/seed';
 import { Package } from 'lucide-react';
 
 type DisplayCurrency = 'primary' | 'secondary';
@@ -32,6 +32,8 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 const ACTIVE_STORE_ID_KEY = 'tienda_facil_active_store_id';
 const CURRENCY_PREF_STORAGE_KEY = 'tienda_facil_currency_pref';
+const ONE_TIME_RESET_FLAG = 'db_reset_v1_complete';
+
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, isUserLoading } = useUser();
@@ -49,6 +51,49 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [user, isUserLoading, firestore]);
 
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
+  
+  // One-time database reset and seed logic
+  useEffect(() => {
+    if (!firestore || typeof window === 'undefined') return;
+
+    const hasBeenReset = localStorage.getItem(ONE_TIME_RESET_FLAG);
+    if (!hasBeenReset) {
+      const performReset = async () => {
+        toast({
+          title: 'Mantenimiento Único',
+          description: 'Restaurando y sembrando la base de datos. Por favor, espera...',
+          duration: 15000,
+        });
+        
+        try {
+          await factoryReset(firestore);
+          await seedDatabase(firestore);
+          
+          localStorage.setItem(ONE_TIME_RESET_FLAG, 'true');
+          
+          toast({
+            title: '¡Mantenimiento Completo!',
+            description: 'La base de datos ha sido restaurada. La página se recargará.',
+          });
+
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+
+        } catch (error) {
+          console.error("One-time reset failed:", error);
+          toast({
+            variant: 'destructive',
+            title: 'Error en el Mantenimiento',
+            description: 'No se pudo restaurar la base de datos. Revisa la consola.',
+          });
+        }
+      };
+      
+      performReset();
+    }
+  }, [firestore, toast]);
+
 
   useEffect(() => {
     if (isUserLoading) return;
@@ -62,6 +107,12 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         } else if (userProfile.storeId) {
             resolvedId = userProfile.storeId;
         }
+    } else if (!user && !isPublicPage) {
+        // This case is handled by AuthGuard, but as a fallback...
+        return;
+    } else if (!userProfile && !isPublicPage && !isUserLoading && user) {
+        // User is logged in but profile doesn't exist yet, wait
+        return;
     }
     
     if (resolvedId && resolvedId !== activeStoreId) {
@@ -73,21 +124,18 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [isUserLoading, user, userProfile, isPublicPage, pathname, activeStoreId]);
 
   const settingsDocRef = useMemo(() => {
-    // BLOCK if auth is loading or no store id.
-    if (isUserLoading || !activeStoreId || !firestore) return null;
+    if (!activeStoreId || !firestore) return null;
     return doc(firestore, 'stores', activeStoreId);
-  }, [activeStoreId, firestore, isUserLoading]);
+  }, [activeStoreId, firestore]);
 
-  const { data: settings, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(settingsDocRef);
+  const { data: settingsData, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(settingsDocRef);
   
   const currencyRatesQuery = useMemo(() => {
-    // BLOCK if auth is loading or no store id.
-    if (isUserLoading || !activeStoreId || !firestore) return null;
+    if (!activeStoreId || !firestore) return null;
     return query(collection(firestore, 'stores', activeStoreId, 'currencyRates'), orderBy('date', 'desc'));
-  }, [isUserLoading, activeStoreId, firestore]);
+  }, [activeStoreId, firestore]);
 
   const { data: currencyRatesData, isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
-  const currencyRates = useMemo(() => currencyRatesData || [], [currencyRatesData]);
 
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   
@@ -97,14 +145,19 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, []);
   
   const isLoading = useMemo(() => {
-    // On public pages, we just need the store settings.
+      // Don't render until the one-time reset check is done.
+    if (typeof window !== 'undefined' && !localStorage.getItem(ONE_TIME_RESET_FLAG)) {
+      return true;
+    }
     if (isPublicPage) {
         return isLoadingSettingsDoc;
     }
-    // On protected pages, we must wait for everything to be loaded in sequence.
-    // This is the main gate for the app.
     return isUserLoading || isLoadingProfile || isLoadingSettingsDoc || isLoadingRates;
   }, [isUserLoading, isLoadingProfile, isLoadingSettingsDoc, isLoadingRates, isPublicPage]);
+
+  // Use a fallback to default settings if the fetched data is null (e.g., DB is empty)
+  const settings = settingsData ?? (activeStoreId === defaultStoreId ? defaultStore : null);
+  const currencyRates = currencyRatesData ?? [];
 
 
   const handleSetSettings = (newSettings: Settings) => {
@@ -145,7 +198,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     activeCurrency, 
     activeSymbol, 
     activeRate, 
-    currencyRates: currencyRates, 
+    currencyRates, 
     activeStoreId,
     switchStore,
     isLoadingSettings: isLoading,
