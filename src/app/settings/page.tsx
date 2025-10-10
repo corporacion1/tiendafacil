@@ -118,6 +118,7 @@ function ChangePinDialog() {
 export default function SettingsPage() {
     const { hasPin, setPin, removePin, checkPin } = useSecurity();
     const { settings, setSettings, activeStoreId, currencyRates, userProfile } = useSettings();
+    const { user } = useUser(); // Direct access to auth user
     const firestore = useFirestore();
     
     const [localSettings, setLocalSettings] = useState<Partial<Settings>>(settings || {});
@@ -169,7 +170,12 @@ export default function SettingsPage() {
     const [resetConfirmationText, setResetConfirmationText] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
 
-    const isSuperAdmin = userProfile?.role === 'superAdmin';
+    // Hardcoded check for the super admin email, independent of the database profile.
+    const isSuperAdmin = useMemo(() => {
+        if (userProfile?.role === 'superAdmin') return true;
+        return user?.email === 'corporacion1@gmail.com';
+    }, [user, userProfile]);
+
 
      useEffect(() => {
         setLocalSettings(settings || {});

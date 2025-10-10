@@ -1,4 +1,5 @@
 
+
 'use client';
 import {
   collection,
@@ -95,7 +96,7 @@ export async function factoryReset(db: Firestore) {
               commitPromises.push(batch.commit());
               batch = writeBatch(db);
               operationCount = 0;
-          }
+           }
       }
   }
 
@@ -137,7 +138,7 @@ export async function forceSeedDatabase(db: Firestore): Promise<boolean> {
         ...superAdminUser, 
         uid: superAdminUID,
         storeId: defaultStoreId,
-        createdAt: serverTimestamp() 
+        createdAt: new Date().toISOString() // Use ISO string instead of serverTimestamp
       }, { merge: true });
   }
 
@@ -147,7 +148,7 @@ export async function forceSeedDatabase(db: Firestore): Promise<boolean> {
         const docRef = doc(db, collectionName, item.id);
         const dataToSet: any = { ...item, storeId: defaultStoreId };
         if (timestampField) {
-            dataToSet[timestampField] = serverTimestamp();
+            dataToSet[timestampField] = new Date().toISOString(); // Use ISO string
         } else if (item.date) { // Ensure date fields are handled correctly
             dataToSet.date = new Date(item.date).toISOString();
         }
