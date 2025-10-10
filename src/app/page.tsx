@@ -1,6 +1,16 @@
 "use client";
-// This page is now a client component to allow for redirection logic
-// within the AuthGuard. It doesn't render anything itself.
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+// This page now acts as an entry point, redirecting directly to the dashboard.
 export default function HomePage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace('/dashboard');
+  }, [router]);
+
+  // Render nothing, or a loading indicator while redirecting.
   return null;
 }

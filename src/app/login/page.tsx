@@ -1,86 +1,49 @@
-'use client';
 
-import { useEffect, useState } from 'react';
+"use client";
+
 import { useRouter } from 'next/navigation';
-
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/logo';
-import { Package } from 'lucide-react';
-import { forceSeedDatabase } from '@/lib/seed';
 
 export default function LoginPage() {
-  const router = useRouter();
+    const router = useRouter();
 
-  const [isLoading, setIsLoading] = useState(false);
+    const handleLogin = () => {
+        // Direct navigation, no authentication
+        router.push('/dashboard');
+    };
 
-  // This is a one-time operation for the local demo.
-  useEffect(() => {
-    forceSeedDatabase();
-  }, []);
-
-  const handleDemoLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    // Simulate a network delay and then redirect
-    setTimeout(() => {
-      router.push('/dashboard');
-    }, 500);
-  };
-  
-  if (isLoading) {
     return (
-      <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
-        <Package className="w-16 h-16 text-muted-foreground animate-pulse" />
-        <p className="text-muted-foreground animate-pulse">Ingresando al modo demostración...</p>
-      </div>
+        <div className="flex items-center justify-center min-h-screen bg-muted/40">
+            <Card className="w-full max-w-md">
+                <CardHeader className="text-center">
+                    <Logo className="w-48 h-16 mx-auto mb-4" />
+                    <CardTitle className="text-2xl">Bienvenido a Tienda Facil</CardTitle>
+                    <CardDescription>
+                        Ingresa para administrar tu negocio.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Correo Electrónico</Label>
+                            <Input id="email" type="email" placeholder="m@ejemplo.com" disabled />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="password">Contraseña</Label>
+                            <Input id="password" type="password" disabled />
+                        </div>
+                    </div>
+                    <div className="space-y-2 mt-6">
+                        <Button onClick={handleLogin} className="w-full">
+                            Ingresar
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
     );
-  }
-  
-  return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-muted/40">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <Logo className="w-64 h-20 mx-auto mb-4" />
-          <CardTitle className="text-2xl">
-            Modo Demostración
-          </CardTitle>
-          <CardDescription>
-            Haz clic en "Ingresar" para acceder a la aplicación.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          <form onSubmit={handleDemoLogin} className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Correo Electrónico</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="tu@correo.com"
-                defaultValue="demo@tiendafacil.com"
-                required
-                readOnly
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="password">Contraseña</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="********"
-                defaultValue="demo123"
-                required
-                readOnly
-              />
-            </div>
-            <Button type="submit" className="w-full">
-              Ingresar
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
-  );
 }

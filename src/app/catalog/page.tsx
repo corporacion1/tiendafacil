@@ -279,14 +279,7 @@ export default function CatalogPage() {
             toast({ variant: 'destructive', title: 'Tu pedido está vacío' });
             return;
         }
-        if (!user) {
-            toast({
-                title: "Inicio de Sesión Requerido",
-                description: "Por favor, inicia sesión para generar un pedido.",
-                action: <Button onClick={() => router.push('/login')}>Iniciar Sesión</Button>
-            });
-            return;
-        }
+        // No user check needed anymore
         setIsOrderDialogOpen(true);
     };
 
@@ -313,10 +306,6 @@ export default function CatalogPage() {
     }
 
     const handleGenerateOrder = async () => {
-        if (!user) {
-            toast({ variant: 'destructive', title: 'Debes iniciar sesión' });
-            return;
-        }
         if (!settings?.id) {
             toast({ variant: 'destructive', title: 'No se pudo identificar la tienda.' });
             return;
@@ -336,12 +325,6 @@ export default function CatalogPage() {
     
     const handleImageClick = (product: Product) => {
         setProductDetails(product);
-    };
-
-    const handleSignOut = async () => {
-        // This part can remain as it deals with client-side auth state
-        toast({ title: 'Has cerrado sesión.' });
-        router.push('/login?signed_out=true');
     };
 
     return (
@@ -442,37 +425,12 @@ export default function CatalogPage() {
                                     )}
                                 </SheetContent>
                             </Sheet>
-                            
-                            {isUserLoading ? (
-                                <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
-                            ) : user ? (
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="rounded-full">
-                                            {user.photoURL ? (
-                                                <Image src={user.photoURL} width={32} height={32} alt="User Avatar" className="rounded-full" />
-                                            ) : (
-                                                <UserCircle className="h-6 w-6" />
-                                            )}
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuLabel>{user.displayName || user.email}</DropdownMenuLabel>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem onSelect={handleSignOut}>
-                                            <LogOut className="mr-2 h-4 w-4" />
-                                            Cerrar Sesión
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            ) : (
-                                <Button asChild variant="ghost" size="icon">
-                                    <Link href="/login">
-                                        <UserCircle className="h-6 w-6" />
-                                        <span className="sr-only">Iniciar Sesión</span>
-                                    </Link>
-                                </Button>
-                            )}
+                             <Button asChild variant="ghost" size="icon">
+                                <Link href="/dashboard">
+                                    <UserCircle className="h-6 w-6" />
+                                    <span className="sr-only">Ir al Dashboard</span>
+                                </Link>
+                            </Button>
                         </div>
                     </div>
                 </header>
@@ -555,13 +513,9 @@ export default function CatalogPage() {
                         <DialogHeader>
                             <DialogTitle>Confirmar Pedido</DialogTitle>
                             <DialogDescription>
-                                Tu pedido se generará con los datos de tu perfil. Serás notificado cuando esté listo.
+                                Tu pedido se generará. Serás notificado cuando esté listo.
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="py-4">
-                            <p><strong>Usuario:</strong> {user?.displayName}</p>
-                            <p><strong>Correo:</strong> {user?.email}</p>
-                        </div>
                         <DialogFooter>
                             <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
                             <Button onClick={handleGenerateOrder}>Confirmar Pedido</Button>
@@ -681,4 +635,3 @@ export default function CatalogPage() {
     );
 }
 
-    

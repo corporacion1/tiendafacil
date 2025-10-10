@@ -44,9 +44,8 @@ export function SiteHeader({ toggleSidebar, isSidebarExpanded }: SiteHeaderProps
   const user = auth?.currentUser;
 
   const handleSignOut = async () => {
-    if (!auth) return;
-    await signOut(auth);
-    router.push('/login');
+    // No auth, so just redirect
+    router.push('/');
   }
 
   const inactiveSymbol = activeCurrency === 'primary' 

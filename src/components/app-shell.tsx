@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation';
 import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { cn } from '@/lib/utils';
-import { AuthGuard } from './auth-guard';
 import { Footer } from './footer';
 import { SettingsProvider } from '@/contexts/settings-context';
 import { SecurityProvider } from '@/contexts/security-context';
@@ -26,7 +25,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <FirebaseClientProvider>
       <SecurityProvider>
         <SettingsProvider>
-          <AuthGuard>
             <div className="flex min-h-screen w-full flex-col bg-muted/40">
               {!isPublicPage && <SiteSidebar isExpanded={isSidebarExpanded} />}
               <div className={cn(
@@ -43,7 +41,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Footer />
               </div>
             </div>
-          </AuthGuard>
         </SettingsProvider>
       </SecurityProvider>
     </FirebaseClientProvider>
