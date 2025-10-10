@@ -49,64 +49,50 @@ export function useCollection<T = any>(
   const { isUserLoading } = useUser();
   const [data, setData] = useState<StateDataType>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
-  
-  const unsubscribeRef = useRef<Unsubscribe | null>(null);
 
   useEffect(() => {
-    // Cleanup function that will be called on unmount or before the effect runs again.
+    let unsubscribe: Unsubscribe | null = null;
+
+    if (memoizedTargetRefOrQuery && !isUserLoading) {
+      unsubscribe = onSnapshot(
+        memoizedTargetRefOrQuery,
+        (snapshot: QuerySnapshot<DocumentData>) => {
+          const results: ResultItemType[] = [];
+          for (const doc of snapshot.docs) {
+            results.push({ ...(doc.data() as T), id: doc.id });
+          }
+          setData(results);
+          setError(null);
+        },
+        (err: FirestoreError) => {
+          let path = 'desconocido';
+          if ('path' in memoizedTargetRefOrQuery) {
+              path = (memoizedTargetRefOrQuery as CollectionReference).path;
+          } else {
+              path = `Query on collection: ${(memoizedTargetRefOrQuery as any)._query?.path?.segments?.join('/') || ''}`;
+          }
+          
+          const contextualError = new FirestorePermissionError({
+            operation: 'list',
+            path: path,
+          })
+
+          setError(contextualError)
+          setData(null)
+
+          errorEmitter.emit('permission-error', contextualError);
+        }
+      );
+    } else {
+        setData(null);
+        setError(null);
+    }
+
     return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
+      if (unsubscribe) {
+        unsubscribe();
       }
     };
-  }, []); // Empty dependency array ensures this cleanup runs only once on unmount.
-
-  useEffect(() => {
-    // If there's an existing listener, unsubscribe before creating a new one.
-    if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
-    }
-    
-    // Reset state when query is not ready
-    if (!memoizedTargetRefOrQuery || isUserLoading) {
-      setData(null);
-      setError(null);
-      return;
-    }
-
-    // Set up the new listener
-    unsubscribeRef.current = onSnapshot(
-      memoizedTargetRefOrQuery,
-      (snapshot: QuerySnapshot<DocumentData>) => {
-        const results: ResultItemType[] = [];
-        for (const doc of snapshot.docs) {
-          results.push({ ...(doc.data() as T), id: doc.id });
-        }
-        setData(results);
-        setError(null);
-      },
-      (err: FirestoreError) => {
-        let path = 'desconocido';
-        if ('path' in memoizedTargetRefOrQuery) {
-            path = (memoizedTargetRefOrQuery as CollectionReference).path;
-        } else {
-            path = `Query on collection: ${(memoizedTargetRefOrQuery as any)._query?.path?.segments?.join('/') || ''}`;
-        }
-        
-        const contextualError = new FirestorePermissionError({
-          operation: 'list',
-          path: path,
-        })
-
-        setError(contextualError)
-        setData(null)
-
-        errorEmitter.emit('permission-error', contextualError);
-      }
-    );
-
   }, [memoizedTargetRefOrQuery, isUserLoading]);
 
   const isLoading = data === null && error === null;

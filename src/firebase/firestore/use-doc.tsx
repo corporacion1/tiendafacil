@@ -1,6 +1,6 @@
 'use client';
     
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
   DocumentReference,
   onSnapshot,
@@ -49,56 +49,42 @@ export function useDoc<T = any>(
   const [data, setData] = useState<StateDataType>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
-  const unsubscribeRef = useRef<Unsubscribe | null>(null);
-
   useEffect(() => {
-    // Cleanup function that will be called on unmount or before the effect runs again.
+    let unsubscribe: Unsubscribe | null = null;
+    
+    if (memoizedDocRef && !isUserLoading) {
+      unsubscribe = onSnapshot(
+        memoizedDocRef,
+        (snapshot: DocumentSnapshot<DocumentData>) => {
+          if (snapshot.exists()) {
+            setData({ ...(snapshot.data() as T), id: snapshot.id });
+          } else {
+            setData(null);
+          }
+          setError(null);
+        },
+        (err: FirestoreError) => {
+          const contextualError = new FirestorePermissionError({
+            operation: 'get',
+            path: memoizedDocRef.path,
+          })
+
+          setError(contextualError)
+          setData(null)
+
+          errorEmitter.emit('permission-error', contextualError);
+        }
+      );
+    } else {
+        setData(null);
+        setError(null);
+    }
+
     return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
+      if (unsubscribe) {
+        unsubscribe();
       }
     };
-  }, []); // Empty dependency array ensures this cleanup runs only once on unmount.
-
-  useEffect(() => {
-    // If there's an existing listener, unsubscribe before creating a new one.
-    if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
-    }
-
-    // Reset state when ref is not ready
-    if (!memoizedDocRef || isUserLoading) {
-      setData(null);
-      setError(null);
-      return;
-    }
-    
-    // Set up the new listener
-    unsubscribeRef.current = onSnapshot(
-      memoizedDocRef,
-      (snapshot: DocumentSnapshot<DocumentData>) => {
-        if (snapshot.exists()) {
-          setData({ ...(snapshot.data() as T), id: snapshot.id });
-        } else {
-          setData(null);
-        }
-        setError(null);
-      },
-      (err: FirestoreError) => {
-        const contextualError = new FirestorePermissionError({
-          operation: 'get',
-          path: memoizedDocRef.path,
-        })
-
-        setError(contextualError)
-        setData(null)
-
-        errorEmitter.emit('permission-error', contextualError);
-      }
-    );
-
   }, [memoizedDocRef, isUserLoading]);
   
   const isLoading = data === null && error === null;
