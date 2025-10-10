@@ -475,8 +475,8 @@ export default function POSPage() {
 
   return (
     <Dialog onOpenChange={(open) => { if (!open) setProductDetails(null); setImageError(false); }}>
-    <div className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:grid-cols-3 lg:gap-8">
-      <div className="grid auto-rows-max items-start gap-4 md:col-span-2 lg:gap-8">
+    <div className="grid flex-1 items-start gap-4 sm:px-6 md:grid-cols-3 lg:grid-cols-5 xl:gap-8">
+      <div className="grid auto-rows-max items-start gap-4 md:col-span-2 lg:col-span-3 lg:gap-8">
         <Card>
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -590,7 +590,7 @@ export default function POSPage() {
           </CardHeader>
           <CardContent>
             {isLoading && <p>Cargando productos...</p>}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {filteredProducts.map((product) => (
                 <ProductCard 
                     key={product.id} 
@@ -603,7 +603,7 @@ export default function POSPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="lg:col-span-1">
+      <div className="lg:col-span-2">
         <div className="sticky top-6">
         <Card className="flex flex-col h-[calc(100vh-5rem)]">
           <CardHeader className="flex flex-row justify-between items-center">
