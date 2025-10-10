@@ -12,7 +12,7 @@ export type UserProfile = {
   status: UserStatus;
   storeId?: string; // The store this user owns/manages (if role is 'admin')
   storeRequest?: boolean; // Flag to indicate a user wants a store
-  createdAt: FieldValue;
+  createdAt: string;
   phone?: string | null;
 };
 
