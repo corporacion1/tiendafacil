@@ -13,7 +13,6 @@ import {
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { useUser } from '../auth/use-user';
-import { useSettings } from '@/contexts/settings-context'; // Import useSettings
 
 /** Utility type to add an 'id' field to a given type T. */
 export type WithId<T> = T & { id: string };
@@ -49,12 +48,11 @@ export function useCollection<T = any>(
   type StateDataType = ResultItemType[] | null;
 
   const { isUserLoading } = useUser();
-  const { isLoadingSettings } = useSettings(); // Get settings loading state
   const [data, setData] = useState<StateDataType>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
-  // The query should only fetch if it's valid and neither the user nor settings are loading.
-  const shouldFetch = !!memoizedTargetRefOrQuery && !isUserLoading && !isLoadingSettings;
+  // The query should only fetch if it's valid and the user is not loading.
+  const shouldFetch = !!memoizedTargetRefOrQuery && !isUserLoading;
 
   useEffect(() => {
     // Critical Guard: Do not proceed if the query is not ready or dependencies are loading.
@@ -99,11 +97,9 @@ export function useCollection<T = any>(
 
     return () => unsubscribe();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [memoizedTargetRefOrQuery, isUserLoading, isLoadingSettings]);
+  }, [memoizedTargetRefOrQuery, isUserLoading]);
 
-  const isLoading = (shouldFetch && data === null && error === null) || isUserLoading || isLoadingSettings;
+  const isLoading = (shouldFetch && data === null && error === null) || isUserLoading;
 
   return { data, isLoading, error };
 }
-
-    
