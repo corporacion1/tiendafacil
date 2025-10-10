@@ -126,7 +126,7 @@ export default function CatalogPage() {
     const [families, setFamilies] = useState<Family[]>(initialFamilies.map(f => ({...f, storeId: defaultStoreId})));
     const [allAds, setAllAds] = useState<Ad[]>(mockAds.map(ad => ({...ad, createdAt: new Date().toISOString()})));
     
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(true); // Start as true
     
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
     const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -148,6 +148,18 @@ export default function CatalogPage() {
     const [selectedFamily, setSelectedFamily] = useState<string>("all");
     
     const [localOrders, setLocalOrders] = useState<PendingOrder[]>([]);
+    
+    const [isClient, setIsClient] = useState(false)
+
+    useEffect(() => {
+        setIsClient(true)
+    }, [])
+
+    useEffect(() => {
+        if(isClient) {
+            setIsLoading(false);
+        }
+    }, [isClient]);
 
     useEffect(() => {
         const INACTIVITY_TIMEOUT = 3000; 
@@ -372,8 +384,13 @@ export default function CatalogPage() {
         setCustomerName(order.customerName);
         setCustomerPhone(order.customerPhone);
         handleDeleteLocalOrder(order.id);
-        document.getElementById('cart-sheet-trigger')?.click();
+        const trigger = document.getElementById('cart-sheet-trigger');
+        if (trigger) trigger.click();
     };
+    
+    if (!isClient) {
+        return null;
+    }
 
     return (
         <Dialog onOpenChange={(open) => { if (!open) setProductDetails(null); setProductImageError(false); }}>
@@ -717,5 +734,3 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
-
-    
