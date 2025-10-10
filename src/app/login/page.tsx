@@ -24,6 +24,7 @@ import { Logo } from '@/components/logo';
 import { useAuth, useFirestore, useUser } from '@/firebase';
 import type { UserProfile, Settings } from '@/lib/types';
 import { Package } from 'lucide-react';
+import { seedDatabase } from '@/lib/seed';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -66,6 +67,11 @@ export default function LoginPage() {
       setIsLoading(false);
       return;
     }
+    
+    // --- Seed the database if it's empty ---
+    setLoadingMessage('Verificando base de datos...');
+    await seedDatabase(firestore);
+    // --- End of seeding ---
 
     setLoadingMessage('Cargando perfil de usuario...');
     const userRef = doc(firestore, 'users', firebaseUser.uid);

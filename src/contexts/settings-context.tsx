@@ -8,7 +8,7 @@ import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc, query, orderBy } from 'firebase/firestore';
 import { defaultStoreId, defaultStore } from '@/lib/data';
-import { seedDatabase } from '@/lib/seed'; // Changed import
+import { seedDatabase } from '@/lib/seed';
 import { Package } from 'lucide-react';
 
 type DisplayCurrency = 'primary' | 'secondary';
@@ -49,27 +49,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [user, isUserLoading, firestore]);
 
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
-  
-  // Conditional seeding logic
-  useEffect(() => {
-    if (!firestore) return;
-    
-    const initializeDatabase = async () => {
-        try {
-            await seedDatabase(firestore);
-        } catch (error) {
-            console.error("Error during initial database seed check:", error);
-            toast({
-                variant: 'destructive',
-                title: 'Error de inicialización',
-                description: 'No se pudo verificar o sembrar la base de datos.',
-            });
-        }
-    };
-    
-    initializeDatabase();
-  }, [firestore, toast]);
-
 
   useEffect(() => {
     if (isUserLoading) return;
@@ -107,9 +86,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { data: settingsData, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(settingsDocRef);
   
   const currencyRatesQuery = useMemo(() => {
-    if (!activeStoreId || !firestore) return null;
+    if (!activeStoreId || !firestore || isUserLoading) return null; // Added isUserLoading guard
     return query(collection(firestore, 'stores', activeStoreId, 'currencyRates'), orderBy('date', 'desc'));
-  }, [activeStoreId, firestore]);
+  }, [activeStoreId, firestore, isUserLoading]);
 
   const { data: currencyRatesData, isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
 
@@ -122,12 +101,14 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   
   const isLoading = useMemo(() => {
     if (isPublicPage) {
+        // For public pages, we don't need to wait for user-specific data
         return isLoadingSettingsDoc;
     }
+    // For protected pages, wait for everything
     return isUserLoading || isLoadingProfile || isLoadingSettingsDoc || isLoadingRates;
   }, [isUserLoading, isLoadingProfile, isLoadingSettingsDoc, isLoadingRates, isPublicPage]);
 
-  // Use a fallback to default settings if the fetched data is null (e.g., DB is empty)
+  // Use a fallback to default settings if the fetched data is null
   const settings = settingsData ?? (activeStoreId === defaultStoreId ? defaultStore : null);
   const currencyRates = currencyRatesData ?? [];
 
