@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import { useState, useMemo, useEffect } from "react";
@@ -20,7 +21,7 @@ import { Separator } from "@/components/ui/separator";
 import { useUser, useFirestore, useCollection, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { businessCategories } from "@/lib/data";
-import { seedDatabase, factoryReset } from "@/lib/seed";
+import { forceSeedDatabase, factoryReset } from "@/lib/seed";
 import { collection, orderBy, query, where, writeBatch, doc } from "firebase/firestore";
 import Image from "next/image";
 import { getDisplayImageUrl } from "@/lib/utils";
@@ -381,12 +382,20 @@ export default function SettingsPage() {
             description: 'Este proceso puede tardar unos momentos. Por favor, espera...',
         });
         try {
-            await seedDatabase(firestore);
-            toast({
-                title: '¡Éxito!',
-                description: 'La base de datos ha sido poblada con los datos de demostración.',
-            });
-            window.location.reload();
+            const seeded = await forceSeedDatabase(firestore);
+            if (seeded) {
+                toast({
+                    title: '¡Éxito!',
+                    description: 'La base de datos ha sido poblada con los datos de demostración. La página se recargará.',
+                });
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                 toast({
+                    variant: 'default',
+                    title: 'Base de Datos ya Poblada',
+                    description: 'No se realizó ninguna acción porque ya existen datos.',
+                });
+            }
         } catch (error: any) {
             toast({
                 variant: 'destructive',
@@ -836,7 +845,7 @@ export default function SettingsPage() {
                             <div>
                                 <p className="font-medium">Poblar Base de Datos</p>
                                 <p className="text-sm text-muted-foreground">
-                                    Añade datos de demostración a la base de datos (productos, clientes, etc.).
+                                    Añade datos de demostración a la base de datos (productos, clientes, etc.). Sobreescribirá los datos existentes si tienen el mismo ID.
                                 </p>
                             </div>
                             <AlertDialog>
@@ -850,7 +859,7 @@ export default function SettingsPage() {
                                     <AlertDialogHeader>
                                         <AlertDialogTitle>¿Poblar la base de datos?</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                            Esta acción agregará datos de demostración. Si la base de datos no está vacía, no se realizará ninguna acción.
+                                            Esta acción cargará los datos de demostración a la fuerza. Es útil si la base de datos está vacía o corrupta.
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
@@ -867,73 +876,58 @@ export default function SettingsPage() {
                                     Borra todos los datos de todas las colecciones.
                                 </p>
                             </div>
-                            <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="destructive" disabled={isProcessing}>Restaurar Datos de Fábrica</Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        Esta acción es irreversible y borrará todos los datos.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => setIsResetConfirmOpen(true)} className="bg-destructive hover:bg-destructive/90">Sí, estoy seguro</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
+                            <AlertDialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" disabled={isProcessing}>Restaurar Datos de Fábrica</Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Esta es tu última oportunidad. Para confirmar el borrado total de datos, completa lo siguiente.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <div className="space-y-4 py-4">
+                                        {hasPin && (
+                                            <div className="space-y-2">
+                                                <Label htmlFor="reset-pin">PIN de Seguridad</Label>
+                                                <Input
+                                                    id="reset-pin"
+                                                    type="password"
+                                                    value={resetPin}
+                                                    onChange={(e) => setResetPin(e.target.value)}
+                                                    maxLength={4}
+                                                    placeholder="****"
+                                                    autoFocus
+                                                />
+                                            </div>
+                                        )}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="reset-confirm-text">Escribe "RESTAURAR" para confirmar</Label>
+                                            <Input
+                                                id="reset-confirm-text"
+                                                value={resetConfirmationText}
+                                                onChange={(e) => setResetConfirmationText(e.target.value)}
+                                                placeholder="RESTAURAR"
+                                            />
+                                        </div>
+                                    </div>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel onClick={() => { setResetPin(''); setResetConfirmationText(''); }}>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction
+                                            onClick={handleFactoryReset}
+                                            disabled={isProcessing || resetConfirmationText !== 'RESTAURAR' || (hasPin && resetPin.length !== 4)}
+                                            className="bg-destructive hover:bg-destructive/90"
+                                        >
+                                            {isProcessing ? 'Restaurando...' : 'Restaurar y Borrar Todo'}
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                         </div>
                     </CardContent>
                 </Card>
             )}
-
-            <Dialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle className="text-destructive">Confirmación Final</DialogTitle>
-                        <DialogDescription>
-                            Esta es tu última oportunidad. Para confirmar el borrado total de datos, completa lo siguiente.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        {hasPin && (
-                             <div className="space-y-2">
-                                <Label htmlFor="reset-pin">PIN de Seguridad</Label>
-                                <Input
-                                    id="reset-pin"
-                                    type="password"
-                                    value={resetPin}
-                                    onChange={(e) => setResetPin(e.target.value)}
-                                    maxLength={4}
-                                    placeholder="****"
-                                    autoFocus
-                                />
-                            </div>
-                        )}
-                        <div className="space-y-2">
-                            <Label htmlFor="reset-confirm-text">Escribe "RESTAURAR" para confirmar</Label>
-                            <Input
-                                id="reset-confirm-text"
-                                value={resetConfirmationText}
-                                onChange={(e) => setResetConfirmationText(e.target.value)}
-                                placeholder="RESTAURAR"
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-                        <Button
-                            variant="destructive"
-                            onClick={handleFactoryReset}
-                            disabled={isProcessing || resetConfirmationText !== 'RESTAURAR' || (hasPin && resetPin.length !== 4)}
-                        >
-                            {isProcessing ? 'Restaurando...' : 'Restaurar y Borrar Todo'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }

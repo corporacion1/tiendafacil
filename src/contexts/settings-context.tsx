@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
@@ -35,10 +36,10 @@ const CURRENCY_PREF_STORAGE_KEY = 'tienda_facil_currency_pref';
 // Fallback settings if firestore is empty
 const fallbackSettings: Settings = {
   ...defaultStore,
-  name: "Cargando Tienda...",
+  name: "Tienda Sin Conexión",
   primaryCurrencySymbol: "$",
   secondaryCurrencySymbol: "Bs.",
-  tax1: 0,
+  tax1: 16,
   tax2: 0,
 }
 
@@ -60,12 +61,10 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
 
   useEffect(() => {
-    if (isUserLoading) return;
+    if (isUserLoading || isPublicPage) return;
 
     let resolvedId = '';
-    if (isPublicPage) {
-        resolvedId = defaultStoreId;
-    } else if (user && userProfile) {
+    if (user && userProfile) {
         if (userProfile.role === 'superAdmin') {
             resolvedId = localStorage.getItem(ACTIVE_STORE_ID_KEY) || defaultStoreId;
         } else if (userProfile.storeId) {
@@ -73,19 +72,16 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         } else {
             resolvedId = defaultStoreId; // Fallback for admin without store
         }
-    } else {
-        resolvedId = defaultStoreId; // Fallback for non-logged in users on protected pages
     }
     
     if (resolvedId && resolvedId !== activeStoreId) {
         setActiveStoreId(resolvedId);
-        if (!isPublicPage && typeof window !== 'undefined') {
-            localStorage.setItem(ACTIVE_STORE_ID_KEY, resolvedId);
-        }
+        localStorage.setItem(ACTIVE_STORE_ID_KEY, resolvedId);
     }
   }, [isUserLoading, user, userProfile, isPublicPage, pathname, activeStoreId]);
 
   const settingsDocRef = useMemo(() => {
+    // CRITICAL: Do not attempt to fetch settings on public pages initially.
     if (!firestore || !activeStoreId || isPublicPage) {
       return null;
     }
@@ -95,6 +91,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { data: settingsData, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(settingsDocRef);
   
   const currencyRatesQuery = useMemo(() => {
+    // CRITICAL: Do not attempt to fetch rates on public pages initially.
     if (!firestore || !activeStoreId || isPublicPage) {
         return null;
     }
@@ -114,11 +111,11 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     if (isPublicPage) {
       return false; // Never show loading screen on public pages
     }
-    // On protected pages, wait for auth and settings
     return isUserLoading || isLoadingProfile || isLoadingSettingsDoc;
   }, [isUserLoading, isLoadingProfile, isLoadingSettingsDoc, isPublicPage]);
   
-  const settings = settingsData ?? fallbackSettings;
+  // Use fallback settings if the database is empty or we're on a public page without a direct need for live data.
+  const settings = settingsData ?? (isPublicPage || !isLoading ? fallbackSettings : null);
   const currencyRates = currencyRatesData ?? [];
 
 
