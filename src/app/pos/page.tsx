@@ -617,7 +617,7 @@ export default function POSPage() {
         {/* Cart Section (Right Column) */}
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-1">
             <div className="sticky top-6">
-                 <Card className="flex flex-col h-[calc(100vh-5rem)]">
+                <Card>
                     <CardHeader className="flex flex-row justify-between items-center">
                         <CardTitle>Carrito de Compra</CardTitle>
                         {cartItems.length > 0 && (
@@ -642,7 +642,7 @@ export default function POSPage() {
                             </AlertDialog>
                         )}
                     </CardHeader>
-                    <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden p-6 pt-0">
+                    <CardContent className="space-y-4">
                          <div className="space-y-2">
                             <Label htmlFor="customer">Cliente</Label>
                             <div className="flex gap-2">
@@ -730,7 +730,7 @@ export default function POSPage() {
                             </div>
                         </div>
                         <Separator />
-                        <div className="flex-1 space-y-4 max-h-96 overflow-y-auto pr-2">
+                        <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
                              {cartItems.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center text-center text-muted-foreground h-full py-12">
                                     <ShoppingCart className="h-12 w-12 mb-4" />
@@ -785,30 +785,30 @@ export default function POSPage() {
                     </CardContent>
                     
                     {cartItems.length > 0 && (
-                        <div className="mt-auto border-t">
-                            <div className="p-6 space-y-2">
-                            <div className="flex justify-between">
-                                <span>Subtotal</span>
-                                <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
-                            </div>
-                            {settings?.tax1 && settings.tax1 > 0 && (
+                        <CardFooter className="flex flex-col gap-2 pt-4 border-t">
+                            <div className="w-full space-y-2">
                                 <div className="flex justify-between">
-                                    <span>Impuesto {settings.tax1}%</span>
-                                    <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</span>
+                                    <span>Subtotal</span>
+                                    <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
                                 </div>
-                            )}
-                            {settings?.tax2 && settings.tax2 > 0 && (
-                                <div className="flex justify-between">
-                                    <span>Impuesto {settings.tax2}%</span>
-                                    <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
+                                {settings?.tax1 && settings.tax1 > 0 && (
+                                    <div className="flex justify-between">
+                                        <span>Impuesto {settings.tax1}%</span>
+                                        <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</span>
+                                    </div>
+                                )}
+                                {settings?.tax2 && settings.tax2 > 0 && (
+                                    <div className="flex justify-between">
+                                        <span>Impuesto {settings.tax2}%</span>
+                                        <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between font-semibold text-lg">
+                                    <span>Total</span>
+                                    <span>{activeSymbol}{(total * activeRate).toFixed(2)}</span>
                                 </div>
-                            )}
-                            <div className="flex justify-between font-semibold text-lg">
-                                <span>Total</span>
-                                <span>{activeSymbol}{(total * activeRate).toFixed(2)}</span>
                             </div>
-                            </div>
-                            <CardFooter className="flex flex-col gap-2 pt-4">
+                            <div className="w-full space-y-2 mt-4">
                                 <Dialog open={isProcessSaleDialogOpen} onOpenChange={(isOpen) => { setIsProcessSaleDialogOpen(isOpen); if (!isOpen) resetPaymentModal(); }}>
                                     <DialogTrigger asChild>
                                         <Button className="w-full bg-primary hover:bg-primary/90" size="lg" disabled={cartItems.length === 0}>
@@ -894,8 +894,8 @@ export default function POSPage() {
                                     <FileText className="mr-2 h-4 w-4" />
                                     Imprimir Cotización
                                 </Button>
-                            </CardFooter>
-                        </div>
+                            </div>
+                        </CardFooter>
                     )}
                 </Card>
             </div>
