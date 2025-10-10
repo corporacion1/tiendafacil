@@ -17,9 +17,8 @@ import type { Ad, UserProfile } from "@/lib/types";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { AdForm } from "@/components/ad-form";
 import { format, isPast } from "date-fns";
-import { useCollection, useFirestore, useUser } from "@/firebase";
-import { collection, deleteDoc, doc, orderBy, query, setDoc, writeBatch } from "firebase/firestore";
 import { useRouter } from "next/navigation";
+import { mockAds } from "@/lib/data";
 
 const AdRow = ({ ad, handleEdit, setAdToDelete }: {
     ad: Ad;
@@ -42,7 +41,7 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
     
     const getFormattedDate = (date: any) => {
         if (!date) return 'Nunca';
-        const dateObj = typeof date === 'string' ? new Date(date) : date.toDate();
+        const dateObj = typeof date === 'string' ? new Date(date) : date.toDate ? date.toDate() : new Date(date);
         return format(dateObj, "dd/MM/yyyy");
     };
 
@@ -104,20 +103,12 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
 
 export default function AdsPage() {
   const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user, isUserLoading } = useUser();
-  const router = useRouter();
-  
-  const adsQuery = useMemo(() => {
-    if (isUserLoading || !firestore) return null;
-    return query(collection(firestore, 'ads'));
-  }, [firestore, isUserLoading]);
-  const { data: adsData = [], isLoading } = useCollection<Ad>(adsQuery);
+  const [ads, setAds] = useState(mockAds.map(ad => ({...ad, createdAt: new Date().toISOString()})));
+  const [isLoading, setIsLoading] = useState(false);
 
-  const ads = useMemo(() => {
-    if (!adsData) return [];
-    return [...adsData].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [adsData]);
+  const sortedAds = useMemo(() => {
+    return [...ads].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [ads]);
 
   const [adToEdit, setAdToEdit] = useState<Ad | null>(null);
   const [adToDelete, setAdToDelete] = useState<Ad | null>(null);
@@ -128,22 +119,20 @@ export default function AdsPage() {
     setAdToEdit(ad);
   };
   
-  async function handleUpdateAd(data: Omit<Ad, 'id' | 'views' | 'createdAt'> & { id?: string }) {
-    if (!data.id || !firestore) return false;
-
-    const adRef = doc(firestore, 'ads', data.id);
-    await setDoc(adRef, data, { merge: true });
+  function handleUpdateAd(data: Omit<Ad, 'id' | 'views' | 'createdAt'> & { id?: string }) {
+    if (!data.id) return false;
+    
+    setAds(prev => prev.map(ad => ad.id === data.id ? {...ad, ...data} : ad));
 
     toast({
-        title: "Anuncio Actualizado",
+        title: "Anuncio Actualizado (Simulación)",
         description: `El anuncio "${data.name}" ha sido actualizado.`,
     });
     setAdToEdit(null);
     return true;
   }
 
-  async function handleCreateAd(data: Omit<Ad, 'id' | 'views' | 'createdAt'>) {
-    if (!firestore) return false;
+  function handleCreateAd(data: Omit<Ad, 'id' | 'views' | 'createdAt'>) {
     const newAd: Ad = {
       ...data,
       id: `ad-${Date.now()}`,
@@ -151,11 +140,10 @@ export default function AdsPage() {
       createdAt: new Date().toISOString(),
     };
 
-    const adRef = doc(firestore, 'ads', newAd.id);
-    await setDoc(adRef, newAd);
+    setAds(prev => [newAd, ...prev]);
     
     toast({
-      title: "Anuncio Creado",
+      title: "Anuncio Creado (Simulación)",
       description: `El anuncio "${data.name}" ha sido creado.`,
     });
     
@@ -164,12 +152,10 @@ export default function AdsPage() {
   }
   
   const handleDelete = async (adId: string) => {
-    if (!firestore) return;
-    const adRef = doc(firestore, 'ads', adId);
-    await deleteDoc(adRef);
+    setAds(prev => prev.filter(ad => ad.id !== adId));
 
     toast({
-      title: "Anuncio Eliminado",
+      title: "Anuncio Eliminado (Simulación)",
       description: "El anuncio ha sido eliminado.",
     });
 
@@ -177,11 +163,11 @@ export default function AdsPage() {
   };
 
   const filteredAds = useMemo(() => {
-    return (ads || []).filter(ad =>
+    return (sortedAds || []).filter(ad =>
       ad.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (ad.sku && ad.sku.toLowerCase().includes(searchTerm.toLowerCase()))
     );
-  }, [ads, searchTerm]);
+  }, [sortedAds, searchTerm]);
   
   return (
     <>
@@ -305,5 +291,3 @@ export default function AdsPage() {
     </>
   );
 }
-
-    
