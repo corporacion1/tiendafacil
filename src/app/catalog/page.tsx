@@ -126,7 +126,7 @@ export default function CatalogPage() {
     const [families, setFamilies] = useState<Family[]>(initialFamilies.map(f => ({...f, storeId: defaultStoreId})));
     const [allAds, setAllAds] = useState<Ad[]>(mockAds.map(ad => ({...ad, createdAt: new Date().toISOString()})));
     
-    const [isLoading, setIsLoading] = useState(true); // Start as true
+    const [isLoading, setIsLoading] = useState(true);
     
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
     const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -148,6 +148,7 @@ export default function CatalogPage() {
     const [selectedFamily, setSelectedFamily] = useState<string>("all");
     
     const [localOrders, setLocalOrders] = useState<PendingOrder[]>([]);
+    const [isEditingOrder, setIsEditingOrder] = useState(false);
     
     const [isClient, setIsClient] = useState(false)
 
@@ -356,9 +357,10 @@ export default function CatalogPage() {
         setCart([]);
         setCustomerName('');
         setCustomerPhone('');
+        setIsEditingOrder(false);
 
         toast({
-            title: "¡Pedido Generado!",
+            title: isEditingOrder ? "¡Pedido Actualizado!" : "¡Pedido Generado!",
             description: "Muestra el código QR para facturar. El pedido está pendiente en caja.",
         });
     };
@@ -384,6 +386,7 @@ export default function CatalogPage() {
         setCustomerName(order.customerName);
         setCustomerPhone(order.customerPhone);
         handleDeleteLocalOrder(order.id);
+        setIsEditingOrder(true);
         const trigger = document.getElementById('cart-sheet-trigger');
         if (trigger) trigger.click();
     };
@@ -524,7 +527,7 @@ export default function CatalogPage() {
                                                     <span>${(subtotal * activeRate).toFixed(2)}</span>
                                                 </div>
                                                 <Button size="lg" className="w-full" onClick={handleOpenOrderDialog}>
-                                                    <Send className="mr-2" /> Generar Pedido
+                                                    <Send className="mr-2" /> {isEditingOrder ? 'Actualizar Pedido' : 'Generar Pedido'}
                                                 </Button>
                                                 <SheetClose id="cart-close-button" className="hidden" />
                                             </div>
@@ -619,7 +622,7 @@ export default function CatalogPage() {
                 <Dialog open={isOrderDialogOpen} onOpenChange={setIsOrderDialogOpen}>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Confirmar Pedido</DialogTitle>
+                            <DialogTitle>{isEditingOrder ? 'Actualizar Datos del Pedido' : 'Confirmar Pedido'}</DialogTitle>
                             <DialogDescription>
                                 Completa tus datos para generar el pedido. Serás notificado cuando esté listo para facturar en caja.
                             </DialogDescription>
@@ -636,7 +639,7 @@ export default function CatalogPage() {
                         </div>
                         <DialogFooter>
                             <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-                            <Button onClick={handleGenerateOrder} disabled={!customerName.trim() || !customerPhone.trim()}>Confirmar Pedido</Button>
+                            <Button onClick={handleGenerateOrder} disabled={!customerName.trim() || !customerPhone.trim()}>{isEditingOrder ? 'Confirmar Actualización' : 'Confirmar Pedido'}</Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
