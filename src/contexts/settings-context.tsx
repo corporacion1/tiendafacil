@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
@@ -94,13 +95,13 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, []);
   
   const isLoading = useMemo(() => {
-    // For public pages, we just need the store settings. We don't wait for user profile or rates.
+    // On public pages, we don't need user profile or rates to show the page.
     if (isPublicPage) {
-      return isLoadingSettingsDoc || !activeStoreId;
+        return isLoadingSettingsDoc;
     }
-    // For protected pages, we wait for everything.
-    return isUserLoading || isLoadingProfile || isLoadingSettingsDoc || isLoadingRates || !activeStoreId;
-  }, [isUserLoading, isLoadingProfile, isLoadingSettingsDoc, isLoadingRates, activeStoreId, isPublicPage]);
+    // On protected pages, we must wait for everything to be loaded.
+    return isUserLoading || isLoadingProfile || isLoadingSettingsDoc || isLoadingRates;
+  }, [isUserLoading, isLoadingProfile, isLoadingSettingsDoc, isLoadingRates, isPublicPage]);
 
 
   const handleSetSettings = (newSettings: Settings) => {
@@ -129,8 +130,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const activeCurrency = displayCurrency;
   const activeSymbol = activeCurrency === 'primary' ? (settings?.primaryCurrencySymbol || '$') : (settings?.secondaryCurrencySymbol || 'Bs.');
   
-  const latestRate = currencyRates?.[0]?.rate;
-  const activeRate = activeCurrency === 'primary' ? 1 : (latestRate && latestRate > 0 ? latestRate : 1);
+  const latestRate = (currencyRates && currencyRates.length > 0) ? currencyRates[0].rate : 1;
+  const activeRate = activeCurrency === 'primary' ? 1 : (latestRate > 0 ? latestRate : 1);
+
 
   const contextValue: SettingsContextType = {
     settings, 

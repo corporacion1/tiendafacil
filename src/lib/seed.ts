@@ -52,21 +52,12 @@ export async function factoryReset(db: Firestore) {
   const collectionsToDelete = [
     'products', 'customers', 'suppliers', 'units', 'families', 
     'warehouses', 'sales', 'purchases', 'inventory_movements', 
-    'pendingOrders', 'ads', 'stores', 'users', 'currency_rates'
+    'pendingOrders', 'ads', 'stores', 'users'
   ];
   
   for (const collectionName of collectionsToDelete) {
       await deleteCollection(db, collectionName, batch);
   }
-
-  // This is a direct fix for the root-level currency_rates collection problem
-  // It's redundant if 'currency_rates' is in the array above, but serves as a safeguard.
-  const rootRatesSnapshot = await getDocs(collection(db, 'currency_rates'));
-  if (!rootRatesSnapshot.empty) {
-    console.log("Found lingering currency_rates at root. Deleting...");
-    rootRatesSnapshot.forEach(doc => batch.delete(doc.ref));
-  }
-
 
   await batch.commit();
   console.log("Firestore factory reset complete. The database should now be empty.");

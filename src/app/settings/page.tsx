@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import { useState, useMemo, useEffect } from "react";
@@ -116,9 +117,8 @@ function ChangePinDialog() {
 
 export default function SettingsPage() {
     const { hasPin, setPin, removePin, checkPin } = useSecurity();
-    const { settings, setSettings, activeStoreId, currencyRates } = useSettings();
+    const { settings, setSettings, activeStoreId, currencyRates, userProfile } = useSettings();
     const firestore = useFirestore();
-    const { user } = useUser();
     
     const [localSettings, setLocalSettings] = useState(settings || {});
     const [imageError, setImageError] = useState(false);
@@ -169,7 +169,7 @@ export default function SettingsPage() {
     const [resetConfirmationText, setResetConfirmationText] = useState('');
     const [isSeeding, setIsSeeding] = useState(false);
 
-    const isSuperAdmin = user?.email === 'corporacion1@gmail.com';
+    const isSuperAdmin = userProfile?.role === 'superAdmin';
 
      useEffect(() => {
         setLocalSettings(settings || {});
@@ -222,7 +222,7 @@ export default function SettingsPage() {
         const batch = writeBatch(firestore);
 
         // Save main settings
-        setSettings(localSettings);
+        setSettings(localSettings as Settings);
 
         // Save units, families, warehouses
         (localUnits || []).forEach(unit => {
@@ -715,7 +715,7 @@ export default function SettingsPage() {
                                     step="any"
                                     value={newRate} 
                                     onChange={(e) => setNewRate(e.target.value)} 
-                                    placeholder={(currencyRates && currencyRates.length > 0) ? currencyRates[0].rate.toFixed(6) : "0.000000"}
+                                    placeholder={(currencyRates && currencyRates.length > 0) ? currencyRates[0].rate.toFixed(2) : "0.00"}
                                     className="flex-grow"
                                 />
                                 <AlertDialog>
@@ -726,7 +726,7 @@ export default function SettingsPage() {
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>¿Confirmar Nueva Tasa?</AlertDialogTitle>
                                             <AlertDialogDescription>
-                                                Estás a punto de guardar una nueva tasa de cambio de {parseFloat(newRate || '0').toFixed(6)} {localSettings?.secondaryCurrencySymbol || ''}. ¿Estás seguro?
+                                                Estás a punto de guardar una nueva tasa de cambio de {parseFloat(newRate || '0').toFixed(2)} {localSettings?.secondaryCurrencySymbol || ''}. ¿Estás seguro?
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
@@ -751,7 +751,7 @@ export default function SettingsPage() {
                                         {currencyRates && currencyRates.length > 0 ? currencyRates.map(rate => (
                                             <TableRow key={rate.id}>
                                                 <TableCell>{rate.date ? format(parseISO(rate.date as string), "dd/MM/yy HH:mm") : 'N/A'}</TableCell>
-                                                <TableCell className="text-right font-mono">{`${rate.rate.toFixed(6)} ${localSettings?.secondaryCurrencySymbol || ''}`}</TableCell>
+                                                <TableCell className="text-right font-mono">{`${(localSettings?.secondaryCurrencySymbol || '')} ${rate.rate.toFixed(2)}`}</TableCell>
                                             </TableRow>
                                         )) : (
                                             <TableRow>
