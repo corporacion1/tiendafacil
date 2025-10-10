@@ -28,12 +28,15 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }, [pathname, lockApp, hasPin, isSecurityReady]);
 
     useEffect(() => {
+        // Wait until Firebase has determined the auth state
         if (isUserLoading) return;
         
+        // If not logged in and trying to access a protected page, redirect
         if (!user && !isPublicPage) {
             router.replace('/login');
         }
         
+        // If logged in and on a public/root page, redirect to dashboard
         if (user && (isPublicPage || isRootPage)) {
            // Do not redirect from catalog page
            if (pathname.startsWith('/catalog')) return;
@@ -42,34 +45,22 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         
     }, [isUserLoading, user, isPublicPage, isRootPage, pathname, router]);
 
-
-    // While Firebase is figuring out the user's auth state
-    if (isUserLoading && !isPublicPage) {
+    // Master loading gate: Show a loader if either Firebase auth or the initial settings are loading.
+    // This prevents any rendering until the app is in a valid state.
+    if (isLoadingSettings && !isPublicPage) {
       return (
          <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
             <div className="p-4 bg-muted rounded-full">
                 <Package className="w-12 h-12 text-muted-foreground" />
             </div>
-            <p className="text-muted-foreground animate-pulse">Verificando sesión...</p>
+            <p className="text-muted-foreground animate-pulse">Iniciando aplicación...</p>
         </div>
       );
     }
     
-    // Once auth is resolved, if the app is security-locked
+    // Once all loading is complete, if the app is security-locked, show the PIN modal.
     if (isLocked) {
         return <PinModal />;
-    }
-
-    // Once auth is resolved, if we are on a protected page, wait for settings
-    if (!isPublicPage && isLoadingSettings) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
-                <div className="p-4 bg-muted rounded-full">
-                    <Package className="w-12 h-12 text-muted-foreground" />
-                </div>
-                <p className="text-muted-foreground animate-pulse">Cargando configuración de la tienda...</p>
-            </div>
-        );
     }
 
     // Render the children once all checks are passed

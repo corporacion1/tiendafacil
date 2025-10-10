@@ -71,8 +71,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [isUserLoading, user, userProfile, isPublicPage, pathname, activeStoreId]);
 
   const settingsDocRef = useMemo(() => {
-    // CRITICAL FIX: Do not attempt to get the document if the user state is still loading.
-    if (!activeStoreId || !firestore || isUserLoading) return null;
+    // CRITICAL FIX: Do not attempt to get the document if auth is still resolving OR if there's no active store id.
+    if (isUserLoading || !activeStoreId || !firestore) return null;
     return doc(firestore, 'stores', activeStoreId);
   }, [activeStoreId, firestore, isUserLoading]);
 
@@ -92,7 +92,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     if(storedCurrencyPref) setDisplayCurrency(storedCurrencyPref);
   }, []);
   
-  const isLoading = isUserLoading || (!isPublicPage && isLoadingProfile) || (!isPublicPage && !activeStoreId) || isLoadingSettingsDoc || isLoadingRates;
+  const isLoading = isUserLoading || isLoadingSettingsDoc || isLoadingRates || (!isPublicPage && isLoadingProfile);
 
   const handleSetSettings = (newSettings: Settings) => {
     if (!settingsDocRef || !firestore) return;
