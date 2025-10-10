@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid, Instagram, Star, Search, UserPlus, QrCode, ZoomIn, Pencil, ArrowRight, RefreshCw, UserCircle, LogOut } from "lucide-react";
+import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid, Instagram, Star, Search, UserPlus, QrCode, ZoomIn, Pencil, ArrowRight, RefreshCw, UserCircle, LogOut, MoreHorizontal } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
@@ -448,40 +448,44 @@ export default function CatalogPage() {
                                             </div>
                                         )}
                                         {cart.length === 0 && localOrders.length > 0 && (
-                                             <div className="px-6">
-                                                <h3 className="text-lg font-semibold mb-4">Mis Pedidos Recientes</h3>
-                                                <div className="space-y-4">
-                                                    {localOrders.map(order => (
-                                                        <div key={order.id} className="flex flex-col p-3 rounded-md border bg-background">
-                                                            <div className="flex justify-between items-start">
-                                                                <div>
-                                                                    <p className="font-semibold">{order.id}</p>
-                                                                    <p className="text-sm text-muted-foreground">{new Date(order.date).toLocaleString()}</p>
-                                                                </div>
-                                                                <div className="flex items-center gap-1">
-                                                                    <Button variant="outline" size="sm" onClick={() => handleReShowQR(order.id)}>Ver QR</Button>
-                                                                    <DropdownMenu>
-                                                                        <DropdownMenuTrigger asChild>
-                                                                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                                                <MoreHorizontal className="h-4 w-4" />
-                                                                            </Button>
-                                                                        </DropdownMenuTrigger>
-                                                                        <DropdownMenuContent>
-                                                                            <DropdownMenuItem onSelect={() => handleEditLocalOrder(order)}>
-                                                                                <Pencil className="mr-2 h-4 w-4" /> Editar
-                                                                            </DropdownMenuItem>
-                                                                            <DropdownMenuSeparator />
-                                                                            <DropdownMenuItem onSelect={() => handleDeleteLocalOrder(order.id)} className="text-destructive">
-                                                                                <Trash2 className="mr-2 h-4 w-4" /> Eliminar
-                                                                            </DropdownMenuItem>
-                                                                        </DropdownMenuContent>
-                                                                    </DropdownMenu>
+                                             <Card className="m-4">
+                                                <CardHeader>
+                                                    <CardTitle>Mis Pedidos Recientes</CardTitle>
+                                                </CardHeader>
+                                                <CardContent className="p-4">
+                                                    <div className="space-y-4">
+                                                        {localOrders.map(order => (
+                                                            <div key={order.id} className="flex flex-col p-3 rounded-md border bg-background">
+                                                                <div className="flex justify-between items-start">
+                                                                    <div>
+                                                                        <p className="font-semibold">{order.id}</p>
+                                                                        <p className="text-sm text-muted-foreground">{new Date(order.date).toLocaleString()}</p>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-1">
+                                                                        <Button variant="outline" size="sm" onClick={() => handleReShowQR(order.id)}>Ver QR</Button>
+                                                                        <DropdownMenu>
+                                                                            <DropdownMenuTrigger asChild>
+                                                                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                                                    <MoreHorizontal className="h-4 w-4" />
+                                                                                </Button>
+                                                                            </DropdownMenuTrigger>
+                                                                            <DropdownMenuContent>
+                                                                                <DropdownMenuItem onSelect={() => handleEditLocalOrder(order)}>
+                                                                                    <Pencil className="mr-2 h-4 w-4" /> Editar
+                                                                                </DropdownMenuItem>
+                                                                                <DropdownMenuSeparator />
+                                                                                <DropdownMenuItem onSelect={() => handleDeleteLocalOrder(order.id)} className="text-destructive">
+                                                                                    <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                                                                                </DropdownMenuItem>
+                                                                            </DropdownMenuContent>
+                                                                        </DropdownMenu>
+                                                                    </div>
                                                                 </div>
                                                             </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
                                         )}
                                         {cart.length > 0 && (
                                             <div className="px-6 space-y-4">
