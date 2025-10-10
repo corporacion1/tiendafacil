@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -110,7 +111,7 @@ export function useCollection<T = any>(
   }, [memoizedTargetRefOrQuery, isUserLoading]);
 
   // isLoading is true only during the initial fetch when there's no data and no error yet.
-  const isLoading = data === null && error === null;
+  const isLoading = data === null && error === null && memoizedTargetRefOrQuery !== null;
 
   return { data, isLoading, error };
 }
