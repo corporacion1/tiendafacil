@@ -106,39 +106,7 @@ export default function LoginPage() {
     const userSnap = await getDoc(userRef);
 
     if (!userSnap.exists()) {
-        if (auth) await auth.signOut();
-        setLoadingMessage(null);
-        setIsLoading(false);
-        toast({ variant: 'destructive', title: 'Error de Perfil', description: 'Tu perfil de usuario no existe. Se ha cerrado la sesión.' });
-        return;
-    }
-    
-    const userProfile = userSnap.data() as UserProfile;
-    
-    if (userProfile.role !== 'admin' && userProfile.role !== 'superAdmin') {
-      setLoadingMessage('Redirigiendo...');
-      router.replace('/catalog');
-      return;
-    }
-
-    if (!userProfile.storeId) {
-       if (auth) await auth.signOut();
-       setLoadingMessage(null);
-       setIsLoading(false);
-       toast({ variant: 'destructive', title: 'Error de Configuración', description: 'Este usuario administrativo no tiene una tienda asignada.' });
-       return;
-    }
-    
-    setLoadingMessage('Cargando datos de la tienda...');
-    const storeRef = doc(firestore, 'stores', userProfile.storeId);
-    const storeSnap = await getDoc(storeRef);
-
-    if (!storeSnap.exists()) {
-        if (auth) await auth.signOut();
-        setLoadingMessage(null);
-        setIsLoading(false);
-        toast({ variant: 'destructive', title: 'Error de Tienda', description: `No se pudo cargar la configuración para la tienda asignada.` });
-        return;
+        await createUserProfile(firebaseUser);
     }
     
     setLoadingMessage('¡Todo listo! Redirigiendo...');
@@ -151,9 +119,6 @@ export default function LoginPage() {
     try {
       const userCredential = await authPromise;
       if (userCredential && userCredential.user) {
-        if (isSignUp) {
-          await createUserProfile(userCredential.user);
-        }
         await loadDataAndRedirect(userCredential.user);
       }
     } catch (error: any) {
@@ -200,12 +165,10 @@ export default function LoginPage() {
     const processRedirect = async () => {
       if (!auth || !firestore) return;
       try {
-        // Do not set loading state here to avoid interfering with manual login
         const result = await getRedirectResult(auth);
         if (result && result.user) {
           setIsLoading(true);
           setLoadingMessage('Verificando resultado de Google...');
-          await createUserProfile(result.user);
           await loadDataAndRedirect(result.user);
         }
       } catch (error) {
