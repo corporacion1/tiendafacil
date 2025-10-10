@@ -642,145 +642,147 @@ export default function POSPage() {
                             </AlertDialog>
                         )}
                     </CardHeader>
-                    <CardContent className="p-6 pt-0 flex-grow flex flex-col gap-4">
-                         <div className="space-y-2">
-                            <Label htmlFor="customer">Cliente</Label>
-                            <div className="flex gap-2">
-                                <Popover open={isCustomerSearchOpen} onOpenChange={setIsCustomerSearchOpen}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            role="combobox"
-                                            aria-expanded={isCustomerSearchOpen}
-                                            className="w-full justify-between"
-                                        >
-                                            {isLoading ? "Cargando..." : (selectedCustomer ? selectedCustomer.name : "Seleccionar cliente...")}
-                                            <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Buscar cliente..." />
-                                            <CommandList>
-                                                <CommandEmpty>No se encontraron clientes.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {customerList.map((customer) => (
-                                                        <CommandItem
-                                                            key={customer.id}
-                                                            value={customer.name}
-                                                            onSelect={() => {
-                                                                setSelectedCustomerId(customer.id);
-                                                                setIsCustomerSearchOpen(false);
-                                                            }}
-                                                        >
-                                                            <Check
-                                                                className={cn(
-                                                                    "mr-2 h-4 w-4",
-                                                                    selectedCustomerId === customer.id ? "opacity-100" : "opacity-0"
-                                                                )}
-                                                            />
-                                                            {customer.name}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-
-                                <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
-                                    <DialogTrigger asChild>
-                                        <Button variant="outline" size="icon">
-                                            <PlusCircle className="h-4 w-4" />
-                                        </Button>
-                                    </DialogTrigger>
-                                    <DialogContent>
-                                        <DialogHeader>
-                                            <DialogTitle>Agregar Nuevo Cliente</DialogTitle>
-                                            <DialogDescription>
-                                                Completa el formulario para agregar un nuevo cliente.
-                                            </DialogDescription>
-                                        </DialogHeader>
-                                        <div className="grid gap-4 py-4">
-                                            <div className="grid grid-cols-4 items-center gap-4">
-                                                <Label htmlFor="new-customer-id" className="text-right">ID (Opcional)</Label>
-                                                <Input id="new-customer-id" value={newCustomer.id} onChange={(e) => setNewCustomer(prev => ({ ...prev, id: e.target.value }))} className="col-span-3" placeholder="Identificación fiscal, etc." />
-                                            </div>
-                                            <div className="grid grid-cols-4 items-center gap-4">
-                                                <Label htmlFor="new-customer-name" className="text-right">Nombre*</Label>
-                                                <Input id="new-customer-name" value={newCustomer.name} onChange={(e) => setNewCustomer(prev => ({ ...prev, name: e.target.value }))} className="col-span-3" placeholder="Ej: Jane Doe" required />
-                                            </div>
-                                            <div className="grid grid-cols-4 items-center gap-4">
-                                                <Label htmlFor="new-customer-phone" className="text-right">Teléfono*</Label>
-                                                <Input id="new-customer-phone" value={newCustomer.phone} onChange={(e) => setNewCustomer(prev => ({ ...prev, phone: e.target.value }))} className="col-span-3" required />
-                                            </div>
-                                            <div className="grid grid-cols-4 items-center gap-4">
-                                                <Label htmlFor="new-customer-address" className="text-right">Dirección</Label>
-                                                <Input id="new-customer-address" value={newCustomer.address} onChange={(e) => setNewCustomer(prev => ({ ...prev, address: e.target.value }))} className="col-span-3" />
-                                            </div>
-                                        </div>
-                                        <DialogFooter>
-                                            <DialogClose asChild>
-                                                <Button variant="outline">Cancelar</Button>
-                                            </DialogClose>
-                                            <Button onClick={handleAddNewCustomer} disabled={!newCustomer.name.trim() || !newCustomer.phone.trim()}>Guardar Cliente</Button>
-                                        </DialogFooter>
-                                    </DialogContent>
-                                </Dialog>
-                            </div>
-                        </div>
-                        <Separator />
-                        <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                             {cartItems.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center text-center text-muted-foreground h-full py-12">
-                                    <ShoppingCart className="h-12 w-12 mb-4" />
-                                    <p>Tu carrito está vacío.</p>
-                                    <p className="text-sm">Agrega productos para comenzar una venta.</p>
-                                </div>
-                            ) : (
-                                cartItems.map((item, index) => (
-                                    <div key={`${item.product.id}-${index}`} className="flex justify-between items-center gap-2">
-                                        <div className="flex-grow">
-                                            <p className="font-medium text-sm">{item.product.name}</p>
-                                            <p className={cn("text-xs", item.price === item.product.wholesalePrice ? "text-accent-foreground font-semibold" : "text-muted-foreground")}>
-                                                {activeSymbol}{(item.price * activeRate).toFixed(2)}
-                                            </p>
-                                        </div>
-                                        <Input
-                                            type="number"
-                                            value={item.quantity}
-                                            onChange={(e) => updateQuantity(item.product.id, item.price, parseInt(e.target.value, 10) || 1)}
-                                            className="h-8 w-16"
-                                            min="1"
-                                        />
-                                        <div className="text-right font-semibold w-20">{activeSymbol}{(item.price * item.quantity * activeRate).toFixed(2)}</div>
-                                        <div className="flex items-center">
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-accent-foreground" onClick={() => toggleWholesalePrice(item.product.id, item.price)}>
-                                                <Tags className={cn("h-4 w-4", item.price === item.product.wholesalePrice && "text-accent-foreground")} />
+                    <CardContent className="flex-1 overflow-hidden p-6 pt-0">
+                        <div className="h-full flex flex-col gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="customer">Cliente</Label>
+                                <div className="flex gap-2">
+                                    <Popover open={isCustomerSearchOpen} onOpenChange={setIsCustomerSearchOpen}>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                role="combobox"
+                                                aria-expanded={isCustomerSearchOpen}
+                                                className="w-full justify-between"
+                                            >
+                                                {isLoading ? "Cargando..." : (selectedCustomer ? selectedCustomer.name : "Seleccionar cliente...")}
+                                                <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                             </Button>
-                                            <AlertDialog>
-                                                <AlertDialogTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
-                                                        <X className="h-4 w-4" />
-                                                    </Button>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent>
-                                                    <AlertDialogHeader>
-                                                    <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        Esto eliminará "{item.product.name}" de tu carrito.
-                                                    </AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => removeFromCart(item.product.id, item.price)}>Eliminar</AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
-                                        </div>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                            <Command>
+                                                <CommandInput placeholder="Buscar cliente..." />
+                                                <CommandList>
+                                                    <CommandEmpty>No se encontraron clientes.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {customerList.map((customer) => (
+                                                            <CommandItem
+                                                                key={customer.id}
+                                                                value={customer.name}
+                                                                onSelect={() => {
+                                                                    setSelectedCustomerId(customer.id);
+                                                                    setIsCustomerSearchOpen(false);
+                                                                }}
+                                                            >
+                                                                <Check
+                                                                    className={cn(
+                                                                        "mr-2 h-4 w-4",
+                                                                        selectedCustomerId === customer.id ? "opacity-100" : "opacity-0"
+                                                                    )}
+                                                                />
+                                                                {customer.name}
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+
+                                    <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
+                                        <DialogTrigger asChild>
+                                            <Button variant="outline" size="icon">
+                                                <PlusCircle className="h-4 w-4" />
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent>
+                                            <DialogHeader>
+                                                <DialogTitle>Agregar Nuevo Cliente</DialogTitle>
+                                                <DialogDescription>
+                                                    Completa el formulario para agregar un nuevo cliente.
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <div className="grid gap-4 py-4">
+                                                <div className="grid grid-cols-4 items-center gap-4">
+                                                    <Label htmlFor="new-customer-id" className="text-right">ID (Opcional)</Label>
+                                                    <Input id="new-customer-id" value={newCustomer.id} onChange={(e) => setNewCustomer(prev => ({ ...prev, id: e.target.value }))} className="col-span-3" placeholder="Identificación fiscal, etc." />
+                                                </div>
+                                                <div className="grid grid-cols-4 items-center gap-4">
+                                                    <Label htmlFor="new-customer-name" className="text-right">Nombre*</Label>
+                                                    <Input id="new-customer-name" value={newCustomer.name} onChange={(e) => setNewCustomer(prev => ({ ...prev, name: e.target.value }))} className="col-span-3" placeholder="Ej: Jane Doe" required />
+                                                </div>
+                                                <div className="grid grid-cols-4 items-center gap-4">
+                                                    <Label htmlFor="new-customer-phone" className="text-right">Teléfono*</Label>
+                                                    <Input id="new-customer-phone" value={newCustomer.phone} onChange={(e) => setNewCustomer(prev => ({ ...prev, phone: e.target.value }))} className="col-span-3" required />
+                                                </div>
+                                                <div className="grid grid-cols-4 items-center gap-4">
+                                                    <Label htmlFor="new-customer-address" className="text-right">Dirección</Label>
+                                                    <Input id="new-customer-address" value={newCustomer.address} onChange={(e) => setNewCustomer(prev => ({ ...prev, address: e.target.value }))} className="col-span-3" />
+                                                </div>
+                                            </div>
+                                            <DialogFooter>
+                                                <DialogClose asChild>
+                                                    <Button variant="outline">Cancelar</Button>
+                                                </DialogClose>
+                                                <Button onClick={handleAddNewCustomer} disabled={!newCustomer.name.trim() || !newCustomer.phone.trim()}>Guardar Cliente</Button>
+                                            </DialogFooter>
+                                        </DialogContent>
+                                    </Dialog>
+                                </div>
+                            </div>
+                            <Separator />
+                            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+                                {cartItems.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center text-center text-muted-foreground h-full py-12">
+                                        <ShoppingCart className="h-12 w-12 mb-4" />
+                                        <p>Tu carrito está vacío.</p>
+                                        <p className="text-sm">Agrega productos para comenzar una venta.</p>
                                     </div>
-                                ))
-                            )}
+                                ) : (
+                                    cartItems.map((item, index) => (
+                                        <div key={`${item.product.id}-${index}`} className="flex justify-between items-center gap-2">
+                                            <div className="flex-grow">
+                                                <p className="font-medium text-sm">{item.product.name}</p>
+                                                <p className={cn("text-xs", item.price === item.product.wholesalePrice ? "text-accent-foreground font-semibold" : "text-muted-foreground")}>
+                                                    {activeSymbol}{(item.price * activeRate).toFixed(2)}
+                                                </p>
+                                            </div>
+                                            <Input
+                                                type="number"
+                                                value={item.quantity}
+                                                onChange={(e) => updateQuantity(item.product.id, item.price, parseInt(e.target.value, 10) || 1)}
+                                                className="h-8 w-16"
+                                                min="1"
+                                            />
+                                            <div className="text-right font-semibold w-20">{activeSymbol}{(item.price * item.quantity * activeRate).toFixed(2)}</div>
+                                            <div className="flex items-center">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-accent-foreground" onClick={() => toggleWholesalePrice(item.product.id, item.price)}>
+                                                    <Tags className={cn("h-4 w-4", item.price === item.product.wholesalePrice && "text-accent-foreground")} />
+                                                </Button>
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                                                            <X className="h-4 w-4" />
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                        <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            Esto eliminará "{item.product.name}" de tu carrito.
+                                                        </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => removeFromCart(item.product.id, item.price)}>Eliminar</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
                         </div>
                     </CardContent>
                     
@@ -795,10 +797,12 @@ export default function POSPage() {
                                     <span>Impuesto {settings?.tax1 || 0}%</span>
                                     <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span>Impuesto {settings?.tax2 || 0}%</span>
-                                    <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
-                                </div>
+                                {tax2Amount > 0 && (
+                                    <div className="flex justify-between">
+                                        <span>Impuesto {settings?.tax2 || 0}%</span>
+                                        <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between font-semibold text-lg">
                                     <span>Total</span>
                                     <span>{activeSymbol}{(total * activeRate).toFixed(2)}</span>
@@ -967,3 +971,5 @@ export default function POSPage() {
   </Dialog>
   );
 }
+
+    

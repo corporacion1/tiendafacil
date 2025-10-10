@@ -67,6 +67,7 @@ export const mockCurrencyRates: Omit<CurrencyRate, 'id'>[] = [
 ];
 
 export const defaultCustomers: Omit<Customer, 'storeId'>[] = [
+    { id: 'eventual', name: 'Cliente Eventual', phone: '' },
     { id: 'cust-1', name: 'John Doe', phone: '555-1234', address: '123 Main St' },
     { id: 'cust-2', name: 'Jane Smith', phone: '555-5678', address: '456 Oak Ave' },
 ];
@@ -205,3 +206,5 @@ export async function factoryReset() {
   console.log("factoryReset is disabled. Using local data.");
   return;
 }
+
+    
