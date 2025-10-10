@@ -1,9 +1,8 @@
 
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { useUser, useFirestore, useCollection } from "@/firebase";
-import { collection, doc, writeBatch, query, orderBy, setDoc } from "firebase/firestore";
 import type { UserProfile, Store, UserRole } from "@/lib/types";
 import { MoreHorizontal, Search, UserPlus, Shield, Check, Mail, Phone, ExternalLink, UserX } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useSettings } from "@/contexts/settings-context";
+import { useUser } from "@/firebase";
+import { defaultUsers } from "@/lib/data";
 
 const getRoleVariant = (role: UserProfile['role']) => {
   switch (role) {
@@ -41,18 +42,11 @@ const getStatusVariant = (status: UserProfile['status'] | undefined) => {
 }
 
 export default function UsersPage() {
-  const { user: currentUser, isUserLoading } = useUser();
-  const firestore = useFirestore();
+  const { user: currentUser } = useUser();
   const { toast } = useToast();
-  const router = useRouter();
-  const { switchStore, activeStoreId } = useSettings();
+  const { switchStore } = useSettings();
 
-  const usersQuery = useMemo(() => {
-    if (isUserLoading || !firestore) return null;
-    return query(collection(firestore, 'users'), orderBy('createdAt', 'desc'));
-  }, [firestore, isUserLoading]);
-  const { data: users, isLoading } = useCollection<UserProfile>(usersQuery);
-  
+  const [users, setUsers] = useState<UserProfile[]>(defaultUsers.map(u => ({...u, uid: `user-${Math.random()}`, createdAt: new Date().toISOString()})));
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -62,10 +56,10 @@ export default function UsersPage() {
 
 
   useEffect(() => {
-    if (users && currentUser) {
-      const userProfile = users.find(u => u.uid === currentUser.uid);
-      if (userProfile) {
-          setCurrentUserProfile(userProfile);
+    if (currentUser) {
+      const profile = users.find(u => u.email === currentUser.email);
+      if (profile) {
+        setCurrentUserProfile(profile);
       }
     }
   }, [users, currentUser]);
@@ -79,71 +73,44 @@ export default function UsersPage() {
   };
   
   const confirmRoleChange = async () => {
-      if (!userToAction || !firestore) return;
-      const userRef = doc(firestore, 'users', userToAction.uid);
-      try {
-        await setDoc(userRef, { role: newRole }, { merge: true });
-        toast({
-            title: 'Rol Actualizado',
-            description: `${userToAction.displayName} ahora es ${newRole}.`
-        });
-      } catch (error) {
-        console.error("Error changing role: ", error);
-        toast({ variant: 'destructive', title: "Error al cambiar el rol" });
-      } finally {
-        setUserToAction(null);
-        setActionType(null);
-      }
+      if (!userToAction) return;
+      
+      setUsers(prevUsers => prevUsers.map(u => u.uid === userToAction.uid ? { ...u, role: newRole } : u));
+      
+      toast({
+          title: 'Rol Actualizado (Simulación)',
+          description: `${userToAction.displayName} ahora es ${newRole}.`
+      });
+
+      setUserToAction(null);
+      setActionType(null);
   }
 
   const confirmAction = async () => {
-    if (!userToAction || !actionType || !firestore) return;
+    if (!userToAction || !actionType) return;
 
     if (actionType === 'promote') {
-      const batch = writeBatch(firestore);
-      const userRef = doc(firestore, 'users', userToAction.uid);
-      
       const newStoreId = `store-${userToAction.uid.slice(0, 8)}`;
-      batch.update(userRef, { 
+      setUsers(prevUsers => prevUsers.map(u => u.uid === userToAction.uid ? {
+          ...u,
           role: 'admin',
           storeId: newStoreId,
-          storeRequest: false, // Reset the request flag
+          storeRequest: false,
+      } : u));
+      
+      toast({
+          title: "Usuario Promovido (Simulación)",
+          description: `${userToAction.displayName} ahora es un administrador con la tienda ${newStoreId}.`,
       });
 
-      const storeRef = doc(firestore, 'stores', newStoreId);
-      const newStore: Store = {
-        id: newStoreId,
-        name: `${userToAction.displayName}'s Store`,
-        ownerId: userToAction.uid,
-        status: 'active',
-        businessType: 'Otro', // Default business type
-      };
-      batch.set(storeRef, newStore);
-      
-      try {
-        await batch.commit();
-        toast({
-          title: "Usuario Promovido",
-          description: `${userToAction.displayName} ahora es un administrador con la tienda ${newStoreId}.`,
-        });
-      } catch (error) {
-        console.error("Error promoting user: ", error);
-        toast({ variant: 'destructive', title: "Error al promover usuario" });
-      }
-
     } else if (actionType === 'disable') {
-       const userRef = doc(firestore, 'users', userToAction.uid);
        const newStatus = userToAction.status === 'disabled' ? 'active' : 'disabled';
-       try {
-        await setDoc(userRef, { status: newStatus }, { merge: true });
-         toast({
-            title: `Usuario ${newStatus === 'disabled' ? 'Deshabilitado' : 'Habilitado'}`,
+       setUsers(prevUsers => prevUsers.map(u => u.uid === userToAction.uid ? { ...u, status: newStatus } : u));
+       
+       toast({
+            title: `Usuario ${newStatus === 'disabled' ? 'Deshabilitado' : 'Habilitado'} (Simulación)`,
             description: `La cuenta de "${userToAction.displayName}" ha sido ${newStatus === 'disabled' ? 'deshabilitada' : 'habilitada'}.`,
         });
-       } catch(error) {
-            console.error("Error disabling user: ", error);
-            toast({ variant: 'destructive', title: "Error al cambiar estado del usuario" });
-       }
     }
 
     setUserToAction(null);
@@ -321,5 +288,3 @@ export default function UsersPage() {
     </>
   );
 }
-
-    

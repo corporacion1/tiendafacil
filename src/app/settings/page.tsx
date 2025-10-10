@@ -18,11 +18,8 @@ import { Pencil, PlusCircle, Trash2, AlertTriangle, Database, Package, ImageOff 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
-import { useUser, useFirestore, useCollection, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { businessCategories } from "@/lib/data";
-import { forceSeedDatabase, factoryReset } from "@/lib/seed";
-import { collection, orderBy, query, where, writeBatch, doc } from "firebase/firestore";
+import { businessCategories, initialUnits, initialFamilies, initialWarehouses, mockProducts, defaultStore, mockCurrencyRates, forceSeedDatabase, factoryReset, defaultUsers } from "@/lib/data";
 import Image from "next/image";
 import { getDisplayImageUrl } from "@/lib/utils";
 
@@ -117,34 +114,15 @@ function ChangePinDialog() {
 
 export default function SettingsPage() {
     const { hasPin, setPin, removePin, checkPin } = useSecurity();
-    const { settings, setSettings, activeStoreId, currencyRates, userProfile } = useSettings();
-    const { user } = useUser(); // Direct access to auth user
-    const firestore = useFirestore();
+    const { settings, setSettings, currencyRates, setCurrencyRates, userProfile, activeStoreId } = useSettings();
     
     const [localSettings, setLocalSettings] = useState<Partial<Settings>>(settings || {});
     const [imageError, setImageError] = useState(false);
 
-    const unitsQuery = useMemo(() => {
-        if (!firestore || !activeStoreId) return null;
-        return query(collection(firestore, 'units'), where('storeId', '==', activeStoreId));
-    }, [firestore, activeStoreId]);
-    const { data: units } = useCollection<Unit>(unitsQuery);
-
-    const familiesQuery = useMemo(() => {
-        if (!firestore || !activeStoreId) return null;
-        return query(collection(firestore, 'families'), where('storeId', '==', activeStoreId));
-    }, [firestore, activeStoreId]);
-    const { data: families } = useCollection<Family>(familiesQuery);
-
-    const warehousesQuery = useMemo(() => {
-        if (!firestore || !activeStoreId) return null;
-        return query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId));
-    }, [firestore, activeStoreId]);
-    const { data: warehouses } = useCollection<Warehouse>(warehousesQuery);
-    
-    const [localUnits, setLocalUnits] = useState<Unit[]>([]);
-    const [localFamilies, setLocalFamilies] = useState<Family[]>([]);
-    const [localWarehouses, setLocalWarehouses] = useState<Warehouse[]>([]);
+    const [products, setProducts] = useState<Product[]>(mockProducts);
+    const [localUnits, setLocalUnits] = useState<Unit[]>(initialUnits.map(u => ({...u, storeId: activeStoreId})));
+    const [localFamilies, setLocalFamilies] = useState<Family[]>(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
+    const [localWarehouses, setLocalWarehouses] = useState<Warehouse[]>(initialWarehouses.map(w => ({...w, storeId: activeStoreId})));
     
     const displayUrl = useMemo(() => getDisplayImageUrl(localSettings?.logoUrl), [localSettings?.logoUrl]);
 
@@ -157,12 +135,6 @@ export default function SettingsPage() {
     const [confirmPin, setConfirmPin] = useState('');
     const { toast } = useToast();
     
-    const productsRef = useMemo(() => {
-      if (!firestore || !activeStoreId) return null;
-      return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
-    }, [firestore, activeStoreId]);
-    const { data: products = [] } = useCollection<Product>(productsRef);
-    
     const [newRate, setNewRate] = useState<string>("");
 
     const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
@@ -170,44 +142,20 @@ export default function SettingsPage() {
     const [resetConfirmationText, setResetConfirmationText] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
 
-    // Hardcoded check for the super admin email, independent of the database profile.
-    const isSuperAdmin = useMemo(() => {
-        if (userProfile?.role === 'superAdmin') return true;
-        return user?.email === 'corporacion1@gmail.com';
-    }, [user, userProfile]);
-
+    const isSuperAdmin = userProfile?.role === 'superAdmin';
 
      useEffect(() => {
         setLocalSettings(settings || {});
     }, [settings]);
-
-    useEffect(() => {
-        if (units) {
-          setLocalUnits([...units].sort((a, b) => a.name.localeCompare(b.name)));
-        }
-    }, [units]);
-
-    useEffect(() => {
-        if (families) {
-          setLocalFamilies([...families].sort((a, b) => a.name.localeCompare(b.name)));
-        }
-    }, [families]);
-
-    useEffect(() => {
-        if (warehouses) {
-          setLocalWarehouses([...warehouses].sort((a, b) => a.name.localeCompare(b.name)));
-        }
-    }, [warehouses]);
-    
     
     useEffect(() => {
         const mainSettingsChanged = JSON.stringify(localSettings) !== JSON.stringify(settings);
-        const unitsChanged = JSON.stringify(localUnits) !== JSON.stringify(units);
-        const familiesChanged = JSON.stringify(localFamilies) !== JSON.stringify(families);
-        const warehousesChanged = JSON.stringify(localWarehouses) !== JSON.stringify(warehouses);
+        const unitsChanged = JSON.stringify(localUnits.map(({storeId, ...rest}) => rest)) !== JSON.stringify(initialUnits);
+        const familiesChanged = JSON.stringify(localFamilies.map(({storeId, ...rest}) => rest)) !== JSON.stringify(initialFamilies);
+        const warehousesChanged = JSON.stringify(localWarehouses.map(({storeId, ...rest}) => rest)) !== JSON.stringify(initialWarehouses);
 
         setIsDirty(mainSettingsChanged || unitsChanged || familiesChanged || warehousesChanged);
-    }, [localSettings, settings, localUnits, localFamilies, localWarehouses, units, families, warehouses]);
+    }, [localSettings, settings, localUnits, localFamilies, localWarehouses]);
 
     const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
@@ -224,38 +172,14 @@ export default function SettingsPage() {
     };
 
     const saveAllSettings = async () => {
-        if (!firestore) return;
-        const batch = writeBatch(firestore);
-
         // Save main settings
         setSettings(localSettings as Settings);
-
-        // Save units, families, warehouses
-        (localUnits || []).forEach(unit => {
-            const unitRef = doc(firestore, 'units', unit.id);
-            batch.set(unitRef, {...unit, storeId: activeStoreId}, { merge: true });
-        });
-        (localFamilies || []).forEach(family => {
-            const familyRef = doc(firestore, 'families', family.id);
-            batch.set(familyRef, {...family, storeId: activeStoreId}, { merge: true });
-        });
-        (localWarehouses || []).forEach(wh => {
-            const whRef = doc(firestore, 'warehouses', wh.id);
-            batch.set(whRef, {...wh, storeId: activeStoreId}, { merge: true });
-        });
         
-        try {
-            await batch.commit();
-            setIsDirty(false);
-            toast({ title: "Configuración guardada", description: "Toda la configuración ha sido actualizada." });
-        } catch (error) {
-            console.error("Error saving settings:", error);
-            toast({ variant: 'destructive', title: 'Error al guardar la configuración' });
-        }
+        setIsDirty(false);
+        toast({ title: "Configuración guardada (Simulación)", description: "La configuración ha sido actualizada localmente." });
     };
 
     const handleSaveNewRate = () => {
-        if (!firestore) return;
         const rateValue = parseFloat(newRate);
         if(isNaN(rateValue) || rateValue <= 0) {
             toast({
@@ -272,12 +196,10 @@ export default function SettingsPage() {
             date: new Date().toISOString(),
         };
 
-        const rateRef = doc(firestore, `stores/${activeStoreId}/currencyRates`, newRateEntry.id);
-        setDocumentNonBlocking(rateRef, newRateEntry, {});
-        
+        setCurrencyRates(prev => [newRateEntry, ...prev]);
         setNewRate("");
         toast({
-            title: "Tasa Guardada",
+            title: "Tasa Guardada (Simulación)",
             description: `La nueva tasa de ${rateValue} ha sido registrada.`,
         });
     };
@@ -304,7 +226,6 @@ export default function SettingsPage() {
     };
     
     const handleDelete = (type: 'unit' | 'family' | 'warehouse', id: string) => {
-        if (!firestore) return;
         if (isItemInUse(type, id)) {
             toast({
                 variant: 'destructive',
@@ -314,17 +235,21 @@ export default function SettingsPage() {
             return;
         }
         
-        const ref = doc(firestore, `${type}s`, id);
-        deleteDocumentNonBlocking(ref);
+        const updater = (setter: React.Dispatch<React.SetStateAction<any[]>>) => {
+            setter(prev => prev.filter(item => item.id !== id));
+        };
+
+        if (type === 'unit') updater(setLocalUnits);
+        if (type === 'family') updater(setLocalFamilies);
+        if (type === 'warehouse') updater(setLocalWarehouses);
 
         toast({
-            title: 'Elemento Eliminado',
-            description: 'El elemento se ha eliminado de la base de datos.',
+            title: 'Elemento Eliminado (Simulación)',
+            description: 'El elemento se ha eliminado del estado local.',
         });
     };
     
     const handleFactoryReset = async () => {
-        if (!firestore) return;
         if(hasPin && !checkPin(resetPin)) {
              toast({
                 variant: "destructive",
@@ -350,12 +275,9 @@ export default function SettingsPage() {
         });
         
         try {
-            await factoryReset(firestore);
+            await factoryReset();
             
-            localStorage.removeItem('tienda_facil_settings');
-            localStorage.removeItem('tienda_facil_currency_pref');
-            localStorage.removeItem('tienda_facil_pin');
-            localStorage.removeItem('tienda_facil_active_store_id');
+            localStorage.clear();
             
             setIsResetConfirmOpen(false);
 
@@ -371,7 +293,7 @@ export default function SettingsPage() {
              toast({
                 variant: "destructive",
                 title: "Error en la Restauración",
-                description: "No se pudieron eliminar todos los datos. Revisa la consola para más detalles.",
+                description: "No se pudieron eliminar todos los datos.",
             });
             console.error("Factory reset failed:", error);
         } finally {
@@ -381,31 +303,30 @@ export default function SettingsPage() {
     };
 
     const handleSeedDatabase = async () => {
-        if (!firestore) return;
         setIsProcessing(true);
         toast({
-            title: 'Poblando Base de Datos',
-            description: 'Este proceso puede tardar unos momentos. Por favor, espera...',
+            title: 'Poblando Estado Local',
+            description: 'Recargando datos de demostración...',
         });
         try {
-            const seeded = await forceSeedDatabase(firestore);
+            const seeded = await forceSeedDatabase();
             if (seeded) {
                 toast({
                     title: '¡Éxito!',
-                    description: 'La base de datos ha sido poblada con los datos de demostración. La página se recargará.',
+                    description: 'Los datos locales han sido restaurados. La página se recargará.',
                 });
                 setTimeout(() => window.location.reload(), 1500);
             } else {
                  toast({
                     variant: 'default',
-                    title: 'Base de Datos ya Poblada',
-                    description: 'No se realizó ninguna acción porque ya existen datos.',
+                    title: 'Datos ya Poblados',
+                    description: 'No se realizó ninguna acción.',
                 });
             }
         } catch (error: any) {
             toast({
                 variant: 'destructive',
-                title: 'Error al Poblar la Base de Datos',
+                title: 'Error al Poblar los Datos',
                 description: error.message || 'Ocurrió un error inesperado.',
             });
         } finally {
@@ -424,30 +345,28 @@ export default function SettingsPage() {
         const [editingItem, setEditingItem] = useState<{id: string, name: string} | null>(null);
 
         const handleAddNewItem = () => {
-             if (!firestore) return;
              if (newItemName.trim() === '') {
                 toast({ variant: 'destructive', title: 'Nombre inválido' });
                 return;
             }
             const newId = `${type}-${Date.now()}`;
             const newEntry = { id: newId, name: newItemName.trim(), storeId: activeStoreId };
-            const itemRef = doc(firestore, `${type}s`, newId);
-            setDocumentNonBlocking(itemRef, newEntry, {});
+            setItems(prev => [...prev, newEntry]);
             
             setNewItemName('');
+             toast({ title: 'Elemento Agregado (Simulación)' });
         };
         
         const handleEditItem = () => {
-            if (!firestore) return;
             if (!editingItem || editingItem.name.trim() === '') {
                  toast({ variant: 'destructive', title: 'Nombre inválido' });
                 return;
             }
             
-            const itemRef = doc(firestore, `${type}s`, editingItem.id);
-            setDocumentNonBlocking(itemRef, {...editingItem, storeId: activeStoreId}, { merge: true });
+            setItems(prev => prev.map(item => item.id === editingItem.id ? editingItem : item));
 
             setEditingItem(null);
+            toast({ title: 'Elemento Editado (Simulación)' });
         };
 
         return (

@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -81,6 +82,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
   const { toast } = useToast();
   const { settings, activeStoreId } = useSettings();
 
+  // For a local data app, we manage state here instead of fetching
   const [products, setProducts] = useState(mockProducts);
   const [units, setUnits] = useState(initialUnits);
   const [families, setFamilies] = useState(initialFamilies);
@@ -476,5 +478,3 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     </Form>
   );
 };
-
-    

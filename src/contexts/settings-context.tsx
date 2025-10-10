@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
@@ -19,6 +20,7 @@ interface SettingsContextType {
   activeSymbol: string;
   activeRate: number;
   currencyRates: CurrencyRate[];
+  setCurrencyRates: React.Dispatch<React.SetStateAction<CurrencyRate[]>>;
   activeStoreId: string;
   switchStore: (storeId: string) => void;
   isLoadingSettings: boolean;
@@ -55,6 +57,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     // Simulate loading and setting user profile from local data
     setIsLoadingSettings(true);
     if (user) {
+        // In a real app with a backend, you would fetch this user profile
+        // For now, we find it in the mock data
         const profile = defaultUsers.find(u => u.email === user.email);
         if (profile) {
             setUserProfile({
@@ -62,6 +66,18 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                 uid: user.uid,
                 photoURL: user.photoURL,
                 phone: user.phoneNumber,
+                createdAt: new Date().toISOString()
+            });
+        } else {
+             // Create a default 'user' profile if not found
+             setUserProfile({
+                uid: user.uid,
+                displayName: user.displayName,
+                email: user.email,
+                photoURL: user.photoURL,
+                phone: user.phoneNumber,
+                role: 'user',
+                status: 'active',
                 createdAt: new Date().toISOString()
             });
         }
@@ -110,7 +126,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     activeCurrency, 
     activeSymbol, 
     activeRate, 
-    currencyRates, 
+    currencyRates,
+    setCurrencyRates,
     activeStoreId,
     switchStore,
     isLoadingSettings,
@@ -131,5 +148,3 @@ export const useSettings = (): SettingsContextType => {
   }
   return context;
 };
-
-    
