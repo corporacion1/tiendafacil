@@ -46,59 +46,47 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/settings-context";
-import { useUser, useCollection, useFirestore } from "@/firebase";
-import { collection, query, orderBy, where, collectionGroup } from "firebase/firestore";
-
+import { mockSales, mockPurchases, mockProducts, defaultCustomers } from "@/lib/data";
 
 type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
 
 export default function ReportsPage() {
-    const { settings, activeSymbol, activeRate, activeStoreId, userProfile } = useSettings();
-    const firestore = useFirestore();
+    const { settings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
     const isSuperAdmin = userProfile?.role === 'superAdmin';
     
-    const salesRef = useMemo(() => {
-        if (!firestore) return null;
-        return isSuperAdmin
-            ? query(collectionGroup(firestore, 'sales'))
-            : query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
-    }, [firestore, activeStoreId, isSuperAdmin]);
-    const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
+    // Use local data instead of Firebase
+    const [salesData, setSalesData] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
+    const [purchasesData, setPurchasesData] = useState(mockPurchases.map(p => ({...p, storeId: activeStoreId})));
+    const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})));
+    const [customers, setCustomers] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
 
-    const purchasesRef = useMemo(() => {
-        if (!firestore) return null;
-        return isSuperAdmin
-            ? query(collectionGroup(firestore, 'purchases'))
-            : query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId));
-    }, [firestore, activeStoreId, isSuperAdmin]);
-    const { data: purchasesData, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesRef);
-
-    const movementsRef = useMemo(() => {
-        if (!firestore) return null;
-        return isSuperAdmin
-            ? query(collectionGroup(firestore, 'inventory_movements'))
-            : query(collection(firestore, 'inventory_movements'), where('storeId', '==', activeStoreId));
-    }, [firestore, activeStoreId, isSuperAdmin]);
-    const { data: movementsData, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsRef);
-
-    const productsRef = useMemo(() => {
-        if (!firestore) return null;
-        return isSuperAdmin
-            ? query(collectionGroup(firestore, 'products'))
-            : query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
-    }, [firestore, activeStoreId, isSuperAdmin]);
-    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
-
-    const customersRef = useMemo(() => {
-        if (!firestore) return null;
-        return isSuperAdmin
-            ? query(collectionGroup(firestore, 'customers'))
-            : query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId));
-    }, [firestore, activeStoreId, isSuperAdmin]);
-    const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersRef);
+    const movementsData: InventoryMovement[] = useMemo(() => {
+      const saleMovements = salesData.flatMap(sale => 
+          sale.items.map(item => ({
+              id: `mov-sale-${sale.id}-${item.productId}`,
+              productName: item.productName,
+              type: 'sale' as 'sale',
+              quantity: -item.quantity,
+              date: sale.date,
+              storeId: sale.storeId,
+          }))
+      );
+       const purchaseMovements = purchasesData.flatMap(purchase => 
+          purchase.items.map(item => ({
+              id: `mov-pur-${purchase.id}-${item.productId}`,
+              productName: item.productName,
+              type: 'purchase' as 'purchase',
+              quantity: item.quantity,
+              date: purchase.date,
+              storeId: purchase.storeId,
+              responsible: purchase.responsible,
+          }))
+      );
+      return [...saleMovements, ...purchaseMovements].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    }, [salesData, purchasesData]);
 
 
-    const isLoading = isLoadingSales || isLoadingPurchases || isLoadingMovements || isLoadingProducts || isLoadingCustomers;
+    const isLoading = isLoadingSettings;
     
     const [selectedSaleDetails, setSelectedSaleDetails] = useState<Sale | null>(null);
     const [saleForTicket, setSaleForTicket] = useState<Sale | null>(null);
@@ -128,9 +116,11 @@ export default function ReportsPage() {
         setIsTicketPreviewOpen(true);
     }
     
-    const getDate = (date: any) => {
-        if (!date) return 'N/A';
-        return typeof date === 'string' ? parseISO(date) : date; // Already a Date object
+    const getDate = (date: any): Date => {
+        if (!date) return new Date();
+        if (typeof date === 'string') return parseISO(date);
+        if (date.toDate) return date.toDate(); // For Firebase Timestamps if they ever come back
+        return date;
     }
     
     const allPayments = useMemo(() => {
@@ -248,7 +238,7 @@ export default function ReportsPage() {
     }
 
     const filterByDate = (data: (Sale | Purchase | InventoryMovement | (Payment & { saleId: string; customerName: string; }))[]) => {
-        if (!dateFilterQuery) return data;
+        if (!dateFilterQuery || !data) return data || [];
         return data.filter(item => getDate(item.date) >= dateFilterQuery!);
     };
 
@@ -330,7 +320,7 @@ export default function ReportsPage() {
         sale.items.forEach(item => {
             if (!products) return;
             const product = products.find(p => p.id === item.productId);
-            if (product) {
+            if (product && settings) {
                 const itemSubtotal = item.price * item.quantity;
                 if(product.tax1 && settings.tax1 > 0) {
                     tax1Amount += itemSubtotal * (settings.tax1 / 100);
@@ -650,7 +640,7 @@ export default function ReportsPage() {
                     </TableBody>
                 </Table>
             </div>
-            {selectedSaleDetails && (() => {
+            {selectedSaleDetails && settings && (() => {
                  const { subtotal, tax1Amount, tax2Amount } = calculateTaxesForSale(selectedSaleDetails);
                  return (
                     <div className="mt-4 space-y-2 border-t pt-4">
@@ -658,13 +648,13 @@ export default function ReportsPage() {
                             <span>Subtotal:</span>
                             <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
                         </div>
-                        {settings.tax1 > 0 && tax1Amount > 0 && (
+                        {settings.tax1 && settings.tax1 > 0 && tax1Amount > 0 && (
                             <div className="flex justify-between">
                                 <span>Impuestos ({settings.tax1}%):</span>
                                 <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</span>
                             </div>
                         )}
-                        {settings.tax2 > 0 && tax2Amount > 0 && (
+                        {settings.tax2 && settings.tax2 > 0 && tax2Amount > 0 && (
                             <div className="flex justify-between">
                                 <span>Impuestos ({settings.tax2}%):</span>
                                 <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
