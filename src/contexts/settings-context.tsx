@@ -42,6 +42,10 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const getInitialStoreId = () => {
       if (typeof window !== 'undefined') {
+          // On public pages, always default to the main store ID to show demo data.
+          if (isPublicPage) {
+              return defaultStoreId;
+          }
           return localStorage.getItem(ACTIVE_STORE_ID_KEY) || defaultStoreId;
       }
       return defaultStoreId;
@@ -63,16 +67,18 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
     const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_KEY);
     
-    if (userProfile?.role === 'superAdmin' && storedStoreId) {
-        if (activeStoreId !== storedStoreId) {
+    if (userProfile?.role === 'superAdmin') {
+        if (storedStoreId && activeStoreId !== storedStoreId) {
             setActiveStoreId(storedStoreId);
+        } else if (!storedStoreId) {
+            localStorage.setItem(ACTIVE_STORE_ID_KEY, activeStoreId);
         }
     } else if (userProfile?.storeId) {
         if (activeStoreId !== userProfile.storeId) {
             setActiveStoreId(userProfile.storeId);
             localStorage.setItem(ACTIVE_STORE_ID_KEY, userProfile.storeId);
         }
-    } else if (!isPublicPage) { // Only force default if not on a public page
+    } else if (!isPublicPage) {
         if (activeStoreId !== defaultStoreId) {
             setActiveStoreId(defaultStoreId);
             localStorage.setItem(ACTIVE_STORE_ID_KEY, defaultStoreId);
@@ -149,8 +155,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const latestRate = currencyRatesData?.[0]?.rate;
   const activeRate = activeCurrency === 'primary' ? 1 : (latestRate && latestRate > 0 ? latestRate : 1);
   
-  const isLoadingContext = isUserLoading || isLoading;
-
   return (
     <SettingsContext.Provider value={{ 
         settings, 
@@ -164,7 +168,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         setCurrencyRates: () => {}, 
         activeStoreId,
         switchStore,
-        isLoadingSettings: isLoadingContext,
+        isLoadingSettings: isLoading,
         userProfile: userProfile || null,
     }}>
       {children}
