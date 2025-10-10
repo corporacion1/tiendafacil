@@ -69,7 +69,7 @@ export default function LoginPage() {
     }
     
     // --- Seed the database if it's empty ---
-    setLoadingMessage('Verificando base de datos...');
+    setLoadingMessage('Verificando y preparando la base de datos...');
     await seedDatabase(firestore);
     // --- End of seeding ---
 

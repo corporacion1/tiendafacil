@@ -8,7 +8,6 @@ import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc, query, orderBy } from 'firebase/firestore';
 import { defaultStoreId, defaultStore } from '@/lib/data';
-import { seedDatabase } from '@/lib/seed';
 import { Package } from 'lucide-react';
 
 type DisplayCurrency = 'primary' | 'secondary';
@@ -83,16 +82,22 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [isUserLoading, user, userProfile, isPublicPage, pathname, activeStoreId]);
 
   const settingsDocRef = useMemo(() => {
-    if (!activeStoreId || !firestore) return null;
+    // CRITICAL: Do not create a query if auth is not ready and we are not on a public page.
+    if (!firestore || !activeStoreId || (!isPublicPage && isUserLoading)) {
+      return null;
+    }
     return doc(firestore, 'stores', activeStoreId);
-  }, [activeStoreId, firestore]);
+  }, [activeStoreId, firestore, isUserLoading, isPublicPage]);
 
   const { data: settingsData, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(settingsDocRef);
   
   const currencyRatesQuery = useMemo(() => {
-    if (!activeStoreId || !firestore || isUserLoading) return null;
+     // CRITICAL: Do not create a query if auth is not ready and we are not on a public page.
+    if (!firestore || !activeStoreId || (!isPublicPage && isUserLoading)) {
+        return null;
+    }
     return query(collection(firestore, 'stores', activeStoreId, 'currencyRates'), orderBy('date', 'desc'));
-  }, [activeStoreId, firestore, isUserLoading]);
+  }, [activeStoreId, firestore, isUserLoading, isPublicPage]);
 
   const { data: currencyRatesData, isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
 
@@ -103,15 +108,15 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     if(storedCurrencyPref) setDisplayCurrency(storedCurrencyPref);
   }, []);
   
+  // This is the master loading gate. It ensures that user auth is resolved AND
+  // we have at least attempted to load the store settings before the app renders.
   const isLoading = useMemo(() => {
     if (isPublicPage) {
-        // For public pages, we don't need to wait for user-specific data that might not be available
-        return isLoadingSettingsDoc;
+      return isLoadingSettingsDoc;
     }
-    // For protected pages, wait for everything
-    return isUserLoading || isLoadingProfile || isLoadingSettingsDoc || isLoadingRates;
-  }, [isUserLoading, isLoadingProfile, isLoadingSettingsDoc, isLoadingRates, isPublicPage]);
-
+    return isUserLoading || isLoadingProfile || isLoadingSettingsDoc;
+  }, [isUserLoading, isLoadingProfile, isLoadingSettingsDoc, isPublicPage]);
+  
   // Use a fallback to default settings if the fetched data is null. This is the key change to prevent crashes.
   const settings = settingsData ?? fallbackSettings;
   const currencyRates = currencyRatesData ?? [];
