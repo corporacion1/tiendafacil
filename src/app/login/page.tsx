@@ -14,8 +14,6 @@ import { forceSeedDatabase } from '@/lib/seed';
 export default function LoginPage() {
   const router = useRouter();
 
-  const [email, setEmail] = useState('demo@tiendafacil.com');
-  const [password, setPassword] = useState('demo123');
   const [isLoading, setIsLoading] = useState(false);
 
   // This is a one-time operation for the local demo.
@@ -61,8 +59,7 @@ export default function LoginPage() {
                 id="email"
                 type="email"
                 placeholder="tu@correo.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                defaultValue="demo@tiendafacil.com"
                 required
                 readOnly
               />
@@ -73,8 +70,7 @@ export default function LoginPage() {
                 id="password"
                 type="password"
                 placeholder="********"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                defaultValue="demo123"
                 required
                 readOnly
               />
