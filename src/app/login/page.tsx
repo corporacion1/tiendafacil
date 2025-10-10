@@ -1,95 +1,42 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { 
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  type User as FirebaseUser
-} from 'firebase/auth';
+import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/logo';
-import { useAuth, useUser } from '@/firebase';
 import { Package } from 'lucide-react';
 import { forceSeedDatabase } from '@/lib/seed';
 
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const { toast } = useToast();
-  const auth = useAuth();
-  const { user, isUserLoading } = useUser();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState('demo@tiendafacil.com');
+  const [password, setPassword] = useState('demo123');
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
 
   // This is a one-time operation for the local demo.
   useEffect(() => {
     forceSeedDatabase();
   }, []);
 
-  // Handle manual sign-out from other pages
-  useEffect(() => {
-    if (user && searchParams.get('signed_out')) {
-      signOut(auth);
-      router.replace('/login');
-    }
-  }, [user, searchParams, auth, router]);
-
-  const handleAuthAction = async (authPromise: Promise<any>) => {
-    setIsLoading(true);
-    setLoadingMessage(isSignUp ? 'Creando cuenta...' : 'Iniciando sesión...');
-    try {
-      await authPromise;
-      // On success, the onAuthStateChanged listener in useUser will update the user state,
-      // and the AuthGuard will handle the redirection.
-      setLoadingMessage('¡Todo listo! Redirigiendo...');
-    } catch (error: any) {
-      console.error(error);
-      const errorCode = error.code;
-      let message = "Ocurrió un error. Por favor, intenta de nuevo.";
-       if (errorCode === 'auth/wrong-password' || errorCode === 'auth/invalid-credential') {
-          message = 'La contraseña o el correo son incorrectos.';
-      } else if (errorCode === 'auth/user-not-found') {
-          message = 'No se encontró un usuario con ese correo electrónico.';
-      } else if (errorCode === 'auth/email-already-in-use') {
-          message = 'Este correo electrónico ya está en uso. Intenta iniciar sesión.';
-      } else if (errorCode === 'auth/weak-password') {
-          message = 'La contraseña es muy débil. Debe tener al menos 6 caracteres.';
-      }
-      toast({
-        variant: 'destructive',
-        title: isSignUp ? 'Error en el Registro' : 'Error al Iniciar Sesión',
-        description: message,
-      });
-      setIsLoading(false);
-      setLoadingMessage(null);
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleDemoLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth) return;
-    const promise = isSignUp
-      ? createUserWithEmailAndPassword(auth, email, password)
-      : signInWithEmailAndPassword(auth, email, password);
-    handleAuthAction(promise);
+    setIsLoading(true);
+    // Simulate a network delay and then redirect
+    setTimeout(() => {
+      router.push('/dashboard');
+    }, 500);
   };
   
-  if (isUserLoading || isLoading) {
+  if (isLoading) {
     return (
       <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
         <Package className="w-16 h-16 text-muted-foreground animate-pulse" />
-        <p className="text-muted-foreground animate-pulse">{loadingMessage || 'Cargando...'}</p>
+        <p className="text-muted-foreground animate-pulse">Ingresando al modo demostración...</p>
       </div>
     );
   }
@@ -100,14 +47,14 @@ export default function LoginPage() {
         <CardHeader className="text-center">
           <Logo className="w-64 h-20 mx-auto mb-4" />
           <CardTitle className="text-2xl">
-            {isSignUp ? 'Crea tu Cuenta' : 'Bienvenido'}
+            Modo Demostración
           </CardTitle>
           <CardDescription>
-            {isSignUp ? 'Ingresa tus datos para registrarte' : 'Ingresa a tu cuenta para continuar'}
+            Haz clic en "Ingresar" para acceder a la aplicación.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <form onSubmit={handleSubmit} className="grid gap-4">
+          <form onSubmit={handleDemoLogin} className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="email">Correo Electrónico</Label>
               <Input
@@ -117,6 +64,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                readOnly
               />
             </div>
             <div className="grid gap-2">
@@ -128,16 +76,13 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                readOnly
               />
             </div>
             <Button type="submit" className="w-full">
-              {isSignUp ? 'Crear Cuenta' : 'Ingresar'}
+              Ingresar
             </Button>
           </form>
-
-          <Button variant="link" size="sm" className="w-full" onClick={() => setIsSignUp(!isSignUp)}>
-            {isSignUp ? '¿Ya tienes una cuenta? Inicia Sesión' : '¿No tienes cuenta? Regístrate'}
-          </Button>
         </CardContent>
       </Card>
     </div>
