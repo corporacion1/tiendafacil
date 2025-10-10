@@ -440,11 +440,47 @@ export default function CatalogPage() {
                                         <SheetTitle>Mi Pedido</SheetTitle>
                                     </SheetHeader>
                                     <div className="flex-1 overflow-y-auto py-6">
-                                        {cart.length === 0 && (
+                                        {cart.length === 0 && localOrders.length === 0 && (
                                             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground px-6">
                                                 <ShoppingBag className="h-16 w-16 mb-4" />
                                                 <h3 className="text-lg font-semibold">Tu pedido está vacío</h3>
                                                 <p className="text-sm">Agrega productos del catálogo para comenzar.</p>
+                                            </div>
+                                        )}
+                                        {cart.length === 0 && localOrders.length > 0 && (
+                                             <div className="px-6">
+                                                <h3 className="text-lg font-semibold mb-4">Mis Pedidos Recientes</h3>
+                                                <div className="space-y-4">
+                                                    {localOrders.map(order => (
+                                                        <div key={order.id} className="flex flex-col p-3 rounded-md border bg-background">
+                                                            <div className="flex justify-between items-start">
+                                                                <div>
+                                                                    <p className="font-semibold">{order.id}</p>
+                                                                    <p className="text-sm text-muted-foreground">{new Date(order.date).toLocaleString()}</p>
+                                                                </div>
+                                                                <div className="flex items-center gap-1">
+                                                                    <Button variant="outline" size="sm" onClick={() => handleReShowQR(order.id)}>Ver QR</Button>
+                                                                    <DropdownMenu>
+                                                                        <DropdownMenuTrigger asChild>
+                                                                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                                                <MoreHorizontal className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </DropdownMenuTrigger>
+                                                                        <DropdownMenuContent>
+                                                                            <DropdownMenuItem onSelect={() => handleEditLocalOrder(order)}>
+                                                                                <Pencil className="mr-2 h-4 w-4" /> Editar
+                                                                            </DropdownMenuItem>
+                                                                            <DropdownMenuSeparator />
+                                                                            <DropdownMenuItem onSelect={() => handleDeleteLocalOrder(order.id)} className="text-destructive">
+                                                                                <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                                                                            </DropdownMenuItem>
+                                                                        </DropdownMenuContent>
+                                                                    </DropdownMenu>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
                                         )}
                                         {cart.length > 0 && (
@@ -517,30 +553,6 @@ export default function CatalogPage() {
                         `}</style>
                     </div>
 
-                    {localOrders.length > 0 && (
-                        <Card className="mb-8 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-                            <CardContent className="p-4">
-                                <h3 className="text-lg font-semibold mb-2">Mis Pedidos Recientes</h3>
-                                <div className="space-y-2">
-                                    {localOrders.map(order => (
-                                        <div key={order.id} className="flex items-center justify-between p-2 rounded-md bg-background">
-                                            <div>
-                                                <p className="font-semibold">{order.id}</p>
-                                                <p className="text-sm text-muted-foreground">{new Date(order.date).toLocaleString()}</p>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Button variant="outline" size="sm" onClick={() => handleReShowQR(order.id)}>Ver QR</Button>
-                                                <Button variant="outline" size="sm" onClick={() => handleEditLocalOrder(order)}>Editar</Button>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteLocalOrder(order.id)}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    )}
                     
                     <div className="mb-8">
                          <div className="flex flex-col sm:flex-row gap-4 items-center">
