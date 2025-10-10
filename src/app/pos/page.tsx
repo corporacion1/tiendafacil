@@ -481,7 +481,90 @@ export default function POSPage() {
                 <CardHeader>
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <CardTitle>Productos</CardTitle>
-                        {/* The two buttons that caused issues are removed from here */}
+                    </div>
+                     <div className="mt-4 flex flex-wrap gap-2">
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button variant="outline">
+                                    <QrCode className="mr-2 h-4 w-4" />
+                                    Escanear Pedido
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Cargar Pedido por ID</DialogTitle>
+                                    <DialogDescription>
+                                        Ingresa el ID del pedido (obtenido del código QR) para cargarlo en el carrito.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="flex gap-2 py-4">
+                                    <Input 
+                                        placeholder="ORD-..." 
+                                        value={scannedOrderId} 
+                                        onChange={(e) => setScannedOrderId(e.target.value)} 
+                                    />
+                                    <Button onClick={loadOrderById} disabled={!scannedOrderId}>Cargar</Button>
+                                </div>
+                                <DialogFooter>
+                                    <DialogClose asChild id="scan-order-close-button">
+                                        <Button variant="outline">Cerrar</Button>
+                                    </DialogClose>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button variant="secondary">
+                                    <Archive className="mr-2 h-4 w-4" />
+                                    Pedidos Pendientes
+                                    {(pendingOrders || []).length > 0 && <Badge variant="destructive" className="ml-2">{(pendingOrders || []).length}</Badge>}
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Pedidos Pendientes del Catálogo</DialogTitle>
+                                    <DialogDescription>
+                                        Aquí están los pedidos generados por los clientes desde el catálogo en línea.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="py-4 max-h-96 overflow-y-auto">
+                                    {isLoading && <p>Cargando pedidos...</p>}
+                                    {!isLoading && (pendingOrders || []).length === 0 ? (
+                                        <p className="text-center text-muted-foreground py-8">No hay pedidos pendientes.</p>
+                                    ) : (
+                                        <div className="space-y-4">
+                                        {(pendingOrders || []).map(order => (
+                                            <div key={order.id} className="p-4 border rounded-lg">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h4 className="font-semibold">{order.id}</h4>
+                                                        <p className="text-sm text-muted-foreground">{order.customerName} - {format(new Date(order.date as string), 'dd/MM/yyyy HH:mm')}</p>
+                                                    </div>
+                                                    <Button size="sm" onClick={() => loadPendingOrder(order)}>Cargar</Button>
+                                                </div>
+                                                <Separator className="my-2" />
+                                                <ul className="text-sm space-y-1">
+                                                    {order.items.map(item => (
+                                                        <li key={item.productId} className="flex justify-between">
+                                                            <span>{item.quantity} x {item.productName}</span>
+                                                            <span>${(item.quantity * item.price).toFixed(2)}</span>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                                <Separator className="my-2" />
+                                                <p className="text-right font-bold">Total: ${order.total.toFixed(2)}</p>
+                                            </div>
+                                        ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <DialogFooter>
+                                    <DialogClose asChild id="pending-orders-close-button">
+                                        <Button variant="outline">Cerrar</Button>
+                                    </DialogClose>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
                     </div>
                     <div className="mt-4 flex gap-4">
                         <Input
@@ -507,7 +590,7 @@ export default function POSPage() {
                 </CardHeader>
                 <CardContent>
                 {isLoading && <p>Cargando productos...</p>}
-                <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {filteredProducts.map((product) => (
                     <ProductCard 
                         key={product.id} 
