@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, setDocumentNonBlocking } from '@/firebase';
-import { collection, doc, query, orderBy } from 'firebase/firestore';
+import { collection, doc, query, orderBy, getDoc } from 'firebase/firestore';
 import { defaultStoreId, defaultStore } from '@/lib/data';
 
 type DisplayCurrency = 'primary' | 'secondary';
@@ -64,20 +64,23 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   // Effect to resolve user profile and storeId
   useEffect(() => {
-    if (isUserLoading) return;
-    if (!user || isPublicPage) {
+    if (isUserLoading || !firestore) return;
+  
+    const fetchUserProfile = async () => {
+      if (!user) {
         setUserProfile(null);
         setActiveStoreId(defaultStoreId);
         setIsLoading(false);
         return;
-    };
-    
-    const userRef = doc(firestore, 'users', user.uid);
-    const unsubscribe = useDoc<UserProfile>(userRef);
-
-    if (!unsubscribe.isLoading) {
-        const profile = unsubscribe.data;
+      }
+      
+      const userRef = doc(firestore, 'users', user.uid);
+      try {
+        const docSnap = await getDoc(userRef);
+        const profile = docSnap.exists() ? docSnap.data() as UserProfile : null;
+        
         setUserProfile(profile);
+
         let resolvedId = defaultStoreId;
         if (profile) {
             if (profile.role === 'superAdmin') {
@@ -90,8 +93,16 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         if(profile?.role === 'superAdmin') {
             localStorage.setItem(ACTIVE_STORE_ID_KEY, resolvedId);
         }
-    }
-    // This effect should only run when user or loading status changes.
+
+      } catch (error) {
+        console.error("Error fetching user profile:", error);
+        setUserProfile(null);
+        setActiveStoreId(defaultStoreId);
+      }
+    };
+  
+    fetchUserProfile();
+
   }, [user, isUserLoading, firestore, isPublicPage]);
 
   // Fetch store settings based on the resolved activeStoreId
