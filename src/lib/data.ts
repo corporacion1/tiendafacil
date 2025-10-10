@@ -67,7 +67,6 @@ export const mockCurrencyRates: Omit<CurrencyRate, 'id'>[] = [
 ];
 
 export const defaultCustomers: Omit<Customer, 'storeId'>[] = [
-    { id: 'eventual', name: 'Cliente Eventual', phone: '', address: '' },
     { id: 'cust-1', name: 'John Doe', phone: '555-1234', address: '123 Main St' },
     { id: 'cust-2', name: 'Jane Smith', phone: '555-5678', address: '456 Oak Ave' },
 ];
