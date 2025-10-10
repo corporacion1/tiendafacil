@@ -8,7 +8,6 @@ import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc, query, orderBy } from 'firebase/firestore';
 import { defaultStoreId } from '@/lib/data';
-import { Package } from 'lucide-react';
 
 type DisplayCurrency = 'primary' | 'secondary';
 
@@ -43,9 +42,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const [activeStoreId, setActiveStoreId] = useState<string>('');
   
   const userProfileRef = useMemo(() => {
-    if (!user || !firestore) return null;
+    if (isUserLoading || !user || !firestore) return null;
     return doc(firestore, 'users', user.uid);
-  }, [user, firestore]);
+  }, [user, isUserLoading, firestore]);
 
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
 
@@ -63,26 +62,25 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         }
     }
     
-    if (resolvedId) {
+    if (resolvedId && resolvedId !== activeStoreId) {
         setActiveStoreId(resolvedId);
         if (!isPublicPage && typeof window !== 'undefined') {
             localStorage.setItem(ACTIVE_STORE_ID_KEY, resolvedId);
         }
     }
-  }, [isUserLoading, user, userProfile, isPublicPage, pathname]);
+  }, [isUserLoading, user, userProfile, isPublicPage, pathname, activeStoreId]);
 
   const settingsDocRef = useMemo(() => {
-    // CRITICAL: Do not create a ref until auth is resolved and we have a store ID.
-    if (isUserLoading || !activeStoreId || !firestore) return null;
+    if (!activeStoreId || !firestore) return null;
     return doc(firestore, 'stores', activeStoreId);
-  }, [isUserLoading, activeStoreId, firestore]);
+  }, [activeStoreId, firestore]);
 
   const { data: settings, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(settingsDocRef);
   
   const currencyRatesQuery = useMemo(() => {
-    if (isUserLoading || !firestore || !activeStoreId) return null;
+    if (!activeStoreId || !firestore) return null;
     return query(collection(firestore, 'stores', activeStoreId, 'currencyRates'), orderBy('date', 'desc'));
-  }, [isUserLoading, firestore, activeStoreId]);
+  }, [activeStoreId, firestore]);
 
   const { data: currencyRatesData = [], isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
 
@@ -93,7 +91,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     if(storedCurrencyPref) setDisplayCurrency(storedCurrencyPref);
   }, []);
   
-  const isLoading = isUserLoading || (!isPublicPage && isLoadingProfile) || isLoadingSettingsDoc || isLoadingRates;
+  const isLoading = isUserLoading || (!isPublicPage && isLoadingProfile) || (!isPublicPage && !activeStoreId) || isLoadingSettingsDoc || isLoadingRates;
 
   const handleSetSettings = (newSettings: Settings) => {
     if (!settingsDocRef || !firestore) return;
@@ -138,17 +136,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     isLoadingSettings: isLoading,
     userProfile: userProfile || null,
   };
-
-  if (isLoading && !isPublicPage) {
-    return (
-        <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
-            <div className="p-4 bg-muted rounded-full">
-                <Package className="w-12 h-12 text-muted-foreground" />
-            </div>
-            <p className="text-muted-foreground animate-pulse">Cargando configuración de la tienda...</p>
-        </div>
-    );
-  }
 
   return (
     <SettingsContext.Provider value={contextValue}>
