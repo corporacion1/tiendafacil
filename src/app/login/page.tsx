@@ -9,7 +9,8 @@ import {
   getRedirectResult,
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
-  signInWithEmailAndPassword
+  signInWithEmailAndPassword,
+  type User as FirebaseUser
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 
@@ -20,7 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Logo } from '@/components/logo';
-import { useAuth, useFirestore, useUser } from '@/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 import type { UserProfile } from '@/lib/types';
 import { useSettings } from '@/contexts/settings-context';
 
@@ -35,6 +36,40 @@ export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(true); // Start as true to handle redirect check
 
+  /**
+   * Creates or updates a user profile in Firestore.
+   * Checks if a user already exists before writing to prevent data duplication.
+   * If user exists, it merges new data (like photoURL). Otherwise, creates a new profile.
+   */
+  const createUserProfile = async (firebaseUser: FirebaseUser) => {
+    if (!firestore) return;
+    const userRef = doc(firestore, 'users', firebaseUser.uid);
+
+    const userDoc = await getDoc(userRef);
+
+    if (userDoc.exists()) {
+      // User already exists, update their profile with potentially new info from provider
+      await setDoc(userRef, {
+        displayName: firebaseUser.displayName || userDoc.data()?.displayName,
+        photoURL: firebaseUser.photoURL,
+        email: firebaseUser.email, // Keep email updated
+      }, { merge: true });
+    } else {
+      // User does not exist, create a new profile
+      const newUserProfile: Omit<UserProfile, 'createdAt'> = {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        displayName: firebaseUser.displayName || email.split('@')[0],
+        photoURL: firebaseUser.photoURL,
+        role: 'user', // New users always start with 'user' role
+        status: 'active',
+        storeRequest: false,
+      };
+      await setDoc(userRef, { ...newUserProfile, createdAt: serverTimestamp() });
+    }
+  };
+
+
   // Handle redirect result from Google sign-in
   useEffect(() => {
     const processRedirect = async () => {
@@ -43,16 +78,8 @@ export default function LoginPage() {
         try {
             const result = await getRedirectResult(auth);
             if (result && result.user) {
-                const userRef = doc(firestore, "users", result.user.uid);
-                const userDoc = await getDoc(userRef);
-
-                if (!userDoc.exists()) {
-                    await createUserProfile(result.user);
-                    toast({ title: '¡Bienvenido! Cuenta creada con Google.' });
-                } else {
-                    await createUserProfile(result.user, true); // Merge to update photoURL etc.
-                    toast({ title: 'Inicio de Sesión con Google Exitoso' });
-                }
+                await createUserProfile(result.user);
+                toast({ title: '¡Bienvenido!', description: 'Has iniciado sesión con Google.' });
                 router.replace('/dashboard');
             }
         } catch (error) {
@@ -69,36 +96,6 @@ export default function LoginPage() {
 
     processRedirect();
   }, [auth, firestore, router, toast]);
-
-  const createUserProfile = async (firebaseUser: any, merge = false) => {
-    if (!firestore) return;
-    const userRef = doc(firestore, 'users', firebaseUser.uid);
-    
-    // Check if document already exists, if so, don't override role.
-    const userDoc = await getDoc(userRef);
-    const existingData = userDoc.data() as UserProfile;
-    
-    const role = existingData?.role || 'user'; // Keep existing role or default to 'user'
-
-    const newUserProfile: Omit<UserProfile, 'createdAt'> = {
-      uid: firebaseUser.uid,
-      email: firebaseUser.email,
-      displayName: firebaseUser.displayName || email.split('@')[0],
-      photoURL: firebaseUser.photoURL,
-      role: role,
-      status: 'active',
-      storeRequest: false,
-    };
-    
-    if (merge) {
-        await setDoc(userRef, {
-            displayName: newUserProfile.displayName,
-            photoURL: newUserProfile.photoURL,
-        }, { merge: true });
-    } else {
-        await setDoc(userRef, { ...newUserProfile, createdAt: serverTimestamp() });
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
