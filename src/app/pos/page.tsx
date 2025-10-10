@@ -103,6 +103,12 @@ export default function POSPage() {
   const [productDetails, setProductDetails] = useState<Product | null>(null);
   const [productImageError, setImageError] = useState(false);
   
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   const generateSaleId = () => {
     const series = settings?.saleSeries || 'SALE';
     const highestId = (sales || []).reduce((max, sale) => {
@@ -472,6 +478,10 @@ export default function POSPage() {
         toast({ variant: "destructive", title: "Pedido no encontrado" });
     }
   };
+
+  if (!isClient) {
+    return null;
+  }
 
   return (
     <Dialog onOpenChange={(open) => { if (!open) setProductDetails(null); setImageError(false); }}>
