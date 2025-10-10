@@ -50,12 +50,12 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const isPublicPage = useMemo(() => pathname === '/' || pathname.startsWith('/catalog') || pathname.startsWith('/login'), [pathname]);
 
-  const [activeStoreId, setActiveStoreId] = useState<string>('');
+  const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
   
   const userProfileRef = useMemo(() => {
-    if (isUserLoading || !user || !firestore) return null;
+    if (isUserLoading || !user || !firestore || isPublicPage) return null;
     return doc(firestore, 'users', user.uid);
-  }, [user, isUserLoading, firestore]);
+  }, [user, isUserLoading, firestore, isPublicPage]);
 
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
 
@@ -70,7 +70,11 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
             resolvedId = localStorage.getItem(ACTIVE_STORE_ID_KEY) || defaultStoreId;
         } else if (userProfile.storeId) {
             resolvedId = userProfile.storeId;
+        } else {
+            resolvedId = defaultStoreId; // Fallback for admin without store
         }
+    } else {
+        resolvedId = defaultStoreId; // Fallback for non-logged in users on protected pages
     }
     
     if (resolvedId && resolvedId !== activeStoreId) {
@@ -82,22 +86,20 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [isUserLoading, user, userProfile, isPublicPage, pathname, activeStoreId]);
 
   const settingsDocRef = useMemo(() => {
-    // CRITICAL: Do not create a query if auth is not ready and we are not on a public page.
-    if (!firestore || !activeStoreId || (!isPublicPage && isUserLoading)) {
+    if (!firestore || !activeStoreId || isPublicPage) {
       return null;
     }
     return doc(firestore, 'stores', activeStoreId);
-  }, [activeStoreId, firestore, isUserLoading, isPublicPage]);
+  }, [activeStoreId, firestore, isPublicPage]);
 
   const { data: settingsData, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(settingsDocRef);
   
   const currencyRatesQuery = useMemo(() => {
-     // CRITICAL: Do not create a query if auth is not ready and we are not on a public page.
-    if (!firestore || !activeStoreId || (!isPublicPage && isUserLoading)) {
+    if (!firestore || !activeStoreId || isPublicPage) {
         return null;
     }
     return query(collection(firestore, 'stores', activeStoreId, 'currencyRates'), orderBy('date', 'desc'));
-  }, [activeStoreId, firestore, isUserLoading, isPublicPage]);
+  }, [activeStoreId, firestore, isPublicPage]);
 
   const { data: currencyRatesData, isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
 
@@ -108,16 +110,14 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     if(storedCurrencyPref) setDisplayCurrency(storedCurrencyPref);
   }, []);
   
-  // This is the master loading gate. It ensures that user auth is resolved AND
-  // we have at least attempted to load the store settings before the app renders.
   const isLoading = useMemo(() => {
     if (isPublicPage) {
-      return isLoadingSettingsDoc;
+      return false; // Never show loading screen on public pages
     }
+    // On protected pages, wait for auth and settings
     return isUserLoading || isLoadingProfile || isLoadingSettingsDoc;
   }, [isUserLoading, isLoadingProfile, isLoadingSettingsDoc, isPublicPage]);
   
-  // Use a fallback to default settings if the fetched data is null. This is the key change to prevent crashes.
   const settings = settingsData ?? fallbackSettings;
   const currencyRates = currencyRatesData ?? [];
 

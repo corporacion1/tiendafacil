@@ -66,14 +66,45 @@ export async function factoryReset(db: Firestore) {
   ];
   
   // We need to handle this in multiple batches if there is a lot of data.
-  const batch = writeBatch(db);
+  let batch = writeBatch(db);
+  let operationCount = 0;
+  const commitPromises: Promise<void>[] = [];
 
   for (const collectionName of collectionsToDelete) {
-      await deleteCollection(db, collectionName, batch);
+      const collectionRef = collection(db, collectionName);
+      const snapshot = await getDocs(collectionRef);
+      if (snapshot.empty) continue;
+      
+      for (const docSnapshot of snapshot.docs) {
+          if (collectionName === 'stores') {
+              const currencyRatesRef = collection(db, `stores/${docSnapshot.id}/currencyRates`);
+              const ratesSnapshot = await getDocs(currencyRatesRef);
+              for (const rateDoc of ratesSnapshot.docs) {
+                  batch.delete(rateDoc.ref);
+                  operationCount++;
+                   if (operationCount >= 499) {
+                      commitPromises.push(batch.commit());
+                      batch = writeBatch(db);
+                      operationCount = 0;
+                  }
+              }
+          }
+          batch.delete(docSnapshot.ref);
+          operationCount++;
+           if (operationCount >= 499) {
+              commitPromises.push(batch.commit());
+              batch = writeBatch(db);
+              operationCount = 0;
+          }
+      }
+  }
+
+  if (operationCount > 0) {
+      commitPromises.push(batch.commit());
   }
 
   try {
-    await batch.commit();
+    await Promise.all(commitPromises);
     console.log("Firestore factory reset complete.");
   } catch (error) {
     console.error("Error during factory reset commit:", error);
