@@ -72,9 +72,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [isUserLoading, user, userProfile, isPublicPage, pathname, activeStoreId]);
 
   const settingsDocRef = useMemo(() => {
-    if (!activeStoreId || !firestore) return null;
+    if (!activeStoreId || !firestore || isUserLoading) return null;
     return doc(firestore, 'stores', activeStoreId);
-  }, [activeStoreId, firestore]);
+  }, [activeStoreId, firestore, isUserLoading]);
 
   const { data: settings, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(settingsDocRef);
   
@@ -83,7 +83,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     return query(collection(firestore, 'stores', activeStoreId, 'currencyRates'), orderBy('date', 'desc'));
   }, [isUserLoading, activeStoreId, firestore]);
 
-  const { data: currencyRatesData = [], isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
+  const { data: currencyRatesData, isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
+  const currencyRates = useMemo(() => currencyRatesData || [], [currencyRatesData]);
 
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   
@@ -93,11 +94,13 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, []);
   
   const isLoading = useMemo(() => {
+    // For public pages, we just need the store settings. We don't wait for user profile or rates.
     if (isPublicPage) {
-      return !activeStoreId || isLoadingSettingsDoc;
+      return isLoadingSettingsDoc || !activeStoreId;
     }
-    return isUserLoading || isLoadingProfile || !activeStoreId || isLoadingSettingsDoc || isLoadingRates;
-  }, [isUserLoading, isLoadingProfile, activeStoreId, isLoadingSettingsDoc, isLoadingRates, isPublicPage]);
+    // For protected pages, we wait for everything.
+    return isUserLoading || isLoadingProfile || isLoadingSettingsDoc || isLoadingRates || !activeStoreId;
+  }, [isUserLoading, isLoadingProfile, isLoadingSettingsDoc, isLoadingRates, activeStoreId, isPublicPage]);
 
 
   const handleSetSettings = (newSettings: Settings) => {
@@ -124,9 +127,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   };
 
   const activeCurrency = displayCurrency;
-  const activeSymbol = activeCurrency === 'primary' ? settings?.primaryCurrencySymbol || '$' : settings?.secondaryCurrencySymbol || 'Bs.';
+  const activeSymbol = activeCurrency === 'primary' ? (settings?.primaryCurrencySymbol || '$') : (settings?.secondaryCurrencySymbol || 'Bs.');
   
-  const latestRate = currencyRatesData?.[0]?.rate;
+  const latestRate = currencyRates?.[0]?.rate;
   const activeRate = activeCurrency === 'primary' ? 1 : (latestRate && latestRate > 0 ? latestRate : 1);
 
   const contextValue: SettingsContextType = {
@@ -137,7 +140,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     activeCurrency, 
     activeSymbol, 
     activeRate, 
-    currencyRates: currencyRatesData, 
+    currencyRates: currencyRates, 
     activeStoreId,
     switchStore,
     isLoadingSettings: isLoading,

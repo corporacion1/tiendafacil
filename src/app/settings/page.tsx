@@ -834,6 +834,34 @@ export default function SettingsPage() {
                     <CardContent className="space-y-4">
                         <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
                             <div>
+                                <p className="font-medium">Poblar Base de Datos</p>
+                                <p className="text-sm text-muted-foreground">
+                                    Añade datos de demostración a la base de datos (productos, clientes, etc.).
+                                </p>
+                            </div>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="secondary" disabled={isSeeding}>
+                                        <Database className="mr-2 h-4 w-4" />
+                                        {isSeeding ? 'Poblando...' : 'Poblar con Datos Demo'}
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>¿Poblar la base de datos?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Esta acción agregará datos de demostración. Si ya existen datos con los mismos IDs, serán sobreescritos.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleSeedDatabase}>Sí, poblar</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
+                        <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
+                            <div>
                                 <p className="font-medium text-destructive">Restaurar Datos de Fábrica</p>
                                 <p className="text-sm text-muted-foreground">
                                     Borra todos los datos locales y de la base de datos.
