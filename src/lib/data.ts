@@ -1,7 +1,7 @@
 
 import type { Product, Sale, Unit, Family, Warehouse, Customer, Purchase, Ad, UserProfile, Store, CurrencyRate } from '@/lib/types';
 import { PlaceHolderImages } from './placeholder-images';
-import { subDays, subHours, addDays } from 'date-fns';
+import { subDays, addDays } from 'date-fns';
 
 // --- IDs ÚNICOS Y CONSTANTES ---
 // ID único y robusto para la tienda por defecto.

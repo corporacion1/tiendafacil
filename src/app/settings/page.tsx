@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import { useState, useMemo, useEffect } from "react";
@@ -13,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Unit, Family, Warehouse, CurrencyRate, Product } from "@/lib/types";
+import { Unit, Family, Warehouse, CurrencyRate, Product, Settings } from "@/lib/types";
 import { Pencil, PlusCircle, Trash2, AlertTriangle, Database, Package, ImageOff } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
@@ -120,7 +119,7 @@ export default function SettingsPage() {
     const { settings, setSettings, activeStoreId, currencyRates, userProfile } = useSettings();
     const firestore = useFirestore();
     
-    const [localSettings, setLocalSettings] = useState(settings || {});
+    const [localSettings, setLocalSettings] = useState<Partial<Settings>>(settings || {});
     const [imageError, setImageError] = useState(false);
 
     const unitsQuery = useMemo(() => {

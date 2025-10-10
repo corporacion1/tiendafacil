@@ -33,6 +33,16 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 const ACTIVE_STORE_ID_KEY = 'tienda_facil_active_store_id';
 const CURRENCY_PREF_STORAGE_KEY = 'tienda_facil_currency_pref';
 
+// Fallback settings if firestore is empty
+const fallbackSettings: Settings = {
+  ...defaultStore,
+  name: "Cargando Tienda...",
+  primaryCurrencySymbol: "$",
+  secondaryCurrencySymbol: "Bs.",
+  tax1: 0,
+  tax2: 0,
+}
+
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -62,12 +72,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         } else if (userProfile.storeId) {
             resolvedId = userProfile.storeId;
         }
-    } else if (!user && !isPublicPage) {
-        // This case is handled by AuthGuard, but as a fallback...
-        return;
-    } else if (!userProfile && !isPublicPage && !isUserLoading && user) {
-        // User is logged in but profile doesn't exist yet, wait
-        return;
     }
     
     if (resolvedId && resolvedId !== activeStoreId) {
@@ -86,7 +90,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { data: settingsData, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(settingsDocRef);
   
   const currencyRatesQuery = useMemo(() => {
-    if (!activeStoreId || !firestore || isUserLoading) return null; // Added isUserLoading guard
+    if (!activeStoreId || !firestore || isUserLoading) return null;
     return query(collection(firestore, 'stores', activeStoreId, 'currencyRates'), orderBy('date', 'desc'));
   }, [activeStoreId, firestore, isUserLoading]);
 
@@ -101,15 +105,15 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   
   const isLoading = useMemo(() => {
     if (isPublicPage) {
-        // For public pages, we don't need to wait for user-specific data
+        // For public pages, we don't need to wait for user-specific data that might not be available
         return isLoadingSettingsDoc;
     }
     // For protected pages, wait for everything
     return isUserLoading || isLoadingProfile || isLoadingSettingsDoc || isLoadingRates;
   }, [isUserLoading, isLoadingProfile, isLoadingSettingsDoc, isLoadingRates, isPublicPage]);
 
-  // Use a fallback to default settings if the fetched data is null
-  const settings = settingsData ?? (activeStoreId === defaultStoreId ? defaultStore : null);
+  // Use a fallback to default settings if the fetched data is null. This is the key change to prevent crashes.
+  const settings = settingsData ?? fallbackSettings;
   const currencyRates = currencyRatesData ?? [];
 
 
