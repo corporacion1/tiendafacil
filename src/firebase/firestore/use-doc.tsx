@@ -49,57 +49,54 @@ export function useDoc<T = any>(
   const { isUserLoading } = useUser();
   const [data, setData] = useState<StateDataType>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
-  const unsubscribeRef = useRef<Unsubscribe | null>(null);
 
   const shouldFetch = !!memoizedDocRef && !isUserLoading;
 
   useEffect(() => {
-    // Always clean up the previous listener when the ref or user loading state changes.
-    if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-    }
-    unsubscribeRef.current = null;
-
-    // Reset state if we should not fetch
+    // This effect handles resetting the state when the ref becomes invalid.
     if (!shouldFetch) {
-        setData(null);
-        setError(null);
-        return;
+      setData(null);
+      setError(null);
     }
+  }, [shouldFetch]);
+
+  useEffect(() => {
+    let unsubscribe: Unsubscribe | null = null;
     
-    // Set up the new listener
-    setError(null);
-    
-    unsubscribeRef.current = onSnapshot(
-      memoizedDocRef,
-      (snapshot: DocumentSnapshot<DocumentData>) => {
-        if (snapshot.exists()) {
-          setData({ ...(snapshot.data() as T), id: snapshot.id });
-        } else {
-          setData(null);
+    if (shouldFetch) {
+      setError(null); // Reset error on new subscription attempt.
+
+      unsubscribe = onSnapshot(
+        memoizedDocRef,
+        (snapshot: DocumentSnapshot<DocumentData>) => {
+          if (snapshot.exists()) {
+            setData({ ...(snapshot.data() as T), id: snapshot.id });
+          } else {
+            setData(null);
+          }
+          setError(null); // Clear previous errors on successful fetch
+        },
+        (err: FirestoreError) => {
+          const contextualError = new FirestorePermissionError({
+            operation: 'get',
+            path: memoizedDocRef.path,
+          })
+
+          setError(contextualError)
+          setData(null)
+
+          errorEmitter.emit('permission-error', contextualError);
         }
-        setError(null); // Clear previous errors on successful fetch
-      },
-      (err: FirestoreError) => {
-        const contextualError = new FirestorePermissionError({
-          operation: 'get',
-          path: memoizedDocRef.path,
-        })
+      );
+    }
 
-        setError(contextualError)
-        setData(null)
-
-        errorEmitter.emit('permission-error', contextualError);
-      }
-    );
-
-    // Main cleanup function for when the component unmounts
+    // The main cleanup function for when the component unmounts or dependencies change.
     return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
+      if (unsubscribe) {
+        unsubscribe();
       }
     };
-  }, [memoizedDocRef, isUserLoading]);
+  }, [memoizedDocRef, isUserLoading]); // Reruns only if the ref or user loading state changes.
   
   const isLoading = (shouldFetch && data === null && error === null) || isUserLoading;
 
