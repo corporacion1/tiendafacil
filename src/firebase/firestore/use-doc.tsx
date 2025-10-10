@@ -1,4 +1,3 @@
-
 'use client';
     
 import { useState, useEffect, useRef } from 'react';
@@ -49,6 +48,7 @@ export function useDoc<T = any>(
   const { isUserLoading } = useUser();
   const [data, setData] = useState<StateDataType>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
+  const unsubscribeRef = useRef<Unsubscribe | null>(null);
 
   const shouldFetch = !!memoizedDocRef && !isUserLoading;
 
@@ -61,12 +61,16 @@ export function useDoc<T = any>(
   }, [shouldFetch]);
 
   useEffect(() => {
-    let unsubscribe: Unsubscribe | null = null;
+    // Clean up the previous listener if it exists.
+    if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+    }
     
     if (shouldFetch) {
       setError(null); // Reset error on new subscription attempt.
 
-      unsubscribe = onSnapshot(
+      unsubscribeRef.current = onSnapshot(
         memoizedDocRef,
         (snapshot: DocumentSnapshot<DocumentData>) => {
           if (snapshot.exists()) {
@@ -92,8 +96,9 @@ export function useDoc<T = any>(
 
     // The main cleanup function for when the component unmounts or dependencies change.
     return () => {
-      if (unsubscribe) {
-        unsubscribe();
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
       }
     };
   }, [memoizedDocRef, isUserLoading]); // Reruns only if the ref or user loading state changes.

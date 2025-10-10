@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -50,6 +49,7 @@ export function useCollection<T = any>(
   const { isUserLoading } = useUser();
   const [data, setData] = useState<StateDataType>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
+  const unsubscribeRef = useRef<Unsubscribe | null>(null);
   
   const shouldFetch = !!memoizedTargetRefOrQuery && !isUserLoading;
 
@@ -62,12 +62,18 @@ export function useCollection<T = any>(
   }, [shouldFetch]);
 
   useEffect(() => {
-    let unsubscribe: Unsubscribe | null = null;
+    // Manages the subscription lifecycle.
     
+    // Clean up the previous listener if it exists.
+    if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+    }
+
     if (shouldFetch) {
       setError(null); // Reset error on new subscription attempt.
       
-      unsubscribe = onSnapshot(
+      unsubscribeRef.current = onSnapshot(
         memoizedTargetRefOrQuery,
         (snapshot: QuerySnapshot<DocumentData>) => {
           const results: ResultItemType[] = [];
@@ -100,8 +106,9 @@ export function useCollection<T = any>(
 
     // The main cleanup function. It is called on unmount or when dependencies change.
     return () => {
-      if (unsubscribe) {
-        unsubscribe();
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
       }
     };
   }, [memoizedTargetRefOrQuery, isUserLoading]); // Reruns only if the query or user loading state changes.
