@@ -56,13 +56,12 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     if (isPublicPage) {
         resolvedId = defaultStoreId;
     } else if (user && userProfile) {
+        // SuperAdmin can switch stores, so we respect the stored ID.
         if (userProfile.role === 'superAdmin') {
             resolvedId = localStorage.getItem(ACTIVE_STORE_ID_KEY) || defaultStoreId;
         } else if (userProfile.storeId) {
             resolvedId = userProfile.storeId;
         }
-    } else if (!user && !isPublicPage) {
-        // Logged out on a private page, clear storeId, this state is handled by AuthGuard
     }
     
     setActiveStoreId(resolvedId);
@@ -92,7 +91,14 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     if(storedCurrencyPref) setDisplayCurrency(storedCurrencyPref);
   }, []);
   
-  const isLoading = isUserLoading || isLoadingProfile || (!activeStoreId && !isPublicPage) || isLoadingSettingsDoc || isLoadingRates;
+  // The main loading state is determined by whether we have a valid storeId (for private pages)
+  // and whether the settings for that store have been fetched.
+  const isLoading = (
+    isUserLoading || 
+    (!isPublicPage && (!userProfile || !activeStoreId)) ||
+    isLoadingSettingsDoc || 
+    isLoadingRates
+  );
   
   const handleSetSettings = (newSettings: Settings) => {
     if (!settingsDocRef || !firestore) return;
@@ -138,17 +144,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     userProfile: userProfile || null,
   };
   
-  if (isLoading && !isPublicPage) {
-    return (
-        <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
-            <div className="p-4 bg-muted rounded-full">
-                <Package className="w-12 h-12 text-muted-foreground" />
-            </div>
-            <p className="text-muted-foreground animate-pulse">Conectando a la tienda...</p>
-        </div>
-    );
-  }
-  
+  // This provider now correctly renders children and lets the AuthGuard handle the loading UI
   return (
     <SettingsContext.Provider value={contextValue}>
       {children}

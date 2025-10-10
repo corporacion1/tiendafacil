@@ -7,13 +7,15 @@ import { useEffect } from "react";
 import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
 import { PinModal } from "./pin-modal";
+import { Logo } from "./logo";
+import { Package } from "lucide-react";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
     const { isUserLoading, user } = useUser();
     const router = useRouter();
     const pathname = usePathname();
     const { isSecurityReady, isLocked, hasPin, lockApp } = useSecurity();
-    const { userProfile, isLoadingSettings, activeStoreId } = useSettings();
+    const { isLoadingSettings } = useSettings();
     
     const isPublicPage = pathname === '/' || pathname.startsWith('/catalog') || pathname.startsWith('/login');
 
@@ -28,37 +30,25 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const isLoading = isUserLoading || !isSecurityReady || isLoadingSettings;
     
     useEffect(() => {
-        if (isLoading) return;
+        if (isUserLoading) return;
         
-        // If we are not on a public page and there's no active store ID, something is wrong.
-        // The SettingsProvider should have handled this, but as a safeguard, we redirect.
-        if (!isPublicPage && !activeStoreId) {
-             router.replace('/');
-             return;
-        }
-
+        // If there's no user and we are on a private page, redirect to login
         if (!user && !isPublicPage) {
-            router.replace('/');
-            return;
-        }
-    
-        if (user && (pathname === '/' || pathname === '/login')) {
-            router.replace('/dashboard');
+            router.replace('/login');
             return;
         }
         
-        // This rule is a bit rigid, but for now, if a user has role 'user', they can only access catalog.
-        if (user && userProfile && userProfile.role === 'user' && !pathname.startsWith('/catalog')) {
-            router.replace('/catalog');
-            return;
-        }
+    }, [isUserLoading, user, isPublicPage, pathname, router]);
 
-    }, [isLoading, isPublicPage, user, userProfile, pathname, router, activeStoreId]);
-
-    // The main loading indicator is now in SettingsProvider.
-    // AuthGuard now only handles its specific responsibilities: Pin lock and routing.
     if (isLoading) {
-      return null; // The SettingsProvider is already showing a loading screen.
+      return (
+         <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
+            <div className="p-4 bg-muted rounded-full">
+                <Package className="w-12 h-12 text-muted-foreground" />
+            </div>
+            <p className="text-muted-foreground animate-pulse">Iniciando aplicación...</p>
+        </div>
+      );
     }
 
     if (isPublicPage) {
@@ -69,5 +59,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         return <PinModal />;
     }
 
+    // At this point, user is authenticated and app is not locked.
+    // If we're on a protected page, render the children.
     return <>{children}</>;
 }
