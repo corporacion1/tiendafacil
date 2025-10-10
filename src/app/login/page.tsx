@@ -24,7 +24,7 @@ import { Logo } from '@/components/logo';
 import { useAuth, useFirestore, useUser } from '@/firebase';
 import type { UserProfile, Settings } from '@/lib/types';
 import { Package } from 'lucide-react';
-import { seedDatabase } from '@/lib/seed';
+import { forceSeedDatabase } from '@/lib/seed';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -38,33 +38,31 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
 
-  // --- ONE-TIME DATABASE SEEDING LOGIC ---
+  // --- ONE-TIME DATABASE SEEDING LOGIC (BRUTE FORCE) ---
   useEffect(() => {
-    // This effect runs only once when the component mounts.
     const runSeed = async () => {
-      if (!firestore) return;
-
-      try {
-        const seeded = await seedDatabase(firestore);
-        if (seeded) {
-          toast({
-            title: "Éxito",
-            description: "Base de datos sembrada exitosamente.",
-            duration: 5000,
-          });
-        } else {
-          toast({
-            title: "Información",
-            description: "La base de datos ya contiene datos. No se requiere siembra.",
-            duration: 5000,
-          });
-        }
-      } catch (error) {
-        console.error("Error during database seed:", error);
+      if (!firestore) {
         toast({
           variant: "destructive",
-          title: "Error Crítico al Sembrar",
-          description: "No se pudo sembrar la base de datos. Revisa la consola.",
+          title: "ERROR: Firestore no está listo",
+          duration: 5000,
+        });
+        return;
+      };
+
+      try {
+        await forceSeedDatabase(firestore);
+        toast({
+          title: "ÉXITO: Base de datos sembrada a la fuerza.",
+          description: "La operación de escritura se ha completado.",
+          duration: 5000,
+        });
+      } catch (error) {
+        console.error("Error during forceful database seed:", error);
+        toast({
+          variant: "destructive",
+          title: "ERROR: No se pudo sembrar la base de datos",
+          description: "Revisa la consola para más detalles.",
           duration: 5000,
         });
       }
