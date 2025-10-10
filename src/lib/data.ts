@@ -241,5 +241,3 @@ export async function trackAdClick(adId: string) {
   //   views: increment(1)
   // });
 }
-
-    
