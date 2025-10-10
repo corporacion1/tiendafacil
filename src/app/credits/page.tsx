@@ -16,40 +16,19 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import type { Sale, Payment, Product } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
-import { paymentMethods } from "@/lib/data";
+import { paymentMethods, mockSales, mockProducts } from "@/lib/data";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { useCollection, useFirestore, useUser } from "@/firebase";
-import { collection, doc, orderBy, query, where, writeBatch, collectionGroup } from "firebase/firestore";
 
 export default function CreditsPage() {
     const { toast } = useToast();
-    const firestore = useFirestore();
     const { settings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
-    const { isUserLoading } = useUser();
-    const isSuperAdmin = userProfile?.role === 'superAdmin';
 
-    const salesQuery = useMemo(() => {
-        if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
-        return isSuperAdmin
-            ? query(collectionGroup(firestore, 'sales'))
-            : query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
-    }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
-    const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
-    
-    const { data: productsData, isLoading: isLoadingProducts } = useCollection<Product>(useMemo(() => {
-        if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
-        return isSuperAdmin
-            ? query(collectionGroup(firestore, 'products'))
-            : query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
-    }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]));
+    // Use local data instead of Firebase
+    const [sales, setSales] = useState<Sale[]>(mockSales.map(s => ({ ...s, storeId: activeStoreId })));
+    const [products, setProducts] = useState<Product[]>(mockProducts.map(p => ({ ...p, storeId: activeStoreId, createdAt: new Date().toISOString() })));
 
-    const sales = useMemo(() => {
-        if (!salesData) return [];
-        return [...salesData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [salesData]);
-
-    const isLoading = isLoadingSales || isLoadingProducts;
+    const isLoading = isLoadingSettings;
 
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
@@ -61,7 +40,7 @@ export default function CreditsPage() {
 
     const [searchTerm, setSearchTerm] = useState("");
     
-    const creditSales = useMemo(() => (sales || []).filter(s => s.transactionType === 'credito'), [sales]);
+    const creditSales = useMemo(() => sales.filter(s => s.transactionType === 'credito'), [sales]);
     
     const totalNewPayment = useMemo(() => payments.reduce((sum, p) => sum + p.amount, 0), [payments]);
     const remainingBalance = useMemo(() => selectedSale ? selectedSale.total - (selectedSale.paidAmount || 0) : 0, [selectedSale]);
@@ -76,13 +55,13 @@ export default function CreditsPage() {
     }, [paymentDialogOpen, balanceAfterNewPayments])
     
     const isReferenceDuplicate = (reference: string, method: string) => {
-        if (!reference || !method || !salesData) return false;
+        if (!reference || !method || !sales) return false;
         // Check current unsaved payments
         if (payments.some(p => p.method === method && p.reference === reference)) {
             return true;
         }
         // Check all past sales
-        for (const sale of salesData) {
+        for (const sale of sales) {
             if (sale.payments && sale.payments.some(p => p.method === method && p.reference === reference)) {
                 return true;
             }
@@ -128,12 +107,11 @@ export default function CreditsPage() {
     }
 
     const handleSavePayments = async () => {
-        if (!selectedSale || payments.length === 0 || !firestore) {
+        if (!selectedSale || payments.length === 0) {
             toast({ variant: "destructive", title: "No hay pagos que guardar." });
             return;
         }
 
-        const saleRef = doc(firestore, 'sales', selectedSale.id);
         const newPayments: Payment[] = payments.map((p, i) => ({
             ...p,
             id: `pay-${selectedSale.id}-${Date.now()}-${i}`,
@@ -143,24 +121,25 @@ export default function CreditsPage() {
         const updatedPaidAmount = selectedSale.paidAmount + totalNewPayment;
         const newStatus = updatedPaidAmount >= selectedSale.total ? 'paid' : 'unpaid';
 
-        const batch = writeBatch(firestore);
-        batch.update(saleRef, {
-            payments: [...(selectedSale.payments || []), ...newPayments],
-            paidAmount: updatedPaidAmount,
-            status: newStatus,
-        });
+        // Update local state instead of Firestore
+        setSales(prevSales =>
+            prevSales.map(sale =>
+                sale.id === selectedSale.id
+                    ? {
+                        ...sale,
+                        payments: [...(sale.payments || []), ...newPayments],
+                        paidAmount: updatedPaidAmount,
+                        status: newStatus,
+                      }
+                    : sale
+            )
+        );
 
-        try {
-            await batch.commit();
-            setSelectedSale(null); // Close details view after saving
-            setPaymentDialogOpen(false);
-            resetPaymentForm();
-            
-            toast({ title: "Abono Registrado", description: `Se agregaron ${payments.length} pago(s) a la venta ${selectedSale.id}.`});
-        } catch (error) {
-            console.error("Error saving payments:", error);
-            toast({ variant: 'destructive', title: 'Error al guardar abono', description: (error as Error).message });
-        }
+        setSelectedSale(null); // Close details view after saving
+        setPaymentDialogOpen(false);
+        resetPaymentForm();
+        
+        toast({ title: "Abono Registrado (Simulación)", description: `Se agregaron ${payments.length} pago(s) a la venta ${selectedSale.id}.`});
     };
     
     const filteredSales = useMemo(() => {
@@ -172,13 +151,13 @@ export default function CreditsPage() {
 
     const getFormattedDate = (date: any) => {
         if (!date) return '';
-        const dateObj = typeof date === 'string' ? parseISO(date) : date.toDate();
+        const dateObj = typeof date === 'string' ? parseISO(date) : date.toDate ? date.toDate() : new Date(date);
         return format(dateObj, "dd/MM/yyyy");
     };
 
     const getFormattedDateTime = (date: any) => {
         if (!date) return '';
-        const dateObj = typeof date === 'string' ? parseISO(date) : date.toDate();
+        const dateObj = typeof date === 'string' ? parseISO(date) : date.toDate ? date.toDate() : new Date(date);
         return format(dateObj, "dd/MM/yyyy HH:mm");
     };
     
@@ -443,5 +422,3 @@ export default function CreditsPage() {
         </>
     );
 }
-
-    
