@@ -53,14 +53,14 @@ export function useCollection<T = any>(
   const unsubscribeRef = useRef<Unsubscribe | null>(null);
 
   useEffect(() => {
-    // Always clean up the previous listener when the query changes or component unmounts
+    // Cleanup function that will be called on unmount or before the effect runs again.
     return () => {
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
     };
-  }, []); // Empty dependency array ensures this cleanup runs only once on unmount
+  }, []); // Empty dependency array ensures this cleanup runs only once on unmount.
 
   useEffect(() => {
     // If there's an existing listener, unsubscribe before creating a new one.
@@ -109,7 +109,7 @@ export function useCollection<T = any>(
 
   }, [memoizedTargetRefOrQuery, isUserLoading]);
 
-  const isLoading = (!memoizedTargetRefOrQuery || isUserLoading) || (data === null && error === null);
+  const isLoading = data === null && error === null;
 
   return { data, isLoading, error };
 }
