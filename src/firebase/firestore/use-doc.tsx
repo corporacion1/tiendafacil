@@ -48,6 +48,7 @@ export function useDoc<T = any>(
   const { isUserLoading } = useUser();
   const [data, setData] = useState<StateDataType>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Use a ref to hold the unsubscribe function.
   const unsubscribeRef = useRef<Unsubscribe | null>(null);
@@ -59,35 +60,40 @@ export function useDoc<T = any>(
       unsubscribeRef.current = null;
     }
     
-    if (memoizedDocRef && !isUserLoading) {
-      // Set up the new subscription and store its unsubscribe function in the ref.
-      unsubscribeRef.current = onSnapshot(
-        memoizedDocRef,
-        (snapshot: DocumentSnapshot<DocumentData>) => {
-          if (snapshot.exists()) {
-            setData({ ...(snapshot.data() as T), id: snapshot.id });
-          } else {
-            setData(null);
-          }
-          setError(null);
-        },
-        (err: FirestoreError) => {
-          const contextualError = new FirestorePermissionError({
-            operation: 'get',
-            path: memoizedDocRef.path,
-          })
-
-          setError(contextualError)
-          setData(null)
-
-          errorEmitter.emit('permission-error', contextualError);
-        }
-      );
-    } else {
-        // If there's no doc ref or the user is loading, ensure we have no data.
-        setData(null);
-        setError(null);
+    // Explicitly wait until authentication is resolved AND a document reference exists.
+    if (isUserLoading || !memoizedDocRef) {
+      setIsLoading(true);
+      setData(null);
+      setError(null);
+      return;
     }
+    
+    // Set up the new subscription and store its unsubscribe function in the ref.
+    unsubscribeRef.current = onSnapshot(
+      memoizedDocRef,
+      (snapshot: DocumentSnapshot<DocumentData>) => {
+        if (snapshot.exists()) {
+          setData({ ...(snapshot.data() as T), id: snapshot.id });
+        } else {
+          // Document doesn't exist. This is not an error state.
+          setData(null);
+        }
+        setError(null);
+        setIsLoading(false);
+      },
+      (err: FirestoreError) => {
+        const contextualError = new FirestorePermissionError({
+          operation: 'get',
+          path: memoizedDocRef.path,
+        })
+
+        setError(contextualError)
+        setData(null)
+        setIsLoading(false);
+
+        errorEmitter.emit('permission-error', contextualError);
+      }
+    );
 
     // The cleanup function for this effect, called on unmount or dependency change.
     return () => {
@@ -98,8 +104,5 @@ export function useDoc<T = any>(
     };
   }, [memoizedDocRef, isUserLoading]);
   
-  // isLoading is true only during the initial fetch.
-  const isLoading = data === null && error === null;
-
   return { data, isLoading, error };
 }
