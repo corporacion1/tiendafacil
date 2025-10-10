@@ -109,29 +109,31 @@ export default function LoginPage() {
   };
   
   useEffect(() => {
-    const processRedirect = async () => {
-      if (!auth) return;
-      try {
-        const result = await getRedirectResult(auth);
-        if (result && result.user) {
-          setIsLoading(true);
-          setLoadingMessage('Verificando resultado de Google...');
-          await loadDataAndRedirect(result.user);
-        }
-      } catch (error) {
-        console.error("Google sign-in redirect error:", error);
-        toast({
-          variant: 'destructive',
-          title: 'Error con Google',
-          description: 'No se pudo completar el inicio de sesión con Google.',
-        });
-        setIsLoading(false);
-        setLoadingMessage(null);
-      }
-    };
-    
-    processRedirect();
-
+    if (auth) {
+        // We are not loading anymore, and we want to see if there is a redirect result.
+        setIsLoading(true);
+        setLoadingMessage('Verificando autenticación...');
+        getRedirectResult(auth)
+            .then(async (result) => {
+                if (result && result.user) {
+                    // User signed in or already signed in.
+                    await loadDataAndRedirect(result.user);
+                } else {
+                    // No user, stay on login page.
+                    setIsLoading(false);
+                    setLoadingMessage(null);
+                }
+            }).catch((error) => {
+                console.error("Google sign-in redirect error:", error);
+                toast({
+                    variant: 'destructive',
+                    title: 'Error con Google',
+                    description: 'No se pudo completar el inicio de sesión con Google.',
+                });
+                setIsLoading(false);
+                setLoadingMessage(null);
+            });
+    }
   }, [auth]);
   
   if (isLoading) {
@@ -199,5 +201,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-    
