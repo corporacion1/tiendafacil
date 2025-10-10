@@ -21,11 +21,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useUser, useFirestore, useCollection } from "@/firebase";
-import { paymentMethods } from "@/lib/data";
+import { paymentMethods, mockProducts, defaultCustomers, mockSales, initialFamilies } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { collection, doc, writeBatch, query, where, orderBy, collectionGroup } from "firebase/firestore";
 
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
     const { activeSymbol, activeRate } = useSettings();
@@ -69,58 +67,16 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
 
 export default function POSPage() {
   const { toast } = useToast();
-  const firestore = useFirestore();
   const { settings, setSettings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
-  const { isUserLoading } = useUser();
   
-  const isSuperAdmin = userProfile?.role === 'superAdmin';
+  // Use local data
+  const [products, setProductsState] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})));
+  const [customers, setCustomers] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
+  const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
+  const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
+  const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
 
-  const productsRef = useMemo(() => {
-    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
-    return isSuperAdmin
-        ? query(collectionGroup(firestore, 'products'))
-        : query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
-  const { data: products = [], isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
-
-  const customersRef = useMemo(() => {
-    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
-    return isSuperAdmin
-        ? query(collectionGroup(firestore, 'customers'))
-        : query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
-  const { data: customers = [], isLoading: isLoadingCustomers } = useCollection<Customer>(customersRef);
-  
-  const pendingOrdersQuery = useMemo(() => {
-    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
-    return isSuperAdmin
-        ? query(collectionGroup(firestore, 'pendingOrders'), orderBy('date', 'desc'))
-        : query(collection(firestore, 'pendingOrders'), where('storeId', '==', activeStoreId), orderBy('date', 'desc'));
-  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
-  const { data: pendingOrders = [], isLoading: isLoadingPendingOrders } = useCollection<PendingOrder>(pendingOrdersQuery);
-  
-  const salesRef = useMemo(() => {
-    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
-    return isSuperAdmin
-        ? query(collectionGroup(firestore, 'sales'))
-        : query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
-  const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
-
-  const sales = useMemo(() => {
-    if (!salesData) return [];
-    return [...salesData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [salesData]);
-
-  const familiesRef = useMemo(() => {
-    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
-    return isSuperAdmin
-        ? query(collectionGroup(firestore, 'families'), orderBy('name', 'asc'))
-        : query(collection(firestore, 'families'), where('storeId', '==', activeStoreId), orderBy('name', 'asc'));
-  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
-  const { data: families = [], isLoading: isLoadingFamilies } = useCollection<Family>(familiesRef);
-
-  const isLoading = isLoadingProducts || isLoadingCustomers || isLoadingPendingOrders || isLoadingSales || isLoadingFamilies;
+  const isLoading = isLoadingSettings;
   
   const [scannedOrderId, setScannedOrderId] = useState('');
   
@@ -311,7 +267,7 @@ export default function POSPage() {
       toast({ variant: "destructive", title: "Carrito vacío"});
       return;
     }
-    if (!firestore || !activeStoreId || !settings) {
+    if (!settings) {
         toast({ variant: "destructive", title: "Error", description: "La configuración de la tienda no está disponible."});
         return;
     }
@@ -349,61 +305,42 @@ export default function POSPage() {
         storeId: activeStoreId,
     }
 
-    const batch = writeBatch(firestore);
+    // --- SIMULATED LOCAL DATA UPDATE ---
 
     // 1. Create Sale
-    const saleRef = doc(firestore, "sales", newSale.id);
-    batch.set(saleRef, newSale);
+    setSales(prev => [newSale, ...prev]);
 
-    // 2. Update product stock and create inventory movements
+    // 2. Update product stock
+    let updatedProducts = [...products];
     for (const item of cartItems) {
-        const productRef = doc(firestore, "products", item.product.id);
-        const newStock = item.product.stock - item.quantity;
-        batch.update(productRef, { stock: newStock });
-
-        const movementRef = doc(collection(firestore, "inventory_movements"));
-        const newMovement: Omit<InventoryMovement, 'id' | 'date'> & { date: string } = {
-            productName: item.product.name,
-            type: 'sale',
-            quantity: -item.quantity,
-            date: new Date().toISOString(),
-            responsible: 'Sistema POS',
-            storeId: activeStoreId,
-        };
-        batch.set(movementRef, newMovement);
+        updatedProducts = updatedProducts.map(p => 
+            p.id === item.product.id 
+                ? { ...p, stock: p.stock - item.quantity }
+                : p
+        );
     }
+    setProductsState(updatedProducts);
     
     // 3. Update correlative in settings
     setSettings({ ...settings, saleCorrelative: (settings.saleCorrelative || 0) + 1 });
     
-    try {
-        await batch.commit();
+    setLastSale(newSale);
+    
+    toast({
+        title: "Venta Procesada (Simulación)",
+        description: `La venta #${saleId} ha sido registrada localmente.`,
+    });
+    
+    setCartItems([]);
+    setIsProcessSaleDialogOpen(false);
+    resetPaymentModal();
+    setSelectedCustomerId('eventual');
 
-        setLastSale(newSale);
-        
-        toast({
-            title: "Venta Procesada",
-            description: `La venta #${saleId} ha sido registrada.`,
-        });
-        
-        setCartItems([]);
-        setIsProcessSaleDialogOpen(false);
-        resetPaymentModal();
-        setSelectedCustomerId('eventual');
-
-        if (andPrint) {
-            setTimeout(() => {
-                setTicketType('sale');
-                setIsPrintPreviewOpen(true);
-            }, 100);
-        }
-    } catch (error) {
-        console.error("Error processing sale:", error);
-        toast({
-            variant: "destructive",
-            title: "Error al procesar la venta",
-            description: (error as Error).message,
-        });
+    if (andPrint) {
+        setTimeout(() => {
+            setTicketType('sale');
+            setIsPrintPreviewOpen(true);
+        }, 100);
     }
   }
 
@@ -422,7 +359,6 @@ export default function POSPage() {
   };
 
   const handleAddNewCustomer = async () => {
-    if (!firestore || !activeStoreId) return;
     if (newCustomer.name.trim() === "" || newCustomer.phone.trim() === "") {
         toast({
             variant: "destructive",
@@ -433,34 +369,24 @@ export default function POSPage() {
     }
     
     const newId = newCustomer.id.trim() || `cust-${Date.now()}`;
-    const customerToAdd: Omit<Customer, 'id' | 'storeId'> = {
+    const customerToAdd: Customer = {
+        id: newId,
         name: newCustomer.name,
         phone: newCustomer.phone,
         address: newCustomer.address,
+        storeId: activeStoreId,
     };
     
-    const customerRef = doc(firestore, 'customers', newId);
+    // --- SIMULATED LOCAL DATA UPDATE ---
+    setCustomers(prev => [...prev, customerToAdd]);
     
-    const batch = writeBatch(firestore);
-    batch.set(customerRef, { ...customerToAdd, storeId: activeStoreId });
-
-    try {
-        await batch.commit();
-        setSelectedCustomerId(newId);
-        setNewCustomer({ id: '', name: '', phone: '', address: '' });
-        setIsCustomerDialogOpen(false);
-        toast({
-            title: "Cliente Agregado",
-            description: `El cliente "${customerToAdd.name}" ha sido agregado y seleccionado.`,
-        });
-    } catch (error) {
-        console.error("Error adding new customer:", error);
-        toast({
-            variant: "destructive",
-            title: "Error al agregar cliente",
-            description: (error as Error).message,
-        });
-    }
+    setSelectedCustomerId(newId);
+    setNewCustomer({ id: '', name: '', phone: '', address: '' });
+    setIsCustomerDialogOpen(false);
+    toast({
+        title: "Cliente Agregado (Simulación)",
+        description: `El cliente "${customerToAdd.name}" ha sido agregado y seleccionado.`,
+    });
   };
 
   const filteredProducts = useMemo(() => {
@@ -476,7 +402,6 @@ export default function POSPage() {
   const isNewCustomerFormDirty = newCustomer.name.trim() !== '' || newCustomer.id.trim() !== '' || newCustomer.phone.trim() !== '' || newCustomer.address.trim() !== '';
   
   const loadPendingOrder = async (order: PendingOrder) => {
-    if (!firestore || !activeStoreId) return;
     if (cartItems.length > 0) {
         toast({
             variant: "destructive",
@@ -520,18 +445,12 @@ export default function POSPage() {
             phone: order.customerPhone,
             storeId: activeStoreId,
         }
-        const customerRef = doc(firestore, 'customers', newCustomerFromOrder.id);
-        const batch = writeBatch(firestore);
-        batch.set(customerRef, newCustomerFromOrder);
-        await batch.commit();
-        
+        setCustomers(prev => [...prev, newCustomerFromOrder]);
         setSelectedCustomerId(newCustomerFromOrder.id);
     }
 
-    const orderRef = doc(firestore, 'pendingOrders', order.id);
-    const deleteBatch = writeBatch(firestore);
-    deleteBatch.delete(orderRef);
-    await deleteBatch.commit();
+    // Remove from local pending orders
+    setPendingOrders(prev => prev.filter(p => p.id !== order.id));
     
     toast({
         title: "Pedido Cargado",
@@ -609,8 +528,8 @@ export default function POSPage() {
                                 </DialogDescription>
                             </DialogHeader>
                             <div className="py-4 max-h-96 overflow-y-auto">
-                                {isLoadingPendingOrders && <p>Cargando pedidos...</p>}
-                                {!isLoadingPendingOrders && (pendingOrders || []).length === 0 ? (
+                                {isLoading && <p>Cargando pedidos...</p>}
+                                {!isLoading && (pendingOrders || []).length === 0 ? (
                                     <p className="text-center text-muted-foreground py-8">No hay pedidos pendientes.</p>
                                 ) : (
                                     <div className="space-y-4">
@@ -723,7 +642,7 @@ export default function POSPage() {
                                 aria-expanded={isCustomerSearchOpen}
                                 className="w-full justify-between"
                             >
-                                {isLoadingCustomers ? "Cargando..." : (selectedCustomer ? selectedCustomer.name : "Seleccionar cliente...")}
+                                {isLoading ? "Cargando..." : (selectedCustomer ? selectedCustomer.name : "Seleccionar cliente...")}
                                 <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                         </PopoverTrigger>
