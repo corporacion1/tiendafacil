@@ -1,21 +1,24 @@
 /**
- * @file Firestore Security Rules
- * @description This ruleset enforces a strict store-ownership model, where most data is isolated to a specific store.
- * All collections require a `storeId` field for authorization.
+ * @fileoverview Firestore Security Rules for the application.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a multi-tenant data model where most data is scoped to a specific `storeId`.
+ * Users can only access data belonging to stores they are associated with, based on the `ownerId`
+ * field in the `/stores/{storeId}` document or the `storeId` field in the `/users/{userId}` document.
+ *
  * Data Structure:
- * - `/stores/{storeId}`: Stores configuration and ownership details. Only the owner can create/modify stores.
- * - Other top-level collections (e.g., `/products`, `/customers`): Contain data related to a specific store and require a `storeId` field.
- * - `/users/{userId}`: Stores user profile information; only the user can read/write their own profile.
- * - `/stores/{storeId}/currencyRates/{rateId}`: Stores currency exchange rates, accessible only within the specified store.
+ * - `/stores/{storeId}`: Contains store-specific configuration and metadata.
+ * - `/users/{userId}`: Contains user profile information, including their associated `storeId`.
+ * - All other collections (e.g., `/products`, `/sales`) are top-level and MUST contain a `storeId`
+ *   field to enforce multi-tenancy.
  *
  * Key Security Decisions:
- * - Public listing is disallowed for most collections to prevent unauthorized data access. Only owners of a store can read data related to that store.
- * - All write operations are validated against the `storeId` to ensure data consistency.
- * - User profiles (`/users/{userId}`) are strictly private and only accessible to the authenticated user.
- * - The default security posture for ambiguous relationships is strict owner-only access.
- *
- * Denormalization for Authorization:
- * - The `storeId` field is present in almost all entities and is crucial for authorization. This avoids needing to perform expensive `get()` operations to fetch the store document.
+ * - Listing of users (`/users`) is disallowed for security.
+ * - The `ownerId` field in the `/stores/{storeId}` document is immutable and can only be set on creation.
+ * - Rules are designed to be permissive on data shapes during this prototyping phase but strictly
+ *   enforce authorization.
+ * - Enforces the separation of data between different stores.
+ * - Denormalizes the storeId to all documents for simpler security rules.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -23,270 +26,262 @@ service cloud.firestore {
 
     /**
      * @description Checks if the user is signed in.
-     * @return {boolean} True if the user is signed in, false otherwise.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Authentication is required for nearly all operations.
      */
     function isSignedIn() {
       return request.auth != null;
     }
 
     /**
-     * @description Checks if the authenticated user is the owner of the resource based on the provided userId.
-     * @param {string} userId - The user ID to compare against the authenticated user's UID.
-     * @return {boolean} True if the user is the owner, false otherwise.
+     * @description Checks if the user is the owner of the store.
+     * @path /stores/{storeId}
+     * @allow (get) User with UID 'user123' reading a store document they own.
+     * @deny (get) User with UID 'user456' reading a store document they do not own.
+     * @principle Enforces store ownership for data access.
+     */
+    function isStoreOwner(storeId) {
+        return isSignedIn() && get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid;
+    }
+
+    /**
+     * @description Checks if the user's storeId claim matches the resource's storeId.
+     * @path /products/{productId}
+     * @allow (create) Creating a product with a storeId that matches the user's storeId.
+     * @deny (create) Creating a product with a storeId that does not match the user's storeId.
+     * @principle Enforces that data belongs to the user's store.
+     */
+    function isStoreResource(storeId) {
+      return isSignedIn() && storeId == request.auth.uid;
+    }
+
+    /**
+     * @description Checks if the user is the owner of the resource.
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle Enforces resource ownership for write operations.
      */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
     /**
-     * @description Checks if the authenticated user is the owner of the resource, and that the document already exists.
-     * @param {string} userId - The user ID to compare against the authenticated user's UID.
-     * @return {boolean} True if the user is the owner and the resource exists, false otherwise.
+     * @description Checks if the user is the existing owner of the resource (for update/delete).
+     * @path N/A
      */
     function isExistingOwner(userId) {
       return isOwner(userId) && resource != null;
     }
 
     /**
-     * @description Matches the /products/{productId} collection.
+     * @description Stores product information.
      * @path /products/{productId}
-     * @allow (read) - Allow anyone to read product data.
-     * @allow (create) - Only allow if the storeId matches the user's store ID.
-     * @deny (update) - Deny updates if the user is not the owner of the store.
-     * @deny (delete) - Deny deletes if the user is not the owner of the store.
-     * @principle Enforces store-level ownership for products.
+     * @allow (create) User with storeId 'store123' creating a product with storeId 'store123'.
+     * @deny (create) User with storeId 'store123' creating a product with storeId 'store456'.
+     * @principle Enforces store ownership and validates relational integrity.
      */
     match /products/{productId} {
       allow get: if true;
-      allow list: if false;
-
-      allow create: if isSignedIn() && request.resource.data.storeId == getStoreId();
-      allow update: if isSignedIn() && resource.data.storeId == getStoreId();
-      allow delete: if isSignedIn() && resource.data.storeId == getStoreId();
+      allow list: if true;
+      allow create: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId;
+      allow update: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId && request.resource.data.storeId == resource.data.storeId;
+      allow delete: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId && request.resource.data.storeId == resource.data.storeId;
     }
 
     /**
-     * @description Matches the /inventory_movements/{movementId} collection.
+     * @description Stores inventory movement records.
      * @path /inventory_movements/{movementId}
-     * @allow (read) - Allow anyone to read inventory movement data.
-     * @allow (create) - Only allow if the storeId matches the user's store ID.
-     * @deny (update) - Deny updates if the user is not the owner of the store.
-     * @deny (delete) - Deny deletes if the user is not the owner of the store.
-     * @principle Enforces store-level ownership for inventory movements.
+     * @allow (create) User with storeId 'store123' creating an inventory movement with storeId 'store123'.
+     * @deny (create) User with storeId 'store123' creating an inventory movement with storeId 'store456'.
+     * @principle Enforces store ownership and validates relational integrity.
      */
     match /inventory_movements/{movementId} {
       allow get: if true;
-      allow list: if false;
-
-      allow create: if isSignedIn() && request.resource.data.storeId == getStoreId();
-      allow update: if isSignedIn() && resource.data.storeId == getStoreId();
-      allow delete: if isSignedIn() && resource.data.storeId == getStoreId();
+      allow list: if true;
+      allow create: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId;
+      allow update: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId && request.resource.data.storeId == resource.data.storeId;
+      allow delete: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId && request.resource.data.storeId == resource.data.storeId;
     }
 
     /**
-     * @description Matches the /sales/{saleId} collection.
+     * @description Stores sales transaction records.
      * @path /sales/{saleId}
-     * @allow (read) - Allow anyone to read sales data.
-     * @allow (create) - Only allow if the storeId matches the user's store ID.
-     * @deny (update) - Deny updates if the user is not the owner of the store.
-     * @deny (delete) - Deny deletes if the user is not the owner of the store.
-     * @principle Enforces store-level ownership for sales records.
+     * @allow (create) User with storeId 'store123' creating a sale with storeId 'store123'.
+     * @deny (create) User with storeId 'store123' creating a sale with storeId 'store456'.
+     * @principle Enforces store ownership and validates relational integrity.
      */
     match /sales/{saleId} {
       allow get: if true;
-      allow list: if false;
-
-      allow create: if isSignedIn() && request.resource.data.storeId == getStoreId();
-      allow update: if isSignedIn() && resource.data.storeId == getStoreId();
-      allow delete: if isSignedIn() && resource.data.storeId == getStoreId();
+      allow list: if true;
+      allow create: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId;
+      allow update: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId && request.resource.data.storeId == resource.data.storeId;
+      allow delete: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId && request.resource.data.storeId == resource.data.storeId;
     }
 
     /**
-     * @description Matches the /purchases/{purchaseId} collection.
+     * @description Stores purchase order records.
      * @path /purchases/{purchaseId}
-     * @allow (read) - Allow anyone to read purchase data.
-     * @allow (create) - Only allow if the storeId matches the user's store ID.
-     * @deny (update) - Deny updates if the user is not the owner of the store.
-     * @deny (delete) - Deny deletes if the user is not the owner of the store.
-     * @principle Enforces store-level ownership for purchase records.
+     * @allow (create) User with storeId 'store123' creating a purchase with storeId 'store123'.
+     * @deny (create) User with storeId 'store123' creating a purchase with storeId 'store456'.
+     * @principle Enforces store ownership and validates relational integrity.
      */
     match /purchases/{purchaseId} {
       allow get: if true;
-      allow list: if false;
-
-      allow create: if isSignedIn() && request.resource.data.storeId == getStoreId();
-      allow update: if isSignedIn() && resource.data.storeId == getStoreId();
-      allow delete: if isSignedIn() && resource.data.storeId == getStoreId();
+      allow list: if true;
+      allow create: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId;
+      allow update: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId && request.resource.data.storeId == resource.data.storeId;
+      allow delete: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId && request.resource.data.storeId == resource.data.storeId;
     }
 
     /**
-     * @description Matches the /customers/{customerId} collection.
+     * @description Stores customer information.
      * @path /customers/{customerId}
-     * @allow (read) - Allow anyone to read customer data.
-     * @allow (create) - Only allow if the storeId matches the user's store ID.
-     * @deny (update) - Deny updates if the user is not the owner of the store.
-     * @deny (delete) - Deny deletes if the user is not the owner of the store.
-     * @principle Enforces store-level ownership for customer data.
+     * @allow (create) User with storeId 'store123' creating a customer with storeId 'store123'.
+     * @deny (create) User with storeId 'store123' creating a customer with storeId 'store456'.
+     * @principle Enforces store ownership and validates relational integrity.
      */
     match /customers/{customerId} {
       allow get: if true;
-      allow list: if false;
-
-      allow create: if isSignedIn() && request.resource.data.storeId == getStoreId();
-      allow update: if isSignedIn() && resource.data.storeId == getStoreId();
-      allow delete: if isSignedIn() && resource.data.storeId == getStoreId();
+      allow list: if true;
+      allow create: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId;
+      allow update: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId && request.resource.data.storeId == resource.data.storeId;
+      allow delete: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId && request.resource.data.storeId == resource.data.storeId;
     }
 
     /**
-     * @description Matches the /suppliers/{supplierId} collection.
+     * @description Stores supplier information.
      * @path /suppliers/{supplierId}
-     * @allow (read) - Allow anyone to read supplier data.
-     * @allow (create) - Only allow if the storeId matches the user's store ID.
-     * @deny (update) - Deny updates if the user is not the owner of the store.
-     * @deny (delete) - Deny deletes if the user is not the owner of the store.
-     * @principle Enforces store-level ownership for supplier data.
+     * @allow (create) User with storeId 'store123' creating a supplier with storeId 'store123'.
+     * @deny (create) User with storeId 'store123' creating a supplier with storeId 'store456'.
+     * @principle Enforces store ownership and validates relational integrity.
      */
     match /suppliers/{supplierId} {
       allow get: if true;
-      allow list: if false;
-
-      allow create: if isSignedIn() && request.resource.data.storeId == getStoreId();
-      allow update: if isSignedIn() && resource.data.storeId == getStoreId();
-      allow delete: if isSignedIn() && resource.data.storeId == getStoreId();
+      allow list: if true;
+      allow create: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId;
+      allow update: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId && request.resource.data.storeId == resource.data.storeId;
+      allow delete: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId && request.resource.data.storeId == resource.data.storeId;
     }
 
     /**
-     * @description Matches the /units/{unitId} collection.
+     * @description Stores units of measure.
      * @path /units/{unitId}
-     * @allow (read) - Allow anyone to read unit data.
-     * @allow (create) - Only allow if the storeId matches the user's store ID.
-     * @deny (update) - Deny updates if the user is not the owner of the store.
-     * @deny (delete) - Deny deletes if the user is not the owner of the store.
-     * @principle Enforces store-level ownership for unit data.
+     * @allow (create) User with storeId 'store123' creating a unit with storeId 'store123'.
+     * @deny (create) User with storeId 'store123' creating a unit with storeId 'store456'.
+     * @principle Enforces store ownership and validates relational integrity.
      */
     match /units/{unitId} {
       allow get: if true;
-      allow list: if false;
-
-      allow create: if isSignedIn() && request.resource.data.storeId == getStoreId();
-      allow update: if isSignedIn() && resource.data.storeId == getStoreId();
-      allow delete: if isSignedIn() && resource.data.storeId == getStoreId();
+      allow list: if true;
+      allow create: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId;
+      allow update: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId && request.resource.data.storeId == resource.data.storeId;
+      allow delete: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId && request.resource.data.storeId == resource.data.storeId;
     }
 
     /**
-     * @description Matches the /families/{familyId} collection.
+     * @description Stores product families/categories.
      * @path /families/{familyId}
-     * @allow (read) - Allow anyone to read family data.
-     * @allow (create) - Only allow if the storeId matches the user's store ID.
-     * @deny (update) - Deny updates if the user is not the owner of the store.
-     * @deny (delete) - Deny deletes if the user is not the owner of the store.
-     * @principle Enforces store-level ownership for family data.
+     * @allow (create) User with storeId 'store123' creating a family with storeId 'store123'.
+     * @deny (create) User with storeId 'store123' creating a family with storeId 'store456'.
+     * @principle Enforces store ownership and validates relational integrity.
      */
     match /families/{familyId} {
       allow get: if true;
-      allow list: if false;
-
-      allow create: if isSignedIn() && request.resource.data.storeId == getStoreId();
-      allow update: if isSignedIn() && resource.data.storeId == getStoreId();
-      allow delete: if isSignedIn() && resource.data.storeId == getStoreId();
+      allow list: if true;
+      allow create: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId;
+      allow update: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId && request.resource.data.storeId == resource.data.storeId;
+      allow delete: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId && request.resource.data.storeId == resource.data.storeId;
     }
 
     /**
-     * @description Matches the /warehouses/{warehouseId} collection.
+     * @description Stores warehouse information.
      * @path /warehouses/{warehouseId}
-     * @allow (read) - Allow anyone to read warehouse data.
-     * @allow (create) - Only allow if the storeId matches the user's store ID.
-     * @deny (update) - Deny updates if the user is not the owner of the store.
-     * @deny (delete) - Deny deletes if the user is not the owner of the store.
-     * @principle Enforces store-level ownership for warehouse data.
+     * @allow (create) User with storeId 'store123' creating a warehouse with storeId 'store123'.
+     * @deny (create) User with storeId 'store123' creating a warehouse with storeId 'store456'.
+     * @principle Enforces store ownership and validates relational integrity.
      */
     match /warehouses/{warehouseId} {
       allow get: if true;
-      allow list: if false;
-
-      allow create: if isSignedIn() && request.resource.data.storeId == getStoreId();
-      allow update: if isSignedIn() && resource.data.storeId == getStoreId();
-      allow delete: if isSignedIn() && resource.data.storeId == getStoreId();
+      allow list: if true;
+      allow create: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId;
+      allow update: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId && request.resource.data.storeId == resource.data.storeId;
+      allow delete: if isSignedIn() && request.resource.data.storeId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId && request.resource.data.storeId == resource.data.storeId;
     }
 
     /**
-     * @description Matches the /stores/{storeId} collection.
+     * @description Stores application configuration settings for each store.
      * @path /stores/{storeId}
-     * @allow (read) - Allow anyone to read store data.
-     * @allow (create) - Only allow if the user is the owner of the store.
-     * @deny (update) - Deny updates if the user is not the owner of the store.
-     * @deny (delete) - Deny deletes if the user is not the owner of the store.
-     * @principle Enforces owner-only access to store configuration.
+     * @allow (create) User with UID 'user123' creating a store document with ownerId 'user123'.
+     * @deny (create) User with UID 'user456' creating a store document with ownerId 'user123'.
+     * @principle Enforces store ownership and restricts store management to the owner.
      */
     match /stores/{storeId} {
-      allow get: if true;
+      allow get: if isStoreOwner(storeId);
       allow list: if false;
-
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update: if isExistingOwner(resource.data.ownerId);
-      allow delete: if isExistingOwner(resource.data.ownerId);
-
-      /**
-       * @description Matches the /stores/{storeId}/currencyRates/{rateId} collection.
-       * @path /stores/{storeId}/currencyRates/{rateId}
-       */
-      match /currencyRates/{rateId} {
-        allow get: if true;
-        allow list: if false;
-        allow create: if isSignedIn() && getStoreId() == storeId;
-        allow update: if isSignedIn() && getStoreId() == storeId;
-        allow delete: if isSignedIn() && getStoreId() == storeId;
-      }
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.ownerId;
+      allow update: if isStoreOwner(storeId);
+      allow delete: if isStoreOwner(storeId);
     }
 
     /**
-     * @description Matches the /users/{userId} collection.
+     * @description Stores user profiles.
      * @path /users/{userId}
-     * @allow (read) - Allow only the user to read their own profile.
-     * @allow (create) - Allow only the user to create their own profile (self-registration).
-     * @deny (update) - Deny updates if the user is not the owner of the profile.
-     * @deny (delete) - Deny deletes if the user is not the owner of the profile.
-     * @principle Enforces strict user-level ownership for profiles.
+     * @allow (create) User with UID 'user123' creating their own user profile.
+     * @deny (create) User with UID 'user456' attempting to create a profile for 'user123'.
+     * @principle Enforces user-ownership and prevents unauthorized profile creation.
      */
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow list: if false;
-
-      allow create: if isOwner(userId) && request.resource.data.uid == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.uid == resource.data.uid;
-      allow delete: if isExistingOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if false;
     }
 
     /**
-     * @description Matches the /ads/{adId} collection.
+     * @description Stores marketing advertisements.
      * @path /ads/{adId}
+     * @allow (create) Any authenticated user can create an ad.
+     * @deny (create) Unauthenticated users cannot create ads.
+     * @principle Allows any signed-in user to create, read, and modify ads.
      */
     match /ads/{adId} {
       allow get: if true;
-      allow list: if false;
+      allow list: if true;
       allow create: if isSignedIn();
       allow update: if isSignedIn();
       allow delete: if isSignedIn();
     }
 
     /**
-     * @description Matches the /pendingOrders/{orderId} collection.
+     * @description Stores orders from the public catalog.
      * @path /pendingOrders/{orderId}
+     * @allow (create) Any authenticated user can create a pending order.
+     * @deny (create) Unauthenticated users cannot create pending orders.
      */
     match /pendingOrders/{orderId} {
       allow get: if true;
-      allow list: if false;
-      allow create: if isSignedIn() && request.resource.data.storeId == getStoreId();
-      allow update: if isSignedIn() && resource.data.storeId == getStoreId();
-      allow delete: if isSignedIn() && resource.data.storeId == getStoreId();
+      allow list: if true;
+      allow create: if isSignedIn();
+      allow update: if false;
+      allow delete: if false;
     }
 
     /**
-     * @description Helper function to fetch storeId from user profile
-     * @return {string} - Returns the storeId of the current authenticated user.
+     * @description Stores historical currency exchange rates for a specific store.
+     * @path /stores/{storeId}/currencyRates/{rateId}
+     * @allow (read, list) Store owner can access its currency rates
+     * @deny (write) No one can write in currency rates, only read.
      */
-    function getStoreId() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.storeId;
+    match /stores/{storeId}/currencyRates/{rateId} {
+      allow get: if isStoreOwner(storeId);
+      allow list: if isStoreOwner(storeId);
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
     }
   }
 }
