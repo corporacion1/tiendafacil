@@ -62,7 +62,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
             resolvedId = userProfile.storeId;
         }
     } else if (!user && !isPublicPage) {
-        // No user on a private page, do nothing and wait for auth guard redirect
         return;
     }
     
@@ -73,9 +72,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [isUserLoading, isLoadingProfile, user, userProfile, isPublicPage, pathname]);
 
   const settingsDocRef = useMemo(() => {
-    if (!firestore || !activeStoreId) return null;
+    if (isUserLoading || !firestore || !activeStoreId) return null;
     return doc(firestore, 'stores', activeStoreId);
-  }, [firestore, activeStoreId]);
+  }, [firestore, activeStoreId, isUserLoading]);
 
   const { data: settings, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(settingsDocRef);
   
@@ -94,8 +93,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, []);
   
   const isLoading = (
-    (!isPublicPage && (!user || !userProfile)) || // Waiting for user info on private pages
-    !activeStoreId || // Waiting for a valid store ID
+    isUserLoading ||
+    (!isPublicPage && !userProfile) ||
+    !activeStoreId ||
     isLoadingSettingsDoc || 
     isLoadingRates
   );
