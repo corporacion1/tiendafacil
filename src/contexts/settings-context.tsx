@@ -71,9 +71,10 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [isUserLoading, user, userProfile, isPublicPage, pathname, activeStoreId]);
 
   const settingsDocRef = useMemo(() => {
-    if (!activeStoreId || !firestore) return null;
+    // CRITICAL FIX: Do not attempt to get the document if the user state is still loading.
+    if (!activeStoreId || !firestore || isUserLoading) return null;
     return doc(firestore, 'stores', activeStoreId);
-  }, [activeStoreId, firestore]);
+  }, [activeStoreId, firestore, isUserLoading]);
 
   const { data: settings, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(settingsDocRef);
   
