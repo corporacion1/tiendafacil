@@ -5,13 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { ProductForm } from "@/components/product-form";
 import type { Product } from "@/lib/types";
-import { useFirestore, setDocumentNonBlocking } from "@/firebase";
-import { doc } from "firebase/firestore";
 import { useSettings } from "@/contexts/settings-context";
 
 export default function ProductsPage() {
   const { toast } = useToast();
-  const firestore = useFirestore();
   const { activeStoreId } = useSettings();
 
   function onSubmit(data: Omit<Product, 'id' | 'storeId'>) {
@@ -22,11 +19,12 @@ export default function ProductsPage() {
       storeId: activeStoreId,
     };
     
-    const productRef = doc(firestore, 'products', newProductId);
-    setDocumentNonBlocking(productRef, newProduct, {});
+    // Here you would typically add the new product to your state management
+    // For now, we just show a toast.
+    console.log("New Product (Simulated):", newProduct);
     
     toast({
-      title: "Producto Creado",
+      title: "Producto Creado (Simulación)",
       description: `El producto "${data.name}" ha sido creado exitosamente.`,
     });
     

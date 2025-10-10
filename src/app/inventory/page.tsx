@@ -34,8 +34,7 @@ import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { ProductForm } from "@/components/product-form";
 import { useSettings } from "@/contexts/settings-context";
 import { format, parseISO } from "date-fns";
-import { useCollection, useFirestore, deleteDocumentNonBlocking, setDocumentNonBlocking, useUser } from "@/firebase";
-import { collection, doc, orderBy, query, where, writeBatch, collectionGroup } from "firebase/firestore";
+import { mockProducts, mockSales } from "@/lib/data";
 
 const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewMovements, setProductToDelete }: {
     product: Product;
@@ -125,41 +124,13 @@ const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewM
 
 export default function InventoryPage() {
   const { toast } = useToast();
-  const firestore = useFirestore();
-  const { activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
-  const { isUserLoading } = useUser();
-  
-  const isSuperAdmin = userProfile?.role === 'superAdmin';
+  const { activeSymbol, activeRate, activeStoreId, isLoadingSettings } = useSettings();
 
-  const productsRef = useMemo(() => {
-    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
-    return isSuperAdmin
-        ? query(collectionGroup(firestore, 'products'), orderBy('createdAt', 'desc'))
-        : query(collection(firestore, 'products'), where('storeId', '==', activeStoreId), orderBy('createdAt', 'desc'));
-  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
+  const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})));
+  const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
+  const [inventoryMovements, setInventoryMovements] = useState<InventoryMovement[]>([]);
 
-  const salesRef = useMemo(() => {
-    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
-    return isSuperAdmin
-        ? query(collectionGroup(firestore, 'sales'))
-        : query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
-  const { data: sales = [], isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
-
-  const inventoryMovementsQuery = useMemo(() => {
-    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
-    return isSuperAdmin
-        ? query(collectionGroup(firestore, 'inventory_movements'))
-        : query(collection(firestore, 'inventory_movements'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
-  const { data: movementsData = [], isLoading: isLoadingMovements } = useCollection<InventoryMovement>(inventoryMovementsQuery);
-
-  const inventoryMovements = useMemo(() => {
-    return (movementsData || []).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [movementsData]);
-
-  const isLoading = isLoadingProducts || isLoadingSales || isLoadingMovements;
+  const isLoading = isLoadingSettings;
   
   const [isMovementsDialogOpen, setIsMovementsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -186,13 +157,11 @@ export default function InventoryPage() {
   };
 
   function handleUpdateProduct(data: Omit<Product, 'id'> & { id?: string }) {
-    if (!data.id || !firestore || !activeStoreId) return false;
+    if (!data.id) return false;
 
-    const productRef = doc(firestore, 'products', data.id);
-    setDocumentNonBlocking(productRef, {...data, storeId: activeStoreId}, { merge: true });
-
+    setProducts(prev => prev.map(p => p.id === data.id ? { ...p, ...data } : p));
     toast({
-        title: "Producto Actualizado",
+        title: "Producto Actualizado (Simulación)",
         description: `El producto "${data.name}" ha sido actualizado.`,
     });
     setProductToEdit(null);
@@ -200,7 +169,6 @@ export default function InventoryPage() {
   }
   
   const handleDelete = (productId: string) => {
-    if (!firestore) return;
     const isProductInSale = sales.some(sale => sale.items.some(item => item.productId === productId));
 
     if (isProductInSale) {
@@ -213,11 +181,9 @@ export default function InventoryPage() {
         return;
     }
     
-    const productRef = doc(firestore, 'products', productId);
-    deleteDocumentNonBlocking(productRef);
-
+    setProducts(prev => prev.filter(p => p.id !== productId));
     toast({
-        title: "Producto Eliminado",
+        title: "Producto Eliminado (Simulación)",
         description: "El producto ha sido eliminado del inventario.",
     });
     setProductToDelete(null);
@@ -231,7 +197,7 @@ export default function InventoryPage() {
   }
 
   const handleMoveInventory = async () => {
-    if (!movementProduct || !movementType || movementQuantity <= 0 || !movementResponsible.trim() || !firestore || !activeStoreId) {
+    if (!movementProduct || !movementType || movementQuantity <= 0 || !movementResponsible.trim()) {
       toast({
         variant: "destructive",
         title: "Datos incompletos",
@@ -256,13 +222,10 @@ export default function InventoryPage() {
       default: newStock = currentStock; break;
     }
     
-    const batch = writeBatch(firestore);
-
-    const productRef = doc(firestore, "products", movementProduct.id);
-    batch.update(productRef, { stock: newStock });
+    setProducts(prev => prev.map(p => p.id === movementProduct.id ? {...p, stock: newStock} : p));
     
-    const movementRef = doc(collection(firestore, "inventory_movements"));
-    const newMovement: Omit<InventoryMovement, 'id' | 'date'> & {date: string} = {
+    const newMovement: InventoryMovement = {
+        id: `mov-${Date.now()}`,
         productName: movementProduct.name,
         type: movementType,
         quantity: movementType === 'sale' ? -movementQuantity : (movementType === 'purchase' ? movementQuantity : newStock),
@@ -270,23 +233,13 @@ export default function InventoryPage() {
         responsible: movementResponsible,
         storeId: activeStoreId,
     };
-    batch.set(movementRef, newMovement);
+    setInventoryMovements(prev => [newMovement, ...prev]);
 
-    try {
-        await batch.commit();
-        toast({
-            title: "Movimiento Registrado",
-            description: `El stock de "${movementProduct.name}" ha sido actualizado a ${newStock}.`,
-        });
-        resetMovementForm();
-    } catch (error) {
-        console.error("Error moving inventory: ", error);
-        toast({
-            variant: "destructive",
-            title: "Error al registrar movimiento",
-            description: (error as Error).message,
-        });
-    }
+    toast({
+        title: "Movimiento Registrado (Simulación)",
+        description: `El stock de "${movementProduct.name}" ha sido actualizado a ${newStock}.`,
+    });
+    resetMovementForm();
   };
   
   const getMovementLabel = (type: 'sale' | 'purchase' | 'adjustment') => {
@@ -665,3 +618,5 @@ export default function InventoryPage() {
     </>
   );
 }
+
+    

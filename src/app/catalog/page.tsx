@@ -7,9 +7,6 @@ import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid,
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
-import { useCollection, useFirestore, useUser, useAuth } from "@/firebase";
-import { collection, doc, writeBatch, deleteDoc, query, where } from "firebase/firestore";
-import { signOut } from "firebase/auth";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -20,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import type { Product, CartItem, Sale, Customer, PendingOrder, Ad, Family } from "@/lib/types";
-import { trackAdClick, defaultStoreId } from "@/lib/data";
+import { trackAdClick, defaultStoreId, mockProducts, initialFamilies, mockAds } from "@/lib/data";
 import { useSettings } from "@/contexts/settings-context";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
@@ -29,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { isPast } from "date-fns";
 import { useRouter } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useUser } from "@/firebase";
 
 
 const AdCard = ({ ad }: { ad: Ad }) => {
@@ -120,34 +118,15 @@ const CatalogProductCard = ({ product, onAddToCart, onImageClick }: { product: P
 
 export default function CatalogPage() {
     const { toast } = useToast();
-    const auth = useAuth();
-    const firestore = useFirestore();
     const { user, isUserLoading } = useUser();
     const router = useRouter();
     const { settings, activeSymbol, activeRate, isLoadingSettings } = useSettings();
 
-    // On catalog page, always use the default store ID
-    const catalogStoreId = defaultStoreId;
-
-    const productsRef = useMemo(() => {
-        if (!firestore || !catalogStoreId || isLoadingSettings) return null;
-        return query(collection(firestore, 'products'), where('storeId', '==', catalogStoreId));
-    }, [firestore, catalogStoreId, isLoadingSettings]);
-    const { data: products = [], isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
+    const [products, setProducts] = useState<Product[]>(mockProducts.map(p => ({...p, storeId: defaultStoreId, createdAt: new Date().toISOString()})));
+    const [families, setFamilies] = useState<Family[]>(initialFamilies.map(f => ({...f, storeId: defaultStoreId})));
+    const [allAds, setAllAds] = useState<Ad[]>(mockAds.map(ad => ({...ad, createdAt: new Date().toISOString()})));
     
-    const familiesRef = useMemo(() => {
-        if (!firestore || !catalogStoreId || isLoadingSettings) return null;
-        return query(collection(firestore, 'families'), where('storeId', '==', catalogStoreId));
-    }, [firestore, catalogStoreId, isLoadingSettings]);
-    const { data: families = [], isLoading: isLoadingFamilies } = useCollection<Family>(familiesRef);
-    
-    const adsRef = useMemo(() => {
-      if (!firestore || isLoadingSettings) return null;
-      return collection(firestore, 'ads');
-    }, [firestore, isLoadingSettings]);
-    const { data: allAds = [], isLoading: isLoadingAds } = useCollection<Ad>(adsRef);
-    
-    const isLoading = isLoadingProducts || isLoadingFamilies || isLoadingAds || isLoadingSettings;
+    const [isLoading, setIsLoading] = useState(false);
     
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
     const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -338,50 +317,21 @@ export default function CatalogPage() {
             toast({ variant: 'destructive', title: 'Debes iniciar sesión' });
             return;
         }
-        if (!catalogStoreId) {
+        if (!settings?.id) {
             toast({ variant: 'destructive', title: 'No se pudo identificar la tienda.' });
             return;
         }
 
-        const batch = writeBatch(firestore);
-        
         const newOrderId = `ORD-${Date.now()}`;
-        const newOrderRef = doc(firestore, 'pendingOrders', newOrderId);
-        const newOrder: Omit<PendingOrder, 'id'> = {
-            date: new Date().toISOString(),
-            customerName: user.displayName || 'Usuario sin nombre',
-            customerPhone: user.phoneNumber || 'Sin teléfono',
-            customerEmail: user.email || 'Sin email',
-            storeId: catalogStoreId,
-            items: cart.map(item => ({
-                productId: item.product.id,
-                productName: item.product.name,
-                quantity: item.quantity,
-                price: item.price
-            })),
-            total: subtotal,
-        };
-        batch.set(newOrderRef, newOrder);
         
-        try {
-            await batch.commit();
-            await generateQrCode(newOrderId);
-
-            setIsOrderDialogOpen(false);
-            setCart([]);
-
-            toast({
-                title: "¡Pedido Generado!",
-                description: "Muestra el código QR para facturar.",
-            });
-        } catch (error) {
-            console.error("Error generating order: ", error);
-            toast({
-                variant: 'destructive',
-                title: 'Error al generar pedido',
-                description: (error as Error).message,
-            });
-        }
+        // SIMULATE SUCCESS
+        await generateQrCode(newOrderId);
+        setIsOrderDialogOpen(false);
+        setCart([]);
+        toast({
+            title: "¡Pedido Generado! (Simulación)",
+            description: "Muestra el código QR para facturar. Los datos no se guardaron.",
+        });
     };
     
     const handleImageClick = (product: Product) => {
@@ -389,9 +339,9 @@ export default function CatalogPage() {
     };
 
     const handleSignOut = async () => {
-        await signOut(auth);
-        router.push('/catalog');
+        // This part can remain as it deals with client-side auth state
         toast({ title: 'Has cerrado sesión.' });
+        router.push('/login?signed_out=true');
     };
 
     return (
@@ -730,3 +680,5 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
+
+    

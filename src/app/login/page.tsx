@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { FcGoogle } from 'react-icons/fc';
 import { 
   signInWithRedirect, 
@@ -10,9 +10,9 @@ import {
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signOut,
   type User as FirebaseUser
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,81 +21,41 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Logo } from '@/components/logo';
-import { useAuth, useFirestore, useUser } from '@/firebase';
+import { useAuth, useUser } from '@/firebase';
 import type { UserProfile } from '@/lib/types';
 import { Package } from 'lucide-react';
 import { forceSeedDatabase } from '@/lib/seed';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const auth = useAuth();
-  const firestore = useFirestore();
+  const { user } = useUser();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
-
-  // --- ONE-TIME DATABASE SEEDING LOGIC (BRUTE FORCE) ---
+  
+  // This is a one-time operation for the local demo.
   useEffect(() => {
-    const runSeed = async () => {
-      if (!firestore) return;
+    forceSeedDatabase();
+  }, []);
 
-      try {
-        await forceSeedDatabase(firestore);
-        toast({
-          title: "ÉXITO: Base de datos sembrada a la fuerza.",
-          description: "La operación de escritura se ha completado.",
-          duration: 5000,
-        });
-      } catch (error) {
-        console.error("Error during forceful database seed:", error);
-        toast({
-          variant: "destructive",
-          title: "ERROR: No se pudo sembrar la base de datos",
-          description: "Revisa la consola para más detalles.",
-          duration: 5000,
-        });
-      }
-    };
-    
-    runSeed();
-  }, [firestore, toast]);
-  // --- END OF SEEDING LOGIC ---
-
-  const createUserProfile = async (firebaseUser: FirebaseUser) => {
-    if (!firestore) return;
-    const userRef = doc(firestore, 'users', firebaseUser.uid);
-    const userDoc = await getDoc(userRef);
-
-    if (!userDoc.exists()) {
-      setLoadingMessage('Creando perfil de usuario...');
-      const newUserProfile: Omit<UserProfile, 'createdAt'> = {
-        uid: firebaseUser.uid,
-        email: firebaseUser.email,
-        displayName: firebaseUser.displayName || email.split('@')[0],
-        photoURL: firebaseUser.photoURL,
-        role: 'user',
-        status: 'active',
-        storeRequest: false,
-      };
-      await setDoc(userRef, { ...newUserProfile, createdAt: new Date().toISOString() });
+  // Handle manual sign-out from catalog page
+  useEffect(() => {
+    if (user && searchParams.get('signed_out')) {
+      signOut(auth);
+      router.replace('/login');
     }
-  };
+  }, [user, searchParams, auth, router]);
+
 
   const loadDataAndRedirect = async (firebaseUser: FirebaseUser) => {
-    if (!firestore) {
-      setLoadingMessage('Error: No se pudo conectar a la base de datos.');
-      toast({ variant: 'destructive', title: 'Error de Conexión' });
-      setIsLoading(false);
-      return;
-    }
-    
-    setLoadingMessage('Cargando perfil de usuario...');
-    await createUserProfile(firebaseUser);
-    
+    // In a local-data app, the "profile" is created on the client
+    // and the data is already available. We just need to redirect.
     setLoadingMessage('¡Todo listo! Redirigiendo...');
     router.replace('/dashboard');
   };
@@ -133,7 +93,7 @@ export default function LoginPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth || !firestore) return;
+    if (!auth) return;
     const promise = isSignUp
       ? createUserWithEmailAndPassword(auth, email, password)
       : signInWithEmailAndPassword(auth, email, password);
@@ -150,7 +110,7 @@ export default function LoginPage() {
   
   useEffect(() => {
     const processRedirect = async () => {
-      if (!auth || !firestore) return;
+      if (!auth) return;
       try {
         const result = await getRedirectResult(auth);
         if (result && result.user) {
@@ -172,7 +132,7 @@ export default function LoginPage() {
     
     processRedirect();
 
-  }, [auth, firestore]);
+  }, [auth]);
   
   if (isLoading) {
     return (
@@ -239,3 +199,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    

@@ -37,14 +37,13 @@ import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/contexts/settings-context";
 import { InventoryMovement, Product, Purchase, Sale } from "@/lib/types";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { useCollection, useFirestore, useUser } from "@/firebase";
-import { collection, query, where, collectionGroup } from "firebase/firestore";
+import { mockSales, mockPurchases, mockProducts } from "@/lib/data";
 
 type TimeFilter = 'day' | 'week' | 'month';
 
 const getDate = (d: any): Date => {
   if (!d) return new Date();
-  if (typeof d.toDate === 'function') {
+  if (d.toDate) { // Firebase Timestamp
     return d.toDate();
   }
   if (typeof d === 'string') {
@@ -58,61 +57,39 @@ const getDate = (d: any): Date => {
 
 
 export default function Dashboard() {
-  const { activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
-  const firestore = useFirestore();
-  const { isUserLoading } = useUser();
+  const { activeSymbol, activeRate, isLoadingSettings } = useSettings();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
   
-  const isSuperAdmin = userProfile?.role === 'superAdmin';
+  const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: 'local'})));
+  const [purchases, setPurchases] = useState(mockPurchases.map(p => ({...p, storeId: 'local'})));
+  const [products, setProductsState] = useState(mockProducts.map(p => ({...p, storeId: 'local'})));
 
-  const salesRef = useMemo(() => {
-    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
-    return isSuperAdmin
-      ? query(collectionGroup(firestore, 'sales'))
-      : query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
-  const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesRef);
+  const recentMovements: InventoryMovement[] = useMemo(() => {
+    const saleMovements = sales.flatMap(sale => 
+        sale.items.map(item => ({
+            id: `mov-sale-${sale.id}-${item.productId}`,
+            productName: item.productName,
+            type: 'sale' as 'sale',
+            quantity: -item.quantity,
+            date: sale.date,
+            storeId: sale.storeId,
+        }))
+    );
+     const purchaseMovements = purchases.flatMap(purchase => 
+        purchase.items.map(item => ({
+            id: `mov-pur-${purchase.id}-${item.productId}`,
+            productName: item.productName,
+            type: 'purchase' as 'purchase',
+            quantity: item.quantity,
+            date: purchase.date,
+            storeId: purchase.storeId,
+        }))
+    );
+    return [...saleMovements, ...purchaseMovements].sort((a,b) => getDate(b.date).getTime() - getDate(a.date).getTime())
+  }, [sales, purchases]);
 
-  const purchasesRef = useMemo(() => {
-    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
-    return isSuperAdmin
-      ? query(collectionGroup(firestore, 'purchases'))
-      : query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
-  const { data: purchasesData, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesRef);
 
-  const productsRef = useMemo(() => {
-    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
-    return isSuperAdmin
-      ? query(collectionGroup(firestore, 'products'))
-      : query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
-  
-  const movementsRef = useMemo(() => {
-    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
-    return isSuperAdmin
-      ? query(collectionGroup(firestore, 'inventory_movements'))
-      : query(collection(firestore, 'inventory_movements'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
-  const { data: movementsData, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsRef);
-
-  const sales = useMemo(() => {
-    if (!salesData) return [];
-    return [...salesData].sort((a, b) => getDate(b.date).getTime() - getDate(a.date).getTime());
-  }, [salesData]);
-  
-  const purchases = useMemo(() => {
-    if (!purchasesData) return [];
-    return [...purchasesData].sort((a, b) => getDate(b.date).getTime() - getDate(a.date).getTime());
-  }, [purchasesData]);
-
-  const recentMovements = useMemo(() => {
-    if (!movementsData) return [];
-    return [...movementsData].sort((a, b) => getDate(b.date).getTime() - getDate(a.date).getTime());
-  }, [movementsData]);
-
-  const isLoading = isLoadingSales || isLoadingPurchases || isLoadingProducts || isLoadingMovements;
+  const isLoading = isLoadingSettings;
 
   const cutoffDate = useMemo(() => {
     const now = new Date();
@@ -156,7 +133,7 @@ export default function Dashboard() {
 
     filteredPurchases.forEach(purchase => {
         const purchaseDate = getDate(purchase.date);
-        const dateKey = format(purchaseDate, 'yyyy-MM-dd');
+        const dateKey = format(purchaseDate, dateFormat);
 
         if (!dataByDate[dateKey]) {
             dataByDate[dateKey] = { date: format(purchaseDate, dateFormat), sales: 0, profit: 0, unitsSold: 0, unitsPurchased: 0 };
@@ -362,7 +339,7 @@ export default function Dashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoadingMovements ? (
+                  {isLoading ? (
                     <TableRow><TableCell colSpan={3} className="text-center">Cargando...</TableCell></TableRow>
                   ) : (
                     (recentMovements || []).slice(0, 5).map((movement, index) => (
