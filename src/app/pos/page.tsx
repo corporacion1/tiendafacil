@@ -642,8 +642,8 @@ export default function POSPage() {
                             </AlertDialog>
                         )}
                     </CardHeader>
-                    <CardContent className="flex-1 overflow-hidden p-6 pt-0">
-                        <div className="h-full flex flex-col gap-4">
+                    <CardContent className="flex-1 overflow-y-auto p-6 pt-0">
+                        <div className="space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="customer">Cliente</Label>
                                 <div className="flex gap-2">
@@ -731,7 +731,7 @@ export default function POSPage() {
                                 </div>
                             </div>
                             <Separator />
-                            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+                            <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
                                 {cartItems.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center text-center text-muted-foreground h-full py-12">
                                         <ShoppingCart className="h-12 w-12 mb-4" />
@@ -793,15 +793,17 @@ export default function POSPage() {
                                     <span>Subtotal</span>
                                     <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
                                 </div>
+                                {tax1Amount > 0 && settings?.tax1 && (
                                 <div className="flex justify-between">
-                                    <span>Impuesto {settings?.tax1 || 0}%</span>
+                                    <span>Impuesto {settings.tax1}%</span>
                                     <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</span>
                                 </div>
-                                {tax2Amount > 0 && (
-                                    <div className="flex justify-between">
-                                        <span>Impuesto {settings?.tax2 || 0}%</span>
-                                        <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
-                                    </div>
+                                )}
+                                {tax2Amount > 0 && settings?.tax2 && (
+                                <div className="flex justify-between">
+                                    <span>Impuesto {settings.tax2}%</span>
+                                    <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
+                                </div>
                                 )}
                                 <div className="flex justify-between font-semibold text-lg">
                                     <span>Total</span>
@@ -971,5 +973,3 @@ export default function POSPage() {
   </Dialog>
   );
 }
-
-    
