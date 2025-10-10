@@ -2,11 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { FcGoogle } from 'react-icons/fc';
 import { 
-  signInWithRedirect, 
-  getRedirectResult,
-  GoogleAuthProvider,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
@@ -18,7 +14,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { Logo } from '@/components/logo';
 import { useAuth, useUser } from '@/firebase';
 import { Package } from 'lucide-react';
@@ -34,42 +29,13 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); // Start as true to handle initial auth check
-  const [loadingMessage, setLoadingMessage] = useState<string | null>('Iniciando...');
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
 
   // This is a one-time operation for the local demo.
   useEffect(() => {
     forceSeedDatabase();
   }, []);
-
-  // Handle redirect result from Google Sign-In
-  useEffect(() => {
-    if (auth) {
-      setLoadingMessage('Verificando autenticación...');
-      getRedirectResult(auth)
-        .then((result) => {
-          if (result) {
-            // User has successfully signed in via redirect.
-            // The AuthGuard will handle the redirection to the dashboard.
-            setLoadingMessage('¡Autenticación exitosa! Redirigiendo...');
-            // No need to setIsLoading(false) here, as AuthGuard will take over.
-          } else {
-            // No redirect result, meaning the user is visiting the page directly.
-            setIsLoading(false);
-            setLoadingMessage(null);
-          }
-        }).catch((error) => {
-          console.error("Google sign-in redirect error:", error);
-          toast({
-            variant: 'destructive',
-            title: 'Error con Google',
-            description: 'No se pudo completar el inicio de sesión con Google.',
-          });
-          setIsLoading(false);
-          setLoadingMessage(null);
-        });
-    }
-  }, [auth, toast]);
 
   // Handle manual sign-out from other pages
   useEffect(() => {
@@ -118,14 +84,6 @@ export default function LoginPage() {
       : signInWithEmailAndPassword(auth, email, password);
     handleAuthAction(promise);
   };
-
-  const handleGoogleSignIn = () => {
-    if (!auth) return;
-    setIsLoading(true);
-    setLoadingMessage('Redirigiendo a Google...');
-    const provider = new GoogleAuthProvider();
-    signInWithRedirect(auth, provider);
-  };
   
   if (isUserLoading || isLoading) {
     return (
@@ -136,8 +94,6 @@ export default function LoginPage() {
     );
   }
   
-  // The AuthGuard will handle redirection if the user is already logged in.
-  // This component only needs to render the login form.
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-muted/40">
       <Card className="w-full max-w-sm">
@@ -178,13 +134,6 @@ export default function LoginPage() {
               {isSignUp ? 'Crear Cuenta' : 'Ingresar'}
             </Button>
           </form>
-
-          <Separator className="my-2" />
-
-          <Button variant="outline" onClick={handleGoogleSignIn} className="w-full">
-            <FcGoogle className="mr-2 h-5 w-5" />
-            Ingresar con Google
-          </Button>
 
           <Button variant="link" size="sm" className="w-full" onClick={() => setIsSignUp(!isSignUp)}>
             {isSignUp ? '¿Ya tienes una cuenta? Inicia Sesión' : '¿No tienes cuenta? Regístrate'}
