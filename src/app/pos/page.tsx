@@ -476,9 +476,9 @@ export default function POSPage() {
 
   return (
     <Dialog onOpenChange={(open) => { if (!open) setProductDetails(null); setImageError(false); }}>
-      <div className="grid flex-1 auto-rows-max gap-4 md:grid-cols-3 lg:gap-8">
+      <div className="grid flex-1 items-start gap-4 md:grid-cols-5 lg:gap-8">
         {/* Products Section (Left Column) */}
-        <div className="grid auto-rows-max items-start gap-4 md:col-span-2">
+        <div className="grid auto-rows-max items-start gap-4 md:col-span-3">
           <Card>
             <CardHeader>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -607,7 +607,7 @@ export default function POSPage() {
         </div>
 
         {/* Cart Section (Right Column) */}
-        <div className="grid auto-rows-max items-start gap-4 md:col-span-1">
+        <div className="grid auto-rows-max items-start gap-4 md:col-span-2">
             <div className="sticky top-6">
                 <Card className="flex flex-col h-[calc(100vh-5rem)]">
                     <CardHeader className="flex flex-row justify-between items-center">
@@ -963,5 +963,3 @@ export default function POSPage() {
   </Dialog>
   );
 }
-
-    
