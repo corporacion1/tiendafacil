@@ -7,8 +7,6 @@ import {
   getDocs,
   Firestore,
   serverTimestamp,
-  query,
-  WriteBatch,
 } from 'firebase/firestore';
 import {
   defaultStore,
@@ -26,59 +24,18 @@ import {
   mockCurrencyRates
 } from './data';
 
-async function deleteCollection(db: Firestore, collectionPath: string, batch: WriteBatch) {
-  const collectionRef = collection(db, collectionPath);
-  const snapshot = await getDocs(collectionRef);
-  if (snapshot.empty) {
-    return; // Nothing to delete
-  }
-  snapshot.docs.forEach(doc => {
-    batch.delete(doc.ref);
-  });
-  console.log(`Scheduled deletion for ${snapshot.size} documents in ${collectionPath}.`);
-}
-
-async function deleteSubcollections(db: Firestore, parentCollection: string, batch: WriteBatch) {
-    const parentCollectionRef = collection(db, parentCollection);
-    const parentSnapshot = await getDocs(parentCollectionRef);
-    if(parentSnapshot.empty) return;
-
-    for (const docSnapshot of parentSnapshot.docs) {
-        // Delete subcollections first
-        await deleteCollection(db, `${parentCollection}/${docSnapshot.id}/currencyRates`, batch);
-    }
-}
-
-
-export async function factoryReset(db: Firestore) {
-  console.log("Starting Firestore factory reset...");
-  const batch = writeBatch(db);
-
-  // First, handle nested subcollections
-  await deleteSubcollections(db, 'stores', batch);
-
-  // Explicitly list all top-level collections to be cleared
-  const collectionsToDelete = [
-    'products', 'customers', 'suppliers', 'units', 'families', 
-    'warehouses', 'sales', 'purchases', 'inventory_movements', 
-    'pendingOrders', 'ads', 'stores', 'users'
-  ];
-  
-  for (const collectionName of collectionsToDelete) {
-      await deleteCollection(db, collectionName, batch);
-  }
-
-  try {
-    await batch.commit();
-    console.log("Firestore factory reset complete. The database should now be empty.");
-  } catch (error) {
-    console.error("Error during factory reset commit:", error);
-    throw new Error("Failed to commit factory reset batch.");
-  }
-}
-
-
+// This function now checks if the DB is empty before seeding.
 export async function seedDatabase(db: Firestore) {
+  const storeCollectionRef = collection(db, 'stores');
+  const storeSnapshot = await getDocs(storeCollectionRef);
+
+  // --- ONLY SEED IF THE 'stores' COLLECTION IS EMPTY ---
+  if (!storeSnapshot.empty) {
+    console.log("Database already contains data. Skipping seed process.");
+    return;
+  }
+  
+  console.log("Database is empty. Starting seed process...");
   const batch = writeBatch(db);
 
   // 1. Create the default store.
@@ -94,11 +51,9 @@ export async function seedDatabase(db: Firestore) {
   });
   console.log(`Scheduled creation of ${mockCurrencyRates.length} currency rates for store: ${defaultStoreId}`);
 
-
   // 3. Create the superAdmin user and link it to the store.
   const superAdminUser = defaultUsers.find(u => u.role === 'superAdmin');
   if (superAdminUser) {
-      // NOTE: This UID must be manually created in Firebase Auth for the seed to work correctly for the admin.
       const superAdminUID = '5QLaiiIr4mcGsjRXVGeGx50nrpk1'; 
       const userRef = doc(db, 'users', superAdminUID);
       batch.set(userRef, { 
@@ -135,4 +90,49 @@ export async function seedDatabase(db: Firestore) {
   console.log("Committing all seed data to Firestore...");
   await batch.commit();
   console.log("Seed data successfully committed.");
+}
+
+// Separate function for manual reset if needed from UI
+export async function factoryReset(db: Firestore) {
+  console.log("Starting Firestore factory reset...");
+  const batch = writeBatch(db);
+
+  const deleteSubcollections = async (parentCollection: string) => {
+    const parentCollectionRef = collection(db, parentCollection);
+    const parentSnapshot = await getDocs(parentCollectionRef);
+    if(parentSnapshot.empty) return;
+
+    for (const docSnapshot of parentSnapshot.docs) {
+        await deleteCollection(db, `${parentCollection}/${docSnapshot.id}/currencyRates`, batch);
+    }
+  }
+
+  const deleteCollection = async (collectionPath: string, batch: WriteBatch) => {
+    const collectionRef = collection(db, collectionPath);
+    const snapshot = await getDocs(collectionRef);
+    if (snapshot.empty) return;
+    snapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+  }
+
+  await deleteSubcollections('stores');
+
+  const collectionsToDelete = [
+    'products', 'customers', 'suppliers', 'units', 'families', 
+    'warehouses', 'sales', 'purchases', 'inventory_movements', 
+    'pendingOrders', 'ads', 'stores', 'users'
+  ];
+  
+  for (const collectionName of collectionsToDelete) {
+      await deleteCollection(db, collectionName, batch);
+  }
+
+  try {
+    await batch.commit();
+    console.log("Firestore factory reset complete.");
+  } catch (error) {
+    console.error("Error during factory reset commit:", error);
+    throw new Error("Failed to commit factory reset batch.");
+  }
 }

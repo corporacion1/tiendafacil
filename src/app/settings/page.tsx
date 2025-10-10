@@ -167,7 +167,7 @@ export default function SettingsPage() {
     const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
     const [resetPin, setResetPin] = useState('');
     const [resetConfirmationText, setResetConfirmationText] = useState('');
-    const [isSeeding, setIsSeeding] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     const isSuperAdmin = userProfile?.role === 'superAdmin';
 
@@ -337,6 +337,7 @@ export default function SettingsPage() {
             return;
         }
 
+        setIsProcessing(true);
         toast({
             title: 'Restaurando...',
             description: 'Por favor, espera mientras se eliminan los datos.',
@@ -345,7 +346,6 @@ export default function SettingsPage() {
         try {
             await factoryReset(firestore);
             
-            // Clear settings from localStorage
             localStorage.removeItem('tienda_facil_settings');
             localStorage.removeItem('tienda_facil_currency_pref');
             localStorage.removeItem('tienda_facil_pin');
@@ -358,7 +358,6 @@ export default function SettingsPage() {
                 description: 'Todos los datos han sido eliminados. La página se recargará.',
             });
 
-            // Reload the page to apply changes everywhere
             setTimeout(() => {
                 window.location.reload();
             }, 1500);
@@ -369,13 +368,15 @@ export default function SettingsPage() {
                 description: "No se pudieron eliminar todos los datos. Revisa la consola para más detalles.",
             });
             console.error("Factory reset failed:", error);
+        } finally {
+            setIsProcessing(false);
         }
 
     };
 
     const handleSeedDatabase = async () => {
         if (!firestore) return;
-        setIsSeeding(true);
+        setIsProcessing(true);
         toast({
             title: 'Poblando Base de Datos',
             description: 'Este proceso puede tardar unos momentos. Por favor, espera...',
@@ -394,7 +395,7 @@ export default function SettingsPage() {
                 description: error.message || 'Ocurrió un error inesperado.',
             });
         } finally {
-            setIsSeeding(false);
+            setIsProcessing(false);
         }
     };
 
@@ -841,16 +842,16 @@ export default function SettingsPage() {
                             </div>
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <Button variant="secondary" disabled={isSeeding}>
+                                    <Button variant="secondary" disabled={isProcessing}>
                                         <Database className="mr-2 h-4 w-4" />
-                                        {isSeeding ? 'Poblando...' : 'Poblar con Datos Demo'}
+                                        {isProcessing ? 'Procesando...' : 'Poblar con Datos Demo'}
                                     </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                     <AlertDialogHeader>
                                         <AlertDialogTitle>¿Poblar la base de datos?</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                            Esta acción agregará datos de demostración. Si ya existen datos con los mismos IDs, serán sobreescritos.
+                                            Esta acción agregará datos de demostración. Si la base de datos no está vacía, no se realizará ninguna acción.
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
@@ -864,12 +865,12 @@ export default function SettingsPage() {
                             <div>
                                 <p className="font-medium text-destructive">Restaurar Datos de Fábrica</p>
                                 <p className="text-sm text-muted-foreground">
-                                    Borra todos los datos locales y de la base de datos.
+                                    Borra todos los datos de todas las colecciones.
                                 </p>
                             </div>
                             <AlertDialog>
                             <AlertDialogTrigger asChild>
-                                <Button variant="destructive">Restaurar Datos de Fábrica</Button>
+                                <Button variant="destructive" disabled={isProcessing}>Restaurar Datos de Fábrica</Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                                 <AlertDialogHeader>
@@ -927,9 +928,9 @@ export default function SettingsPage() {
                         <Button
                             variant="destructive"
                             onClick={handleFactoryReset}
-                            disabled={resetConfirmationText !== 'RESTAURAR' || (hasPin && resetPin.length !== 4)}
+                            disabled={isProcessing || resetConfirmationText !== 'RESTAURAR' || (hasPin && resetPin.length !== 4)}
                         >
-                            Restaurar y Borrar Todo
+                            {isProcessing ? 'Restaurando...' : 'Restaurar y Borrar Todo'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

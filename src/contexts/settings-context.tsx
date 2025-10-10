@@ -8,7 +8,7 @@ import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc, query, orderBy } from 'firebase/firestore';
 import { defaultStoreId, defaultStore } from '@/lib/data';
-import { factoryReset, seedDatabase } from '@/lib/seed';
+import { seedDatabase } from '@/lib/seed'; // Changed import
 import { Package } from 'lucide-react';
 
 type DisplayCurrency = 'primary' | 'secondary';
@@ -32,8 +32,6 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 const ACTIVE_STORE_ID_KEY = 'tienda_facil_active_store_id';
 const CURRENCY_PREF_STORAGE_KEY = 'tienda_facil_currency_pref';
-const ONE_TIME_RESET_FLAG = 'db_reset_v1_complete';
-
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, isUserLoading } = useUser();
@@ -52,46 +50,24 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
   
-  // One-time database reset and seed logic
+  // Conditional seeding logic
   useEffect(() => {
-    if (!firestore || typeof window === 'undefined') return;
-
-    const hasBeenReset = localStorage.getItem(ONE_TIME_RESET_FLAG);
-    if (!hasBeenReset) {
-      const performReset = async () => {
-        toast({
-          title: 'Mantenimiento Único',
-          description: 'Restaurando y sembrando la base de datos. Por favor, espera...',
-          duration: 15000,
-        });
-        
+    if (!firestore) return;
+    
+    const initializeDatabase = async () => {
         try {
-          await factoryReset(firestore);
-          await seedDatabase(firestore);
-          
-          localStorage.setItem(ONE_TIME_RESET_FLAG, 'true');
-          
-          toast({
-            title: '¡Mantenimiento Completo!',
-            description: 'La base de datos ha sido restaurada. La página se recargará.',
-          });
-
-          setTimeout(() => {
-            window.location.reload();
-          }, 2000);
-
+            await seedDatabase(firestore);
         } catch (error) {
-          console.error("One-time reset failed:", error);
-          toast({
-            variant: 'destructive',
-            title: 'Error en el Mantenimiento',
-            description: 'No se pudo restaurar la base de datos. Revisa la consola.',
-          });
+            console.error("Error during initial database seed check:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Error de inicialización',
+                description: 'No se pudo verificar o sembrar la base de datos.',
+            });
         }
-      };
-      
-      performReset();
-    }
+    };
+    
+    initializeDatabase();
   }, [firestore, toast]);
 
 
@@ -145,10 +121,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, []);
   
   const isLoading = useMemo(() => {
-      // Don't render until the one-time reset check is done.
-    if (typeof window !== 'undefined' && !localStorage.getItem(ONE_TIME_RESET_FLAG)) {
-      return true;
-    }
     if (isPublicPage) {
         return isLoadingSettingsDoc;
     }
