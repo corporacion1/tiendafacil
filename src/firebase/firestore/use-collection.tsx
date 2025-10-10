@@ -55,24 +55,21 @@ export function useCollection<T = any>(
   const shouldFetch = !!memoizedTargetRefOrQuery && !isUserLoading;
 
   useEffect(() => {
-    // If we shouldn't fetch, clear any existing data and unsubscribe.
-    if (!shouldFetch) {
-      if (unsubscribeRef.current) {
+    // Always clean up the previous listener when the query or user loading state changes.
+    if (unsubscribeRef.current) {
         unsubscribeRef.current();
-        unsubscribeRef.current = null;
-      }
-      setData(null);
-      setError(null);
-      return;
+    }
+    unsubscribeRef.current = null;
+
+    // Reset state when we should not fetch
+    if (!shouldFetch) {
+        setData(null);
+        setError(null);
+        return;
     }
 
-    // New query is valid, set up the listener.
+    // Set up the new listener
     setError(null);
-    
-    // Unsubscribe from the previous listener if it exists.
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current();
-    }
 
     unsubscribeRef.current = onSnapshot(
       memoizedTargetRefOrQuery,
@@ -104,11 +101,10 @@ export function useCollection<T = any>(
       }
     );
 
-    // Main cleanup function when the component unmounts
+    // The main cleanup function for when the component unmounts.
     return () => {
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
-        unsubscribeRef.current = null;
       }
     };
   }, [memoizedTargetRefOrQuery, isUserLoading]);
@@ -117,4 +113,3 @@ export function useCollection<T = any>(
 
   return { data, isLoading, error };
 }
-

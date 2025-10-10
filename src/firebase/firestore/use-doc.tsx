@@ -54,24 +54,22 @@ export function useDoc<T = any>(
   const shouldFetch = !!memoizedDocRef && !isUserLoading;
 
   useEffect(() => {
-    // If we shouldn't fetch, clear any existing data and unsubscribe.
-    if (!shouldFetch) {
-      if (unsubscribeRef.current) {
+    // Always clean up the previous listener when the ref or user loading state changes.
+    if (unsubscribeRef.current) {
         unsubscribeRef.current();
-        unsubscribeRef.current = null;
-      }
-      setData(null);
-      setError(null);
-      return;
+    }
+    unsubscribeRef.current = null;
+
+    // Reset state if we should not fetch
+    if (!shouldFetch) {
+        setData(null);
+        setError(null);
+        return;
     }
     
+    // Set up the new listener
     setError(null);
     
-    // Unsubscribe from the previous listener if it exists.
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current();
-    }
-
     unsubscribeRef.current = onSnapshot(
       memoizedDocRef,
       (snapshot: DocumentSnapshot<DocumentData>) => {
@@ -95,11 +93,10 @@ export function useDoc<T = any>(
       }
     );
 
-    // Main cleanup function when the component unmounts
+    // Main cleanup function for when the component unmounts
     return () => {
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
-        unsubscribeRef.current = null;
       }
     };
   }, [memoizedDocRef, isUserLoading]);
@@ -108,4 +105,3 @@ export function useDoc<T = any>(
 
   return { data, isLoading, error };
 }
-
