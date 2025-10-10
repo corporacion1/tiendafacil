@@ -1,4 +1,3 @@
-
 "use client"
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
@@ -35,12 +34,12 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
             <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative isolate">
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
                     <Button size="sm">Agregar</Button>
-                    <DialogTrigger asChild>
-                        <Button size="icon" variant="ghost" className="absolute top-1 right-1 h-7 w-7 text-white" onClick={(e) => { e.stopPropagation(); onShowDetails(product); }}>
-                            <ZoomIn className="h-5 w-5" />
-                        </Button>
-                    </DialogTrigger>
                 </div>
+                <DialogTrigger asChild>
+                    <Button size="icon" variant="ghost" className="absolute top-1 right-1 h-7 w-7 text-white opacity-0 group-hover:opacity-100 transition-opacity z-20" onClick={(e) => { e.stopPropagation(); onShowDetails(product); }}>
+                        <ZoomIn className="h-5 w-5" />
+                    </Button>
+                </DialogTrigger>
                 {imageUrl && !imageError ? (
                     <Image
                         src={imageUrl}
@@ -476,7 +475,7 @@ export default function POSPage() {
 
   return (
     <Dialog onOpenChange={(open) => { if (!open) setProductDetails(null); setImageError(false); }}>
-    <div className="grid flex-1 items-start gap-4 md:grid-cols-3 lg:gap-8">
+    <div className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:grid-cols-3 lg:gap-8">
       <div className="grid auto-rows-max items-start gap-4 md:col-span-2 lg:gap-8">
         <Card>
           <CardHeader>
@@ -606,7 +605,7 @@ export default function POSPage() {
       </div>
       <div className="lg:col-span-1">
         <div className="sticky top-6">
-        <Card>
+        <Card className="flex flex-col h-[calc(100vh-5rem)]">
           <CardHeader className="flex flex-row justify-between items-center">
             <CardTitle>Carrito de Compra</CardTitle>
             {cartItems.length > 0 && (
@@ -631,7 +630,7 @@ export default function POSPage() {
                 </AlertDialog>
             )}
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="flex-grow flex flex-col gap-4">
             <div className="space-y-2">
                 <Label htmlFor="customer">Cliente</Label>
                 <div className="flex gap-2">
@@ -719,9 +718,9 @@ export default function POSPage() {
                 </div>
             </div>
             <Separator />
-            <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
+            <div className="space-y-4 flex-grow overflow-y-auto pr-2">
                 {cartItems.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-8">
+                    <div className="flex flex-col items-center justify-center text-center text-muted-foreground h-full">
                         <ShoppingCart className="h-12 w-12 mb-4" />
                         <p>Tu carrito está vacío.</p>
                         <p className="text-sm">Agrega productos para comenzar una venta.</p>
@@ -772,9 +771,9 @@ export default function POSPage() {
                 )}
             </div>
             {cartItems.length > 0 && (
-                <>
+                <div className="mt-auto">
                     <Separator />
-                    <div className="space-y-2">
+                    <div className="space-y-2 pt-4">
                     <div className="flex justify-between">
                         <span>Subtotal</span>
                         <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
@@ -796,10 +795,10 @@ export default function POSPage() {
                         <span>{activeSymbol}{(total * activeRate).toFixed(2)}</span>
                     </div>
                     </div>
-                </>
+                </div>
             )}
           </CardContent>
-          <CardFooter className="flex flex-col gap-2">
+          <CardFooter className="flex flex-col gap-2 pt-4 border-t">
              <Dialog open={isProcessSaleDialogOpen} onOpenChange={(isOpen) => { setIsProcessSaleDialogOpen(isOpen); if (!isOpen) resetPaymentModal(); }}>
                 <DialogTrigger asChild>
                     <Button className="w-full bg-primary hover:bg-primary/90" size="lg" disabled={cartItems.length === 0}>
@@ -960,5 +959,3 @@ export default function POSPage() {
   </Dialog>
   );
 }
-
-    
