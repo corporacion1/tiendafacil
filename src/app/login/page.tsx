@@ -21,7 +21,6 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Logo } from '@/components/logo';
 import { useAuth, useUser } from '@/firebase';
-import type { UserProfile } from '@/lib/types';
 import { Package } from 'lucide-react';
 import { forceSeedDatabase } from '@/lib/seed';
 
@@ -35,15 +34,44 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
-  
+  const [isLoading, setIsLoading] = useState(true); // Start as true to handle initial auth check
+  const [loadingMessage, setLoadingMessage] = useState<string | null>('Iniciando...');
+
   // This is a one-time operation for the local demo.
   useEffect(() => {
     forceSeedDatabase();
   }, []);
 
-  // Handle manual sign-out from catalog page
+  // Handle redirect result from Google Sign-In
+  useEffect(() => {
+    if (auth) {
+      setLoadingMessage('Verificando autenticación...');
+      getRedirectResult(auth)
+        .then((result) => {
+          if (result) {
+            // User has successfully signed in via redirect.
+            // The AuthGuard will handle the redirection to the dashboard.
+            setLoadingMessage('¡Autenticación exitosa! Redirigiendo...');
+            // No need to setIsLoading(false) here, as AuthGuard will take over.
+          } else {
+            // No redirect result, meaning the user is visiting the page directly.
+            setIsLoading(false);
+            setLoadingMessage(null);
+          }
+        }).catch((error) => {
+          console.error("Google sign-in redirect error:", error);
+          toast({
+            variant: 'destructive',
+            title: 'Error con Google',
+            description: 'No se pudo completar el inicio de sesión con Google.',
+          });
+          setIsLoading(false);
+          setLoadingMessage(null);
+        });
+    }
+  }, [auth, toast]);
+
+  // Handle manual sign-out from other pages
   useEffect(() => {
     if (user && searchParams.get('signed_out')) {
       signOut(auth);
@@ -51,26 +79,14 @@ export default function LoginPage() {
     }
   }, [user, searchParams, auth, router]);
 
-  // Redirect if user is already logged in
-  useEffect(() => {
-    if (user && !isUserLoading) {
-      router.replace('/dashboard');
-    }
-  }, [user, isUserLoading, router]);
-
-  const loadDataAndRedirect = async (firebaseUser: FirebaseUser) => {
-    setLoadingMessage('¡Todo listo! Redirigiendo...');
-    router.replace('/dashboard');
-  };
-
   const handleAuthAction = async (authPromise: Promise<any>) => {
     setIsLoading(true);
-    setLoadingMessage('Procesando...');
+    setLoadingMessage(isSignUp ? 'Creando cuenta...' : 'Iniciando sesión...');
     try {
-      const userCredential = await authPromise;
-      if (userCredential && userCredential.user) {
-        await loadDataAndRedirect(userCredential.user);
-      }
+      await authPromise;
+      // On success, the onAuthStateChanged listener in useUser will update the user state,
+      // and the AuthGuard will handle the redirection.
+      setLoadingMessage('¡Todo listo! Redirigiendo...');
     } catch (error: any) {
       console.error(error);
       const errorCode = error.code;
@@ -89,7 +105,6 @@ export default function LoginPage() {
         title: isSignUp ? 'Error en el Registro' : 'Error al Iniciar Sesión',
         description: message,
       });
-    } finally {
       setIsLoading(false);
       setLoadingMessage(null);
     }
@@ -112,34 +127,6 @@ export default function LoginPage() {
     signInWithRedirect(auth, provider);
   };
   
-  useEffect(() => {
-    if (auth) {
-        setIsLoading(true);
-        setLoadingMessage('Verificando autenticación...');
-        getRedirectResult(auth)
-            .then(async (result) => {
-                if (result && result.user) {
-                    // User signed in or already signed in via redirect.
-                    await loadDataAndRedirect(result.user);
-                } else {
-                    // No redirect result, so we are not in a redirect flow.
-                    // Let the onAuthStateChanged listener handle existing sessions.
-                    setIsLoading(false);
-                    setLoadingMessage(null);
-                }
-            }).catch((error) => {
-                console.error("Google sign-in redirect error:", error);
-                toast({
-                    variant: 'destructive',
-                    title: 'Error con Google',
-                    description: 'No se pudo completar el inicio de sesión con Google.',
-                });
-                setIsLoading(false);
-                setLoadingMessage(null);
-            });
-    }
-  }, [auth]);
-  
   if (isUserLoading || isLoading) {
     return (
       <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
@@ -149,16 +136,8 @@ export default function LoginPage() {
     );
   }
   
-  // Do not render login form if user is already logged in and redirect is in progress
-  if (user) {
-    return (
-       <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
-        <Package className="w-16 h-16 text-muted-foreground animate-pulse" />
-        <p className="text-muted-foreground animate-pulse">Redirigiendo al dashboard...</p>
-      </div>
-    );
-  }
-
+  // The AuthGuard will handle redirection if the user is already logged in.
+  // This component only needs to render the login form.
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-muted/40">
       <Card className="w-full max-w-sm">
