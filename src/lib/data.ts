@@ -206,5 +206,3 @@ export async function factoryReset() {
   console.log("factoryReset is disabled. Using local data.");
   return;
 }
-
-    

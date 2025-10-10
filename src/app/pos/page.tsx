@@ -961,5 +961,3 @@ export default function POSPage() {
   </Dialog>
   );
 }
-
-    
