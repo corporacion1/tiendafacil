@@ -8,6 +8,7 @@ import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc, query, orderBy } from 'firebase/firestore';
 import { defaultStoreId } from '@/lib/data';
+import { Package } from 'lucide-react';
 
 type DisplayCurrency = 'primary' | 'secondary';
 
@@ -71,7 +72,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [isUserLoading, user, userProfile, isPublicPage, pathname, activeStoreId]);
 
   const settingsDocRef = useMemo(() => {
-    // CRITICAL FIX: Do not attempt to get the document if auth is still resolving OR if there's no active store id.
     if (isUserLoading || !activeStoreId || !firestore) return null;
     return doc(firestore, 'stores', activeStoreId);
   }, [activeStoreId, firestore, isUserLoading]);
@@ -79,9 +79,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { data: settings, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(settingsDocRef);
   
   const currencyRatesQuery = useMemo(() => {
-    if (!activeStoreId || !firestore) return null;
+    if (isUserLoading || !activeStoreId || !firestore) return null;
     return query(collection(firestore, 'stores', activeStoreId, 'currencyRates'), orderBy('date', 'desc'));
-  }, [activeStoreId, firestore]);
+  }, [isUserLoading, activeStoreId, firestore]);
 
   const { data: currencyRatesData = [], isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
 
@@ -137,6 +137,17 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     isLoadingSettings: isLoading,
     userProfile: userProfile || null,
   };
+
+  if (isLoading && !isPublicPage) {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
+            <div className="p-4 bg-muted rounded-full">
+                <Package className="w-12 h-12 text-muted-foreground" />
+            </div>
+            <p className="text-muted-foreground animate-pulse">Iniciando aplicación...</p>
+        </div>
+    );
+  }
 
   return (
     <SettingsContext.Provider value={contextValue}>
