@@ -1,6 +1,6 @@
 'use client';
     
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   DocumentReference,
   onSnapshot,
@@ -49,11 +49,19 @@ export function useDoc<T = any>(
   const [data, setData] = useState<StateDataType>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
+  // Use a ref to hold the unsubscribe function.
+  const unsubscribeRef = useRef<Unsubscribe | null>(null);
+
   useEffect(() => {
-    let unsubscribe: Unsubscribe | null = null;
+    // Always unsubscribe from the previous listener before creating a new one.
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    }
     
     if (memoizedDocRef && !isUserLoading) {
-      unsubscribe = onSnapshot(
+      // Set up the new subscription and store its unsubscribe function in the ref.
+      unsubscribeRef.current = onSnapshot(
         memoizedDocRef,
         (snapshot: DocumentSnapshot<DocumentData>) => {
           if (snapshot.exists()) {
@@ -76,20 +84,21 @@ export function useDoc<T = any>(
         }
       );
     } else {
+        // If there's no doc ref or the user is loading, ensure we have no data.
         setData(null);
         setError(null);
     }
 
-    // The cleanup function returned by useEffect will be called when the component unmounts
-    // or when the dependencies of the effect change. This is the correct and only
-    // place to unsubscribe the listener.
+    // The cleanup function for this effect, called on unmount or dependency change.
     return () => {
-      if (unsubscribe) {
-        unsubscribe();
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
       }
     };
   }, [memoizedDocRef, isUserLoading]);
   
+  // isLoading is true only during the initial fetch.
   const isLoading = data === null && error === null;
 
   return { data, isLoading, error };

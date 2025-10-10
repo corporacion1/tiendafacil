@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Query,
   onSnapshot,
@@ -50,11 +50,21 @@ export function useCollection<T = any>(
   const [data, setData] = useState<StateDataType>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
+  // Use a ref to hold the unsubscribe function. This ref's value will persist
+  // across re-renders without causing the useEffect to re-run unnecessarily.
+  const unsubscribeRef = useRef<Unsubscribe | null>(null);
+
   useEffect(() => {
-    let unsubscribe: Unsubscribe | null = null;
+    // If there's an active subscription, unsubscribe from it first.
+    // This is the crucial step to prevent race conditions.
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+      unsubscribeRef.current = null;
+    }
 
     if (memoizedTargetRefOrQuery && !isUserLoading) {
-      unsubscribe = onSnapshot(
+      // Set up the new subscription and store its unsubscribe function in the ref.
+      unsubscribeRef.current = onSnapshot(
         memoizedTargetRefOrQuery,
         (snapshot: QuerySnapshot<DocumentData>) => {
           const results: ResultItemType[] = [];
@@ -84,20 +94,22 @@ export function useCollection<T = any>(
         }
       );
     } else {
+        // If there's no query or the user is loading, ensure we have no data.
         setData(null);
         setError(null);
     }
 
-    // The cleanup function returned by useEffect will be called when the component unmounts
-    // or when the dependencies of the effect change. This is the correct and only
-    // place to unsubscribe the listener.
+    // The cleanup function for this effect. It will run when the component
+    // unmounts or when the dependencies (`memoizedTargetRefOrQuery`, `isUserLoading`) change.
     return () => {
-      if (unsubscribe) {
-        unsubscribe();
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
       }
     };
   }, [memoizedTargetRefOrQuery, isUserLoading]);
 
+  // isLoading is true only during the initial fetch when there's no data and no error yet.
   const isLoading = data === null && error === null;
 
   return { data, isLoading, error };
