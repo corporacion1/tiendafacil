@@ -49,9 +49,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const isPublicPage = useMemo(() => pathname === '/' || pathname.startsWith('/catalog') || pathname.startsWith('/login'), [pathname]);
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
   const [isStoreIdResolved, setIsStoreIdResolved] = useState(false);
+  const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
 
   // Step 1: Determine the active store ID based on user profile.
-  // This must complete before any data fetching hooks are activated.
   const userProfileRef = useMemo(() => {
     if (isUserLoading || !user || !firestore || isPublicPage) return null;
     return doc(firestore, 'users', user.uid);
@@ -77,35 +77,34 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     setIsStoreIdResolved(true);
   }, [isUserLoading, isLoadingProfile, userProfile, isPublicPage]);
 
+  // Step 2: Fetch store settings and rates ONLY if not on a public page and auth/storeId is resolved.
+  const shouldFetchData = !isPublicPage && isStoreIdResolved && !isUserLoading;
 
-  // Step 2: Fetch store settings ONLY after the store ID is resolved.
   const settingsDocRef = useMemo(() => {
-    if (!firestore || (!isStoreIdResolved && !isPublicPage)) return null;
+    if (!firestore || !shouldFetchData) return null;
     return doc(firestore, 'stores', activeStoreId);
-  }, [firestore, activeStoreId, isStoreIdResolved, isPublicPage]);
+  }, [firestore, activeStoreId, shouldFetchData]);
   const { data: settingsData, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(settingsDocRef);
   
-  // Step 3: Fetch currency rates ONLY after the store ID is resolved.
   const currencyRatesQuery = useMemo(() => {
-    if (!firestore || (!isStoreIdResolved && !isPublicPage)) return null;
+    if (!firestore || !shouldFetchData) return null;
     return query(collection(firestore, 'stores', activeStoreId, 'currencyRates'), orderBy('date', 'desc'));
-  }, [firestore, activeStoreId, isStoreIdResolved, isPublicPage]);
+  }, [firestore, activeStoreId, shouldFetchData]);
   const { data: currencyRatesData, isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
 
-
-  const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
+  // Load currency preference from localStorage
   useEffect(() => {
     const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY) as DisplayCurrency;
     if(storedCurrencyPref) setDisplayCurrency(storedCurrencyPref);
   }, []);
   
-  // The master loading state. The entire app waits on this.
   const isLoadingSettings = useMemo(() => {
-    if (isPublicPage) return false;
+    if (isPublicPage) return false; // Public pages are never in a loading state for settings
+    // For protected pages, loading is true until user/profile/storeId/settings/rates are all resolved.
     return isUserLoading || isLoadingProfile || !isStoreIdResolved || isLoadingSettingsDoc || isLoadingRates;
   }, [isUserLoading, isLoadingProfile, isStoreIdResolved, isLoadingSettingsDoc, isLoadingRates, isPublicPage]);
   
-  const settings = settingsData ?? fallbackSettings;
+  const settings = settingsData ?? (isPublicPage ? fallbackSettings : null);
   const currencyRates = currencyRatesData ?? [];
 
   const handleSetSettings = (newSettings: Settings) => {

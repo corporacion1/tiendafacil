@@ -42,11 +42,9 @@ export default function LoginPage() {
   useEffect(() => {
     const runSeed = async () => {
       if (!firestore) {
-        toast({
-          variant: "destructive",
-          title: "ERROR: Firestore no está listo",
-          duration: 5000,
-        });
+        // Firestore might not be ready on first render, this is expected.
+        // It will be available on the next render.
+        console.log("Firestore not ready yet, skipping seed on this render.");
         return;
       };
 
@@ -68,6 +66,8 @@ export default function LoginPage() {
       }
     };
     
+    // We only want this to run once on mount.
+    // The dependency array ensures this.
     runSeed();
   }, [firestore, toast]);
   // --- END OF SEEDING LOGIC ---
