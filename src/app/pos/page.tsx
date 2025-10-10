@@ -24,7 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { paymentMethods, mockProducts, defaultCustomers, mockSales, initialFamilies, pendingOrdersState } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
     const { activeSymbol, activeRate } = useSettings();
@@ -617,8 +617,7 @@ export default function POSPage() {
 
         {/* Cart Section (Right Column) */}
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-1">
-          <div className="sticky top-6">
-            <Card>
+          <Card className="sticky top-6 flex flex-col h-[calc(100vh-3.5rem)]">
               <CardHeader className="flex flex-row justify-between items-center">
                   <CardTitle>Carrito de Compra</CardTitle>
                   {cartItems.length > 0 && (
@@ -643,7 +642,7 @@ export default function POSPage() {
                       </AlertDialog>
                   )}
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="flex-1 flex flex-col gap-4">
                 <div className="space-y-2">
                     <Label htmlFor="customer">Cliente *</Label>
                     <div className="flex gap-2">
@@ -715,9 +714,9 @@ export default function POSPage() {
 
                 <Separator />
                 
-                <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
+                <div className="flex-1 space-y-4 overflow-y-auto pr-2">
                   {cartItems.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-8">
+                      <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-8 h-full">
                           <ShoppingCart className="h-12 w-12 mb-4" />
                           <p>Tu carrito está vacío.</p>
                           <p className="text-sm">Agrega productos para comenzar.</p>
@@ -769,124 +768,120 @@ export default function POSPage() {
                       </Table>
                   )}
                 </div>
-                {cartItems.length > 0 && (
-                    <>
-                        <Separator />
-                        <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
-                                <span>Subtotal</span>
-                                <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
-                            </div>
-                            {settings?.tax1 && settings.tax1 > 0 && tax1Amount > 0 && (
-                                <div className="flex justify-between">
-                                    <span>Impuesto {settings.tax1}%</span>
-                                    <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</span>
-                                </div>
-                            )}
-                            {settings?.tax2 && settings.tax2 > 0 && tax2Amount > 0 && (
-                                <div className="flex justify-between">
-                                    <span>Impuesto {settings.tax2}%</span>
-                                    <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
-                                </div>
-                            )}
-                            <Separator />
-                            <div className="flex justify-between font-bold text-lg">
-                                <span>Total</span>
-                                <span>{activeSymbol}{(total * activeRate).toFixed(2)}</span>
-                            </div>
-                        </div>
-                    </>
-                )}
               </CardContent>
-              <CardFooter className="flex flex-col gap-2">
-                <Dialog open={isProcessSaleDialogOpen} onOpenChange={(isOpen) => { setIsProcessSaleDialogOpen(isOpen); if (!isOpen) resetPaymentModal(); }}>
-                    <DialogTrigger asChild>
-                        <Button className="w-full bg-primary hover:bg-primary/90" size="lg" disabled={cartItems.length === 0}>
-                            Procesar Venta
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl">
-                        <DialogHeader>
-                            <DialogTitle>Finalizar Venta</DialogTitle>
-                            <DialogDescription>
-                                Total a Pagar: <span className="font-bold text-primary">{activeSymbol}{(total * activeRate).toFixed(2)}</span>
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid md:grid-cols-2 gap-6 items-start">
-                            <div className="space-y-4">
-                                <h4 className="font-medium text-center md:text-left">Registrar Pagos</h4>
-                                <div className="space-y-2">
-                                    <Label>Método de Pago</Label>
-                                    <Select value={currentPaymentMethod} onValueChange={setCurrentPaymentMethod}>
-                                        <SelectTrigger><SelectValue/></SelectTrigger>
-                                        <SelectContent>
-                                            {paymentMethods.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Monto a Pagar ({activeSymbol})</Label>
-                                    <Input type="number" placeholder="0.00" value={currentPaymentAmount} onChange={e => setCurrentPaymentAmount(e.target.value)} />
-                                </div>
-                                {paymentMethods.find(m => m.id === currentPaymentMethod)?.requiresRef && (
-                                    <div className="space-y-2">
-                                        <Label>Referencia</Label>
-                                        <Input placeholder="Nro. de referencia" value={currentPaymentRef} onChange={e => setCurrentPaymentRef(e.target.value)} />
-                                    </div>
-                                )}
-                                <Button className="w-full" onClick={handleAddPayment} disabled={!currentPaymentAmount || Number(currentPaymentAmount) <= 0}>
-                                    <Plus className="mr-2 h-4 w-4" /> Agregar Pago
-                                </Button>
-                            </div>
-                            <div className="space-y-4">
-                                <h4 className="font-medium text-center md:text-left">Pagos Realizados</h4>
-                                <div className="space-y-2 p-3 bg-muted/50 rounded-lg min-h-[150px]">
-                                    {payments.length === 0 ? <p className="text-sm text-muted-foreground text-center pt-8">Aún no hay pagos registrados.</p> : (
-                                        payments.map((p, i) => (
-                                            <div key={i} className="flex justify-between items-center text-sm">
-                                                <span>{p.method} {p.reference && `(${p.reference})`}</span>
-                                                <span className="font-medium">{activeSymbol}{(p.amount * activeRate).toFixed(2)}</span>
-                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removePayment(i)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-                                <Separator />
-                                <div className="space-y-2 text-lg font-bold">
-                                    <div className="flex justify-between">
-                                        <span>Total Pagado:</span>
-                                        <span>{activeSymbol}{(totalPaid * activeRate).toFixed(2)}</span>
-                                    </div>
-                                    <div className={cn("flex justify-between", remainingBalance > 0 ? "text-destructive" : "text-green-600")}>
-                                        <span>{remainingBalance > 0 ? 'Faltante:' : 'Cambio:'}</span>
-                                        <span>{activeSymbol}{(Math.abs(remainingBalance) * activeRate).toFixed(2)}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        {remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone) && (
-                            <div className="text-destructive text-sm font-medium flex items-center gap-2 mt-2 p-2 bg-destructive/10 rounded-md">
-                                <AlertCircle className="h-4 w-4" />
-                                <span>Para guardar como crédito, debe seleccionar un cliente debidamente registrado</span>
-                            </div>
-                        )}
-                        <DialogFooter className="gap-2 sm:gap-0 mt-4">
-                            <Button variant="outline" onClick={() => handleProcessSale(false)} disabled={remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone)}>
-                                {remainingBalance > 0 ? 'Guardar como Crédito' : 'Solo Guardar'}
-                            </Button>
-                            <Button onClick={() => handleProcessSale(true)} disabled={remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone)}>
-                                {remainingBalance > 0 ? 'Guardar Crédito e Imprimir' : 'Guardar e Imprimir'}
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-                <Button className="w-full" variant="secondary" size="lg" onClick={handlePrintQuote} disabled={cartItems.length === 0}>
-                    <FileText className="mr-2 h-4 w-4" />
-                    Imprimir Cotización
-                </Button>
-              </CardFooter>
-            </Card>
-          </div>
+              {cartItems.length > 0 && (
+                <CardFooter className="flex flex-col gap-2 mt-auto border-t pt-4">
+                  <div className="w-full space-y-2 text-sm">
+                      <div className="flex justify-between">
+                          <span>Subtotal</span>
+                          <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
+                      </div>
+                      {settings?.tax1 && settings.tax1 > 0 && tax1Amount > 0 && (
+                          <div className="flex justify-between">
+                              <span>Impuesto {settings.tax1}%</span>
+                              <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</span>
+                          </div>
+                      )}
+                      {settings?.tax2 && settings.tax2 > 0 && tax2Amount > 0 && (
+                          <div className="flex justify-between">
+                              <span>Impuesto {settings.tax2}%</span>
+                              <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
+                          </div>
+                      )}
+                      <Separator />
+                      <div className="flex justify-between font-bold text-lg">
+                          <span>Total</span>
+                          <span>{activeSymbol}{(total * activeRate).toFixed(2)}</span>
+                      </div>
+                  </div>
+                  <Dialog open={isProcessSaleDialogOpen} onOpenChange={(isOpen) => { setIsProcessSaleDialogOpen(isOpen); if (!isOpen) resetPaymentModal(); }}>
+                      <DialogTrigger asChild>
+                          <Button className="w-full bg-primary hover:bg-primary/90" size="lg" disabled={cartItems.length === 0}>
+                              Procesar Venta
+                          </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-2xl">
+                          <DialogHeader>
+                              <DialogTitle>Finalizar Venta</DialogTitle>
+                              <DialogDescription>
+                                  Total a Pagar: <span className="font-bold text-primary">{activeSymbol}{(total * activeRate).toFixed(2)}</span>
+                              </DialogDescription>
+                          </DialogHeader>
+                          <div className="grid md:grid-cols-2 gap-6 items-start">
+                              <div className="space-y-4">
+                                  <h4 className="font-medium text-center md:text-left">Registrar Pagos</h4>
+                                  <div className="space-y-2">
+                                      <Label>Método de Pago</Label>
+                                      <Select value={currentPaymentMethod} onValueChange={setCurrentPaymentMethod}>
+                                          <SelectTrigger><SelectValue/></SelectTrigger>
+                                          <SelectContent>
+                                              {paymentMethods.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                                          </SelectContent>
+                                      </Select>
+                                  </div>
+                                  <div className="space-y-2">
+                                      <Label>Monto a Pagar ({activeSymbol})</Label>
+                                      <Input type="number" placeholder="0.00" value={currentPaymentAmount} onChange={e => setCurrentPaymentAmount(e.target.value)} />
+                                  </div>
+                                  {paymentMethods.find(m => m.id === currentPaymentMethod)?.requiresRef && (
+                                      <div className="space-y-2">
+                                          <Label>Referencia</Label>
+                                          <Input placeholder="Nro. de referencia" value={currentPaymentRef} onChange={e => setCurrentPaymentRef(e.target.value)} />
+                                      </div>
+                                  )}
+                                  <Button className="w-full" onClick={handleAddPayment} disabled={!currentPaymentAmount || Number(currentPaymentAmount) <= 0}>
+                                      <Plus className="mr-2 h-4 w-4" /> Agregar Pago
+                                  </Button>
+                              </div>
+                              <div className="space-y-4">
+                                  <h4 className="font-medium text-center md:text-left">Pagos Realizados</h4>
+                                  <div className="space-y-2 p-3 bg-muted/50 rounded-lg min-h-[150px]">
+                                      {payments.length === 0 ? <p className="text-sm text-muted-foreground text-center pt-8">Aún no hay pagos registrados.</p> : (
+                                          payments.map((p, i) => (
+                                              <div key={i} className="flex justify-between items-center text-sm">
+                                                  <span>{p.method} {p.reference && `(${p.reference})`}</span>
+                                                  <span className="font-medium">{activeSymbol}{(p.amount * activeRate).toFixed(2)}</span>
+                                                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removePayment(i)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                                              </div>
+                                          ))
+                                      )}
+                                  </div>
+                                  <Separator />
+                                  <div className="space-y-2 text-lg font-bold">
+                                      <div className="flex justify-between">
+                                          <span>Total Pagado:</span>
+                                          <span>{activeSymbol}{(totalPaid * activeRate).toFixed(2)}</span>
+                                      </div>
+                                      <div className={cn("flex justify-between", remainingBalance > 0 ? "text-destructive" : "text-green-600")}>
+                                          <span>{remainingBalance > 0 ? 'Faltante:' : 'Cambio:'}</span>
+                                          <span>{activeSymbol}{(Math.abs(remainingBalance) * activeRate).toFixed(2)}</span>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                          {remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone) && (
+                              <div className="text-destructive text-sm font-medium flex items-center gap-2 mt-2 p-2 bg-destructive/10 rounded-md">
+                                  <AlertCircle className="h-4 w-4" />
+                                  <span>Para guardar como crédito, debe seleccionar un cliente debidamente registrado</span>
+                              </div>
+                          )}
+                          <DialogFooter className="gap-2 sm:gap-0 mt-4">
+                              <Button variant="outline" onClick={() => handleProcessSale(false)} disabled={remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone)}>
+                                  {remainingBalance > 0 ? 'Guardar como Crédito' : 'Solo Guardar'}
+                              </Button>
+                              <Button onClick={() => handleProcessSale(true)} disabled={remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone)}>
+                                  {remainingBalance > 0 ? 'Guardar Crédito e Imprimir' : 'Guardar e Imprimir'}
+                              </Button>
+                          </DialogFooter>
+                      </DialogContent>
+                  </Dialog>
+                  <Button className="w-full" variant="secondary" size="lg" onClick={handlePrintQuote} disabled={cartItems.length === 0}>
+                      <FileText className="mr-2 h-4 w-4" />
+                      Imprimir Cotización
+                  </Button>
+                </CardFooter>
+              )}
+          </Card>
         </div>
       </div>
     
@@ -959,5 +954,3 @@ export default function POSPage() {
   </Dialog>
   );
 }
-
-    
