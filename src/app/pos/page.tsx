@@ -791,13 +791,13 @@ export default function POSPage() {
                                     <span>Subtotal</span>
                                     <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
                                 </div>
-                                {tax1Amount > 0 && settings?.tax1 && (
+                                {tax1Amount > 0 && settings?.tax1 > 0 && (
                                 <div className="flex justify-between">
                                     <span>Impuesto {settings.tax1}%</span>
                                     <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</span>
                                 </div>
                                 )}
-                                {tax2Amount > 0 && settings?.tax2 && (
+                                {tax2Amount > 0 && settings?.tax2 > 0 && (
                                 <div className="flex justify-between">
                                     <span>Impuesto {settings.tax2}%</span>
                                     <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
