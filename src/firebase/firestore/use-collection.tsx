@@ -49,31 +49,16 @@ export function useCollection<T = any>(
   const { isUserLoading } = useUser();
   const [data, setData] = useState<StateDataType>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
-  const unsubscribeRef = useRef<Unsubscribe | null>(null);
   
   const shouldFetch = !!memoizedTargetRefOrQuery && !isUserLoading;
 
   useEffect(() => {
-    // This effect handles resetting the state when the query becomes invalid.
-    if (!shouldFetch) {
-      setData(null);
-      setError(null);
-    }
-  }, [shouldFetch]);
-
-  useEffect(() => {
-    // Manages the subscription lifecycle.
+    let unsubscribe: Unsubscribe | null = null;
     
-    // Clean up the previous listener if it exists.
-    if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
-    }
-
     if (shouldFetch) {
-      setError(null); // Reset error on new subscription attempt.
+      setError(null);
       
-      unsubscribeRef.current = onSnapshot(
+      unsubscribe = onSnapshot(
         memoizedTargetRefOrQuery,
         (snapshot: QuerySnapshot<DocumentData>) => {
           const results: ResultItemType[] = [];
@@ -81,7 +66,7 @@ export function useCollection<T = any>(
             results.push({ ...(doc.data() as T), id: doc.id });
           }
           setData(results);
-          setError(null); // Clear previous errors on successful fetch
+          setError(null);
         },
         (err: FirestoreError) => {
           let path = 'desconocido';
@@ -102,16 +87,17 @@ export function useCollection<T = any>(
           errorEmitter.emit('permission-error', contextualError);
         }
       );
+    } else {
+        setData(null);
+        setError(null);
     }
 
-    // The main cleanup function. It is called on unmount or when dependencies change.
     return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
+      if (unsubscribe) {
+        unsubscribe();
       }
     };
-  }, [memoizedTargetRefOrQuery, isUserLoading]); // Reruns only if the query or user loading state changes.
+  }, [memoizedTargetRefOrQuery, isUserLoading, shouldFetch]);
 
   const isLoading = (shouldFetch && data === null && error === null) || isUserLoading;
 

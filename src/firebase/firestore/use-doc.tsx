@@ -48,29 +48,16 @@ export function useDoc<T = any>(
   const { isUserLoading } = useUser();
   const [data, setData] = useState<StateDataType>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
-  const unsubscribeRef = useRef<Unsubscribe | null>(null);
 
   const shouldFetch = !!memoizedDocRef && !isUserLoading;
 
   useEffect(() => {
-    // This effect handles resetting the state when the ref becomes invalid.
-    if (!shouldFetch) {
-      setData(null);
-      setError(null);
-    }
-  }, [shouldFetch]);
-
-  useEffect(() => {
-    // Clean up the previous listener if it exists.
-    if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
-    }
+    let unsubscribe: Unsubscribe | null = null;
     
     if (shouldFetch) {
-      setError(null); // Reset error on new subscription attempt.
+      setError(null);
 
-      unsubscribeRef.current = onSnapshot(
+      unsubscribe = onSnapshot(
         memoizedDocRef,
         (snapshot: DocumentSnapshot<DocumentData>) => {
           if (snapshot.exists()) {
@@ -78,7 +65,7 @@ export function useDoc<T = any>(
           } else {
             setData(null);
           }
-          setError(null); // Clear previous errors on successful fetch
+          setError(null);
         },
         (err: FirestoreError) => {
           const contextualError = new FirestorePermissionError({
@@ -92,16 +79,17 @@ export function useDoc<T = any>(
           errorEmitter.emit('permission-error', contextualError);
         }
       );
+    } else {
+        setData(null);
+        setError(null);
     }
 
-    // The main cleanup function for when the component unmounts or dependencies change.
     return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
+      if (unsubscribe) {
+        unsubscribe();
       }
     };
-  }, [memoizedDocRef, isUserLoading]); // Reruns only if the ref or user loading state changes.
+  }, [memoizedDocRef, isUserLoading, shouldFetch]);
   
   const isLoading = (shouldFetch && data === null && error === null) || isUserLoading;
 
