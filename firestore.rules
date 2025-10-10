@@ -1,22 +1,20 @@
 /**
- * @fileoverview Firestore Security Rules for the inventory management application.
+ * @fileoverview Firestore Security Rules for the Inventory Management App.
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for all data. Each user has a dedicated data tree under `/users/{userId}` where they can manage their stores and related data.
+ * This ruleset enforces a strict user-ownership model, where each user has exclusive access to their store configurations, products, tax types, inventory movements, sales, purchases, and customers.
  *
  * Data Structure:
- * All data is nested under /users/{userId}/stores/{storeId}/... to ensure clear ownership and prevent unauthorized access. This structure enables path-based authorization, avoiding costly `get()` calls within the rules.
+ * All data is nested under /users/{userId}/stores/{storeId}/..., ensuring that data is isolated to individual users and their stores.
  *
  * Key Security Decisions:
- * - Users can only access data under their own `userId`.
- * - `list` operations are allowed within a user's own data tree.
- * - Data types and schema validations are not enforced in this prototyping phase, except where required for authorization.
+ * - Users can only access data associated with their own user ID and store ID, as determined by the document path.
+ * - No listing of users or stores is allowed at the top level, preventing unauthorized data discovery.
+ * - Write operations are strictly controlled using the `isOwner` helper function, ensuring that only the authenticated user can create, update, or delete resources within their designated path.
+ * - Data validation is relaxed to allow for rapid prototyping, focusing primarily on authorization and relational integrity.
  *
  * Denormalization for Authorization:
- * - No denormalization is needed as the authorization is based on the path itself. The userId parameter in the path is used to enforce ownership.
- *
- * Structural Segregation:
- * - All data is private and stored under the user's path. There are no public collections in this design.
+ * The `StoreConfig` document does not need to store the `userId` because the path `/users/{userId}/stores/{storeId}/config` already enforces this relationship.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -24,10 +22,8 @@ service cloud.firestore {
 
     /**
      * @description Checks if the request is authenticated.
-     * @path N/A
-     * @allow N/A
-     * @deny N/A
-     * @principle Authentication is required for all operations.
+     * @param None
+     * @return {boolean} True if the request is authenticated, false otherwise.
      */
     function isSignedIn() {
       return request.auth != null;
@@ -35,192 +31,161 @@ service cloud.firestore {
 
     /**
      * @description Checks if the authenticated user ID matches the provided user ID.
-     * @path N/A
-     * @allow N/A
-     * @deny N/A
-     * @principle Enforces ownership based on user ID.
+     * @param {string} userId The user ID to compare against the authenticated user's ID.
+     * @return {boolean} True if the authenticated user is the owner, false otherwise.
      */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
     /**
-     * @description Checks if the authenticated user ID matches the provided user ID and if the document exists.
-     * @path N/A
-     * @allow N/A
-     * @deny N/A
-     * @principle Enforces document existence and ownership for updates and deletes.
+     * @description Checks if the authenticated user is the owner and the resource exists.
+     * @param {string} userId The user ID to compare against the authenticated user's ID.
+     * @return {boolean} True if the authenticated user is the owner and the resource exists, false otherwise.
      */
     function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
+      return isOwner(userId) && resource != null;
     }
 
     /**
-     * @description Rules for StoreConfig documents.
+     * @description Enforces ownership for StoreConfig documents.
      * @path /users/{userId}/stores/{storeId}/config
-     * @allow (get, list) User with UID 'user123' can read their store config.
-     * @allow (create) User with UID 'user123' can create a store config with the correct userId and storeId in the path.
-     * @allow (update, delete) User with UID 'user123' can update or delete their existing store config.
-     * @deny (get, list) User with UID 'user456' cannot read store config of user with UID 'user123'.
-     * @deny (create) User with UID 'user123' cannot create a store config for a different userId.
-     * @deny (update, delete) User with UID 'user123' cannot update or delete the store config if it doesn't exist.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User 'user123' can create a config document under their user and store.
+     * @deny (create) User 'user456' cannot create a config document under user 'user123''s path.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId}/stores/{storeId}/config {
       allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
+      allow list: if false; // Listing store configs is not permitted
+
       allow create: if isOwner(userId);
       allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Rules for Product documents.
+     * @description Enforces ownership for Product documents.
      * @path /users/{userId}/stores/{storeId}/products/{productId}
-     * @allow (get, list) User with UID 'user123' can read their product information.
-     * @allow (create) User with UID 'user123' can create a product with the correct userId and storeId in the path.
-     * @allow (update, delete) User with UID 'user123' can update or delete their existing product information.
-     * @deny (get, list) User with UID 'user456' cannot read product information of user with UID 'user123'.
-     * @deny (create) User with UID 'user123' cannot create a product for a different userId.
-     * @deny (update, delete) User with UID 'user123' cannot update or delete the product if it doesn't exist.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User 'user123' can create a product document under their user and store.
+     * @deny (create) User 'user456' cannot create a product document under user 'user123''s path.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId}/stores/{storeId}/products/{productId} {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
+
       allow create: if isOwner(userId);
       allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Rules for TaxType documents.
+     * @description Enforces ownership for TaxType documents.
      * @path /users/{userId}/stores/{storeId}/taxTypes/{taxTypeId}
-     * @allow (get, list) User with UID 'user123' can read their tax type information.
-     * @allow (create) User with UID 'user123' can create a tax type with the correct userId and storeId in the path.
-     * @allow (update, delete) User with UID 'user123' can update or delete their existing tax type information.
-     * @deny (get, list) User with UID 'user456' cannot read tax type information of user with UID 'user123'.
-     * @deny (create) User with UID 'user123' cannot create a tax type for a different userId.
-     * @deny (update, delete) User with UID 'user123' cannot update or delete the tax type if it doesn't exist.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User 'user123' can create a tax type document under their user and store.
+     * @deny (create) User 'user456' cannot create a tax type document under user 'user123''s path.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId}/stores/{storeId}/taxTypes/{taxTypeId} {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
+
       allow create: if isOwner(userId);
       allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Rules for InventoryMovement documents.
+     * @description Enforces ownership for InventoryMovement documents.
      * @path /users/{userId}/stores/{storeId}/inventoryMovements/{inventoryMovementId}
-     * @allow (get, list) User with UID 'user123' can read their inventory movement information.
-     * @allow (create) User with UID 'user123' can create an inventory movement with the correct userId and storeId in the path.
-     * @allow (update, delete) User with UID 'user123' can update or delete their existing inventory movement information.
-     * @deny (get, list) User with UID 'user456' cannot read inventory movement information of user with UID 'user123'.
-     * @deny (create) User with UID 'user123' cannot create an inventory movement for a different userId.
-     * @deny (update, delete) User with UID 'user123' cannot update or delete the inventory movement if it doesn't exist.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User 'user123' can create an inventory movement document under their user and store.
+     * @deny (create) User 'user456' cannot create an inventory movement document under user 'user123''s path.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId}/stores/{storeId}/inventoryMovements/{inventoryMovementId} {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
+
       allow create: if isOwner(userId);
       allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Rules for Sale documents.
+     * @description Enforces ownership for Sale documents.
      * @path /users/{userId}/stores/{storeId}/sales/{saleId}
-     * @allow (get, list) User with UID 'user123' can read their sale information.
-     * @allow (create) User with UID 'user123' can create a sale with the correct userId and storeId in the path.
-     * @allow (update, delete) User with UID 'user123' can update or delete their existing sale information.
-     * @deny (get, list) User with UID 'user456' cannot read sale information of user with UID 'user123'.
-     * @deny (create) User with UID 'user123' cannot create a sale for a different userId.
-     * @deny (update, delete) User with UID 'user123' cannot update or delete the sale if it doesn't exist.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User 'user123' can create a sale document under their user and store.
+     * @deny (create) User 'user456' cannot create a sale document under user 'user123''s path.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId}/stores/{storeId}/sales/{saleId} {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
+
       allow create: if isOwner(userId);
       allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Rules for SaleItem documents.
+     * @description Enforces ownership for SaleItem documents.
      * @path /users/{userId}/stores/{storeId}/sales/{saleId}/saleItems/{saleItemId}
-     * @allow (get, list) User with UID 'user123' can read their sale item information.
-     * @allow (create) User with UID 'user123' can create a sale item with the correct userId and storeId in the path.
-     * @allow (update, delete) User with UID 'user123' can update or delete their existing sale item information.
-     * @deny (get, list) User with UID 'user456' cannot read sale item information of user with UID 'user123'.
-     * @deny (create) User with UID 'user123' cannot create a sale item for a different userId.
-     * @deny (update, delete) User with UID 'user123' cannot update or delete the sale item if it doesn't exist.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User 'user123' can create a sale item document under their user and store.
+     * @deny (create) User 'user456' cannot create a sale item document under user 'user123''s path.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId}/stores/{storeId}/sales/{saleId}/saleItems/{saleItemId} {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
+
       allow create: if isOwner(userId);
       allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Rules for Purchase documents.
+     * @description Enforces ownership for Purchase documents.
      * @path /users/{userId}/stores/{storeId}/purchases/{purchaseId}
-     * @allow (get, list) User with UID 'user123' can read their purchase information.
-     * @allow (create) User with UID 'user123' can create a purchase with the correct userId and storeId in the path.
-     * @allow (update, delete) User with UID 'user123' can update or delete their existing purchase information.
-     * @deny (get, list) User with UID 'user456' cannot read purchase information of user with UID 'user123'.
-     * @deny (create) User with UID 'user123' cannot create a purchase for a different userId.
-     * @deny (update, delete) User with UID 'user123' cannot update or delete the purchase if it doesn't exist.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User 'user123' can create a purchase document under their user and store.
+     * @deny (create) User 'user456' cannot create a purchase document under user 'user123''s path.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId}/stores/{storeId}/purchases/{purchaseId} {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
+
       allow create: if isOwner(userId);
       allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Rules for PurchaseItem documents.
+     * @description Enforces ownership for PurchaseItem documents.
      * @path /users/{userId}/stores/{storeId}/purchases/{purchaseId}/purchaseItems/{purchaseItemId}
-     * @allow (get, list) User with UID 'user123' can read their purchase item information.
-     * @allow (create) User with UID 'user123' can create a purchase item with the correct userId and storeId in the path.
-     * @allow (update, delete) User with UID 'user123' can update or delete their existing purchase item information.
-     * @deny (get, list) User with UID 'user456' cannot read purchase item information of user with UID 'user123'.
-     * @deny (create) User with UID 'user123' cannot create a purchase item for a different userId.
-     * @deny (update, delete) User with UID 'user123' cannot update or delete the purchase item if it doesn't exist.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User 'user123' can create a purchase item document under their user and store.
+     * @deny (create) User 'user456' cannot create a purchase item document under user 'user123''s path.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId}/stores/{storeId}/purchases/{purchaseId}/purchaseItems/{purchaseItemId} {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
+
       allow create: if isOwner(userId);
       allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description Rules for Customer documents.
+     * @description Enforces ownership for Customer documents.
      * @path /users/{userId}/stores/{storeId}/customers/{customerId}
-     * @allow (get, list) User with UID 'user123' can read their customer information.
-     * @allow (create) User with UID 'user123' can create a customer with the correct userId and storeId in the path.
-     * @allow (update, delete) User with UID 'user123' can update or delete their existing customer information.
-     * @deny (get, list) User with UID 'user456' cannot read customer information of user with UID 'user123'.
-     * @deny (create) User with UID 'user123' cannot create a customer for a different userId.
-     * @deny (update, delete) User with UID 'user123' cannot update or delete the customer if it doesn't exist.
-     * @principle Enforces document ownership for all operations.
+     * @allow (create) User 'user123' can create a customer document under their user and store.
+     * @deny (create) User 'user456' cannot create a customer document under user 'user123''s path.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId}/stores/{storeId}/customers/{customerId} {
       allow get: if isOwner(userId);
       allow list: if isOwner(userId);
+
       allow create: if isOwner(userId);
       allow update: if isExistingOwner(userId);
       allow delete: if isExistingOwner(userId);
