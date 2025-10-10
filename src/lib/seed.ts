@@ -25,7 +25,8 @@ import {
   mockPurchases,
   mockAds,
   defaultUsers,
-  defaultStoreId
+  defaultStoreId,
+  defaultCurrencyRates
 } from './data';
 
 
@@ -79,8 +80,16 @@ export async function seedDatabase(db: Firestore) {
   const storeDocRef = doc(db, 'stores', defaultStoreId);
   batch.set(storeDocRef, defaultStore);
   console.log(`Scheduled creation of default store: ${defaultStoreId}`);
+  
+  // 2. Add default currency rate to the store's subcollection
+  defaultCurrencyRates.forEach((rate) => {
+    const rateRef = doc(db, 'stores', defaultStoreId, 'currencyRates', rate.id);
+    batch.set(rateRef, rate);
+  });
+  console.log(`Scheduled creation of default currency rate for store: ${defaultStoreId}`);
 
-  // 2. Create the superAdmin user and link it to the store.
+
+  // 3. Create the superAdmin user and link it to the store.
   const superAdminUser = defaultUsers.find(u => u.role === 'superAdmin');
   if (superAdminUser) {
       const superAdminUID = '5QLaiiIr4mcGsjRXVGeGx50nrpk1'; 
@@ -94,7 +103,7 @@ export async function seedDatabase(db: Firestore) {
       console.log(`Scheduled creation/update of superAdmin user: ${superAdminUID}`);
   }
 
-  // 3. Seed all other collections, ensuring they are linked to the default store.
+  // 4. Seed all other collections, ensuring they are linked to the default store.
   mockProducts.forEach((product) => {
     const docRef = doc(db, 'products', product.id);
     batch.set(docRef, { ...product, createdAt: serverTimestamp(), storeId: defaultStoreId });

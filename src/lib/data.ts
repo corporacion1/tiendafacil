@@ -1,4 +1,5 @@
-import type { Product, Sale, Unit, Family, Warehouse, Customer, Purchase, Ad, UserProfile, Store } from '@/lib/types';
+
+import type { Product, Sale, Unit, Family, Warehouse, Customer, Purchase, Ad, UserProfile, Store, CurrencyRate } from '@/lib/types';
 import { PlaceHolderImages } from './placeholder-images';
 import { subDays, subHours, addDays } from 'date-fns';
 
@@ -42,6 +43,14 @@ export const defaultUsers: Omit<UserProfile, 'createdAt' | 'uid' | 'photoURL'>[]
 ];
 
 // --- DATOS DE MUESTRA (TODOS CONECTADOS AL storeId por defecto) ---
+
+export const defaultCurrencyRates: CurrencyRate[] = [
+    {
+        id: 'rate-initial-1',
+        rate: 36.50,
+        date: new Date().toISOString(),
+    }
+];
 
 export const defaultCustomers: Omit<Customer, 'storeId'>[] = [
     { id: 'eventual', name: 'Cliente Eventual', phone: '', address: '' },
