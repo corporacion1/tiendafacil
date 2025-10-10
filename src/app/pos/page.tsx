@@ -31,12 +31,12 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
     const imageUrl = getDisplayImageUrl(product.imageUrl);
 
     return (
-        <Card className="overflow-hidden group">
-            <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative">
+        <Card className="overflow-hidden group cursor-pointer" onClick={() => onAddToCart(product)}>
+            <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative isolate">
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                    <Button size="sm" onClick={() => onAddToCart(product)}>Agregar</Button>
+                    <Button size="sm">Agregar</Button>
                     <DialogTrigger asChild>
-                        <Button size="icon" variant="ghost" className="absolute top-1 right-1 h-7 w-7 text-white" onClick={() => onShowDetails(product)}>
+                        <Button size="icon" variant="ghost" className="absolute top-1 right-1 h-7 w-7 text-white" onClick={(e) => { e.stopPropagation(); onShowDetails(product); }}>
                             <ZoomIn className="h-5 w-5" />
                         </Button>
                     </DialogTrigger>
@@ -960,3 +960,5 @@ export default function POSPage() {
   </Dialog>
   );
 }
+
+    
