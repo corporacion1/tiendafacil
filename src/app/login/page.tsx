@@ -35,10 +35,45 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
-  const [isLoading, setIsLoading] = useState(false); // Only true during an action
+  const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
 
-  // --- Functions to be called ON-DEMAND ---
+  // --- ONE-TIME DATABASE SEEDING LOGIC ---
+  useEffect(() => {
+    // This effect runs only once when the component mounts.
+    const runSeed = async () => {
+      if (!firestore) return;
+
+      try {
+        const seeded = await seedDatabase(firestore);
+        if (seeded) {
+          toast({
+            title: "Éxito",
+            description: "Base de datos sembrada exitosamente.",
+            duration: 5000,
+          });
+        } else {
+          toast({
+            title: "Información",
+            description: "La base de datos ya contiene datos. No se requiere siembra.",
+            duration: 5000,
+          });
+        }
+      } catch (error) {
+        console.error("Error during database seed:", error);
+        toast({
+          variant: "destructive",
+          title: "Error Crítico al Sembrar",
+          description: "No se pudo sembrar la base de datos. Revisa la consola.",
+          duration: 5000,
+        });
+      }
+    };
+    
+    runSeed();
+  }, [firestore, toast]);
+  // --- END OF SEEDING LOGIC ---
+
 
   const createUserProfile = async (firebaseUser: FirebaseUser) => {
     if (!firestore) return;
@@ -68,11 +103,6 @@ export default function LoginPage() {
       return;
     }
     
-    // --- Seed the database if it's empty ---
-    setLoadingMessage('Verificando y preparando la base de datos...');
-    await seedDatabase(firestore);
-    // --- End of seeding ---
-
     setLoadingMessage('Cargando perfil de usuario...');
     const userRef = doc(firestore, 'users', firebaseUser.uid);
     const userSnap = await getDoc(userRef);
@@ -172,16 +202,13 @@ export default function LoginPage() {
     const processRedirect = async () => {
       if (!auth || !firestore) return;
       try {
-        setIsLoading(true); // Show loader while checking for redirect
-        setLoadingMessage('Verificando resultado de Google...');
+        // Do not set loading state here to avoid interfering with manual login
         const result = await getRedirectResult(auth);
         if (result && result.user) {
+          setIsLoading(true);
+          setLoadingMessage('Verificando resultado de Google...');
           await createUserProfile(result.user);
           await loadDataAndRedirect(result.user);
-        } else {
-          // No redirect result, we can stop loading.
-          setIsLoading(false);
-          setLoadingMessage(null);
         }
       } catch (error) {
         console.error("Google sign-in redirect error:", error);

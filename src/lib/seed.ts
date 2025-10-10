@@ -25,15 +25,15 @@ import {
   mockCurrencyRates
 } from './data';
 
-// This function now checks if the DB is empty before seeding.
-export async function seedDatabase(db: Firestore) {
+// This function now checks if the DB is empty before seeding and returns a boolean.
+export async function seedDatabase(db: Firestore): Promise<boolean> {
   const storeCollectionRef = collection(db, 'stores');
   const storeSnapshot = await getDocs(storeCollectionRef);
 
   // --- ONLY SEED IF THE 'stores' COLLECTION IS EMPTY ---
   if (!storeSnapshot.empty) {
     console.log("Database already contains data. Skipping seed process.");
-    return;
+    return false; // Indicates that seeding was not performed.
   }
   
   console.log("Database is empty. Starting seed process...");
@@ -91,6 +91,7 @@ export async function seedDatabase(db: Firestore) {
   console.log("Committing all seed data to Firestore...");
   await batch.commit();
   console.log("Seed data successfully committed.");
+  return true; // Indicates that seeding was performed.
 }
 
 // Helper to delete all documents in a collection and its subcollections recursively
