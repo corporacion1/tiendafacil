@@ -63,9 +63,12 @@ export function SiteSidebar({ isExpanded }: SiteSidebarProps) {
             "fixed inset-y-0 left-0 z-10 hidden flex-col border-r bg-background sm:flex transition-all duration-300",
             isExpanded ? "w-56" : "w-20"
         )}>
-            <div className={cn("flex h-[60px] items-center border-b", isExpanded ? "px-6" : "justify-center")}>
+            <div className={cn(
+                "flex h-[60px] items-center border-b justify-center",
+                isExpanded ? "px-6" : "justify-center"
+            )}>
                 <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-                    <Logo className="h-20 w-20" />
+                    <Logo className="h-28 w-28" />
                 </Link>
             </div>
             <nav className="flex flex-col gap-2 p-2 font-medium">
