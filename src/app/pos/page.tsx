@@ -1,3 +1,4 @@
+
 "use client"
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
@@ -475,420 +476,423 @@ export default function POSPage() {
 
   return (
     <Dialog onOpenChange={(open) => { if (!open) setProductDetails(null); setImageError(false); }}>
-    <div className="grid flex-1 auto-rows-max gap-4 md:grid-cols-5 lg:gap-8">
-      <div className="grid auto-rows-max items-start gap-4 md:col-span-3 lg:gap-8">
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <CardTitle>Productos</CardTitle>
-                <div className="flex gap-2">
-                    <Dialog>
-                        <DialogTrigger asChild>
-                            <Button variant="outline">
-                                <QrCode className="mr-2 h-4 w-4" />
-                                Escanear Pedido
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+        {/* Products Section (Left Column) */}
+        <div className="lg:col-span-3">
+          <Card>
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <CardTitle>Productos</CardTitle>
+                  <div className="flex gap-2">
+                      <Dialog>
+                          <DialogTrigger asChild>
+                              <Button variant="outline">
+                                  <QrCode className="mr-2 h-4 w-4" />
+                                  Escanear Pedido
+                              </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                              <DialogHeader>
+                                  <DialogTitle>Cargar Pedido por ID</DialogTitle>
+                                  <DialogDescription>
+                                      Ingresa el ID del pedido (obtenido del código QR) para cargarlo en el carrito.
+                                  </DialogDescription>
+                              </DialogHeader>
+                              <div className="flex gap-2 py-4">
+                                  <Input 
+                                      placeholder="ORD-..." 
+                                      value={scannedOrderId} 
+                                      onChange={(e) => setScannedOrderId(e.target.value)} 
+                                  />
+                                  <Button onClick={loadOrderById} disabled={!scannedOrderId}>Cargar</Button>
+                              </div>
+                              <DialogFooter>
+                                  <DialogClose asChild id="scan-order-close-button">
+                                      <Button variant="outline">Cerrar</Button>
+                                  </DialogClose>
+                              </DialogFooter>
+                          </DialogContent>
+                      </Dialog>
+                      <Dialog>
+                          <DialogTrigger asChild>
+                              <Button variant="secondary">
+                                  <Archive className="mr-2 h-4 w-4" />
+                                  Pedidos Pendientes
+                                  {(pendingOrders || []).length > 0 && <Badge variant="destructive" className="ml-2">{(pendingOrders || []).length}</Badge>}
+                              </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                              <DialogHeader>
+                                  <DialogTitle>Pedidos Pendientes del Catálogo</DialogTitle>
+                                  <DialogDescription>
+                                      Aquí están los pedidos generados por los clientes desde el catálogo en línea.
+                                  </DialogDescription>
+                              </DialogHeader>
+                              <div className="py-4 max-h-96 overflow-y-auto">
+                                  {isLoading && <p>Cargando pedidos...</p>}
+                                  {!isLoading && (pendingOrders || []).length === 0 ? (
+                                      <p className="text-center text-muted-foreground py-8">No hay pedidos pendientes.</p>
+                                  ) : (
+                                      <div className="space-y-4">
+                                      {(pendingOrders || []).map(order => (
+                                          <div key={order.id} className="p-4 border rounded-lg">
+                                              <div className="flex justify-between items-start">
+                                                  <div>
+                                                      <h4 className="font-semibold">{order.id}</h4>
+                                                      <p className="text-sm text-muted-foreground">{order.customerName} - {format(new Date(order.date as string), 'dd/MM/yyyy HH:mm')}</p>
+                                                  </div>
+                                                  <Button size="sm" onClick={() => loadPendingOrder(order)}>Cargar</Button>
+                                              </div>
+                                              <Separator className="my-2" />
+                                              <ul className="text-sm space-y-1">
+                                                  {order.items.map(item => (
+                                                      <li key={item.productId} className="flex justify-between">
+                                                          <span>{item.quantity} x {item.productName}</span>
+                                                          <span>${(item.quantity * item.price).toFixed(2)}</span>
+                                                      </li>
+                                                  ))}
+                                              </ul>
+                                              <Separator className="my-2" />
+                                              <p className="text-right font-bold">Total: ${order.total.toFixed(2)}</p>
+                                          </div>
+                                      ))}
+                                      </div>
+                                  )}
+                              </div>
+                              <DialogFooter>
+                                  <DialogClose asChild id="pending-orders-close-button">
+                                      <Button variant="outline">Cerrar</Button>
+                                  </DialogClose>
+                              </DialogFooter>
+                          </DialogContent>
+                      </Dialog>
+                  </div>
+              </div>
+              <div className="mt-4 flex gap-4">
+                <Input
+                  placeholder="Buscar por nombre o SKU..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="flex-grow"
+                />
+                <Select value={selectedFamily} onValueChange={setSelectedFamily}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filtrar por familia" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las familias</SelectItem>
+                    {(families || []).map(family => (
+                      <SelectItem key={family.id} value={family.name}>
+                        {family.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isLoading && <p>Cargando productos...</p>}
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredProducts.map((product) => (
+                  <ProductCard 
+                      key={product.id} 
+                      product={product} 
+                      onAddToCart={addToCart}
+                      onShowDetails={setProductDetails}
+                  />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Cart Section (Right Column) */}
+        <div className="lg:col-span-2">
+          <div className="sticky top-6">
+            <Card className="flex flex-col h-[calc(100vh-5rem)]">
+              <CardHeader className="flex flex-row justify-between items-center">
+                <CardTitle>Carrito de Compra</CardTitle>
+                {cartItems.length > 0 && (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm">
+                                <Trash2 className="mr-2 h-4 w-4" /> Vaciar Carrito
                             </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Cargar Pedido por ID</DialogTitle>
-                                <DialogDescription>
-                                    Ingresa el ID del pedido (obtenido del código QR) para cargarlo en el carrito.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="flex gap-2 py-4">
-                                <Input 
-                                    placeholder="ORD-..." 
-                                    value={scannedOrderId} 
-                                    onChange={(e) => setScannedOrderId(e.target.value)} 
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>¿Vaciar el carrito?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Esta acción eliminará todos los productos del carrito. ¿Estás seguro de que deseas continuar?
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={clearCart}>Sí, vaciar</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
+              </CardHeader>
+              <CardContent className="flex-grow flex flex-col gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="customer">Cliente</Label>
+                    <div className="flex gap-2">
+                        <Popover open={isCustomerSearchOpen} onOpenChange={setIsCustomerSearchOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={isCustomerSearchOpen}
+                                    className="w-full justify-between"
+                                >
+                                    {isLoading ? "Cargando..." : (selectedCustomer ? selectedCustomer.name : "Seleccionar cliente...")}
+                                    <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                <Command>
+                                    <CommandInput placeholder="Buscar cliente..." />
+                                    <CommandList>
+                                        <CommandEmpty>No se encontraron clientes.</CommandEmpty>
+                                        <CommandGroup>
+                                            {customerList.map((customer) => (
+                                                <CommandItem
+                                                    key={customer.id}
+                                                    value={customer.name}
+                                                    onSelect={() => {
+                                                        setSelectedCustomerId(customer.id);
+                                                        setIsCustomerSearchOpen(false);
+                                                    }}
+                                                >
+                                                    <Check
+                                                        className={cn(
+                                                            "mr-2 h-4 w-4",
+                                                            selectedCustomerId === customer.id ? "opacity-100" : "opacity-0"
+                                                        )}
+                                                    />
+                                                    {customer.name}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+
+                        <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" size="icon">
+                                    <PlusCircle className="h-4 w-4" />
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Agregar Nuevo Cliente</DialogTitle>
+                                    <DialogDescription>
+                                        Completa el formulario para agregar un nuevo cliente.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="new-customer-id" className="text-right">ID (Opcional)</Label>
+                                        <Input id="new-customer-id" value={newCustomer.id} onChange={(e) => setNewCustomer(prev => ({ ...prev, id: e.target.value }))} className="col-span-3" placeholder="Identificación fiscal, etc." />
+                                    </div>
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="new-customer-name" className="text-right">Nombre*</Label>
+                                        <Input id="new-customer-name" value={newCustomer.name} onChange={(e) => setNewCustomer(prev => ({ ...prev, name: e.target.value }))} className="col-span-3" placeholder="Ej: Jane Doe" required />
+                                    </div>
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="new-customer-phone" className="text-right">Teléfono*</Label>
+                                        <Input id="new-customer-phone" value={newCustomer.phone} onChange={(e) => setNewCustomer(prev => ({ ...prev, phone: e.target.value }))} className="col-span-3" required />
+                                    </div>
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="new-customer-address" className="text-right">Dirección</Label>
+                                        <Input id="new-customer-address" value={newCustomer.address} onChange={(e) => setNewCustomer(prev => ({ ...prev, address: e.target.value }))} className="col-span-3" />
+                                    </div>
+                                </div>
+                                <DialogFooter>
+                                    <DialogClose asChild>
+                                        <Button variant="outline">Cancelar</Button>
+                                    </DialogClose>
+                                    <Button onClick={handleAddNewCustomer} disabled={!newCustomer.name.trim() || !newCustomer.phone.trim()}>Guardar Cliente</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
+                </div>
+                <Separator />
+                <div className="space-y-4 flex-grow overflow-y-auto pr-2">
+                    {cartItems.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center text-center text-muted-foreground h-full">
+                            <ShoppingCart className="h-12 w-12 mb-4" />
+                            <p>Tu carrito está vacío.</p>
+                            <p className="text-sm">Agrega productos para comenzar una venta.</p>
+                        </div>
+                    ) : (
+                        cartItems.map((item, index) => (
+                            <div key={`${item.product.id}-${index}`} className="flex justify-between items-center gap-2">
+                                <div className="flex-grow">
+                                    <p className="font-medium text-sm">{item.product.name}</p>
+                                    <p className={cn("text-xs", item.price === item.product.wholesalePrice ? "text-accent-foreground font-semibold" : "text-muted-foreground")}>
+                                        {activeSymbol}{(item.price * activeRate).toFixed(2)}
+                                    </p>
+                                </div>
+                                <Input
+                                    type="number"
+                                    value={item.quantity}
+                                    onChange={(e) => updateQuantity(item.product.id, item.price, parseInt(e.target.value, 10) || 1)}
+                                    className="h-8 w-16"
+                                    min="1"
                                 />
-                                <Button onClick={loadOrderById} disabled={!scannedOrderId}>Cargar</Button>
+                                <div className="text-right font-semibold w-20">{activeSymbol}{(item.price * item.quantity * activeRate).toFixed(2)}</div>
+                                <div className="flex items-center">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-accent-foreground" onClick={() => toggleWholesalePrice(item.product.id, item.price)}>
+                                        <Tags className={cn("h-4 w-4", item.price === item.product.wholesalePrice && "text-accent-foreground")} />
+                                    </Button>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                            <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                Esto eliminará "{item.product.name}" de tu carrito.
+                                            </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => removeFromCart(item.product.id, item.price)}>Eliminar</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </div>
                             </div>
-                             <DialogFooter>
-                                <DialogClose asChild id="scan-order-close-button">
-                                    <Button variant="outline">Cerrar</Button>
-                                </DialogClose>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
-                    <Dialog>
-                        <DialogTrigger asChild>
-                            <Button variant="secondary">
-                                <Archive className="mr-2 h-4 w-4" />
-                                Pedidos Pendientes
-                                {(pendingOrders || []).length > 0 && <Badge variant="destructive" className="ml-2">{(pendingOrders || []).length}</Badge>}
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Pedidos Pendientes del Catálogo</DialogTitle>
-                                <DialogDescription>
-                                    Aquí están los pedidos generados por los clientes desde el catálogo en línea.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="py-4 max-h-96 overflow-y-auto">
-                                {isLoading && <p>Cargando pedidos...</p>}
-                                {!isLoading && (pendingOrders || []).length === 0 ? (
-                                    <p className="text-center text-muted-foreground py-8">No hay pedidos pendientes.</p>
-                                ) : (
-                                    <div className="space-y-4">
-                                    {(pendingOrders || []).map(order => (
-                                        <div key={order.id} className="p-4 border rounded-lg">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <h4 className="font-semibold">{order.id}</h4>
-                                                    <p className="text-sm text-muted-foreground">{order.customerName} - {format(new Date(order.date as string), 'dd/MM/yyyy HH:mm')}</p>
-                                                </div>
-                                                <Button size="sm" onClick={() => loadPendingOrder(order)}>Cargar</Button>
-                                            </div>
-                                            <Separator className="my-2" />
-                                            <ul className="text-sm space-y-1">
-                                                {order.items.map(item => (
-                                                    <li key={item.productId} className="flex justify-between">
-                                                        <span>{item.quantity} x {item.productName}</span>
-                                                        <span>${(item.quantity * item.price).toFixed(2)}</span>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                            <Separator className="my-2" />
-                                            <p className="text-right font-bold">Total: ${order.total.toFixed(2)}</p>
-                                        </div>
-                                    ))}
+                        ))
+                    )}
+                </div>
+                {cartItems.length > 0 && (
+                    <div className="mt-auto">
+                        <Separator />
+                        <div className="space-y-2 pt-4">
+                        <div className="flex justify-between">
+                            <span>Subtotal</span>
+                            <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
+                        </div>
+                        {settings?.tax1 && settings.tax1 > 0 && (
+                            <div className="flex justify-between">
+                                <span>Impuesto {settings.tax1}%</span>
+                                <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</span>
+                            </div>
+                        )}
+                        {settings?.tax2 && settings.tax2 > 0 && (
+                            <div className="flex justify-between">
+                                <span>Impuesto {settings.tax2}%</span>
+                                <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
+                            </div>
+                        )}
+                        <div className="flex justify-between font-semibold text-lg">
+                            <span>Total</span>
+                            <span>{activeSymbol}{(total * activeRate).toFixed(2)}</span>
+                        </div>
+                        </div>
+                    </div>
+                )}
+              </CardContent>
+              <CardFooter className="flex flex-col gap-2 pt-4 border-t">
+                <Dialog open={isProcessSaleDialogOpen} onOpenChange={(isOpen) => { setIsProcessSaleDialogOpen(isOpen); if (!isOpen) resetPaymentModal(); }}>
+                    <DialogTrigger asChild>
+                        <Button className="w-full bg-primary hover:bg-primary/90" size="lg" disabled={cartItems.length === 0}>
+                            Procesar Venta
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                            <DialogTitle>Finalizar Venta</DialogTitle>
+                            <DialogDescription>
+                                Total a Pagar: <span className="font-bold text-primary">{activeSymbol}{(total * activeRate).toFixed(2)}</span>
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid md:grid-cols-2 gap-6 items-start">
+                            <div className="space-y-4">
+                                <h4 className="font-medium text-center md:text-left">Registrar Pagos</h4>
+                                <div className="space-y-2">
+                                    <Label>Método de Pago</Label>
+                                    <Select value={currentPaymentMethod} onValueChange={setCurrentPaymentMethod}>
+                                        <SelectTrigger><SelectValue/></SelectTrigger>
+                                        <SelectContent>
+                                            {paymentMethods.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Monto a Pagar ({activeSymbol})</Label>
+                                    <Input type="number" placeholder="0.00" value={currentPaymentAmount} onChange={e => setCurrentPaymentAmount(e.target.value)} />
+                                </div>
+                                {paymentMethods.find(m => m.id === currentPaymentMethod)?.requiresRef && (
+                                    <div className="space-y-2">
+                                        <Label>Referencia</Label>
+                                        <Input placeholder="Nro. de referencia" value={currentPaymentRef} onChange={e => setCurrentPaymentRef(e.target.value)} />
                                     </div>
                                 )}
-                            </div>
-                            <DialogFooter>
-                                <DialogClose asChild id="pending-orders-close-button">
-                                    <Button variant="outline">Cerrar</Button>
-                                </DialogClose>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
-                </div>
-            </div>
-            <div className="mt-4 flex gap-4">
-              <Input
-                placeholder="Buscar por nombre o SKU..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-grow"
-              />
-               <Select value={selectedFamily} onValueChange={setSelectedFamily}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filtrar por familia" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas las familias</SelectItem>
-                  {(families || []).map(family => (
-                    <SelectItem key={family.id} value={family.name}>
-                      {family.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoading && <p>Cargando productos...</p>}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {filteredProducts.map((product) => (
-                <ProductCard 
-                    key={product.id} 
-                    product={product} 
-                    onAddToCart={addToCart}
-                    onShowDetails={setProductDetails}
-                />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-      <div className="md:col-span-2 lg:col-span-2">
-        <div className="sticky top-6">
-        <Card className="flex flex-col h-[calc(100vh-5rem)]">
-          <CardHeader className="flex flex-row justify-between items-center">
-            <CardTitle>Carrito de Compra</CardTitle>
-            {cartItems.length > 0 && (
-                 <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm">
-                            <Trash2 className="mr-2 h-4 w-4" /> Vaciar Carrito
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                        <AlertDialogTitle>¿Vaciar el carrito?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Esta acción eliminará todos los productos del carrito. ¿Estás seguro de que deseas continuar?
-                        </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={clearCart}>Sí, vaciar</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            )}
-          </CardHeader>
-          <CardContent className="flex-grow flex flex-col gap-4">
-            <div className="space-y-2">
-                <Label htmlFor="customer">Cliente</Label>
-                <div className="flex gap-2">
-                    <Popover open={isCustomerSearchOpen} onOpenChange={setIsCustomerSearchOpen}>
-                        <PopoverTrigger asChild>
-                            <Button
-                                variant="outline"
-                                role="combobox"
-                                aria-expanded={isCustomerSearchOpen}
-                                className="w-full justify-between"
-                            >
-                                {isLoading ? "Cargando..." : (selectedCustomer ? selectedCustomer.name : "Seleccionar cliente...")}
-                                <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                            <Command>
-                                <CommandInput placeholder="Buscar cliente..." />
-                                <CommandList>
-                                    <CommandEmpty>No se encontraron clientes.</CommandEmpty>
-                                    <CommandGroup>
-                                        {customerList.map((customer) => (
-                                            <CommandItem
-                                                key={customer.id}
-                                                value={customer.name}
-                                                onSelect={() => {
-                                                    setSelectedCustomerId(customer.id);
-                                                    setIsCustomerSearchOpen(false);
-                                                }}
-                                            >
-                                                <Check
-                                                    className={cn(
-                                                        "mr-2 h-4 w-4",
-                                                        selectedCustomerId === customer.id ? "opacity-100" : "opacity-0"
-                                                    )}
-                                                />
-                                                {customer.name}
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                    </Popover>
-
-                    <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="outline" size="icon">
-                                <PlusCircle className="h-4 w-4" />
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Agregar Nuevo Cliente</DialogTitle>
-                                <DialogDescription>
-                                    Completa el formulario para agregar un nuevo cliente.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="grid gap-4 py-4">
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="new-customer-id" className="text-right">ID (Opcional)</Label>
-                                    <Input id="new-customer-id" value={newCustomer.id} onChange={(e) => setNewCustomer(prev => ({ ...prev, id: e.target.value }))} className="col-span-3" placeholder="Identificación fiscal, etc." />
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="new-customer-name" className="text-right">Nombre*</Label>
-                                    <Input id="new-customer-name" value={newCustomer.name} onChange={(e) => setNewCustomer(prev => ({ ...prev, name: e.target.value }))} className="col-span-3" placeholder="Ej: Jane Doe" required />
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="new-customer-phone" className="text-right">Teléfono*</Label>
-                                    <Input id="new-customer-phone" value={newCustomer.phone} onChange={(e) => setNewCustomer(prev => ({ ...prev, phone: e.target.value }))} className="col-span-3" required />
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="new-customer-address" className="text-right">Dirección</Label>
-                                    <Input id="new-customer-address" value={newCustomer.address} onChange={(e) => setNewCustomer(prev => ({ ...prev, address: e.target.value }))} className="col-span-3" />
-                                </div>
-                            </div>
-                            <DialogFooter>
-                                <DialogClose asChild>
-                                    <Button variant="outline">Cancelar</Button>
-                                </DialogClose>
-                                <Button onClick={handleAddNewCustomer} disabled={!newCustomer.name.trim() || !newCustomer.phone.trim()}>Guardar Cliente</Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
-                </div>
-            </div>
-            <Separator />
-            <div className="space-y-4 flex-grow overflow-y-auto pr-2">
-                {cartItems.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center text-center text-muted-foreground h-full">
-                        <ShoppingCart className="h-12 w-12 mb-4" />
-                        <p>Tu carrito está vacío.</p>
-                        <p className="text-sm">Agrega productos para comenzar una venta.</p>
-                    </div>
-                ) : (
-                    cartItems.map((item, index) => (
-                        <div key={`${item.product.id}-${index}`} className="flex justify-between items-center gap-2">
-                            <div className="flex-grow">
-                                <p className="font-medium text-sm">{item.product.name}</p>
-                                <p className={cn("text-xs", item.price === item.product.wholesalePrice ? "text-accent-foreground font-semibold" : "text-muted-foreground")}>
-                                    {activeSymbol}{(item.price * activeRate).toFixed(2)}
-                                </p>
-                            </div>
-                            <Input
-                                type="number"
-                                value={item.quantity}
-                                onChange={(e) => updateQuantity(item.product.id, item.price, parseInt(e.target.value, 10) || 1)}
-                                className="h-8 w-16"
-                                min="1"
-                            />
-                            <div className="text-right font-semibold w-20">{activeSymbol}{(item.price * item.quantity * activeRate).toFixed(2)}</div>
-                            <div className="flex items-center">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-accent-foreground" onClick={() => toggleWholesalePrice(item.product.id, item.price)}>
-                                    <Tags className={cn("h-4 w-4", item.price === item.product.wholesalePrice && "text-accent-foreground")} />
+                                <Button className="w-full" onClick={handleAddPayment} disabled={!currentPaymentAmount || Number(currentPaymentAmount) <= 0}>
+                                    <Plus className="mr-2 h-4 w-4" /> Agregar Pago
                                 </Button>
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
-                                            <X className="h-4 w-4" />
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                        <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            Esto eliminará "{item.product.name}" de tu carrito.
-                                        </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => removeFromCart(item.product.id, item.price)}>Eliminar</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
                             </div>
-                        </div>
-                    ))
-                )}
-            </div>
-            {cartItems.length > 0 && (
-                <div className="mt-auto">
-                    <Separator />
-                    <div className="space-y-2 pt-4">
-                    <div className="flex justify-between">
-                        <span>Subtotal</span>
-                        <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
-                    </div>
-                     {settings?.tax1 && settings.tax1 > 0 && (
-                        <div className="flex justify-between">
-                            <span>Impuesto {settings.tax1}%</span>
-                            <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</span>
-                        </div>
-                    )}
-                    {settings?.tax2 && settings.tax2 > 0 && (
-                        <div className="flex justify-between">
-                            <span>Impuesto {settings.tax2}%</span>
-                            <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
-                        </div>
-                    )}
-                    <div className="flex justify-between font-semibold text-lg">
-                        <span>Total</span>
-                        <span>{activeSymbol}{(total * activeRate).toFixed(2)}</span>
-                    </div>
-                    </div>
-                </div>
-            )}
-          </CardContent>
-          <CardFooter className="flex flex-col gap-2 pt-4 border-t">
-             <Dialog open={isProcessSaleDialogOpen} onOpenChange={(isOpen) => { setIsProcessSaleDialogOpen(isOpen); if (!isOpen) resetPaymentModal(); }}>
-                <DialogTrigger asChild>
-                    <Button className="w-full bg-primary hover:bg-primary/90" size="lg" disabled={cartItems.length === 0}>
-                        Procesar Venta
-                    </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle>Finalizar Venta</DialogTitle>
-                        <DialogDescription>
-                            Total a Pagar: <span className="font-bold text-primary">{activeSymbol}{(total * activeRate).toFixed(2)}</span>
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid md:grid-cols-2 gap-6 items-start">
-                         <div className="space-y-4">
-                            <h4 className="font-medium text-center md:text-left">Registrar Pagos</h4>
-                             <div className="space-y-2">
-                                <Label>Método de Pago</Label>
-                                <Select value={currentPaymentMethod} onValueChange={setCurrentPaymentMethod}>
-                                    <SelectTrigger><SelectValue/></SelectTrigger>
-                                    <SelectContent>
-                                        {paymentMethods.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Monto a Pagar ({activeSymbol})</Label>
-                                <Input type="number" placeholder="0.00" value={currentPaymentAmount} onChange={e => setCurrentPaymentAmount(e.target.value)} />
-                            </div>
-                            {paymentMethods.find(m => m.id === currentPaymentMethod)?.requiresRef && (
-                                <div className="space-y-2">
-                                    <Label>Referencia</Label>
-                                    <Input placeholder="Nro. de referencia" value={currentPaymentRef} onChange={e => setCurrentPaymentRef(e.target.value)} />
+                            <div className="space-y-4">
+                                <h4 className="font-medium text-center md:text-left">Pagos Realizados</h4>
+                                <div className="space-y-2 p-3 bg-muted/50 rounded-lg min-h-[150px]">
+                                    {payments.length === 0 ? <p className="text-sm text-muted-foreground text-center pt-8">Aún no hay pagos registrados.</p> : (
+                                        payments.map((p, i) => (
+                                            <div key={i} className="flex justify-between items-center text-sm">
+                                                <span>{p.method} {p.reference && `(${p.reference})`}</span>
+                                                <span className="font-medium">{activeSymbol}{(p.amount * activeRate).toFixed(2)}</span>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removePayment(i)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                                            </div>
+                                        ))
+                                    )}
                                 </div>
-                            )}
-                            <Button className="w-full" onClick={handleAddPayment} disabled={!currentPaymentAmount || Number(currentPaymentAmount) <= 0}>
-                                <Plus className="mr-2 h-4 w-4" /> Agregar Pago
+                                <Separator />
+                                <div className="space-y-2 text-lg font-bold">
+                                    <div className="flex justify-between">
+                                        <span>Total Pagado:</span>
+                                        <span>{activeSymbol}{(totalPaid * activeRate).toFixed(2)}</span>
+                                    </div>
+                                    <div className={cn("flex justify-between", remainingBalance > 0 ? "text-destructive" : "text-green-600")}>
+                                        <span>{remainingBalance > 0 ? 'Faltante:' : 'Cambio:'}</span>
+                                        <span>{activeSymbol}{(Math.abs(remainingBalance) * activeRate).toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone) && (
+                            <div className="text-destructive text-sm font-medium flex items-center gap-2 mt-2 p-2 bg-destructive/10 rounded-md">
+                                <AlertCircle className="h-4 w-4" />
+                                <span>Para guardar como crédito, debe seleccionar un cliente debidamente registrado</span>
+                            </div>
+                        )}
+                        <DialogFooter className="gap-2 sm:gap-0 mt-4">
+                            <Button variant="outline" onClick={() => handleProcessSale(false)} disabled={remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone)}>
+                                {remainingBalance > 0 ? 'Guardar como Crédito' : 'Solo Guardar'}
                             </Button>
-                        </div>
-                        <div className="space-y-4">
-                            <h4 className="font-medium text-center md:text-left">Pagos Realizados</h4>
-                            <div className="space-y-2 p-3 bg-muted/50 rounded-lg min-h-[150px]">
-                                {payments.length === 0 ? <p className="text-sm text-muted-foreground text-center pt-8">Aún no hay pagos registrados.</p> : (
-                                    payments.map((p, i) => (
-                                        <div key={i} className="flex justify-between items-center text-sm">
-                                            <span>{p.method} {p.reference && `(${p.reference})`}</span>
-                                            <span className="font-medium">{activeSymbol}{(p.amount * activeRate).toFixed(2)}</span>
-                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removePayment(i)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                            <Separator />
-                            <div className="space-y-2 text-lg font-bold">
-                                <div className="flex justify-between">
-                                    <span>Total Pagado:</span>
-                                    <span>{activeSymbol}{(totalPaid * activeRate).toFixed(2)}</span>
-                                </div>
-                                <div className={cn("flex justify-between", remainingBalance > 0 ? "text-destructive" : "text-green-600")}>
-                                    <span>{remainingBalance > 0 ? 'Faltante:' : 'Cambio:'}</span>
-                                    <span>{activeSymbol}{(Math.abs(remainingBalance) * activeRate).toFixed(2)}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone) && (
-                        <div className="text-destructive text-sm font-medium flex items-center gap-2 mt-2 p-2 bg-destructive/10 rounded-md">
-                            <AlertCircle className="h-4 w-4" />
-                            <span>Para guardar como crédito, debe seleccionar un cliente debidamente registrado</span>
-                        </div>
-                    )}
-                    <DialogFooter className="gap-2 sm:gap-0 mt-4">
-                        <Button variant="outline" onClick={() => handleProcessSale(false)} disabled={remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone)}>
-                            {remainingBalance > 0 ? 'Guardar como Crédito' : 'Solo Guardar'}
-                        </Button>
-                        <Button onClick={() => handleProcessSale(true)} disabled={remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone)}>
-                            {remainingBalance > 0 ? 'Guardar Crédito e Imprimir' : 'Guardar e Imprimir'}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-            <Button className="w-full" variant="secondary" size="lg" onClick={handlePrintQuote} disabled={cartItems.length === 0}>
-                <FileText className="mr-2 h-4 w-4" />
-                Imprimir Cotización
-            </Button>
-          </CardFooter>
-        </Card>
+                            <Button onClick={() => handleProcessSale(true)} disabled={remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone)}>
+                                {remainingBalance > 0 ? 'Guardar Crédito e Imprimir' : 'Guardar e Imprimir'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+                <Button className="w-full" variant="secondary" size="lg" onClick={handlePrintQuote} disabled={cartItems.length === 0}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    Imprimir Cotización
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
         </div>
       </div>
-    </div>
     
     <DialogContent className="sm:max-w-md">
         <DialogHeader>
@@ -959,5 +963,3 @@ export default function POSPage() {
   </Dialog>
   );
 }
-
-    
