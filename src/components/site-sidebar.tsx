@@ -65,7 +65,7 @@ export function SiteSidebar({ isExpanded }: SiteSidebarProps) {
         )}>
             <div className={cn("flex h-[60px] items-center border-b", isExpanded ? "px-6" : "justify-center")}>
                 <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-                    <Logo className="h-10 w-10" />
+                    <Logo className="h-20 w-20" />
                 </Link>
             </div>
             <nav className="flex flex-col gap-2 p-2 font-medium">
