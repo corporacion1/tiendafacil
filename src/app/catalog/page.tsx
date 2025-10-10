@@ -124,30 +124,30 @@ export default function CatalogPage() {
     const firestore = useFirestore();
     const { user, isUserLoading } = useUser();
     const router = useRouter();
-    const { settings, activeSymbol, activeRate } = useSettings();
+    const { settings, activeSymbol, activeRate, isLoadingSettings } = useSettings();
 
     // On catalog page, always use the default store ID
     const catalogStoreId = defaultStoreId;
 
     const productsRef = useMemo(() => {
-        if (!firestore || !catalogStoreId) return null;
+        if (!firestore || !catalogStoreId || isLoadingSettings) return null;
         return query(collection(firestore, 'products'), where('storeId', '==', catalogStoreId));
-    }, [firestore, catalogStoreId]);
+    }, [firestore, catalogStoreId, isLoadingSettings]);
     const { data: products = [], isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
     
     const familiesRef = useMemo(() => {
-        if (!firestore || !catalogStoreId) return null;
+        if (!firestore || !catalogStoreId || isLoadingSettings) return null;
         return query(collection(firestore, 'families'), where('storeId', '==', catalogStoreId));
-    }, [firestore, catalogStoreId]);
+    }, [firestore, catalogStoreId, isLoadingSettings]);
     const { data: families = [], isLoading: isLoadingFamilies } = useCollection<Family>(familiesRef);
     
     const adsRef = useMemo(() => {
-      if (!firestore) return null;
+      if (!firestore || isLoadingSettings) return null;
       return collection(firestore, 'ads');
-    }, [firestore]);
+    }, [firestore, isLoadingSettings]);
     const { data: allAds = [], isLoading: isLoadingAds } = useCollection<Ad>(adsRef);
     
-    const isLoading = isLoadingProducts || isLoadingFamilies || isLoadingAds;
+    const isLoading = isLoadingProducts || isLoadingFamilies || isLoadingAds || isLoadingSettings;
     
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
     const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);

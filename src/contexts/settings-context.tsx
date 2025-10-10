@@ -45,9 +45,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
           if (isPublicPage) {
               return defaultStoreId;
           }
-          return localStorage.getItem(ACTIVE_STORE_ID_KEY) || defaultStoreId;
+          return localStorage.getItem(ACTIVE_STORE_ID_KEY) || ''; // Return empty string if not found on private pages initially
       }
-      return defaultStoreId;
+      return isPublicPage ? defaultStoreId : '';
   };
   
   const [activeStoreId, setActiveStoreId] = useState<string>(getInitialStoreId);
@@ -59,11 +59,20 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
 
+  // This effect synchronizes the activeStoreId based on user role and persisted state.
   useEffect(() => {
-    if (isUserLoading || isLoadingProfile || isPublicPage) {
+    if (isUserLoading || isLoadingProfile) {
+        return; // Wait for auth and profile loading to complete.
+    }
+
+    if (isPublicPage) {
+        if(activeStoreId !== defaultStoreId) {
+          setActiveStoreId(defaultStoreId);
+        }
         return;
     }
 
+    // At this point, we are on a private page.
     const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_KEY);
 
     if (userProfile?.role === 'superAdmin') {
@@ -71,7 +80,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         const targetStoreId = storedStoreId || defaultStoreId;
         if (activeStoreId !== targetStoreId) {
             setActiveStoreId(targetStoreId);
-            localStorage.setItem(ACTIVE_STORE_ID_KEY, targetStoreId);
         }
     } else if (userProfile?.storeId) {
         // For admin/user, their own storeId is the source of truth.
@@ -79,14 +87,16 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
             setActiveStoreId(userProfile.storeId);
             localStorage.setItem(ACTIVE_STORE_ID_KEY, userProfile.storeId);
         }
-    } else {
-        // Fallback for authenticated users without a storeId on private pages.
-        if (activeStoreId !== defaultStoreId) {
-            setActiveStoreId(defaultStoreId);
-            localStorage.setItem(ACTIVE_STORE_ID_KEY, defaultStoreId);
+    } else if (user) {
+        // Fallback for authenticated users on private pages without a storeId (e.g., new user).
+        // The AuthGuard will redirect them, but we set a state to avoid invalid queries.
+        if (activeStoreId !== '') {
+          setActiveStoreId('');
         }
     }
-  }, [isUserLoading, isLoadingProfile, userProfile, activeStoreId, isPublicPage]);
+
+  }, [isUserLoading, isLoadingProfile, userProfile, isPublicPage, activeStoreId]);
+
 
   const settingsDocRef = useMemo(() => {
     if (!firestore || !activeStoreId) return null;
@@ -116,7 +126,14 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, []);
   
-  const isLoading = isUserLoading || isLoadingSettingsDoc || isLoadingRates || isLoadingProfile;
+  const isLoading = useMemo(() => {
+    // On public pages, loading is simpler.
+    if (isPublicPage) {
+        return isLoadingSettingsDoc || isLoadingRates;
+    }
+    // On private pages, loading is complete only when auth, profile, AND a storeId are all resolved.
+    return isUserLoading || isLoadingProfile || !activeStoreId || isLoadingSettingsDoc || isLoadingRates;
+  }, [isPublicPage, isUserLoading, isLoadingProfile, activeStoreId, isLoadingSettingsDoc, isLoadingRates]);
   
   const handleSetSettings = (newSettings: Settings) => {
     if (!settingsDocRef) {
