@@ -476,7 +476,7 @@ export default function POSPage() {
 
   return (
     <Dialog onOpenChange={(open) => { if (!open) setProductDetails(null); setImageError(false); }}>
-      <div className="grid flex-1 auto-rows-max gap-4 md:grid-cols-5 lg:gap-8">
+      <div className="grid flex-1 items-start gap-4 md:grid-cols-5 lg:gap-8">
         {/* Products Section (Left Column) */}
         <div className="grid auto-rows-max items-start gap-4 md:col-span-3 lg:gap-8">
           <Card>
@@ -592,7 +592,7 @@ export default function POSPage() {
             </CardHeader>
             <CardContent>
               {isLoading && <p>Cargando productos...</p>}
-              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-4">
                 {filteredProducts.map((product) => (
                   <ProductCard 
                       key={product.id} 
