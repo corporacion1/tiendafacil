@@ -17,7 +17,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const { isSecurityReady, isLocked, hasPin, lockApp } = useSecurity();
     const { isLoadingSettings } = useSettings();
     
-    const isPublicPage = pathname === '/' || pathname.startsWith('/catalog') || pathname.startsWith('/login');
+    const isPublicPage = pathname.startsWith('/catalog') || pathname.startsWith('/login');
+    const isRootPage = pathname === '/';
 
     useEffect(() => {
         if (!isSecurityReady || !hasPin) return;
@@ -30,15 +31,19 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const isLoading = isUserLoading || !isSecurityReady || isLoadingSettings;
     
     useEffect(() => {
-        if (isUserLoading) return;
+        if (isLoading) return;
         
         // If there's no user and we are on a private page, redirect to login
-        if (!user && !isPublicPage) {
+        if (!user && !isPublicPage && !isRootPage) {
             router.replace('/login');
-            return;
         }
         
-    }, [isUserLoading, user, isPublicPage, pathname, router]);
+        // If there is a user and they are on a public page (that isn't the catalog), redirect to dashboard
+        if (user && (isPublicPage || isRootPage) && !pathname.startsWith('/catalog')) {
+            router.replace('/dashboard');
+        }
+        
+    }, [isLoading, user, isPublicPage, isRootPage, pathname, router]);
 
     if (isLoading) {
       return (
@@ -50,16 +55,38 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         </div>
       );
     }
+    
+    // Special handling for root, which should redirect based on user state
+    if (isRootPage) {
+        if (user) {
+             router.replace('/dashboard');
+        } else {
+             router.replace('/login');
+        }
+        // Return loading state while redirecting
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
+                <div className="p-4 bg-muted rounded-full">
+                    <Package className="w-12 h-12 text-muted-foreground" />
+                </div>
+                <p className="text-muted-foreground animate-pulse">Redirigiendo...</p>
+            </div>
+        );
+    }
 
-    if (isPublicPage) {
+    if (isPublicPage && !user) {
         return <>{children}</>;
+    }
+    
+    if (!user) {
+        // This case handles private routes when user is not logged in,
+        // which should be caught by the useEffect redirect, but this is a fallback.
+        return null;
     }
 
     if (isLocked) {
         return <PinModal />;
     }
 
-    // At this point, user is authenticated and app is not locked.
-    // If we're on a protected page, render the children.
     return <>{children}</>;
 }

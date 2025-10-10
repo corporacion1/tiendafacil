@@ -22,19 +22,22 @@ import { Separator } from '@/components/ui/separator';
 import { Logo } from '@/components/logo';
 import { useAuth, useFirestore, useUser } from '@/firebase';
 import type { UserProfile, Settings } from '@/lib/types';
+import { Package } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user, isUserLoading: isAuthLoading } = useUser();
+  const { user, isUserLoading } = useUser();
   const auth = useAuth();
   const firestore = useFirestore();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
-  
+  const [isLoading, setIsLoading] = useState(true); // Start as true to handle initial redirect check
   const [loadingMessage, setLoadingMessage] = useState<string | null>('Verificando sesión...');
+
+  // --- Functions to be called ON-DEMAND ---
 
   const createUserProfile = async (firebaseUser: FirebaseUser) => {
     if (!firestore) return;
@@ -42,6 +45,7 @@ export default function LoginPage() {
     const userDoc = await getDoc(userRef);
 
     if (!userDoc.exists()) {
+      setLoadingMessage('Creando perfil de usuario...');
       const newUserProfile: Omit<UserProfile, 'createdAt'> = {
         uid: firebaseUser.uid,
         email: firebaseUser.email,
@@ -59,6 +63,7 @@ export default function LoginPage() {
     if (!firestore) {
       setLoadingMessage('Error: No se pudo conectar a la base de datos.');
       toast({ variant: 'destructive', title: 'Error de Conexión' });
+      setIsLoading(false);
       return;
     }
 
@@ -67,28 +72,27 @@ export default function LoginPage() {
     const userSnap = await getDoc(userRef);
 
     if (!userSnap.exists()) {
-      setLoadingMessage('Error: Perfil de usuario no encontrado.');
-      toast({ variant: 'destructive', title: 'Error de Perfil' });
-      // Log out the user if their profile doesn't exist
-      await auth?.signOut();
-      setLoadingMessage(null);
+        if (auth) await auth.signOut();
+        setLoadingMessage(null);
+        setIsLoading(false);
+        toast({ variant: 'destructive', title: 'Error de Perfil', description: 'Tu perfil de usuario no existe. Se ha cerrado la sesión.' });
+        return;
+    }
+    
+    const userProfile = userSnap.data() as UserProfile;
+    
+    // Redirect non-admin users immediately
+    if (userProfile.role !== 'admin' && userProfile.role !== 'superAdmin') {
+      setLoadingMessage('Redirigiendo...');
+      router.replace('/catalog');
       return;
     }
 
-    const userProfile = userSnap.data() as UserProfile;
-    
-    // For regular users, no need to load store data, just redirect to a safe page.
-    if (userProfile.role === 'user') {
-        setLoadingMessage('Redirigiendo...');
-        router.replace('/catalog');
-        return;
-    }
-
     if (!userProfile.storeId) {
-       setLoadingMessage('Error: Usuario no tiene tienda asignada.');
-       toast({ variant: 'destructive', title: 'Error de Configuración', description: 'Este usuario administrativo no tiene una tienda asignada.' });
-       await auth?.signOut();
+       if (auth) await auth.signOut();
        setLoadingMessage(null);
+       setIsLoading(false);
+       toast({ variant: 'destructive', title: 'Error de Configuración', description: 'Este usuario administrativo no tiene una tienda asignada.' });
        return;
     }
     
@@ -97,10 +101,10 @@ export default function LoginPage() {
     const storeSnap = await getDoc(storeRef);
 
     if (!storeSnap.exists()) {
-        setLoadingMessage(`Error: No se encontró la configuración de la tienda ${userProfile.storeId}.`);
-        toast({ variant: 'destructive', title: 'Error de Tienda', description: `No se pudo cargar la configuración para la tienda asignada.` });
-        await auth?.signOut();
+        if (auth) await auth.signOut();
         setLoadingMessage(null);
+        setIsLoading(false);
+        toast({ variant: 'destructive', title: 'Error de Tienda', description: `No se pudo cargar la configuración para la tienda asignada.` });
         return;
     }
     
@@ -108,27 +112,18 @@ export default function LoginPage() {
     router.replace('/dashboard');
   };
 
-  // Effect to handle user state changes (initial load, login, logout)
-  useEffect(() => {
-    if (isAuthLoading) {
-      setLoadingMessage('Verificando sesión...');
-      return;
-    }
-    if (user) {
-      loadDataAndRedirect(user);
-    } else {
-      setLoadingMessage(null); // No user, stop loading, show login form
-    }
-  }, [user, isAuthLoading]);
-
   const handleAuthAction = async (authPromise: Promise<any>) => {
+    setIsLoading(true);
     setLoadingMessage('Procesando...');
     try {
       const userCredential = await authPromise;
-      if (isSignUp && userCredential?.user) {
-        await createUserProfile(userCredential.user);
+      if (userCredential && userCredential.user) {
+        if (isSignUp) {
+          await createUserProfile(userCredential.user);
+        }
+        await loadDataAndRedirect(userCredential.user);
       }
-      // The useEffect will catch the user change and trigger loadDataAndRedirect
+      // If no user credential, it might be a redirect flow handled by useEffect
     } catch (error: any) {
       console.error(error);
       const errorCode = error.code;
@@ -147,7 +142,8 @@ export default function LoginPage() {
         title: isSignUp ? 'Error en el Registro' : 'Error al Iniciar Sesión',
         description: message,
       });
-      setLoadingMessage(null); // Show form again on error
+      setIsLoading(false);
+      setLoadingMessage(null);
     }
   };
 
@@ -162,22 +158,28 @@ export default function LoginPage() {
 
   const handleGoogleSignIn = () => {
     if (!auth) return;
+    setIsLoading(true);
     setLoadingMessage('Redirigiendo a Google...');
     const provider = new GoogleAuthProvider();
-    // We don't await this; the redirect will take over.
-    // The redirect result is handled by the useEffect on initial load.
     signInWithRedirect(auth, provider);
   };
 
-  // Handle redirect result from Google sign-in
+  // This useEffect now ONLY handles the result of a redirect.
+  // It's the one piece of logic that MUST run on load.
   useEffect(() => {
     const processRedirect = async () => {
       if (!auth || !firestore) return;
       try {
         const result = await getRedirectResult(auth);
         if (result && result.user) {
+          setIsLoading(true);
+          setLoadingMessage('Verificando resultado de Google...');
           await createUserProfile(result.user);
-          // Don't redirect here. Let the main `useEffect` handle it.
+          await loadDataAndRedirect(result.user);
+        } else {
+          // No redirect result, so we can show the login form.
+          setIsLoading(false);
+          setLoadingMessage(null);
         }
       } catch (error) {
         console.error("Google sign-in redirect error:", error);
@@ -186,23 +188,32 @@ export default function LoginPage() {
           title: 'Error con Google',
           description: 'No se pudo completar el inicio de sesión con Google.',
         });
-        setLoadingMessage(null); // Stop loading on error
+        setIsLoading(false);
+        setLoadingMessage(null);
       }
     };
+    
+    // Only run this if we are not already logged in
     if (!user) {
         processRedirect();
+    } else {
+        // If there is already a user, redirect them away from login
+        router.replace('/dashboard');
     }
-  }, [auth, firestore, user]);
 
-  if (loadingMessage) {
+  }, [auth, firestore]);
+  
+  // If we are still in the initial loading state (checking for redirect result), show loading screen.
+  if (isLoading || isUserLoading) {
     return (
       <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
-        <Logo className="w-64 h-20" />
-        <p className="text-muted-foreground animate-pulse">{loadingMessage}</p>
+        <Package className="w-16 h-16 text-muted-foreground animate-pulse" />
+        <p className="text-muted-foreground animate-pulse">{loadingMessage || 'Cargando...'}</p>
       </div>
     );
   }
 
+  // If not loading, and we are here, it means we can show the form.
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-muted/40">
       <Card className="w-full max-w-sm">
