@@ -154,3 +154,10 @@ export const businessCategories: string[] = [
     'Salud y Belleza',
     'Otro'
 ];
+
+// In a real app, this would be a server-side operation
+export function trackAdClick(adId: string) {
+    // This is a mock function, in a real app this would call a server endpoint
+    // to track the click and update the ad's view count in the database.
+    console.log(`Ad click tracked for: ${adId}`);
+}
