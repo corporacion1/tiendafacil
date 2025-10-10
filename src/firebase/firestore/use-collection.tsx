@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Query,
   onSnapshot,
@@ -88,6 +88,9 @@ export function useCollection<T = any>(
         setError(null);
     }
 
+    // The cleanup function returned by useEffect will be called when the component unmounts
+    // or when the dependencies of the effect change. This is the correct and only
+    // place to unsubscribe the listener.
     return () => {
       if (unsubscribe) {
         unsubscribe();
