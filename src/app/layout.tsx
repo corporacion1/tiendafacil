@@ -30,14 +30,14 @@ export default function RootLayout({
       <body className="font-body antialiased">
          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <FirebaseClientProvider>
-            <SettingsProvider>
-              <SecurityProvider>
+            <SecurityProvider>
+              <SettingsProvider>
                 <AppShell>
                   {children}
                 </AppShell>
                 <Toaster />
-              </SecurityProvider>
-            </SettingsProvider>
+              </SettingsProvider>
+            </SecurityProvider>
           </FirebaseClientProvider>
         </ThemeProvider>
       </body>

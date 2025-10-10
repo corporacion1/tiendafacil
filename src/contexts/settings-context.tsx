@@ -22,6 +22,7 @@ interface SettingsContextType {
   currencyRates: CurrencyRate[];
   setCurrencyRates: React.Dispatch<React.SetStateAction<CurrencyRate[]>>;
   activeStoreId: string;
+  isStoreIdResolved: boolean; // Nuevo estado para indicar si el storeId está listo
   switchStore: (storeId: string) => void;
   isLoadingSettings: boolean;
   userProfile: UserProfile | null;
@@ -45,12 +46,13 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
           if (isPublicPage) {
               return defaultStoreId;
           }
-          return localStorage.getItem(ACTIVE_STORE_ID_KEY) || ''; // Return empty string if not found on private pages initially
+          return localStorage.getItem(ACTIVE_STORE_ID_KEY) || '';
       }
       return isPublicPage ? defaultStoreId : '';
   };
   
   const [activeStoreId, setActiveStoreId] = useState<string>(getInitialStoreId);
+  const [isStoreIdResolved, setIsStoreIdResolved] = useState(false);
   
   const userProfileRef = useMemo(() => {
     if (!user || !firestore) return null;
@@ -59,41 +61,32 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
 
-  // This effect synchronizes the activeStoreId based on user role and persisted state.
   useEffect(() => {
     if (isUserLoading || isLoadingProfile) {
-        return; // Wait for auth and profile loading to complete.
+        setIsStoreIdResolved(false);
+        return; 
     }
 
+    let resolvedId = '';
     if (isPublicPage) {
-        if(activeStoreId !== defaultStoreId) {
-          setActiveStoreId(defaultStoreId);
-        }
-        return;
-    }
-
-    // At this point, we are on a private page.
-    const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_KEY);
-
-    if (userProfile?.role === 'superAdmin') {
-        // For superAdmin, trust the stored ID if it exists, otherwise default.
-        const targetStoreId = storedStoreId || defaultStoreId;
-        if (activeStoreId !== targetStoreId) {
-            setActiveStoreId(targetStoreId);
-        }
-    } else if (userProfile?.storeId) {
-        // For admin/user, their own storeId is the source of truth.
-        if (activeStoreId !== userProfile.storeId) {
-            setActiveStoreId(userProfile.storeId);
-            localStorage.setItem(ACTIVE_STORE_ID_KEY, userProfile.storeId);
-        }
+        resolvedId = defaultStoreId;
     } else if (user) {
-        // Fallback for authenticated users on private pages without a storeId (e.g., new user).
-        // The AuthGuard will redirect them, but we set a state to avoid invalid queries.
-        if (activeStoreId !== '') {
-          setActiveStoreId('');
+        const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_KEY);
+        if (userProfile?.role === 'superAdmin') {
+            resolvedId = storedStoreId || defaultStoreId;
+        } else if (userProfile?.storeId) {
+            resolvedId = userProfile.storeId;
         }
     }
+    
+    if (resolvedId && activeStoreId !== resolvedId) {
+        setActiveStoreId(resolvedId);
+        if (typeof window !== 'undefined' && !isPublicPage && userProfile?.storeId) {
+            localStorage.setItem(ACTIVE_STORE_ID_KEY, resolvedId);
+        }
+    }
+    
+    setIsStoreIdResolved(!!resolvedId || isPublicPage);
 
   }, [isUserLoading, isLoadingProfile, userProfile, isPublicPage, activeStoreId]);
 
@@ -126,14 +119,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, []);
   
-  const isLoading = useMemo(() => {
-    // On public pages, loading is simpler.
-    if (isPublicPage) {
-        return isLoadingSettingsDoc || isLoadingRates;
-    }
-    // On private pages, loading is complete only when auth, profile, AND a storeId are all resolved.
-    return isUserLoading || isLoadingProfile || !activeStoreId || isLoadingSettingsDoc || isLoadingRates;
-  }, [isPublicPage, isUserLoading, isLoadingProfile, activeStoreId, isLoadingSettingsDoc, isLoadingRates]);
+  const isLoading = isLoadingSettingsDoc || isLoadingRates || (!isStoreIdResolved && !isPublicPage);
   
   const handleSetSettings = (newSettings: Settings) => {
     if (!settingsDocRef) {
@@ -186,6 +172,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         currencyRates: currencyRatesData, 
         setCurrencyRates: () => {}, 
         activeStoreId,
+        isStoreIdResolved,
         switchStore,
         isLoadingSettings: isLoading,
         userProfile: userProfile || null,

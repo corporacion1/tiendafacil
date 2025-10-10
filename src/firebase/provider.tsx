@@ -9,6 +9,7 @@ import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import type { UserAuthResult } from './auth/use-user';
 import { Package, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useSettings } from '@/contexts/settings-context'; 
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -103,7 +104,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     };
   }, [firebaseApp, firestore, auth, userAuthState]);
   
-  // Do not render children until authentication check is complete
   if (contextValue.isUserLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
