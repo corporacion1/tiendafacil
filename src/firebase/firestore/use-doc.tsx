@@ -1,12 +1,14 @@
+
 'use client';
     
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   DocumentReference,
   onSnapshot,
   DocumentData,
   FirestoreError,
   DocumentSnapshot,
+  Unsubscribe,
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -47,22 +49,30 @@ export function useDoc<T = any>(
   const { isUserLoading } = useUser();
   const [data, setData] = useState<StateDataType>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
+  const unsubscribeRef = useRef<Unsubscribe | null>(null);
 
-  // The query should only fetch if it's valid and the user is not loading.
   const shouldFetch = !!memoizedDocRef && !isUserLoading;
 
   useEffect(() => {
-    // Critical Guard: Do not proceed if the document reference is not ready or dependencies are loading.
+    // If we shouldn't fetch, clear any existing data and unsubscribe.
     if (!shouldFetch) {
-       if (data !== null) {
-        setData(null);
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
       }
+      setData(null);
+      setError(null);
       return;
     }
-
+    
     setError(null);
     
-    const unsubscribe = onSnapshot(
+    // Unsubscribe from the previous listener if it exists.
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+    }
+
+    unsubscribeRef.current = onSnapshot(
       memoizedDocRef,
       (snapshot: DocumentSnapshot<DocumentData>) => {
         if (snapshot.exists()) {
@@ -70,9 +80,9 @@ export function useDoc<T = any>(
         } else {
           setData(null);
         }
-        setError(null);
+        setError(null); // Clear previous errors on successful fetch
       },
-      (error: FirestoreError) => {
+      (err: FirestoreError) => {
         const contextualError = new FirestorePermissionError({
           operation: 'get',
           path: memoizedDocRef.path,
@@ -85,11 +95,17 @@ export function useDoc<T = any>(
       }
     );
 
-    return () => unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Main cleanup function when the component unmounts
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
   }, [memoizedDocRef, isUserLoading]);
   
   const isLoading = (shouldFetch && data === null && error === null) || isUserLoading;
 
   return { data, isLoading, error };
 }
+

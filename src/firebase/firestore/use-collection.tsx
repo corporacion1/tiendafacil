@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Query,
   onSnapshot,
@@ -9,6 +9,7 @@ import {
   FirestoreError,
   QuerySnapshot,
   CollectionReference,
+  Unsubscribe,
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -31,7 +32,6 @@ export interface UseCollectionResult<T> {
  * React hook to subscribe to a Firestore collection or query in real-time.
  * Handles nullable references/queries.
  * 
- *
  * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedTargetRefOrQuery or BAD THINGS WILL HAPPEN
  * use useMemo to memoize it per React guidence.  Also make sure that it's dependencies are stable
  * references
@@ -50,22 +50,31 @@ export function useCollection<T = any>(
   const { isUserLoading } = useUser();
   const [data, setData] = useState<StateDataType>(null);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
-
-  // The query should only fetch if it's valid and the user is not loading.
+  const unsubscribeRef = useRef<Unsubscribe | null>(null);
+  
   const shouldFetch = !!memoizedTargetRefOrQuery && !isUserLoading;
 
   useEffect(() => {
-    // Critical Guard: Do not proceed if the query is not ready or dependencies are loading.
+    // If we shouldn't fetch, clear any existing data and unsubscribe.
     if (!shouldFetch) {
-      if (data !== null) {
-        setData(null);
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
       }
+      setData(null);
+      setError(null);
       return;
     }
-    
-    setError(null);
 
-    const unsubscribe = onSnapshot(
+    // New query is valid, set up the listener.
+    setError(null);
+    
+    // Unsubscribe from the previous listener if it exists.
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current();
+    }
+
+    unsubscribeRef.current = onSnapshot(
       memoizedTargetRefOrQuery,
       (snapshot: QuerySnapshot<DocumentData>) => {
         const results: ResultItemType[] = [];
@@ -73,9 +82,9 @@ export function useCollection<T = any>(
           results.push({ ...(doc.data() as T), id: doc.id });
         }
         setData(results);
-        setError(null);
+        setError(null); // Clear previous errors on successful fetch
       },
-      (error: FirestoreError) => {
+      (err: FirestoreError) => {
         let path = 'desconocido';
         if ('path' in memoizedTargetRefOrQuery) {
             path = (memoizedTargetRefOrQuery as CollectionReference).path;
@@ -95,11 +104,17 @@ export function useCollection<T = any>(
       }
     );
 
-    return () => unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Main cleanup function when the component unmounts
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+    };
   }, [memoizedTargetRefOrQuery, isUserLoading]);
 
   const isLoading = (shouldFetch && data === null && error === null) || isUserLoading;
 
   return { data, isLoading, error };
 }
+
