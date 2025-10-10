@@ -8,6 +8,7 @@ import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
 import { useUser, useFirestore, useDoc, useCollection, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc, query, orderBy } from 'firebase/firestore';
 import { defaultStoreId } from '@/lib/data';
+import { Package } from 'lucide-react';
 
 type DisplayCurrency = 'primary' | 'secondary';
 
@@ -61,15 +62,14 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
             resolvedId = userProfile.storeId;
         }
     } else if (!user && !isPublicPage) {
-        // Logged out on a private page, clear storeId
-        resolvedId = '';
+        // Logged out on a private page, clear storeId, this state is handled by AuthGuard
     }
     
     setActiveStoreId(resolvedId);
     if (resolvedId && !isPublicPage && typeof window !== 'undefined') {
         localStorage.setItem(ACTIVE_STORE_ID_KEY, resolvedId);
     }
-  }, [isUserLoading, isLoadingProfile, user, userProfile, isPublicPage]);
+  }, [isUserLoading, isLoadingProfile, user, userProfile, isPublicPage, pathname]);
 
   const settingsDocRef = useMemo(() => {
     if (!firestore || !activeStoreId) return null;
@@ -92,11 +92,12 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     if(storedCurrencyPref) setDisplayCurrency(storedCurrencyPref);
   }, []);
   
-  const isLoading = isUserLoading || isLoadingProfile || isLoadingSettingsDoc || isLoadingRates || (!activeStoreId && !isPublicPage);
+  const isLoading = isUserLoading || isLoadingProfile || (!activeStoreId && !isPublicPage) || isLoadingSettingsDoc || isLoadingRates;
   
   const handleSetSettings = (newSettings: Settings) => {
     if (!settingsDocRef || !firestore) return;
-    setDocumentNonBlocking(firestore, settingsDocRef, newSettings, { merge: true });
+    const { id, ...settingsToSave } = newSettings;
+    setDocumentNonBlocking(settingsDocRef, settingsToSave, { merge: true });
   };
 
   const switchStore = (storeId: string) => {
@@ -121,22 +122,37 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   
   const latestRate = currencyRatesData?.[0]?.rate;
   const activeRate = activeCurrency === 'primary' ? 1 : (latestRate && latestRate > 0 ? latestRate : 1);
+
+  const contextValue: SettingsContextType = {
+    settings, 
+    setSettings: handleSetSettings, 
+    displayCurrency, 
+    toggleDisplayCurrency, 
+    activeCurrency, 
+    activeSymbol, 
+    activeRate, 
+    currencyRates: currencyRatesData, 
+    activeStoreId,
+    switchStore,
+    isLoadingSettings: isLoading,
+    userProfile: userProfile || null,
+  };
+  
+  // This is the critical change. We do not render the children until the storeId is known,
+  // preventing any data-fetching hooks from running with invalid queries.
+  if (isLoading && !isPublicPage) {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
+            <div className="p-4 bg-muted rounded-full">
+                <Package className="w-12 h-12 text-muted-foreground" />
+            </div>
+            <p className="text-muted-foreground animate-pulse">Conectando a la tienda...</p>
+        </div>
+    );
+  }
   
   return (
-    <SettingsContext.Provider value={{ 
-        settings, 
-        setSettings: handleSetSettings, 
-        displayCurrency, 
-        toggleDisplayCurrency, 
-        activeCurrency, 
-        activeSymbol, 
-        activeRate, 
-        currencyRates: currencyRatesData, 
-        activeStoreId,
-        switchStore,
-        isLoadingSettings: isLoading,
-        userProfile: userProfile || null,
-    }}>
+    <SettingsContext.Provider value={contextValue}>
       {children}
     </SettingsContext.Provider>
   );

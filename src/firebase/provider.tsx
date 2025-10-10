@@ -6,8 +6,6 @@ import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
-import { Package } from 'lucide-react';
-import { useSettings } from '@/contexts/settings-context';
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -75,7 +73,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       userError: userAuthState.userError,
     };
   }, [firebaseApp, firestore, auth, userAuthState]);
-
+  
   return (
     <FirebaseContext.Provider value={contextValue}>
       <FirebaseErrorListener />
