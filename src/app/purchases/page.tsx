@@ -18,57 +18,20 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings } from "@/contexts/settings-context";
-import { useCollection, useFirestore, useUser } from "@/firebase";
-import { collection, doc, writeBatch, query, orderBy, where, collectionGroup } from "firebase/firestore";
+import { mockProducts, defaultSuppliers, initialFamilies, mockPurchases } from "@/lib/data";
 
 const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
 
 export default function PurchasesPage() {
   const { toast } = useToast();
-  const firestore = useFirestore();
   const { settings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
-  const { isUserLoading } = useUser();
-  const isSuperAdmin = userProfile?.role === 'superAdmin';
 
-  const productsRef = useMemo(() => {
-    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
-    return isSuperAdmin
-        ? query(collectionGroup(firestore, 'products'))
-        : query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
+  const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})));
+  const [suppliers, setSuppliers] = useState(defaultSuppliers.map(s => ({...s, storeId: activeStoreId})));
+  const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
+  const [purchases, setPurchases] = useState(mockPurchases.map(p => ({...p, storeId: activeStoreId})));
 
-  const suppliersRef = useMemo(() => {
-    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
-    return isSuperAdmin
-        ? query(collectionGroup(firestore, 'suppliers'))
-        : query(collection(firestore, 'suppliers'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
-  const { data: suppliers, isLoading: isLoadingSuppliers } = useCollection<Supplier>(suppliersRef);
-
-  const familiesRef = useMemo(() => {
-    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
-    return isSuperAdmin
-        ? query(collectionGroup(firestore, 'families'))
-        : query(collection(firestore, 'families'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
-  const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesRef);
-
-  const purchasesRef = useMemo(() => {
-    if (isLoadingSettings || isUserLoading || !firestore || !activeStoreId) return null;
-    return isSuperAdmin
-        ? query(collectionGroup(firestore, 'purchases'))
-        : query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId, isSuperAdmin, isLoadingSettings, isUserLoading]);
-  const { data: purchasesData, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesRef);
-
-  const purchases = useMemo(() => {
-    if (!purchasesData) return [];
-    return [...purchasesData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [purchasesData]);
-
-
-  const isLoading = isLoadingProducts || isLoadingSuppliers || isLoadingFamilies || isLoadingPurchases;
+  const isLoading = isLoadingSettings;
 
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -193,32 +156,28 @@ export default function PurchasesPage() {
 
 
   const handleAddNewSupplier = async () => {
-    if (!firestore || !activeStoreId) return;
     if (newSupplier.name.trim() === "") {
         toast({ variant: "destructive", title: "Nombre inválido" });
         return;
     }
     const newId = newSupplier.id.trim() || `sup-${Date.now()}`;
-    const supplierToAdd: Omit<Supplier, 'id' | 'storeId'> = { name: newSupplier.name, phone: newSupplier.phone, address: newSupplier.address };
+    const supplierToAdd: Supplier = { 
+        id: newId,
+        name: newSupplier.name, 
+        phone: newSupplier.phone, 
+        address: newSupplier.address,
+        storeId: activeStoreId
+    };
     
-    const batch = writeBatch(firestore);
-    const supplierRef = doc(firestore, 'suppliers', newId);
-    batch.set(supplierRef, { ...supplierToAdd, storeId: activeStoreId });
+    setSuppliers(prev => [...prev, supplierToAdd]);
 
-    try {
-        await batch.commit();
-        setSelectedSupplierId(newId);
-        setNewSupplier({ id: '', name: '', phone: '', address: '' });
-        setIsSupplierDialogOpen(false);
-        toast({ title: "Proveedor Agregado", description: `El proveedor "${supplierToAdd.name}" ha sido agregado.` });
-    } catch(error) {
-        console.error("Error adding supplier:", error);
-        toast({ variant: 'destructive', title: 'Error al agregar proveedor' });
-    }
+    setSelectedSupplierId(newId);
+    setNewSupplier({ id: '', name: '', phone: '', address: '' });
+    setIsSupplierDialogOpen(false);
+    toast({ title: "Proveedor Agregado (Simulación)", description: `El proveedor "${supplierToAdd.name}" ha sido agregado.` });
   };
   
   const handleProcessPurchase = async () => {
-    if (!firestore || !activeStoreId) return;
     if (purchaseItems.length === 0) {
       toast({ variant: "destructive", title: "Orden vacía", description: "Agrega productos para procesar la compra." });
       return;
@@ -240,11 +199,9 @@ export default function PurchasesPage() {
         return;
     }
 
-    const batch = writeBatch(firestore);
     const purchaseId = generatePurchaseId();
-
-    const purchaseRef = doc(firestore, "purchases", purchaseId);
-    const newPurchase: Omit<Purchase, 'id'> = {
+    const newPurchase: Purchase = {
+        id: purchaseId,
         supplierId: selectedSupplier.id,
         supplierName: selectedSupplier.name,
         items: purchaseItems,
@@ -254,40 +211,25 @@ export default function PurchasesPage() {
         responsible: responsible,
         storeId: activeStoreId,
     };
-    batch.set(purchaseRef, newPurchase);
-
-    for (const item of purchaseItems) {
-        const productRef = doc(firestore, "products", item.productId);
-        const product = products?.find(p => p.id === item.productId);
-        if (product) {
-            const newStock = product.stock + item.quantity;
-            batch.update(productRef, { stock: newStock, cost: item.cost });
-        }
-
-        const movementRef = doc(collection(firestore, "inventory_movements"));
-        const newMovement: Omit<InventoryMovement, 'id'> = {
-            productName: item.productName,
-            type: 'purchase',
-            quantity: item.quantity,
-            date: new Date().toISOString(),
-            responsible: responsible,
-            storeId: activeStoreId,
-        };
-        batch.set(movementRef, newMovement);
-    }
     
-    try {
-        await batch.commit();
-        toast({ title: "Compra Procesada", description: `La compra con ID #${purchaseId} ha sido registrada.` });
-        
-        setPurchaseItems([]);
-        setSelectedSupplierId('');
-        setDocumentNumber('');
-        setResponsible('');
-    } catch (error) {
-        console.error("Error processing purchase: ", error);
-        toast({ variant: 'destructive', title: 'Error al procesar la compra', description: (error as Error).message });
+    setPurchases(prev => [newPurchase, ...prev]);
+
+    let updatedProducts = [...products];
+    for (const item of purchaseItems) {
+        updatedProducts = updatedProducts.map(p => 
+            p.id === item.productId 
+                ? { ...p, stock: p.stock + item.quantity, cost: item.cost }
+                : p
+        );
     }
+    setProducts(updatedProducts);
+
+    toast({ title: "Compra Procesada (Simulación)", description: `La compra con ID #${purchaseId} ha sido registrada.` });
+    
+    setPurchaseItems([]);
+    setSelectedSupplierId('');
+    setDocumentNumber('');
+    setResponsible('');
   };
 
   const isFormComplete = useMemo(() => {
@@ -392,7 +334,7 @@ export default function PurchasesPage() {
                     <Popover open={isSupplierSearchOpen} onOpenChange={setIsSupplierSearchOpen}>
                         <PopoverTrigger asChild>
                             <Button variant="outline" role="combobox" className="w-full justify-between">
-                                { isLoadingSuppliers ? "Cargando..." : (selectedSupplier ? selectedSupplier.name : "Seleccionar proveedor...") }
+                                { isLoading ? "Cargando..." : (selectedSupplier ? selectedSupplier.name : "Seleccionar proveedor...") }
                                 <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                         </PopoverTrigger>
@@ -587,3 +529,5 @@ export default function PurchasesPage() {
     </div>
   );
 }
+
+    
