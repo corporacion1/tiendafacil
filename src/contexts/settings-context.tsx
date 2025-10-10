@@ -20,9 +20,7 @@ interface SettingsContextType {
   activeSymbol: string;
   activeRate: number;
   currencyRates: CurrencyRate[];
-  setCurrencyRates: React.Dispatch<React.SetStateAction<CurrencyRate[]>>;
   activeStoreId: string;
-  isStoreIdResolved: boolean; // Nuevo estado para indicar si el storeId está listo
   switchStore: (storeId: string) => void;
   isLoadingSettings: boolean;
   userProfile: UserProfile | null;
@@ -41,18 +39,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const isPublicPage = useMemo(() => pathname === '/' || pathname.startsWith('/catalog') || pathname.startsWith('/login'), [pathname]);
 
-  const getInitialStoreId = () => {
-      if (typeof window !== 'undefined') {
-          if (isPublicPage) {
-              return defaultStoreId;
-          }
-          return localStorage.getItem(ACTIVE_STORE_ID_KEY) || '';
-      }
-      return isPublicPage ? defaultStoreId : '';
-  };
-  
-  const [activeStoreId, setActiveStoreId] = useState<string>(getInitialStoreId);
-  const [isStoreIdResolved, setIsStoreIdResolved] = useState(false);
+  const [activeStoreId, setActiveStoreId] = useState<string>('');
   
   const userProfileRef = useMemo(() => {
     if (!user || !firestore) return null;
@@ -62,34 +49,27 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
 
   useEffect(() => {
-    if (isUserLoading || isLoadingProfile) {
-        setIsStoreIdResolved(false);
-        return; 
-    }
+    if (isUserLoading || isLoadingProfile) return;
 
     let resolvedId = '';
     if (isPublicPage) {
         resolvedId = defaultStoreId;
-    } else if (user) {
-        const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_KEY);
-        if (userProfile?.role === 'superAdmin') {
-            resolvedId = storedStoreId || defaultStoreId;
-        } else if (userProfile?.storeId) {
+    } else if (user && userProfile) {
+        if (userProfile.role === 'superAdmin') {
+            resolvedId = localStorage.getItem(ACTIVE_STORE_ID_KEY) || defaultStoreId;
+        } else if (userProfile.storeId) {
             resolvedId = userProfile.storeId;
         }
+    } else if (!user && !isPublicPage) {
+        // Logged out on a private page, clear storeId
+        resolvedId = '';
     }
     
-    if (resolvedId && activeStoreId !== resolvedId) {
-        setActiveStoreId(resolvedId);
-        if (typeof window !== 'undefined' && !isPublicPage && userProfile?.storeId) {
-            localStorage.setItem(ACTIVE_STORE_ID_KEY, resolvedId);
-        }
+    setActiveStoreId(resolvedId);
+    if (resolvedId && !isPublicPage && typeof window !== 'undefined') {
+        localStorage.setItem(ACTIVE_STORE_ID_KEY, resolvedId);
     }
-    
-    setIsStoreIdResolved(!!resolvedId || isPublicPage);
-
-  }, [isUserLoading, isLoadingProfile, userProfile, isPublicPage, activeStoreId]);
-
+  }, [isUserLoading, isLoadingProfile, user, userProfile, isPublicPage]);
 
   const settingsDocRef = useMemo(() => {
     if (!firestore || !activeStoreId) return null;
@@ -105,32 +85,18 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const { data: currencyRatesData = [], isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
 
-
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   
   useEffect(() => {
-    try {
-      const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY) as DisplayCurrency;
-      if(storedCurrencyPref && ['primary', 'secondary'].includes(storedCurrencyPref)) {
-        setDisplayCurrency(storedCurrencyPref);
-      }
-    } catch (error) {
-      console.error("Could not access localStorage for currency preference", error);
-    }
+    const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY) as DisplayCurrency;
+    if(storedCurrencyPref) setDisplayCurrency(storedCurrencyPref);
   }, []);
   
-  const isLoading = isLoadingSettingsDoc || isLoadingRates || (!isStoreIdResolved && !isPublicPage);
+  const isLoading = isUserLoading || isLoadingProfile || isLoadingSettingsDoc || isLoadingRates || (!activeStoreId && !isPublicPage);
   
   const handleSetSettings = (newSettings: Settings) => {
-    if (!settingsDocRef) {
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "No se puede guardar la configuración porque la referencia de la tienda no está disponible."
-        });
-        return;
-    }
-    setDocumentNonBlocking(settingsDocRef, newSettings, { merge: true });
+    if (!settingsDocRef || !firestore) return;
+    setDocumentNonBlocking(firestore, settingsDocRef, newSettings, { merge: true });
   };
 
   const switchStore = (storeId: string) => {
@@ -147,11 +113,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const toggleDisplayCurrency = () => {
     const newPreference = displayCurrency === 'primary' ? 'secondary' : 'primary';
     setDisplayCurrency(newPreference);
-     try {
-        localStorage.setItem(CURRENCY_PREF_STORAGE_KEY, newPreference);
-    } catch (error) {
-        console.error("Could not save currency preference to localStorage", error);
-    }
+    localStorage.setItem(CURRENCY_PREF_STORAGE_KEY, newPreference);
   };
 
   const activeCurrency = displayCurrency;
@@ -170,9 +132,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         activeSymbol, 
         activeRate, 
         currencyRates: currencyRatesData, 
-        setCurrencyRates: () => {}, 
         activeStoreId,
-        isStoreIdResolved,
         switchStore,
         isLoadingSettings: isLoading,
         userProfile: userProfile || null,

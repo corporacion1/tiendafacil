@@ -7,18 +7,18 @@ import { useEffect } from "react";
 import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
 import { PinModal } from "./pin-modal";
+import { Package } from "lucide-react";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
     const { isUserLoading, user } = useUser();
     const router = useRouter();
     const pathname = usePathname();
     const { isSecurityReady, isLocked, hasPin, lockApp } = useSecurity();
-    const { userProfile, isLoadingSettings, activeStoreId } = useSettings();
+    const { userProfile, isLoadingSettings } = useSettings();
     
     const isPublicPage = pathname === '/' || pathname.startsWith('/catalog') || pathname.startsWith('/login');
 
     useEffect(() => {
-        // This effect handles POS locking
         if (!isSecurityReady || !hasPin) return;
         if (pathname !== '/pos' && localStorage.getItem('last_path_was_pos') === 'true') {
             lockApp();
@@ -28,51 +28,44 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
     const isLoading = isUserLoading || !isSecurityReady || isLoadingSettings;
     
-    // Handle redirections after loading is complete
     useEffect(() => {
         if (isLoading) return;
 
-        // If not logged in and not on a public page, redirect to login
-        if (!isPublicPage && !user) {
+        if (!user && !isPublicPage) {
             router.replace('/');
             return;
         }
     
-        // If logged in, redirect away from public pages to the dashboard
         if (user && (pathname === '/' || pathname === '/login')) {
             router.replace('/dashboard');
             return;
         }
         
-        // If the user has the 'user' role, they should only access the catalog
-        if (user && userProfile && userProfile.role === 'user' && !pathname.startsWith('/catalog') && pathname !== '/') {
+        if (user && userProfile && userProfile.role === 'user' && !pathname.startsWith('/catalog')) {
             router.replace('/catalog');
             return;
         }
 
-        // If on a private page and for some reason we don't have a storeId, force back to login.
-        // This is a critical check to ensure that no data fetching occurs without a store context.
-        if (user && !isPublicPage && !activeStoreId) {
-             console.error("AuthGuard: No activeStoreId found for an authenticated user on a private page. Redirecting to login.");
-             router.replace('/');
-             return;
-        }
+    }, [isLoading, isPublicPage, user, userProfile, pathname, router]);
 
-    }, [isLoading, isPublicPage, user, userProfile, activeStoreId, pathname, router]);
+    if (isLoading && !isPublicPage) {
+        return (
+          <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
+              <div className="p-4 bg-muted rounded-full">
+                <Package className="w-12 h-12 text-muted-foreground" />
+              </div>
+              <p className="text-muted-foreground animate-pulse">Cargando aplicación...</p>
+          </div>
+        );
+    }
 
     if (isPublicPage) {
         return <>{children}</>;
-    }
-
-    if (isLoading) {
-        // The FirebaseProvider shows a global loading screen, so we render nothing here while waiting.
-        return null;
     }
 
     if (isLocked) {
         return <PinModal />;
     }
 
-    // If we've passed all checks, render the protected content
     return <>{children}</>;
 }
