@@ -56,12 +56,14 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     if (isPublicPage) {
         resolvedId = defaultStoreId;
     } else if (user && userProfile) {
-        // SuperAdmin can switch stores, so we respect the stored ID.
         if (userProfile.role === 'superAdmin') {
             resolvedId = localStorage.getItem(ACTIVE_STORE_ID_KEY) || defaultStoreId;
         } else if (userProfile.storeId) {
             resolvedId = userProfile.storeId;
         }
+    } else if (!user && !isPublicPage) {
+        // No user on a private page, do nothing and wait for auth guard redirect
+        return;
     }
     
     setActiveStoreId(resolvedId);
@@ -91,11 +93,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     if(storedCurrencyPref) setDisplayCurrency(storedCurrencyPref);
   }, []);
   
-  // The main loading state is determined by whether we have a valid storeId (for private pages)
-  // and whether the settings for that store have been fetched.
   const isLoading = (
-    isUserLoading || 
-    (!isPublicPage && (!userProfile || !activeStoreId)) ||
+    (!isPublicPage && (!user || !userProfile)) || // Waiting for user info on private pages
+    !activeStoreId || // Waiting for a valid store ID
     isLoadingSettingsDoc || 
     isLoadingRates
   );
@@ -144,7 +144,17 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     userProfile: userProfile || null,
   };
   
-  // This provider now correctly renders children and lets the AuthGuard handle the loading UI
+  if (isLoading && !isPublicPage) {
+     return (
+         <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
+            <div className="p-4 bg-muted rounded-full">
+                <Package className="w-12 h-12 text-muted-foreground" />
+            </div>
+            <p className="text-muted-foreground animate-pulse">Cargando configuración de la tienda...</p>
+        </div>
+      );
+  }
+
   return (
     <SettingsContext.Provider value={contextValue}>
       {children}

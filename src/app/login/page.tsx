@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -27,15 +28,14 @@ import { Package } from 'lucide-react';
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user, isUserLoading } = useUser();
   const auth = useAuth();
   const firestore = useFirestore();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); // Start as true to handle initial redirect check
-  const [loadingMessage, setLoadingMessage] = useState<string | null>('Verificando sesión...');
+  const [isLoading, setIsLoading] = useState(false); // Only true during an action
+  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
 
   // --- Functions to be called ON-DEMAND ---
 
@@ -81,7 +81,6 @@ export default function LoginPage() {
     
     const userProfile = userSnap.data() as UserProfile;
     
-    // Redirect non-admin users immediately
     if (userProfile.role !== 'admin' && userProfile.role !== 'superAdmin') {
       setLoadingMessage('Redirigiendo...');
       router.replace('/catalog');
@@ -123,7 +122,6 @@ export default function LoginPage() {
         }
         await loadDataAndRedirect(userCredential.user);
       }
-      // If no user credential, it might be a redirect flow handled by useEffect
     } catch (error: any) {
       console.error(error);
       const errorCode = error.code;
@@ -163,21 +161,19 @@ export default function LoginPage() {
     const provider = new GoogleAuthProvider();
     signInWithRedirect(auth, provider);
   };
-
-  // This useEffect now ONLY handles the result of a redirect.
-  // It's the one piece of logic that MUST run on load.
+  
   useEffect(() => {
     const processRedirect = async () => {
       if (!auth || !firestore) return;
       try {
+        setIsLoading(true); // Show loader while checking for redirect
+        setLoadingMessage('Verificando resultado de Google...');
         const result = await getRedirectResult(auth);
         if (result && result.user) {
-          setIsLoading(true);
-          setLoadingMessage('Verificando resultado de Google...');
           await createUserProfile(result.user);
           await loadDataAndRedirect(result.user);
         } else {
-          // No redirect result, so we can show the login form.
+          // No redirect result, we can stop loading.
           setIsLoading(false);
           setLoadingMessage(null);
         }
@@ -193,18 +189,11 @@ export default function LoginPage() {
       }
     };
     
-    // Only run this if we are not already logged in
-    if (!user) {
-        processRedirect();
-    } else {
-        // If there is already a user, redirect them away from login
-        router.replace('/dashboard');
-    }
+    processRedirect();
 
   }, [auth, firestore]);
   
-  // If we are still in the initial loading state (checking for redirect result), show loading screen.
-  if (isLoading || isUserLoading) {
+  if (isLoading) {
     return (
       <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
         <Package className="w-16 h-16 text-muted-foreground animate-pulse" />
@@ -213,7 +202,6 @@ export default function LoginPage() {
     );
   }
 
-  // If not loading, and we are here, it means we can show the form.
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-muted/40">
       <Card className="w-full max-w-sm">
