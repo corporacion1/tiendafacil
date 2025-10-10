@@ -63,6 +63,7 @@ export function useCollection<T = any>(
       unsubscribeRef.current = null;
     }
 
+    // Explicitly wait for user auth to be ready AND for a query to exist.
     if (memoizedTargetRefOrQuery && !isUserLoading) {
       // Set up the new subscription and store its unsubscribe function in the ref.
       unsubscribeRef.current = onSnapshot(
@@ -111,7 +112,7 @@ export function useCollection<T = any>(
   }, [memoizedTargetRefOrQuery, isUserLoading]);
 
   // isLoading is true only during the initial fetch when there's no data and no error yet.
-  const isLoading = data === null && error === null && memoizedTargetRefOrQuery !== null;
+  const isLoading = data === null && error === null && !!memoizedTargetRefOrQuery;
 
   return { data, isLoading, error };
 }

@@ -73,13 +73,15 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [isUserLoading, user, userProfile, isPublicPage, pathname, activeStoreId]);
 
   const settingsDocRef = useMemo(() => {
-    if (!activeStoreId || !firestore || isUserLoading) return null;
+    // BLOCK if auth is loading or no store id.
+    if (isUserLoading || !activeStoreId || !firestore) return null;
     return doc(firestore, 'stores', activeStoreId);
   }, [activeStoreId, firestore, isUserLoading]);
 
   const { data: settings, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(settingsDocRef);
   
   const currencyRatesQuery = useMemo(() => {
+    // BLOCK if auth is loading or no store id.
     if (isUserLoading || !activeStoreId || !firestore) return null;
     return query(collection(firestore, 'stores', activeStoreId, 'currencyRates'), orderBy('date', 'desc'));
   }, [isUserLoading, activeStoreId, firestore]);
@@ -95,11 +97,12 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, []);
   
   const isLoading = useMemo(() => {
-    // On public pages, we don't need user profile or rates to show the page.
+    // On public pages, we just need the store settings.
     if (isPublicPage) {
         return isLoadingSettingsDoc;
     }
-    // On protected pages, we must wait for everything to be loaded.
+    // On protected pages, we must wait for everything to be loaded in sequence.
+    // This is the main gate for the app.
     return isUserLoading || isLoadingProfile || isLoadingSettingsDoc || isLoadingRates;
   }, [isUserLoading, isLoadingProfile, isLoadingSettingsDoc, isLoadingRates, isPublicPage]);
 
@@ -148,17 +151,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     isLoadingSettings: isLoading,
     userProfile: userProfile || null,
   };
-
-  if (isLoading) {
-    return (
-        <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
-            <div className="p-4 bg-muted rounded-full">
-                <Package className="w-12 h-12 text-muted-foreground animate-pulse" />
-            </div>
-            <p className="text-muted-foreground animate-pulse">Iniciando aplicación y cargando datos...</p>
-        </div>
-    );
-  }
 
   return (
     <SettingsContext.Provider value={contextValue}>

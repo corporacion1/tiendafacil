@@ -7,6 +7,7 @@ import { useEffect } from "react";
 import { useSecurity } from "@/contexts/security-context";
 import { PinModal } from "./pin-modal";
 import { useSettings } from "@/contexts/settings-context";
+import { Package } from "lucide-react";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
     const { isUserLoading, user } = useUser();
@@ -26,10 +27,9 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         localStorage.setItem('last_path_was_pos', (pathname === '/pos').toString());
     }, [pathname, lockApp, hasPin, isSecurityReady]);
 
-    // This effect handles redirection logic once Firebase auth state is known.
     useEffect(() => {
-        // Wait until Firebase has determined the auth state.
-        if (isUserLoading) {
+        // Wait until all initial loading is complete before doing any redirection.
+        if (isLoadingSettings || isUserLoading) {
             return;
         }
         
@@ -43,15 +43,20 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
            router.replace('/dashboard');
         }
         
-    }, [isUserLoading, user, isPublicPage, isRootPage, pathname, router]);
+    }, [isLoadingSettings, isUserLoading, user, isPublicPage, isRootPage, pathname, router]);
 
 
-    // The master loading gate is now handled by SettingsProvider.
-    // This component will only render its children when SettingsProvider is done.
+    // The master loading gate. This prevents ANY part of the app from rendering
+    // until the settings (which depend on auth) are fully loaded.
     if (isLoadingSettings) {
-        // The SettingsProvider is already showing a loading screen, so we render nothing here
-        // to avoid duplicate loaders and allow the provider to be the single source of truth.
-        return null;
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
+                <div className="p-4 bg-muted rounded-full">
+                    <Package className="w-12 h-12 text-muted-foreground animate-pulse" />
+                </div>
+                <p className="text-muted-foreground animate-pulse">Iniciando aplicación y cargando datos...</p>
+            </div>
+        );
     }
     
     // Once all loading is complete, if the app is security-locked, show the PIN modal.
