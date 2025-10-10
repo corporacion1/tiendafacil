@@ -121,7 +121,7 @@ export default function POSPage() {
     return `${series}-${String(nextCorrelative).padStart(3, '0')}`;
   };
 
-  const customerList = useMemo(() => [{ id: 'eventual', name: 'Cliente Eventual', phone: '', storeId: activeStoreId }, ...(customers || [])], [customers, activeStoreId]);
+  const customerList = useMemo(() => [{ id: 'eventual', name: 'Cliente Eventual', phone: '', storeId: activeStoreId, address: '' }, ...(customers || [])], [customers, activeStoreId]);
   const selectedCustomer = customerList.find(c => c.id === selectedCustomerId) ?? null;
 
   const addToCart = (product: Product) => {
@@ -642,7 +642,7 @@ export default function POSPage() {
                             </AlertDialog>
                         )}
                     </CardHeader>
-                    <CardContent className="p-6 pt-0 flex flex-col gap-4">
+                    <CardContent className="p-6 pt-0 flex flex-col gap-4 flex-grow">
                         <div className="space-y-2">
                             <Label htmlFor="customer">Cliente</Label>
                             <div className="flex gap-2">
@@ -971,3 +971,5 @@ export default function POSPage() {
   </Dialog>
   );
 }
+
+    
