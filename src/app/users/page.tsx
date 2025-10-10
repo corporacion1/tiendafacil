@@ -172,12 +172,16 @@ export default function UsersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredUsers.map((user) => (
+                {filteredUsers.map((user) => {
+                  // If the user in the list matches the logged-in user, use the live photoURL from the auth state.
+                  const photoUrlToShow = (currentUser?.email === user.email && currentUser?.photoURL) ? currentUser.photoURL : user.photoURL;
+
+                  return (
                   <TableRow key={user.uid} className={user.status === 'disabled' ? 'opacity-50' : ''}>
                      <TableCell className="hidden sm:table-cell">
                         <div className="relative flex items-center justify-center w-10 h-10 bg-muted rounded-full overflow-hidden">
-                          {user.photoURL ? (
-                              <Image src={user.photoURL} alt={user.displayName || 'Avatar'} fill sizes="40px" className="object-cover" />
+                          {photoUrlToShow ? (
+                              <Image src={photoUrlToShow} alt={user.displayName || 'Avatar'} fill sizes="40px" className="object-cover" />
                           ) : (
                               <UserPlus className="h-5 w-5 text-muted-foreground" />
                           )}
@@ -261,7 +265,7 @@ export default function UsersPage() {
                         </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ))}
+                  )})}
               </TableBody>
             </Table>
         </CardContent>
