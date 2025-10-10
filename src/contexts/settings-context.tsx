@@ -72,16 +72,17 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [isUserLoading, user, userProfile, isPublicPage, pathname]);
 
   const settingsDocRef = useMemo(() => {
-    if (!activeStoreId || !firestore) return null;
+    // CRITICAL: Do not create a ref until auth is resolved and we have a store ID.
+    if (isUserLoading || !activeStoreId || !firestore) return null;
     return doc(firestore, 'stores', activeStoreId);
-  }, [firestore, activeStoreId]);
+  }, [isUserLoading, activeStoreId, firestore]);
 
   const { data: settings, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(settingsDocRef);
   
   const currencyRatesQuery = useMemo(() => {
-    if (!firestore || !activeStoreId) return null;
+    if (isUserLoading || !firestore || !activeStoreId) return null;
     return query(collection(firestore, 'stores', activeStoreId, 'currencyRates'), orderBy('date', 'desc'));
-  }, [firestore, activeStoreId]);
+  }, [isUserLoading, firestore, activeStoreId]);
 
   const { data: currencyRatesData = [], isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
 
@@ -92,13 +93,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     if(storedCurrencyPref) setDisplayCurrency(storedCurrencyPref);
   }, []);
   
-  const isLoading = (
-    (!isPublicPage && (isLoadingProfile || !userProfile)) || 
-    !activeStoreId || 
-    isLoadingSettingsDoc || 
-    isLoadingRates
-  );
-  
+  const isLoading = isUserLoading || (!isPublicPage && isLoadingProfile) || isLoadingSettingsDoc || isLoadingRates;
+
   const handleSetSettings = (newSettings: Settings) => {
     if (!settingsDocRef || !firestore) return;
     const { id, ...settingsToSave } = newSettings;
@@ -142,6 +138,17 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     isLoadingSettings: isLoading,
     userProfile: userProfile || null,
   };
+
+  if (isLoading && !isPublicPage) {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
+            <div className="p-4 bg-muted rounded-full">
+                <Package className="w-12 h-12 text-muted-foreground" />
+            </div>
+            <p className="text-muted-foreground animate-pulse">Cargando configuración de la tienda...</p>
+        </div>
+    );
+  }
 
   return (
     <SettingsContext.Provider value={contextValue}>

@@ -41,13 +41,13 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         
     }, [isUserLoading, user, isPublicPage, isRootPage, pathname, router]);
 
-    if (isUserLoading || (!isPublicPage && !user)) {
+    if (isUserLoading && !isPublicPage) {
       return (
          <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
             <div className="p-4 bg-muted rounded-full">
                 <Package className="w-12 h-12 text-muted-foreground" />
             </div>
-            <p className="text-muted-foreground animate-pulse">Iniciando aplicación...</p>
+            <p className="text-muted-foreground animate-pulse">Verificando sesión...</p>
         </div>
       );
     }
@@ -56,16 +56,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         return <PinModal />;
     }
 
-    if (isLoadingSettings && !isPublicPage) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
-                <div className="p-4 bg-muted rounded-full">
-                    <Package className="w-12 h-12 text-muted-foreground" />
-                </div>
-                <p className="text-muted-foreground animate-pulse">Cargando configuración de la tienda...</p>
-            </div>
-        );
-    }
-
+    // The SettingsProvider now handles its own loading screen.
+    // AuthGuard's primary job is just auth redirection.
     return <>{children}</>;
 }
