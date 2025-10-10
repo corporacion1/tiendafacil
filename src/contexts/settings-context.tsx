@@ -138,8 +138,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     userProfile: userProfile || null,
   };
   
-  // This is the critical change. We do not render the children until the storeId is known,
-  // preventing any data-fetching hooks from running with invalid queries.
   if (isLoading && !isPublicPage) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
