@@ -1,5 +1,5 @@
 
-import type { Product, Sale, Unit, Family, Warehouse, Customer, Purchase, Ad, UserProfile, Store, CurrencyRate } from '@/lib/types';
+import type { Product, Sale, Unit, Family, Warehouse, Customer, Purchase, Ad, UserProfile, Store, CurrencyRate, Supplier } from '@/lib/types';
 import { PlaceHolderImages } from './placeholder-images';
 import { subDays, addDays } from 'date-fns';
 
@@ -103,25 +103,41 @@ export const mockProducts: Omit<Product, 'createdAt' | 'storeId'>[] = [
 ];
 
 export const mockSales: Omit<Sale, 'storeId'>[] = [
-    {
+    { // Venta del mes pasado
         id: "SALE-001", customerId: "cust-1", customerName: "John Doe",
         items: [ { productId: "prod-1", productName: "Tarjeta Gráfica RTX 4090", quantity: 1, price: 1799.99 } ],
-        total: 1799.99, date: subDays(new Date(), 8).toISOString(), transactionType: 'contado', status: 'paid', paidAmount: 1799.99,
-        payments: [{ id: 'pay-sale-001', amount: 1799.99, date: subDays(new Date(), 8).toISOString(), method: 'tarjeta', reference: '1234' }]
+        total: 1799.99, date: subDays(new Date(), 20).toISOString(), transactionType: 'contado', status: 'paid', paidAmount: 1799.99,
+        payments: [{ id: 'pay-sale-001', amount: 1799.99, date: subDays(new Date(), 20).toISOString(), method: 'tarjeta', reference: '1234' }]
     },
-    {
+    { // Venta de la semana
         id: "SALE-002", customerId: "cust-2", customerName: "Jane Smith",
         items: [ { productId: "prod-2", productName: "Procesador Intel Core i9-13900K", quantity: 1, price: 589.00 } ],
-        total: 589.00, date: subDays(new Date(), 4).toISOString(), transactionType: 'credito', status: 'unpaid', paidAmount: 300,
-        payments: [{ id: 'pay-sale-002', amount: 300, date: subDays(new Date(), 4).toISOString(), method: 'pago-movil', reference: '012345' }]
+        total: 589.00, date: subDays(new Date(), 3).toISOString(), transactionType: 'credito', status: 'unpaid', paidAmount: 300,
+        payments: [{ id: 'pay-sale-002', amount: 300, date: subDays(new Date(), 3).toISOString(), method: 'pago-movil', reference: '012345' }]
+    },
+     { // Venta de hoy
+        id: "SALE-003", customerId: "eventual", customerName: "Cliente Eventual",
+        items: [ { productId: "prod-3", productName: "Memoria RAM 32GB DDR5", quantity: 2, price: 129.99 } ],
+        total: 259.98, date: new Date().toISOString(), transactionType: 'contado', status: 'paid', paidAmount: 259.98,
+        payments: [{ id: 'pay-sale-003', amount: 259.98, date: new Date().toISOString(), method: 'efectivo', reference: '' }]
     },
 ];
 
 export const mockPurchases: Omit<Purchase, 'storeId'>[] = [
-    {
+    { // Compra del mes pasado
         id: "PUR-001", supplierId: "sup-1", supplierName: "TechData Corp",
         items: [ { productId: "prod-1", productName: "Tarjeta Gráfica RTX 4090", quantity: 10, cost: 1600.00 } ],
-        total: 16000, date: subDays(new Date(), 15).toISOString(), documentNumber: "INV-TD-8899", responsible: "Admin",
+        total: 16000, date: subDays(new Date(), 25).toISOString(), documentNumber: "INV-TD-8899", responsible: "Admin",
+    },
+    { // Compra de la semana
+        id: "PUR-002", supplierId: "sup-2", supplierName: "PC Components LLC",
+        items: [ { productId: "prod-4", productName: "SSD NVMe 2TB", quantity: 20, cost: 125.00 } ],
+        total: 2500, date: subDays(new Date(), 5).toISOString(), documentNumber: "INV-PC-1122", responsible: "Admin",
+    },
+    { // Compra de hoy
+        id: "PUR-003", supplierId: "sup-1", supplierName: "TechData Corp",
+        items: [ { productId: "prod-2", productName: "Procesador Intel Core i9-13900K", quantity: 15, cost: 520.00 } ],
+        total: 7800, date: new Date().toISOString(), documentNumber: "INV-TD-9001", responsible: "Admin",
     },
 ];
 
@@ -160,4 +176,16 @@ export function trackAdClick(adId: string) {
     // This is a mock function, in a real app this would call a server endpoint
     // to track the click and update the ad's view count in the database.
     console.log(`Ad click tracked for: ${adId}`);
+}
+
+// This function now just returns false to satisfy the call in login page, but does nothing.
+export async function forceSeedDatabase(): Promise<boolean> {
+  console.log("forceSeedDatabase is disabled. Using local data.");
+  return false;
+}
+
+// This function does nothing.
+export async function factoryReset() {
+  console.log("factoryReset is disabled. Using local data.");
+  return;
 }
