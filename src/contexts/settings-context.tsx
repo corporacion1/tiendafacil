@@ -48,21 +48,21 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const isPublicPage = useMemo(() => pathname === '/' || pathname.startsWith('/catalog') || pathname.startsWith('/login'), [pathname]);
   
-  // State for resolved store ID and user profile
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
-  // Loading state consolidator
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load currency preference from localStorage
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   useEffect(() => {
-    const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY) as DisplayCurrency;
-    if(storedCurrencyPref) setDisplayCurrency(storedCurrencyPref);
+    try {
+      const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY) as DisplayCurrency;
+      if(storedCurrencyPref) setDisplayCurrency(storedCurrencyPref);
+    } catch (error) {
+      console.error("Could not access localStorage for currency preference", error);
+    }
   }, []);
 
-  // Effect to resolve user profile and storeId
   useEffect(() => {
     if (isUserLoading || !firestore) return;
   
@@ -84,13 +84,14 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         let resolvedId = defaultStoreId;
         if (profile) {
             if (profile.role === 'superAdmin') {
-                resolvedId = localStorage.getItem(ACTIVE_STORE_ID_KEY) || defaultStoreId;
+                const storedId = typeof window !== 'undefined' ? localStorage.getItem(ACTIVE_STORE_ID_KEY) : null;
+                resolvedId = storedId || defaultStoreId;
             } else if (profile.storeId) {
                 resolvedId = profile.storeId;
             }
         }
         setActiveStoreId(resolvedId);
-        if(profile?.role === 'superAdmin') {
+        if(profile?.role === 'superAdmin' && typeof window !== 'undefined') {
             localStorage.setItem(ACTIVE_STORE_ID_KEY, resolvedId);
         }
 
@@ -105,28 +106,27 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   }, [user, isUserLoading, firestore, isPublicPage]);
 
-  // Fetch store settings based on the resolved activeStoreId
   const settingsDocRef = useMemo(() => {
     if (!firestore || isPublicPage) return null;
     return doc(firestore, 'stores', activeStoreId);
   }, [firestore, activeStoreId, isPublicPage]);
   const { data: settingsData, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(settingsDocRef);
   
-  // Fetch currency rates
   const currencyRatesQuery = useMemo(() => {
-    if (!firestore || isPublicPage) return null;
+    // CRITICAL FIX: Do not attempt to query rates until the settings have been loaded.
+    if (!firestore || isPublicPage || !settingsData) return null;
     return query(collection(firestore, 'stores', activeStoreId, 'currencyRates'), orderBy('date', 'desc'));
-  }, [firestore, activeStoreId, isPublicPage]);
+  }, [firestore, activeStoreId, isPublicPage, settingsData]); // Add settingsData dependency
   const { data: currencyRatesData, isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
   
-  // Final loading state determination
   useEffect(() => {
       if (isPublicPage) {
           setIsLoading(false);
       } else {
-          setIsLoading(isUserLoading || isLoadingSettingsDoc || isLoadingRates);
+          // Now, isLoading depends on the full chain: user -> settings -> rates
+          setIsLoading(isUserLoading || isLoadingSettingsDoc || (settingsData ? isLoadingRates : false));
       }
-  }, [isUserLoading, isLoadingSettingsDoc, isLoadingRates, isPublicPage]);
+  }, [isUserLoading, isLoadingSettingsDoc, isLoadingRates, isPublicPage, settingsData]);
 
 
   const settings = settingsData ?? (isPublicPage ? fallbackSettings : null);
@@ -152,7 +152,11 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const toggleDisplayCurrency = () => {
     const newPreference = displayCurrency === 'primary' ? 'secondary' : 'primary';
     setDisplayCurrency(newPreference);
-    localStorage.setItem(CURRENCY_PREF_STORAGE_KEY, newPreference);
+    try {
+      localStorage.setItem(CURRENCY_PREF_STORAGE_KEY, newPreference);
+    } catch(error) {
+      console.error("Could not access localStorage to set currency preference", error);
+    }
   };
 
   const activeCurrency = displayCurrency;
