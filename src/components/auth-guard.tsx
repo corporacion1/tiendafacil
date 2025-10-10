@@ -6,7 +6,6 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 import { useSecurity } from "@/contexts/security-context";
 import { PinModal } from "./pin-modal";
-import { Package } from "lucide-react";
 import { useSettings } from "@/contexts/settings-context";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -27,35 +26,32 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         localStorage.setItem('last_path_was_pos', (pathname === '/pos').toString());
     }, [pathname, lockApp, hasPin, isSecurityReady]);
 
+    // This effect handles redirection logic once Firebase auth state is known.
     useEffect(() => {
-        // Wait until Firebase has determined the auth state
-        if (isUserLoading) return;
+        // Wait until Firebase has determined the auth state.
+        if (isUserLoading) {
+            return;
+        }
         
-        // If not logged in and trying to access a protected page, redirect
+        // If not logged in and trying to access a protected page, redirect.
         if (!user && !isPublicPage) {
             router.replace('/login');
         }
         
-        // If logged in and on a public/root page, redirect to dashboard
-        if (user && (isPublicPage || isRootPage)) {
-           // Do not redirect from catalog page
-           if (pathname.startsWith('/catalog')) return;
+        // If logged in and on the root page, redirect to dashboard.
+        if (user && isRootPage) {
            router.replace('/dashboard');
         }
         
     }, [isUserLoading, user, isPublicPage, isRootPage, pathname, router]);
 
-    // Master loading gate: Show a loader if either Firebase auth or the initial settings are loading.
-    // This prevents any rendering until the app is in a valid state.
-    if (isLoadingSettings && !isPublicPage) {
-      return (
-         <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
-            <div className="p-4 bg-muted rounded-full">
-                <Package className="w-12 h-12 text-muted-foreground" />
-            </div>
-            <p className="text-muted-foreground animate-pulse">Iniciando aplicación...</p>
-        </div>
-      );
+
+    // The master loading gate is now handled by SettingsProvider.
+    // This component will only render its children when SettingsProvider is done.
+    if (isLoadingSettings) {
+        // The SettingsProvider is already showing a loading screen, so we render nothing here
+        // to avoid duplicate loaders and allow the provider to be the single source of truth.
+        return null;
     }
     
     // Once all loading is complete, if the app is security-locked, show the PIN modal.
