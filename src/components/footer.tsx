@@ -27,7 +27,7 @@ export function Footer() {
     {
       name: "TikTok",
       icon: FaTiktok,
-      url: `https://www.tiktok.com/@corporacion1+`,
+      url: `https://www.tiktok.com/@corporacion10`,
       enabled: true, // Always show this based on user request
     },
     {
