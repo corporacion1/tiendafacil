@@ -42,7 +42,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const getInitialStoreId = () => {
       if (typeof window !== 'undefined') {
-          // On public pages, always default to the main store ID to show demo data.
           if (isPublicPage) {
               return defaultStoreId;
           }
@@ -61,24 +60,27 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
 
   useEffect(() => {
-    if (isUserLoading || isLoadingProfile) {
+    if (isUserLoading || isLoadingProfile || isPublicPage) {
         return;
     }
 
     const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_KEY);
-    
+
     if (userProfile?.role === 'superAdmin') {
-        if (storedStoreId && activeStoreId !== storedStoreId) {
-            setActiveStoreId(storedStoreId);
-        } else if (!storedStoreId) {
-            localStorage.setItem(ACTIVE_STORE_ID_KEY, activeStoreId);
+        // For superAdmin, trust the stored ID if it exists, otherwise default.
+        const targetStoreId = storedStoreId || defaultStoreId;
+        if (activeStoreId !== targetStoreId) {
+            setActiveStoreId(targetStoreId);
+            localStorage.setItem(ACTIVE_STORE_ID_KEY, targetStoreId);
         }
     } else if (userProfile?.storeId) {
+        // For admin/user, their own storeId is the source of truth.
         if (activeStoreId !== userProfile.storeId) {
             setActiveStoreId(userProfile.storeId);
             localStorage.setItem(ACTIVE_STORE_ID_KEY, userProfile.storeId);
         }
-    } else if (!isPublicPage) {
+    } else {
+        // Fallback for authenticated users without a storeId on private pages.
         if (activeStoreId !== defaultStoreId) {
             setActiveStoreId(defaultStoreId);
             localStorage.setItem(ACTIVE_STORE_ID_KEY, defaultStoreId);

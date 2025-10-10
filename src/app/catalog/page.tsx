@@ -20,7 +20,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import type { Product, CartItem, Sale, Customer, PendingOrder, Ad, Family } from "@/lib/types";
-import { trackAdClick } from "@/lib/data";
+import { trackAdClick, defaultStoreId } from "@/lib/data";
 import { useSettings } from "@/contexts/settings-context";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
@@ -124,18 +124,21 @@ export default function CatalogPage() {
     const firestore = useFirestore();
     const { user, isUserLoading } = useUser();
     const router = useRouter();
-    const { settings, activeStoreId, activeSymbol, activeRate } = useSettings();
+    const { settings, activeSymbol, activeRate } = useSettings();
+
+    // On catalog page, always use the default store ID
+    const catalogStoreId = defaultStoreId;
 
     const productsRef = useMemo(() => {
-        if (!firestore || !activeStoreId) return null;
-        return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
-    }, [firestore, activeStoreId]);
+        if (!firestore || !catalogStoreId) return null;
+        return query(collection(firestore, 'products'), where('storeId', '==', catalogStoreId));
+    }, [firestore, catalogStoreId]);
     const { data: products = [], isLoading: isLoadingProducts } = useCollection<Product>(productsRef);
     
     const familiesRef = useMemo(() => {
-        if (!firestore || !activeStoreId) return null;
-        return query(collection(firestore, 'families'), where('storeId', '==', activeStoreId));
-    }, [firestore, activeStoreId]);
+        if (!firestore || !catalogStoreId) return null;
+        return query(collection(firestore, 'families'), where('storeId', '==', catalogStoreId));
+    }, [firestore, catalogStoreId]);
     const { data: families = [], isLoading: isLoadingFamilies } = useCollection<Family>(familiesRef);
     
     const adsRef = useMemo(() => {
@@ -335,7 +338,7 @@ export default function CatalogPage() {
             toast({ variant: 'destructive', title: 'Debes iniciar sesión' });
             return;
         }
-        if (!activeStoreId) {
+        if (!catalogStoreId) {
             toast({ variant: 'destructive', title: 'No se pudo identificar la tienda.' });
             return;
         }
@@ -349,7 +352,7 @@ export default function CatalogPage() {
             customerName: user.displayName || 'Usuario sin nombre',
             customerPhone: user.phoneNumber || 'Sin teléfono',
             customerEmail: user.email || 'Sin email',
-            storeId: activeStoreId,
+            storeId: catalogStoreId,
             items: cart.map(item => ({
                 productId: item.product.id,
                 productName: item.product.name,
@@ -727,9 +730,3 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
-
-
-
-    
-
-    
