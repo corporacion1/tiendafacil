@@ -26,8 +26,7 @@ import { useSettings } from "@/contexts/settings-context";
 import { Logo } from "./logo";
 import { useRouter } from "next/navigation";
 import { navItems, settingsNav } from "@/lib/navigation";
-import { useAuth } from "@/firebase";
-import { signOut } from "firebase/auth";
+import { useUser } from "@/firebase";
 import { Badge } from "./ui/badge";
 
 interface SiteHeaderProps {
@@ -38,11 +37,9 @@ interface SiteHeaderProps {
 export function SiteHeader({ toggleSidebar, isSidebarExpanded }: SiteHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const auth = useAuth();
+  const { user, isUserLoading } = useUser();
   const { settings, activeCurrency, toggleDisplayCurrency, activeStoreId } = useSettings();
   
-  const user = auth?.currentUser;
-
   const handleSignOut = async () => {
     // No auth, so just redirect
     router.push('/');
@@ -130,7 +127,7 @@ export function SiteHeader({ toggleSidebar, isSidebarExpanded }: SiteHeaderProps
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
-                    {user?.photoURL ? (
+                    {user?.photoURL && !isUserLoading ? (
                         <Image src={user.photoURL} width={32} height={32} alt="User" className="rounded-full" />
                     ) : (
                         <UserCircle className="h-6 w-6" />
