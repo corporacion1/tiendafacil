@@ -45,7 +45,20 @@ export const defaultUsers: Omit<UserProfile, 'createdAt' | 'uid' | 'phone'>[] = 
 
 // --- DATOS DE MUESTRA (TODOS CONECTADOS AL storeId por defecto) ---
 
-export let pendingOrdersState: PendingOrder[] = [];
+export let pendingOrdersState: PendingOrder[] = [
+    {
+        id: 'PEND-DEMO-001',
+        date: new Date().toISOString(),
+        customerName: 'Jorge Negrete (Ejemplo)',
+        customerPhone: '555-123-4567',
+        items: [
+            { productId: "prod-4", productName: "SSD NVMe 2TB", quantity: 1, price: 149.99 },
+            { productId: "prod-3", productName: "Memoria RAM 32GB DDR5", quantity: 2, price: 129.99 }
+        ],
+        total: 409.97,
+        storeId: defaultStoreId
+    }
+];
 
 export const mockCurrencyRates: Omit<CurrencyRate, 'id'>[] = [
     { rate: 39.50, date: new Date().toISOString() },
