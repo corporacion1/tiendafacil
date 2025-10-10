@@ -9,7 +9,6 @@ import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import type { UserAuthResult } from './auth/use-user';
 import { Package, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useSettings } from '@/contexts/settings-context'; 
 
 interface FirebaseProviderProps {
   children: ReactNode;
