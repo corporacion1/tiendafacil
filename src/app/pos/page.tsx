@@ -617,7 +617,7 @@ export default function POSPage() {
         {/* Cart Section (Right Column) */}
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-1">
             <div className="sticky top-6">
-                <Card className="flex flex-col h-[calc(100vh-5rem)]">
+                 <Card className="flex flex-col h-[calc(100vh-5rem)]">
                     <CardHeader className="flex flex-row justify-between items-center">
                         <CardTitle>Carrito de Compra</CardTitle>
                         {cartItems.length > 0 && (
@@ -642,9 +642,8 @@ export default function POSPage() {
                             </AlertDialog>
                         )}
                     </CardHeader>
-                    <CardContent className="flex-1 overflow-y-auto p-6 pt-0">
-                        <div className="space-y-4">
-                        <div className="space-y-2">
+                    <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden p-6 pt-0">
+                         <div className="space-y-2">
                             <Label htmlFor="customer">Cliente</Label>
                             <div className="flex gap-2">
                                 <Popover open={isCustomerSearchOpen} onOpenChange={setIsCustomerSearchOpen}>
@@ -731,8 +730,8 @@ export default function POSPage() {
                             </div>
                         </div>
                         <Separator />
-                        <div className="space-y-4">
-                            {cartItems.length === 0 ? (
+                        <div className="flex-1 space-y-4 max-h-96 overflow-y-auto pr-2">
+                             {cartItems.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center text-center text-muted-foreground h-full py-12">
                                     <ShoppingCart className="h-12 w-12 mb-4" />
                                     <p>Tu carrito está vacío.</p>
@@ -782,7 +781,6 @@ export default function POSPage() {
                                     </div>
                                 ))
                             )}
-                        </div>
                         </div>
                     </CardContent>
                     
