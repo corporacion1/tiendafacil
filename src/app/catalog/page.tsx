@@ -438,89 +438,91 @@ export default function CatalogPage() {
                                         )}
                                     </Button>
                                 </SheetTrigger>
-                                <SheetContent className="flex w-full flex-col pr-0 sm:max-w-lg">
-                                    <SheetHeader className="px-6">
+                                <SheetContent className="flex w-full flex-col p-0 sm:max-w-lg">
+                                    <SheetHeader className="px-6 pt-6">
                                         <SheetTitle>Mi Pedido</SheetTitle>
                                     </SheetHeader>
-                                    <div className="flex-1 overflow-y-auto py-6">
-                                        {cart.length === 0 && localOrders.length === 0 && (
-                                            <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground px-6">
-                                                <ShoppingBag className="h-16 w-16 mb-4" />
-                                                <h3 className="text-lg font-semibold">Tu pedido está vacío</h3>
-                                                <p className="text-sm">Agrega productos del catálogo para comenzar.</p>
-                                            </div>
-                                        )}
-                                        {cart.length === 0 && localOrders.length > 0 && (
-                                             <Card className="m-4">
-                                                <CardHeader>
-                                                    <CardTitle>Mis Pedidos Recientes</CardTitle>
-                                                </CardHeader>
-                                                <CardContent className="p-4">
-                                                    <div className="space-y-4">
-                                                        {localOrders.map(order => (
-                                                            <div key={order.id} className="flex flex-col p-3 rounded-md border bg-background">
-                                                                <div className="flex justify-between items-start">
-                                                                    <div>
-                                                                        <p className="font-semibold">{order.id}</p>
-                                                                        <p className="text-sm text-muted-foreground">{new Date(order.date).toLocaleString()}</p>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-1">
-                                                                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleReShowQR(order.id)}>
-                                                                            <QrCode className="h-4 w-4" />
-                                                                        </Button>
-                                                                        <DropdownMenu>
-                                                                            <DropdownMenuTrigger asChild>
-                                                                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                                                    <MoreHorizontal className="h-4 w-4" />
-                                                                                </Button>
-                                                                            </DropdownMenuTrigger>
-                                                                            <DropdownMenuContent>
-                                                                                <DropdownMenuItem onSelect={() => handleEditLocalOrder(order)}>
-                                                                                    <Pencil className="mr-2 h-4 w-4" /> Editar
-                                                                                </DropdownMenuItem>
-                                                                                <DropdownMenuSeparator />
-                                                                                <DropdownMenuItem onSelect={() => handleDeleteLocalOrder(order.id)} className="text-destructive">
-                                                                                    <Trash2 className="mr-2 h-4 w-4" /> Eliminar
-                                                                                </DropdownMenuItem>
-                                                                            </DropdownMenuContent>
-                                                                        </DropdownMenu>
+                                    <div className="flex-1 overflow-y-auto">
+                                        <div className="py-6">
+                                            {cart.length === 0 && localOrders.length === 0 && (
+                                                <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground px-6">
+                                                    <ShoppingBag className="h-16 w-16 mb-4" />
+                                                    <h3 className="text-lg font-semibold">Tu pedido está vacío</h3>
+                                                    <p className="text-sm">Agrega productos del catálogo para comenzar.</p>
+                                                </div>
+                                            )}
+                                            {cart.length === 0 && localOrders.length > 0 && (
+                                                <Card className="m-4">
+                                                    <CardHeader>
+                                                        <CardTitle>Mis Pedidos Recientes</CardTitle>
+                                                    </CardHeader>
+                                                    <CardContent className="p-4">
+                                                        <div className="space-y-4">
+                                                            {localOrders.map(order => (
+                                                                <div key={order.id} className="flex flex-col p-3 rounded-md border bg-background">
+                                                                    <div className="flex justify-between items-start">
+                                                                        <div>
+                                                                            <p className="font-semibold">{order.id}</p>
+                                                                            <p className="text-sm text-muted-foreground">{new Date(order.date).toLocaleString()}</p>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-1">
+                                                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleReShowQR(order.id)}>
+                                                                                <QrCode className="h-4 w-4" />
+                                                                            </Button>
+                                                                            <DropdownMenu>
+                                                                                <DropdownMenuTrigger asChild>
+                                                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                                                        <MoreHorizontal className="h-4 w-4" />
+                                                                                    </Button>
+                                                                                </DropdownMenuTrigger>
+                                                                                <DropdownMenuContent>
+                                                                                    <DropdownMenuItem onSelect={() => handleEditLocalOrder(order)}>
+                                                                                        <Pencil className="mr-2 h-4 w-4" /> Editar
+                                                                                    </DropdownMenuItem>
+                                                                                    <DropdownMenuSeparator />
+                                                                                    <DropdownMenuItem onSelect={() => handleDeleteLocalOrder(order.id)} className="text-destructive">
+                                                                                        <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                                                                                    </DropdownMenuItem>
+                                                                                </DropdownMenuContent>
+                                                                            </DropdownMenu>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
+                                                            ))}
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            )}
+                                            {cart.length > 0 && (
+                                                <div className="px-6 space-y-4">
+                                                {cart.map(item => (
+                                                    <div key={item.product.id} className="flex items-start gap-4">
+                                                        <div className="relative h-16 w-16 rounded-md overflow-hidden bg-muted">
+                                                                <Image src={getDisplayImageUrl(item.product.imageUrl)} alt={item.product.name} fill className="object-cover" />
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <h4 className="font-semibold">{item.product.name}</h4>
+                                                            <p className="text-sm text-muted-foreground">${(item.price * activeRate).toFixed(2)}</p>
+                                                            <div className="flex items-center gap-2 mt-2">
+                                                                    <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(item.product.id, item.quantity - 1)}><Minus className="h-4 w-4" /></Button>
+                                                                    <span>{item.quantity}</span>
+                                                                    <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(item.product.id, item.quantity + 1)}><Plus className="h-4 w-4" /></Button>
                                                             </div>
-                                                        ))}
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
-                                        )}
-                                        {cart.length > 0 && (
-                                            <div className="px-6 space-y-4">
-                                            {cart.map(item => (
-                                                <div key={item.product.id} className="flex items-start gap-4">
-                                                    <div className="relative h-16 w-16 rounded-md overflow-hidden bg-muted">
-                                                            <Image src={getDisplayImageUrl(item.product.imageUrl)} alt={item.product.name} fill className="object-cover" />
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <h4 className="font-semibold">{item.product.name}</h4>
-                                                        <p className="text-sm text-muted-foreground">${(item.price * activeRate).toFixed(2)}</p>
-                                                        <div className="flex items-center gap-2 mt-2">
-                                                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(item.product.id, item.quantity - 1)}><Minus className="h-4 w-4" /></Button>
-                                                                <span>{item.quantity}</span>
-                                                                <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(item.product.id, item.quantity + 1)}><Plus className="h-4 w-4" /></Button>
+                                                        </div>
+                                                        <div className="text-right">
+                                                                <p className="font-bold">${(item.price * item.quantity * activeRate).toFixed(2)}</p>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 mt-2 text-muted-foreground hover:text-destructive" onClick={() => removeFromCart(item.product.id)}>
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
                                                         </div>
                                                     </div>
-                                                    <div className="text-right">
-                                                            <p className="font-bold">${(item.price * item.quantity * activeRate).toFixed(2)}</p>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 mt-2 text-muted-foreground hover:text-destructive" onClick={() => removeFromCart(item.product.id)}>
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                    </div>
+                                                ))}
                                                 </div>
-                                            ))}
-                                            </div>
-                                        )}
+                                            )}
+                                        </div>
                                     </div>
                                     {cart.length > 0 && (
-                                        <SheetFooter className="px-6 py-4 bg-background border-t">
+                                        <SheetFooter className="px-6 py-4 bg-background border-t mt-auto">
                                             <div className="w-full space-y-4">
                                                 <div className="flex justify-between font-bold text-lg">
                                                     <span>Subtotal</span>
