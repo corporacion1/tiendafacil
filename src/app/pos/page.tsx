@@ -1,3 +1,4 @@
+
 "use client"
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
@@ -20,7 +21,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { paymentMethods, mockProducts, defaultCustomers, mockSales, initialFamilies } from "@/lib/data";
+import { paymentMethods, mockProducts, defaultCustomers, mockSales, initialFamilies, pendingOrdersState } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 
@@ -71,7 +72,7 @@ export default function POSPage() {
   // Use local data
   const [products, setProductsState] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})));
   const [customers, setCustomers] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
-  const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
+  const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>(pendingOrdersState);
   const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
   const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
 
@@ -417,24 +418,19 @@ export default function POSPage() {
     const orderCartItems: CartItem[] = order.items.map(item => {
         const product = products.find(p => p.id === item.productId);
         if (!product) {
-            return {
-                product: {
-                    id: item.productId,
-                    name: item.productName,
-                    price: item.price,
-                    stock: 0,
-                    sku: 'N/A', cost: 0, status: 'inactive', tax1: false, tax2: false, wholesalePrice: 0, storeId: activeStoreId, createdAt: new Date().toISOString()
-                },
-                quantity: item.quantity,
-                price: item.price,
-            };
+            toast({
+                variant: "destructive",
+                title: "Producto no encontrado",
+                description: `El producto "${item.productName}" del pedido ya no existe. Se omitirá.`
+            });
+            return null;
         }
         return { product, quantity: item.quantity, price: item.price };
-    });
+    }).filter((item): item is CartItem => item !== null);
 
     setCartItems(orderCartItems);
 
-    const customer = (customers || []).find(c => c.phone === order.customerPhone);
+    const customer = (customers || []).find(c => c.phone === order.customerPhone || c.name === order.customerName);
     if(customer) {
         setSelectedCustomerId(customer.id);
     } else {
@@ -448,8 +444,12 @@ export default function POSPage() {
         setSelectedCustomerId(newCustomerFromOrder.id);
     }
 
-    // Remove from local pending orders
-    setPendingOrders(prev => prev.filter(p => p.id !== order.id));
+    // Remove from local pending orders state
+    const orderIndex = pendingOrdersState.findIndex(p => p.id === order.id);
+    if (orderIndex > -1) {
+      pendingOrdersState.splice(orderIndex, 1);
+    }
+    setPendingOrders([...pendingOrdersState]);
     
     toast({
         title: "Pedido Cargado",
@@ -517,7 +517,7 @@ export default function POSPage() {
                                 <Button variant="secondary">
                                     <Archive className="mr-2 h-4 w-4" />
                                     Pedidos Pendientes
-                                    {(pendingOrders || []).length > 0 && <Badge variant="destructive" className="ml-2">{(pendingOrders || []).length}</Badge>}
+                                    {pendingOrders.length > 0 && <Badge variant="destructive" className="ml-2">{pendingOrders.length}</Badge>}
                                 </Button>
                             </DialogTrigger>
                             <DialogContent>
@@ -529,11 +529,11 @@ export default function POSPage() {
                                 </DialogHeader>
                                 <div className="py-4 max-h-96 overflow-y-auto">
                                     {isLoading && <p>Cargando pedidos...</p>}
-                                    {!isLoading && (pendingOrders || []).length === 0 ? (
+                                    {!isLoading && pendingOrders.length === 0 ? (
                                         <p className="text-center text-muted-foreground py-8">No hay pedidos pendientes.</p>
                                     ) : (
                                         <div className="space-y-4">
-                                        {(pendingOrders || []).map(order => (
+                                        {pendingOrders.map(order => (
                                             <div key={order.id} className="p-4 border rounded-lg">
                                                 <div className="flex justify-between items-start">
                                                     <div>
@@ -961,3 +961,5 @@ export default function POSPage() {
   </Dialog>
   );
 }
+
+    

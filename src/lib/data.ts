@@ -1,5 +1,5 @@
 
-import type { Product, Sale, Unit, Family, Warehouse, Customer, Purchase, Ad, UserProfile, Store, CurrencyRate, Supplier } from '@/lib/types';
+import type { Product, Sale, Unit, Family, Warehouse, Customer, Purchase, Ad, UserProfile, Store, CurrencyRate, Supplier, PendingOrder } from '@/lib/types';
 import { PlaceHolderImages } from './placeholder-images';
 import { subDays, addDays, startOfWeek, startOfMonth, startOfYear } from 'date-fns';
 
@@ -44,6 +44,8 @@ export const defaultUsers: Omit<UserProfile, 'createdAt' | 'uid' | 'phone'>[] = 
 ];
 
 // --- DATOS DE MUESTRA (TODOS CONECTADOS AL storeId por defecto) ---
+
+export let pendingOrdersState: PendingOrder[] = [];
 
 export const mockCurrencyRates: Omit<CurrencyRate, 'id'>[] = [
     { rate: 39.50, date: new Date().toISOString() },
@@ -191,3 +193,5 @@ export async function factoryReset() {
   console.log("factoryReset is disabled. Using local data.");
   return;
 }
+
+    

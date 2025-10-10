@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import type { Product, CartItem, Sale, Customer, PendingOrder, Ad, Family } from "@/lib/types";
-import { trackAdClick, defaultStoreId, mockProducts, initialFamilies, mockAds } from "@/lib/data";
+import { trackAdClick, defaultStoreId, mockProducts, initialFamilies, mockAds, pendingOrdersState } from "@/lib/data";
 import { useSettings } from "@/contexts/settings-context";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
@@ -139,6 +139,9 @@ export default function CatalogPage() {
     const [orderIdForQr, setOrderIdForQr] = useState<string | null>(null);
     const [qrCodeUrl, setQrCodeUrl] = useState('');
     const [shareQrCodeUrl, setShareQrCodeUrl] = useState('');
+
+    const [customerName, setCustomerName] = useState('');
+    const [customerPhone, setCustomerPhone] = useState('');
 
     useEffect(() => {
         const INACTIVITY_TIMEOUT = 3000; 
@@ -279,7 +282,6 @@ export default function CatalogPage() {
             toast({ variant: 'destructive', title: 'Tu pedido está vacío' });
             return;
         }
-        // No user check needed anymore
         setIsOrderDialogOpen(true);
     };
 
@@ -310,16 +312,40 @@ export default function CatalogPage() {
             toast({ variant: 'destructive', title: 'No se pudo identificar la tienda.' });
             return;
         }
+        if (!customerName.trim() || !customerPhone.trim()) {
+            toast({ variant: 'destructive', title: 'Nombre y teléfono son requeridos.' });
+            return;
+        }
 
         const newOrderId = `ORD-${Date.now()}`;
         
-        // SIMULATE SUCCESS
+        const newPendingOrder: PendingOrder = {
+            id: newOrderId,
+            date: new Date().toISOString(),
+            customerName,
+            customerPhone,
+            items: cart.map(item => ({
+                productId: item.product.id,
+                productName: item.product.name,
+                quantity: item.quantity,
+                price: item.price,
+            })),
+            total: subtotal,
+            storeId: settings.id,
+        };
+
+        // Add to the shared state
+        pendingOrdersState.push(newPendingOrder);
+
         await generateQrCode(newOrderId);
         setIsOrderDialogOpen(false);
         setCart([]);
+        setCustomerName('');
+        setCustomerPhone('');
+
         toast({
-            title: "¡Pedido Generado! (Simulación)",
-            description: "Muestra el código QR para facturar. Los datos no se guardaron.",
+            title: "¡Pedido Generado!",
+            description: "Muestra el código QR para facturar. El pedido está pendiente en caja.",
         });
     };
     
@@ -513,12 +539,22 @@ export default function CatalogPage() {
                         <DialogHeader>
                             <DialogTitle>Confirmar Pedido</DialogTitle>
                             <DialogDescription>
-                                Tu pedido se generará. Serás notificado cuando esté listo.
+                                Completa tus datos para generar el pedido. Serás notificado cuando esté listo para facturar en caja.
                             </DialogDescription>
                         </DialogHeader>
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="customer-name">Nombre y Apellido*</Label>
+                                <Input id="customer-name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Ej: John Doe" />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="customer-phone">Teléfono*</Label>
+                                <Input id="customer-phone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Ej: 04121234567" />
+                            </div>
+                        </div>
                         <DialogFooter>
                             <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-                            <Button onClick={handleGenerateOrder}>Confirmar Pedido</Button>
+                            <Button onClick={handleGenerateOrder} disabled={!customerName.trim() || !customerPhone.trim()}>Confirmar Pedido</Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
@@ -635,3 +671,5 @@ export default function CatalogPage() {
     );
 }
 
+
+    
