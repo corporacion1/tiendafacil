@@ -143,6 +143,12 @@ export default function CatalogPage() {
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
 
+    const [cart, setCart] = useState<CartItem[]>([]);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [selectedFamily, setSelectedFamily] = useState<string>("all");
+    
+    const [localOrders, setLocalOrders] = useState<PendingOrder[]>([]);
+
     useEffect(() => {
         const INACTIVITY_TIMEOUT = 3000; 
         
@@ -195,11 +201,6 @@ export default function CatalogPage() {
         };
     }, [isLoading]);
 
-
-    const [cart, setCart] = useState<CartItem[]>([]);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [selectedFamily, setSelectedFamily] = useState<string>("all");
-
     const addToCart = (product: Product) => {
         setCart(prevCart => {
             const existingItem = prevCart.find(item => item.product.id === product.id);
@@ -234,7 +235,7 @@ export default function CatalogPage() {
     const removeFromCart = (productId: string) => {
         setCart(prevCart => prevCart.filter(item => item.product.id !== productId));
     };
-
+    
     const subtotal = useMemo(() => cart.reduce((acc, item) => acc + item.price * item.quantity, 0), [cart]);
 
     const sortedAndFilteredProducts = useMemo(() => {
@@ -336,6 +337,7 @@ export default function CatalogPage() {
 
         // Add to the shared state
         pendingOrdersState.push(newPendingOrder);
+        setLocalOrders(prev => [...prev, newPendingOrder]);
 
         await generateQrCode(newOrderId);
         setIsOrderDialogOpen(false);
@@ -351,6 +353,26 @@ export default function CatalogPage() {
     
     const handleImageClick = (product: Product) => {
         setProductDetails(product);
+    };
+
+    const handleReShowQR = async (orderId: string) => {
+        await generateQrCode(orderId);
+    };
+
+    const handleDeleteLocalOrder = (orderId: string) => {
+        setLocalOrders(prev => prev.filter(o => o.id !== orderId));
+        toast({ title: "Pedido eliminado del historial local." });
+    };
+
+    const handleEditLocalOrder = (order: PendingOrder) => {
+        setCart(order.items.map(item => {
+            const product = products.find(p => p.id === item.productId);
+            return product ? { product, quantity: item.quantity, price: item.price } : null;
+        }).filter((i): i is CartItem => i !== null));
+        setCustomerName(order.customerName);
+        setCustomerPhone(order.customerPhone);
+        handleDeleteLocalOrder(order.id);
+        document.getElementById('cart-sheet-trigger')?.click();
     };
 
     return (
@@ -388,7 +410,7 @@ export default function CatalogPage() {
                             </Dialog>
                             <Sheet>
                                 <SheetTrigger asChild>
-                                    <Button variant="outline" className="relative">
+                                    <Button id="cart-sheet-trigger" variant="outline" className="relative">
                                         <ShoppingBag className="mr-2" />
                                         <span>Ver Pedido</span>
                                         {cart.length > 0 && (
@@ -477,6 +499,31 @@ export default function CatalogPage() {
                             }
                         `}</style>
                     </div>
+
+                    {localOrders.length > 0 && (
+                        <Card className="mb-8 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                            <CardContent className="p-4">
+                                <h3 className="text-lg font-semibold mb-2">Mis Pedidos Recientes</h3>
+                                <div className="space-y-2">
+                                    {localOrders.map(order => (
+                                        <div key={order.id} className="flex items-center justify-between p-2 rounded-md bg-background">
+                                            <div>
+                                                <p className="font-semibold">{order.id}</p>
+                                                <p className="text-sm text-muted-foreground">{new Date(order.date).toLocaleString()}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Button variant="outline" size="sm" onClick={() => handleReShowQR(order.id)}>Ver QR</Button>
+                                                <Button variant="outline" size="sm" onClick={() => handleEditLocalOrder(order)}>Editar</Button>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteLocalOrder(order.id)}>
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
                     
                     <div className="mb-8">
                          <div className="flex flex-col sm:flex-row gap-4 items-center">
