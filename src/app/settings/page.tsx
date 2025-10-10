@@ -218,6 +218,7 @@ export default function SettingsPage() {
     };
 
     const saveAllSettings = async () => {
+        if (!firestore) return;
         const batch = writeBatch(firestore);
 
         // Save main settings
@@ -248,6 +249,7 @@ export default function SettingsPage() {
     };
 
     const handleSaveNewRate = () => {
+        if (!firestore) return;
         const rateValue = parseFloat(newRate);
         if(isNaN(rateValue) || rateValue <= 0) {
             toast({
@@ -296,6 +298,7 @@ export default function SettingsPage() {
     };
     
     const handleDelete = (type: 'unit' | 'family' | 'warehouse', id: string) => {
+        if (!firestore) return;
         if (isItemInUse(type, id)) {
             toast({
                 variant: 'destructive',
@@ -315,6 +318,7 @@ export default function SettingsPage() {
     };
     
     const handleFactoryReset = async () => {
+        if (!firestore) return;
         if(hasPin && !checkPin(resetPin)) {
              toast({
                 variant: "destructive",
@@ -370,6 +374,7 @@ export default function SettingsPage() {
     };
 
     const handleSeedDatabase = async () => {
+        if (!firestore) return;
         setIsSeeding(true);
         toast({
             title: 'Poblando Base de Datos',
@@ -404,6 +409,7 @@ export default function SettingsPage() {
         const [editingItem, setEditingItem] = useState<{id: string, name: string} | null>(null);
 
         const handleAddNewItem = () => {
+             if (!firestore) return;
              if (newItemName.trim() === '') {
                 toast({ variant: 'destructive', title: 'Nombre inválido' });
                 return;
@@ -417,6 +423,7 @@ export default function SettingsPage() {
         };
         
         const handleEditItem = () => {
+            if (!firestore) return;
             if (!editingItem || editingItem.name.trim() === '') {
                  toast({ variant: 'destructive', title: 'Nombre inválido' });
                 return;
@@ -700,7 +707,7 @@ export default function SettingsPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
-                            <h4 className="font-medium">Registrar Tasa ({localSettings?.secondaryCurrencyName})</h4>
+                            <h4 className="font-medium">Registrar Tasa ({localSettings?.secondaryCurrencyName || '...'})</h4>
                             <div className="flex items-center gap-2">
                                 <Input 
                                     id="newRate" 
@@ -719,7 +726,7 @@ export default function SettingsPage() {
                                         <AlertDialogHeader>
                                             <AlertDialogTitle>¿Confirmar Nueva Tasa?</AlertDialogTitle>
                                             <AlertDialogDescription>
-                                                Estás a punto de guardar una nueva tasa de cambio de {parseFloat(newRate || '0').toFixed(6)} {localSettings?.secondaryCurrencySymbol}. ¿Estás seguro?
+                                                Estás a punto de guardar una nueva tasa de cambio de {parseFloat(newRate || '0').toFixed(6)} {localSettings?.secondaryCurrencySymbol || ''}. ¿Estás seguro?
                                             </AlertDialogDescription>
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
@@ -744,7 +751,7 @@ export default function SettingsPage() {
                                         {currencyRates && currencyRates.length > 0 ? currencyRates.map(rate => (
                                             <TableRow key={rate.id}>
                                                 <TableCell>{rate.date ? format(parseISO(rate.date as string), "dd/MM/yy HH:mm") : 'N/A'}</TableCell>
-                                                <TableCell className="text-right font-mono">{`${rate.rate.toFixed(6)} ${localSettings?.secondaryCurrencySymbol}`}</TableCell>
+                                                <TableCell className="text-right font-mono">{`${rate.rate.toFixed(6)} ${localSettings?.secondaryCurrencySymbol || ''}`}</TableCell>
                                             </TableRow>
                                         )) : (
                                             <TableRow>

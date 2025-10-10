@@ -41,9 +41,10 @@ export function SiteHeader({ toggleSidebar, isSidebarExpanded }: SiteHeaderProps
   const auth = useAuth();
   const { settings, activeCurrency, toggleDisplayCurrency, activeStoreId } = useSettings();
   
-  const user = auth.currentUser;
+  const user = auth?.currentUser;
 
   const handleSignOut = async () => {
+    if (!auth) return;
     await signOut(auth);
     router.push('/login');
   }

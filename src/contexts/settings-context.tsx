@@ -72,9 +72,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [isUserLoading, user, userProfile, isPublicPage, pathname, activeStoreId]);
 
   const settingsDocRef = useMemo(() => {
-    if (isUserLoading || !activeStoreId || !firestore) return null;
+    if (!activeStoreId || !firestore) return null;
     return doc(firestore, 'stores', activeStoreId);
-  }, [activeStoreId, firestore, isUserLoading]);
+  }, [activeStoreId, firestore]);
 
   const { data: settings, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(settingsDocRef);
   
@@ -92,14 +92,10 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     if(storedCurrencyPref) setDisplayCurrency(storedCurrencyPref);
   }, []);
   
-  // Master loading gate. Ensures all initial data is loaded before rendering the app.
   const isLoading = useMemo(() => {
     if (isPublicPage) {
-      // For public pages, we only need a storeId and the settings for that store.
-      // We don't wait for user authentication.
       return !activeStoreId || isLoadingSettingsDoc;
     }
-    // For protected pages, we wait for everything.
     return isUserLoading || isLoadingProfile || !activeStoreId || isLoadingSettingsDoc || isLoadingRates;
   }, [isUserLoading, isLoadingProfile, activeStoreId, isLoadingSettingsDoc, isLoadingRates, isPublicPage]);
 
@@ -148,8 +144,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     userProfile: userProfile || null,
   };
 
-  // If loading, show a full-page loading screen to prevent any child components
-  // from rendering and making premature data requests.
   if (isLoading) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
