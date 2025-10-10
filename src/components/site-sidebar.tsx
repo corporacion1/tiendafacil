@@ -3,8 +3,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useUser, useDoc, useFirestore } from "@/firebase";
-import { doc } from "firebase/firestore";
+import { useUser } from "@/firebase";
 import type { UserProfile } from "@/lib/types";
 
 import { navItems, adminNavItems, settingsNav } from "@/lib/navigation";
@@ -25,16 +24,7 @@ interface SiteSidebarProps {
 
 export function SiteSidebar({ isExpanded }: SiteSidebarProps) {
     const pathname = usePathname();
-    const { user } = useUser();
-    const firestore = useFirestore();
-    const { settings } = useSettings();
-
-    const userProfileRef = useMemo(() => {
-        if (!user || !firestore) return null;
-        return doc(firestore, 'users', user.uid);
-    }, [user, firestore]);
-
-    const { data: userProfile } = useDoc<UserProfile>(userProfileRef);
+    const { settings, userProfile } = useSettings();
 
     const userRole = userProfile?.role;
 
@@ -63,6 +53,11 @@ export function SiteSidebar({ isExpanded }: SiteSidebarProps) {
       </TooltipProvider>
     );
 
+    const filteredAdminNavItems = (adminNavItems || []).filter(item => {
+        if (!item.role) return true;
+        return userRole === item.role;
+    });
+
     return (
         <aside className={cn(
             "fixed inset-y-0 left-0 z-10 hidden flex-col border-r bg-background sm:flex transition-all duration-300",
@@ -78,7 +73,7 @@ export function SiteSidebar({ isExpanded }: SiteSidebarProps) {
                 {navItems.map((item) => (
                     <div key={item.href}>{renderLink(item)}</div>
                 ))}
-                {adminNavItems.map((item) => (
+                {filteredAdminNavItems.map((item) => (
                     <div key={item.href}>{renderLink(item)}</div>
                 ))}
             </nav>
@@ -88,5 +83,3 @@ export function SiteSidebar({ isExpanded }: SiteSidebarProps) {
         </aside>
     );
 }
-
-    
