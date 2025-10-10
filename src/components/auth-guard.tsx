@@ -28,19 +28,15 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }, [pathname, lockApp, hasPin, isSecurityReady]);
 
     useEffect(() => {
-        // This effect now ONLY handles redirection logic.
-        // It waits for both auth and settings to be fully resolved.
         if (isLoadingSettings || isUserLoading) {
             return;
         }
         
-        // If not logged in and trying to access a protected page, redirect.
         if (!user && !isPublicPage) {
             router.replace('/login');
             return;
         }
         
-        // If logged in and on the root page, redirect to dashboard.
         if (user && isRootPage) {
            router.replace('/dashboard');
            return;
@@ -48,9 +44,6 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         
     }, [isLoadingSettings, isUserLoading, user, isPublicPage, isRootPage, pathname, router]);
 
-
-    // The master loading gate. This prevents ANY part of the app from rendering
-    // until auth and settings are fully loaded. This is the core fix.
     if (isLoadingSettings || isUserLoading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen w-full bg-background gap-4">
@@ -62,11 +55,9 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         );
     }
     
-    // Once all loading is complete, if the app is security-locked, show the PIN modal.
     if (isLocked) {
         return <PinModal />;
     }
 
-    // Render the children only when all checks are passed and the app is unlocked.
     return <>{children}</>;
 }

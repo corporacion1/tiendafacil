@@ -38,7 +38,7 @@ const fallbackSettings: Settings = {
   secondaryCurrencySymbol: "Bs.",
   tax1: 16,
   tax2: 0,
-}
+};
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, isUserLoading } = useUser();
@@ -47,63 +47,77 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const pathname = usePathname();
 
   const isPublicPage = useMemo(() => pathname === '/' || pathname.startsWith('/catalog') || pathname.startsWith('/login'), [pathname]);
-  const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
-  const [isStoreIdResolved, setIsStoreIdResolved] = useState(false);
-  const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
-
-  // Step 1: Determine the active store ID based on user profile.
-  const userProfileRef = useMemo(() => {
-    if (isUserLoading || !user || !firestore || isPublicPage) return null;
-    return doc(firestore, 'users', user.uid);
-  }, [user, isUserLoading, firestore, isPublicPage]);
-  const { data: userProfile, isLoading: isLoadingProfile } = useDoc<UserProfile>(userProfileRef);
-
-  useEffect(() => {
-    if (isUserLoading || isLoadingProfile || isPublicPage) return;
-
-    let resolvedId = defaultStoreId;
-    if (userProfile) {
-        if (userProfile.role === 'superAdmin') {
-            resolvedId = localStorage.getItem(ACTIVE_STORE_ID_KEY) || defaultStoreId;
-        } else if (userProfile.storeId) {
-            resolvedId = userProfile.storeId;
-        }
-    }
-    
-    setActiveStoreId(resolvedId);
-    if(userProfile?.role === 'superAdmin') {
-        localStorage.setItem(ACTIVE_STORE_ID_KEY, resolvedId);
-    }
-    setIsStoreIdResolved(true);
-  }, [isUserLoading, isLoadingProfile, userProfile, isPublicPage]);
-
-  // Step 2: Fetch store settings and rates ONLY if not on a public page and auth/storeId is resolved.
-  const shouldFetchData = !isPublicPage && isStoreIdResolved && !isUserLoading;
-
-  const settingsDocRef = useMemo(() => {
-    if (!firestore || !shouldFetchData) return null;
-    return doc(firestore, 'stores', activeStoreId);
-  }, [firestore, activeStoreId, shouldFetchData]);
-  const { data: settingsData, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(settingsDocRef);
   
-  const currencyRatesQuery = useMemo(() => {
-    if (!firestore || !shouldFetchData) return null;
-    return query(collection(firestore, 'stores', activeStoreId, 'currencyRates'), orderBy('date', 'desc'));
-  }, [firestore, activeStoreId, shouldFetchData]);
-  const { data: currencyRatesData, isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
+  // State for resolved store ID and user profile
+  const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+
+  // Loading state consolidator
+  const [isLoading, setIsLoading] = useState(true);
 
   // Load currency preference from localStorage
+  const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   useEffect(() => {
     const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY) as DisplayCurrency;
     if(storedCurrencyPref) setDisplayCurrency(storedCurrencyPref);
   }, []);
+
+  // Effect to resolve user profile and storeId
+  useEffect(() => {
+    if (isUserLoading) return;
+    if (!user || isPublicPage) {
+        setUserProfile(null);
+        setActiveStoreId(defaultStoreId);
+        setIsLoading(false);
+        return;
+    };
+    
+    const userRef = doc(firestore, 'users', user.uid);
+    const unsubscribe = useDoc<UserProfile>(userRef);
+
+    if (!unsubscribe.isLoading) {
+        const profile = unsubscribe.data;
+        setUserProfile(profile);
+        let resolvedId = defaultStoreId;
+        if (profile) {
+            if (profile.role === 'superAdmin') {
+                resolvedId = localStorage.getItem(ACTIVE_STORE_ID_KEY) || defaultStoreId;
+            } else if (profile.storeId) {
+                resolvedId = profile.storeId;
+            }
+        }
+        setActiveStoreId(resolvedId);
+        if(profile?.role === 'superAdmin') {
+            localStorage.setItem(ACTIVE_STORE_ID_KEY, resolvedId);
+        }
+    }
+    // This effect should only run when user or loading status changes.
+  }, [user, isUserLoading, firestore, isPublicPage]);
+
+  // Fetch store settings based on the resolved activeStoreId
+  const settingsDocRef = useMemo(() => {
+    if (!firestore || isPublicPage) return null;
+    return doc(firestore, 'stores', activeStoreId);
+  }, [firestore, activeStoreId, isPublicPage]);
+  const { data: settingsData, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(settingsDocRef);
   
-  const isLoadingSettings = useMemo(() => {
-    if (isPublicPage) return false; // Public pages are never in a loading state for settings
-    // For protected pages, loading is true until user/profile/storeId/settings/rates are all resolved.
-    return isUserLoading || isLoadingProfile || !isStoreIdResolved || isLoadingSettingsDoc || isLoadingRates;
-  }, [isUserLoading, isLoadingProfile, isStoreIdResolved, isLoadingSettingsDoc, isLoadingRates, isPublicPage]);
+  // Fetch currency rates
+  const currencyRatesQuery = useMemo(() => {
+    if (!firestore || isPublicPage) return null;
+    return query(collection(firestore, 'stores', activeStoreId, 'currencyRates'), orderBy('date', 'desc'));
+  }, [firestore, activeStoreId, isPublicPage]);
+  const { data: currencyRatesData, isLoading: isLoadingRates } = useCollection<CurrencyRate>(currencyRatesQuery);
   
+  // Final loading state determination
+  useEffect(() => {
+      if (isPublicPage) {
+          setIsLoading(false);
+      } else {
+          setIsLoading(isUserLoading || isLoadingSettingsDoc || isLoadingRates);
+      }
+  }, [isUserLoading, isLoadingSettingsDoc, isLoadingRates, isPublicPage]);
+
+
   const settings = settingsData ?? (isPublicPage ? fallbackSettings : null);
   const currencyRates = currencyRatesData ?? [];
 
@@ -146,8 +160,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     currencyRates, 
     activeStoreId,
     switchStore,
-    isLoadingSettings,
-    userProfile: userProfile || null,
+    isLoadingSettings: isLoading,
+    userProfile,
   };
 
   return (

@@ -12,7 +12,7 @@ import {
   signInWithEmailAndPassword,
   type User as FirebaseUser
 } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,7 +22,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Logo } from '@/components/logo';
 import { useAuth, useFirestore, useUser } from '@/firebase';
-import type { UserProfile, Settings } from '@/lib/types';
+import type { UserProfile } from '@/lib/types';
 import { Package } from 'lucide-react';
 import { forceSeedDatabase } from '@/lib/seed';
 
@@ -41,12 +41,7 @@ export default function LoginPage() {
   // --- ONE-TIME DATABASE SEEDING LOGIC (BRUTE FORCE) ---
   useEffect(() => {
     const runSeed = async () => {
-      if (!firestore) {
-        // Firestore might not be ready on first render, this is expected.
-        // It will be available on the next render.
-        console.log("Firestore not ready yet, skipping seed on this render.");
-        return;
-      };
+      if (!firestore) return;
 
       try {
         await forceSeedDatabase(firestore);
@@ -66,12 +61,9 @@ export default function LoginPage() {
       }
     };
     
-    // We only want this to run once on mount.
-    // The dependency array ensures this.
     runSeed();
   }, [firestore, toast]);
   // --- END OF SEEDING LOGIC ---
-
 
   const createUserProfile = async (firebaseUser: FirebaseUser) => {
     if (!firestore) return;
@@ -89,7 +81,7 @@ export default function LoginPage() {
         status: 'active',
         storeRequest: false,
       };
-      await setDoc(userRef, { ...newUserProfile, createdAt: serverTimestamp() });
+      await setDoc(userRef, { ...newUserProfile, createdAt: new Date().toISOString() });
     }
   };
 
@@ -102,12 +94,7 @@ export default function LoginPage() {
     }
     
     setLoadingMessage('Cargando perfil de usuario...');
-    const userRef = doc(firestore, 'users', firebaseUser.uid);
-    const userSnap = await getDoc(userRef);
-
-    if (!userSnap.exists()) {
-        await createUserProfile(firebaseUser);
-    }
+    await createUserProfile(firebaseUser);
     
     setLoadingMessage('¡Todo listo! Redirigiendo...');
     router.replace('/dashboard');
