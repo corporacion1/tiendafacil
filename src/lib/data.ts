@@ -44,12 +44,10 @@ export const defaultUsers: Omit<UserProfile, 'createdAt' | 'uid' | 'photoURL'>[]
 
 // --- DATOS DE MUESTRA (TODOS CONECTADOS AL storeId por defecto) ---
 
-export const defaultCurrencyRates: CurrencyRate[] = [
-    {
-        id: 'rate-initial-1',
-        rate: 36.50,
-        date: new Date().toISOString(),
-    }
+export const mockCurrencyRates: CurrencyRate[] = [
+    { id: 'rate-1', rate: 182.50, date: new Date().toISOString() },
+    { id: 'rate-2', rate: 180.25, date: subDays(new Date(), 1).toISOString() },
+    { id: 'rate-3', rate: 178.90, date: subDays(new Date(), 2).toISOString() },
 ];
 
 export const defaultCustomers: Omit<Customer, 'storeId'>[] = [

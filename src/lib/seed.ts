@@ -26,7 +26,7 @@ import {
   mockAds,
   defaultUsers,
   defaultStoreId,
-  defaultCurrencyRates
+  mockCurrencyRates
 } from './data';
 
 
@@ -82,7 +82,7 @@ export async function seedDatabase(db: Firestore) {
   console.log(`Scheduled creation of default store: ${defaultStoreId}`);
   
   // 2. Add default currency rate to the store's subcollection
-  defaultCurrencyRates.forEach((rate) => {
+  mockCurrencyRates.forEach((rate) => {
     const rateRef = doc(db, 'stores', defaultStoreId, 'currencyRates', rate.id);
     batch.set(rateRef, rate);
   });
