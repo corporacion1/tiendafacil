@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -31,7 +30,7 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const auth = useAuth();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -52,10 +51,14 @@ export default function LoginPage() {
     }
   }, [user, searchParams, auth, router]);
 
+  // Redirect if user is already logged in
+  useEffect(() => {
+    if (user && !isUserLoading) {
+      router.replace('/dashboard');
+    }
+  }, [user, isUserLoading, router]);
 
   const loadDataAndRedirect = async (firebaseUser: FirebaseUser) => {
-    // In a local-data app, the "profile" is created on the client
-    // and the data is already available. We just need to redirect.
     setLoadingMessage('¡Todo listo! Redirigiendo...');
     router.replace('/dashboard');
   };
@@ -86,6 +89,7 @@ export default function LoginPage() {
         title: isSignUp ? 'Error en el Registro' : 'Error al Iniciar Sesión',
         description: message,
       });
+    } finally {
       setIsLoading(false);
       setLoadingMessage(null);
     }
@@ -110,16 +114,16 @@ export default function LoginPage() {
   
   useEffect(() => {
     if (auth) {
-        // We are not loading anymore, and we want to see if there is a redirect result.
         setIsLoading(true);
         setLoadingMessage('Verificando autenticación...');
         getRedirectResult(auth)
             .then(async (result) => {
                 if (result && result.user) {
-                    // User signed in or already signed in.
+                    // User signed in or already signed in via redirect.
                     await loadDataAndRedirect(result.user);
                 } else {
-                    // No user, stay on login page.
+                    // No redirect result, so we are not in a redirect flow.
+                    // Let the onAuthStateChanged listener handle existing sessions.
                     setIsLoading(false);
                     setLoadingMessage(null);
                 }
@@ -136,11 +140,21 @@ export default function LoginPage() {
     }
   }, [auth]);
   
-  if (isLoading) {
+  if (isUserLoading || isLoading) {
     return (
       <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
         <Package className="w-16 h-16 text-muted-foreground animate-pulse" />
         <p className="text-muted-foreground animate-pulse">{loadingMessage || 'Cargando...'}</p>
+      </div>
+    );
+  }
+  
+  // Do not render login form if user is already logged in and redirect is in progress
+  if (user) {
+    return (
+       <div className="flex min-h-screen w-full flex-col items-center justify-center bg-background gap-4">
+        <Package className="w-16 h-16 text-muted-foreground animate-pulse" />
+        <p className="text-muted-foreground animate-pulse">Redirigiendo al dashboard...</p>
       </div>
     );
   }
