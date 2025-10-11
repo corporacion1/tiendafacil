@@ -104,11 +104,12 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   
   // New effect specifically for handling redirection after profile is set
   useEffect(() => {
-      if (userProfile && (userProfile.role === 'admin' || userProfile.role === 'superAdmin')) {
-        if (!pathname.startsWith('/dashboard')) {
-            router.push('/dashboard');
-        }
+    // Redirect admins/superAdmins to dashboard if they land on the login page
+    if (userProfile && (userProfile.role === 'admin' || userProfile.role === 'superAdmin')) {
+      if (pathname.startsWith('/login')) {
+          router.push('/dashboard');
       }
+    }
   }, [userProfile, pathname, router]);
 
 
