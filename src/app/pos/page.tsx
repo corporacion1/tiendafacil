@@ -322,8 +322,8 @@ export default function POSPage() {
   };
   
   return (
-    <div className="grid flex-1 auto-rows-max items-start gap-4 md:grid-cols-3 lg:gap-8">
-      <div className="grid auto-rows-max items-start gap-4 md:col-span-2 lg:gap-8">
+    <div className="grid flex-1 auto-rows-max items-start gap-4 lg:grid-cols-5 lg:gap-8">
+      <div className="grid auto-rows-max items-start gap-4 lg:col-span-3 lg:gap-8">
         <Card>
           <CardHeader>
             <CardTitle>Productos</CardTitle>
@@ -453,7 +453,7 @@ export default function POSPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="grid auto-rows-max items-start gap-4 lg:col-span-1">
+      <div className="grid auto-rows-max items-start gap-4 lg:col-span-2">
         <div className="h-[calc(100vh_-_theme(spacing.16))]">
             <Card className="flex flex-col h-full">
             <CardHeader className="flex flex-row justify-between items-center">
@@ -553,10 +553,10 @@ export default function POSPage() {
                 <Separator />
                 <div className="flex-1 overflow-y-auto pr-1">
                     {cartItems.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-8 h-full">
-                            <ShoppingCart className="h-12 w-12 mb-4" />
-                            <p className="font-semibold">Tu carrito está vacío.</p>
-                            <p className="text-sm">Agrega productos para comenzar.</p>
+                        <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-10 h-full">
+                            <ShoppingCart className="h-16 w-16 mb-4 opacity-50" />
+                            <p className="font-semibold text-lg">Tu carrito está vacío</p>
+                            <p className="text-sm">Agrega productos para comenzar una nueva venta.</p>
                         </div>
                     ) : (
                         <Table>
@@ -674,5 +674,3 @@ export default function POSPage() {
     </div>
   );
 }
-
-    

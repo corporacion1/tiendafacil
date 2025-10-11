@@ -142,7 +142,7 @@ export default function PurchasesPage() {
             if(product.tax1 && settings.tax1 && settings.tax1 > 0) {
                 tax1Amount += itemSubtotal * (settings.tax1 / 100);
             }
-            if(product.tax2 && settings.tax2 && settings.tax2 > 0) {
+            if(product.tax2 && settings.tax2 > 0) {
                 tax2Amount += itemSubtotal * (settings.tax2 / 100);
             }
         }
@@ -239,8 +239,8 @@ export default function PurchasesPage() {
   const isNewSupplierFormDirty = newSupplier.name.trim() !== '' || newSupplier.id.trim() !== '' || newSupplier.phone.trim() !== '' || newSupplier.address.trim() !== '';
   
   return (
-    <div className="grid flex-1 auto-rows-max gap-4 md:grid-cols-3 lg:gap-8">
-      <div className="grid auto-rows-max items-start gap-4 md:col-span-2 lg:gap-8">
+    <div className="grid flex-1 auto-rows-max items-start gap-4 lg:grid-cols-5 lg:gap-8">
+      <div className="grid auto-rows-max items-start gap-4 lg:col-span-3 lg:gap-8">
         <Card>
           <CardHeader>
             <CardTitle>Productos para Compra</CardTitle>
@@ -301,7 +301,7 @@ export default function PurchasesPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="grid auto-rows-max items-start gap-4 lg:col-span-1 lg:gap-8">
+      <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
         <Card>
           <CardHeader className="flex flex-row justify-between items-center">
             <CardTitle>Orden de Compra</CardTitle>
@@ -529,5 +529,3 @@ export default function PurchasesPage() {
     </div>
   );
 }
-
-    
