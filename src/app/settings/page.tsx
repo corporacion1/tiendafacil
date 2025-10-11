@@ -386,7 +386,7 @@ export default function SettingsPage() {
                     <div className="space-y-2">
                         {(items || []).map(item => (
                             <div key={item.id} className="flex items-center gap-2 p-2 border rounded-md">
-                               <span className="flex-grow">{item.name}</span>
+                               <span className="flex-grow text-sm truncate">{item.name}</span>
                                <div className="flex-shrink-0 flex gap-1">
                                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingItem(item)}>
                                         <Pencil className="h-4 w-4" />
@@ -696,7 +696,7 @@ export default function SettingsPage() {
                                     <TableBody>
                                         {currencyRates && currencyRates.length > 0 ? currencyRates.map(rate => (
                                             <TableRow key={rate.id}>
-                                                <TableCell>{isClient && rate.date ? format(parseISO(rate.date as string), "dd/MM/yy HH:mm") : 'N/A'}</TableCell>
+                                                <TableCell>{isClient && rate.date ? format(parseISO(rate.date as string), "dd/MM/yy HH:mm") : '...'}</TableCell>
                                                 <TableCell className="text-right font-mono">{`${(localSettings?.secondaryCurrencySymbol || '')} ${rate.rate.toFixed(2)}`}</TableCell>
                                             </TableRow>
                                         )) : (
