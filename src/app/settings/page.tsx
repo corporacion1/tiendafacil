@@ -13,13 +13,13 @@ import { Switch } from "@/components/ui/switch";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Unit, Family, Warehouse, CurrencyRate, Product, Settings } from "@/lib/types";
+import { Unit, Family, Warehouse, CurrencyRate, Product, Settings, Sale } from "@/lib/types";
 import { Pencil, PlusCircle, Trash2, AlertTriangle, Database, Package, ImageOff } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { businessCategories, initialUnits, initialFamilies, initialWarehouses, mockProducts, defaultStore, mockCurrencyRates, forceSeedDatabase, factoryReset, defaultUsers } from "@/lib/data";
+import { businessCategories, initialUnits, initialFamilies, initialWarehouses, mockProducts, defaultStore, mockCurrencyRates, forceSeedDatabase, factoryReset, defaultUsers, mockSales } from "@/lib/data";
 import Image from "next/image";
 import { getDisplayImageUrl } from "@/lib/utils";
 
@@ -120,6 +120,7 @@ export default function SettingsPage() {
     const [imageError, setImageError] = useState(false);
 
     const [products, setProducts] = useState<Product[]>(mockProducts);
+    const [sales, setSales] = useState<Sale[]>(mockSales); // State for sales
     const [localUnits, setLocalUnits] = useState<Unit[]>(initialUnits.map(u => ({...u, storeId: activeStoreId})));
     const [localFamilies, setLocalFamilies] = useState<Family[]>(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
     const [localWarehouses, setLocalWarehouses] = useState<Warehouse[]>(initialWarehouses.map(w => ({...w, storeId: activeStoreId})));
@@ -499,6 +500,11 @@ export default function SettingsPage() {
         });
     }
 
+    const nextSaleCorrelative = useMemo(() => {
+        const currentCount = sales?.length || 0;
+        return (currentCount + 1).toString().padStart(3, '0');
+    }, [sales]);
+
     return (
         <div className="grid gap-6">
             <Card>
@@ -573,7 +579,7 @@ export default function SettingsPage() {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="saleCorrelative">Próximo Correlativo</Label>
-                            <Input id="saleCorrelative" type="number" value={localSettings?.saleCorrelative || 0} readOnly />
+                            <Input id="saleCorrelative" type="text" value={nextSaleCorrelative} readOnly />
                              <CardDescription>El número de la próxima venta. Se actualiza automáticamente.</CardDescription>
                         </div>
                     </div>
