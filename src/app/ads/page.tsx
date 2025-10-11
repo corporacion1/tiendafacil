@@ -42,7 +42,7 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
     const getFormattedDate = (date: any) => {
         if (!date) return 'Nunca';
         const dateObj = typeof date === 'string' ? new Date(date) : date.toDate ? date.toDate() : new Date(date);
-        return format(dateObj, "dd/MM/yyyy");
+        return format(dateObj, "dd/MM/yyyy HH:mm");
     };
 
     return (

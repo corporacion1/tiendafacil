@@ -152,7 +152,7 @@ export default function CreditsPage() {
     const getFormattedDate = (date: any) => {
         if (!date) return '';
         const dateObj = typeof date === 'string' ? parseISO(date) : date.toDate ? date.toDate() : new Date(date);
-        return format(dateObj, "dd/MM/yyyy");
+        return format(dateObj, "dd/MM/yyyy HH:mm");
     };
 
     const getFormattedDateTime = (date: any) => {

@@ -420,7 +420,7 @@ export default function ReportsPage() {
               <TableBody>
                 {filteredSales.map((sale) => (
                   <TableRow key={sale.id}>
-                    <TableCell>{isClient ? format(getDate(sale.date), 'dd/MM/yyyy') : '...'}</TableCell>
+                    <TableCell>{isClient ? format(getDate(sale.date), 'dd/MM/yyyy HH:mm') : '...'}</TableCell>
                     <TableCell className="font-medium">{sale.id}</TableCell>
                     <TableCell>{sale.customerName}</TableCell>
                     <TableCell className="text-right">{activeSymbol}{(sale.total * activeRate).toFixed(2)}</TableCell>
@@ -474,7 +474,7 @@ export default function ReportsPage() {
                     <TableBody>
                         {filteredPurchases.map((purchase) => (
                             <TableRow key={purchase.id}>
-                                <TableCell>{isClient ? format(getDate(purchase.date), 'dd/MM/yyyy') : '...'}</TableCell>
+                                <TableCell>{isClient ? format(getDate(purchase.date), 'dd/MM/yyyy HH:mm') : '...'}</TableCell>
                                 <TableCell className="font-medium">{purchase.id}</TableCell>
                                 <TableCell>{purchase.supplierName}</TableCell>
                                 <TableCell className="text-right">{activeSymbol}{(purchase.total * activeRate).toFixed(2)}</TableCell>
@@ -560,7 +560,7 @@ export default function ReportsPage() {
                                         {movement.type === 'sale' ? 'Salida' : movement.type === 'purchase' ? 'Entrada(Compra)' : 'Ajuste'}
                                     </Badge>
                                 </TableCell>
-                                <TableCell className="hidden md:table-cell">{isClient ? format(getDate(movement.date), 'dd/MM/yyyy') : '...'}</TableCell>
+                                <TableCell className="hidden md:table-cell">{isClient ? format(getDate(movement.date), 'dd/MM/yyyy HH:mm') : '...'}</TableCell>
                                 <TableCell className="text-right">{movement.quantity}</TableCell>
                             </TableRow>
                         ))}

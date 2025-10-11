@@ -23,7 +23,7 @@ import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { isPast } from "date-fns";
+import { isPast, format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useUser } from "@/firebase";
@@ -463,7 +463,7 @@ export default function CatalogPage() {
                                                                     <div className="flex justify-between items-start">
                                                                         <div>
                                                                             <p className="font-semibold">{order.id}</p>
-                                                                            <p className="text-sm text-muted-foreground">{new Date(order.date).toLocaleString()}</p>
+                                                                            <p className="text-sm text-muted-foreground">{isClient ? format(new Date(order.date), 'dd/MM/yyyy HH:mm') : '...'}</p>
                                                                         </div>
                                                                         <div className="flex items-center gap-1">
                                                                             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleReShowQR(order.id)}>
