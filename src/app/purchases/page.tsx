@@ -301,230 +301,231 @@ export default function PurchasesPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
-        <Card>
-          <CardHeader className="flex flex-row justify-between items-center">
-            <CardTitle>Orden de Compra</CardTitle>
-            {purchaseItems.length > 0 && (
-                 <AlertDialog>
+      <div className="grid auto-rows-max items-start gap-4 lg:col-span-2">
+        <div className="h-full">
+            <Card className="flex flex-col h-full">
+            <CardHeader className="flex flex-row justify-between items-center">
+                <CardTitle>Orden de Compra</CardTitle>
+                {purchaseItems.length > 0 && (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm">
+                                <Trash2 className="mr-2 h-4 w-4" /> Vaciar
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>¿Vaciar la orden?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Esto eliminará todos los productos. ¿Estás seguro?
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={clearPurchase}>Sí, vaciar</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden p-6 pt-0">
+                <div className="space-y-2">
+                    <Label htmlFor="supplier">Proveedor *</Label>
+                    <div className="flex gap-2">
+                        <Popover open={isSupplierSearchOpen} onOpenChange={setIsSupplierSearchOpen}>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" role="combobox" className="w-full justify-between">
+                                    { isLoading ? "Cargando..." : (selectedSupplier ? selectedSupplier.name : "Seleccionar proveedor...") }
+                                    <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                <Command>
+                                    <CommandInput placeholder="Buscar proveedor..." />
+                                    <CommandList>
+                                        <CommandEmpty>No se encontraron proveedores.</CommandEmpty>
+                                        <CommandGroup>
+                                            {(suppliers || []).map((supplier) => (
+                                                <CommandItem
+                                                    key={supplier.id}
+                                                    value={supplier.name}
+                                                    onSelect={() => { setSelectedSupplierId(supplier.id); setIsSupplierSearchOpen(false); }}
+                                                >
+                                                    <Check className={cn("mr-2 h-4 w-4", selectedSupplierId === supplier.id ? "opacity-100" : "opacity-0")}/>
+                                                    {supplier.name}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+
+                        <Dialog open={isSupplierDialogOpen} onOpenChange={setIsSupplierDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" size="icon">
+                                    <PlusCircle className="h-4 w-4" />
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Agregar Nuevo Proveedor</DialogTitle>
+                                </DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="new-supplier-id" className="text-right">ID (Opcional)</Label>
+                                        <Input id="new-supplier-id" value={newSupplier.id} onChange={(e) => setNewSupplier(prev => ({ ...prev, id: e.target.value }))} className="col-span-3" placeholder="ID Fiscal o RIF" />
+                                    </div>
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="new-supplier-name" className="text-right">Nombre*</Label>
+                                        <Input id="new-supplier-name" value={newSupplier.name} onChange={(e) => setNewSupplier(prev => ({ ...prev, name: e.target.value }))} className="col-span-3" required />
+                                    </div>
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="new-supplier-phone" className="text-right">Teléfono</Label>
+                                        <Input id="new-supplier-phone" value={newSupplier.phone} onChange={(e) => setNewSupplier(prev => ({ ...prev, phone: e.target.value }))} className="col-span-3" />
+                                    </div>
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="new-supplier-address" className="text-right">Dirección</Label>
+                                        <Input id="new-supplier-address" value={newSupplier.address} onChange={(e) => setNewSupplier(prev => ({ ...prev, address: e.target.value }))} className="col-span-3" />
+                                    </div>
+                                </div>
+                                <DialogFooter>
+                                    <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
+                                    <Button onClick={handleAddNewSupplier} disabled={!isNewSupplierFormDirty || !newSupplier.name.trim()}>Guardar Proveedor</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
+                </div>
+
+                <div className="space-y-2">
+                    <Label htmlFor="document-number">Número de Documento *</Label>
+                    <Input 
+                        id="document-number" 
+                        value={documentNumber} 
+                        onChange={(e) => {
+                            setDocumentNumber(e.target.value);
+                            if(documentNumberError) setDocumentNumberError(null);
+                        }} 
+                        onBlur={handleDocumentNumberBlur}
+                        placeholder="Ej: FACT-00123" 
+                        required
+                    />
+                    {documentNumberError && <p className="text-sm font-medium text-destructive">{documentNumberError}</p>}
+                </div>
+
+                <div className="space-y-2">
+                    <Label htmlFor="responsible">Responsable *</Label>
+                    <Input id="responsible" value={responsible} onChange={(e) => setResponsible(e.target.value)} placeholder="Nombre del comprador" required/>
+                </div>
+                
+                <Separator />
+
+                <div className="flex-1 overflow-y-auto pr-2">
+                    {purchaseItems.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-8">
+                            <PackagePlus className="h-12 w-12 mb-4" />
+                            <p>Tu orden de compra está vacía.</p>
+                            <p className="text-sm">Agrega productos para comenzar.</p>
+                        </div>
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                <TableHead>Producto</TableHead>
+                                <TableHead className="w-[60px]">Cant.</TableHead>
+                                <TableHead className="w-[90px]">Costo</TableHead>
+                                <TableHead className="w-[90px] text-right">Subtotal</TableHead>
+                                <TableHead className="w-[40px]"></TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {purchaseItems.map((item) => (
+                                <TableRow key={item.productId}>
+                                    <TableCell className="font-medium text-xs">{item.productName}</TableCell>
+                                    <TableCell>
+                                    <Input
+                                        type="number"
+                                        value={item.quantity}
+                                        onChange={(e) => updateItem(item.productId, 'quantity', parseInt(e.target.value))}
+                                        className="h-8 w-14"
+                                        min="1"
+                                    />
+                                    </TableCell>
+                                    <TableCell>
+                                    <Input
+                                        type="number"
+                                        step="0.01"
+                                        value={(item.cost * activeRate).toFixed(2)}
+                                        onChange={(e) => updateItem(item.productId, 'cost', parseFloat(e.target.value))}
+                                        className="h-8 w-20"
+                                        min="0"
+                                    />
+                                    </TableCell>
+                                    <TableCell className="text-right font-mono text-xs">{activeSymbol}{(item.cost * item.quantity * activeRate).toFixed(2)}</TableCell>
+                                    <TableCell>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeProduct(item.productId)}>
+                                            <Trash2 className="h-4 w-4 text-destructive"/>
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    )}
+                </div>
+            </CardContent>
+            <CardFooter className="flex flex-col gap-2 mt-auto border-t p-6">
+                {purchaseItems.length > 0 && (
+                    <>
+                        <div className="w-full space-y-2 text-sm">
+                            <div className="flex justify-between">
+                                <span>Subtotal</span>
+                                <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
+                            </div>
+                            {settings?.tax1 && settings.tax1 > 0 && tax1Amount > 0 && (
+                                <div className="flex justify-between">
+                                    <span>Impuesto {settings.tax1}%</span>
+                                    <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</span>
+                                </div>
+                            )}
+                            {settings?.tax2 && settings.tax2 > 0 && tax2Amount > 0 && (
+                                <div className="flex justify-between">
+                                    <span>Impuesto {settings.tax2}%</span>
+                                    <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
+                                </div>
+                            )}
+                            <Separator />
+                            <div className="flex justify-between font-bold text-lg">
+                                <span>Total</span>
+                                <span>{activeSymbol}{(totalCost * activeRate).toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </>
+                )}
+                <AlertDialog>
                     <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm">
-                            <Trash2 className="mr-2 h-4 w-4" /> Vaciar
+                        <Button className="w-full bg-primary hover:bg-primary/90 mt-4" size="lg" disabled={!isFormComplete}>
+                            Procesar Compra
                         </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                         <AlertDialogHeader>
-                        <AlertDialogTitle>¿Vaciar la orden?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Esto eliminará todos los productos. ¿Estás seguro?
-                        </AlertDialogDescription>
+                            <AlertDialogTitle>¿Confirmar Compra?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Estás a punto de registrar una compra por un total de <span className="font-bold">{activeSymbol}{(totalCost * activeRate).toFixed(2)}</span>. 
+                                Esta acción actualizará el stock y el costo de los productos. ¿Estás seguro?
+                            </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={clearPurchase}>Sí, vaciar</AlertDialogAction>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleProcessPurchase}>Sí, procesar compra</AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
-            )}
-          </CardHeader>
-          <CardContent className="space-y-4">
-             <div className="space-y-2">
-                <Label htmlFor="supplier">Proveedor *</Label>
-                <div className="flex gap-2">
-                    <Popover open={isSupplierSearchOpen} onOpenChange={setIsSupplierSearchOpen}>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline" role="combobox" className="w-full justify-between">
-                                { isLoading ? "Cargando..." : (selectedSupplier ? selectedSupplier.name : "Seleccionar proveedor...") }
-                                <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                            <Command>
-                                <CommandInput placeholder="Buscar proveedor..." />
-                                <CommandList>
-                                    <CommandEmpty>No se encontraron proveedores.</CommandEmpty>
-                                    <CommandGroup>
-                                        {(suppliers || []).map((supplier) => (
-                                            <CommandItem
-                                                key={supplier.id}
-                                                value={supplier.name}
-                                                onSelect={() => { setSelectedSupplierId(supplier.id); setIsSupplierSearchOpen(false); }}
-                                            >
-                                                <Check className={cn("mr-2 h-4 w-4", selectedSupplierId === supplier.id ? "opacity-100" : "opacity-0")}/>
-                                                {supplier.name}
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                    </Popover>
-
-                    <Dialog open={isSupplierDialogOpen} onOpenChange={setIsSupplierDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="outline" size="icon">
-                                <PlusCircle className="h-4 w-4" />
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Agregar Nuevo Proveedor</DialogTitle>
-                            </DialogHeader>
-                            <div className="grid gap-4 py-4">
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="new-supplier-id" className="text-right">ID (Opcional)</Label>
-                                    <Input id="new-supplier-id" value={newSupplier.id} onChange={(e) => setNewSupplier(prev => ({ ...prev, id: e.target.value }))} className="col-span-3" placeholder="ID Fiscal o RIF" />
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="new-supplier-name" className="text-right">Nombre*</Label>
-                                    <Input id="new-supplier-name" value={newSupplier.name} onChange={(e) => setNewSupplier(prev => ({ ...prev, name: e.target.value }))} className="col-span-3" required />
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="new-supplier-phone" className="text-right">Teléfono</Label>
-                                    <Input id="new-supplier-phone" value={newSupplier.phone} onChange={(e) => setNewSupplier(prev => ({ ...prev, phone: e.target.value }))} className="col-span-3" />
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="new-supplier-address" className="text-right">Dirección</Label>
-                                    <Input id="new-supplier-address" value={newSupplier.address} onChange={(e) => setNewSupplier(prev => ({ ...prev, address: e.target.value }))} className="col-span-3" />
-                                </div>
-                            </div>
-                            <DialogFooter>
-                                <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-                                <Button onClick={handleAddNewSupplier} disabled={!isNewSupplierFormDirty || !newSupplier.name.trim()}>Guardar Proveedor</Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
-                </div>
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="document-number">Número de Documento *</Label>
-                <Input 
-                    id="document-number" 
-                    value={documentNumber} 
-                    onChange={(e) => {
-                        setDocumentNumber(e.target.value);
-                        if(documentNumberError) setDocumentNumberError(null);
-                    }} 
-                    onBlur={handleDocumentNumberBlur}
-                    placeholder="Ej: FACT-00123" 
-                    required
-                />
-                {documentNumberError && <p className="text-sm font-medium text-destructive">{documentNumberError}</p>}
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="responsible">Responsable *</Label>
-                <Input id="responsible" value={responsible} onChange={(e) => setResponsible(e.target.value)} placeholder="Nombre del comprador" required/>
-            </div>
-            
-            <Separator />
-
-            <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
-                {purchaseItems.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-8">
-                        <PackagePlus className="h-12 w-12 mb-4" />
-                        <p>Tu orden de compra está vacía.</p>
-                        <p className="text-sm">Agrega productos para comenzar.</p>
-                    </div>
-                ) : (
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                            <TableHead>Producto</TableHead>
-                            <TableHead className="w-[60px]">Cant.</TableHead>
-                            <TableHead className="w-[90px]">Costo</TableHead>
-                            <TableHead className="w-[90px] text-right">Subtotal</TableHead>
-                            <TableHead className="w-[40px]"></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {purchaseItems.map((item) => (
-                            <TableRow key={item.productId}>
-                                <TableCell className="font-medium text-xs">{item.productName}</TableCell>
-                                <TableCell>
-                                <Input
-                                    type="number"
-                                    value={item.quantity}
-                                    onChange={(e) => updateItem(item.productId, 'quantity', parseInt(e.target.value))}
-                                    className="h-8 w-14"
-                                    min="1"
-                                />
-                                </TableCell>
-                                <TableCell>
-                                <Input
-                                    type="number"
-                                    step="0.01"
-                                    value={(item.cost * activeRate).toFixed(2)}
-                                    onChange={(e) => updateItem(item.productId, 'cost', parseFloat(e.target.value))}
-                                    className="h-8 w-20"
-                                    min="0"
-                                />
-                                </TableCell>
-                                <TableCell className="text-right font-mono text-xs">{activeSymbol}{(item.cost * item.quantity * activeRate).toFixed(2)}</TableCell>
-                                <TableCell>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeProduct(item.productId)}>
-                                        <Trash2 className="h-4 w-4 text-destructive"/>
-                                    </Button>
-                                </TableCell>
-                            </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                )}
-            </div>
-             {purchaseItems.length > 0 && (
-                <>
-                    <Separator />
-                    <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                            <span>Subtotal</span>
-                            <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
-                        </div>
-                        {settings?.tax1 && settings.tax1 > 0 && tax1Amount > 0 && (
-                            <div className="flex justify-between">
-                                <span>Impuesto {settings.tax1}%</span>
-                                <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</span>
-                            </div>
-                        )}
-                        {settings?.tax2 && settings.tax2 > 0 && tax2Amount > 0 && (
-                            <div className="flex justify-between">
-                                <span>Impuesto {settings.tax2}%</span>
-                                <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
-                            </div>
-                        )}
-                        <Separator />
-                        <div className="flex justify-between font-bold text-lg">
-                            <span>Total</span>
-                            <span>{activeSymbol}{(totalCost * activeRate).toFixed(2)}</span>
-                        </div>
-                    </div>
-                </>
-            )}
-          </CardContent>
-          <CardFooter>
-            <AlertDialog>
-                <AlertDialogTrigger asChild>
-                    <Button className="w-full bg-primary hover:bg-primary/90" size="lg" disabled={!isFormComplete}>
-                        Procesar Compra
-                    </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>¿Confirmar Compra?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Estás a punto de registrar una compra por un total de <span className="font-bold">{activeSymbol}{(totalCost * activeRate).toFixed(2)}</span>. 
-                            Esta acción actualizará el stock y el costo de los productos. ¿Estás seguro?
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleProcessPurchase}>Sí, procesar compra</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-          </CardFooter>
-        </Card>
+            </CardFooter>
+            </Card>
+        </div>
       </div>
     </div>
   );

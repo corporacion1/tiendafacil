@@ -454,7 +454,7 @@ export default function POSPage() {
         </Card>
       </div>
       <div className="grid auto-rows-max items-start gap-4 lg:col-span-2">
-        <div className="h-[calc(100vh_-_theme(spacing.16))]">
+        <div className="h-full">
             <Card className="flex flex-col h-full">
             <CardHeader className="flex flex-row justify-between items-center">
                 <CardTitle>Carrito de Compra</CardTitle>
