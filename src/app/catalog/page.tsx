@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -121,7 +120,7 @@ export default function CatalogPage() {
     const { toast } = useToast();
     const { user, isUserLoading } = useUser();
     const router = useRouter();
-    const { settings, activeSymbol, activeRate, isLoadingSettings } = useSettings();
+    const { settings, activeSymbol, activeRate, isLoadingSettings, userProfile } = useSettings();
 
     const [products, setProducts] = useState<Product[]>(mockProducts.map(p => ({...p, storeId: defaultStoreId, createdAt: new Date().toISOString()})));
     const [families, setFamilies] = useState<Family[]>(initialFamilies.map(f => ({...f, storeId: defaultStoreId})));

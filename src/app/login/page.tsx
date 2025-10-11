@@ -6,6 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Logo } from '@/components/logo';
+import { useRouter } from "next/navigation";
+import { useSettings } from "@/contexts/settings-context";
 
 const GoogleIcon = () => (
     <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -19,17 +21,28 @@ const GoogleIcon = () => (
 
 export function LoginModal({ children }: { children: React.ReactNode }) {
     const auth = useAuth();
+    const router = useRouter();
     const { toast } = useToast();
+    const { userProfile } = useSettings();
 
     const handleGoogleSignIn = async () => {
         const provider = new GoogleAuthProvider();
         try {
-            await signInWithPopup(auth, provider);
+            const result = await signInWithPopup(auth, provider);
+            
+            // This is a local simulation. A real app would fetch the user's role from a database.
+            const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'superAdmin';
+
             toast({
                 title: "¡Bienvenido!",
                 description: "Has iniciado sesión correctamente.",
             });
-            // The modal will close automatically if it's part of a Dialog that closes on successful login
+
+            if (isAdmin) {
+                router.push('/dashboard');
+            }
+            // If not an admin, they stay on the catalog page. The modal will close.
+            
         } catch (error: any) {
             console.error("Error during Google sign-in:", error);
             toast({
