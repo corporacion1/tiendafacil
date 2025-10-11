@@ -135,7 +135,7 @@ export default function POSPage() {
             if(product.tax1 && settings.tax1 && settings.tax1 > 0) {
                 tax1Amount += itemSubtotal * (settings.tax1 / 100);
             }
-            if(product.tax2 && settings.tax2 && settings.tax2 > 0) {
+            if(product.tax2 && settings.tax2 > 0) {
                 tax2Amount += itemSubtotal * (settings.tax2 / 100);
             }
         }
@@ -553,7 +553,7 @@ export default function POSPage() {
 
             <div className="flex-1 space-y-4 overflow-y-auto pr-2 min-h-[200px]">
                 {cartItems.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-8 h-full">
+                    <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-4 h-full">
                         <PackagePlus className="h-12 w-12 mb-4" />
                         <p>Tu carrito está vacío.</p>
                         <p className="text-sm">Agrega productos para comenzar.</p>
@@ -674,5 +674,3 @@ export default function POSPage() {
     </div>
   );
 }
-
-    
