@@ -385,9 +385,9 @@ export default function SettingsPage() {
                 <CardContent>
                     <div className="space-y-2">
                         {(items || []).map(item => (
-                            <div key={item.id} className="flex items-center justify-between gap-2 p-2 border rounded-md">
-                               <span>{item.name}</span>
-                               <div className="flex gap-1">
+                            <div key={item.id} className="flex items-center gap-2 p-2 border rounded-md">
+                               <span className="flex-grow">{item.name}</span>
+                               <div className="flex-shrink-0 flex gap-1">
                                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingItem(item)}>
                                         <Pencil className="h-4 w-4" />
                                     </Button>
