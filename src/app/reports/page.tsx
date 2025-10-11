@@ -141,9 +141,9 @@ export default function ReportsPage() {
         switch (activeTab) {
             case 'sales':
                 dataToExport = filteredSales.map(s => ({
+                    fecha: getDate(s.date).toISOString(),
                     id: s.id,
                     cliente: s.customerName,
-                    fecha: getDate(s.date).toISOString(),
                     total: (s.total * activeRate).toFixed(2),
                     tipo: s.transactionType,
                     estado: s.status
@@ -151,9 +151,9 @@ export default function ReportsPage() {
                 break;
             case 'purchases':
                 dataToExport = filteredPurchases.map(p => ({
+                  fecha: getDate(p.date).toISOString(),
                   id: p.id,
                   proveedor: p.supplierName,
-                  fecha: getDate(p.date).toISOString(),
                   total: (p.total * activeRate).toFixed(2),
                   documento: p.documentNumber,
                   responsable: p.responsible
@@ -402,9 +402,9 @@ export default function ReportsPage() {
             {!isLoading && <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Fecha</TableHead>
                   <TableHead>ID Venta</TableHead>
                   <TableHead>Cliente</TableHead>
-                  <TableHead className="hidden md:table-cell">Fecha</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead>
                     <span className="sr-only">Acciones</span>
@@ -414,9 +414,9 @@ export default function ReportsPage() {
               <TableBody>
                 {filteredSales.map((sale) => (
                   <TableRow key={sale.id}>
+                    <TableCell>{format(getDate(sale.date), 'dd/MM/yyyy')}</TableCell>
                     <TableCell className="font-medium">{sale.id}</TableCell>
                     <TableCell>{sale.customerName}</TableCell>
-                    <TableCell className="hidden md:table-cell">{format(getDate(sale.date), 'dd/MM/yyyy')}</TableCell>
                     <TableCell className="text-right">{activeSymbol}{(sale.total * activeRate).toFixed(2)}</TableCell>
                     <TableCell>
                       <DropdownMenu>
@@ -459,18 +459,18 @@ export default function ReportsPage() {
                 {!isLoading && <Table>
                     <TableHeader>
                         <TableRow>
+                            <TableHead>Fecha</TableHead>
                             <TableHead>ID Compra</TableHead>
                             <TableHead>Proveedor</TableHead>
-                            <TableHead className="hidden md:table-cell">Fecha</TableHead>
                             <TableHead className="text-right">Total</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filteredPurchases.map((purchase) => (
                             <TableRow key={purchase.id}>
+                                <TableCell>{format(getDate(purchase.date), 'dd/MM/yyyy')}</TableCell>
                                 <TableCell className="font-medium">{purchase.id}</TableCell>
                                 <TableCell>{purchase.supplierName}</TableCell>
-                                <TableCell className="hidden md:table-cell">{format(getDate(purchase.date), 'dd/MM/yyyy')}</TableCell>
                                 <TableCell className="text-right">{activeSymbol}{(purchase.total * activeRate).toFixed(2)}</TableCell>
                             </TableRow>
                         ))}
@@ -690,5 +690,3 @@ export default function ReportsPage() {
     </>
   );
 }
-
-    
