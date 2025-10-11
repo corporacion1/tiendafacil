@@ -1,8 +1,9 @@
+
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid, Instagram, Star, Search, UserPlus, QrCode, ZoomIn, Pencil, ArrowRight, RefreshCw, UserCircle, LogOut, MoreHorizontal } from "lucide-react";
+import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid, Instagram, Star, Search, UserPlus, QrCode, ZoomIn, Pencil, ArrowRight, RefreshCw, UserCircle, LogOut, MoreHorizontal, Copy } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
@@ -139,6 +140,7 @@ export default function CatalogPage() {
     const [orderIdForQr, setOrderIdForQr] = useState<string | null>(null);
     const [qrCodeUrl, setQrCodeUrl] = useState('');
     const [shareQrCodeUrl, setShareQrCodeUrl] = useState('');
+    const [shareUrl, setShareUrl] = useState('');
 
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
@@ -313,6 +315,7 @@ export default function CatalogPage() {
     const generateShareQrCode = async () => {
         try {
             const url = window.location.href;
+            setShareUrl(url);
             const dataUrl = await QRCode.toDataURL(url);
             setShareQrCodeUrl(dataUrl);
         } catch (err) {
@@ -413,7 +416,7 @@ export default function CatalogPage() {
                                     <DialogHeader>
                                         <DialogTitle>Comparte este Catálogo</DialogTitle>
                                         <DialogDescription>
-                                            Escanea este código QR con otro dispositivo para abrir este catálogo.
+                                            Escanea este código QR con otro dispositivo para abrir este catálogo, o copia el enlace.
                                         </DialogDescription>
                                     </DialogHeader>
                                     <div className="flex items-center justify-center p-4">
@@ -423,6 +426,20 @@ export default function CatalogPage() {
                                             <p>Generando código QR...</p>
                                         )}
                                     </div>
+                                    {shareUrl && (
+                                        <div className="space-y-2">
+                                            <Label htmlFor="share-url">Enlace para Compartir</Label>
+                                            <div className="flex gap-2">
+                                                <Input id="share-url" value={shareUrl} readOnly />
+                                                <Button variant="outline" size="icon" onClick={() => {
+                                                    navigator.clipboard.writeText(shareUrl);
+                                                    toast({ title: 'Enlace copiado al portapapeles.' });
+                                                }}>
+                                                    <Copy className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
                                      <DialogFooter>
                                         <DialogClose asChild><Button>Cerrar</Button></DialogClose>
                                     </DialogFooter>
