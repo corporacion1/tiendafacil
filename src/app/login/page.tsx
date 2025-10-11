@@ -26,11 +26,20 @@ export function LoginModal({ children }: { children: React.ReactNode }) {
     const { userProfile } = useSettings();
 
     const handleGoogleSignIn = async () => {
+        // NOTE: This functionality will be fully implemented in the next step.
+        // For now, it just shows a toast.
+        toast({
+            title: "Función en desarrollo",
+            description: "El inicio de sesión con Google se habilitará pronto.",
+        });
+
+        // Example of future logic:
+        /*
         const provider = new GoogleAuthProvider();
         try {
             const result = await signInWithPopup(auth, provider);
             
-            // This is a local simulation. A real app would fetch the user's role from a database.
+            // Logic to create user profile, check roles, etc.
             const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'superAdmin';
 
             toast({
@@ -41,7 +50,7 @@ export function LoginModal({ children }: { children: React.ReactNode }) {
             if (isAdmin) {
                 router.push('/dashboard');
             }
-            // If not an admin, they stay on the catalog page. The modal will close.
+            // If not an admin, the modal will just close.
             
         } catch (error: any) {
             console.error("Error during Google sign-in:", error);
@@ -51,6 +60,7 @@ export function LoginModal({ children }: { children: React.ReactNode }) {
                 description: error.message || "No se pudo iniciar sesión con Google.",
             });
         }
+        */
     };
 
     return (
