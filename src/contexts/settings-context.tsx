@@ -63,12 +63,14 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
             let userProfileData: UserProfile;
 
             if (profile) {
+                // User exists, use their profile
                 userProfileData = {
                     ...profile,
                     uid: user.uid,
                     photoURL: user.photoURL,
                     phone: user.phoneNumber,
-                    createdAt: new Date().toISOString()
+                    displayName: user.displayName, // Ensure display name is updated from provider
+                    createdAt: profile.createdAt || new Date().toISOString()
                 };
             } else {
                  // If not found, create a new 'user' profile for them
@@ -78,21 +80,29 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                     email: user.email,
                     photoURL: user.photoURL,
                     phone: user.phoneNumber,
-                    role: 'user',
+                    role: 'user', // Default role for new users
                     status: 'active',
                     createdAt: new Date().toISOString(),
                     storeId: activeStoreId, // Assign current store ID
                 };
                 // Add to mock data for session consistency
                 defaultUsers.push(userProfileData);
+                 toast({
+                    title: "¡Cuenta Creada!",
+                    description: "Tu perfil de usuario ha sido creado.",
+                });
             }
             setUserProfile(userProfileData);
             
             // Redirect admin/superAdmin to dashboard after login
             if (userProfileData.role === 'admin' || userProfileData.role === 'superAdmin') {
-                router.push('/dashboard');
+                const currentPath = window.location.pathname;
+                if (currentPath !== '/dashboard') {
+                    router.push('/dashboard');
+                }
             }
         } else {
+            // No user is logged in
             setUserProfile(null);
         }
     }
@@ -103,7 +113,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     
     setTimeout(() => setIsLoadingSettings(false), 300);
 
-  }, [user, isUserLoading, activeStoreId, router]);
+  }, [user, isUserLoading, activeStoreId, router, toast]);
 
 
   const handleSetSettings = (newSettings: Settings) => {
