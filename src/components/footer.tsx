@@ -48,7 +48,7 @@ export function Footer() {
 
   return (
     <footer className="mt-auto border-t bg-background px-4 py-4 sm:px-6">
-      <div className="container mx-auto flex flex-col items-center justify-between gap-4 sm:flex-row">
+      <div className="container mx-auto flex flex-col items-center justify-center gap-4 sm:flex-row sm:justify-between">
         <p className="text-center text-sm leading-loose text-muted-foreground sm:text-left">
           © {new Date().getFullYear()} Corporación 1 Plus, CA. Todos los derechos reservados.
         </p>
