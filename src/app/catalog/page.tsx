@@ -622,13 +622,13 @@ export default function CatalogPage() {
                     </div>
 
                     {isLoading ? (
-                         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                            {[...Array(8)].map((_, i) => (
+                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+                            {[...Array(12)].map((_, i) => (
                                  <Card key={i} className="animate-pulse"><div className="aspect-square bg-muted rounded-t-lg"></div><div className="p-4 space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-8 bg-muted rounded w-full"></div></div></Card>
                             ))}
                         </div>
                     ) : (
-                         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
                             {itemsForGrid.map((item, index) => {
                                 if ('views' in item) { // This is an Ad
                                     return <AdCard key={`ad-${item.id}-${index}`} ad={item} />;
