@@ -316,7 +316,7 @@ export default function CatalogPage() {
         try {
             const url = window.location.href;
             setShareUrl(url);
-            const dataUrl = await QRCode.toDataURL(url);
+            const dataUrl = await QRCode.toDataURL(url, { width: 256 });
             setShareQrCodeUrl(dataUrl);
         } catch (err) {
             console.error(err);
@@ -407,9 +407,9 @@ export default function CatalogPage() {
                         <div className="flex items-center gap-2">
                              <Dialog>
                                 <DialogTrigger asChild>
-                                    <Button variant="outline" onClick={generateShareQrCode}>
-                                        <QrCode className="mr-2 h-4 w-4" />
-                                        Compartir
+                                    <Button variant="outline" size="icon" className="sm:size-auto sm:px-4" onClick={generateShareQrCode}>
+                                        <QrCode className="h-4 w-4 sm:mr-2" />
+                                        <span className="sr-only sm:not-sr-only">Compartir</span>
                                     </Button>
                                 </DialogTrigger>
                                 <DialogContent>
@@ -447,9 +447,9 @@ export default function CatalogPage() {
                             </Dialog>
                             <Sheet>
                                 <SheetTrigger asChild>
-                                    <Button id="cart-sheet-trigger" variant="outline" className="relative">
-                                        <ShoppingBag className="mr-2" />
-                                        <span>Ver Pedido</span>
+                                    <Button id="cart-sheet-trigger" variant="outline" size="icon" className="sm:size-auto sm:px-4 relative">
+                                        <ShoppingBag className="h-4 w-4 sm:mr-2" />
+                                        <span className="sr-only sm:not-sr-only">Ver Pedido</span>
                                         {cart.length > 0 && (
                                             <Badge className="absolute -right-2 -top-2 h-5 w-5 justify-center p-0">{cart.reduce((acc, item) => acc + item.quantity, 0)}</Badge>
                                         )}
@@ -554,16 +554,19 @@ export default function CatalogPage() {
                                     )}
                                 </SheetContent>
                             </Sheet>
-                            {isUserLoading ? <div className="h-9 w-24 bg-muted rounded-md animate-pulse" /> : user ? (
-                                <Button asChild variant="outline">
+                            {isUserLoading ? <div className="h-9 w-9 sm:w-24 bg-muted rounded-md animate-pulse" /> : user ? (
+                                <Button asChild variant="outline" size="icon" className="sm:size-auto sm:px-4">
                                     <Link href="/dashboard">
-                                        <UserCircle className="mr-2 h-4 w-4" />
-                                        Dashboard
+                                        <UserCircle className="h-4 w-4 sm:mr-2" />
+                                        <span className="sr-only sm:not-sr-only">Dashboard</span>
                                     </Link>
                                 </Button>
                             ) : (
                                 <LoginModal>
-                                    <Button variant="default">Acceder</Button>
+                                    <Button variant="default" size="icon" className="sm:size-auto sm:px-4">
+                                        <UserCircle className="h-4 w-4 sm:mr-2"/>
+                                        <span className="sr-only sm:not-sr-only">Acceder</span>
+                                    </Button>
                                 </LoginModal>
                             )}
                         </div>
