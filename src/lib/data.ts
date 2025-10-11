@@ -26,7 +26,7 @@ export const defaultStore: Store = {
   saleCorrelative: 1,
   tax1: 16,
   tax2: 0,
-  whatsapp: "+584125555555",
+  whatsapp: "+584126915593",
   tiktok: "@tiendafacil",
   meta: "@tiendafacil",
 };
