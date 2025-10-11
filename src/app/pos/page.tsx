@@ -322,7 +322,7 @@ export default function POSPage() {
   };
   
   return (
-    <div className="grid flex-1 items-start gap-4 md:grid-cols-3 lg:gap-8">
+    <div className="grid flex-1 auto-rows-max items-start gap-4 md:grid-cols-3 lg:gap-8">
       <div className="grid auto-rows-max items-start gap-4 md:col-span-2 lg:gap-8">
         <Card>
           <CardHeader>
@@ -479,7 +479,7 @@ export default function POSPage() {
                 </AlertDialog>
             )}
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden">
+          <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden p-6 pt-0">
              <div className="space-y-2">
                 <Label htmlFor="customer">Cliente *</Label>
                 <div className="flex gap-2">
@@ -629,35 +629,35 @@ export default function POSPage() {
                             <span>{activeSymbol}{(total * activeRate).toFixed(2)}</span>
                         </div>
                     </div>
+                     <div className="flex flex-col gap-2 mt-4">
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button className="w-full bg-primary hover:bg-primary/90" size="lg" disabled={!isFormComplete}>
+                                    <Printer className="mr-2 h-4 w-4" /> Procesar Venta
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Confirmar Venta?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Estás a punto de registrar una venta por un total de <span className="font-bold">{activeSymbol}{(total * activeRate).toFixed(2)}</span>. 
+                                        Esta acción actualizará el stock de los productos. ¿Estás seguro?
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleProcessSale(true)}>Sí, procesar e imprimir</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                        <Button className="w-full" variant="secondary" onClick={handlePrintQuote} disabled={cartItems.length === 0}>
+                            <FileText className="mr-2 h-4 w-4" />
+                            Guardar como Cotización
+                        </Button>
+                    </div>
                 </div>
             )}
           </CardContent>
-          <CardFooter className="flex flex-col gap-2 border-t pt-4">
-            <AlertDialog>
-                <AlertDialogTrigger asChild>
-                    <Button className="w-full bg-primary hover:bg-primary/90" size="lg" disabled={!isFormComplete}>
-                        <Printer className="mr-2 h-4 w-4" /> Procesar Venta
-                    </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>¿Confirmar Venta?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Estás a punto de registrar una venta por un total de <span className="font-bold">{activeSymbol}{(total * activeRate).toFixed(2)}</span>. 
-                            Esta acción actualizará el stock de los productos. ¿Estás seguro?
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleProcessSale(true)}>Sí, procesar e imprimir</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-            <Button className="w-full" variant="secondary" onClick={handlePrintQuote} disabled={cartItems.length === 0}>
-                <FileText className="mr-2 h-4 w-4" />
-                Guardar como Cotización
-            </Button>
-          </CardFooter>
         </Card>
         {isPrintPreviewOpen && (
             <TicketPreview
