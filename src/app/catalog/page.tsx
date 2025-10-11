@@ -135,6 +135,9 @@ export default function CatalogPage() {
 
     const [productDetails, setProductDetails] = useState<Product | null>(null);
     const [productImageError, setProductImageError] = useState(false);
+
+    const [productToAdd, setProductToAdd] = useState<Product | null>(null);
+    const [addQuantity, setAddQuantity] = useState(1);
     
     const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
     const [orderIdForQr, setOrderIdForQr] = useState<string | null>(null);
@@ -216,22 +219,28 @@ export default function CatalogPage() {
         };
     }, [isLoading]);
 
-    const addToCart = (product: Product) => {
+    const handleOpenAddToCartDialog = (product: Product) => {
+        setProductToAdd(product);
+        setAddQuantity(1);
+    };
+
+    const addToCart = (product: Product, quantity: number) => {
         setCart(prevCart => {
             const existingItem = prevCart.find(item => item.product.id === product.id);
             if (existingItem) {
                 return prevCart.map(item =>
                     item.product.id === product.id
-                        ? { ...item, quantity: item.quantity + 1 }
+                        ? { ...item, quantity: item.quantity + quantity }
                         : item
                 );
             }
-            return [...prevCart, { product, quantity: 1, price: product.price }];
+            return [...prevCart, { product, quantity, price: product.price }];
         });
         toast({
             title: "Producto Agregado",
-            description: `"${product.name}" fue añadido a tu pedido.`,
+            description: `${quantity} x "${product.name}" fue añadido a tu pedido.`,
         });
+        setProductToAdd(null);
     };
 
     const updateQuantity = (productId: string, newQuantity: number) => {
@@ -634,7 +643,7 @@ export default function CatalogPage() {
                                     return <AdCard key={`ad-${item.id}-${index}`} ad={item} />;
                                 }
                                 // This is a Product
-                                return <CatalogProductCard key={item.id} product={item} onAddToCart={addToCart} onImageClick={handleImageClick} />;
+                                return <CatalogProductCard key={item.id} product={item} onAddToCart={handleOpenAddToCartDialog} onImageClick={handleImageClick} />;
                             })}
                         </div>
                     )}
@@ -749,9 +758,8 @@ export default function CatalogPage() {
                             </DialogClose>
                             <Button onClick={() => {
                                 if(productDetails) {
-                                    addToCart(productDetails);
+                                    handleOpenAddToCartDialog(productDetails);
                                     setProductDetails(null);
-                                    toast({title: `"${productDetails.name}" agregado al pedido`})
                                 }
                             }}>
                                 <ShoppingBag className="mr-2 h-4 w-4" /> Agregar al Pedido
@@ -760,6 +768,41 @@ export default function CatalogPage() {
                         </>
                     )}
                 </DialogContent>
+
+                <Dialog open={!!productToAdd} onOpenChange={(isOpen) => !isOpen && setProductToAdd(null)}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Agregar al Pedido</DialogTitle>
+                            <DialogDescription>
+                                ¿Cuántas unidades de "{productToAdd?.name}" deseas agregar?
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4 space-y-2">
+                            <Label htmlFor="quantity">Cantidad</Label>
+                            <Input
+                                id="quantity"
+                                type="number"
+                                value={addQuantity}
+                                onChange={(e) => setAddQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                                min="1"
+                                className="w-24"
+                                autoFocus
+                            />
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button variant="outline">Cancelar</Button>
+                            </DialogClose>
+                            <Button onClick={() => {
+                                if (productToAdd) {
+                                    addToCart(productToAdd, addQuantity);
+                                }
+                            }}>
+                                Confirmar
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
 
                 <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
                     {settings?.whatsapp && (
@@ -783,3 +826,5 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
+
+    
