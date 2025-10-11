@@ -454,209 +454,211 @@ export default function POSPage() {
         </Card>
       </div>
       <div className="grid auto-rows-max items-start gap-4 lg:col-span-1">
-        <Card className="flex flex-col h-[calc(100vh_-_theme(spacing.28))]">
-          <CardHeader className="flex flex-row justify-between items-center">
-            <CardTitle>Carrito de Compra</CardTitle>
-            {cartItems.length > 0 && (
-                 <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm">
-                            <Trash2 className="mr-2 h-4 w-4" /> Vaciar
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                        <AlertDialogTitle>¿Vaciar el carrito?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Esto eliminará todos los productos. ¿Estás seguro?
-                        </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={clearCart}>Sí, vaciar</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            )}
-          </CardHeader>
-          <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden p-6 pt-0">
-             <div className="space-y-2">
-                <Label htmlFor="customer">Cliente *</Label>
-                <div className="flex gap-2">
-                    <Popover open={isCustomerSearchOpen} onOpenChange={setIsCustomerSearchOpen}>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline" role="combobox" className="w-full justify-between">
-                                { isLoading ? "Cargando..." : (selectedCustomer ? selectedCustomer.name : "Seleccionar cliente...") }
-                                <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                            <Command>
-                                <CommandInput placeholder="Buscar cliente..." />
-                                <CommandList>
-                                    <CommandEmpty>No se encontraron clientes.</CommandEmpty>
-                                    <CommandGroup>
-                                        {[{ id: 'eventual', name: 'Cliente Eventual' }, ...customers].map((customer) => (
-                                            <CommandItem
-                                                key={customer.id}
-                                                value={customer.name}
-                                                onSelect={() => { setSelectedCustomerId(customer.id); setIsCustomerSearchOpen(false); }}
-                                            >
-                                                <Check className={cn("mr-2 h-4 w-4", selectedCustomerId === customer.id ? "opacity-100" : "opacity-0")}/>
-                                                {customer.name}
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                    </Popover>
-
-                    <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="outline" size="icon">
-                                <PlusCircle className="h-4 w-4" />
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>Agregar Nuevo Cliente</DialogTitle>
-                            </DialogHeader>
-                            <div className="grid gap-4 py-4">
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="new-customer-id" className="text-right">ID (Opcional)</Label>
-                                    <Input id="new-customer-id" value={newCustomer.id} onChange={(e) => setNewCustomer(prev => ({ ...prev, id: e.target.value }))} className="col-span-3" placeholder="ID Fiscal o RIF" />
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="new-customer-name" className="text-right">Nombre*</Label>
-                                    <Input id="new-customer-name" value={newCustomer.name} onChange={(e) => setNewCustomer(prev => ({ ...prev, name: e.target.value }))} className="col-span-3" required />
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="new-customer-phone" className="text-right">Teléfono</Label>
-                                    <Input id="new-customer-phone" value={newCustomer.phone} onChange={(e) => setNewCustomer(prev => ({ ...prev, phone: e.target.value }))} className="col-span-3" />
-                                </div>
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <Label htmlFor="new-customer-address" className="text-right">Dirección</Label>
-                                    <Input id="new-customer-address" value={newCustomer.address} onChange={(e) => setNewCustomer(prev => ({ ...prev, address: e.target.value }))} className="col-span-3" />
-                                </div>
-                            </div>
-                            <DialogFooter>
-                                <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-                                <Button onClick={handleAddNewCustomer} disabled={!isNewCustomerFormDirty || !newCustomer.name.trim()}>Guardar Cliente</Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
-                </div>
-            </div>
-            
-            <Separator />
-            <div className="flex-1 overflow-y-auto">
-                {cartItems.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-10 min-h-[150px]">
-                        <PackagePlus className="h-12 w-12 mb-4" />
-                        <p>Tu carrito está vacío.</p>
-                        <p className="text-sm">Agrega productos para comenzar.</p>
-                    </div>
-                ) : (
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                            <TableHead>Producto</TableHead>
-                            <TableHead className="w-[60px]">Cant.</TableHead>
-                            <TableHead className="w-[90px]">Precio</TableHead>
-                            <TableHead className="w-[90px] text-right">Subtotal</TableHead>
-                            <TableHead className="w-[40px]"></TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {cartItems.map((item) => (
-                            <TableRow key={item.product.id}>
-                                <TableCell className="font-medium text-xs">{item.product.name}</TableCell>
-                                <TableCell>
-                                <Input
-                                    type="number"
-                                    value={item.quantity}
-                                    onChange={(e) => updateItem(item.product.id, 'quantity', parseInt(e.target.value))}
-                                    className="h-8 w-14"
-                                    min="1"
-                                />
-                                </TableCell>
-                                <TableCell>
-                                <Input
-                                    type="number"
-                                    step="0.01"
-                                    value={(item.price * activeRate).toFixed(2)}
-                                    onChange={(e) => updateItem(item.product.id, 'price', parseFloat(e.target.value))}
-                                    className="h-8 w-20"
-                                    min="0"
-                                />
-                                </TableCell>
-                                <TableCell className="text-right font-mono text-xs">{activeSymbol}{(item.price * item.quantity * activeRate).toFixed(2)}</TableCell>
-                                <TableCell>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeProduct(item.product.id)}>
-                                        <Trash2 className="h-4 w-4 text-destructive"/>
-                                    </Button>
-                                </TableCell>
-                            </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                )}
-            </div>
-            
-          </CardContent>
-          <CardFooter className="flex flex-col gap-2 mt-auto border-t p-6">
-                 <div className="w-full space-y-2 text-sm">
-                  <div className="flex justify-between">
-                      <span>Subtotal</span>
-                      <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
-                  </div>
-                  {settings?.tax1 && settings.tax1 > 0 && tax1Amount > 0 && (
-                      <div className="flex justify-between">
-                          <span>Impuesto {settings.tax1}%</span>
-                          <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</span>
-                      </div>
-                  )}
-                  {settings?.tax2 && settings.tax2 > 0 && tax2Amount > 0 && (
-                      <div className="flex justify-between">
-                          <span>Impuesto {settings.tax2}%</span>
-                          <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
-                      </div>
-                  )}
-                  <Separator />
-                  <div className="flex justify-between font-bold text-lg">
-                      <span>Total</span>
-                      <span>{activeSymbol}{(total * activeRate).toFixed(2)}</span>
-                  </div>
-              </div>
-                 <div className="flex flex-col gap-2 w-full mt-4">
+        <div className="h-[calc(100vh_-_theme(spacing.28))]">
+            <Card className="flex flex-col h-full">
+            <CardHeader className="flex flex-row justify-between items-center">
+                <CardTitle>Carrito de Compra</CardTitle>
+                {cartItems.length > 0 && (
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
-                            <Button className="w-full bg-primary hover:bg-primary/90" size="lg" disabled={!isFormComplete}>
-                                <Printer className="mr-2 h-4 w-4" /> Procesar Venta
+                            <Button variant="destructive" size="sm">
+                                <Trash2 className="mr-2 h-4 w-4" /> Vaciar
                             </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                             <AlertDialogHeader>
-                                <AlertDialogTitle>¿Confirmar Venta?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    Estás a punto de registrar una venta por un total de <span className="font-bold">{activeSymbol}{(total * activeRate).toFixed(2)}</span>. 
-                                    Esta acción actualizará el stock de los productos. ¿Estás seguro?
-                                </AlertDialogDescription>
+                            <AlertDialogTitle>¿Vaciar el carrito?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Esto eliminará todos los productos. ¿Estás seguro?
+                            </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleProcessSale(true)}>Sí, procesar e imprimir</AlertDialogAction>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={clearCart}>Sí, vaciar</AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
-                    <Button className="w-full" variant="secondary" onClick={handlePrintQuote} disabled={cartItems.length === 0}>
-                        <FileText className="mr-2 h-4 w-4" />
-                        Guardar como Cotización
-                    </Button>
+                )}
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden p-6 pt-0">
+                <div className="space-y-2">
+                    <Label htmlFor="customer">Cliente *</Label>
+                    <div className="flex gap-2">
+                        <Popover open={isCustomerSearchOpen} onOpenChange={setIsCustomerSearchOpen}>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" role="combobox" className="w-full justify-between">
+                                    { isLoading ? "Cargando..." : (selectedCustomer ? selectedCustomer.name : "Seleccionar cliente...") }
+                                    <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                <Command>
+                                    <CommandInput placeholder="Buscar cliente..." />
+                                    <CommandList>
+                                        <CommandEmpty>No se encontraron clientes.</CommandEmpty>
+                                        <CommandGroup>
+                                            {[{ id: 'eventual', name: 'Cliente Eventual' }, ...customers].map((customer) => (
+                                                <CommandItem
+                                                    key={customer.id}
+                                                    value={customer.name}
+                                                    onSelect={() => { setSelectedCustomerId(customer.id); setIsCustomerSearchOpen(false); }}
+                                                >
+                                                    <Check className={cn("mr-2 h-4 w-4", selectedCustomerId === customer.id ? "opacity-100" : "opacity-0")}/>
+                                                    {customer.name}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+
+                        <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" size="icon">
+                                    <PlusCircle className="h-4 w-4" />
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Agregar Nuevo Cliente</DialogTitle>
+                                </DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="new-customer-id" className="text-right">ID (Opcional)</Label>
+                                        <Input id="new-customer-id" value={newCustomer.id} onChange={(e) => setNewCustomer(prev => ({ ...prev, id: e.target.value }))} className="col-span-3" placeholder="ID Fiscal o RIF" />
+                                    </div>
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="new-customer-name" className="text-right">Nombre*</Label>
+                                        <Input id="new-customer-name" value={newCustomer.name} onChange={(e) => setNewCustomer(prev => ({ ...prev, name: e.target.value }))} className="col-span-3" required />
+                                    </div>
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="new-customer-phone" className="text-right">Teléfono</Label>
+                                        <Input id="new-customer-phone" value={newCustomer.phone} onChange={(e) => setNewCustomer(prev => ({ ...prev, phone: e.target.value }))} className="col-span-3" />
+                                    </div>
+                                    <div className="grid grid-cols-4 items-center gap-4">
+                                        <Label htmlFor="new-customer-address" className="text-right">Dirección</Label>
+                                        <Input id="new-customer-address" value={newCustomer.address} onChange={(e) => setNewCustomer(prev => ({ ...prev, address: e.target.value }))} className="col-span-3" />
+                                    </div>
+                                </div>
+                                <DialogFooter>
+                                    <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
+                                    <Button onClick={handleAddNewCustomer} disabled={!isNewCustomerFormDirty || !newCustomer.name.trim()}>Guardar Cliente</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
                 </div>
-            </CardFooter>
-        </Card>
+                
+                <Separator />
+                <div className="flex-1 overflow-y-auto">
+                    {cartItems.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-10 h-full">
+                            <PackagePlus className="h-12 w-12 mb-4" />
+                            <p>Tu carrito está vacío.</p>
+                            <p className="text-sm">Agrega productos para comenzar.</p>
+                        </div>
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                <TableHead>Producto</TableHead>
+                                <TableHead className="w-[60px]">Cant.</TableHead>
+                                <TableHead className="w-[90px]">Precio</TableHead>
+                                <TableHead className="w-[90px] text-right">Subtotal</TableHead>
+                                <TableHead className="w-[40px]"></TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {cartItems.map((item) => (
+                                <TableRow key={item.product.id}>
+                                    <TableCell className="font-medium text-xs">{item.product.name}</TableCell>
+                                    <TableCell>
+                                    <Input
+                                        type="number"
+                                        value={item.quantity}
+                                        onChange={(e) => updateItem(item.product.id, 'quantity', parseInt(e.target.value))}
+                                        className="h-8 w-14"
+                                        min="1"
+                                    />
+                                    </TableCell>
+                                    <TableCell>
+                                    <Input
+                                        type="number"
+                                        step="0.01"
+                                        value={(item.price * activeRate).toFixed(2)}
+                                        onChange={(e) => updateItem(item.product.id, 'price', parseFloat(e.target.value))}
+                                        className="h-8 w-20"
+                                        min="0"
+                                    />
+                                    </TableCell>
+                                    <TableCell className="text-right font-mono text-xs">{activeSymbol}{(item.price * item.quantity * activeRate).toFixed(2)}</TableCell>
+                                    <TableCell>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeProduct(item.product.id)}>
+                                            <Trash2 className="h-4 w-4 text-destructive"/>
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    )}
+                </div>
+                
+            </CardContent>
+            <CardFooter className="flex flex-col gap-2 mt-auto border-t p-6">
+                    <div className="w-full space-y-2 text-sm">
+                    <div className="flex justify-between">
+                        <span>Subtotal</span>
+                        <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
+                    </div>
+                    {settings?.tax1 && settings.tax1 > 0 && tax1Amount > 0 && (
+                        <div className="flex justify-between">
+                            <span>Impuesto {settings.tax1}%</span>
+                            <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</span>
+                        </div>
+                    )}
+                    {settings?.tax2 && settings.tax2 > 0 && tax2Amount > 0 && (
+                        <div className="flex justify-between">
+                            <span>Impuesto {settings.tax2}%</span>
+                            <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
+                        </div>
+                    )}
+                    <Separator />
+                    <div className="flex justify-between font-bold text-lg">
+                        <span>Total</span>
+                        <span>{activeSymbol}{(total * activeRate).toFixed(2)}</span>
+                    </div>
+                </div>
+                    <div className="flex flex-col gap-2 w-full mt-4">
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button className="w-full bg-primary hover:bg-primary/90" size="lg" disabled={!isFormComplete}>
+                                    <Printer className="mr-2 h-4 w-4" /> Procesar Venta
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Confirmar Venta?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Estás a punto de registrar una venta por un total de <span className="font-bold">{activeSymbol}{(total * activeRate).toFixed(2)}</span>. 
+                                        Esta acción actualizará el stock de los productos. ¿Estás seguro?
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleProcessSale(true)}>Sí, procesar e imprimir</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                        <Button className="w-full" variant="secondary" onClick={handlePrintQuote} disabled={cartItems.length === 0}>
+                            <FileText className="mr-2 h-4 w-4" />
+                            Guardar como Cotización
+                        </Button>
+                    </div>
+                </CardFooter>
+            </Card>
+        </div>
         {isPrintPreviewOpen && (
             <TicketPreview
                 isOpen={isPrintPreviewOpen}
@@ -672,3 +674,5 @@ export default function POSPage() {
     </div>
   );
 }
+
+    
