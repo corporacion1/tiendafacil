@@ -36,15 +36,23 @@ export const defaultUsers: Omit<UserProfile, 'createdAt' | 'uid' | 'phone'>[] = 
     {
         email: 'corporacion1@gmail.com',
         displayName: 'Jorge Negrete',
-        photoURL: 'https://i.imgur.com/8bXhQXa.png', // Avatar de ejemplo
+        photoURL: 'https://i.imgur.com/8bXhQXa.png',
         role: 'superAdmin',
+        status: 'active',
+        storeId: defaultStoreId,
+    },
+    {
+        email: 'admin@tiendafacil.com',
+        displayName: 'admin',
+        photoURL: '/tienda_facil_logo.svg',
+        role: 'admin',
         status: 'active',
         storeId: defaultStoreId,
     },
     {
         email: 'demo@tiendafacil.com',
         displayName: 'demo',
-        photoURL: 'https://i.imgur.com/t9E2wHe.png',
+        photoURL: '/tienda_facil_logo.svg',
         role: 'user',
         status: 'active',
         storeId: defaultStoreId,
