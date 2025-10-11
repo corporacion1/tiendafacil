@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { FaWhatsapp, FaTiktok } from "react-icons/fa";
 import { useSettings } from "@/contexts/settings-context";
 import { usePathname } from 'next/navigation';
+import { cn } from "@/lib/utils";
 
 
 export function Footer() {
@@ -47,7 +48,7 @@ export function Footer() {
   const enabledSocialLinks = socialLinks.filter(link => link.enabled);
 
   return (
-    <footer className="mt-auto border-t bg-background px-4 py-4 sm:px-6">
+    <footer className={cn("hidden md:block mt-auto border-t bg-background px-4 py-4 sm:px-6")}>
       <div className="container mx-auto flex flex-col items-center justify-center gap-4 sm:flex-row sm:justify-between">
         <p className="text-center text-sm leading-loose text-muted-foreground sm:text-left">
           © {new Date().getFullYear()} Corporación 1 Plus, CA. Todos los derechos reservados.
