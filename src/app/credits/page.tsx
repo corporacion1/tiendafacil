@@ -390,7 +390,12 @@ export default function CreditsPage() {
                             )}
                             <div className="space-y-2">
                                 <Label htmlFor="receivedBy">Recibido por</Label>
-                                <Input id="receivedBy" placeholder="Nombre del receptor" value={paymentReceivedBy} onChange={e => setPaymentReceivedBy(e.target.value)} />
+                                <Input id="receivedBy" placeholder="Nombre del receptor" value={paymentReceivedBy} onChange={e => {
+                                    const value = e.target.value;
+                                    if (/^[a-zA-Z\s]*$/.test(value)) {
+                                        setPaymentReceivedBy(value);
+                                    }
+                                }} />
                             </div>
                             <Button className="w-full" onClick={handleAddPayment} disabled={!currentPaymentAmount || Number(currentPaymentAmount) <= 0}>
                                 <PlusCircle className="mr-2 h-4 w-4" /> Agregar Pago
@@ -440,3 +445,5 @@ export default function CreditsPage() {
         </>
     );
 }
+
+    
