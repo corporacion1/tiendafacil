@@ -40,6 +40,14 @@ export const defaultUsers: Omit<UserProfile, 'createdAt' | 'uid' | 'phone'>[] = 
         role: 'superAdmin',
         status: 'active',
         storeId: defaultStoreId,
+    },
+    {
+        email: 'demo@tiendafacil.com',
+        displayName: 'demo',
+        photoURL: 'https://i.imgur.com/t9E2wHe.png',
+        role: 'user',
+        status: 'active',
+        storeId: defaultStoreId,
     }
 ];
 
