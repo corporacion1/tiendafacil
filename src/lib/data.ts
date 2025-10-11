@@ -61,9 +61,9 @@ export let pendingOrdersState: PendingOrder[] = [
 ];
 
 export const mockCurrencyRates: Omit<CurrencyRate, 'id'>[] = [
-    { rate: 39.50, date: new Date().toISOString() },
-    { rate: 39.45, date: subDays(new Date(), 1).toISOString() },
-    { rate: 39.30, date: subDays(new Date(), 2).toISOString() },
+    { rate: 195.249100, date: new Date().toISOString() },
+    { rate: 195.200000, date: subDays(new Date(), 1).toISOString() },
+    { rate: 195.150000, date: subDays(new Date(), 2).toISOString() },
 ];
 
 export const defaultCustomers: Omit<Customer, 'storeId'>[] = [
