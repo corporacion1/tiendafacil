@@ -551,7 +551,7 @@ export default function POSPage() {
             
             <Separator />
 
-            <div className="flex-1 space-y-4 overflow-y-auto pr-2">
+            <div className="flex-1 space-y-4 overflow-y-auto pr-2 min-h-[200px]">
                 {cartItems.length === 0 ? (
                     <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-8 h-full">
                         <PackagePlus className="h-12 w-12 mb-4" />
