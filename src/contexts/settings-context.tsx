@@ -3,7 +3,7 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
 import { useUser } from '@/firebase';
@@ -35,6 +35,7 @@ const CURRENCY_PREF_STORAGE_KEY = 'tienda_facil_currency_pref';
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
+  const router = useRouter();
 
   const [settings, setLocalSettings] = useState<Settings | null>(defaultStore);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -54,44 +55,55 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, []);
 
   useEffect(() => {
-    // Simulate loading and setting user profile from local data
     setIsLoadingSettings(true);
-    if (user) {
-        // In a real app with a backend, you would fetch this user profile
-        // For now, we find it in the mock data
-        const profile = defaultUsers.find(u => u.email === user.email);
-        if (profile) {
-            setUserProfile({
-                ...profile,
-                uid: user.uid,
-                photoURL: user.photoURL,
-                phone: user.phoneNumber,
-                createdAt: new Date().toISOString()
-            });
+    if (!isUserLoading) {
+        if (user) {
+            // Find user in our mock data
+            let profile = defaultUsers.find(u => u.email === user.email);
+            let userProfileData: UserProfile;
+
+            if (profile) {
+                userProfileData = {
+                    ...profile,
+                    uid: user.uid,
+                    photoURL: user.photoURL,
+                    phone: user.phoneNumber,
+                    createdAt: new Date().toISOString()
+                };
+            } else {
+                 // If not found, create a new 'user' profile for them
+                 userProfileData = {
+                    uid: user.uid,
+                    displayName: user.displayName,
+                    email: user.email,
+                    photoURL: user.photoURL,
+                    phone: user.phoneNumber,
+                    role: 'user',
+                    status: 'active',
+                    createdAt: new Date().toISOString(),
+                    storeId: activeStoreId, // Assign current store ID
+                };
+                // Add to mock data for session consistency
+                defaultUsers.push(userProfileData);
+            }
+            setUserProfile(userProfileData);
+            
+            // Redirect admin/superAdmin to dashboard after login
+            if (userProfileData.role === 'admin' || userProfileData.role === 'superAdmin') {
+                router.push('/dashboard');
+            }
         } else {
-             // Create a default 'user' profile if not found
-             setUserProfile({
-                uid: user.uid,
-                displayName: user.displayName,
-                email: user.email,
-                photoURL: user.photoURL,
-                phone: user.phoneNumber,
-                role: 'user',
-                status: 'active',
-                createdAt: new Date().toISOString()
-            });
+            setUserProfile(null);
         }
-    } else {
-        setUserProfile(null);
     }
+    
     // Set settings from local data
     setLocalSettings(defaultStore);
     setCurrencyRates(mockCurrencyRates.map(r => ({ ...r, id: `rate-${Math.random()}`})));
     
-    // Simulate async loading
-    setTimeout(() => setIsLoadingSettings(false), 500);
+    setTimeout(() => setIsLoadingSettings(false), 300);
 
-  }, [user]);
+  }, [user, isUserLoading, activeStoreId, router]);
 
 
   const handleSetSettings = (newSettings: Settings) => {

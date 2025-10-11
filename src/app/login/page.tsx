@@ -1,3 +1,4 @@
+
 "use client";
 
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
@@ -8,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Logo } from '@/components/logo';
 import { useRouter } from "next/navigation";
 import { useSettings } from "@/contexts/settings-context";
+import { useState } from "react";
 
 const GoogleIcon = () => (
     <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -24,33 +26,27 @@ export function LoginModal({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const { toast } = useToast();
     const { userProfile } = useSettings();
+    const [isOpen, setIsOpen] = useState(false);
 
     const handleGoogleSignIn = async () => {
-        // NOTE: This functionality will be fully implemented in the next step.
-        // For now, it just shows a toast.
-        toast({
-            title: "Función en desarrollo",
-            description: "El inicio de sesión con Google se habilitará pronto.",
-        });
-
-        // Example of future logic:
-        /*
         const provider = new GoogleAuthProvider();
         try {
             const result = await signInWithPopup(auth, provider);
             
-            // Logic to create user profile, check roles, etc.
-            const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'superAdmin';
-
+            // Logic to create user profile will be handled by SettingsProvider
+            // We just need to check the role after the user state is updated
+            
             toast({
                 title: "¡Bienvenido!",
                 description: "Has iniciado sesión correctamente.",
             });
 
-            if (isAdmin) {
-                router.push('/dashboard');
-            }
-            // If not an admin, the modal will just close.
+            // The userProfile might not be updated instantly, so we need to give it a moment
+            // A better approach in a real app might be to wait for the profile to be available
+            // but for this simulation, we can check it after a short delay.
+            // However, the redirect logic is now inside SettingsProvider for better sync.
+
+            setIsOpen(false); // Close modal on success
             
         } catch (error: any) {
             console.error("Error during Google sign-in:", error);
@@ -60,11 +56,10 @@ export function LoginModal({ children }: { children: React.ReactNode }) {
                 description: error.message || "No se pudo iniciar sesión con Google.",
             });
         }
-        */
     };
 
     return (
-        <Dialog>
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
                 {children}
             </DialogTrigger>
