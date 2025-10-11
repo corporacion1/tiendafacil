@@ -1,4 +1,4 @@
-# Tienda Facil - Sistema de Punto de Venta e Inventario (Ver. 1.0.0.2)
+gi# Tienda Facil - Sistema de Punto de Venta e Inventario (Ver. 1.0.0.2)
 
 Tienda Facil es una aplicación web moderna y completa, diseñada para ser un sistema de Punto de Venta (POS) e inventario todo en uno. Creada con Next.js y Tailwind CSS, y ahora conectada a **Firebase**, ofrece una interfaz de usuario rápida, intuitiva y con persistencia de datos en tiempo real.
 
