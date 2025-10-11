@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { PanelLeft, UserCircle, LogOut } from "lucide-react";
+import { getAuth, signOut } from "firebase/auth";
+import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,11 +40,26 @@ export function SiteHeader({ toggleSidebar, isSidebarExpanded }: SiteHeaderProps
   const pathname = usePathname();
   const router = useRouter();
   const { user, isUserLoading } = useUser();
+  const { toast } = useToast();
   const { settings, activeCurrency, toggleDisplayCurrency, activeStoreId } = useSettings();
   
   const handleSignOut = async () => {
-    // No auth, so just redirect
-    router.push('/');
+    const auth = getAuth();
+    try {
+        await signOut(auth);
+        toast({
+            title: "Sesión Cerrada",
+            description: "Has cerrado sesión correctamente.",
+        });
+        router.push('/');
+    } catch (error) {
+        console.error("Error signing out:", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "No se pudo cerrar la sesión.",
+        });
+    }
   }
 
   const inactiveSymbol = activeCurrency === 'primary' 
