@@ -103,6 +103,7 @@ export type Payment = {
     date: string;
     method: string;
     reference?: string;
+    receivedBy?: string;
 }
 
 export type Sale = {

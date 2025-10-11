@@ -37,6 +37,7 @@ export default function CreditsPage() {
     const [currentPaymentMethod, setCurrentPaymentMethod] = useState('efectivo');
     const [currentPaymentAmount, setCurrentPaymentAmount] = useState<number | string>('');
     const [currentPaymentRef, setCurrentPaymentRef] = useState('');
+    const [paymentReceivedBy, setPaymentReceivedBy] = useState('');
 
     const [searchTerm, setSearchTerm] = useState("");
     
@@ -89,8 +90,12 @@ export default function CreditsPage() {
              toast({ variant: "destructive", title: "Monto excede el saldo" });
             return;
         }
+        if (!paymentReceivedBy.trim()) {
+            toast({ variant: 'destructive', title: 'Falta "Recibido por"', description: 'Debes indicar quién recibió el pago.' });
+            return;
+        }
 
-        setPayments(prev => [...prev, { amount, method: method.name, reference: currentPaymentRef.trim() }]);
+        setPayments(prev => [...prev, { amount, method: method.name, reference: currentPaymentRef.trim(), receivedBy: paymentReceivedBy.trim() }]);
         setCurrentPaymentAmount('');
         setCurrentPaymentRef('');
     }
@@ -103,6 +108,7 @@ export default function CreditsPage() {
         setPayments([]);
         setCurrentPaymentAmount('');
         setCurrentPaymentRef('');
+        setPaymentReceivedBy('');
         setCurrentPaymentMethod('efectivo');
     }
 
@@ -302,7 +308,7 @@ export default function CreditsPage() {
                                     <TableRow>
                                         <TableHead>Fecha</TableHead>
                                         <TableHead>Método</TableHead>
-                                        <TableHead>Referencia</TableHead>
+                                        <TableHead>Ref/Recibido</TableHead>
                                         <TableHead className="text-right">Monto</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -311,7 +317,12 @@ export default function CreditsPage() {
                                         <TableRow key={p.id}>
                                             <TableCell>{getFormattedDateTime(p.date)}</TableCell>
                                             <TableCell>{p.method}</TableCell>
-                                            <TableCell>{p.reference || 'N/A'}</TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col">
+                                                    <span>{p.reference || 'N/A'}</span>
+                                                    {p.receivedBy && <span className="text-xs text-muted-foreground">{p.receivedBy}</span>}
+                                                </div>
+                                            </TableCell>
                                             <TableCell className="text-right">{activeSymbol}{(p.amount * activeRate).toFixed(2)}</TableCell>
                                         </TableRow>
                                     )) : (
@@ -377,6 +388,10 @@ export default function CreditsPage() {
                                     <Input placeholder="Nro. de referencia" value={currentPaymentRef} onChange={e => setCurrentPaymentRef(e.target.value)} />
                                 </div>
                             )}
+                            <div className="space-y-2">
+                                <Label htmlFor="receivedBy">Recibido por</Label>
+                                <Input id="receivedBy" placeholder="Nombre del receptor" value={paymentReceivedBy} onChange={e => setPaymentReceivedBy(e.target.value)} />
+                            </div>
                             <Button className="w-full" onClick={handleAddPayment} disabled={!currentPaymentAmount || Number(currentPaymentAmount) <= 0}>
                                 <PlusCircle className="mr-2 h-4 w-4" /> Agregar Pago
                             </Button>
@@ -387,7 +402,10 @@ export default function CreditsPage() {
                                 {payments.length === 0 ? <p className="text-sm text-muted-foreground text-center pt-8">Agrega uno o más pagos.</p> : (
                                     payments.map((p, i) => (
                                         <div key={i} className="flex justify-between items-center text-sm">
-                                            <span>{p.method} {p.reference && `(${p.reference})`}</span>
+                                            <div className="flex flex-col">
+                                                <span>{p.method} {p.reference && `(${p.reference})`}</span>
+                                                {p.receivedBy && <span className="text-xs text-muted-foreground">Recibido por: {p.receivedBy}</span>}
+                                            </div>
                                             <span className="font-medium">{activeSymbol}{(p.amount * activeRate).toFixed(2)}</span>
                                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removePayment(i)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
                                         </div>
