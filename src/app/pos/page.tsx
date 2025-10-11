@@ -454,7 +454,7 @@ export default function POSPage() {
         </Card>
       </div>
       <div className="grid auto-rows-max items-start gap-4 lg:col-span-1">
-        <Card className="flex flex-col h-[calc(100vh-theme(spacing.28))]">
+        <Card>
           <CardHeader className="flex flex-row justify-between items-center">
             <CardTitle>Carrito de Compra</CardTitle>
             {cartItems.length > 0 && (
@@ -604,60 +604,60 @@ export default function POSPage() {
                     </Table>
                 )}
             </div>
-             {cartItems.length > 0 && (
-                <div className="mt-auto border-t pt-4">
-                    <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                            <span>Subtotal</span>
-                            <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
-                        </div>
-                        {settings?.tax1 && settings.tax1 > 0 && tax1Amount > 0 && (
-                            <div className="flex justify-between">
-                                <span>Impuesto {settings.tax1}%</span>
-                                <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</span>
-                            </div>
-                        )}
-                        {settings?.tax2 && settings.tax2 > 0 && tax2Amount > 0 && (
-                            <div className="flex justify-between">
-                                <span>Impuesto {settings.tax2}%</span>
-                                <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
-                            </div>
-                        )}
-                        <Separator />
-                        <div className="flex justify-between font-bold text-lg">
-                            <span>Total</span>
-                            <span>{activeSymbol}{(total * activeRate).toFixed(2)}</span>
-                        </div>
+          </CardContent>
+          {cartItems.length > 0 && (
+            <CardFooter className="flex flex-col gap-2 mt-auto border-t pt-4">
+                <div className="w-full space-y-2 text-sm">
+                    <div className="flex justify-between">
+                        <span>Subtotal</span>
+                        <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
                     </div>
-                     <div className="flex flex-col gap-2 mt-4">
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button className="w-full bg-primary hover:bg-primary/90" size="lg" disabled={!isFormComplete}>
-                                    <Printer className="mr-2 h-4 w-4" /> Procesar Venta
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>¿Confirmar Venta?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        Estás a punto de registrar una venta por un total de <span className="font-bold">{activeSymbol}{(total * activeRate).toFixed(2)}</span>. 
-                                        Esta acción actualizará el stock de los productos. ¿Estás seguro?
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleProcessSale(true)}>Sí, procesar e imprimir</AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                        <Button className="w-full" variant="secondary" onClick={handlePrintQuote} disabled={cartItems.length === 0}>
-                            <FileText className="mr-2 h-4 w-4" />
-                            Guardar como Cotización
-                        </Button>
+                    {settings?.tax1 && settings.tax1 > 0 && tax1Amount > 0 && (
+                        <div className="flex justify-between">
+                            <span>Impuesto {settings.tax1}%</span>
+                            <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</span>
+                        </div>
+                    )}
+                    {settings?.tax2 && settings.tax2 > 0 && tax2Amount > 0 && (
+                        <div className="flex justify-between">
+                            <span>Impuesto {settings.tax2}%</span>
+                            <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
+                        </div>
+                    )}
+                    <Separator />
+                    <div className="flex justify-between font-bold text-lg">
+                        <span>Total</span>
+                        <span>{activeSymbol}{(total * activeRate).toFixed(2)}</span>
                     </div>
                 </div>
-            )}
-          </CardContent>
+                 <div className="flex flex-col gap-2 mt-4 w-full">
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button className="w-full bg-primary hover:bg-primary/90" size="lg" disabled={!isFormComplete}>
+                                <Printer className="mr-2 h-4 w-4" /> Procesar Venta
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>¿Confirmar Venta?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Estás a punto de registrar una venta por un total de <span className="font-bold">{activeSymbol}{(total * activeRate).toFixed(2)}</span>. 
+                                    Esta acción actualizará el stock de los productos. ¿Estás seguro?
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleProcessSale(true)}>Sí, procesar e imprimir</AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                    <Button className="w-full" variant="secondary" onClick={handlePrintQuote} disabled={cartItems.length === 0}>
+                        <FileText className="mr-2 h-4 w-4" />
+                        Guardar como Cotización
+                    </Button>
+                </div>
+            </CardFooter>
+          )}
         </Card>
         {isPrintPreviewOpen && (
             <TicketPreview
