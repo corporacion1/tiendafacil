@@ -322,7 +322,7 @@ export default function POSPage() {
   };
   
   return (
-    <div className="grid flex-1 auto-rows-max gap-4 md:grid-cols-3 lg:gap-8">
+    <div className="grid flex-1 items-start gap-4 md:grid-cols-3 lg:gap-8">
       <div className="grid auto-rows-max items-start gap-4 md:col-span-2 lg:gap-8">
         <Card>
           <CardHeader>
@@ -453,8 +453,8 @@ export default function POSPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="grid auto-rows-max items-start gap-4 lg:col-span-1 lg:gap-8 h-full">
-        <Card className="flex flex-col h-full">
+      <div className="grid auto-rows-max items-start gap-4 lg:col-span-1">
+        <Card className="flex flex-col h-[calc(100vh-theme(spacing.28))]">
           <CardHeader className="flex flex-row justify-between items-center">
             <CardTitle>Carrito de Compra</CardTitle>
             {cartItems.length > 0 && (
@@ -674,3 +674,5 @@ export default function POSPage() {
     </div>
   );
 }
+
+    
