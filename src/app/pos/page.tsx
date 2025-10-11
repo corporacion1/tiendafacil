@@ -454,7 +454,7 @@ export default function POSPage() {
         </Card>
       </div>
       <div className="grid auto-rows-max items-start gap-4 lg:col-span-1">
-        <Card className="flex flex-col h-[calc(100vh_-_theme(spacing.28))]">
+        <Card className="flex flex-col h-[calc(100vh_-_theme(spacing.20))]">
           <CardHeader className="flex flex-row justify-between items-center">
             <CardTitle>Carrito de Compra</CardTitle>
             {cartItems.length > 0 && (
@@ -550,8 +550,7 @@ export default function POSPage() {
             </div>
             
             <Separator />
-
-            <div className="flex-1 space-y-4 overflow-y-auto pr-2">
+            <div className="flex-1 overflow-y-auto">
                 {cartItems.length === 0 ? (
                     <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-8 h-full">
                         <PackagePlus className="h-12 w-12 mb-4" />
@@ -604,9 +603,10 @@ export default function POSPage() {
                     </Table>
                 )}
             </div>
-            <div className="mt-auto space-y-4">
-              <Separator />
-               <div className="space-y-2 text-sm p-6 pt-0">
+            
+          </CardContent>
+          <CardFooter className="flex flex-col gap-2 mt-auto border-t p-6">
+                 <div className="w-full space-y-2 text-sm">
                   <div className="flex justify-between">
                       <span>Subtotal</span>
                       <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
@@ -629,10 +629,7 @@ export default function POSPage() {
                       <span>{activeSymbol}{(total * activeRate).toFixed(2)}</span>
                   </div>
               </div>
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col gap-2 mt-auto border-t p-6">
-                 <div className="flex flex-col gap-2 w-full">
+                 <div className="flex flex-col gap-2 w-full mt-4">
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
                             <Button className="w-full bg-primary hover:bg-primary/90" size="lg" disabled={!isFormComplete}>
