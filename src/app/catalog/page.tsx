@@ -27,6 +27,7 @@ import { isPast, format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useUser } from "@/firebase";
+import { LoginModal } from "../login/page";
 
 
 const AdCard = ({ ad }: { ad: Ad }) => {
@@ -537,12 +538,18 @@ export default function CatalogPage() {
                                     )}
                                 </SheetContent>
                             </Sheet>
-                             <Button asChild variant="ghost" size="icon">
-                                <Link href="/dashboard">
-                                    <UserCircle className="h-6 w-6" />
-                                    <span className="sr-only">Ir al Dashboard</span>
-                                </Link>
-                            </Button>
+                            {isUserLoading ? <div className="h-9 w-24 bg-muted rounded-md animate-pulse" /> : user ? (
+                                <Button asChild variant="outline">
+                                    <Link href="/dashboard">
+                                        <UserCircle className="mr-2 h-4 w-4" />
+                                        Dashboard
+                                    </Link>
+                                </Button>
+                            ) : (
+                                <LoginModal>
+                                    <Button variant="default">Acceder</Button>
+                                </LoginModal>
+                            )}
                         </div>
                     </div>
                 </header>
