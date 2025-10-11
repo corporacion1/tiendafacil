@@ -125,6 +125,12 @@ export default function SettingsPage() {
     const [localFamilies, setLocalFamilies] = useState<Family[]>(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
     const [localWarehouses, setLocalWarehouses] = useState<Warehouse[]>(initialWarehouses.map(w => ({...w, storeId: activeStoreId})));
     
+    const [isClient, setIsClient] = useState(false);
+
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
+
     const displayUrl = useMemo(() => getDisplayImageUrl(localSettings?.logoUrl), [localSettings?.logoUrl]);
 
     useEffect(() => {
@@ -690,7 +696,7 @@ export default function SettingsPage() {
                                     <TableBody>
                                         {currencyRates && currencyRates.length > 0 ? currencyRates.map(rate => (
                                             <TableRow key={rate.id}>
-                                                <TableCell>{rate.date ? format(parseISO(rate.date as string), "dd/MM/yy HH:mm") : 'N/A'}</TableCell>
+                                                <TableCell>{isClient && rate.date ? format(parseISO(rate.date as string), "dd/MM/yy HH:mm") : 'N/A'}</TableCell>
                                                 <TableCell className="text-right font-mono">{`${(localSettings?.secondaryCurrencySymbol || '')} ${rate.rate.toFixed(2)}`}</TableCell>
                                             </TableRow>
                                         )) : (

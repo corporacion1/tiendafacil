@@ -60,6 +60,12 @@ export default function ReportsPage() {
     const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})));
     const [customers, setCustomers] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
 
+    const [isClient, setIsClient] = useState(false)
+
+    useEffect(() => {
+        setIsClient(true)
+    }, [])
+
     const movementsData: InventoryMovement[] = useMemo(() => {
       const saleMovements = salesData.flatMap(sale => 
           sale.items.map(item => ({
@@ -414,7 +420,7 @@ export default function ReportsPage() {
               <TableBody>
                 {filteredSales.map((sale) => (
                   <TableRow key={sale.id}>
-                    <TableCell>{format(getDate(sale.date), 'dd/MM/yyyy')}</TableCell>
+                    <TableCell>{isClient ? format(getDate(sale.date), 'dd/MM/yyyy') : '...'}</TableCell>
                     <TableCell className="font-medium">{sale.id}</TableCell>
                     <TableCell>{sale.customerName}</TableCell>
                     <TableCell className="text-right">{activeSymbol}{(sale.total * activeRate).toFixed(2)}</TableCell>
@@ -468,7 +474,7 @@ export default function ReportsPage() {
                     <TableBody>
                         {filteredPurchases.map((purchase) => (
                             <TableRow key={purchase.id}>
-                                <TableCell>{format(getDate(purchase.date), 'dd/MM/yyyy')}</TableCell>
+                                <TableCell>{isClient ? format(getDate(purchase.date), 'dd/MM/yyyy') : '...'}</TableCell>
                                 <TableCell className="font-medium">{purchase.id}</TableCell>
                                 <TableCell>{purchase.supplierName}</TableCell>
                                 <TableCell className="text-right">{activeSymbol}{(purchase.total * activeRate).toFixed(2)}</TableCell>
@@ -508,7 +514,7 @@ export default function ReportsPage() {
                     <TableBody>
                         {filteredPayments.map((payment, index) => (
                             <TableRow key={payment.id || `payment-${index}`}>
-                                <TableCell>{format(getDate(payment.date), 'dd/MM/yyyy HH:mm')}</TableCell>
+                                <TableCell>{isClient ? format(getDate(payment.date), 'dd/MM/yyyy HH:mm') : '...'}</TableCell>
                                 <TableCell>{payment.saleId}</TableCell>
                                 <TableCell>{payment.customerName}</TableCell>
                                 <TableCell>{payment.method}</TableCell>
@@ -554,7 +560,7 @@ export default function ReportsPage() {
                                         {movement.type === 'sale' ? 'Salida' : movement.type === 'purchase' ? 'Entrada(Compra)' : 'Ajuste'}
                                     </Badge>
                                 </TableCell>
-                                <TableCell className="hidden md:table-cell">{format(getDate(movement.date), 'dd/MM/yyyy')}</TableCell>
+                                <TableCell className="hidden md:table-cell">{isClient ? format(getDate(movement.date), 'dd/MM/yyyy') : '...'}</TableCell>
                                 <TableCell className="text-right">{movement.quantity}</TableCell>
                             </TableRow>
                         ))}
@@ -615,7 +621,7 @@ export default function ReportsPage() {
             <DialogHeader>
                 <DialogTitle>Detalles de la Venta: {selectedSaleDetails?.id}</DialogTitle>
                 <DialogDescription>
-                   Cliente: {selectedSaleDetails?.customerName} | Fecha: {selectedSaleDetails ? format(getDate(selectedSaleDetails.date), 'dd/MM/yyyy HH:mm') : ''}
+                   Cliente: {selectedSaleDetails?.customerName} | Fecha: {selectedSaleDetails && isClient ? format(getDate(selectedSaleDetails.date), 'dd/MM/yyyy HH:mm') : '...'}
                 </DialogDescription>
             </DialogHeader>
             <div className="max-h-[60vh] overflow-y-auto">
