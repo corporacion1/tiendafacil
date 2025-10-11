@@ -2,7 +2,7 @@
 "use client"
 import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
-import { Package, PackagePlus, PlusCircle, Trash2, ArrowUpDown, Check, Printer, FileText, QrCode, Archive } from "lucide-react";
+import { Package, PackagePlus, PlusCircle, Trash2, ArrowUpDown, Check, Printer, FileText, QrCode, Archive, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -454,7 +454,7 @@ export default function POSPage() {
         </Card>
       </div>
       <div className="grid auto-rows-max items-start gap-4 lg:col-span-1">
-        <div className="h-[calc(100vh_-_theme(spacing.28))]">
+        <div className="h-[calc(100vh_-_theme(spacing.16))]">
             <Card className="flex flex-col h-full">
             <CardHeader className="flex flex-row justify-between items-center">
                 <CardTitle>Carrito de Compra</CardTitle>
@@ -551,11 +551,11 @@ export default function POSPage() {
                 </div>
                 
                 <Separator />
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto pr-1">
                     {cartItems.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-10 h-full">
-                            <PackagePlus className="h-12 w-12 mb-4" />
-                            <p>Tu carrito está vacío.</p>
+                        <div className="flex flex-col items-center justify-center text-center text-muted-foreground p-8 h-full">
+                            <ShoppingCart className="h-12 w-12 mb-4" />
+                            <p className="font-semibold">Tu carrito está vacío.</p>
                             <p className="text-sm">Agrega productos para comenzar.</p>
                         </div>
                     ) : (
