@@ -36,6 +36,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
   const router = useRouter();
+  const pathname = usePathname();
 
   const [settings, setLocalSettings] = useState<Settings | null>(defaultStore);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -53,39 +54,35 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       console.error("Could not access localStorage for currency preference", error);
     }
   }, []);
-
+  
   useEffect(() => {
     setIsLoadingSettings(true);
     if (!isUserLoading) {
         if (user) {
-            // Find user in our mock data
             let profile = defaultUsers.find(u => u.email === user.email);
             let userProfileData: UserProfile;
 
             if (profile) {
-                // User exists, use their profile
                 userProfileData = {
                     ...profile,
                     uid: user.uid,
                     photoURL: user.photoURL,
                     phone: user.phoneNumber,
-                    displayName: user.displayName, // Ensure display name is updated from provider
+                    displayName: user.displayName,
                     createdAt: profile.createdAt || new Date().toISOString()
                 };
             } else {
-                 // If not found, create a new 'user' profile for them
                  userProfileData = {
                     uid: user.uid,
                     displayName: user.displayName,
                     email: user.email,
                     photoURL: user.photoURL,
                     phone: user.phoneNumber,
-                    role: 'user', // Default role for new users
+                    role: 'user',
                     status: 'active',
                     createdAt: new Date().toISOString(),
-                    storeId: activeStoreId, // Assign current store ID
+                    storeId: activeStoreId, 
                 };
-                // Add to mock data for session consistency
                 defaultUsers.push(userProfileData);
                  toast({
                     title: "¡Cuenta Creada!",
@@ -93,27 +90,26 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                 });
             }
             setUserProfile(userProfileData);
-            
-            // Redirect admin/superAdmin to dashboard after login
-            if (userProfileData.role === 'admin' || userProfileData.role === 'superAdmin') {
-                const currentPath = window.location.pathname;
-                if (currentPath !== '/dashboard') {
-                    router.push('/dashboard');
-                }
-            }
         } else {
-            // No user is logged in
             setUserProfile(null);
         }
     }
     
-    // Set settings from local data
     setLocalSettings(defaultStore);
     setCurrencyRates(mockCurrencyRates.map(r => ({ ...r, id: `rate-${Math.random()}`})));
     
     setTimeout(() => setIsLoadingSettings(false), 300);
 
-  }, [user, isUserLoading, activeStoreId, router, toast]);
+  }, [user, isUserLoading, activeStoreId, toast]);
+  
+  // New effect specifically for handling redirection after profile is set
+  useEffect(() => {
+      if (userProfile && (userProfile.role === 'admin' || userProfile.role === 'superAdmin')) {
+        if (!pathname.startsWith('/dashboard')) {
+            router.push('/dashboard');
+        }
+      }
+  }, [userProfile, pathname, router]);
 
 
   const handleSetSettings = (newSettings: Settings) => {
