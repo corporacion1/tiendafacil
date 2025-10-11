@@ -27,6 +27,11 @@ export default function CreditsPage() {
     // Use local data instead of Firebase
     const [sales, setSales] = useState<Sale[]>(mockSales.map(s => ({ ...s, storeId: activeStoreId })));
     const [products, setProducts] = useState<Product[]>(mockProducts.map(p => ({ ...p, storeId: activeStoreId, createdAt: new Date().toISOString() })));
+    const [isClient, setIsClient] = useState(false)
+
+    useEffect(() => {
+        setIsClient(true)
+    }, [])
 
     const isLoading = isLoadingSettings;
 
@@ -155,12 +160,6 @@ export default function CreditsPage() {
         );
     }, [creditSales, searchTerm]);
 
-    const getFormattedDate = (date: any) => {
-        if (!date) return '';
-        const dateObj = typeof date === 'string' ? parseISO(date) : date.toDate ? date.toDate() : new Date(date);
-        return format(dateObj, "dd/MM/yyyy HH:mm");
-    };
-
     const getFormattedDateTime = (date: any) => {
         if (!date) return '';
         const dateObj = typeof date === 'string' ? parseISO(date) : date.toDate ? date.toDate() : new Date(date);
@@ -190,7 +189,7 @@ export default function CreditsPage() {
                         <TableRow key={sale.id}>
                             <TableCell className="font-medium">{sale.id}</TableCell>
                             <TableCell>{sale.customerName}</TableCell>
-                            <TableCell>{getFormattedDate(sale.date)}</TableCell>
+                            <TableCell>{isClient ? getFormattedDateTime(sale.date) : '...'}</TableCell>
                             <TableCell>
                                 <Badge variant={sale.status === 'paid' ? 'secondary' : 'destructive'}>
                                     {sale.status === 'paid' ? 'Pagada' : 'Pendiente'}
@@ -270,7 +269,7 @@ export default function CreditsPage() {
                     <DialogHeader>
                         <DialogTitle>Detalles de la Venta a Crédito: {selectedSale?.id}</DialogTitle>
                         <DialogDescription>
-                            Cliente: {selectedSale?.customerName} | Fecha: {selectedSale ? getFormattedDate(selectedSale.date) : ''}
+                            Cliente: {selectedSale?.customerName} | Fecha: {selectedSale && isClient ? getFormattedDateTime(selectedSale.date) : '...'}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="grid md:grid-cols-2 gap-6 max-h-[60vh] overflow-y-auto p-2">
@@ -315,7 +314,7 @@ export default function CreditsPage() {
                                 <TableBody>
                                     {selectedSale?.payments && selectedSale.payments.length > 0 ? selectedSale.payments.map(p => (
                                         <TableRow key={p.id}>
-                                            <TableCell>{getFormattedDateTime(p.date)}</TableCell>
+                                            <TableCell>{isClient ? getFormattedDateTime(p.date) : '...'}</TableCell>
                                             <TableCell>{p.method}</TableCell>
                                             <TableCell>
                                                 <div className="flex flex-col">
@@ -445,5 +444,3 @@ export default function CreditsPage() {
         </>
     );
 }
-
-    

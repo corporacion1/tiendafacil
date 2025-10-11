@@ -139,19 +139,19 @@ export const mockSales: Omit<Sale, 'storeId'>[] = [
         id: "SALE-001", customerId: "cust-1", customerName: "John Doe",
         items: [ { productId: "prod-1", productName: "Tarjeta Gráfica RTX 4090", quantity: 1, price: 1799.99 } ],
         total: 1799.99, date: subDays(startOfMonth(today), 5).toISOString(), transactionType: 'contado', status: 'paid', paidAmount: 1799.99,
-        payments: [{ id: 'pay-sale-001', amount: 1799.99, date: subDays(startOfMonth(today), 5).toISOString(), method: 'tarjeta', reference: '1234' }]
+        payments: [{ id: 'pay-sale-001', amount: 1799.99, date: subDays(startOfMonth(today), 5).toISOString(), method: 'tarjeta', reference: '1234', receivedBy: 'Admin' }]
     },
     { // Venta de la semana actual
         id: "SALE-002", customerId: "cust-2", customerName: "Jane Smith",
         items: [ { productId: "prod-2", productName: "Procesador Intel Core i9-13900K", quantity: 1, price: 589.00 } ],
         total: 589.00, date: subDays(today, 2).toISOString(), transactionType: 'credito', status: 'unpaid', paidAmount: 300,
-        payments: [{ id: 'pay-sale-002', amount: 300, date: subDays(today, 2).toISOString(), method: 'pago-movil', reference: '012345' }]
+        payments: [{ id: 'pay-sale-002', amount: 300, date: subDays(today, 2).toISOString(), method: 'pago-movil', reference: '012345', receivedBy: 'Demo' }]
     },
      { // Venta de hoy
         id: "SALE-003", customerId: "eventual", customerName: "Cliente Eventual",
         items: [ { productId: "prod-3", productName: "Memoria RAM 32GB DDR5", quantity: 2, price: 129.99 } ],
         total: 259.98, date: new Date().toISOString(), transactionType: 'contado', status: 'paid', paidAmount: 259.98,
-        payments: [{ id: 'pay-sale-003', amount: 259.98, date: new Date().toISOString(), method: 'efectivo', reference: '' }]
+        payments: [{ id: 'pay-sale-003', amount: 259.98, date: new Date().toISOString(), method: 'efectivo', reference: '', receivedBy: 'Admin' }]
     },
 ];
 
