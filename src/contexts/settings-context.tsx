@@ -95,18 +95,21 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         }
     }
     
-    setLocalSettings(defaultStore);
+    // Solo carga el defaultStore si no hay nada en el estado aún
+    if (!settings) {
+        setLocalSettings(defaultStore);
+    }
     setCurrencyRates(mockCurrencyRates.map(r => ({ ...r, id: `rate-${Math.random()}`})));
     
     setTimeout(() => setIsLoadingSettings(false), 300);
 
-  }, [user, isUserLoading, activeStoreId, toast]);
+  }, [user, isUserLoading, activeStoreId, toast, settings]);
   
   // New effect specifically for handling redirection after profile is set
   useEffect(() => {
     // Redirect admins/superAdmins to dashboard if they land on the login page
     if (userProfile && (userProfile.role === 'admin' || userProfile.role === 'superAdmin')) {
-      if (pathname.startsWith('/login')) {
+       if (pathname.startsWith('/login')) {
           router.push('/dashboard');
       }
     }
@@ -115,7 +118,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const handleSetSettings = (newSettings: Settings) => {
     setLocalSettings(newSettings);
-    toast({ title: "Configuración guardada (Simulación)" });
+    toast({ title: "Configuración Guardada", description: "Tus cambios se han aplicado en la sesión actual." });
   };
 
   const switchStore = (storeId: string) => {
