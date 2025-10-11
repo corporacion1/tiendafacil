@@ -51,7 +51,7 @@ export function SiteHeader({ toggleSidebar, isSidebarExpanded }: SiteHeaderProps
             title: "Sesión Cerrada",
             description: "Has cerrado sesión correctamente.",
         });
-        router.push('/');
+        router.push('/'); // Redirige a la raíz, que a su vez lleva al catálogo.
     } catch (error) {
         console.error("Error signing out:", error);
         toast({
