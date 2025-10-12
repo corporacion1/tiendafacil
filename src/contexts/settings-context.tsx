@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { doc, collection, getDocs, limit, query, where } from 'firebase/firestore';
 import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { CurrencyRate, Settings, UserProfile, Product } from '@/lib/types';
-import { defaultStore, defaultUsers, defaultStoreId, mockCurrencyRates, initialFamilies, initialUnits, initialWarehouses, mockProducts } from '@/lib/data';
+import { defaultStore, defaultStoreId, mockCurrencyRates, initialFamilies, initialUnits, initialWarehouses, mockProducts } from '@/lib/data';
 import { useUser as useUserHook } from '@/firebase/auth/use-user';
 
 type DisplayCurrency = 'primary' | 'secondary';
@@ -80,7 +80,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { data: warehousesFromDB } = useCollection(warehousesRef);
   
   const settings = useMemo(() => useDemoData ? defaultStore : settingsFromDB, [useDemoData, settingsFromDB]);
-  const userProfile = useMemo(() => useDemoData ? (defaultUsers.find(u => u.role === 'admin') || null) : authUserProfile, [useDemoData, authUserProfile]);
+  const userProfile = authUserProfile; // User profile now ALWAYS comes from the auth hook.
 
   const currencyRates = useMemo(() => useDemoData ? mockCurrencyRates.map((r,i)=>({...r, id: `rate-${i}`})) : (ratesFromDB || []), [useDemoData, ratesFromDB]);
   const families = useMemo(() => useDemoData ? initialFamilies : (familiesFromDB || []), [useDemoData, familiesFromDB]);
@@ -153,10 +153,10 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
 
   useEffect(() => {
-     if (!isLoadingDemoFlag && !isUserLoading && !userProfile && !useDemoData && !pathname.startsWith('/catalog') && !pathname.startsWith('/login')) {
+     if (!isLoadingDemoFlag && !isUserLoading && !userProfile && !pathname.startsWith('/catalog') && !pathname.startsWith('/login')) {
       router.push('/catalog');
     }
-  }, [isLoadingDemoFlag, isUserLoading, userProfile, useDemoData, pathname, router]);
+  }, [isLoadingDemoFlag, isUserLoading, userProfile, pathname, router]);
 
   const handleSetSettings = (newSettings: Settings) => {
     if(activeStoreId && firestore) {
