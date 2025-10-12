@@ -1,21 +1,33 @@
 
-"use client";
+import CatalogClientPage from './client-page';
+import { notFound } from 'next/navigation';
+import { defaultStore, mockProducts, mockAds } from '@/lib/data';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+// This makes the page static by default, but allows for revalidation.
+// It will fetch data at build time and then re-fetch periodically.
+export const revalidate = 60; // Revalidate data every 60 seconds
 
-const defaultStoreId = process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'default';
+type CatalogPageProps = {
+    params: {
+        storeId?: string; // Made optional
+    }
+}
 
-export default function CatalogRedirectPage() {
-  const router = useRouter();
+export default async function CatalogPage({ params }: CatalogPageProps) {
+    // Since this is the main catalog page, we always use default data for now.
+    const storeId = params.storeId || 'default';
+    
+    // Using local data instead of fetching from Firebase server
+    // This simulates fetching data for a specific store
+    const storeSettings = { ...defaultStore, id: storeId };
+    const products = mockProducts.map(p => ({ ...p, storeId, createdAt: new Date().toISOString() }));
+    const ads = mockAds.map(ad => ({ ...ad, createdAt: new Date().toISOString() }));
 
-  useEffect(() => {
-    router.replace(`/catalog/${defaultStoreId}`);
-  }, [router]);
-
-  return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>Cargando catálogo...</p>
-      </div>
-  );
+    return (
+        <CatalogClientPage 
+            serverStoreSettings={storeSettings}
+            serverProducts={products}
+            serverAds={ads}
+        />
+    );
 }

@@ -14,8 +14,6 @@ import { FirstTimeSetupModal } from '@/components/first-time-setup-modal';
 import { SecurityProvider } from '@/contexts/security-context';
 import { SettingsProvider } from '@/contexts/settings-context';
 
-const defaultStoreId = process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'default';
-
 function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -38,8 +36,8 @@ function AppShell({ children }: { children: React.ReactNode }) {
     if (useDemoData || userProfile) {
       lockApp();
     } else if (!useDemoData && !userProfile) {
-      // If not in demo mode and no user, redirect to the default catalog
-      router.replace(`/catalog/${defaultStoreId}`);
+      // If not in demo mode and no user, redirect to the public catalog
+      router.replace(`/catalog`);
     }
   }, [pathname, userProfile, isLoadingSettings, router, lockApp, useDemoData, isPublicRoute]);
   
