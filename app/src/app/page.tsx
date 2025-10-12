@@ -8,7 +8,7 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to the public catalog page
+    // Redirect to the public catalog page, which is now the main entry point
     router.replace(`/catalog`);
   }, [router]);
 

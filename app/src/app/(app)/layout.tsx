@@ -32,18 +32,20 @@ function AppShell({ children }: { children: React.ReactNode }) {
       return;
     }
     
-    // In demo mode or if user is logged in, lock the app if needed
-    if (useDemoData || userProfile) {
-      lockApp();
-    } else if (!useDemoData && !userProfile) {
-      // If not in demo mode and no user, redirect to the public catalog
+    // If not in demo mode and no user is logged in, redirect to the public catalog.
+    if (!useDemoData && !userProfile) {
       router.replace(`/catalog`);
+      return;
     }
+    
+    // In demo mode or if a user is logged in, lock the app if a PIN is set.
+    lockApp();
+
   }, [pathname, userProfile, isLoadingSettings, router, lockApp, useDemoData, isPublicRoute]);
   
-  // Do not render the protected shell for public catalog pages
+  // This layout is only for protected routes. Public routes are handled by the root layout.
   if (isPublicRoute) {
-    return <>{children}</>;
+    return null; // Don't render anything, let the public page render itself.
   }
 
   // Skeleton loader for protected routes while settings/user are loading.
@@ -87,6 +89,15 @@ function AppShell({ children }: { children: React.ReactNode }) {
 }
 
 export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isPublicRoute = pathname.startsWith('/catalog') || pathname === '/';
+
+  // If it's a public route, just render the children without the protected shell.
+  if (isPublicRoute) {
+    return <>{children}</>;
+  }
+
+  // Otherwise, wrap the children with the full authenticated shell and providers.
   return (
     <SecurityProvider>
       <SettingsProvider>

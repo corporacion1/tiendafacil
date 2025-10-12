@@ -119,7 +119,6 @@ const CatalogProductCard = ({ product, onAddToCart, onImageClick }: { product: P
 function CatalogPageContent() {
     const { toast } = useToast();
     const router = useRouter();
-    const searchParams = useSearchParams();
     const { user, isUserLoading } = useUser();
     
     // Use local mock data
@@ -818,6 +817,8 @@ function CatalogPageContent() {
 }
 
 export default function CatalogPage() {
+    // We wrap the content in the SettingsProvider to ensure it has access to settings,
+    // even though we are loading them from local data.
     return (
         <SettingsProvider serverSettings={defaultStore}>
             <CatalogPageContent />
