@@ -1,201 +1,240 @@
 /**
- * @fileoverview Firestore Security Rules for the inventory and point-of-sale system.
- *
- * Core Philosophy:
- * This ruleset enforces a strict data segregation model. All collections are top-level and access is not based on hierarchical ownership.  Each top-level collection is secured independently. All read and write access is based on verified identity. No implicit trust is granted.
- *
- * Data Structure:
- * - /products/{productId}
- * - /inventoryMovements/{inventoryMovementId}
- * - /sales/{saleId}
- * - /sales/{saleId}/saleItems/{saleItemId}
- * - /purchases/{purchaseId}
- * - /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
- * - /customers/{customerId}
- * - /suppliers/{supplierId}
- * - /taxTypes/{taxTypeId}
- * - /configuration/{configurationId}
- *
- * Key Security Decisions:
- * - Listing of any collection is denied by default and should only be allowed if the data is intended to be public or if owner-only listing is applicable and safe.
- * - All write operations require authentication.
+ * @fileOverview
+ * This ruleset enforces a strict data isolation model, assuming a single tenant application.
+ * Each top-level collection is secured such that only authenticated users can create, read, update, or delete documents.
+ * There is no concept of ownership; instead, any authenticated user can perform CRUD operations.
+ * Data is stored in top-level collections (e.g., /products/{productId}, /customers/{customerId}).
+ * All collections require authentication for all operations, but there are no role-based restrictions.
+ * Since there's no ownership concept, and because data validation is relaxed in the prototyping phase,
+ * relational integrity checks (e.g., validating `taxTypeId` on `Product` documents) are skipped.
+ * Note that this is a highly permissive security posture suitable only for early prototyping.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Manages access to product information.
+     * @description Allows any authenticated user to manage products.
      * @path /products/{productId}
-     * @allow get, list: if false;
-     * @deny create: if false;
-     * @deny update: if false;
-     * @deny delete: if false;
-     * @principle Requires authentication for all operations. Listing is not allowed.
+     * @allow (create) - Any authenticated user can create a product.
+     * @allow (get) - Any authenticated user can get a product.
+     * @allow (list) - Any authenticated user can list products.
+     * @allow (update) - Any authenticated user can update a product.
+     * @allow (delete) - Any authenticated user can delete a product.
+     * @deny (create) - If the user is not authenticated.
+     * @deny (get) - If the user is not authenticated.
+     * @deny (list) - If the user is not authenticated.
+     * @deny (update) - If the user is not authenticated.
+     * @deny (delete) - If the user is not authenticated.
+     * @principle Requires authentication for all operations.
      */
     match /products/{productId} {
-      allow get: if false;
-      allow list: if false;
+      allow get, list: if isSignedIn();
       allow create: if isSignedIn();
       allow update: if isSignedIn() && resource != null;
       allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Manages access to inventory movement records.
+     * @description Allows any authenticated user to manage inventory movements.
      * @path /inventoryMovements/{inventoryMovementId}
-     * @allow get, list: if false;
-     * @deny create: if false;
-     * @deny update: if false;
-     * @deny delete: if false;
-     * @principle Requires authentication for all operations. Listing is not allowed.
+     * @allow (create) - Any authenticated user can create an inventory movement.
+     * @allow (get) - Any authenticated user can get an inventory movement.
+     * @allow (list) - Any authenticated user can list inventory movements.
+     * @allow (update) - Any authenticated user can update an inventory movement.
+     * @allow (delete) - Any authenticated user can delete an inventory movement.
+     * @deny (create) - If the user is not authenticated.
+     * @deny (get) - If the user is not authenticated.
+     * @deny (list) - If the user is not authenticated.
+     * @deny (update) - If the user is not authenticated.
+     * @deny (delete) - If the user is not authenticated.
+     * @principle Requires authentication for all operations.
      */
     match /inventoryMovements/{inventoryMovementId} {
-      allow get: if false;
-      allow list: if false;
+      allow get, list: if isSignedIn();
       allow create: if isSignedIn();
       allow update: if isSignedIn() && resource != null;
       allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Manages access to sales transactions.
+     * @description Allows any authenticated user to manage sales.
      * @path /sales/{saleId}
-     * @allow get, list: if false;
-     * @deny create: if false;
-     * @deny update: if false;
-     * @deny delete: if false;
-     * @principle Requires authentication for all operations. Listing is not allowed.
+     * @allow (create) - Any authenticated user can create a sale.
+     * @allow (get) - Any authenticated user can get a sale.
+     * @allow (list) - Any authenticated user can list sales.
+     * @allow (update) - Any authenticated user can update a sale.
+     * @allow (delete) - Any authenticated user can delete a sale.
+     * @deny (create) - If the user is not authenticated.
+     * @deny (get) - If the user is not authenticated.
+     * @deny (list) - If the user is not authenticated.
+     * @deny (update) - If the user is not authenticated.
+     * @deny (delete) - If the user is not authenticated.
+     * @principle Requires authentication for all operations.
      */
     match /sales/{saleId} {
-      allow get: if false;
-      allow list: if false;
+      allow get, list: if isSignedIn();
       allow create: if isSignedIn();
       allow update: if isSignedIn() && resource != null;
       allow delete: if isSignedIn() && resource != null;
+
+      /**
+       * @description Allows any authenticated user to manage sale items.
+       * @path /sales/{saleId}/saleItems/{saleItemId}
+       * @allow (create) - Any authenticated user can create a sale item.
+       * @allow (get) - Any authenticated user can get a sale item.
+       * @allow (list) - Any authenticated user can list sale items.
+       * @allow (update) - Any authenticated user can update a sale item.
+       * @allow (delete) - Any authenticated user can delete a sale item.
+       * @deny (create) - If the user is not authenticated.
+       * @deny (get) - If the user is not authenticated.
+       * @deny (list) - If the user is not authenticated.
+       * @deny (update) - If the user is not authenticated.
+       * @deny (delete) - If the user is not authenticated.
+       * @principle Requires authentication for all operations.
+       */
+      match /saleItems/{saleItemId} {
+        allow get, list: if isSignedIn();
+        allow create: if isSignedIn();
+        allow update: if isSignedIn() && resource != null;
+        allow delete: if isSignedIn() && resource != null;
+      }
     }
 
     /**
-     * @description Manages access to individual sale items related to a specific sale.
-     * @path /sales/{saleId}/saleItems/{saleItemId}
-     * @allow get, list: if false;
-     * @deny create: if false;
-     * @deny update: if false;
-     * @deny delete: if false;
-     * @principle Requires authentication for all operations. Listing is not allowed.
-     */
-    match /sales/{saleId}/saleItems/{saleItemId} {
-      allow get: if false;
-      allow list: if false;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
-    }
-
-    /**
-     * @description Manages access to purchase transactions.
+     * @description Allows any authenticated user to manage purchases.
      * @path /purchases/{purchaseId}
-     * @allow get, list: if false;
-     * @deny create: if false;
-     * @deny update: if false;
-     * @deny delete: if false;
-     * @principle Requires authentication for all operations. Listing is not allowed.
+     * @allow (create) - Any authenticated user can create a purchase.
+     * @allow (get) - Any authenticated user can get a purchase.
+     * @allow (list) - Any authenticated user can list purchases.
+     * @allow (update) - Any authenticated user can update a purchase.
+     * @allow (delete) - Any authenticated user can delete a purchase.
+     * @deny (create) - If the user is not authenticated.
+     * @deny (get) - If the user is not authenticated.
+     * @deny (list) - If the user is not authenticated.
+     * @deny (update) - If the user is not authenticated.
+     * @deny (delete) - If the user is not authenticated.
+     * @principle Requires authentication for all operations.
      */
     match /purchases/{purchaseId} {
-      allow get: if false;
-      allow list: if false;
+      allow get, list: if isSignedIn();
       allow create: if isSignedIn();
       allow update: if isSignedIn() && resource != null;
       allow delete: if isSignedIn() && resource != null;
+
+      /**
+       * @description Allows any authenticated user to manage purchase items.
+       * @path /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
+       * @allow (create) - Any authenticated user can create a purchase item.
+       * @allow (get) - Any authenticated user can get a purchase item.
+       * @allow (list) - Any authenticated user can list purchase items.
+       * @allow (update) - Any authenticated user can update a purchase item.
+       * @allow (delete) - Any authenticated user can delete a purchase item.
+       * @deny (create) - If the user is not authenticated.
+       * @deny (get) - If the user is not authenticated.
+       * @deny (list) - If the user is not authenticated.
+       * @deny (update) - If the user is not authenticated.
+       * @deny (delete) - If the user is not authenticated.
+       * @principle Requires authentication for all operations.
+       */
+      match /purchaseItems/{purchaseItemId} {
+        allow get, list: if isSignedIn();
+        allow create: if isSignedIn();
+        allow update: if isSignedIn() && resource != null;
+        allow delete: if isSignedIn() && resource != null;
+      }
     }
 
     /**
-     * @description Manages access to individual purchase items related to a specific purchase.
-     * @path /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
-     * @allow get, list: if false;
-     * @deny create: if false;
-     * @deny update: if false;
-     * @deny delete: if false;
-     * @principle Requires authentication for all operations. Listing is not allowed.
-     */
-    match /purchases/{purchaseId}/purchaseItems/{purchaseItemId} {
-      allow get: if false;
-      allow list: if false;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && resource != null;
-      allow delete: if isSignedIn() && resource != null;
-    }
-
-    /**
-     * @description Manages access to customer information.
+     * @description Allows any authenticated user to manage customers.
      * @path /customers/{customerId}
-     * @allow get, list: if false;
-     * @deny create: if false;
-     * @deny update: if false;
-     * @deny delete: if false;
-     * @principle Requires authentication for all operations. Listing is not allowed.
+     * @allow (create) - Any authenticated user can create a customer.
+     * @allow (get) - Any authenticated user can get a customer.
+     * @allow (list) - Any authenticated user can list customers.
+     * @allow (update) - Any authenticated user can update a customer.
+     * @allow (delete) - Any authenticated user can delete a customer.
+     * @deny (create) - If the user is not authenticated.
+     * @deny (get) - If the user is not authenticated.
+     * @deny (list) - If the user is not authenticated.
+     * @deny (update) - If the user is not authenticated.
+     * @deny (delete) - If the user is not authenticated.
+     * @principle Requires authentication for all operations.
      */
     match /customers/{customerId} {
-      allow get: if false;
-      allow list: if false;
+      allow get, list: if isSignedIn();
       allow create: if isSignedIn();
       allow update: if isSignedIn() && resource != null;
       allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Manages access to supplier information.
+     * @description Allows any authenticated user to manage suppliers.
      * @path /suppliers/{supplierId}
-     * @allow get, list: if false;
-     * @deny create: if false;
-     * @deny update: if false;
-     * @deny delete: if false;
-     * @principle Requires authentication for all operations. Listing is not allowed.
+     * @allow (create) - Any authenticated user can create a supplier.
+     * @allow (get) - Any authenticated user can get a supplier.
+     * @allow (list) - Any authenticated user can list suppliers.
+     * @allow (update) - Any authenticated user can update a supplier.
+     * @allow (delete) - Any authenticated user can delete a supplier.
+     * @deny (create) - If the user is not authenticated.
+     * @deny (get) - If the user is not authenticated.
+     * @deny (list) - If the user is not authenticated.
+     * @deny (update) - If the user is not authenticated.
+     * @deny (delete) - If the user is not authenticated.
+     * @principle Requires authentication for all operations.
      */
     match /suppliers/{supplierId} {
-      allow get: if false;
-      allow list: if false;
+      allow get, list: if isSignedIn();
       allow create: if isSignedIn();
       allow update: if isSignedIn() && resource != null;
       allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Manages access to tax type information.
+     * @description Allows any authenticated user to manage tax types.
      * @path /taxTypes/{taxTypeId}
-     * @allow get, list: if false;
-     * @deny create: if false;
-     * @deny update: if false;
-     * @deny delete: if false;
-     * @principle Requires authentication for all operations. Listing is not allowed.
+     * @allow (create) - Any authenticated user can create a tax type.
+     * @allow (get) - Any authenticated user can get a tax type.
+     * @allow (list) - Any authenticated user can list tax types.
+     * @allow (update) - Any authenticated user can update a tax type.
+     * @allow (delete) - Any authenticated user can delete a tax type.
+     * @deny (create) - If the user is not authenticated.
+     * @deny (get) - If the user is not authenticated.
+     * @deny (list) - If the user is not authenticated.
+     * @deny (update) - If the user is not authenticated.
+     * @deny (delete) - If the user is not authenticated.
+     * @principle Requires authentication for all operations.
      */
     match /taxTypes/{taxTypeId} {
-      allow get: if false;
-      allow list: if false;
+      allow get, list: if isSignedIn();
       allow create: if isSignedIn();
       allow update: if isSignedIn() && resource != null;
       allow delete: if isSignedIn() && resource != null;
     }
 
     /**
-     * @description Manages access to business configuration data.
+     * @description Allows any authenticated user to manage configuration settings.
      * @path /configuration/{configurationId}
-     * @allow get, list: if false;
-     * @deny create: if false;
-     * @deny update: if false;
-     * @deny delete: if false;
-     * @principle Requires authentication for all operations. Listing is not allowed.
+     * @allow (create) - Any authenticated user can create a configuration setting.
+     * @allow (get) - Any authenticated user can get a configuration setting.
+     * @allow (list) - Any authenticated user can list configuration settings.
+     * @allow (update) - Any authenticated user can update a configuration setting.
+     * @allow (delete) - Any authenticated user can delete a configuration setting.
+     * @deny (create) - If the user is not authenticated.
+     * @deny (get) - If the user is not authenticated.
+     * @deny (list) - If the user is not authenticated.
+     * @deny (update) - If the user is not authenticated.
+     * @deny (delete) - If the user is not authenticated.
+     * @principle Requires authentication for all operations.
      */
     match /configuration/{configurationId} {
-      allow get: if false;
-      allow list: if false;
+      allow get, list: if isSignedIn();
       allow create: if isSignedIn();
       allow update: if isSignedIn() && resource != null;
       allow delete: if isSignedIn() && resource != null;
     }
+  }
 
-    function isSignedIn() {
-      return request.auth != null;
-    }
+  function isSignedIn() {
+    return request.auth != null;
   }
 }
