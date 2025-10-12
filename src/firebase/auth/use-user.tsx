@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useUser as useAuthUser } from '@/firebase/provider';
 import type { UserProfile } from '@/lib/types';
-import { defaultUsers } from '@/lib/data'; // Importar los usuarios por defecto
+import { defaultUsers } from '@/lib/data';
 
 /**
  * Hook to get the currently authenticated user's profile by MERGING
@@ -16,44 +16,43 @@ export function useUser() {
 
   useEffect(() => {
     if (isAuthLoading) {
-      // Si la autenticación aún está cargando, no hacemos nada.
       return;
     }
 
     if (authUser) {
-      // Si hay un usuario autenticado, buscamos su perfil en nuestros datos locales.
-      let localProfile = defaultUsers.find(u => u.uid === authUser.uid);
+      // Find a matching local profile to get the role and status.
+      const localProfile = defaultUsers.find(u => u.uid === authUser.uid);
 
       if (localProfile) {
-        // Si encontramos un perfil local (como el superAdmin), lo usamos.
+        // If a local profile is found (like for superAdmin), merge them.
+        // Google's info (name, photo) takes precedence.
         setMergedUser({
-          ...localProfile, // Rol, status, etc., del archivo local
-          // Sobrescribimos con los datos reales de Google Auth
-          displayName: authUser.displayName,
-          email: authUser.email,
-          photoURL: authUser.photoURL,
+          ...localProfile, // Gets role, status from local data
+          uid: authUser.uid, // Ensure authUser's UID is used
+          displayName: authUser.displayName, // Use Google's display name
+          email: authUser.email, // Use Google's email
+          photoURL: authUser.photoURL, // Use Google's photo
         });
       } else {
-        // Si no se encuentra en la lista local, creamos un perfil de 'usuario' por defecto.
+        // If no local profile, create a default 'user' profile using Google's info.
         setMergedUser({
           uid: authUser.uid,
           displayName: authUser.displayName,
           email: authUser.email,
           photoURL: authUser.photoURL,
-          role: 'user', // Rol por defecto
+          role: 'user', // Default role
           status: 'active',
           createdAt: new Date().toISOString(),
         });
       }
     } else {
-      // Si no hay usuario autenticado, el perfil es nulo.
       setMergedUser(null);
     }
   }, [authUser, isAuthLoading]);
 
   return {
     user: mergedUser,
-    isUserLoading: isAuthLoading, // La carga solo depende del estado de autenticación ahora
+    isUserLoading: isAuthLoading,
     userError: userError,
   };
 }
