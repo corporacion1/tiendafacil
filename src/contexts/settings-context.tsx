@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { doc, collection } from 'firebase/firestore';
 import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
-import { defaultStore, defaultUsers, defaultStoreId } from '@/lib/data';
+import { defaultStore, defaultUsers, defaultStoreId, mockCurrencyRates } from '@/lib/data';
 import { useUser } from '@/firebase/auth/use-user';
 
 type DisplayCurrency = 'primary' | 'secondary';
@@ -41,41 +41,24 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const { user: authUser, isUserLoading } = useUser();
   
-  // START: MODIFICATION - Use local data instead of Firestore hooks
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(defaultUsers.find(u => u.role === 'superAdmin') || null);
   const [settings, setSettingsState] = useState<Settings | null>(defaultStore);
   const [isLoadingSettingsDoc, setIsLoadingSettingsDoc] = useState(false);
-
-  useEffect(() => {
-    if (authUser) {
-      // Find the user profile from the local defaultUsers array
-      const profile = defaultUsers.find(u => u.uid === authUser.uid) || {
-        ...authUser,
-        role: 'user',
-        status: 'active',
-        createdAt: new Date().toISOString(),
-      } as UserProfile;
-      setUserProfile(profile);
-    } else {
-      setUserProfile(null);
-    }
-  }, [authUser]);
-  // END: MODIFICATION
 
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   
-  const currencyRatesColRef = useMemoFirebase(() => collection(firestore, 'stores', activeStoreId, 'currencyRates'), [firestore, activeStoreId]);
-  const { data: currencyRatesData } = useCollection<CurrencyRate>(currencyRatesColRef);
-  
   const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>([]);
   
   useEffect(() => {
-    if (currencyRatesData) {
-      const sortedRates = [...currencyRatesData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      // Usar datos locales para las tasas de cambio
+      const localRates = mockCurrencyRates.map((rate, index) => ({
+        ...rate,
+        id: `rate-${index}`
+      }));
+      const sortedRates = [...localRates].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       setCurrencyRates(sortedRates);
-    }
-  }, [currencyRatesData]);
+  }, []);
 
 
   useEffect(() => {
