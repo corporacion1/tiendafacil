@@ -2,10 +2,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import { PanelLeft, UserCircle, LogOut } from "lucide-react";
-import { getAuth, signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -26,9 +25,7 @@ import {
 import { ThemeToggle } from "./theme-toggle";
 import { useSettings } from "@/contexts/settings-context";
 import { Logo } from "./logo";
-import { useRouter } from "next/navigation";
 import { navItems, settingsNav } from "@/lib/navigation";
-import { useUser } from "@/firebase";
 import { Badge } from "./ui/badge";
 
 interface SiteHeaderProps {
@@ -39,27 +36,17 @@ interface SiteHeaderProps {
 export function SiteHeader({ toggleSidebar, isSidebarExpanded }: SiteHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isUserLoading } = useUser();
   const { toast } = useToast();
-  const { settings, activeCurrency, toggleDisplayCurrency, activeStoreId } = useSettings();
+  const { settings, activeCurrency, toggleDisplayCurrency, activeStoreId, userProfile, isLoadingSettings } = useSettings();
   
-  const handleSignOut = async () => {
-    const auth = getAuth();
-    try {
-        await signOut(auth);
-        toast({
-            title: "Sesión Cerrada",
-            description: "Has cerrado sesión correctamente.",
-        });
-        router.push('/'); // Redirige a la raíz, que a su vez lleva al catálogo.
-    } catch (error) {
-        console.error("Error signing out:", error);
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "No se pudo cerrar la sesión.",
-        });
-    }
+  const handleSignOut = () => {
+    toast({
+        title: "Sesión Cerrada (Simulación)",
+        description: "Has cerrado sesión. Serás redirigido.",
+    });
+    // In a real app, you would clear user state here.
+    // For now, we just redirect.
+    router.push('/catalog'); 
   }
 
   const inactiveSymbol = activeCurrency === 'primary' 
@@ -144,15 +131,15 @@ export function SiteHeader({ toggleSidebar, isSidebarExpanded }: SiteHeaderProps
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
-                    {user?.photoURL && !isUserLoading ? (
-                        <Image src={user.photoURL} width={32} height={32} alt="User" className="rounded-full" />
+                    {userProfile?.photoURL && !isLoadingSettings ? (
+                        <Image src={userProfile.photoURL} width={32} height={32} alt="User" className="rounded-full" />
                     ) : (
                         <UserCircle className="h-6 w-6" />
                     )}
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-                <DropdownMenuLabel>{user?.displayName || user?.email || 'Mi Cuenta'}</DropdownMenuLabel>
+                <DropdownMenuLabel>{userProfile?.displayName || userProfile?.email || 'Mi Cuenta'}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />

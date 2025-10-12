@@ -1,8 +1,6 @@
 
 "use client";
 
-import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
-import { useAuth } from "@/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -22,40 +20,24 @@ const GoogleIcon = () => (
 
 
 export function LoginModal({ children }: { children: React.ReactNode }) {
-    const auth = useAuth();
     const router = useRouter();
     const { toast } = useToast();
     const { userProfile } = useSettings();
     const [isOpen, setIsOpen] = useState(false);
 
-    const handleGoogleSignIn = async () => {
-        const provider = new GoogleAuthProvider();
-        try {
-            const result = await signInWithPopup(auth, provider);
-            
-            // Logic to create user profile will be handled by SettingsProvider
-            // We just need to check the role after the user state is updated
-            
-            toast({
-                title: "¡Bienvenido!",
-                description: "Has iniciado sesión correctamente.",
-            });
+    const handleSignIn = async () => {
+        // This is a simulated sign-in. In a real app, this would
+        // trigger the Firebase Google sign-in popup.
+        toast({
+            title: "¡Bienvenido! (Simulación)",
+            description: "Has iniciado sesión correctamente.",
+        });
 
-            // The userProfile might not be updated instantly, so we need to give it a moment
-            // A better approach in a real app might be to wait for the profile to be available
-            // but for this simulation, we can check it after a short delay.
-            // However, the redirect logic is now inside SettingsProvider for better sync.
-
-            setIsOpen(false); // Close modal on success
-            
-        } catch (error: any) {
-            console.error("Error during Google sign-in:", error);
-            toast({
-                variant: "destructive",
-                title: "Error de autenticación",
-                description: error.message || "No se pudo iniciar sesión con Google.",
-            });
-        }
+        // The logic to set the user profile and redirect is now fully
+        // handled within the SettingsProvider for better consistency.
+        // We just need to close the modal and the context will handle the rest.
+        setIsOpen(false);
+        router.push('/pos');
     };
 
     return (
@@ -68,16 +50,28 @@ export function LoginModal({ children }: { children: React.ReactNode }) {
                      <Logo className="w-48 h-16 mx-auto mb-4" />
                     <DialogTitle className="text-2xl">Bienvenido a Tienda Facil</DialogTitle>
                     <DialogDescription>
-                        Ingresa con tu cuenta de Google para continuar.
+                        Ingresa para acceder al panel de administración.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="py-4">
-                    <Button onClick={handleGoogleSignIn} className="w-full" variant="outline">
+                    <Button onClick={handleSignIn} className="w-full">
                         <GoogleIcon />
-                        Ingresar con Google
+                        Ingresar (Simulación)
                     </Button>
                 </div>
             </DialogContent>
         </Dialog>
+    );
+}
+
+// This might be useful if you want a dedicated login page.
+// For now, we are using the modal approach.
+export default function LoginPage() {
+    return (
+        <div className="flex items-center justify-center min-h-screen">
+            <LoginModal>
+                <Button>Abrir Ventana de Ingreso</Button>
+            </LoginModal>
+        </div>
     );
 }

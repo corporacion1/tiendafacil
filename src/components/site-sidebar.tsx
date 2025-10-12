@@ -3,7 +3,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useUser } from "@/firebase";
 import type { UserProfile, UserRole } from "@/lib/types";
 
 import { navItems, adminNavItems, settingsNav } from "@/lib/navigation";

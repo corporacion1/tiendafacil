@@ -1,9 +1,8 @@
 
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import type { UserProfile, Store, UserRole } from "@/lib/types";
+import type { UserProfile, UserRole } from "@/lib/types";
 import { MoreHorizontal, Search, UserPlus, Shield, Check, Mail, Phone, ExternalLink, UserX } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -16,7 +15,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useSettings } from "@/contexts/settings-context";
-import { useUser } from "@/firebase";
 import { defaultUsers } from "@/lib/data";
 
 const getRoleVariant = (role: UserProfile['role']) => {
@@ -42,27 +40,14 @@ const getStatusVariant = (status: UserProfile['status'] | undefined) => {
 }
 
 export default function UsersPage() {
-  const { user: currentUser } = useUser();
+  const { userProfile: currentUserProfile, switchStore } = useSettings();
   const { toast } = useToast();
-  const { switchStore } = useSettings();
-
-  const [users, setUsers] = useState<UserProfile[]>(defaultUsers.map(u => ({...u, uid: `user-${Math.random()}`, createdAt: new Date().toISOString()})));
-  const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
-
+  
+  const [users, setUsers] = useState<UserProfile[]>(defaultUsers);
   const [searchTerm, setSearchTerm] = useState('');
   const [userToAction, setUserToAction] = useState<UserProfile | null>(null);
   const [actionType, setActionType] = useState<'promote' | 'disable' | 'changeRole' | null>(null);
   const [newRole, setNewRole] = useState<UserRole>('user');
-
-
-  useEffect(() => {
-    if (currentUser) {
-      const profile = users.find(u => u.email === currentUser.email);
-      if (profile) {
-        setCurrentUserProfile(profile);
-      }
-    }
-  }, [users, currentUser]);
 
   const handleAction = (user: UserProfile, type: 'promote' | 'disable' | 'changeRole', role?: UserRole) => {
     setUserToAction(user);
@@ -172,16 +157,12 @@ export default function UsersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredUsers.map((user) => {
-                  // If the user in the list matches the logged-in user, use the live photoURL from the auth state.
-                  const photoUrlToShow = (currentUser?.email === user.email && currentUser?.photoURL) ? currentUser.photoURL : user.photoURL;
-
-                  return (
+                {filteredUsers.map((user) => (
                   <TableRow key={user.uid} className={user.status === 'disabled' ? 'opacity-50' : ''}>
                      <TableCell className="hidden sm:table-cell">
                         <div className="relative flex items-center justify-center w-10 h-10 bg-muted rounded-full overflow-hidden">
-                          {photoUrlToShow ? (
-                              <Image src={photoUrlToShow} alt={user.displayName || 'Avatar'} fill sizes="40px" className="object-cover" />
+                          {user.photoURL ? (
+                              <Image src={user.photoURL} alt={user.displayName || 'Avatar'} fill sizes="40px" className="object-cover" />
                           ) : (
                               <UserPlus className="h-5 w-5 text-muted-foreground" />
                           )}
@@ -265,7 +246,7 @@ export default function UsersPage() {
                         </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                  )})}
+                  ))}
               </TableBody>
             </Table>
         </CardContent>

@@ -26,7 +26,6 @@ import { Label } from "@/components/ui/label";
 import { isPast, format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useUser } from "@/firebase";
 import { LoginModal } from "../login/page";
 
 
@@ -119,7 +118,6 @@ const CatalogProductCard = ({ product, onAddToCart, onImageClick }: { product: P
 
 export default function CatalogPage() {
     const { toast } = useToast();
-    const { user, isUserLoading } = useUser();
     const router = useRouter();
     const { settings, activeSymbol, activeRate, isLoadingSettings, userProfile } = useSettings();
 
@@ -563,7 +561,7 @@ export default function CatalogPage() {
                                     )}
                                 </SheetContent>
                             </Sheet>
-                            {isUserLoading ? <div className="h-9 w-9 sm:w-24 bg-muted rounded-md animate-pulse" /> : user ? (
+                            {isLoadingSettings ? <div className="h-9 w-9 sm:w-24 bg-muted rounded-md animate-pulse" /> : userProfile ? (
                                 <Button asChild variant="outline" size="icon" className="sm:size-auto sm:px-4">
                                     <Link href="/dashboard">
                                         <UserCircle className="h-4 w-4 sm:mr-2" />
@@ -826,7 +824,3 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
-
-    
-
-    

@@ -1,12 +1,10 @@
 
-
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
-import { useUser } from '@/firebase';
 import { defaultStoreId, defaultStore, defaultUsers, mockCurrencyRates } from '@/lib/data';
 
 type DisplayCurrency = 'primary' | 'secondary';
@@ -29,23 +27,23 @@ interface SettingsContextType {
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
-const ACTIVE_STORE_ID_KEY = 'tienda_facil_active_store_id';
 const CURRENCY_PREF_STORAGE_KEY = 'tienda_facil_currency_pref';
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
-  const { user, isUserLoading } = useUser();
   const { toast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
 
-  const [settings, setLocalSettings] = useState<Settings | null>(defaultStore);
+  const [settings, setLocalSettings] = useState<Settings | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>(mockCurrencyRates.map(r => ({ ...r, id: `rate-${Math.random()}`})));
+  const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>([]);
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
-
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
+  
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
+  // Cargar preferencias y datos iniciales una sola vez
   useEffect(() => {
     try {
       const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY) as DisplayCurrency;
@@ -53,68 +51,17 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     } catch (error) {
       console.error("Could not access localStorage for currency preference", error);
     }
-  }, []);
-  
-  useEffect(() => {
-    setIsLoadingSettings(true);
-    if (!isUserLoading) {
-        if (user) {
-            let profile = defaultUsers.find(u => u.email === user.email);
-            let userProfileData: UserProfile;
-
-            if (profile) {
-                userProfileData = {
-                    ...profile,
-                    uid: user.uid,
-                    photoURL: user.photoURL,
-                    phone: user.phoneNumber,
-                    displayName: user.displayName,
-                    createdAt: profile.createdAt || new Date().toISOString()
-                };
-            } else {
-                 userProfileData = {
-                    uid: user.uid,
-                    displayName: user.displayName,
-                    email: user.email,
-                    photoURL: user.photoURL,
-                    phone: user.phoneNumber,
-                    role: 'user',
-                    status: 'active',
-                    createdAt: new Date().toISOString(),
-                    storeId: activeStoreId, 
-                };
-                defaultUsers.push(userProfileData);
-                 toast({
-                    title: "¡Cuenta Creada!",
-                    description: "Tu perfil de usuario ha sido creado.",
-                });
-            }
-            setUserProfile(userProfileData);
-        } else {
-            setUserProfile(null);
-        }
-    }
     
-    // Solo carga el defaultStore si no hay nada en el estado aún
-    if (!settings) {
-        setLocalSettings(defaultStore);
-    }
+    // Simular carga de datos inicial
+    setLocalSettings(defaultStore);
     setCurrencyRates(mockCurrencyRates.map(r => ({ ...r, id: `rate-${Math.random()}`})));
+    // Simular un usuario logueado por defecto (el superAdmin)
+    setUserProfile(defaultUsers.find(u => u.role === 'superAdmin') || defaultUsers[0]);
+
+    setIsLoadingSettings(false);
+    setIsInitialLoad(false);
     
-    setTimeout(() => setIsLoadingSettings(false), 300);
-
-  }, [user, isUserLoading, activeStoreId, toast, settings]);
-  
-  // New effect specifically for handling redirection after profile is set
-  useEffect(() => {
-    // Redirect admins/superAdmins/pos to dashboard if they land on the login page
-    if (userProfile && ['admin', 'superAdmin', 'pos'].includes(userProfile.role)) {
-       if (pathname.startsWith('/login')) {
-          router.push('/pos');
-      }
-    }
-  }, [userProfile, pathname, router]);
-
+  }, []);
 
   const handleSetSettings = (newSettings: Settings) => {
     setLocalSettings(newSettings);

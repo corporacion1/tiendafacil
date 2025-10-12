@@ -2,45 +2,35 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { cn } from '@/lib/utils';
 import { Footer } from './footer';
-import { useUser } from '@/firebase';
-import { Skeleton } from './ui/skeleton';
 import { useSecurity } from '@/contexts/security-context';
+import { useSettings } from '@/contexts/settings-context';
+import { Skeleton } from './ui/skeleton';
+
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { user, isUserLoading } = useUser();
   const { lockApp } = useSecurity();
+  const { userProfile, isLoadingSettings } = useSettings();
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
   const toggleSidebar = () => {
     setIsSidebarExpanded(prev => !prev);
   };
 
-  const isPublicPage = pathname === '/' || pathname.startsWith('/catalog') || pathname.startsWith('/login');
+  const isPublicPage = pathname === '/' || pathname.startsWith('/catalog');
 
-  // Effect to re-lock the app on navigation change within protected routes
   useEffect(() => {
-    if (!isPublicPage && user) {
+    if (!isPublicPage && userProfile) {
       lockApp();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, user]); // Dependency on pathname triggers this on every route change
+  }, [pathname, userProfile]);
 
-  useEffect(() => {
-    // Si no es una página pública y la carga del usuario ha terminado, y no hay usuario...
-    if (!isPublicPage && !isUserLoading && !user) {
-      // Redirige al catálogo.
-      router.replace('/catalog');
-    }
-  }, [isUserLoading, user, isPublicPage, router, pathname]);
-
-  // Si es una página pública, usamos un layout más simple sin sidebar ni header principal.
   if (isPublicPage) {
     return (
       <div className="flex min-h-screen w-full flex-col">
@@ -50,8 +40,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Mientras se verifica el estado de autenticación en páginas protegidas, muestra un loader.
-  if (isUserLoading) {
+  if (isLoadingSettings) {
     return (
         <div className="flex min-h-screen w-full bg-muted/40">
             <div className={cn("hidden sm:flex flex-col border-r bg-background transition-all duration-300", isSidebarExpanded ? "w-56" : "w-20")}>
@@ -69,16 +58,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Si no hay usuario pero aún no se ha redirigido, muestra un loader para evitar un parpadeo de la UI.
-  if (!user) {
+  if (!userProfile && !isPublicPage) {
+    // This state should ideally not be reached if redirection logic is sound,
+    // but serves as a fallback loading state.
     return (
-        <div className="flex min-h-screen w-full items-center justify-center bg-background">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
-        </div>
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+      </div>
     );
   }
-
-  // Layout para las páginas internas de la aplicación.
+  
   return (
       <div className="flex min-h-screen w-full bg-muted/40">
         <SiteSidebar isExpanded={isSidebarExpanded} />
@@ -88,7 +77,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}>
           <SiteHeader toggleSidebar={toggleSidebar} isSidebarExpanded={isSidebarExpanded} />
           <main className={cn(
-            "flex-1 overflow-y-auto", // Permite que solo el contenido principal tenga scroll si es necesario
+            "flex-1 overflow-y-auto",
             "grid items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8"
           )}>
             {children}
