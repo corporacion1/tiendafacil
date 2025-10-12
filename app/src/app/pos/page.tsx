@@ -1,3 +1,4 @@
+
 // This file is a placeholder for the POS page.
 // The content will be rendered inside the AppShell.
 
