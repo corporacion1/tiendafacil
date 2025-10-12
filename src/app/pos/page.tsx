@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff, Archive, QrCode, Lock, Unlock, Library, FilePieChart, LogOut, ArrowLeft } from "lucide-react"
 import { useRouter } from "next/navigation";
-import { collection, query, where, doc } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -27,8 +26,6 @@ import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SessionReportPreview } from "@/components/session-report-preview";
 import { useSecurity } from "@/contexts/security-context";
-import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
@@ -71,7 +68,6 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
 
 export default function POSPage() {
   const { toast } = useToast();
-  const firestore = useFirestore();
   const { settings, setSettings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
   const { isLocked, isSecurityReady } = useSecurity();
   
@@ -204,7 +200,9 @@ export default function POSPage() {
   
   const finalizeSessionClosure = () => {
     if (sessionForReport) {
-      addDocumentNonBlocking(collection(firestore, 'cashSessions'), sessionForReport);
+      // In a real app, you would save `sessionForReport` to Firestore here.
+      // For demo, we just log it.
+      console.log("Saving closed session (demo):", sessionForReport);
     }
     setActiveSession(null);
     setIsClosingModalOpen(false);
@@ -421,15 +419,18 @@ export default function POSPage() {
         storeId: activeStoreId,
     }
     
-    addDocumentNonBlocking(collection(firestore, 'sales'), newSale);
+    // --- SIMULATED DEMO UPDATE ---
+    setSales(prev => [newSale, ...prev]);
 
+    let updatedProducts = [...products];
     for (const item of cartItems) {
-        const productRef = doc(firestore, 'products', item.product.id);
-        const product = products?.find(p => p.id === item.product.id);
-        if (product) {
-            updateDocumentNonBlocking(productRef, { stock: product.stock - item.quantity });
-        }
+        updatedProducts = updatedProducts.map(p => 
+            p.id === item.product.id 
+                ? { ...p, stock: p.stock - item.quantity }
+                : p
+        );
     }
+    setProductsState(updatedProducts);
     
     setActiveSession(prev => {
         if (!prev) return null;
@@ -445,10 +446,11 @@ export default function POSPage() {
     });
 
     setLastSale(newSale);
+    // --- END SIMULATED DEMO UPDATE ---
     
     toast({
-        title: "Venta Procesada",
-        description: `La venta #${saleId} ha sido registrada.`,
+        title: "Venta Procesada (DEMO)",
+        description: `La venta #${saleId} ha sido registrada localmente.`,
     });
     
     setCartItems([]);
@@ -488,21 +490,23 @@ export default function POSPage() {
         return;
     }
     
-    const customerToAdd: Omit<Customer, 'id'> & {storeId: string} = {
+    const newId = `cust-${Date.now()}`;
+    const customerToAdd: Customer = {
+        id: newId,
         name: newCustomer.name,
         phone: newCustomer.phone,
         address: newCustomer.address,
         storeId: activeStoreId,
     };
     
-    const customersCollection = collection(firestore, 'customers');
-    const newDocRef = await addDocumentNonBlocking(customersCollection, customerToAdd);
+    // In a real app, this would save to Firestore. Here we just update local state.
+    setCustomers(prev => [...prev, customerToAdd]);
 
-    setSelectedCustomerId(newDocRef.id);
+    setSelectedCustomerId(newId);
     setNewCustomer({ id: '', name: '', phone: '', address: '' });
     setIsCustomerDialogOpen(false);
     toast({
-        title: "Cliente Agregado",
+        title: "Cliente Agregado (DEMO)",
         description: `El cliente "${customerToAdd.name}" ha sido agregado y seleccionado.`,
     });
   };
