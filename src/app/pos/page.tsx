@@ -740,7 +740,10 @@ export default function POSPage() {
 
         {/* Cart Section (Right Column) */}
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2">
-            <Card className={cn("sticky top-6 flex flex-col max-h-[calc(100vh-4.5rem)]", !isSessionReady && "opacity-50 pointer-events-none")}>
+            <Card 
+                className={cn("sticky top-6 flex flex-col", !isSessionReady && "opacity-50 pointer-events-none")}
+                style={{ height: 'calc(100vh - 3.5rem)' }}
+            >
                 <CardHeader className="flex flex-row justify-between items-center">
                     <CardTitle>Carrito de Compra</CardTitle>
                     {cartItems.length > 0 && (
