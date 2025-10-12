@@ -490,9 +490,7 @@ export default function POSPage() {
         <div className="grid auto-rows-max items-start gap-4 md:col-span-2">
             <Card>
                 <CardHeader>
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                        <CardTitle>Productos</CardTitle>
-                    </div>
+                    <CardTitle>Productos</CardTitle>
                      <div className="mt-4 flex flex-wrap gap-2">
                         <Dialog>
                             <DialogTrigger asChild>
