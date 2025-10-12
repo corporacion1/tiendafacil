@@ -24,9 +24,11 @@ function AppShell({ children }: { children: React.ReactNode }) {
   const toggleSidebar = () => {
     setIsSidebarExpanded(prev => !prev);
   };
+  
+  const isPublicRoute = pathname.startsWith('/catalog');
 
   useEffect(() => {
-    if (isLoadingSettings) {
+    if (isLoadingSettings || isPublicRoute) {
       return;
     }
     if (!useDemoData && !userProfile) {
@@ -37,7 +39,12 @@ function AppShell({ children }: { children: React.ReactNode }) {
     if (userProfile) {
       lockApp();
     }
-  }, [pathname, userProfile, isLoadingSettings, router, lockApp, useDemoData]);
+  }, [pathname, userProfile, isLoadingSettings, router, lockApp, useDemoData, isPublicRoute]);
+  
+  // Do not render the protected shell for public catalog pages
+  if (isPublicRoute) {
+    return <>{children}</>;
+  }
 
   if (isLoadingSettings || (!useDemoData && !userProfile)) {
     return (
@@ -85,5 +92,5 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
         <AppShell>{children}</AppShell>
       </SettingsProvider>
     </SecurityProvider>
-  )
+  );
 }
