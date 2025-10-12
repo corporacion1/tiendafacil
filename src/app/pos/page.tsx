@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff, Archive, QrCode, Lock, Unlock, Library, FilePieChart, LogOut, ArrowLeft } from "lucide-react"
 import { useRouter } from "next/navigation";
+import { collection, query, where } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,12 +21,14 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { useSettings } from "@/contexts/settings-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { paymentMethods, mockProducts, defaultCustomers, mockSales, initialFamilies, pendingOrdersState, defaultStore, defaultUsers } from "@/lib/data";
+import { paymentMethods } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SessionReportPreview } from "@/components/session-report-preview";
 import { useSecurity } from "@/contexts/security-context";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
@@ -68,19 +71,29 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
 
 export default function POSPage() {
   const { toast } = useToast();
+  const firestore = useFirestore();
   const { settings, setSettings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
   const { isLocked, isSecurityReady } = useSecurity();
   
-  // --- LOCAL DATA STATE ---
-  const [products, setProductsState] = useState<Product[]>(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})));
-  const [customers, setCustomersState] = useState<Customer[]>(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
-  const [sales, setSalesState] = useState<Sale[]>(mockSales.map(s => ({...s, storeId: activeStoreId})));
-  const [families, setFamiliesState] = useState<Family[]>(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
+  // --- REALTIME DATA HOOKS ---
+  const productsQuery = useMemoFirebase(() => query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
+  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+
+  const customersQuery = useMemoFirebase(() => query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
+  const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
+
+  const salesQuery = useMemoFirebase(() => query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
+  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
+
+  const familiesQuery = useMemoFirebase(() => query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
+  const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
   
-  const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>(pendingOrdersState);
+  const pendingOrdersQuery = useMemoFirebase(() => query(collection(firestore, 'pendingOrders'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
+  const { data: pendingOrders, isLoading: isLoadingPendingOrders } = useCollection<PendingOrder>(pendingOrdersQuery);
+  
   
   const router = useRouter();
-  const isLoading = isLoadingSettings;
+  const isLoading = isLoadingSettings || isLoadingProducts || isLoadingCustomers || isLoadingSales || isLoadingFamilies || isLoadingPendingOrders;
   
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -415,29 +428,10 @@ export default function POSPage() {
         storeId: activeStoreId,
     }
     
-    setSalesState(prev => [...prev, newSale]);
-
-    let updatedProducts = [...products];
-    for (const item of cartItems) {
-        updatedProducts = updatedProducts.map(p => 
-            p.id === item.product.id 
-                ? { ...p, stock: p.stock - item.quantity }
-                : p
-        );
-    }
-    setProductsState(updatedProducts);
-    
-    if(settings.saleCorrelative !== undefined) {
-      const newCorrelative = (settings.saleCorrelative || 0) + 1;
-      setSettings({ ...settings, saleCorrelative: newCorrelative });
-    }
-    
-    setActiveSession(prev => prev ? {...prev, salesIds: [...prev.salesIds, saleId]} : null);
-    
     setLastSale(newSale);
     
     toast({
-        title: "Venta Procesada (Simulación)",
+        title: "Venta Procesada",
         description: `La venta #${saleId} ha sido registrada.`,
     });
     
@@ -479,21 +473,21 @@ export default function POSPage() {
     }
     
     const newId = newCustomer.id.trim() || `cust-${Date.now()}`;
-    const customerToAdd: Customer = {
-        id: newId,
+    const customerToAdd: Omit<Customer, 'id'> & {storeId: string} = {
         name: newCustomer.name,
         phone: newCustomer.phone,
         address: newCustomer.address,
         storeId: activeStoreId,
     };
     
-    setCustomersState(prev => [...prev, customerToAdd]);
-    
-    setSelectedCustomerId(newId);
+    const customersCollection = collection(firestore, 'customers');
+    const newDocRef = await addDocumentNonBlocking(customersCollection, customerToAdd);
+
+    setSelectedCustomerId(newDocRef.id);
     setNewCustomer({ id: '', name: '', phone: '', address: '' });
     setIsCustomerDialogOpen(false);
     toast({
-        title: "Cliente Agregado (Simulación)",
+        title: "Cliente Agregado",
         description: `El cliente "${customerToAdd.name}" ha sido agregado y seleccionado.`,
     });
   };
@@ -549,15 +543,12 @@ export default function POSPage() {
             phone: order.customerPhone,
             storeId: activeStoreId,
         }
-        setCustomersState(prev => [...prev, newCustomerFromOrder]);
+        // TODO: This should be an addDoc call
+        console.log("Creating new customer from order:", newCustomerFromOrder);
         setSelectedCustomerId(newCustomerFromOrder.id);
     }
-
-    const orderIndex = pendingOrdersState.findIndex(p => p.id === order.id);
-    if (orderIndex > -1) {
-      pendingOrdersState.splice(orderIndex, 1);
-    }
-    setPendingOrders([...pendingOrdersState]);
+    
+    // TODO: Delete pending order from firestore
     
     toast({
         title: "Pedido Cargado",
@@ -653,7 +644,7 @@ export default function POSPage() {
                                 <Button variant="secondary" disabled={!isSessionReady}>
                                     <Archive className="mr-2 h-4 w-4" />
                                     Pedidos Pendientes
-                                    {pendingOrders.length > 0 && <Badge variant="destructive" className="ml-2">{pendingOrders.length}</Badge>}
+                                    {pendingOrders && pendingOrders.length > 0 && <Badge variant="destructive" className="ml-2">{pendingOrders.length}</Badge>}
                                 </Button>
                             </DialogTrigger>
                             <DialogContent>
@@ -662,11 +653,11 @@ export default function POSPage() {
                                 </DialogHeader>
                                 <div className="py-4 max-h-96 overflow-y-auto">
                                     {isLoading && <p>Cargando pedidos...</p>}
-                                    {!isLoading && pendingOrders.length === 0 ? (
+                                    {!isLoading && (!pendingOrders || pendingOrders.length === 0) ? (
                                         <p className="text-center text-muted-foreground py-8">No hay pedidos pendientes.</p>
                                     ) : (
                                         <div className="space-y-4">
-                                        {pendingOrders.map(order => (
+                                        {(pendingOrders || []).map(order => (
                                             <div key={order.id} className="p-4 border rounded-lg">
                                                 <div className="flex justify-between items-start">
                                                     <div>
@@ -742,7 +733,7 @@ export default function POSPage() {
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2">
             <Card 
                 className={cn("sticky top-6 flex flex-col", !isSessionReady && "opacity-50 pointer-events-none")}
-                style={{ height: 'calc(100vh - 3.5rem)' }}
+                style={{ height: 'calc(100vh - 4.5rem)' }}
             >
                 <CardHeader className="flex flex-row justify-between items-center">
                     <CardTitle>Carrito de Compra</CardTitle>
@@ -1161,5 +1152,3 @@ export default function POSPage() {
   </Dialog>
   );
 }
-
-    

@@ -1,12 +1,14 @@
 
 "use client"
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
+import { doc, collection } from 'firebase/firestore';
+import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
-import { defaultStoreId, defaultStore, mockCurrencyRates, defaultUsers } from '@/lib/data';
-import { useUser } from '@/firebase/auth/use-user'; // Use our modified local data hook
+import { defaultStoreId } from '@/lib/data';
+import { useUser } from '@/firebase/auth/use-user';
 
 type DisplayCurrency = 'primary' | 'secondary';
 
@@ -35,14 +37,30 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { toast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
+  const firestore = useFirestore();
 
-  const { user: userProfile, isUserLoading } = useUser();
+  const { user: authUser, isUserLoading } = useUser();
+  const userDocRef = useMemoFirebase(() => authUser ? doc(firestore, 'users', authUser.uid) : null, [authUser, firestore]);
+  const { data: userProfile } = useDoc<UserProfile>(userDocRef);
 
-  const [settings, setSettingsState] = useState<Settings | null>(defaultStore);
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
-  const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>(mockCurrencyRates);
-  const [isLoading, setIsLoading] = useState(true);
+  
+  const settingsDocRef = useMemoFirebase(() => doc(firestore, 'stores', activeStoreId), [firestore, activeStoreId]);
+  const { data: settings, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(settingsDocRef);
+  
+  const currencyRatesColRef = useMemoFirebase(() => collection(firestore, 'stores', activeStoreId, 'currencyRates'), [firestore, activeStoreId]);
+  const { data: currencyRatesData } = useCollection<CurrencyRate>(currencyRatesColRef);
+  
+  const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>([]);
+  
+  useEffect(() => {
+    if (currencyRatesData) {
+      const sortedRates = [...currencyRatesData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setCurrencyRates(sortedRates);
+    }
+  }, [currencyRatesData]);
+
 
   useEffect(() => {
     try {
@@ -59,21 +77,21 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
     } catch (error) {
       console.error("Could not access localStorage", error);
-    } finally {
-        setIsLoading(false);
     }
   }, [userProfile]);
 
 
   useEffect(() => {
-     if (!isUserLoading && !userProfile && !pathname.startsWith('/catalog')) {
+     if (!isUserLoading && !authUser && !pathname.startsWith('/catalog')) {
       router.push('/catalog');
     }
-  }, [isUserLoading, userProfile, pathname, router]);
+  }, [isUserLoading, authUser, pathname, router]);
 
   const handleSetSettings = (newSettings: Settings) => {
-    setSettingsState(newSettings);
-    toast({ title: "Configuración Guardada (Simulación)", description: "Tus cambios se han guardado localmente." });
+    // In a real app with write permissions, you'd use setDoc here.
+    // For now, we simulate with state.
+    console.log("Simulating settings update:", newSettings);
+    toast({ title: "Configuración Guardada (Simulación)", description: "Los cambios se guardarán en la base de datos." });
   };
 
   const switchStore = (storeId: string) => {
@@ -105,6 +123,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const latestRate = (currencyRates.length > 0) ? currencyRates[0].rate : 1;
   const activeRate = activeCurrency === 'primary' ? 1 : (latestRate > 0 ? latestRate : 1);
 
+  const isLoading = isUserLoading || isLoadingSettingsDoc;
+
   const contextValue: SettingsContextType = {
     settings, 
     setSettings: handleSetSettings, 
@@ -114,10 +134,10 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     activeSymbol, 
     activeRate, 
     currencyRates,
-    setCurrencyRates,
+    setCurrencyRates, // This can now be used to optimistically update UI if needed
     activeStoreId,
     switchStore,
-    isLoadingSettings: isLoading || isUserLoading,
+    isLoadingSettings: isLoading,
     userProfile,
   };
 

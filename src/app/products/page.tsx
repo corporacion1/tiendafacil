@@ -6,29 +6,55 @@ import { useToast } from "@/hooks/use-toast";
 import { ProductForm } from "@/components/product-form";
 import type { Product } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
+import { useFirestore } from "@/firebase";
+import { collection } from "firebase/firestore";
+import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { useRouter } from "next/navigation";
+
 
 export default function ProductsPage() {
   const { toast } = useToast();
+  const firestore = useFirestore();
   const { activeStoreId } = useSettings();
+  const router = useRouter();
 
-  function onSubmit(data: Omit<Product, 'id' | 'storeId'>) {
-    const newProductId = `prod-${Date.now()}`;
-    const newProduct: Omit<Product, 'id'> & { id: string, storeId: string } = {
+  async function onSubmit(data: Omit<Product, 'id' | 'storeId'>) {
+    if (!activeStoreId) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se ha seleccionado ninguna tienda.",
+      });
+      return false;
+    }
+    const newProduct: Omit<Product, 'id'> = {
       ...data,
-      id: newProductId,
       storeId: activeStoreId,
+      createdAt: new Date().toISOString(),
     };
     
-    // Here you would typically add the new product to your state management
-    // For now, we just show a toast.
-    console.log("New Product (Simulated):", newProduct);
-    
-    toast({
-      title: "Producto Creado (Simulación)",
-      description: `El producto "${data.name}" ha sido creado exitosamente.`,
-    });
-    
-    return true; // Indicates the form should be reset
+    try {
+      const productsCollection = collection(firestore, 'products');
+      await addDocumentNonBlocking(productsCollection, newProduct);
+      
+      toast({
+        title: "Producto Creado",
+        description: `El producto "${data.name}" ha sido creado exitosamente.`,
+      });
+      
+      // Optional: redirect to inventory page after creation
+      router.push('/inventory');
+      
+      return true; // Indicates the form should be reset
+    } catch(error: any) {
+        console.error("Error creating product:", error);
+        toast({
+            variant: "destructive",
+            title: "Error al crear producto",
+            description: error.message || "Ocurrió un error inesperado.",
+        });
+        return false;
+    }
   }
   
   return (
@@ -45,5 +71,3 @@ export default function ProductsPage() {
     </Card>
   );
 }
-
-    
