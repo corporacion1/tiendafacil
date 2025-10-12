@@ -399,8 +399,7 @@ function CatalogPageContent() {
     };
     
     const dashboardHref = () => {
-        const storeId = searchParams.get('storeId');
-        return storeId ? `/dashboard?storeId=${storeId}` : '/dashboard';
+        return '/dashboard';
     };
 
     if (!isClient) {
@@ -825,5 +824,3 @@ export default function CatalogPage() {
         </SettingsProvider>
     );
 }
-
-    

@@ -108,6 +108,7 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
 export default function AdsPage() {
   const { toast } = useToast();
   
+  // Revert to using local state with mock data
   const [ads, setAds] = useState(() => initialMockAds.map(ad => ({ ...ad, createdAt: new Date().toISOString() })));
   const isLoading = false;
 
@@ -296,5 +297,3 @@ export default function AdsPage() {
     </>
   );
 }
-
-    

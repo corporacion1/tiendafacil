@@ -18,5 +18,3 @@ export const adminNavItems = [
 ];
 
 export const settingsNav = { href: "/settings", label: "Configuración", icon: Settings };
-
-    
