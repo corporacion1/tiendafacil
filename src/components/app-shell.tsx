@@ -9,11 +9,13 @@ import { cn } from '@/lib/utils';
 import { Footer } from './footer';
 import { useUser } from '@/firebase';
 import { Skeleton } from './ui/skeleton';
+import { useSecurity } from '@/contexts/security-context';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isUserLoading } = useUser();
+  const { lockApp } = useSecurity();
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
   const toggleSidebar = () => {
@@ -21,6 +23,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   const isPublicPage = pathname === '/' || pathname.startsWith('/catalog') || pathname.startsWith('/login');
+
+  // Effect to re-lock the app on navigation change within protected routes
+  useEffect(() => {
+    if (!isPublicPage && user) {
+      lockApp();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, user]); // Dependency on pathname triggers this on every route change
 
   useEffect(() => {
     // Si no es una página pública y la carga del usuario ha terminado, y no hay usuario...

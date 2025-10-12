@@ -36,10 +36,11 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
       if (pinFromStorage) {
         setStoredPin(pinFromStorage);
         setHasPin(true);
-        setIsLocked(true); // Lock the app if PIN exists
+        // Lock the app on initial load if a PIN is set
+        setIsLocked(true); 
       } else {
         setHasPin(false);
-        setIsLocked(false); // No PIN, no lock
+        setIsLocked(false);
       }
     } catch (error) {
         console.error("Could not access localStorage for PIN", error);
@@ -48,19 +49,13 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, []);
 
-  useEffect(() => {
-    // Lock app when navigating away from POS page if PIN is set
-    if (hasPin && pathname !== '/pos' && !isLocked) {
-      // This part is tricky. For now, we lock it when app loads.
-      // A more robust solution might use session storage to track unlocked state per session.
-    }
-  }, [pathname, hasPin, isLocked]);
-
   const lockApp = useCallback(() => {
-    if (hasPin) {
+    // Only lock if a PIN is set and we are not on a public page
+    const isPublicPage = pathname.startsWith('/catalog') || pathname.startsWith('/login');
+    if (hasPin && !isPublicPage) {
       setIsLocked(true);
     }
-  }, [hasPin]);
+  }, [hasPin, pathname]);
 
   const unlockApp = useCallback((pin: string) => {
     if (pin === storedPin) {
