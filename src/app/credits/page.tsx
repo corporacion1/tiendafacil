@@ -1,5 +1,3 @@
-// This file is a placeholder for the credits page.
-// The content will be rendered inside the AppShell.
 
 export default function CreditsPage() {
   return (
