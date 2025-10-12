@@ -51,7 +51,7 @@ export const defaultUsers: Omit<UserProfile, 'createdAt' | 'uid' | 'phone'>[] = 
     },
     {
         email: 'pos@tiendafacil.com',
-        displayName: 'POS User',
+        displayName: 'POS Demo',
         photoURL: '/tienda_facil_logo.svg',
         role: 'pos',
         status: 'active',
@@ -59,7 +59,7 @@ export const defaultUsers: Omit<UserProfile, 'createdAt' | 'uid' | 'phone'>[] = 
     },
     {
         email: 'demo@tiendafacil.com',
-        displayName: 'demo',
+        displayName: 'User Demo',
         photoURL: '/tienda_facil_logo.svg',
         role: 'user',
         status: 'active',
@@ -307,3 +307,5 @@ export async function factoryReset() {
   console.log("factoryReset is disabled. Using local data.");
   return;
 }
+
+    
