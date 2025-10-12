@@ -9,7 +9,7 @@ import { defaultStoreId, defaultStore, mockCurrencyRates } from '@/lib/data';
 import { useUser } from '@/firebase/auth/use-user';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { doc, collection } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
+import { useFirestore, useMemoFirebase } from '@/firebase';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 
@@ -49,7 +49,11 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   
   // Fetch Store Settings from Firestore
-  const storeRef = doc(firestore, 'stores', activeStoreId);
+  const storeRef = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return doc(firestore, 'stores', activeStoreId);
+  }, [firestore, activeStoreId]);
+  
   const { data: settings, isLoading: isLoadingStore } = useDoc<Settings>(storeRef);
   
   // TODO: Implement currency rates fetching from Firestore
@@ -82,6 +86,10 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [isUserLoading, userProfile, pathname, router]);
 
   const handleSetSettings = (newSettings: Settings) => {
+    if (!storeRef) {
+        toast({ variant: 'destructive', title: "Error", description: "No hay referencia a la tienda para guardar." });
+        return;
+    }
     setDocumentNonBlocking(storeRef, newSettings, { merge: true });
     toast({ title: "Configuración Guardada", description: "Tus cambios han sido guardados en Firestore." });
   };

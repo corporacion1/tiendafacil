@@ -1,7 +1,7 @@
 
 'use client';
 import { useEffect } from 'react';
-import { useUser as useAuthUser, useFirestore } from '@/firebase/provider';
+import { useUser as useAuthUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
@@ -17,12 +17,16 @@ export function useUser() {
 
   // Create a document reference to the user's profile in Firestore.
   // This ref is memoized internally by useDoc when authUser is stable.
-  const userProfileRef = authUser ? doc(firestore, 'users', authUser.uid) : null;
+  const userProfileRef = useMemoFirebase(() => {
+    if (!authUser || !firestore) return null;
+    return doc(firestore, 'users', authUser.uid);
+  }, [authUser, firestore]);
+
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
 
   useEffect(() => {
     // If we have an authenticated user but their profile doesn't exist yet, create it.
-    if (authUser && !userProfile && !isProfileLoading) {
+    if (authUser && !userProfile && !isProfileLoading && userProfileRef) {
       const newUserProfile: UserProfile = {
         uid: authUser.uid,
         email: authUser.email,

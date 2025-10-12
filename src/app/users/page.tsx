@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useSettings } from "@/contexts/settings-context";
-import { useFirestore } from "@/firebase";
+import { useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, doc } from "firebase/firestore";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
@@ -47,7 +47,7 @@ export default function UsersPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   
-  const usersRef = collection(firestore, 'users');
+  const usersRef = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
   const { data: users, isLoading } = useCollection<UserProfile>(usersRef);
   
   const [searchTerm, setSearchTerm] = useState('');
