@@ -4,17 +4,18 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function HomePage() {
+const defaultStoreId = process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'default';
+
+export default function CatalogRedirectPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to the dashboard as the main entry point
-    router.replace(`/dashboard`);
+    router.replace(`/catalog/${defaultStoreId}`);
   }, [router]);
 
   return (
       <div className="flex items-center justify-center min-h-screen">
-        <p>Cargando aplicación...</p>
+        <p>Cargando catálogo...</p>
       </div>
   );
 }
