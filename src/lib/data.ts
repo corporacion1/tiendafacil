@@ -1,4 +1,3 @@
-
 import type { Product, Sale, Unit, Family, Warehouse, Customer, Purchase, Ad, UserProfile, Store, CurrencyRate, Supplier, PendingOrder, CashSession } from '@/lib/types';
 import { PlaceHolderImages } from './placeholder-images';
 import { subDays, addDays, startOfWeek, startOfMonth, startOfYear } from 'date-fns';
@@ -92,10 +91,10 @@ export let pendingOrdersState: PendingOrder[] = [
     }
 ];
 
-export const mockCurrencyRates: Omit<CurrencyRate, 'id'>[] = [
-    { rate: 195.249100, date: new Date().toISOString() },
-    { rate: 195.200000, date: subDays(new Date(), 1).toISOString() },
-    { rate: 195.150000, date: subDays(new Date(), 2).toISOString() },
+export const mockCurrencyRates: CurrencyRate[] = [
+    { id: 'rate-1', rate: 36.50, date: new Date().toISOString() },
+    { id: 'rate-2', rate: 36.45, date: subDays(new Date(), 1).toISOString() },
+    { id: 'rate-3', rate: 36.40, date: subDays(new Date(), 2).toISOString() },
 ];
 
 export const defaultCustomers: Omit<Customer, 'storeId'>[] = [
@@ -301,7 +300,11 @@ export const businessCategories: string[] = [
 export function trackAdClick(adId: string) {
     // This is a mock function, in a real app this would call a server endpoint
     // to track the click and update the ad's view count in the database.
-    console.log(`Ad click tracked for: ${adId}`);
+    const ad = mockAds.find(a => a.id === adId);
+    if(ad) {
+        ad.views++;
+        console.log(`Ad click tracked for: ${adId}. Total views: ${ad.views}`);
+    }
 }
 
 // This function now just returns false to satisfy the call in login page, but does nothing.
@@ -315,5 +318,3 @@ export async function factoryReset() {
   console.log("factoryReset is disabled. Using local data.");
   return;
 }
-
-    

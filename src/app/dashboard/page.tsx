@@ -1,4 +1,3 @@
-
 "use client"
 import { useState, useMemo, useEffect } from "react";
 import { ArrowUpRight, DollarSign, Users, Package, ShoppingBag, ArrowLeft, ArrowRight } from "lucide-react";
@@ -43,15 +42,19 @@ type TimeFilter = 'day' | 'week' | 'month';
 
 const getDate = (d: any): Date => {
   if (!d) return new Date();
-  if (d.toDate) { // Firebase Timestamp
-    return d.toDate();
-  }
-  if (typeof d === 'string') {
-    return parseISO(d);
-  }
+  // If it's already a Date object, return it directly. This is the fix.
   if (d instanceof Date) {
     return d;
   }
+  // If it's a Firebase Timestamp, convert it.
+  if (d.toDate) { 
+    return d.toDate();
+  }
+  // If it's a string, parse it.
+  if (typeof d === 'string') {
+    return parseISO(d);
+  }
+  // As a fallback, return the current date.
   return new Date();
 }
 
@@ -133,7 +136,7 @@ export default function Dashboard() {
 
     filteredPurchases.forEach(purchase => {
         const purchaseDate = getDate(purchase.date);
-        const dateKey = format(purchaseDate, dateFormat);
+        const dateKey = format(purchaseDate, 'yyyy-MM-dd'); // Use yyyy-MM-dd for sorting
 
         if (!dataByDate[dateKey]) {
             dataByDate[dateKey] = { date: format(purchaseDate, dateFormat), sales: 0, profit: 0, unitsSold: 0, unitsPurchased: 0 };
@@ -365,5 +368,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-    
