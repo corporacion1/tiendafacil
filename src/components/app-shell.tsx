@@ -9,36 +9,34 @@ import { Footer } from './footer';
 import { useSecurity } from '@/contexts/security-context';
 import { useSettings } from '@/contexts/settings-context';
 import { Skeleton } from './ui/skeleton';
-import { FirstTimeSetupModal } from './first-time-setup-modal';
 
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { lockApp } = useSecurity();
-  const { userProfile, isLoadingSettings, useDemoData } = useSettings();
+  const { userProfile, isLoadingSettings } = useSettings();
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
   const toggleSidebar = () => {
     setIsSidebarExpanded(prev => !prev);
   };
-  
-  const isPublicPage = pathname.startsWith('/catalog') || pathname === '/';
+
+  const isPublicPage = pathname === '/' || pathname.startsWith('/catalog');
 
   useEffect(() => {
-    if (isPublicPage || isLoadingSettings) {
-      return;
-    }
-    
-    if (!useDemoData && !userProfile) {
-      router.replace(`/catalog`);
-      return;
-    }
-    
-    lockApp();
+    if (isLoadingSettings) return;
 
-  }, [pathname, userProfile, isLoadingSettings, router, lockApp, useDemoData, isPublicPage]);
-  
+    if (!isPublicPage && !userProfile) {
+      router.replace('/catalog');
+    }
+
+    if (!isPublicPage && userProfile) {
+      lockApp();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, userProfile, isLoadingSettings]);
+
   if (isPublicPage) {
     return (
       <div className="flex min-h-screen w-full flex-col">
@@ -48,7 +46,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (isLoadingSettings || (!useDemoData && !userProfile)) {
+  if (isLoadingSettings || (!userProfile && !isPublicPage)) {
     return (
         <div className="flex min-h-screen w-full bg-muted/40">
             <div className={cn("hidden sm:flex flex-col border-r bg-background transition-all duration-300", isSidebarExpanded ? "w-56" : "w-20")}>
@@ -65,14 +63,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
     );
   }
-
-  if (!userProfile && !isPublicPage && !useDemoData) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
-      </div>
-    );
-  }
   
   return (
       <div className="flex min-h-screen w-full bg-muted/40">
@@ -86,7 +76,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             "flex-1 overflow-y-auto",
             "grid items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8"
           )}>
-            <FirstTimeSetupModal />
             {children}
           </main>
           <Footer />
