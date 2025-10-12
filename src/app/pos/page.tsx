@@ -420,7 +420,7 @@ export default function POSPage() {
           </CardHeader>
           <CardContent>
             {isLoading && <p>Cargando productos...</p>}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {(filteredProducts || []).map((product) => {
                     return (
                     <Card key={product.id} className="overflow-hidden group cursor-pointer" onClick={() => addProductToCart(product)}>
