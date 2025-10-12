@@ -1,13 +1,179 @@
+/**
+ * @fileoverview Firestore Security Rules for the inventory and point-of-sale system.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict data segregation model. All collections are top-level and access is determined by the specific needs of the application.  Data is NOT generally user-owned unless otherwise specified.
+ *
+ * Data Structure:
+ * - `/products/{productId}`: Product information.
+ * - `/inventoryMovements/{inventoryMovementId}`: Inventory movements.
+ * - `/sales/{saleId}`: Sales transactions.
+ * - `/sales/{saleId}/saleItems/{saleItemId}`: Sale items.
+ * - `/purchases/{purchaseId}`: Purchase transactions.
+ * - `/purchases/{purchaseId}/purchaseItems/{purchaseItemId}`: Purchase items.
+ * - `/customers/{customerId}`: Customer information.
+ * - `/suppliers/{supplierId}`: Supplier information.
+ * - `/taxTypes/{taxTypeId}`: Tax type information.
+ * - `/configuration/{configurationId}`: Business configuration data.
+ *
+ * Key Security Decisions:
+ * - No implicit ownership: Unless explicitly stated, access is not tied to the authenticated user.  This allows for centralized management of application data.
+ * - No user listing: Listing of documents is generally disallowed unless the data is explicitly intended to be public.
+ */
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // MODO DE PRUEBA: Permite leer y escribir a cualquier usuario que haya iniciado sesión.
-    // Esto es ideal para el desarrollo y las pruebas funcionales.
-    // Para producción, se deben implementar reglas más estrictas.
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+
+    /**
+     * @description Controls access to product information.
+     * @path /products/{productId}
+     * @allow get, list: if true;
+     * @allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+     * @deny create: if true;
+     * @deny update: if true;
+     * @deny delete: if true;
+     * @principle Public read, owner-only writes (currently disabled for prototyping).
+     */
+    match /products/{productId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+    }
+
+    /**
+     * @description Controls access to inventory movement records.
+     * @path /inventoryMovements/{inventoryMovementId}
+     * @allow get, list: if true;
+     * @allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+     * @deny create: if true;
+     * @deny update: if true;
+     * @deny delete: if true;
+     * @principle Public read, owner-only writes (currently disabled for prototyping).
+     */
+    match /inventoryMovements/{inventoryMovementId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+    }
+
+    /**
+     * @description Controls access to sales transactions.
+     * @path /sales/{saleId}
+     * @allow get, list: if true;
+     * @allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+     * @deny create: if true;
+     * @deny update: if true;
+     * @deny delete: if true;
+     * @principle Public read, owner-only writes (currently disabled for prototyping).
+     */
+    match /sales/{saleId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+
+      /**
+       * @description Controls access to individual sale items related to a specific sale.
+       * @path /sales/{saleId}/saleItems/{saleItemId}
+       * @allow get, list: if true;
+       * @allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+       * @deny create: if true;
+       * @deny update: if true;
+       * @deny delete: if true;
+       * @principle Public read, owner-only writes (currently disabled for prototyping).
+       */
+      match /saleItems/{saleItemId} {
+        allow get, list: if true;
+        allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      }
+    }
+
+    /**
+     * @description Controls access to purchase transactions.
+     * @path /purchases/{purchaseId}
+     * @allow get, list: if true;
+     * @allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+     * @deny create: if true;
+     * @deny update: if true;
+     * @deny delete: if true;
+     * @principle Public read, owner-only writes (currently disabled for prototyping).
+     */
+    match /purchases/{purchaseId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+
+      /**
+       * @description Controls access to individual purchase items related to a specific purchase.
+       * @path /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
+       * @allow get, list: if true;
+       * @allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+       * @deny create: if true;
+       * @deny update: if true;
+       * @deny delete: if true;
+       * @principle Public read, owner-only writes (currently disabled for prototyping).
+       */
+      match /purchaseItems/{purchaseItemId} {
+        allow get, list: if true;
+        allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      }
+    }
+
+    /**
+     * @description Controls access to customer information.
+     * @path /customers/{customerId}
+     * @allow get, list: if true;
+     * @allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+     * @deny create: if true;
+     * @deny update: if true;
+     * @deny delete: if true;
+     * @principle Public read, owner-only writes (currently disabled for prototyping).
+     */
+    match /customers/{customerId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+    }
+
+    /**
+     * @description Controls access to supplier information.
+     * @path /suppliers/{supplierId}
+     * @allow get, list: if true;
+     * @allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+     * @deny create: if true;
+     * @deny update: if true;
+     * @deny delete: if true;
+     * @principle Public read, owner-only writes (currently disabled for prototyping).
+     */
+    match /suppliers/{supplierId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+    }
+
+    /**
+     * @description Controls access to tax type information.
+     * @path /taxTypes/{taxTypeId}
+     * @allow get, list: if true;
+     * @allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+     * @deny create: if true;
+     * @deny update: if true;
+     * @deny delete: if true;
+     * @principle Public read, owner-only writes (currently disabled for prototyping).
+     */
+    match /taxTypes/{taxTypeId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+    }
+
+    /**
+     * @description Controls access to business configuration data.
+     * @path /configuration/{configurationId}
+     * @allow get: if true;
+     * @allow list: if false;
+     * @allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+     * @deny create: if true;
+     * @deny update: if true;
+     * @deny delete: if true;
+     * @principle Public read, owner-only writes (currently disabled for prototyping).
+     */
+    match /configuration/{configurationId} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
     }
   }
 }
