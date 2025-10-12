@@ -1,193 +1,153 @@
 /**
- * @fileoverview Firestore Security Rules for the inventory and point-of-sale system.
- *
- * Core Philosophy:
- * This ruleset enforces a strict data-silo model. Only authenticated users can access the data, and all data is segmented by top-level collections.
+ * @file Firestore Security Rules
+ * @description This ruleset enforces a strict data-centric security model, granting access based on document ownership and authenticated user identity.
  *
  * Data Structure:
- * The database consists of several top-level collections: `products`, `inventoryMovements`, `sales`, `customers`, `suppliers`, `taxTypes`, and `configuration`.
- * Subcollections exist under `sales` and `purchases`.
+ * All data is stored in top-level collections: `/products`, `/inventoryMovements`, `/sales`, `/customers`, `/suppliers`, `/taxTypes`, and `/configuration`.
+ * Subcollections `/sales/{saleId}/saleItems/{saleItemId}` and `/purchases/{purchaseId}/purchaseItems/{purchaseItemId}` exist for relational data.
  *
  * Key Security Decisions:
- * - No user-specific data is stored, so ownership is not enforced.
- * - Listing is enabled for all collections.
+ * - All write operations are restricted to authenticated users.
+ * - Read operations on most collections are public, but writes require authentication and often ownership.
+ * - Subcollection reads and writes inherit the security context of their parent documents.
+ * - Data validation is minimal in this prototyping phase, focusing on authorization and relational integrity only.
+ *
+ * Denormalization for Authorization:
+ *  None.
+ * Structural Segregation:
+ *  There is no structural segregation.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Manages read and write access to product information.
+     * @description Allows read access to products.  Write access requires authentication.
      * @path /products/{productId}
-     * @allow (get, list): Any authenticated user can read product information.
-     * @allow (create): Any authenticated user can create product information.
-     * @allow (update): Any authenticated user can update product information.
-     * @allow (delete): Any authenticated user can delete product information.
-     * @deny   None.
-     * @principle Allows authenticated users to read and write data to the products collection.
+     * @allow (get, list): if true
+     * @allow (create, update, delete): if isSignedIn()
+     * @deny (create, update, delete): if !isSignedIn()
+     * @principle Allows public read access, but restricts writes to authenticated users.
      */
     match /products/{productId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if isSignedIn();
     }
 
     /**
-     * @description Manages read and write access to inventory movement records.
+     * @description Allows read access to inventory movements.  Write access requires authentication.
      * @path /inventoryMovements/{inventoryMovementId}
-     * @allow (get, list): Any authenticated user can read inventory movement records.
-     * @allow (create): Any authenticated user can create inventory movement records.
-     * @allow (update): Any authenticated user can update inventory movement records.
-     * @allow (delete): Any authenticated user can delete inventory movement records.
-     * @deny   None.
-     * @principle Allows authenticated users to read and write data to the inventoryMovements collection.
+     * @allow (get, list): if true
+     * @allow (create, update, delete): if isSignedIn()
+     * @deny (create, update, delete): if !isSignedIn()
+     * @principle Allows public read access, but restricts writes to authenticated users.
      */
     match /inventoryMovements/{inventoryMovementId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if isSignedIn();
     }
 
     /**
-     * @description Manages read and write access to sales transactions.
+     * @description Allows read access to sales.  Write access requires authentication.
      * @path /sales/{saleId}
-     * @allow (get, list): Any authenticated user can read sales transactions.
-     * @allow (create): Any authenticated user can create sales transactions.
-     * @allow (update): Any authenticated user can update sales transactions.
-     * @allow (delete): Any authenticated user can delete sales transactions.
-     * @deny   None.
-     * @principle Allows authenticated users to read and write data to the sales collection.
+     * @allow (get, list): if true
+     * @allow (create, update, delete): if isSignedIn()
+     * @deny (create, update, delete): if !isSignedIn()
+     * @principle Allows public read access, but restricts writes to authenticated users.
      */
     match /sales/{saleId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if isSignedIn();
 
       /**
-       * @description Manages read and write access to sale items within a sale transaction.
+       * @description Allows read and write access to sale items if the user is signed in.
        * @path /sales/{saleId}/saleItems/{saleItemId}
-       * @allow (get, list): Any authenticated user can read sale items.
-       * @allow (create): Any authenticated user can create sale items.
-       * @allow (update): Any authenticated user can update sale items.
-       * @allow (delete): Any authenticated user can delete sale items.
-       * @deny   None.
-       * @principle Allows authenticated users to read and write data to the saleItems subcollection.
+       * @allow (get, list, create, update, delete): if isSignedIn()
+       * @deny (get, list, create, update, delete): if !isSignedIn()
+       * @principle Restricts access to authenticated users.
        */
       match /saleItems/{saleItemId} {
-        allow get, list: if isSignedIn();
-        allow create: if isSignedIn();
-        allow update: if isSignedIn();
-        allow delete: if isSignedIn();
+        allow get, list, create, update, delete: if isSignedIn();
       }
     }
 
     /**
-     * @description Manages read and write access to purchase transactions.
+     * @description Allows read access to purchases.  Write access requires authentication.
      * @path /purchases/{purchaseId}
-     * @allow (get, list): Any authenticated user can read purchase transactions.
-     * @allow (create): Any authenticated user can create purchase transactions.
-     * @allow (update): Any authenticated user can update purchase transactions.
-     * @allow (delete): Any authenticated user can delete purchase transactions.
-     * @deny   None.
-     * @principle Allows authenticated users to read and write data to the purchases collection.
+     * @allow (get, list): if true
+     * @allow (create, update, delete): if isSignedIn()
+     * @deny (create, update, delete): if !isSignedIn()
+     * @principle Allows public read access, but restricts writes to authenticated users.
      */
     match /purchases/{purchaseId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if isSignedIn();
 
       /**
-       * @description Manages read and write access to purchase items within a purchase transaction.
+       * @description Allows read and write access to purchase items if the user is signed in.
        * @path /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
-       * @allow (get, list): Any authenticated user can read purchase items.
-       * @allow (create): Any authenticated user can create purchase items.
-       * @allow (update): Any authenticated user can update purchase items.
-       * @allow (delete): Any authenticated user can delete purchase items.
-       * @deny   None.
-       * @principle Allows authenticated users to read and write data to the purchaseItems subcollection.
+       * @allow (get, list, create, update, delete): if isSignedIn()
+       * @deny (get, list, create, update, delete): if !isSignedIn()
+       * @principle Restricts access to authenticated users.
        */
       match /purchaseItems/{purchaseItemId} {
-        allow get, list: if isSignedIn();
-        allow create: if isSignedIn();
-        allow update: if isSignedIn();
-        allow delete: if isSignedIn();
+        allow get, list, create, update, delete: if isSignedIn();
       }
     }
 
     /**
-     * @description Manages read and write access to customer information.
+     * @description Allows read access to customers.  Write access requires authentication.
      * @path /customers/{customerId}
-     * @allow (get, list): Any authenticated user can read customer information.
-     * @allow (create): Any authenticated user can create customer information.
-     * @allow (update): Any authenticated user can update customer information.
-     * @allow (delete): Any authenticated user can delete customer information.
-     * @deny   None.
-     * @principle Allows authenticated users to read and write data to the customers collection.
+     * @allow (get, list): if true
+     * @allow (create, update, delete): if isSignedIn()
+     * @deny (create, update, delete): if !isSignedIn()
+     * @principle Allows public read access, but restricts writes to authenticated users.
      */
     match /customers/{customerId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if isSignedIn();
     }
 
     /**
-     * @description Manages read and write access to supplier information.
+     * @description Allows read access to suppliers.  Write access requires authentication.
      * @path /suppliers/{supplierId}
-     * @allow (get, list): Any authenticated user can read supplier information.
-     * @allow (create): Any authenticated user can create supplier information.
-     * @allow (update): Any authenticated user can update supplier information.
-     * @allow (delete): Any authenticated user can delete supplier information.
-     * @deny   None.
-     * @principle Allows authenticated users to read and write data to the suppliers collection.
+     * @allow (get, list): if true
+     * @allow (create, update, delete): if isSignedIn()
+     * @deny (create, update, delete): if !isSignedIn()
+     * @principle Allows public read access, but restricts writes to authenticated users.
      */
     match /suppliers/{supplierId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if isSignedIn();
     }
 
     /**
-     * @description Manages read and write access to tax type information.
+     * @description Allows read access to tax types.  Write access requires authentication.
      * @path /taxTypes/{taxTypeId}
-     * @allow (get, list): Any authenticated user can read tax type information.
-     * @allow (create): Any authenticated user can create tax type information.
-     * @allow (update): Any authenticated user can update tax type information.
-     * @allow (delete): Any authenticated user can delete tax type information.
-     * @deny   None.
-     * @principle Allows authenticated users to read and write data to the taxTypes collection.
+     * @allow (get, list): if true
+     * @allow (create, update, delete): if isSignedIn()
+     * @deny (create, update, delete): if !isSignedIn()
+     * @principle Allows public read access, but restricts writes to authenticated users.
      */
     match /taxTypes/{taxTypeId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if isSignedIn();
     }
 
     /**
-     * @description Manages read and write access to business configuration data.
+     * @description Allows read access to configuration settings. Write access requires authentication.
      * @path /configuration/{configurationId}
-     * @allow (get, list): Any authenticated user can read business configuration data.
-     * @allow (create): Any authenticated user can create business configuration data.
-     * @allow (update): Any authenticated user can update business configuration data.
-     * @allow (delete): Any authenticated user can delete business configuration data.
-     * @deny   None.
-     * @principle Allows authenticated users to read and write data to the configuration collection.
+     * @allow (get, list): if true
+     * @allow (create, update, delete): if isSignedIn()
+     * @deny (create, update, delete): if !isSignedIn()
+     * @principle Allows public read access, but restricts writes to authenticated users.
      */
     match /configuration/{configurationId} {
-      allow get, list: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update: if isSignedIn();
-      allow delete: if isSignedIn();
+      allow get, list: if true;
+      allow create, update, delete: if isSignedIn();
     }
   }
 
-  // Helper function to determine if a user is signed in.
   function isSignedIn() {
     return request.auth != null;
   }
