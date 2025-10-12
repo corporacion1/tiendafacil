@@ -1,6 +1,6 @@
 import { FieldValue } from 'firebase/firestore';
 
-export type UserRole = 'superAdmin' | 'admin' | 'user';
+export type UserRole = 'superAdmin' | 'admin' | 'user' | 'pos';
 export type UserStatus = 'active' | 'disabled';
 
 export type UserProfile = {

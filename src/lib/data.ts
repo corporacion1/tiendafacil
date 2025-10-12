@@ -50,6 +50,14 @@ export const defaultUsers: Omit<UserProfile, 'createdAt' | 'uid' | 'phone'>[] = 
         storeId: defaultStoreId,
     },
     {
+        email: 'pos@tiendafacil.com',
+        displayName: 'POS User',
+        photoURL: '/tienda_facil_logo.svg',
+        role: 'pos',
+        status: 'active',
+        storeId: defaultStoreId,
+    },
+    {
         email: 'demo@tiendafacil.com',
         displayName: 'demo',
         photoURL: '/tienda_facil_logo.svg',

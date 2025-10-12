@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUser } from "@/firebase";
-import type { UserProfile } from "@/lib/types";
+import type { UserProfile, UserRole } from "@/lib/types";
 
 import { navItems, adminNavItems, settingsNav } from "@/lib/navigation";
 import { Logo } from "./logo";
@@ -24,9 +24,22 @@ interface SiteSidebarProps {
 
 export function SiteSidebar({ isExpanded }: SiteSidebarProps) {
     const pathname = usePathname();
-    const { settings, userProfile } = useSettings();
+    const { userProfile } = useSettings();
 
     const userRole = userProfile?.role;
+
+    const filteredNavItems = useMemo(() => {
+        if (!userRole) return [];
+        if (userRole === 'superAdmin' || userRole === 'admin') {
+            return navItems;
+        }
+        if (userRole === 'pos') {
+            return navItems.filter(item => item.href === '/pos' || item.href === '/catalog');
+        }
+        // Default 'user' role
+        return navItems.filter(item => item.href !== '/purchases' && item.href !== '/reports');
+
+    }, [userRole]);
 
     const renderLink = (item: typeof navItems[0]) => (
       <TooltipProvider delayDuration={100}>
@@ -72,7 +85,7 @@ export function SiteSidebar({ isExpanded }: SiteSidebarProps) {
                 </Link>
             </div>
             <nav className="flex flex-col gap-2 p-2 font-medium">
-                {navItems.map((item) => (
+                {filteredNavItems.map((item) => (
                     <div key={item.href}>{renderLink(item)}</div>
                 ))}
                 {filteredAdminNavItems.map((item) => (
@@ -80,7 +93,7 @@ export function SiteSidebar({ isExpanded }: SiteSidebarProps) {
                 ))}
             </nav>
             <nav className="mt-auto flex flex-col gap-2 p-2 font-medium">
-                 {renderLink(settingsNav)}
+                 {userRole && ['superAdmin', 'admin'].includes(userRole) && renderLink(settingsNav)}
             </nav>
         </aside>
     );
