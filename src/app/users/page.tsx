@@ -15,7 +15,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useSettings } from "@/contexts/settings-context";
-import { defaultUsers } from "@/lib/data";
+import { useFirestore } from "@/firebase";
+import { collection, doc } from "firebase/firestore";
+import { useCollection } from "@/firebase/firestore/use-collection";
+import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 const getRoleVariant = (role: UserProfile['role']) => {
   switch (role) {
@@ -41,15 +44,22 @@ const getStatusVariant = (status: UserProfile['status'] | undefined) => {
 
 export default function UsersPage() {
   const { userProfile: currentUserProfile, switchStore } = useSettings();
+  const firestore = useFirestore();
   const { toast } = useToast();
   
-  const [users, setUsers] = useState<UserProfile[]>(defaultUsers);
+  const usersRef = collection(firestore, 'users');
+  const { data: users, isLoading } = useCollection<UserProfile>(usersRef);
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [userToAction, setUserToAction] = useState<UserProfile | null>(null);
   const [actionType, setActionType] = useState<'promote' | 'disable' | 'changeRole' | null>(null);
   const [newRole, setNewRole] = useState<UserRole>('user');
 
   const handleAction = (user: UserProfile, type: 'promote' | 'disable' | 'changeRole', role?: UserRole) => {
+    if (currentUserProfile?.role !== 'superAdmin') {
+      toast({ variant: 'destructive', title: 'Permiso denegado' });
+      return;
+    }
     setUserToAction(user);
     setActionType(type);
     if (role) {
@@ -58,12 +68,13 @@ export default function UsersPage() {
   };
   
   const confirmRoleChange = async () => {
-      if (!userToAction) return;
+      if (!userToAction || !firestore) return;
       
-      setUsers(prevUsers => prevUsers.map(u => u.uid === userToAction.uid ? { ...u, role: newRole } : u));
+      const userDocRef = doc(firestore, 'users', userToAction.uid);
+      setDocumentNonBlocking(userDocRef, { role: newRole }, { merge: true });
       
       toast({
-          title: 'Rol Actualizado (Simulación)',
+          title: 'Rol Actualizado',
           description: `${userToAction.displayName} ahora es ${newRole}.`
       });
 
@@ -72,28 +83,29 @@ export default function UsersPage() {
   }
 
   const confirmAction = async () => {
-    if (!userToAction || !actionType) return;
+    if (!userToAction || !actionType || !firestore) return;
+
+    const userDocRef = doc(firestore, 'users', userToAction.uid);
 
     if (actionType === 'promote') {
       const newStoreId = `store-${userToAction.uid.slice(0, 8)}`;
-      setUsers(prevUsers => prevUsers.map(u => u.uid === userToAction.uid ? {
-          ...u,
+      setDocumentNonBlocking(userDocRef, {
           role: 'admin',
           storeId: newStoreId,
           storeRequest: false,
-      } : u));
+      }, { merge: true });
       
       toast({
-          title: "Usuario Promovido (Simulación)",
+          title: "Usuario Promovido",
           description: `${userToAction.displayName} ahora es un administrador con la tienda ${newStoreId}.`,
       });
 
     } else if (actionType === 'disable') {
        const newStatus = userToAction.status === 'disabled' ? 'active' : 'disabled';
-       setUsers(prevUsers => prevUsers.map(u => u.uid === userToAction.uid ? { ...u, status: newStatus } : u));
+       setDocumentNonBlocking(userDocRef, { status: newStatus }, { merge: true });
        
        toast({
-            title: `Usuario ${newStatus === 'disabled' ? 'Deshabilitado' : 'Habilitado'} (Simulación)`,
+            title: `Usuario ${newStatus === 'disabled' ? 'Deshabilitado' : 'Habilitado'}`,
             description: `La cuenta de "${userToAction.displayName}" ha sido ${newStatus === 'disabled' ? 'deshabilitada' : 'habilitada'}.`,
         });
     }
@@ -111,7 +123,7 @@ export default function UsersPage() {
   }, [users, searchTerm]);
   
   const allStores = useMemo(() => {
-      const stores: { id: string; name: string; }[] = [{ id: 'tiendafacil', name: 'Tienda Facil DEMO' }];
+      const stores: { id: string; name: string; }[] = [];
       if (users) {
         users.forEach(u => {
             if (u.role === 'admin' && u.storeId && u.displayName) {
@@ -121,6 +133,17 @@ export default function UsersPage() {
       }
       return stores;
   }, [users]);
+
+  if (currentUserProfile?.role !== 'superAdmin') {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Acceso Denegado</CardTitle>
+          <CardDescription>No tienes permisos para ver esta página.</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
 
   return (
     <>
@@ -144,7 +167,8 @@ export default function UsersPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
+          {isLoading && <p>Cargando usuarios...</p>}
+          {!isLoading && <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="hidden sm:table-cell">Avatar</TableHead>
@@ -202,7 +226,7 @@ export default function UsersPage() {
                     <TableCell>
                        <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button aria-haspopup="true" size="icon" variant="ghost">
+                                <Button aria-haspopup="true" size="icon" variant="ghost" disabled={user.uid === currentUserProfile?.uid}>
                                     <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>
@@ -248,7 +272,7 @@ export default function UsersPage() {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+            </Table>}
         </CardContent>
       </Card>
       
@@ -273,5 +297,3 @@ export default function UsersPage() {
     </>
   );
 }
-
-    

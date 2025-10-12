@@ -8,6 +8,8 @@ import { Logo } from '@/components/logo';
 import { useRouter } from "next/navigation";
 import { useSettings } from "@/contexts/settings-context";
 import { useState } from "react";
+import { useAuth } from "@/firebase";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
 const GoogleIcon = () => (
     <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -21,23 +23,28 @@ const GoogleIcon = () => (
 
 export function LoginModal({ children }: { children: React.ReactNode }) {
     const router = useRouter();
+    const auth = useAuth();
     const { toast } = useToast();
-    const { userProfile } = useSettings();
     const [isOpen, setIsOpen] = useState(false);
 
     const handleSignIn = async () => {
-        // This is a simulated sign-in. In a real app, this would
-        // trigger the Firebase Google sign-in popup.
-        toast({
-            title: "¡Bienvenido! (Simulación)",
-            description: "Has iniciado sesión correctamente.",
-        });
-
-        // The logic to set the user profile and redirect is now fully
-        // handled within the SettingsProvider for better consistency.
-        // We just need to close the modal and the context will handle the rest.
-        setIsOpen(false);
-        router.push('/pos');
+        const provider = new GoogleAuthProvider();
+        try {
+            await signInWithPopup(auth, provider);
+            toast({
+                title: "¡Bienvenido!",
+                description: "Has iniciado sesión correctamente.",
+            });
+            setIsOpen(false);
+            router.push('/dashboard');
+        } catch (error: any) {
+            console.error("Firebase sign-in error:", error);
+            toast({
+                variant: 'destructive',
+                title: "Error al iniciar sesión",
+                description: error.message || "Ocurrió un error inesperado.",
+            });
+        }
     };
 
     return (
@@ -56,7 +63,7 @@ export function LoginModal({ children }: { children: React.ReactNode }) {
                 <div className="py-4">
                     <Button onClick={handleSignIn} className="w-full">
                         <GoogleIcon />
-                        Ingresar (Simulación)
+                        Ingresar con Google
                     </Button>
                 </div>
             </DialogContent>
