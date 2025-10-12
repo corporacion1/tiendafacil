@@ -1095,9 +1095,9 @@ export default function POSPage() {
                 />
             </div>
             <DialogFooter className="sm:justify-between">
-                <Button variant="secondary" onClick={() => router.push('/dashboard')}>
+                <Button variant="secondary" onClick={() => router.back()}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
-                    Volver al Dashboard
+                    Regresar
                 </Button>
                 <Button onClick={handleOpenSession} disabled={!openingBalance || Number(openingBalance) < 0}>Iniciar Sesión</Button>
             </DialogFooter>
