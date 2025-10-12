@@ -107,7 +107,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
               }
           }
       };
-      if (!isLoadingStoreSettings) {
+      if (!isLoadingStoreSettings && settings) { // Ensure settings are loaded before checking
           seedDataIfNeeded();
       }
   }, [firestore, settings, activeStoreId, isLoadingStoreSettings, toast]);
@@ -184,4 +184,3 @@ export const useSettings = (): SettingsContextType => {
   }
   return context;
 };
-
