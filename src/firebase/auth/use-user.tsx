@@ -13,11 +13,11 @@ export function useUser() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [needsProfileCreation, setNeedsProfileCreation] = useState(false);
+  const [profileError, setProfileError] = useState<Error | null>(null);
   const firestore = useFirestore();
 
   useEffect(() => {
     const fetchProfile = async () => {
-      // Si no hay usuario autenticado de Firebase, no hay nada que hacer.
       if (!authUser || !firestore) {
         setUserProfile(null);
         setNeedsProfileCreation(false);
@@ -25,43 +25,46 @@ export function useUser() {
         return;
       }
 
-      // Si hay un usuario autenticado, siempre intentamos cargar su perfil.
       setIsProfileLoading(true);
+      setProfileError(null);
       const userDocRef = doc(firestore, 'users', authUser.uid);
       
       try {
         const docSnap = await getDoc(userDocRef);
         if (docSnap.exists()) {
-          // El perfil existe, lo cargamos en el estado.
           setUserProfile(docSnap.data() as UserProfile);
           setNeedsProfileCreation(false);
         } else {
-          // El perfil NO existe. Lo marcamos para creación.
+          // This is the only case where we should prompt for profile creation.
           setUserProfile(null);
           setNeedsProfileCreation(true);
         }
-      } catch (error) {
-        // Un error de permisos aquí es normal la primera vez.
-        // Lo importante es marcar que se necesita crear el perfil.
-        console.error("Error fetching user profile (may be expected on first login):", error);
+      } catch (error: any) {
+        // Any other error (permissions, network) should be treated as a hard error.
+        console.error("Failed to fetch user profile:", error);
+        setProfileError(error);
         setUserProfile(null);
-        setNeedsProfileCreation(true);
+        setNeedsProfileCreation(false); // Do NOT show the form if we can't even check.
       } finally {
         setIsProfileLoading(false);
       }
     };
 
-    // Solo ejecutar si la autenticación de Firebase no está cargando.
     if (!isAuthLoading) {
       fetchProfile();
     }
 
   }, [authUser, isAuthLoading, firestore]);
 
+  // Throw the profile fetching error to be caught by the error boundary
+  if (profileError) {
+    throw profileError;
+  }
+
   return {
     user: userProfile,
     isUserLoading: isAuthLoading || isProfileLoading,
-    userError,
+    userError: userError || profileError,
     needsProfileCreation,
   };
 }
