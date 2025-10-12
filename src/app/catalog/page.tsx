@@ -124,18 +124,11 @@ export default function CatalogPage() {
     const firestore = useFirestore();
     const { settings, activeSymbol, activeRate, isLoadingSettings, userProfile } = useSettings();
     
-    // --- LOCAL DATA HOOKS (used as initial state) ---
-    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(
-      useMemoFirebase(() => query(collection(firestore, "products"), where("storeId", "==", settings?.id || defaultStoreId)), [firestore, settings?.id])
-    );
-    const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(
-      useMemoFirebase(() => query(collection(firestore, "families"), where("storeId", "==", settings?.id || defaultStoreId)), [firestore, settings?.id])
-    );
-    const { data: allAds, isLoading: isLoadingAds } = useCollection<Ad>(
-      useMemoFirebase(() => collection(firestore, "ads"), [firestore])
-    );
-
-    const isLoading = isLoadingSettings || isLoadingProducts || isLoadingFamilies || isLoadingAds;
+    // --- USE LOCAL DATA ---
+    const [products, setProductsState] = useState(mockProducts.map(p => ({...p, storeId: settings?.id || defaultStoreId, createdAt: new Date().toISOString()})));
+    const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: settings?.id || defaultStoreId, id: f.id || `fam-${Math.random()}`})));
+    const [allAds, setAllAds] = useState(mockAds.map(ad => ({...ad, createdAt: new Date().toISOString()})));
+    const isLoading = false;
     
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
     const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);

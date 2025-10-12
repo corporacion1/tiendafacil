@@ -32,7 +32,7 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 const CURRENCY_PREF_STORAGE_KEY = 'tienda_facil_currency_pref';
 const ACTIVE_STORE_ID_STORAGE_KEY = 'tienda_facil_active_store_id';
-const DB_SEEDED_FLAG_KEY = 'tienda_facil_db_seeded_v1';
+const DB_SEEDED_FLAG_KEY = 'tienda_facil_db_seeded_v1_forced';
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
@@ -41,23 +41,42 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const firestore = useFirestore();
 
   const { user: authUser, isUserLoading } = useUser();
-  
-  // Load user profile from local data to avoid initial load error
-  const userProfile = useMemo(() => {
-    if (isUserLoading || !authUser) return null;
-    const localProfile = defaultUsers.find(u => u.uid === authUser.uid);
-    return localProfile ? { ...localProfile, ...authUser } : null;
-  }, [authUser, isUserLoading]);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
-  // Load settings and currency rates from local data
   const [settings, setSettingsState] = useState<Settings | null>(defaultStore);
   const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>(mockCurrencyRates.map((r, i) => ({ ...r, id: `rate-${i}` })));
-  const isLoadingSettingsDoc = false; // We are not loading from doc anymore
+  const isLoadingSettingsDoc = false;
 
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   
-  // SEEDING LOGIC - Keep this to allow user to populate DB
+  useEffect(() => {
+    if (!isUserLoading && authUser) {
+        const localProfile = defaultUsers.find(u => u.uid === authUser.uid);
+        if (localProfile) {
+            setUserProfile({
+                ...localProfile,
+                displayName: authUser.displayName,
+                email: authUser.email,
+                photoURL: authUser.photoURL,
+            });
+        } else {
+            setUserProfile({
+                uid: authUser.uid,
+                displayName: authUser.displayName,
+                email: authUser.email,
+                photoURL: authUser.photoURL,
+                role: 'user',
+                status: 'active',
+                createdAt: new Date().toISOString(),
+            });
+        }
+    } else if (!isUserLoading && !authUser) {
+        setUserProfile(null);
+    }
+  }, [authUser, isUserLoading]);
+
+
   useEffect(() => {
     const seedDatabase = async () => {
         try {
@@ -73,9 +92,15 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                     title: '¡Base de Datos Poblada!',
                     description: 'Los datos de demostración se han cargado. Refresca la página para verlos.',
                 });
+                window.location.reload();
             }
         } catch (error) {
             console.error("Database seeding failed:", error);
+             toast({
+                variant: 'destructive',
+                title: 'Error al poblar la base de datos',
+                description: 'No se pudieron cargar los datos de demostración.',
+            });
         }
     };
     if (firestore) {
@@ -110,12 +135,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [isUserLoading, authUser, pathname, router]);
 
   const handleSetSettings = (newSettings: Settings) => {
-    // This will now update the document in firestore
-    if (!activeStoreId) return;
-    const settingsDoc = doc(firestore, 'stores', activeStoreId);
-    setDocumentNonBlocking(settingsDoc, newSettings, { merge: true });
-    setSettingsState(newSettings); // Optimistic update
-    toast({ title: "Configuración Guardada", description: "Los cambios han sido guardados en la nube." });
+    setSettingsState(newSettings);
+    toast({ title: "Configuración Guardada (Simulación)", description: "Los cambios se guardaron localmente." });
   };
 
   const switchStore = (storeId: string) => {
