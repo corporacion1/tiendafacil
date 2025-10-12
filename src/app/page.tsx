@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect } from 'react';
@@ -8,13 +7,8 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to the dashboard as the main entry point
-    router.replace(`/dashboard`);
+    router.replace('/catalog');
   }, [router]);
 
-  return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>Cargando aplicación...</p>
-      </div>
-  );
+  return null;
 }
