@@ -34,10 +34,9 @@ import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { ProductForm } from "@/components/product-form";
 import { useSettings } from "@/contexts/settings-context";
 import { format, parseISO } from "date-fns";
-import { useFirestore } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { query, collection, where, doc } from "firebase/firestore";
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
-import { mockProducts, mockSales } from "@/lib/data";
 
 
 const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewMovements, setProductToDelete }: {
@@ -131,12 +130,15 @@ export default function InventoryPage() {
   const firestore = useFirestore();
   const { activeSymbol, activeRate, activeStoreId, isLoadingSettings } = useSettings();
 
-  // --- LOCAL DATA HOOKS ---
-  const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})));
-  const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
-  const [inventoryMovements, setInventoryMovements] = useState<InventoryMovement[]>([]);
+  const productsQuery = useMemoFirebase(() => query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
+  const salesQuery = useMemoFirebase(() => query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
+  const movementsQuery = useMemoFirebase(() => query(collection(firestore, 'inventoryMovements'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
+
+  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
+  const { data: inventoryMovements, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsQuery);
   
-  const isLoading = isLoadingSettings;
+  const isLoading = isLoadingSettings || isLoadingProducts || isLoadingSales || isLoadingMovements;
   
   const [isMovementsDialogOpen, setIsMovementsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -271,7 +273,7 @@ export default function InventoryPage() {
     if (!selectedProduct || !inventoryMovements) return [];
     return inventoryMovements
       .filter(m => m.productName === selectedProduct.name)
-      .sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+      .sort((a,b) => parseISO(b.date as string).getTime() - parseISO(a.date as string).getTime());
   }, [selectedProduct, inventoryMovements]);
 
   const filteredProducts = useMemo(() => {

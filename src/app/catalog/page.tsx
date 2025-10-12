@@ -27,6 +27,8 @@ import { isPast, format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { LoginModal } from "../login/page";
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
 
 
 const AdCard = ({ ad }: { ad: Ad }) => {
@@ -119,14 +121,21 @@ const CatalogProductCard = ({ product, onAddToCart, onImageClick }: { product: P
 export default function CatalogPage() {
     const { toast } = useToast();
     const router = useRouter();
+    const firestore = useFirestore();
     const { settings, activeSymbol, activeRate, isLoadingSettings, userProfile } = useSettings();
     
-    // --- LOCAL DATA ---
-    const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: settings?.id || defaultStoreId, createdAt: new Date().toISOString()})));
-    const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: settings?.id || defaultStoreId})));
-    const [allAds, setAllAds] = useState(mockAds.map(ad => ({...ad, createdAt: ad.createdAt || new Date().toISOString()})));
+    // --- LOCAL DATA HOOKS (used as initial state) ---
+    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(
+      useMemoFirebase(() => query(collection(firestore, "products"), where("storeId", "==", settings?.id || defaultStoreId)), [firestore, settings?.id])
+    );
+    const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(
+      useMemoFirebase(() => query(collection(firestore, "families"), where("storeId", "==", settings?.id || defaultStoreId)), [firestore, settings?.id])
+    );
+    const { data: allAds, isLoading: isLoadingAds } = useCollection<Ad>(
+      useMemoFirebase(() => collection(firestore, "ads"), [firestore])
+    );
 
-    const isLoading = isLoadingSettings;
+    const isLoading = isLoadingSettings || isLoadingProducts || isLoadingFamilies || isLoadingAds;
     
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
     const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);

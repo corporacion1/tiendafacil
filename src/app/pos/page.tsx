@@ -21,13 +21,13 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { useSettings } from "@/contexts/settings-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { paymentMethods, mockProducts, defaultCustomers, mockSales, initialFamilies, pendingOrdersState } from "@/lib/data";
+import { paymentMethods, pendingOrdersState } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SessionReportPreview } from "@/components/session-report-preview";
 import { useSecurity } from "@/contexts/security-context";
-import { useFirestore } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 
@@ -75,15 +75,20 @@ export default function POSPage() {
   const { settings, setSettings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
   const { isLocked, isSecurityReady } = useSecurity();
   
-  // --- LOCAL DATA HOOKS ---
-  const [products, setProductsState] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})));
-  const [customers, setCustomersState] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
-  const [sales, setSalesState] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
-  const [families, setFamiliesState] = useState(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
+  const productsQuery = useMemoFirebase(() => query(collection(firestore, "products"), where("storeId", "==", activeStoreId)), [firestore, activeStoreId]);
+  const customersQuery = useMemoFirebase(() => query(collection(firestore, "customers"), where("storeId", "==", activeStoreId)), [firestore, activeStoreId]);
+  const salesQuery = useMemoFirebase(() => query(collection(firestore, "sales"), where("storeId", "==", activeStoreId)), [firestore, activeStoreId]);
+  const familiesQuery = useMemoFirebase(() => query(collection(firestore, "families"), where("storeId", "==", activeStoreId)), [firestore, activeStoreId]);
+
+  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+  const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
+  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
+  const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
+  
   const [pendingOrders, setPendingOrdersState] = useState<PendingOrder[]>(pendingOrdersState);
 
   const router = useRouter();
-  const isLoading = isLoadingSettings;
+  const isLoading = isLoadingSettings || isLoadingProducts || isLoadingCustomers || isLoadingSales || isLoadingFamilies;
   
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
