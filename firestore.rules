@@ -1,229 +1,126 @@
-/**
- * @fileoverview Firestore Security Rules for the inventory and point-of-sale system.
- *
- * Core Philosophy:
- * This ruleset enforces a strict data segregation model. All top-level collections (products, inventoryMovements, sales, purchases, customers, suppliers, taxTypes, and configuration) are secured with public read access and owner-only write access, based on an "id" field within each document that must match the document ID. This approach avoids hierarchical authorization dependencies.
- *
- * Data Structure:
- * - /products/{productId}
- * - /inventoryMovements/{inventoryMovementId}
- * - /sales/{saleId}
- * - /sales/{saleId}/saleItems/{saleItemId}
- * - /purchases/{purchaseId}
- * - /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
- * - /customers/{customerId}
- * - /suppliers/{supplierId}
- * - /taxTypes/{taxTypeId}
- * - /configuration/{configurationId}
- *
- * Key Security Decisions:
- * - Public read access is granted to all top-level collections.
- * - All write operations are restricted to the owner of the document.
- * - List operations are granted for all collections.
- *
- * Denormalization for Authorization:
- * The "id" field in each document is used to enforce ownership. The value of "id" must match the document ID. This denormalization allows for simple and efficient security rules.
- *
- * Structural Segregation:
- * Data is segregated into separate collections based on its access requirements. This simplifies security rules and improves performance.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    /**
+     * @description Defines if the current user is signed in
+     * @path N/A
+     * @allow N/A
+     * @deny N/A
+     * @principle N/A
+     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isOwner(resourceId) {
-      return isSignedIn() && request.auth.uid == resourceId;
-    }
-
-    function isExistingOwner(resourceId) {
-        return isOwner(resourceId) && resource != null;
-    }
-
     /**
-     * @description Allows read access to all products and restricts write access to the product owner.
-     * @path /products/{productId}
-     * @allow (get, list): Any user can read the products.
-     * @allow (create): Only the owner of the product (productId matches request.auth.uid) can create it.
-     * @deny (create): A user attempts to create a product with an ID that doesn't match their auth UID.
-     * @allow (update, delete): Only the owner of the existing product can update or delete it.
-     * @deny (update, delete): A user attempts to update or delete a product they don't own.
-     * @principle Enforces document ownership for writes, allows public reads.
+     * @description Rules for the /products collection.
      */
     match /products/{productId} {
-      allow get, list: if true;
-      allow create: if isOwner(productId) && request.resource.data.id == productId;
-      allow update: if isExistingOwner(productId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(productId);
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Allows read access to all inventory movements and restricts write access to the inventory movement owner.
-     * @path /inventoryMovements/{inventoryMovementId}
-     * @allow (get, list): Any user can read inventory movements.
-     * @allow (create): Only the owner of the inventory movement (inventoryMovementId matches request.auth.uid) can create it.
-     * @deny (create): A user attempts to create an inventory movement with an ID that doesn't match their auth UID.
-     * @allow (update, delete): Only the owner of the existing inventory movement can update or delete it.
-     * @deny (update, delete): A user attempts to update or delete an inventory movement they don't own.
-     * @principle Enforces document ownership for writes, allows public reads.
+     * @description Rules for the /inventoryMovements collection.
      */
     match /inventoryMovements/{inventoryMovementId} {
-      allow get, list: if true;
-      allow create: if isOwner(inventoryMovementId) && request.resource.data.id == inventoryMovementId;
-      allow update: if isExistingOwner(inventoryMovementId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(inventoryMovementId);
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Allows read access to all sales and restricts write access to the sale owner.
-     * @path /sales/{saleId}
-     * @allow (get, list): Any user can read sales.
-     * @allow (create): Only the owner of the sale (saleId matches request.auth.uid) can create it.
-     * @deny (create): A user attempts to create a sale with an ID that doesn't match their auth UID.
-     * @allow (update, delete): Only the owner of the existing sale can update or delete it.
-     * @deny (update, delete): A user attempts to update or delete a sale they don't own.
-     * @principle Enforces document ownership for writes, allows public reads.
+     * @description Rules for the /sales collection.
      */
     match /sales/{saleId} {
-      allow get, list: if true;
-      allow create: if isOwner(saleId) && request.resource.data.id == saleId;
-      allow update: if isExistingOwner(saleId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(saleId);
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Allows read access to all sale items and restricts write access to the sale item owner.
-     * @path /sales/{saleId}/saleItems/{saleItemId}
-     * @allow (get, list): Any user can read sale items.
-     * @allow (create): Only the owner of the sale item (saleItemId matches request.auth.uid) can create it.
-     * @deny (create): A user attempts to create a sale item with an ID that doesn't match their auth UID.
-     * @allow (update, delete): Only the owner of the existing sale item can update or delete it.
-     * @deny (update, delete): A user attempts to update or delete a sale item they don't own.
-     * @principle Enforces document ownership for writes, allows public reads.
+     * @description Rules for the /sales/{saleId}/saleItems collection.
      */
     match /sales/{saleId}/saleItems/{saleItemId} {
-      allow get, list: if true;
-      allow create: if isOwner(saleItemId) && request.resource.data.id == saleItemId;
-      allow update: if isExistingOwner(saleItemId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(saleItemId);
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Allows read access to all purchases and restricts write access to the purchase owner.
-     * @path /purchases/{purchaseId}
-     * @allow (get, list): Any user can read purchases.
-     * @allow (create): Only the owner of the purchase (purchaseId matches request.auth.uid) can create it.
-     * @deny (create): A user attempts to create a purchase with an ID that doesn't match their auth UID.
-     * @allow (update, delete): Only the owner of the existing purchase can update or delete it.
-     * @deny (update, delete): A user attempts to update or delete a purchase they don't own.
-     * @principle Enforces document ownership for writes, allows public reads.
+     * @description Rules for the /purchases collection.
      */
     match /purchases/{purchaseId} {
-      allow get, list: if true;
-      allow create: if isOwner(purchaseId) && request.resource.data.id == purchaseId;
-      allow update: if isExistingOwner(purchaseId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(purchaseId);
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Allows read access to all purchase items and restricts write access to the purchase item owner.
-     * @path /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
-     * @allow (get, list): Any user can read purchase items.
-     * @allow (create): Only the owner of the purchase item (purchaseItemId matches request.auth.uid) can create it.
-     * @deny (create): A user attempts to create a purchase item with an ID that doesn't match their auth UID.
-     * @allow (update, delete): Only the owner of the existing purchase item can update or delete it.
-     * @deny (update, delete): A user attempts to update or delete a purchase item they don't own.
-     * @principle Enforces document ownership for writes, allows public reads.
+     * @description Rules for the /purchases/{purchaseId}/purchaseItems collection.
      */
     match /purchases/{purchaseId}/purchaseItems/{purchaseItemId} {
-      allow get, list: if true;
-      allow create: if isOwner(purchaseItemId) && request.resource.data.id == purchaseItemId;
-      allow update: if isExistingOwner(purchaseItemId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(purchaseItemId);
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Allows read access to all customers and restricts write access to the customer owner.
-     * @path /customers/{customerId}
-     * @allow (get, list): Any user can read customers.
-     * @allow (create): Only the owner of the customer (customerId matches request.auth.uid) can create it.
-     * @deny (create): A user attempts to create a customer with an ID that doesn't match their auth UID.
-     * @allow (update, delete): Only the owner of the existing customer can update or delete it.
-     * @deny (update, delete): A user attempts to update or delete a customer they don't own.
-     * @principle Enforces document ownership for writes, allows public reads.
+     * @description Rules for the /customers collection.
      */
     match /customers/{customerId} {
-      allow get, list: if true;
-      allow create: if isOwner(customerId) && request.resource.data.id == customerId;
-      allow update: if isExistingOwner(customerId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(customerId);
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Allows read access to all suppliers and restricts write access to the supplier owner.
-     * @path /suppliers/{supplierId}
-     * @allow (get, list): Any user can read suppliers.
-     * @allow (create): Only the owner of the supplier (supplierId matches request.auth.uid) can create it.
-     * @deny (create): A user attempts to create a supplier with an ID that doesn't match their auth UID.
-     * @allow (update, delete): Only the owner of the existing supplier can update or delete it.
-     * @deny (update, delete): A user attempts to update or delete a supplier they don't own.
-     * @principle Enforces document ownership for writes, allows public reads.
+     * @description Rules for the /suppliers collection.
      */
     match /suppliers/{supplierId} {
-      allow get, list: if true;
-      allow create: if isOwner(supplierId) && request.resource.data.id == supplierId;
-      allow update: if isExistingOwner(supplierId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(supplierId);
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Allows read access to all tax types and restricts write access to the tax type owner.
-     * @path /taxTypes/{taxTypeId}
-     * @allow (get, list): Any user can read tax types.
-     * @allow (create): Only the owner of the tax type (taxTypeId matches request.auth.uid) can create it.
-     * @deny (create): A user attempts to create a tax type with an ID that doesn't match their auth UID.
-     * @allow (update, delete): Only the owner of the existing tax type can update or delete it.
-     * @deny (update, delete): A user attempts to update or delete a tax type they don't own.
-     * @principle Enforces document ownership for writes, allows public reads.
+     * @description Rules for the /taxTypes collection.
      */
     match /taxTypes/{taxTypeId} {
-      allow get, list: if true;
-      allow create: if isOwner(taxTypeId) && request.resource.data.id == taxTypeId;
-      allow update: if isExistingOwner(taxTypeId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(taxTypeId);
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Allows read access to all configurations and restricts write access to the configuration owner.
-     * @path /configuration/{configurationId}
-     * @allow (get, list): Any user can read configurations.
-     * @allow (create): Only the owner of the configuration (configurationId matches request.auth.uid) can create it.
-     * @deny (create): A user attempts to create a configuration with an ID that doesn't match their auth UID.
-     * @allow (update, delete): Only the owner of the existing configuration can update or delete it.
-     * @deny (update, delete): A user attempts to update or delete a configuration they don't own.
-     * @principle Enforces document ownership for writes, allows public reads.
+     * @description Rules for the /configuration collection.
      */
     match /configuration/{configurationId} {
-      allow get, list: if true;
-      allow create: if isOwner(configurationId) && request.resource.data.id == configurationId;
-      allow update: if isExistingOwner(configurationId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(configurationId);
-    }
-
-    /**
-     * @description Allows read access to user documents.
-     * @path /users/{userId}
-     * @allow (get): Allows any authenticated user to read his document.
-     */
-    match /users/{userId} {
-        allow get: if isOwner(userId);
-        allow list: if false;
-        allow create: if false;
-        allow update: if false;
-        allow delete: if false;
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
   }
 }
