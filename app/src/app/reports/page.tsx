@@ -1,5 +1,5 @@
 // This file is a placeholder for the reports page.
-// The content will be rendered inside the AuthenticatedLayout.
+// The content will be rendered inside the AppShell.
 
 export default function ReportsPage() {
   return (

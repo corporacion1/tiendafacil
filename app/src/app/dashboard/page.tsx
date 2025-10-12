@@ -1,5 +1,5 @@
 // This file is a placeholder for the dashboard page.
-// The content will be rendered inside the AuthenticatedLayout.
+// The content will be rendered inside the AppShell.
 
 export default function DashboardPage() {
   return (

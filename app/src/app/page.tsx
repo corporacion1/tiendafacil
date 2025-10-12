@@ -1,20 +1,16 @@
-
 "use client";
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
+// This page now acts as an entry point, redirecting directly to the catalog page.
 export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to the public catalog page, which is now the main entry point
-    router.replace(`/catalog`);
+    router.replace('/catalog');
   }, [router]);
 
-  return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>Cargando catálogo...</p>
-      </div>
-  );
+  // Render nothing, or a loading indicator while redirecting.
+  return null;
 }
