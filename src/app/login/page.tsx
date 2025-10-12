@@ -38,6 +38,10 @@ export function LoginModal({ children }: { children: React.ReactNode }) {
             setIsOpen(false);
             router.push('/dashboard');
         } catch (error: any) {
+            if (error.code === 'auth/popup-closed-by-user') {
+                // Silently ignore this error as it's a normal user action
+                return;
+            }
             console.error("Firebase sign-in error:", error);
             toast({
                 variant: 'destructive',
