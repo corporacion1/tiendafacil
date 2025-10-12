@@ -28,15 +28,20 @@ function AppShell({ children }: { children: React.ReactNode }) {
   const isPublicRoute = pathname.startsWith('/catalog');
 
   useEffect(() => {
-    if (isLoadingSettings || isPublicRoute) {
+    // Public routes don't need security checks.
+    if (isPublicRoute || isLoadingSettings) {
       return;
     }
+    
+    // If not using demo data AND there's no user profile, redirect to catalog.
+    // This allows the public catalog to be seen without a login in a live environment.
     if (!useDemoData && !userProfile) {
       router.replace(`/catalog/${process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'default'}`);
       return;
     }
     
-    if (userProfile) {
+    // If we have a user profile (in live mode) or are in demo mode, lock the app if needed.
+    if (userProfile || useDemoData) {
       lockApp();
     }
   }, [pathname, userProfile, isLoadingSettings, router, lockApp, useDemoData, isPublicRoute]);
@@ -46,6 +51,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
+  // Skeleton loader for protected routes while settings/user are loading.
   if (isLoadingSettings || (!useDemoData && !userProfile)) {
     return (
         <div className="flex min-h-screen w-full bg-muted/40">
