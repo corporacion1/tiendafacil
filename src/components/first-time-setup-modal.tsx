@@ -2,6 +2,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useUser as useAuthUser } from '@/firebase/provider';
 import { useUser as useUserProfile } from '@/firebase/auth/use-user';
 import { useFirestore } from '@/firebase';
@@ -15,6 +18,15 @@ import { useToast } from '@/hooks/use-toast';
 import { SUPER_ADMIN_UID } from '@/firebase/auth/use-user';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+
+const profileSchema = z.object({
+  displayName: z.string().min(1, 'El nombre es requerido.'),
+  email: z.string().email('Debe ser un correo electrónico válido.'),
+  phone: z.string().regex(/^(0412|0414|0416|0424|0426)\d{7}$/, "El teléfono debe tener 11 dígitos y un prefijo válido (0412, 0414, 0416, 0424, 0426)."),
+});
+
+type ProfileFormValues = z.infer<typeof profileSchema>;
 
 export function FirstTimeSetupModal() {
   const { user: authUser } = useAuthUser();
@@ -24,16 +36,19 @@ export function FirstTimeSetupModal() {
   
   const [isOpen, setIsOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [formData, setFormData] = useState({
-    displayName: '',
-    email: '',
-    phone: '',
+
+  const form = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      displayName: '',
+      email: '',
+      phone: '',
+    },
   });
 
   useEffect(() => {
-    // Show modal if user is authenticated and needs a profile.
     if (authUser && needsProfileCreation) {
-      setFormData({
+      form.reset({
         displayName: authUser.displayName || '',
         email: authUser.email || '',
         phone: authUser.phoneNumber || '',
@@ -42,31 +57,25 @@ export function FirstTimeSetupModal() {
     } else {
       setIsOpen(false);
     }
-  }, [authUser, needsProfileCreation]);
+  }, [authUser, needsProfileCreation, form]);
 
-  const handleCreateProfile = async () => {
+  const handleCreateProfile = async (data: ProfileFormValues) => {
     if (!authUser || !firestore) {
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo conectar a Firebase.' });
       return;
     }
-    if (!formData.displayName.trim() || !formData.email.trim()) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Nombre y correo son requeridos.' });
-        return;
-    }
 
     setIsProcessing(true);
 
-    // Asigna el rol basado en el UID.
     const role = authUser.uid === SUPER_ADMIN_UID ? 'superAdmin' : 'user';
-    // Solicita una tienda solo si es un usuario normal.
     const storeRequest = role === 'user'; 
 
     const newUserProfile: UserProfile = {
       uid: authUser.uid,
-      email: formData.email,
-      displayName: formData.displayName,
+      email: data.email,
+      displayName: data.displayName,
       photoURL: authUser.photoURL,
-      phone: formData.phone || null,
+      phone: data.phone,
       role: role,
       status: 'active',
       storeRequest: storeRequest,
@@ -82,7 +91,6 @@ export function FirstTimeSetupModal() {
         description: 'Tu cuenta ha sido configurada. La página se recargará para aplicar los cambios.',
       });
 
-      // Recarga la página para que los nuevos datos del perfil se carguen correctamente.
       setTimeout(() => window.location.reload(), 2000);
       
     } catch (error: any) {
@@ -110,41 +118,72 @@ export function FirstTimeSetupModal() {
             Es tu primer inicio de sesión. Por favor, confirma tus datos para crear tu perfil.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4 space-y-4">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleCreateProfile)} className="py-4 space-y-4">
             <div className="flex items-center gap-4">
-                {authUser?.photoURL && (
-                    <Image src={authUser.photoURL} alt="Avatar" width={64} height={64} className="rounded-full" />
+              {authUser?.photoURL && (
+                <Image src={authUser.photoURL} alt="Avatar" width={64} height={64} className="rounded-full" />
+              )}
+              <div className="flex-grow">
+                <FormField
+                  control={form.control}
+                  name="displayName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nombre a Mostrar *</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+             <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Correo Electrónico *</FormLabel>
+                  <FormControl>
+                    <Input type="email" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Teléfono *</FormLabel>
+                  <FormControl>
+                    <Input type="tel" placeholder="04121234567" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter className="pt-4">
+              <Button 
+                type="submit"
+                className="w-full" 
+                disabled={isProcessing}
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creando Perfil...
+                  </>
+                ) : (
+                  'Confirmar y Crear Perfil'
                 )}
-                <div className="flex-grow space-y-2">
-                    <Label htmlFor="displayName">Nombre a Mostrar *</Label>
-                    <Input id="displayName" value={formData.displayName} onChange={(e) => setFormData(prev => ({...prev, displayName: e.target.value}))} />
-                </div>
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="email">Correo Electrónico *</Label>
-                <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData(prev => ({...prev, email: e.target.value}))} />
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="phone">Teléfono (Opcional)</Label>
-                <Input id="phone" type="tel" value={formData.phone} onChange={(e) => setFormData(prev => ({...prev, phone: e.target.value}))} placeholder="Ej: 584121234567" />
-            </div>
-        </div>
-        <DialogFooter>
-          <Button 
-            className="w-full" 
-            onClick={handleCreateProfile}
-            disabled={isProcessing}
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creando Perfil...
-              </>
-            ) : (
-              'Confirmar y Crear Perfil'
-            )}
-          </Button>
-        </DialogFooter>
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
