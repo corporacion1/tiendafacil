@@ -6,7 +6,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useUser as useAuthUser } from '@/firebase/provider';
-import { useUser as useUserProfile } from '@/firebase/auth/use-user';
 import { useFirestore } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -15,10 +14,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { SUPER_ADMIN_UID } from '@/firebase/auth/use-user';
+import { SUPER_ADMIN_UID, useUser as useUserProfile } from '@/firebase/auth/use-user';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
 const profileSchema = z.object({
   displayName: z.string().min(1, 'El nombre es requerido.'),
@@ -147,8 +146,11 @@ export function FirstTimeSetupModal() {
                 <FormItem>
                   <FormLabel>Correo Electrónico *</FormLabel>
                   <FormControl>
-                    <Input type="email" {...field} />
+                    <Input type="email" {...field} readOnly className="bg-muted/50 cursor-not-allowed" />
                   </FormControl>
+                  <FormDescription>
+                    Este correo es validado por Google y no se puede modificar.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
