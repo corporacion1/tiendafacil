@@ -26,6 +26,10 @@ import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SessionReportPreview } from "@/components/session-report-preview";
 import { useSecurity } from "@/contexts/security-context";
+import { useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, doc } from "firebase/firestore";
+import { useCollection } from "@/firebase/firestore/use-collection";
+import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
@@ -70,12 +74,22 @@ export default function POSPage() {
   const { toast } = useToast();
   const { settings, setSettings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
   const { isLocked, isSecurityReady } = useSecurity();
+  const firestore = useFirestore();
   
-  const [products, setProductsState] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})));
-  const [customers, setCustomers] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
+  const productsRef = useMemoFirebase(() => firestore ? collection(firestore, 'products') : null, [firestore]);
+  const { data: products } = useCollection<Product>(productsRef);
+
+  const customersRef = useMemoFirebase(() => firestore ? collection(firestore, 'customers') : null, [firestore]);
+  const { data: customers } = useCollection<Customer>(customersRef);
+
   const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>(pendingOrdersState);
-  const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
-  const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
+  
+  const salesRef = useMemoFirebase(() => firestore ? collection(firestore, 'sales') : null, [firestore]);
+  const { data: sales } = useCollection<Sale>(salesRef);
+  
+  const familiesRef = useMemoFirebase(() => firestore ? collection(firestore, 'families') : null, [firestore]);
+  const { data: families } = useCollection<Family>(familiesRef);
+  
   const router = useRouter();
   const isLoading = isLoadingSettings;
   
@@ -153,7 +167,7 @@ export default function POSPage() {
   };
   
   const salesInCurrentSession = useMemo(() => {
-    if (!activeSession) return [];
+    if (!activeSession || !sales) return [];
     return sales.filter(s => activeSession.salesIds.includes(s.id));
   }, [sales, activeSession]);
   
@@ -374,8 +388,8 @@ export default function POSPage() {
       toast({ variant: "destructive", title: "Carrito vacío"});
       return;
     }
-    if (!settings || !activeSession) {
-        toast({ variant: "destructive", title: "Error", description: "No hay una sesión de caja activa."});
+    if (!settings || !activeSession || !salesRef) {
+        toast({ variant: "destructive", title: "Error", description: "No hay una sesión de caja activa o la referencia de ventas no está disponible."});
         return;
     }
     
@@ -393,8 +407,7 @@ export default function POSPage() {
         date: new Date().toISOString(),
     }));
 
-    const newSale: Sale = {
-        id: saleId,
+    const newSale: Omit<Sale, 'id'> = {
         customerId: selectedCustomer?.id ?? 'eventual',
         customerName: selectedCustomer?.name ?? 'Cliente Eventual',
         items: cartItems.map(item => ({
@@ -411,29 +424,31 @@ export default function POSPage() {
         payments: finalPayments,
         storeId: activeStoreId,
     }
+    
+    const saleDocRef = doc(salesRef, saleId);
+    setDocumentNonBlocking(saleDocRef, newSale, {});
 
-    setSales(prev => [newSale, ...prev]);
-
-    let updatedProducts = [...products];
-    for (const item of cartItems) {
-        updatedProducts = updatedProducts.map(p => 
-            p.id === item.product.id 
-                ? { ...p, stock: p.stock - item.quantity }
-                : p
-        );
+    if (productsRef && products) {
+        for (const item of cartItems) {
+            const productDocRef = doc(productsRef, item.product.id);
+            const newStock = item.product.stock - item.quantity;
+            setDocumentNonBlocking(productDocRef, { stock: newStock }, { merge: true });
+        }
     }
-    setProductsState(updatedProducts);
     
-    setSettings({ ...settings, saleCorrelative: (settings.saleCorrelative || 0) + 1 });
+    if(settings.saleCorrelative !== undefined) {
+      const newCorrelative = (settings.saleCorrelative || 0) + 1;
+      const settingsDocRef = doc(firestore, 'stores', activeStoreId);
+      setDocumentNonBlocking(settingsDocRef, { saleCorrelative: newCorrelative }, { merge: true });
+    }
     
-    // Update active session
     setActiveSession(prev => prev ? {...prev, salesIds: [...prev.salesIds, saleId]} : null);
     
-    setLastSale(newSale);
+    setLastSale({ ...newSale, id: saleId });
     
     toast({
-        title: "Venta Procesada (Simulación)",
-        description: `La venta #${saleId} ha sido registrada localmente.`,
+        title: "Venta Procesada",
+        description: `La venta #${saleId} ha sido registrada.`,
     });
     
     setCartItems([]);
@@ -472,23 +487,28 @@ export default function POSPage() {
         });
         return;
     }
+
+    if (!customersRef) {
+        toast({ variant: 'destructive', title: 'Error', description: 'No se pudo obtener la referencia a la colección de clientes.' });
+        return;
+    }
     
     const newId = newCustomer.id.trim() || `cust-${Date.now()}`;
-    const customerToAdd: Customer = {
-        id: newId,
+    const customerToAdd: Omit<Customer, 'id'> = {
         name: newCustomer.name,
         phone: newCustomer.phone,
         address: newCustomer.address,
         storeId: activeStoreId,
     };
     
-    setCustomers(prev => [...prev, customerToAdd]);
+    const customerDocRef = doc(customersRef, newId);
+    setDocumentNonBlocking(customerDocRef, customerToAdd, {});
     
     setSelectedCustomerId(newId);
     setNewCustomer({ id: '', name: '', phone: '', address: '' });
     setIsCustomerDialogOpen(false);
     toast({
-        title: "Cliente Agregado (Simulación)",
+        title: "Cliente Agregado",
         description: `El cliente "${customerToAdd.name}" ha sido agregado y seleccionado.`,
     });
   };
@@ -537,15 +557,16 @@ export default function POSPage() {
     const customer = (customers || []).find(c => c.phone === order.customerPhone || c.name === order.customerName);
     if(customer) {
         setSelectedCustomerId(customer.id);
-    } else {
-        const newCustomerFromOrder: Customer = {
-            id: `cust-${Date.now()}`,
+    } else if (customersRef) {
+        const newCustomerFromOrder: Omit<Customer, 'id'> = {
             name: order.customerName,
             phone: order.customerPhone,
             storeId: activeStoreId,
         }
-        setCustomers(prev => [...prev, newCustomerFromOrder]);
-        setSelectedCustomerId(newCustomerFromOrder.id);
+        const newId = `cust-${Date.now()}`;
+        const customerDocRef = doc(customersRef, newId);
+        setDocumentNonBlocking(customerDocRef, newCustomerFromOrder, {});
+        setSelectedCustomerId(newId);
     }
 
     const orderIndex = pendingOrdersState.findIndex(p => p.id === order.id);
