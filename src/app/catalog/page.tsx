@@ -108,7 +108,7 @@ const CatalogProductCard = ({ product, onAddToCart, onImageClick }: { product: P
                 </div>
             </CardContent>
             <CardFooter className="p-2 bg-background/80 mt-auto">
-                 <Button className="w-full" onClick={() => onAddToCart(product)}>
+                 <Button className="w-full py-5" onClick={() => onAddToCart(product)}>
                     <ShoppingBag className="mr-2 h-4 w-4" /> Agregar al Pedido
                 </Button>
             </CardFooter>
@@ -826,5 +826,7 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
+
+    
 
     
