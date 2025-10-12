@@ -1,49 +1,40 @@
 
 'use client';
-import { useEffect } from 'react';
-import { useUser as useAuthUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { useDoc } from '@/firebase/firestore/use-doc';
-import { doc, serverTimestamp } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { useUser as useAuthUser } from '@/firebase/provider';
 import type { UserProfile } from '@/lib/types';
-import { defaultStoreId } from '@/lib/data';
-import { setDocumentNonBlocking } from '../non-blocking-updates';
-
+import { defaultUsers } from '@/lib/data';
 
 /**
- * Hook to get the currently authenticated user's profile from Firestore.
- * It also handles creating the user profile document if it doesn't exist.
+ * Hook to get the currently authenticated user's profile from LOCAL DATA.
+ * This hook is modified to avoid Firestore calls and prevent permission errors.
  */
 export function useUser() {
   const { user: authUser, isUserLoading: isAuthLoading, userError } = useAuthUser();
-  const firestore = useFirestore();
-
-  // Create a document reference to the user's profile in Firestore.
-  // This ref is memoized internally by useDoc when authUser is stable.
-  const userProfileRef = useMemoFirebase(() => {
-    if (!authUser || !firestore) return null;
-    return doc(firestore, 'users', authUser.uid);
-  }, [authUser, firestore]);
-
-  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userProfileRef);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isProfileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
-    // If we have an authenticated user but their profile doesn't exist yet, create it.
-    if (authUser && !userProfile && !isProfileLoading && userProfileRef) {
-      const newUserProfile: UserProfile = {
-        uid: authUser.uid,
-        email: authUser.email,
-        displayName: authUser.displayName,
-        photoURL: authUser.photoURL,
-        role: 'user', // Assign a default role
-        status: 'active',
-        storeId: defaultStoreId, // Assign a default store for now
-        createdAt: serverTimestamp() as unknown as string, // Firestore will set the timestamp
-      };
-      
-      // Use a non-blocking write to create the user profile document.
-      setDocumentNonBlocking(userProfileRef, newUserProfile, { merge: true });
+    if (isAuthLoading) {
+        setProfileLoading(true);
+        return;
     }
-  }, [authUser, userProfile, isProfileLoading, userProfileRef]);
+
+    if (authUser) {
+      // Find the user profile from the local mock data array.
+      const profile = defaultUsers.find(u => u.uid === authUser.uid);
+      if (profile) {
+        setUserProfile(profile);
+      } else {
+        // If not found, fall back to the first admin user as a default for the demo.
+        setUserProfile(defaultUsers.find(u => u.role === 'superAdmin') || null);
+      }
+    } else {
+      setUserProfile(null);
+    }
+    setProfileLoading(false);
+
+  }, [authUser, isAuthLoading]);
 
   return {
     user: userProfile,

@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
 import { defaultStoreId, defaultStore, mockCurrencyRates, defaultUsers } from '@/lib/data';
-import { useUser as useAuthUserFromFirebase } from '@/firebase/auth/use-user'; // Keep for auth state, but not for profile data
+import { useUser } from '@/firebase/auth/use-user'; // Use our modified local data hook
 
 type DisplayCurrency = 'primary' | 'secondary';
 
@@ -36,52 +36,40 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const router = useRouter();
   const pathname = usePathname();
 
-  // We still use this to know IF a user is logged in via Firebase Auth
-  const { user: authUser, isUserLoading: isAuthLoading } = useAuthUserFromFirebase();
+  const { user: userProfile, isUserLoading } = useUser();
 
-  // --- LOCAL STATE MANAGEMENT ---
   const [settings, setSettingsState] = useState<Settings | null>(defaultStore);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>(mockCurrencyRates);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load preferences and set user profile from local data
   useEffect(() => {
     try {
       const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY) as DisplayCurrency;
       if (storedCurrencyPref) setDisplayCurrency(storedCurrencyPref);
 
       const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY);
-
-      if (authUser) {
-        // Find user profile from local mock data
-        const profile = defaultUsers.find(u => u.uid === authUser.uid) || defaultUsers.find(u => u.role === 'superAdmin')!;
-        setUserProfile(profile);
-
-        if (profile.role === 'superAdmin' && storedStoreId) {
-          setActiveStoreId(storedStoreId);
-        } else if (profile.storeId) {
-          setActiveStoreId(profile.storeId);
-        }
-      } else {
-        setUserProfile(null);
+      
+      if (userProfile?.role === 'superAdmin' && storedStoreId) {
+        setActiveStoreId(storedStoreId);
+      } else if (userProfile?.storeId) {
+        setActiveStoreId(userProfile.storeId);
       }
-    
+
     } catch (error) {
       console.error("Could not access localStorage", error);
     } finally {
         setIsLoading(false);
     }
-  }, [authUser]);
+  }, [userProfile]);
 
 
   useEffect(() => {
-     if (!isAuthLoading && !authUser && !pathname.startsWith('/catalog')) {
+     if (!isUserLoading && !userProfile && !pathname.startsWith('/catalog')) {
       router.push('/catalog');
     }
-  }, [isAuthLoading, authUser, pathname, router]);
+  }, [isUserLoading, userProfile, pathname, router]);
 
   const handleSetSettings = (newSettings: Settings) => {
     setSettingsState(newSettings);
@@ -129,7 +117,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     setCurrencyRates,
     activeStoreId,
     switchStore,
-    isLoadingSettings: isLoading || isAuthLoading,
+    isLoadingSettings: isLoading || isUserLoading,
     userProfile,
   };
 
