@@ -722,8 +722,7 @@ export default function POSPage() {
                         {filteredProducts.map((product) => (
                         <ProductCard 
                             key={product.id} 
-                            product={product} 
-                            onAddToCart={addToCart}
+                            product={product} _onAddToCart={addToCart}
                             onShowDetails={handleShowDetails}
                         />
                         ))}
