@@ -1,17 +1,14 @@
-
 "use client";
 
-import { usePathname } from 'next/navigation';
-import { AppShell } from "@/app/app-shell";
+import { ThemeProvider } from "@/components/theme-provider";
+import { FirebaseClientProvider } from "@/firebase/client-provider";
 
-export default function ClientLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const isPublicPage = pathname === '/' || pathname.startsWith('/catalog');
-
-  if (isPublicPage) {
-    return <>{children}</>;
-  }
-
-  // Private pages get the full AppShell treatment.
-  return <AppShell>{children}</AppShell>;
+export function Providers({ children }: { children: React.ReactNode }) {
+    return (
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <FirebaseClientProvider>
+                {children}
+            </FirebaseClientProvider>
+        </ThemeProvider>
+    );
 }
