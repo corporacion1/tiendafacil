@@ -2,7 +2,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react";
-import { File, MoreHorizontal, Search, FileSpreadsheet, FileJson, FileText, Printer } from "lucide-react";
+import { File, MoreHorizontal, Search, FileSpreadsheet, FileJson, FileText, Printer, Eye } from "lucide-react";
 import { format, subDays, startOfWeek, startOfMonth, startOfYear, parseISO } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -47,6 +47,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/settings-context";
 import { mockSales, mockPurchases, mockProducts, defaultCustomers, mockCashSessions } from "@/lib/data";
+import { SessionReportPreview } from "@/components/session-report-preview";
 
 type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
 
@@ -61,6 +62,9 @@ export default function ReportsPage() {
     const [customers, setCustomers] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
     const [cashSessionsData, setCashSessionsData] = useState(mockCashSessions.map(cs => ({...cs, storeId: activeStoreId})));
 
+    const [selectedSessionDetails, setSelectedSessionDetails] = useState<CashSession | null>(null);
+    const [sessionForReport, setSessionForReport] = useState<CashSession | null>(null);
+    const [isReportPreviewOpen, setIsReportPreviewOpen] = useState(false);
 
     const [isClient, setIsClient] = useState(false)
 
@@ -375,6 +379,10 @@ export default function ReportsPage() {
         return { subtotal: calculatedSubtotal, tax1Amount, tax2Amount, totalTaxes };
     };
 
+    const salesForSession = (session: CashSession) => {
+        return salesData.filter(sale => session.salesIds.includes(sale.id));
+    };
+
   return (
     <>
     <Tabs defaultValue="sales" onValueChange={setActiveTab}>
@@ -616,7 +624,11 @@ export default function ReportsPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => setSelectedSessionDetails(session)}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                Ver Detalles
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => { setSessionForReport(session); setIsReportPreviewOpen(true); }}>
                                 <Printer className="mr-2 h-4 w-4" />
                                 Reimprimir Corte Z
                               </DropdownMenuItem>
@@ -781,6 +793,53 @@ export default function ReportsPage() {
         </DialogContent>
     </Dialog>
 
+    {/* Cash Session Details Dialog */}
+     <Dialog open={!!selectedSessionDetails} onOpenChange={(open) => !open && setSelectedSessionDetails(null)}>
+        <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+                <DialogTitle>Detalles del Cierre de Caja: {selectedSessionDetails?.id}</DialogTitle>
+                <DialogDescription>
+                   Cajero: {selectedSessionDetails?.openedBy} | Cerrado por: {selectedSessionDetails?.closedBy}
+                </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[60vh] overflow-y-auto space-y-4 p-1">
+                {selectedSessionDetails && (
+                    <>
+                        <Card>
+                            <CardHeader><CardTitle>Resumen del Cierre</CardTitle></CardHeader>
+                            <CardContent className="space-y-2">
+                                <div className="flex justify-between"><span>Fondo de Caja:</span> <span className="font-medium">{activeSymbol}{(selectedSessionDetails.openingBalance * activeRate).toFixed(2)}</span></div>
+                                <div className="flex justify-between"><span>Efectivo Esperado:</span> <span className="font-medium">{activeSymbol}{(selectedSessionDetails.calculatedCash * activeRate).toFixed(2)}</span></div>
+                                <div className="flex justify-between"><span>Efectivo Contado:</span> <span className="font-medium">{activeSymbol}{((selectedSessionDetails.closingBalance || 0) * activeRate).toFixed(2)}</span></div>
+                                <Separator />
+                                <div className={`flex justify-between font-bold ${selectedSessionDetails.difference !== 0 ? 'text-destructive' : ''}`}><span>Diferencia:</span> <span>{activeSymbol}{(selectedSessionDetails.difference * activeRate).toFixed(2)}</span></div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                             <CardHeader><CardTitle>Totales por Método de Pago</CardTitle></CardHeader>
+                             <CardContent>
+                                {Object.entries(selectedSessionDetails.transactions).length > 0 ? (
+                                    Object.entries(selectedSessionDetails.transactions).map(([method, total]) => (
+                                        <div key={method} className="flex justify-between">
+                                            <span>{method}:</span>
+                                            <span className="font-medium">{activeSymbol}{(total * activeRate).toFixed(2)}</span>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="text-muted-foreground">No se registraron transacciones.</p>
+                                )}
+                             </CardContent>
+                        </Card>
+                    </>
+                )}
+            </div>
+            <DialogFooter>
+                <DialogClose asChild><Button variant="outline">Cerrar</Button></DialogClose>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+
+
     {/* Ticket Preview Dialog */}
      {saleForTicket && (
       <TicketPreview
@@ -791,6 +850,17 @@ export default function ReportsPage() {
         customer={getTicketCustomer(saleForTicket)}
         payments={saleForTicket.payments}
       />
+    )}
+
+    {/* Session Report Preview */}
+    {sessionForReport && (
+        <SessionReportPreview
+            isOpen={isReportPreviewOpen}
+            onOpenChange={(isOpen) => { if (!isOpen) { setSessionForReport(null); } setIsReportPreviewOpen(isOpen); }}
+            session={sessionForReport}
+            type="Z"
+            sales={salesForSession(sessionForReport)}
+        />
     )}
     </>
   );
