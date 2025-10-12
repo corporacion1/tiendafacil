@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import type { UserProfile, UserRole } from "@/lib/types";
-import { MoreHorizontal, Search, UserPlus, Shield, Check, Mail, Phone, ExternalLink, UserX } from "lucide-react";
+import { MoreHorizontal, Search, UserPlus, Shield, Check, Mail, Phone, ExternalLink, UserX, Armchair } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -20,8 +20,9 @@ const getRoleVariant = (role: UserProfile['role']) => {
   switch (role) {
     case 'superAdmin': return 'destructive';
     case 'admin': return 'default';
+    case 'pos': return 'secondary';
     case 'user':
-    default: return 'secondary';
+    default: return 'outline';
   }
 };
 
@@ -29,6 +30,7 @@ const getRoleIcon = (role: UserProfile['role']) => {
   switch (role) {
     case 'superAdmin': return <Shield className="h-4 w-4 mr-2" />;
     case 'admin': return <UserPlus className="h-4 w-4 mr-2" />;
+    case 'pos': return <Armchair className="h-4 w-4 mr-2" />;
     case 'user':
     default: return <UserPlus className="h-4 w-4 mr-2" />;
   }
@@ -232,6 +234,10 @@ export default function UsersPage() {
                                             <DropdownMenuItem onSelect={() => handleAction(user, 'changeRole', 'user')}>
                                                 <Check className={`mr-2 h-4 w-4 ${user.role === 'user' ? 'opacity-100' : 'opacity-0'}`} />
                                                 User
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleAction(user, 'changeRole', 'pos')}>
+                                                <Check className={`mr-2 h-4 w-4 ${user.role === 'pos' ? 'opacity-100' : 'opacity-0'}`} />
+                                                Pos
                                             </DropdownMenuItem>
                                              <DropdownMenuItem onSelect={() => handleAction(user, 'changeRole', 'admin')}>
                                                 <Check className={`mr-2 h-4 w-4 ${user.role === 'admin' ? 'opacity-100' : 'opacity-0'}`} />
