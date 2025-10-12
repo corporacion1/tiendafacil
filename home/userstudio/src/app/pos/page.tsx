@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff, Archive, QrCode, Lock, Unlock, Library, FilePieChart, LogOut, ArrowLeft, Armchair } from "lucide-react"
 import { useRouter } from "next/navigation";
+import { collection, doc, writeBatch } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,12 +21,14 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { useSettings } from "@/contexts/settings-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { paymentMethods, pendingOrdersState, mockProducts, defaultCustomers, mockSales, initialFamilies } from "@/lib/data";
+import { paymentMethods, pendingOrdersState } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SessionReportPreview } from "@/components/session-report-preview";
 import { useSecurity } from "@/contexts/security-context";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
@@ -70,17 +73,23 @@ export default function POSPage() {
   const { toast } = useToast();
   const { settings, setSettings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
   const { isLocked, isSecurityReady } = useSecurity();
-  
-  // --- USE LOCAL DATA ---
-  const [products, setProductsState] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId})));
-  const [customers, setCustomers] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
-  const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
-  const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
-  const [pendingOrders, setPendingOrdersState] = useState<PendingOrder[]>(pendingOrdersState);
-  const isLoading = isLoadingSettings;
-  // --- END LOCAL DATA ---
-  
+  const firestore = useFirestore();
   const router = useRouter();
+
+  // --- FETCH DATA FROM FIRESTORE ---
+  const productsQuery = useMemoFirebase(() => collection(firestore, 'products'), [firestore]);
+  const customersQuery = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
+  const familiesQuery = useMemoFirebase(() => collection(firestore, 'families'), [firestore]);
+  const salesQuery = useMemoFirebase(() => collection(firestore, 'sales'), [firestore]);
+
+  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+  const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
+  const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
+  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
+  
+  const [pendingOrders, setPendingOrdersState] = useState<PendingOrder[]>(pendingOrdersState);
+  const isLoading = isLoadingSettings || isLoadingProducts || isLoadingCustomers || isLoadingFamilies || isLoadingSales;
+  // --- END FIRESTORE DATA ---
   
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -200,9 +209,8 @@ export default function POSPage() {
   
   const finalizeSessionClosure = () => {
     if (sessionForReport) {
-      // In a real app, you would save `sessionForReport` to Firestore here.
-      // For demo, we just log it.
-      console.log("Saving closed session (demo):", sessionForReport);
+      const sessionDocRef = doc(firestore, 'cashSessions', sessionForReport.id);
+      setDocumentNonBlocking(sessionDocRef, sessionForReport, { merge: true });
     }
     setActiveSession(null);
     setIsClosingModalOpen(false);
@@ -419,38 +427,42 @@ export default function POSPage() {
         storeId: activeStoreId,
     }
     
-    // --- SIMULATED DEMO UPDATE ---
-    setSales(prev => [newSale, ...prev]);
+    const batch = writeBatch(firestore);
 
-    let updatedProducts = [...products];
+    const saleDocRef = doc(firestore, 'sales', newSale.id);
+    batch.set(saleDocRef, newSale);
+
     for (const item of cartItems) {
-        updatedProducts = updatedProducts.map(p => 
-            p.id === item.product.id 
-                ? { ...p, stock: p.stock - item.quantity }
-                : p
-        );
+      const productRef = doc(firestore, "products", item.product.id);
+      const newStock = item.product.stock - item.quantity;
+      batch.update(productRef, { stock: newStock });
     }
-    setProductsState(updatedProducts);
-    
-    setActiveSession(prev => {
-        if (!prev) return null;
-        const newTransactions = { ...prev.transactions };
+
+    if(activeSession) {
+        const newTransactions = { ...activeSession.transactions };
         finalPayments.forEach(p => {
             newTransactions[p.method] = (newTransactions[p.method] || 0) + p.amount;
         });
-        return {
-            ...prev,
-            salesIds: [...prev.salesIds, saleId],
+
+        const updatedSession = {
+            ...activeSession,
+            salesIds: [...activeSession.salesIds, saleId],
             transactions: newTransactions
         };
-    });
-
+        setActiveSession(updatedSession);
+        // Defer session update slightly to not block UI
+        setTimeout(() => {
+            const sessionDocRef = doc(firestore, 'cashSessions', updatedSession.id);
+            setDocumentNonBlocking(sessionDocRef, updatedSession, { merge: true });
+        }, 500);
+    }
+    
+    await batch.commit();
     setLastSale(newSale);
-    // --- END SIMULATED DEMO UPDATE ---
     
     toast({
-        title: "Venta Procesada (DEMO)",
-        description: `La venta #${saleId} ha sido registrada localmente.`,
+        title: "Venta Procesada",
+        description: `La venta #${saleId} ha sido registrada.`,
     });
     
     setCartItems([]);
@@ -499,14 +511,14 @@ export default function POSPage() {
         storeId: activeStoreId,
     };
     
-    // In a real app, this would save to Firestore. Here we just update local state.
-    setCustomers(prev => [...prev, customerToAdd]);
+    const customerDocRef = doc(firestore, 'customers', newId);
+    setDocumentNonBlocking(customerDocRef, customerToAdd, {});
 
     setSelectedCustomerId(newId);
     setNewCustomer({ id: '', name: '', phone: '', address: '' });
     setIsCustomerDialogOpen(false);
     toast({
-        title: "Cliente Agregado (DEMO)",
+        title: "Cliente Agregado",
         description: `El cliente "${customerToAdd.name}" ha sido agregado y seleccionado.`,
     });
   };
@@ -746,6 +758,7 @@ export default function POSPage() {
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2">
             <Card 
                 className={cn("sticky top-6 flex flex-col", !isSessionReady && "opacity-50 pointer-events-none")}
+                style={{ height: 'calc(100vh - 4.5rem)' }}
             >
                 <CardHeader className="flex flex-row justify-between items-center">
                     <CardTitle>Carrito de Compra</CardTitle>
@@ -771,7 +784,7 @@ export default function POSPage() {
                         </AlertDialog>
                     )}
                 </CardHeader>
-                <CardContent className="h-full w-full flex-1 flex flex-col gap-4 overflow-hidden p-6 pt-0" style={{ minHeight: 'calc(100vh - 10rem)' }}>
+                <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden p-6 pt-0">
                     <div className="space-y-2">
                         <Label htmlFor="customer">Cliente *</Label>
                         <div className="flex gap-2">
