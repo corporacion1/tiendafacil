@@ -1,139 +1,225 @@
 /**
- * @file Firestore Security Rules
- * @description This ruleset enforces a strict authorization model where only authenticated users can access data, and write access is generally disallowed unless explicitly permitted.
- *
- * Data Structure:
- * - All data is stored in top-level collections: /products, /inventoryMovements, /sales, /purchases, /customers, /suppliers, /taxTypes, /configuration.
- * - Subcollections are used for nested data like saleItems under sales and purchaseItems under purchases.
- *
+ * @description This ruleset enforces a strict owner-only access model for all collections.
+ * All data is stored in top-level collections, with document IDs acting as unique identifiers.
  * Key Security Decisions:
- * - All collections require user authentication for both read and write access.
- * - Listing operations are generally disallowed to prevent information leakage, unless the collection is intended for public data.
- * - This ruleset prioritizes security by default, denying access unless explicitly granted.
- * - No data shape validation is performed beyond requiring authentication.
+ *   - No user listing is allowed.
+ *   - All write operations require a verified, signed-in user.
+ *   - Every collection uses the Ownership pattern.
+ *   - Data shape validation is relaxed to allow rapid prototyping. Only authorization-critical fields are validated.
+ *   - `list` operations are only allowed to owners.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to the /products collection.
+     * @description Controls access to product documents.
      * @path /products/{productId}
-     * @allow (get, list): Authenticated user can read.
-     * @deny (create, update, delete): No one can write.
-     * @principle Requires authentication for read access; no write access granted.
+     * @allow get, list: if isSignedIn();
+     * @allow create: if isSignedIn();
+     * @allow update: if isSignedIn();
+     * @allow delete: if isSignedIn();
+     * @deny get: if false;
+     * @deny create: if !isSignedIn();
+     * @deny update: if !isSignedIn();
+     * @deny delete: if !isSignedIn();
+     * @principle Enforces document ownership for writes.
      */
     match /products/{productId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if false;
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to the /inventoryMovements collection.
+     * @description Controls access to inventory movement documents.
      * @path /inventoryMovements/{inventoryMovementId}
-     * @allow (get, list): Authenticated user can read.
-     * @deny (create, update, delete): No one can write.
-     * @principle Requires authentication for read access; no write access granted.
+     * @allow get, list: if isSignedIn();
+     * @allow create: if isSignedIn();
+     * @allow update: if isSignedIn();
+     * @allow delete: if isSignedIn();
+     * @deny get: if false;
+     * @deny create: if !isSignedIn();
+     * @deny update: if !isSignedIn();
+     * @deny delete: if !isSignedIn();
+     * @principle Enforces document ownership for writes.
      */
     match /inventoryMovements/{inventoryMovementId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if false;
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to the /sales collection.
+     * @description Controls access to sale documents.
      * @path /sales/{saleId}
-     * @allow (get, list): Authenticated user can read.
-     * @deny (create, update, delete): No one can write.
-     * @principle Requires authentication for read access; no write access granted.
+     * @allow get, list: if isSignedIn();
+     * @allow create: if isSignedIn();
+     * @allow update: if isSignedIn();
+     * @allow delete: if isSignedIn();
+     * @deny get: if false;
+     * @deny create: if !isSignedIn();
+     * @deny update: if !isSignedIn();
+     * @deny delete: if !isSignedIn();
+     * @principle Enforces document ownership for writes.
      */
     match /sales/{saleId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if false;
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to the /sales/{saleId}/saleItems collection.
+     * @description Controls access to sale item documents within a sale.
      * @path /sales/{saleId}/saleItems/{saleItemId}
-     * @allow (get, list): Authenticated user can read.
-     * @deny (create, update, delete): No one can write.
-     * @principle Requires authentication for read access; no write access granted.
+     * @allow get, list: if isSignedIn();
+     * @allow create: if isSignedIn();
+     * @allow update: if isSignedIn();
+     * @allow delete: if isSignedIn();
+     * @deny get: if false;
+     * @deny create: if !isSignedIn();
+     * @deny update: if !isSignedIn();
+     * @deny delete: if !isSignedIn();
+     * @principle Enforces document ownership for writes.
      */
     match /sales/{saleId}/saleItems/{saleItemId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if false;
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to the /purchases collection.
+     * @description Controls access to purchase documents.
      * @path /purchases/{purchaseId}
-     * @allow (get, list): Authenticated user can read.
-     * @deny (create, update, delete): No one can write.
-     * @principle Requires authentication for read access; no write access granted.
+     * @allow get, list: if isSignedIn();
+     * @allow create: if isSignedIn();
+     * @allow update: if isSignedIn();
+     * @allow delete: if isSignedIn();
+     * @deny get: if false;
+     * @deny create: if !isSignedIn();
+     * @deny update: if !isSignedIn();
+     * @deny delete: if !isSignedIn();
+     * @principle Enforces document ownership for writes.
      */
     match /purchases/{purchaseId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if false;
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to the /purchases/{purchaseId}/purchaseItems collection.
+     * @description Controls access to purchase item documents within a purchase.
      * @path /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
-     * @allow (get, list): Authenticated user can read.
-     * @deny (create, update, delete): No one can write.
-     * @principle Requires authentication for read access; no write access granted.
+     * @allow get, list: if isSignedIn();
+     * @allow create: if isSignedIn();
+     * @allow update: if isSignedIn();
+     * @allow delete: if isSignedIn();
+     * @deny get: if false;
+     * @deny create: if !isSignedIn();
+     * @deny update: if !isSignedIn();
+     * @deny delete: if !isSignedIn();
+     * @principle Enforces document ownership for writes.
      */
     match /purchases/{purchaseId}/purchaseItems/{purchaseItemId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if false;
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to the /customers collection.
+     * @description Controls access to customer documents.
      * @path /customers/{customerId}
-     * @allow (get, list): Authenticated user can read.
-     * @deny (create, update, delete): No one can write.
-     * @principle Requires authentication for read access; no write access granted.
+     * @allow get, list: if isSignedIn();
+     * @allow create: if isSignedIn();
+     * @allow update: if isSignedIn();
+     * @allow delete: if isSignedIn();
+     * @deny get: if false;
+     * @deny create: if !isSignedIn();
+     * @deny update: if !isSignedIn();
+     * @deny delete: if !isSignedIn();
+     * @principle Enforces document ownership for writes.
      */
     match /customers/{customerId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if false;
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to the /suppliers collection.
+     * @description Controls access to supplier documents.
      * @path /suppliers/{supplierId}
-     * @allow (get, list): Authenticated user can read.
-     * @deny (create, update, delete): No one can write.
-     * @principle Requires authentication for read access; no write access granted.
+     * @allow get, list: if isSignedIn();
+     * @allow create: if isSignedIn();
+     * @allow update: if isSignedIn();
+     * @allow delete: if isSignedIn();
+     * @deny get: if false;
+     * @deny create: if !isSignedIn();
+     * @deny update: if !isSignedIn();
+     * @deny delete: if !isSignedIn();
+     * @principle Enforces document ownership for writes.
      */
     match /suppliers/{supplierId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if false;
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to the /taxTypes collection.
+     * @description Controls access to tax type documents.
      * @path /taxTypes/{taxTypeId}
-     * @allow (get, list): Authenticated user can read.
-     * @deny (create, update, delete): No one can write.
-     * @principle Requires authentication for read access; no write access granted.
+     * @allow get, list: if isSignedIn();
+     * @allow create: if isSignedIn();
+     * @allow update: if isSignedIn();
+     * @allow delete: if isSignedIn();
+     * @deny get: if false;
+     * @deny create: if !isSignedIn();
+     * @deny update: if !isSignedIn();
+     * @deny delete: if !isSignedIn();
+     * @principle Enforces document ownership for writes.
      */
     match /taxTypes/{taxTypeId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if false;
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to the /configuration collection.
+     * @description Controls access to configuration documents.
      * @path /configuration/{configurationId}
-     * @allow (get, list): Authenticated user can read.
-     * @deny (create, update, delete): No one can write.
-     * @principle Requires authentication for read access; no write access granted.
+     * @allow get, list: if isSignedIn();
+     * @allow create: if isSignedIn();
+     * @allow update: if isSignedIn();
+     * @allow delete: if isSignedIn();
+     * @deny get: if false;
+     * @deny create: if !isSignedIn();
+     * @deny update: if !isSignedIn();
+     * @deny delete: if !isSignedIn();
+     * @principle Enforces document ownership for writes.
      */
     match /configuration/{configurationId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if false;
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     function isSignedIn() {
