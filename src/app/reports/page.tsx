@@ -4,6 +4,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { File, MoreHorizontal, Search, FileSpreadsheet, FileJson, FileText, Printer, Eye } from "lucide-react";
 import { format, subDays, startOfWeek, startOfMonth, startOfYear, parseISO } from "date-fns";
+import { collection, query, where } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -46,21 +47,30 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/settings-context";
-import { mockSales, mockPurchases, mockProducts, defaultCustomers, mockCashSessions } from "@/lib/data";
 import { SessionReportPreview } from "@/components/session-report-preview";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 
 type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
 
 export default function ReportsPage() {
     const { settings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
+    const firestore = useFirestore();
     const isSuperAdmin = userProfile?.role === 'superAdmin';
     
-    // Use local data instead of Firebase
-    const [salesData, setSalesData] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
-    const [purchasesData, setPurchasesData] = useState(mockPurchases.map(p => ({...p, storeId: activeStoreId})));
-    const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})));
-    const [customers, setCustomers] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
-    const [cashSessionsData, setCashSessionsData] = useState(mockCashSessions.map(cs => ({...cs, storeId: activeStoreId})));
+    const salesQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+    const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
+    
+    const purchasesQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+    const { data: purchasesData, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
+    
+    const productsQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+
+    const customersQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+    const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
+
+    const cashSessionsQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'cashSessions'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+    const { data: cashSessionsData, isLoading: isLoadingSessions } = useCollection<CashSession>(cashSessionsQuery);
 
     const [selectedSessionDetails, setSelectedSessionDetails] = useState<CashSession | null>(null);
     const [sessionForReport, setSessionForReport] = useState<CashSession | null>(null);
@@ -73,32 +83,33 @@ export default function ReportsPage() {
     }, [])
 
     const movementsData: InventoryMovement[] = useMemo(() => {
-      const saleMovements = salesData.flatMap(sale => 
-          sale.items.map(item => ({
-              id: `mov-sale-${sale.id}-${item.productId}`,
-              productName: item.productName,
-              type: 'sale' as 'sale',
-              quantity: -item.quantity,
-              date: sale.date,
-              storeId: sale.storeId,
-          }))
-      );
-       const purchaseMovements = purchasesData.flatMap(purchase => 
-          purchase.items.map(item => ({
-              id: `mov-pur-${purchase.id}-${item.productId}`,
-              productName: item.productName,
-              type: 'purchase' as 'purchase',
-              quantity: item.quantity,
-              date: purchase.date,
-              storeId: purchase.storeId,
-              responsible: purchase.responsible,
-          }))
-      );
-      return [...saleMovements, ...purchaseMovements].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        if (!salesData || !purchasesData) return [];
+        const saleMovements = salesData.flatMap(sale => 
+            sale.items.map(item => ({
+                id: `mov-sale-${sale.id}-${item.productId}`,
+                productName: item.productName,
+                type: 'sale' as 'sale',
+                quantity: -item.quantity,
+                date: sale.date,
+                storeId: sale.storeId,
+            }))
+        );
+        const purchaseMovements = purchasesData.flatMap(purchase => 
+            purchase.items.map(item => ({
+                id: `mov-pur-${purchase.id}-${item.productId}`,
+                productName: item.productName,
+                type: 'purchase' as 'purchase',
+                quantity: item.quantity,
+                date: purchase.date,
+                storeId: purchase.storeId,
+                responsible: purchase.responsible,
+            }))
+        );
+        return [...saleMovements, ...purchaseMovements].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     }, [salesData, purchasesData]);
 
 
-    const isLoading = isLoadingSettings;
+    const isLoading = isLoadingSettings || isLoadingSales || isLoadingPurchases || isLoadingProducts || isLoadingCustomers || isLoadingSessions;
     
     const [selectedSaleDetails, setSelectedSaleDetails] = useState<Sale | null>(null);
     const [saleForTicket, setSaleForTicket] = useState<Sale | null>(null);
@@ -131,7 +142,7 @@ export default function ReportsPage() {
     const getDate = (date: any): Date => {
         if (!date) return new Date();
         if (typeof date === 'string') return parseISO(date);
-        if (date.toDate) return date.toDate(); // For Firebase Timestamps if they ever come back
+        if (date.toDate) return date.toDate(); // For Firebase Timestamps
         return date;
     }
     
@@ -380,7 +391,7 @@ export default function ReportsPage() {
     };
 
     const salesForSession = (session: CashSession) => {
-        return salesData.filter(sale => session.salesIds.includes(sale.id));
+        return (salesData || []).filter(sale => session.salesIds.includes(sale.id));
     };
 
   return (
@@ -445,7 +456,7 @@ export default function ReportsPage() {
             <CardDescription>Un resumen de todas las ventas realizadas.</CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading && <p className="text-center">Cargando ventas...</p>}
+            {isLoading && <p className="text-center py-8">Cargando ventas...</p>}
             {!isLoading && <Table>
               <TableHeader>
                 <TableRow>
@@ -459,7 +470,9 @@ export default function ReportsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredSales.map((sale) => (
+                {filteredSales.length === 0 ? (
+                    <TableRow><TableCell colSpan={5} className="text-center h-24">No hay ventas para mostrar.</TableCell></TableRow>
+                ) : filteredSales.map((sale) => (
                   <TableRow key={sale.id}>
                     <TableCell>{isClient ? format(getDate(sale.date), 'dd/MM/yyyy HH:mm') : '...'}</TableCell>
                     <TableCell className="font-medium">{sale.id}</TableCell>
@@ -502,7 +515,7 @@ export default function ReportsPage() {
                 <CardDescription>Un resumen de todas las compras a proveedores.</CardDescription>
             </CardHeader>
             <CardContent>
-                {isLoading && <p className="text-center">Cargando compras...</p>}
+                {isLoading && <p className="text-center py-8">Cargando compras...</p>}
                 {!isLoading && <Table>
                     <TableHeader>
                         <TableRow>
@@ -513,7 +526,9 @@ export default function ReportsPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {filteredPurchases.map((purchase) => (
+                        {filteredPurchases.length === 0 ? (
+                             <TableRow><TableCell colSpan={4} className="text-center h-24">No hay compras para mostrar.</TableCell></TableRow>
+                        ) : filteredPurchases.map((purchase) => (
                             <TableRow key={purchase.id}>
                                 <TableCell>{isClient ? format(getDate(purchase.date), 'dd/MM/yyyy HH:mm') : '...'}</TableCell>
                                 <TableCell className="font-medium">{purchase.id}</TableCell>
@@ -540,7 +555,7 @@ export default function ReportsPage() {
                 <CardDescription>Un resumen de todos los pagos y abonos recibidos.</CardDescription>
             </CardHeader>
             <CardContent>
-                {isLoading && <p className="text-center">Cargando pagos...</p>}
+                {isLoading && <p className="text-center py-8">Cargando pagos...</p>}
                 {!isLoading && <Table>
                     <TableHeader>
                         <TableRow>
@@ -553,7 +568,9 @@ export default function ReportsPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {filteredPayments.map((payment, index) => (
+                        {filteredPayments.length === 0 ? (
+                            <TableRow><TableCell colSpan={6} className="text-center h-24">No hay pagos para mostrar.</TableCell></TableRow>
+                        ) : filteredPayments.map((payment, index) => (
                             <TableRow key={payment.id || `payment-${index}`}>
                                 <TableCell>{isClient ? format(getDate(payment.date), 'dd/MM/yyyy HH:mm') : '...'}</TableCell>
                                 <TableCell>{payment.saleId}</TableCell>
@@ -582,7 +599,7 @@ export default function ReportsPage() {
             <CardDescription>Un historial de todas las sesiones de caja.</CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading && <p className="text-center">Cargando sesiones...</p>}
+            {isLoading && <p className="text-center py-8">Cargando sesiones...</p>}
             {!isLoading && (
               <Table>
                 <TableHeader>
@@ -597,7 +614,9 @@ export default function ReportsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredCashSessions.map((session) => (
+                  {filteredCashSessions.length === 0 ? (
+                    <TableRow><TableCell colSpan={7} className="text-center h-24">No hay sesiones para mostrar.</TableCell></TableRow>
+                  ) : filteredCashSessions.map((session) => (
                     <TableRow key={session.id}>
                       <TableCell className="font-medium">{session.id}</TableCell>
                       <TableCell>
@@ -607,7 +626,7 @@ export default function ReportsPage() {
                         {isClient && session.closingDate ? format(getDate(session.closingDate), 'dd/MM/yy HH:mm') : 'N/A'}
                       </TableCell>
                       <TableCell>{session.openedBy}</TableCell>
-                      <TableCell className={`text-right font-semibold ${session.difference > 0 ? 'text-green-600' : session.difference < 0 ? 'text-destructive' : ''}`}>
+                      <TableCell className={`text-right font-semibold ${session.difference !== 0 ? (session.difference > 0 ? 'text-green-600' : 'text-destructive') : ''}`}>
                         {activeSymbol}{(session.difference * activeRate).toFixed(2)}
                       </TableCell>
                       <TableCell>
@@ -652,7 +671,7 @@ export default function ReportsPage() {
                 <CardDescription>Un historial de todas las entradas y salidas de stock.</CardDescription>
             </CardHeader>
             <CardContent>
-                 {isLoading && <p className="text-center">Cargando movimientos...</p>}
+                 {isLoading && <p className="text-center py-8">Cargando movimientos...</p>}
                  {!isLoading && <Table>
                     <TableHeader>
                         <TableRow>
@@ -663,7 +682,9 @@ export default function ReportsPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {filteredMovements.map((movement) => (
+                        {filteredMovements.length === 0 ? (
+                            <TableRow><TableCell colSpan={4} className="text-center h-24">No hay movimientos para mostrar.</TableCell></TableRow>
+                        ) : filteredMovements.map((movement) => (
                             <TableRow key={movement.id}>
                                 <TableCell>{movement.productName}</TableCell>
                                 <TableCell>
@@ -688,7 +709,7 @@ export default function ReportsPage() {
                 <CardDescription>Estado actual de todo tu inventario.</CardDescription>
             </CardHeader>
             <CardContent>
-                 {isLoading && <p className="text-center">Cargando inventario...</p>}
+                 {isLoading && <p className="text-center py-8">Cargando inventario...</p>}
                  {!isLoading && <Table>
                     <TableHeader>
                         <TableRow>
@@ -701,7 +722,9 @@ export default function ReportsPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {filteredProducts && filteredProducts.map((product) => (
+                        {filteredProducts && filteredProducts.length === 0 ? (
+                            <TableRow><TableCell colSpan={6} className="text-center h-24">No hay productos para mostrar.</TableCell></TableRow>
+                        ) : filteredProducts.map((product) => (
                             <TableRow key={product.id}>
                                 <TableCell className="font-mono">{product.sku}</TableCell>
                                 <TableCell>{product.name}</TableCell>

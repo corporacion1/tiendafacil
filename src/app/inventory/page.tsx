@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import type { Product, InventoryMovement, Sale } from "@/lib/types";
+import type { Product, InventoryMovement, Sale, Family } from "@/lib/types";
 import {
   Command,
   CommandEmpty,
@@ -35,7 +35,8 @@ import { ProductForm } from "@/components/product-form";
 import { useSettings } from "@/contexts/settings-context";
 import { format, parseISO } from "date-fns";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { query, collection, where } from "firebase/firestore";
+import { query, collection, where, doc } from "firebase/firestore";
+import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 
 const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewMovements, setProductToDelete }: {
@@ -129,13 +130,13 @@ export default function InventoryPage() {
   const firestore = useFirestore();
   const { activeSymbol, activeRate, activeStoreId, isLoadingSettings } = useSettings();
 
-  const productsQuery = useMemoFirebase(() => query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
+  const productsQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
   
-  const salesQuery = useMemoFirebase(() => query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
+  const salesQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
   const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
 
-  const inventoryMovementsQuery = useMemoFirebase(() => query(collection(firestore, 'inventoryMovements'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
+  const inventoryMovementsQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'inventoryMovements'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
   const { data: inventoryMovements, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(inventoryMovementsQuery);
 
   const isLoading = isLoadingSettings || isLoadingProducts || isLoadingSales || isLoadingMovements;
@@ -167,11 +168,11 @@ export default function InventoryPage() {
   function handleUpdateProduct(data: Omit<Product, 'id'> & { id?: string }) {
     if (!data.id) return false;
 
-    // TODO: Connect to firebase update
-    console.log("Updating product (simulated)", data);
+    const productDocRef = doc(firestore, 'products', data.id);
+    setDocumentNonBlocking(productDocRef, data, { merge: true });
 
     toast({
-        title: "Producto Actualizado (Simulación)",
+        title: "Producto Actualizado",
         description: `El producto "${data.name}" ha sido actualizado.`,
     });
     setProductToEdit(null);
@@ -195,10 +196,11 @@ export default function InventoryPage() {
         return;
     }
     
-    // TODO: Connect to firebase delete
-    console.log("Deleting product (simulated)", productId);
+    const productDocRef = doc(firestore, 'products', productId);
+    deleteDocumentNonBlocking(productDocRef);
+
     toast({
-        title: "Producto Eliminado (Simulación)",
+        title: "Producto Eliminado",
         description: "El producto ha sido eliminado del inventario.",
     });
     setProductToDelete(null);
@@ -236,13 +238,24 @@ export default function InventoryPage() {
       case 'adjustment': newStock = movementQuantity; break;
       default: newStock = currentStock; break;
     }
+
+    const productDocRef = doc(firestore, 'products', movementProduct.id);
+    setDocumentNonBlocking(productDocRef, { stock: newStock }, { merge: true });
+
+    const newMovement: Omit<InventoryMovement, 'id'> = {
+        productName: movementProduct.name,
+        type: movementType,
+        quantity: movementType === 'sale' ? -movementQuantity : movementQuantity,
+        date: new Date().toISOString(),
+        responsible: movementResponsible,
+        storeId: activeStoreId,
+    };
     
-    // TODO: Connect to firebase to update stock and create movement
-    
-    console.log(`Simulating stock update for ${movementProduct.name} to ${newStock}`);
+    const movementsCollectionRef = collection(firestore, 'inventoryMovements');
+    await addDocumentNonBlocking(movementsCollectionRef, newMovement);
 
     toast({
-        title: "Movimiento Registrado (Simulación)",
+        title: "Movimiento Registrado",
         description: `El stock de "${movementProduct.name}" ha sido actualizado a ${newStock}.`,
     });
     resetMovementForm();
@@ -356,7 +369,7 @@ export default function InventoryPage() {
         </div>
       </CardHeader>
       <CardContent>
-        {isLoading && <p>Cargando productos...</p>}
+        {isLoading && <p className="text-center py-8">Cargando productos...</p>}
         {!isLoading && (
           <Table>
             <TableHeader>
@@ -375,24 +388,30 @@ export default function InventoryPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {productsToRender.map((product) => (
-                <ProductRow
-                  key={product.id}
-                  product={product}
-                  activeSymbol={activeSymbol}
-                  activeRate={activeRate}
-                  handleEdit={handleEdit}
-                  handleViewMovements={handleViewMovements}
-                  setProductToDelete={setProductToDelete}
-                />
-              ))}
+              {productsToRender.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center h-24">No se encontraron productos.</TableCell>
+                </TableRow>
+              ) : (
+                productsToRender.map((product) => (
+                  <ProductRow
+                    key={product.id}
+                    product={product}
+                    activeSymbol={activeSymbol}
+                    activeRate={activeRate}
+                    handleEdit={handleEdit}
+                    handleViewMovements={handleViewMovements}
+                    setProductToDelete={setProductToDelete}
+                  />
+                ))
+              )}
             </TableBody>
           </Table>
         )}
       </CardContent>
       <CardFooter>
         <div className="text-xs text-muted-foreground">
-          Mostrando <strong>1-{productsToRender.length}</strong> de <strong>{(products || []).length}</strong> productos
+          Mostrando <strong>{getVisibleProducts().length}</strong> de <strong>{(products || []).length}</strong> productos
         </div>
       </CardFooter>
     </Card>

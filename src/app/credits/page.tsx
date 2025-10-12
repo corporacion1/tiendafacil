@@ -16,24 +16,28 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import type { Sale, Payment, Product } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
-import { paymentMethods, mockSales, mockProducts } from "@/lib/data";
+import { paymentMethods } from "@/lib/data";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { addDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { collection, query, where, doc } from "firebase/firestore";
 
 export default function CreditsPage() {
     const { toast } = useToast();
-    const { settings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
+    const firestore = useFirestore();
+    const { settings, activeSymbol, activeRate, activeStoreId, isLoadingSettings } = useSettings();
 
-    // Use local data instead of Firebase
-    const [sales, setSales] = useState<Sale[]>(mockSales.map(s => ({ ...s, storeId: activeStoreId })));
-    const [products, setProducts] = useState<Product[]>(mockProducts.map(p => ({ ...p, storeId: activeStoreId, createdAt: new Date().toISOString() })));
+    const salesQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+    const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
+    
     const [isClient, setIsClient] = useState(false)
 
     useEffect(() => {
         setIsClient(true)
     }, [])
 
-    const isLoading = isLoadingSettings;
+    const isLoading = isLoadingSettings || isLoadingSales;
 
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
@@ -46,7 +50,7 @@ export default function CreditsPage() {
 
     const [searchTerm, setSearchTerm] = useState("");
     
-    const creditSales = useMemo(() => sales.filter(s => s.transactionType === 'credito'), [sales]);
+    const creditSales = useMemo(() => (sales || []).filter(s => s.transactionType === 'credito'), [sales]);
     
     const totalNewPayment = useMemo(() => payments.reduce((sum, p) => sum + p.amount, 0), [payments]);
     const remainingBalance = useMemo(() => selectedSale ? selectedSale.total - (selectedSale.paidAmount || 0) : 0, [selectedSale]);
@@ -62,11 +66,9 @@ export default function CreditsPage() {
     
     const isReferenceDuplicate = (reference: string, method: string) => {
         if (!reference || !method || !sales) return false;
-        // Check current unsaved payments
         if (payments.some(p => p.method === method && p.reference === reference)) {
             return true;
         }
-        // Check all past sales
         for (const sale of sales) {
             if (sale.payments && sale.payments.some(p => p.method === method && p.reference === reference)) {
                 return true;
@@ -129,28 +131,21 @@ export default function CreditsPage() {
             date: new Date().toISOString(),
         }));
         
-        const updatedPaidAmount = selectedSale.paidAmount + totalNewPayment;
+        const updatedPaidAmount = (selectedSale.paidAmount || 0) + totalNewPayment;
         const newStatus = updatedPaidAmount >= selectedSale.total ? 'paid' : 'unpaid';
 
-        // Update local state instead of Firestore
-        setSales(prevSales =>
-            prevSales.map(sale =>
-                sale.id === selectedSale.id
-                    ? {
-                        ...sale,
-                        payments: [...(sale.payments || []), ...newPayments],
-                        paidAmount: updatedPaidAmount,
-                        status: newStatus,
-                      }
-                    : sale
-            )
-        );
+        const saleDocRef = doc(firestore, 'sales', selectedSale.id);
+        setDocumentNonBlocking(saleDocRef, {
+            payments: [...(selectedSale.payments || []), ...newPayments],
+            paidAmount: updatedPaidAmount,
+            status: newStatus,
+        }, { merge: true });
 
         setSelectedSale(null); // Close details view after saving
         setPaymentDialogOpen(false);
         resetPaymentForm();
         
-        toast({ title: "Abono Registrado (Simulación)", description: `Se agregaron ${payments.length} pago(s) a la venta ${selectedSale.id}.`});
+        toast({ title: "Abono Registrado", description: `Se agregaron ${payments.length} pago(s) a la venta ${selectedSale.id}.`});
     };
     
     const filteredSales = useMemo(() => {

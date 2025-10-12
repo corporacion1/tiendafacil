@@ -21,53 +21,27 @@ import {
   mockAds,
   defaultUsers,
   defaultStoreId,
-  mockCurrencyRates
+  mockCurrencyRates,
+  mockCashSessions
 } from './data';
-
-async function seedCollection(
-  firestore: Firestore,
-  collectionName: string,
-  data: any[],
-  storeId?: string,
-) {
-  const batch = writeBatch(firestore);
-  const collectionRef = collection(firestore, collectionName);
-  
-  // Check if collection has data to prevent re-seeding
-  const snapshot = await getDocs(collectionRef);
-  if (!snapshot.empty) {
-    console.log(`Colección "${collectionName}" ya contiene datos. Saltando el sembrado.`);
-    return;
-  }
-  
-  console.log(`Sembrando colección: ${collectionName}...`);
-  data.forEach((item) => {
-    const docId = item.id || doc(collectionRef).id;
-    const docRef = doc(firestore, collectionName, docId);
-    const dataWithStoreId = storeId ? { ...item, storeId } : item;
-    batch.set(docRef, dataWithStoreId);
-  });
-  await batch.commit();
-  console.log(`Colección "${collectionName}" sembrada exitosamente.`);
-}
-
 
 export async function forceSeedDatabase(firestore: Firestore): Promise<boolean> {
   try {
     console.log('Iniciando el proceso de sembrado forzado...');
 
     const collectionsToSeed = [
-      { name: 'stores', data: [defaultStore], storeId: undefined },
-      { name: 'products', data: mockProducts, storeId: defaultStoreId },
-      { name: 'customers', data: defaultCustomers, storeId: defaultStoreId },
-      { name: 'suppliers', data: defaultSuppliers, storeId: defaultStoreId },
-      { name: 'units', data: initialUnits, storeId: defaultStoreId },
-      { name: 'families', data: initialFamilies, storeId: defaultStoreId },
-      { name: 'warehouses', data: initialWarehouses, storeId: defaultStoreId },
-      { name: 'sales', data: mockSales, storeId: defaultStoreId },
-      { name: 'purchases', data: mockPurchases, storeId: defaultStoreId },
-      { name: 'ads', data: mockAds, storeId: undefined },
-      { name: 'users', data: defaultUsers, storeId: undefined },
+      { name: 'stores', data: [defaultStore], storeId: undefined, idKey: 'id' },
+      { name: 'products', data: mockProducts, storeId: defaultStoreId, idKey: 'id' },
+      { name: 'customers', data: defaultCustomers, storeId: defaultStoreId, idKey: 'id' },
+      { name: 'suppliers', data: defaultSuppliers, storeId: defaultStoreId, idKey: 'id' },
+      { name: 'units', data: initialUnits, storeId: defaultStoreId, idKey: 'id' },
+      { name: 'families', data: initialFamilies, storeId: defaultStoreId, idKey: 'id' },
+      { name: 'warehouses', data: initialWarehouses, storeId: defaultStoreId, idKey: 'id' },
+      { name: 'sales', data: mockSales, storeId: defaultStoreId, idKey: 'id' },
+      { name: 'purchases', data: mockPurchases, storeId: defaultStoreId, idKey: 'id' },
+      { name: 'ads', data: mockAds, storeId: undefined, idKey: 'id' },
+      { name: 'users', data: defaultUsers, storeId: undefined, idKey: 'uid' },
+      { name: 'cashSessions', data: mockCashSessions, storeId: defaultStoreId, idKey: 'id'},
     ];
     
     // Seed currency rates as a subcollection
@@ -80,10 +54,10 @@ export async function forceSeedDatabase(firestore: Firestore): Promise<boolean> 
     await currencyBatch.commit();
     console.log('Subcolección "currencyRates" sembrada.');
 
-    for (const { name, data, storeId } of collectionsToSeed) {
+    for (const { name, data, storeId, idKey } of collectionsToSeed) {
       const batch = writeBatch(firestore);
-      data.forEach((item) => {
-        const docId = item.id || doc(collection(firestore, name)).id;
+      data.forEach((item: any) => {
+        const docId = item[idKey] || doc(collection(firestore, name)).id;
         const docRef = doc(firestore, name, docId);
         const dataToSet = storeId && name !== 'stores' ? { ...item, storeId } : item;
         batch.set(docRef, dataToSet);
@@ -101,7 +75,7 @@ export async function forceSeedDatabase(firestore: Firestore): Promise<boolean> 
 }
 
 export async function factoryReset(firestore: Firestore) {
-  const collections = ['products', 'customers', 'suppliers', 'units', 'families', 'warehouses', 'sales', 'purchases', 'ads', 'users', 'stores'];
+  const collections = ['products', 'customers', 'suppliers', 'units', 'families', 'warehouses', 'sales', 'purchases', 'ads', 'users', 'stores', 'cashSessions'];
   console.log("Iniciando restauración de fábrica...");
 
   for (const collectionName of collections) {
