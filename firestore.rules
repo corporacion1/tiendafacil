@@ -1,44 +1,44 @@
 /**
- * @fileoverview Firestore Security Rules for the inventory and point-of-sale system.
- *
- * Core Philosophy:
- * This ruleset provides secure access to inventory and sales data, primarily using a data-centric security model.
- * Each top-level collection is independently secured, and relationships between documents are not used for authorization.
- *
- * Data Structure:
- * - /products/{productId}: Stores product information.
- * - /inventoryMovements/{inventoryMovementId}: Stores inventory movement records.
- * - /sales/{saleId}: Stores sales transactions.
- * - /sales/{saleId}/saleItems/{saleItemId}: Stores individual sale items related to a specific sale.
- * - /purchases/{purchaseId}: Stores purchase transactions.
- * - /purchases/{purchaseId}/purchaseItems/{purchaseItemId}: Stores individual purchase items related to a specific purchase.
- * - /customers/{customerId}: Stores customer information.
- * - /suppliers/{supplierId}: Stores supplier information.
- * - /taxTypes/{taxTypeId}: Stores tax type information.
- * - /configuration/{configurationId}: Stores business configuration data.
- *
- * Key Security Decisions:
- * - All collections except Configuration require authentication to access.
- * - There are no implicit relationships between collections that grant permissions.
- *
- * Denormalization for Authorization:
- *   This ruleset avoids complex authorization checks. For example, it does not check if a customer exists before creating a sale.
- *
- * Structural Segregation:
- *   All data is stored in top-level collections, with no user-specific subcollections.
+ * @description This ruleset enforces a strict ownership model for all collections. All data is stored in top-level collections.
+ *   Authenticated users can create, read, update, and delete documents in these collections.
+ *   No user listing is allowed by default, which requires explicit configuration.
+ *   Data shape validation is relaxed in this prototyping phase to enable rapid development.
+ *   Write access is never granted using `if true;`. Every write must be authorized.
+ * @dataStructure
+ *   /products/{productId}
+ *   /inventoryMovements/{inventoryMovementId}
+ *   /sales/{saleId}
+ *   /sales/{saleId}/saleItems/{saleItemId}
+ *   /purchases/{purchaseId}
+ *   /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
+ *   /customers/{customerId}
+ *   /suppliers/{supplierId}
+ *   /taxTypes/{taxTypeId}
+ *   /configuration/{configurationId}
+ * @keySecurityDecisions
+ *   - No user listing is allowed.
+ *   - All write operations require authentication.
+ *   - The rule set does not validate any data, besides requiring the user to be signed in.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
     /**
-     * @description Manages access to product information. Only authenticated users can read and write product data.
+     * @description Manages access to product information.
      * @path /products/{productId}
-     * @allow (get, list): Authenticated user can read product information.
-     * @allow (create, update, delete): Authenticated user can write product information.
-     * @deny (get, list): Unauthenticated user cannot read product information.
-     * @deny (create, update, delete): Unauthenticated user cannot write product information.
-     * @principle Authenticated users can manage product information.
+     * @allow (create) - Authenticated user can create a product.
+     * @allow (get) - Authenticated user can read a product.
+     * @allow (update) - Authenticated user can update a product.
+     * @allow (delete) - Authenticated user can delete a product.
+     * @deny (create) - Unauthenticated user cannot create a product.
+     * @deny (update) - Unauthenticated user cannot update a product.
+     * @deny (delete) - Unauthenticated user cannot delete a product.
+     * @principle Authenticated users can create, read, update, and delete product documents.
      */
     match /products/{productId} {
       allow get: if isSignedIn();
@@ -49,13 +49,16 @@ service cloud.firestore {
     }
 
     /**
-     * @description Manages access to inventory movement records. Only authenticated users can read and write inventory movement data.
+     * @description Manages access to inventory movement records.
      * @path /inventoryMovements/{inventoryMovementId}
-     * @allow (get, list): Authenticated user can read inventory movement information.
-     * @allow (create, update, delete): Authenticated user can write inventory movement information.
-     * @deny (get, list): Unauthenticated user cannot read inventory movement information.
-     * @deny (create, update, delete): Unauthenticated user cannot write inventory movement information.
-     * @principle Authenticated users can manage inventory movement information.
+     * @allow (create) - Authenticated user can create an inventory movement.
+     * @allow (get) - Authenticated user can read an inventory movement.
+     * @allow (update) - Authenticated user can update an inventory movement.
+     * @allow (delete) - Authenticated user can delete an inventory movement.
+     * @deny (create) - Unauthenticated user cannot create an inventory movement.
+     * @deny (update) - Unauthenticated user cannot update an inventory movement.
+     * @deny (delete) - Unauthenticated user cannot delete an inventory movement.
+     * @principle Authenticated users can create, read, update, and delete inventory movement documents.
      */
     match /inventoryMovements/{inventoryMovementId} {
       allow get: if isSignedIn();
@@ -66,13 +69,16 @@ service cloud.firestore {
     }
 
     /**
-     * @description Manages access to sales transactions. Only authenticated users can read and write sales transaction data.
+     * @description Manages access to sales transactions.
      * @path /sales/{saleId}
-     * @allow (get, list): Authenticated user can read sales transaction information.
-     * @allow (create, update, delete): Authenticated user can write sales transaction information.
-     * @deny (get, list): Unauthenticated user cannot read sales transaction information.
-     * @deny (create, update, delete): Unauthenticated user cannot write sales transaction information.
-     * @principle Authenticated users can manage sales transaction information.
+     * @allow (create) - Authenticated user can create a sale.
+     * @allow (get) - Authenticated user can read a sale.
+     * @allow (update) - Authenticated user can update a sale.
+     * @allow (delete) - Authenticated user can delete a sale.
+     * @deny (create) - Unauthenticated user cannot create a sale.
+     * @deny (update) - Unauthenticated user cannot update a sale.
+     * @deny (delete) - Unauthenticated user cannot delete a sale.
+     * @principle Authenticated users can create, read, update, and delete sale documents.
      */
     match /sales/{saleId} {
       allow get: if isSignedIn();
@@ -83,13 +89,16 @@ service cloud.firestore {
     }
 
     /**
-     * @description Manages access to sale items related to a specific sale. Only authenticated users can read and write sale item data.
+     * @description Manages access to individual sale items.
      * @path /sales/{saleId}/saleItems/{saleItemId}
-     * @allow (get, list): Authenticated user can read sale item information.
-     * @allow (create, update, delete): Authenticated user can write sale item information.
-     * @deny (get, list): Unauthenticated user cannot read sale item information.
-     * @deny (create, update, delete): Unauthenticated user cannot write sale item information.
-     * @principle Authenticated users can manage sale item information.
+     * @allow (create) - Authenticated user can create a sale item.
+     * @allow (get) - Authenticated user can read a sale item.
+     * @allow (update) - Authenticated user can update a sale item.
+     * @allow (delete) - Authenticated user can delete a sale item.
+     * @deny (create) - Unauthenticated user cannot create a sale item.
+     * @deny (update) - Unauthenticated user cannot update a sale item.
+     * @deny (delete) - Unauthenticated user cannot delete a sale item.
+     * @principle Authenticated users can create, read, update, and delete sale item documents.
      */
     match /sales/{saleId}/saleItems/{saleItemId} {
       allow get: if isSignedIn();
@@ -100,13 +109,16 @@ service cloud.firestore {
     }
 
     /**
-     * @description Manages access to purchase transactions. Only authenticated users can read and write purchase transaction data.
+     * @description Manages access to purchase transactions.
      * @path /purchases/{purchaseId}
-     * @allow (get, list): Authenticated user can read purchase transaction information.
-     * @allow (create, update, delete): Authenticated user can write purchase transaction information.
-     * @deny (get, list): Unauthenticated user cannot read purchase transaction information.
-     * @deny (create, update, delete): Unauthenticated user cannot write purchase transaction information.
-     * @principle Authenticated users can manage purchase transaction information.
+     * @allow (create) - Authenticated user can create a purchase.
+     * @allow (get) - Authenticated user can read a purchase.
+     * @allow (update) - Authenticated user can update a purchase.
+     * @allow (delete) - Authenticated user can delete a purchase.
+     * @deny (create) - Unauthenticated user cannot create a purchase.
+     * @deny (update) - Unauthenticated user cannot update a purchase.
+     * @deny (delete) - Unauthenticated user cannot delete a purchase.
+     * @principle Authenticated users can create, read, update, and delete purchase documents.
      */
     match /purchases/{purchaseId} {
       allow get: if isSignedIn();
@@ -117,13 +129,16 @@ service cloud.firestore {
     }
 
     /**
-     * @description Manages access to purchase items related to a specific purchase. Only authenticated users can read and write purchase item data.
+     * @description Manages access to individual purchase items.
      * @path /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
-     * @allow (get, list): Authenticated user can read purchase item information.
-     * @allow (create, update, delete): Authenticated user can write purchase item information.
-     * @deny (get, list): Unauthenticated user cannot read purchase item information.
-     * @deny (create, update, delete): Unauthenticated user cannot write purchase item information.
-     * @principle Authenticated users can manage purchase item information.
+     * @allow (create) - Authenticated user can create a purchase item.
+     * @allow (get) - Authenticated user can read a purchase item.
+     * @allow (update) - Authenticated user can update a purchase item.
+     * @allow (delete) - Authenticated user can delete a purchase item.
+     * @deny (create) - Unauthenticated user cannot create a purchase item.
+     * @deny (update) - Unauthenticated user cannot update a purchase item.
+     * @deny (delete) - Unauthenticated user cannot delete a purchase item.
+     * @principle Authenticated users can create, read, update, and delete purchase item documents.
      */
     match /purchases/{purchaseId}/purchaseItems/{purchaseItemId} {
       allow get: if isSignedIn();
@@ -134,13 +149,16 @@ service cloud.firestore {
     }
 
     /**
-     * @description Manages access to customer information. Only authenticated users can read and write customer data.
+     * @description Manages access to customer information.
      * @path /customers/{customerId}
-     * @allow (get, list): Authenticated user can read customer information.
-     * @allow (create, update, delete): Authenticated user can write customer information.
-     * @deny (get, list): Unauthenticated user cannot read customer information.
-     * @deny (create, update, delete): Unauthenticated user cannot write customer information.
-     * @principle Authenticated users can manage customer information.
+     * @allow (create) - Authenticated user can create a customer.
+     * @allow (get) - Authenticated user can read a customer.
+     * @allow (update) - Authenticated user can update a customer.
+     * @allow (delete) - Authenticated user can delete a customer.
+     * @deny (create) - Unauthenticated user cannot create a customer.
+     * @deny (update) - Unauthenticated user cannot update a customer.
+     * @deny (delete) - Unauthenticated user cannot delete a customer.
+     * @principle Authenticated users can create, read, update, and delete customer documents.
      */
     match /customers/{customerId} {
       allow get: if isSignedIn();
@@ -151,13 +169,16 @@ service cloud.firestore {
     }
 
     /**
-     * @description Manages access to supplier information. Only authenticated users can read and write supplier data.
+     * @description Manages access to supplier information.
      * @path /suppliers/{supplierId}
-     * @allow (get, list): Authenticated user can read supplier information.
-     * @allow (create, update, delete): Authenticated user can write supplier information.
-     * @deny (get, list): Unauthenticated user cannot read supplier information.
-     * @deny (create, update, delete): Unauthenticated user cannot write supplier information.
-     * @principle Authenticated users can manage supplier information.
+     * @allow (create) - Authenticated user can create a supplier.
+     * @allow (get) - Authenticated user can read a supplier.
+     * @allow (update) - Authenticated user can update a supplier.
+     * @allow (delete) - Authenticated user can delete a supplier.
+     * @deny (create) - Unauthenticated user cannot create a supplier.
+     * @deny (update) - Unauthenticated user cannot update a supplier.
+     * @deny (delete) - Unauthenticated user cannot delete a supplier.
+     * @principle Authenticated users can create, read, update, and delete supplier documents.
      */
     match /suppliers/{supplierId} {
       allow get: if isSignedIn();
@@ -168,13 +189,16 @@ service cloud.firestore {
     }
 
     /**
-     * @description Manages access to tax type information. Only authenticated users can read and write tax type data.
+     * @description Manages access to tax type information.
      * @path /taxTypes/{taxTypeId}
-     * @allow (get, list): Authenticated user can read tax type information.
-     * @allow (create, update, delete): Authenticated user can write tax type information.
-     * @deny (get, list): Unauthenticated user cannot read tax type information.
-     * @deny (create, update, delete): Unauthenticated user cannot write tax type information.
-     * @principle Authenticated users can manage tax type information.
+     * @allow (create) - Authenticated user can create a tax type.
+     * @allow (get) - Authenticated user can read a tax type.
+     * @allow (update) - Authenticated user can update a tax type.
+     * @allow (delete) - Authenticated user can delete a tax type.
+     * @deny (create) - Unauthenticated user cannot create a tax type.
+     * @deny (update) - Unauthenticated user cannot update a tax type.
+     * @deny (delete) - Unauthenticated user cannot delete a tax type.
+     * @principle Authenticated users can create, read, update, and delete tax type documents.
      */
     match /taxTypes/{taxTypeId} {
       allow get: if isSignedIn();
@@ -185,28 +209,23 @@ service cloud.firestore {
     }
 
     /**
-     * @description Manages access to business configuration data.  This data is publicly readable, but only authenticated users can modify it.
+     * @description Manages access to configuration data.
      * @path /configuration/{configurationId}
-     * @allow (get, list): Anyone can read the configuration.
-     * @allow (create, update, delete): Only authenticated users can modify the configuration.
-     * @deny (create, update, delete): Unauthenticated users cannot write configuration information.
-     * @principle Configuration data is public readable, but writes are restricted to authenticated users.
+     * @allow (create) - Authenticated user can create a configuration.
+     * @allow (get) - Authenticated user can read a configuration.
+     * @allow (update) - Authenticated user can update a configuration.
+     * @allow (delete) - Authenticated user can delete a configuration.
+     * @deny (create) - Unauthenticated user cannot create a configuration.
+     * @deny (update) - Unauthenticated user cannot update a configuration.
+     * @deny (delete) - Unauthenticated user cannot delete a configuration.
+     * @principle Authenticated users can create, read, update, and delete configuration documents.
      */
     match /configuration/{configurationId} {
-      allow get: if true;
-      allow list: if true;
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
       allow create: if isSignedIn();
       allow update: if isSignedIn();
       allow delete: if isSignedIn();
     }
-
-  }
-
-  /**
-   * @description Checks if the user is signed in.
-   * @return {boolean} True if the user is signed in, false otherwise.
-   */
-  function isSignedIn() {
-    return request.auth != null;
   }
 }
