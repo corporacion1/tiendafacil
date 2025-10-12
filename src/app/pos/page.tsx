@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SessionReportPreview } from "@/components/session-report-preview";
+import { useSecurity } from "@/contexts/security-context";
 
 
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
@@ -68,6 +69,7 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
 export default function POSPage() {
   const { toast } = useToast();
   const { settings, setSettings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
+  const { isLocked, isSecurityReady } = useSecurity();
   
   const [products, setProductsState] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})));
   const [customers, setCustomers] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
@@ -116,12 +118,12 @@ export default function POSPage() {
 
   useEffect(() => {
     setIsClient(true);
-    // On load, check if there's an active session. If not, prompt to open one.
-    // For this simulation, we'll assume no session is open on first load.
-    if (!activeSession) {
-      setIsSessionModalOpen(true);
+    if (isSecurityReady && !isLocked) {
+        if (!activeSession) {
+            setIsSessionModalOpen(true);
+        }
     }
-  }, []);
+  }, [isSecurityReady, isLocked, activeSession]);
 
   const handleOpenSession = () => {
       const balance = Number(openingBalance);
@@ -202,7 +204,7 @@ export default function POSPage() {
     toast({ title: 'Caja Cerrada', description: 'La sesión ha finalizado. Puedes iniciar una nueva.' });
   }
 
-  const isSessionReady = useMemo(() => !!activeSession, [activeSession]);
+  const isSessionReady = useMemo(() => !!activeSession && !isLocked, [activeSession, isLocked]);
 
   const generateSaleId = () => {
     const series = settings?.saleSeries || 'SALE';
