@@ -22,30 +22,24 @@ export function Footer() {
     {
       name: "WhatsApp",
       icon: FaWhatsapp,
-      url: `https://wa.me/${settings?.whatsapp?.replace(/\D/g, '') || '584126915593'}`,
-      enabled: !!settings?.whatsapp,
+      url: `https://wa.me/584126915593`, // Hardcoded value
     },
     {
       name: "TikTok",
       icon: FaTiktok,
-      url: `https://www.tiktok.com/@${settings?.tiktok?.replace('@', '') || 'corporacion10'}`,
-      enabled: !!settings?.tiktok,
+      url: `https://www.tiktok.com/@corporacion10`, // Hardcoded value
     },
     {
       name: "Instagram",
       icon: Instagram,
-      url: `https://www.instagram.com/${settings?.meta?.replace('@', '') || 'corporacion1plus'}`,
-      enabled: !!settings?.meta,
+      url: "https://www.instagram.com/corporacion1plus", // Hardcoded value
     },
     {
       name: "Facebook",
       icon: Facebook,
-      url: `https://www.facebook.com/corporacion1plus`,
-      enabled: true, // This one is still hardcoded as per original user request
+      url: "https://www.facebook.com/corporacion1plus", // Hardcoded value
     },
   ];
-
-  const enabledSocialLinks = socialLinks.filter(link => link.enabled);
 
   return (
     <footer className={cn("hidden md:block mt-auto border-t bg-background px-4 py-2 sm:px-6")}>
@@ -53,9 +47,8 @@ export function Footer() {
         <p className="text-center text-sm leading-loose text-muted-foreground sm:text-left">
           © {new Date().getFullYear()} Corporación 1 Plus, CA. Todos los derechos reservados.
         </p>
-        {enabledSocialLinks.length > 0 && (
-          <div className="flex items-center gap-2">
-            {enabledSocialLinks.map((social) => (
+        <div className="flex items-center gap-2">
+            {socialLinks.map((social) => (
               <Button
                 key={social.name}
                 variant="ghost"
@@ -73,7 +66,6 @@ export function Footer() {
               </Button>
             ))}
           </div>
-        )}
       </div>
     </footer>
   );

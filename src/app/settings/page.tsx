@@ -552,16 +552,6 @@ export default function SettingsPage() {
                                 <Label htmlFor="slogan">Slogan o Mensaje para el Ticket</Label>
                                 <Input id="slogan" value={localSettings?.slogan || ''} onChange={handleSettingsChange} placeholder="¡Gracias por tu compra!" maxLength={55} />
                             </div>
-                            <Separator />
-                             <h3 className="text-lg font-medium">Redes Sociales</h3>
-                             <div className="space-y-2">
-                                <Label htmlFor="whatsapp">WhatsApp (sólo números)</Label>
-                                <Input id="whatsapp" value={localSettings?.whatsapp || ''} onChange={handleSettingsChange} placeholder="584121234567" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="meta">Instagram / Facebook (usuario)</Label>
-                                <Input id="meta" value={localSettings?.meta || ''} onChange={handleSettingsChange} placeholder="@tu_usuario" />
-                            </div>
                         </div>
                          <div className="md:col-span-1 space-y-4">
                             <div className="space-y-2">
@@ -584,6 +574,19 @@ export default function SettingsPage() {
                             </div>
                         </div>
                     </div>
+                    
+                    <Separator />
+                    <h3 className="text-lg font-medium">Redes Sociales (para el Catálogo)</h3>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <div className="space-y-2">
+                            <Label htmlFor="whatsapp">WhatsApp (sólo números)</Label>
+                            <Input id="whatsapp" value={localSettings?.whatsapp || ''} onChange={handleSettingsChange} placeholder="584121234567" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="meta">Instagram / Facebook (usuario)</Label>
+                            <Input id="meta" value={localSettings?.meta || ''} onChange={handleSettingsChange} placeholder="@tu_usuario" />
+                        </div>
+                     </div>
                     
                     <Separator />
                     <h3 className="text-lg font-medium">Correlativos de Venta</h3>
