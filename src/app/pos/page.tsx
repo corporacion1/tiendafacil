@@ -1107,7 +1107,7 @@ export default function POSPage() {
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Regresar
                 </Button>
-                <Button onClick={handleOpenSession} disabled={!openingBalance || Number(openingBalance) < 0}>Iniciar Sesión</Button>
+                <Button onClick={handleOpenSession} disabled={!openingBalance || Number(openingBalance) < 0}>Abrir Caja</Button>
             </DialogFooter>
         </DialogContent>
     </Dialog>
