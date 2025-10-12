@@ -10,6 +10,7 @@ import { Footer } from './footer';
 import { useSecurity } from '@/contexts/security-context';
 import { useSettings } from '@/contexts/settings-context';
 import { Skeleton } from './ui/skeleton';
+import { FirstTimeSetupModal } from './first-time-setup-modal';
 
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -35,6 +36,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex min-h-screen w-full flex-col">
         <main className="flex-1">{children}</main>
+        <FirstTimeSetupModal />
         <Footer />
       </div>
     );
@@ -80,6 +82,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             "flex-1 overflow-y-auto",
             "grid items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8"
           )}>
+            <FirstTimeSetupModal />
             {children}
           </main>
           <Footer />

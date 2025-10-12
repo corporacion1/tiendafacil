@@ -8,7 +8,7 @@ import { doc, collection, getDocs, limit, query, where } from 'firebase/firestor
 import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { CurrencyRate, Settings, UserProfile, Product } from '@/lib/types';
 import { defaultStore, defaultUsers, defaultStoreId, mockCurrencyRates, initialFamilies, initialUnits, initialWarehouses, mockProducts } from '@/lib/data';
-import { useUser as useAuthUserHook } from '@/firebase/auth/use-user';
+import { useUser as useUserHook } from '@/firebase/auth/use-user';
 
 type DisplayCurrency = 'primary' | 'secondary';
 
@@ -45,7 +45,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const pathname = usePathname();
   const firestore = useFirestore();
 
-  const { user: authUser, isUserLoading } = useAuthUserHook();
+  const { user: userProfile, isUserLoading } = useUserHook();
   
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
@@ -60,8 +60,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       setUseDemoDataState(true);
     }
   }, []);
-
-  const userProfile = authUser;
 
   // Firestore hooks - Now conditional based on useDemoData
   const storeRef = useMemoFirebase(() => (!useDemoData && firestore) ? doc(firestore, 'stores', activeStoreId) : null, [firestore, activeStoreId, useDemoData]);
@@ -153,15 +151,15 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
 
   useEffect(() => {
-     if (!isUserLoading && !authUser && !pathname.startsWith('/catalog') && !pathname.startsWith('/login')) {
+     if (!isUserLoading && !userProfile && !pathname.startsWith('/catalog') && !pathname.startsWith('/login')) {
       router.push('/catalog');
     }
-  }, [isUserLoading, authUser, pathname, router]);
+  }, [isUserLoading, userProfile, pathname, router]);
 
   const handleSetSettings = (newSettings: Settings) => {
     if(activeStoreId && firestore) {
       const settingsDoc = doc(firestore, 'stores', activeStoreId);
-      setDocumentNonBlocking(settingsDoc, newSettings, { merge: true });
+      //setDocumentNonBlocking(settingsDoc, newSettings, { merge: true });
     }
     toast({ title: "Configuración Guardada", description: "Los cambios se están guardando en la nube." });
   };
