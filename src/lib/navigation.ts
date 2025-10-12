@@ -16,16 +16,16 @@ export const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/catalog', label: 'Catálogo', icon: LayoutGrid },
   { href: '/pos', label: 'Punto de Venta', icon: ShoppingCart },
-  // { href: "/products", label: "Productos", icon: PackagePlus },
-  // { href: "/inventory", label: "Inventario", icon: Boxes },
-  // { href: "/purchases", label: "Compras", icon: Store },
-  // { href: "/credits", label: "Créditos", icon: CreditCard },
-  // { href: "/reports", label: "Reportes", icon: FileText },
+  { href: "/products", label: "Productos", icon: PackagePlus },
+  { href: "/inventory", label: "Inventario", icon: Boxes },
+  { href: "/purchases", label: "Compras", icon: Store },
+  { href: "/credits", label: "Créditos", icon: CreditCard },
+  { href: "/reports", label: "Reportes", icon: FileText },
 ];
 
 export const adminNavItems = [
-  // { href: "/ads", label: "Anuncios", icon: Megaphone, role: "superAdmin" },
-  // { href: "/users", label: "Usuarios", icon: Users, role: "superAdmin" },
+  { href: "/ads", label: "Anuncios", icon: Megaphone, role: "superAdmin" },
+  { href: "/users", label: "Usuarios", icon: Users, role: "superAdmin" },
 ];
 
 export const settingsNav = {
@@ -33,3 +33,5 @@ export const settingsNav = {
   label: 'Configuración',
   icon: Settings,
 };
+
+    
