@@ -8,7 +8,7 @@ import { doc, collection } from 'firebase/firestore';
 import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
 import { defaultStore, defaultUsers, defaultStoreId, mockCurrencyRates, forceSeedDatabase } from '@/lib/data';
-import { useUser } from '@/firebase/auth/use-user';
+import { useUser as useAuthUserHook } from '@/firebase/provider'; // Use the original hook
 
 type DisplayCurrency = 'primary' | 'secondary';
 
@@ -32,7 +32,7 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 const CURRENCY_PREF_STORAGE_KEY = 'tienda_facil_currency_pref';
 const ACTIVE_STORE_ID_STORAGE_KEY = 'tienda_facil_active_store_id';
-const DB_SEEDED_FLAG_KEY = 'tienda_facil_db_seeded_v1_forced';
+const DB_SEEDED_FLAG_KEY = 'tienda_facil_db_seeded_v1_forced_final';
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
@@ -40,12 +40,14 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const pathname = usePathname();
   const firestore = useFirestore();
 
-  const { user: authUser, isUserLoading } = useUser();
+  const { user: authUser, isUserLoading } = useAuthUserHook();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
+  // --- LOCAL DATA ---
   const [settings, setSettingsState] = useState<Settings | null>(defaultStore);
   const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>(mockCurrencyRates.map((r, i) => ({ ...r, id: `rate-${i}` })));
   const isLoadingSettingsDoc = false;
+  // --- END LOCAL DATA ---
 
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
@@ -61,6 +63,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                 photoURL: authUser.photoURL,
             });
         } else {
+            // Default 'user' profile for unknown users
             setUserProfile({
                 uid: authUser.uid,
                 displayName: authUser.displayName,
@@ -92,7 +95,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                     title: '¡Base de Datos Poblada!',
                     description: 'Los datos de demostración se han cargado. Refresca la página para verlos.',
                 });
-                window.location.reload();
+                // No need to reload, changes will be written, but UI shows local data
             }
         } catch (error) {
             console.error("Database seeding failed:", error);
@@ -129,14 +132,19 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
 
   useEffect(() => {
-     if (!isUserLoading && !authUser && !pathname.startsWith('/catalog')) {
+     if (!isUserLoading && !authUser && !pathname.startsWith('/catalog') && !pathname.startsWith('/login')) {
       router.push('/catalog');
     }
   }, [isUserLoading, authUser, pathname, router]);
 
   const handleSetSettings = (newSettings: Settings) => {
     setSettingsState(newSettings);
-    toast({ title: "Configuración Guardada (Simulación)", description: "Los cambios se guardaron localmente." });
+    // Write to DB non-blockingly
+    if(activeStoreId) {
+      const settingsDoc = doc(firestore, 'stores', activeStoreId);
+      setDocumentNonBlocking(settingsDoc, newSettings, { merge: true });
+    }
+    toast({ title: "Configuración Guardada", description: "Los cambios se están guardando en la nube." });
   };
 
   const switchStore = (storeId: string) => {

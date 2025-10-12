@@ -37,6 +37,7 @@ import { format, parseISO } from "date-fns";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { query, collection, where, doc } from "firebase/firestore";
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { mockProducts, mockSales } from "@/lib/data";
 
 
 const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewMovements, setProductToDelete }: {
@@ -130,15 +131,12 @@ export default function InventoryPage() {
   const firestore = useFirestore();
   const { activeSymbol, activeRate, activeStoreId, isLoadingSettings } = useSettings();
 
-  const productsQuery = useMemoFirebase(() => query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
-  const salesQuery = useMemoFirebase(() => query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
-  const movementsQuery = useMemoFirebase(() => query(collection(firestore, 'inventoryMovements'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
-
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
-  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
-  const { data: inventoryMovements, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsQuery);
-  
-  const isLoading = isLoadingSettings || isLoadingProducts || isLoadingSales || isLoadingMovements;
+  // --- USE LOCAL DATA ---
+  const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId})));
+  const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
+  const [inventoryMovements, setInventoryMovements] = useState<InventoryMovement[]>([]);
+  const isLoading = isLoadingSettings;
+  // --- END LOCAL DATA ---
   
   const [isMovementsDialogOpen, setIsMovementsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);

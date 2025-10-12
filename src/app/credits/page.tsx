@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import type { Sale, Payment, Product } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
-import { paymentMethods } from "@/lib/data";
+import { paymentMethods, mockSales } from "@/lib/data";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
@@ -28,16 +28,16 @@ export default function CreditsPage() {
     const firestore = useFirestore();
     const { settings, activeSymbol, activeRate, activeStoreId, isLoadingSettings } = useSettings();
 
-    const salesQuery = useMemoFirebase(() => query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
-    const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
+    // --- USE LOCAL DATA ---
+    const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
+    const isLoading = isLoadingSettings;
+    // --- END LOCAL DATA ---
     
     const [isClient, setIsClient] = useState(false)
 
     useEffect(() => {
         setIsClient(true)
     }, [])
-
-    const isLoading = isLoadingSettings || isLoadingSales;
 
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);

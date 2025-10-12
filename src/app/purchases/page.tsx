@@ -21,6 +21,7 @@ import { useSettings } from "@/contexts/settings-context";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { addDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { collection, doc, query, where } from "firebase/firestore";
+import { mockProducts, defaultSuppliers, initialFamilies, mockPurchases } from "@/lib/data";
 
 const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
 
@@ -29,17 +30,13 @@ export default function PurchasesPage() {
   const firestore = useFirestore();
   const { settings, activeSymbol, activeRate, activeStoreId, isLoadingSettings } = useSettings();
 
-  const productsQuery = useMemoFirebase(() => query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
-  const suppliersQuery = useMemoFirebase(() => query(collection(firestore, 'suppliers'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
-  const familiesQuery = useMemoFirebase(() => query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
-  const purchasesQuery = useMemoFirebase(() => query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
-
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
-  const { data: suppliers, isLoading: isLoadingSuppliers } = useCollection<Supplier>(suppliersQuery);
-  const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
-  const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
-
-  const isLoading = isLoadingSettings || isLoadingProducts || isLoadingSuppliers || isLoadingFamilies || isLoadingPurchases;
+  // --- USE LOCAL DATA ---
+  const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId})));
+  const [suppliers, setSuppliers] = useState(defaultSuppliers.map(s => ({...s, storeId: activeStoreId})));
+  const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
+  const [purchases, setPurchases] = useState(mockPurchases.map(p => ({...p, storeId: activeStoreId})));
+  const isLoading = isLoadingSettings;
+  // --- END LOCAL DATA ---
 
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");

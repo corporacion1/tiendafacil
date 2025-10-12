@@ -64,6 +64,8 @@ export default function ReportsPage() {
     const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})));
     const [customers, setCustomers] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
     const [cashSessionsData, setCashSessionsData] = useState(mockCashSessions.map(cs => ({...cs, storeId: activeStoreId})));
+    const isLoading = isLoadingSettings;
+    // --- END LOCAL DATA ---
 
     const [selectedSessionDetails, setSelectedSessionDetails] = useState<CashSession | null>(null);
     const [sessionForReport, setSessionForReport] = useState<CashSession | null>(null);
@@ -100,9 +102,6 @@ export default function ReportsPage() {
         );
         return [...saleMovements, ...purchaseMovements].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     }, [salesData, purchasesData]);
-
-
-    const isLoading = isLoadingSettings;
     
     const [selectedSaleDetails, setSelectedSaleDetails] = useState<Sale | null>(null);
     const [saleForTicket, setSaleForTicket] = useState<Sale | null>(null);

@@ -21,7 +21,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { useSettings } from "@/contexts/settings-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { paymentMethods, pendingOrdersState } from "@/lib/data";
+import { paymentMethods, pendingOrdersState, mockProducts, defaultCustomers, mockSales, initialFamilies } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -75,20 +75,16 @@ export default function POSPage() {
   const { settings, setSettings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
   const { isLocked, isSecurityReady } = useSecurity();
   
-  const productsQuery = useMemoFirebase(() => query(collection(firestore, "products"), where("storeId", "==", activeStoreId)), [firestore, activeStoreId]);
-  const customersQuery = useMemoFirebase(() => query(collection(firestore, "customers"), where("storeId", "==", activeStoreId)), [firestore, activeStoreId]);
-  const salesQuery = useMemoFirebase(() => query(collection(firestore, "sales"), where("storeId", "==", activeStoreId)), [firestore, activeStoreId]);
-  const familiesQuery = useMemoFirebase(() => query(collection(firestore, "families"), where("storeId", "==", activeStoreId)), [firestore, activeStoreId]);
-
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
-  const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
-  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
-  const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
-  
+  // --- USE LOCAL DATA ---
+  const [products, setProductsState] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId})));
+  const [customers, setCustomers] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
+  const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
+  const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
   const [pendingOrders, setPendingOrdersState] = useState<PendingOrder[]>(pendingOrdersState);
-
+  const isLoading = isLoadingSettings;
+  // --- END LOCAL DATA ---
+  
   const router = useRouter();
-  const isLoading = isLoadingSettings || isLoadingProducts || isLoadingCustomers || isLoadingSales || isLoadingFamilies;
   
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -207,7 +203,9 @@ export default function POSPage() {
   };
   
   const finalizeSessionClosure = () => {
-    // In a real app, this would save the closed session to DB
+    if (sessionForReport) {
+      addDocumentNonBlocking(collection(firestore, 'cashSessions'), sessionForReport);
+    }
     setActiveSession(null);
     setIsClosingModalOpen(false);
     setClosingBalance('');
@@ -423,7 +421,6 @@ export default function POSPage() {
         storeId: activeStoreId,
     }
     
-    // Non-blocking writes to Firestore
     addDocumentNonBlocking(collection(firestore, 'sales'), newSale);
 
     for (const item of cartItems) {
@@ -434,6 +431,19 @@ export default function POSPage() {
         }
     }
     
+    setActiveSession(prev => {
+        if (!prev) return null;
+        const newTransactions = { ...prev.transactions };
+        finalPayments.forEach(p => {
+            newTransactions[p.method] = (newTransactions[p.method] || 0) + p.amount;
+        });
+        return {
+            ...prev,
+            salesIds: [...prev.salesIds, saleId],
+            transactions: newTransactions
+        };
+    });
+
     setLastSale(newSale);
     
     toast({

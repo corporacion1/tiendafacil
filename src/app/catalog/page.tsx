@@ -121,7 +121,6 @@ const CatalogProductCard = ({ product, onAddToCart, onImageClick }: { product: P
 export default function CatalogPage() {
     const { toast } = useToast();
     const router = useRouter();
-    const firestore = useFirestore();
     const { settings, activeSymbol, activeRate, isLoadingSettings, userProfile } = useSettings();
     
     // --- USE LOCAL DATA ---
