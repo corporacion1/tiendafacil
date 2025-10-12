@@ -595,7 +595,7 @@ export default function POSPage() {
   }
 
   return (
-    <div>
+    <Dialog onOpenChange={(open) => { if (!open) setProductDetails(null); }}>
       <div className="grid flex-1 auto-rows-max items-start gap-4 lg:grid-cols-5 lg:gap-8">
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-3 lg:gap-8">
             <Card>
@@ -610,7 +610,9 @@ export default function POSPage() {
                                         <span>Caja Abierta por: {activeSession.openedBy}</span>
                                     </Badge>
                                     <Button size="sm" variant="outline" onClick={handleShowReportX}><FilePieChart className="mr-2 h-4 w-4"/> Corte X</Button>
-                                    <Button size="sm" variant="destructive" onClick={() => setIsClosingModalOpen(true)}><LogOut className="mr-2 h-4 w-4"/> Cerrar Caja</Button>
+                                    <DialogTrigger asChild>
+                                        <Button size="sm" variant="destructive" onClick={() => setIsClosingModalOpen(true)}><LogOut className="mr-2 h-4 w-4"/> Cerrar Caja</Button>
+                                    </DialogTrigger>
                                 </>
                             ) : (
                                 <Badge variant="destructive" className="flex items-center gap-2">
@@ -744,6 +746,7 @@ export default function POSPage() {
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2">
             <Card 
                 className={cn("sticky top-6 flex flex-col", !isSessionReady && "opacity-50 pointer-events-none")}
+                style={{ height: 'calc(100vh - 4.5rem)' }}
             >
                 <CardHeader className="flex flex-row justify-between items-center">
                     <CardTitle>Carrito de Compra</CardTitle>
@@ -769,7 +772,7 @@ export default function POSPage() {
                         </AlertDialog>
                     )}
                 </CardHeader>
-                <CardContent className="h-full w-full flex-1 flex flex-col gap-4 overflow-hidden p-6 pt-0" style={{ minHeight: 'calc(100vh - 10rem)' }}>
+                <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden p-6 pt-0">
                     <div className="space-y-2">
                         <Label htmlFor="customer">Cliente *</Label>
                         <div className="flex gap-2">
@@ -1012,62 +1015,60 @@ export default function POSPage() {
         </div>
       </div>
     
-    <Dialog open={!!productDetails} onOpenChange={(open) => !open && setProductDetails(null)}>
-        <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-                <DialogTitle>{productDetails?.name}</DialogTitle>
-                <DialogDescription>SKU: {productDetails?.sku}</DialogDescription>
-            </DialogHeader>
-            {productDetails && (
-                <div className="grid gap-4">
-                    <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
-                        {getDisplayImageUrl(productDetails.imageUrl) && !productImageError ? (
-                            <Image
-                                src={getDisplayImageUrl(productDetails.imageUrl)}
-                                alt={productDetails.name}
-                                fill
-                                sizes="300px"
-                                className="object-cover"
-                                data-ai-hint={productDetails.imageHint}
-                                onError={() => setImageError(true)}
-                            />
-                            ) : (
-                            <Package className="w-16 h-16 text-muted-foreground" />
-                        )}
+    <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+            <DialogTitle>{productDetails?.name}</DialogTitle>
+            <DialogDescription>SKU: {productDetails?.sku}</DialogDescription>
+        </DialogHeader>
+        {productDetails && (
+            <div className="grid gap-4">
+                 <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
+                    {getDisplayImageUrl(productDetails.imageUrl) && !productImageError ? (
+                        <Image
+                            src={getDisplayImageUrl(productDetails.imageUrl)}
+                            alt={productDetails.name}
+                            fill
+                            sizes="300px"
+                            className="object-cover"
+                            data-ai-hint={productDetails.imageHint}
+                            onError={() => setImageError(true)}
+                        />
+                        ) : (
+                        <Package className="w-16 h-16 text-muted-foreground" />
+                    )}
+                 </div>
+                 <div className="grid gap-2">
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Disponibilidad:</span>
+                        <span className="font-semibold">{productDetails.stock} unidades</span>
                     </div>
-                    <div className="grid gap-2">
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">Disponibilidad:</span>
-                            <span className="font-semibold">{productDetails.stock} unidades</span>
-                        </div>
-                        <Separator />
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">Precio Detal:</span>
-                            <span className="font-semibold">{activeSymbol}{(productDetails.price * activeRate).toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">Precio Mayor:</span>
-                            <span className="font-semibold">{activeSymbol}{(productDetails.wholesalePrice * activeRate).toFixed(2)}</span>
-                        </div>
+                     <Separator />
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Precio Detal:</span>
+                        <span className="font-semibold">{activeSymbol}{(productDetails.price * activeRate).toFixed(2)}</span>
                     </div>
-                </div>
-            )}
-            <DialogFooter>
-                <DialogClose asChild>
-                    <Button variant="secondary">Cerrar</Button>
-                </DialogClose>
-                <Button onClick={() => {
-                    if(productDetails) {
-                        addToCart(productDetails);
-                        setProductDetails(null);
-                        toast({title: `"${productDetails.name}" agregado al carrito`})
-                    }
-                }}>
-                    Agregar al Carrito
-                </Button>
-            </DialogFooter>
-        </DialogContent>
-    </Dialog>
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Precio Mayor:</span>
+                        <span className="font-semibold">{activeSymbol}{(productDetails.wholesalePrice * activeRate).toFixed(2)}</span>
+                    </div>
+                 </div>
+            </div>
+        )}
+        <DialogFooter>
+            <DialogClose asChild>
+                <Button variant="secondary">Cerrar</Button>
+            </DialogClose>
+            <Button onClick={() => {
+                if(productDetails) {
+                    addToCart(productDetails);
+                    setProductDetails(null);
+                    toast({title: `"${productDetails.name}" agregado al carrito`})
+                }
+            }}>
+                Agregar al Carrito
+            </Button>
+        </DialogFooter>
+    </DialogContent>
     
     {(isPrintPreviewOpen && (cartItems.length > 0 || lastSale)) && (
       <TicketPreview
@@ -1161,6 +1162,6 @@ export default function POSPage() {
             onConfirm={reportType === 'Z' ? finalizeSessionClosure : undefined}
         />
     )}
-  </div>
+  </Dialog>
   );
 }
