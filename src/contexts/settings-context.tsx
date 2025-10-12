@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { doc, collection } from 'firebase/firestore';
 import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
-import { defaultStore, defaultUsers, defaultStoreId, mockCurrencyRates } from '@/lib/data';
+import { defaultStore, defaultUsers, defaultStoreId, mockCurrencyRates, forceSeedDatabase } from '@/lib/data';
 import { useUser } from '@/firebase/auth/use-user';
 
 type DisplayCurrency = 'primary' | 'secondary';
@@ -32,6 +32,7 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 const CURRENCY_PREF_STORAGE_KEY = 'tienda_facil_currency_pref';
 const ACTIVE_STORE_ID_STORAGE_KEY = 'tienda_facil_active_store_id';
+const DB_SEEDED_FLAG_KEY = 'tienda_facil_db_seeded_v1';
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
@@ -48,18 +49,37 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   
-  const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>([]);
-  
-  useEffect(() => {
-      // Usar datos locales para las tasas de cambio
-      const localRates = mockCurrencyRates.map((rate, index) => ({
-        ...rate,
-        id: `rate-${index}`
-      }));
-      const sortedRates = [...localRates].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setCurrencyRates(sortedRates);
-  }, []);
+  const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>(mockCurrencyRates.map((r, i) => ({ ...r, id: `rate-${i}` })));
 
+  // SEEDING LOGIC
+  useEffect(() => {
+    const seedDatabase = async () => {
+        try {
+            const isSeeded = localStorage.getItem(DB_SEEDED_FLAG_KEY);
+            if (!isSeeded) {
+                toast({
+                    title: 'Poblando Base de Datos...',
+                    description: 'Por favor espera. Esto solo ocurrirá una vez.',
+                });
+                await forceSeedDatabase(firestore);
+                localStorage.setItem(DB_SEEDED_FLAG_KEY, 'true');
+                toast({
+                    title: '¡Base de Datos Poblada!',
+                    description: 'Los datos de demostración se han cargado en la nube.',
+                });
+            }
+        } catch (error) {
+            console.error("Database seeding failed:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Error al Poblar la Base de Datos',
+                description: 'No se pudieron cargar los datos de demostración.',
+            });
+        }
+    };
+    seedDatabase();
+  }, [firestore, toast]);
+  
 
   useEffect(() => {
     try {
