@@ -22,26 +22,26 @@ export function Footer() {
     {
       name: "WhatsApp",
       icon: FaWhatsapp,
-      url: `https://wa.me/584126915593`,
-      enabled: true, // Always show this based on user request
+      url: `https://wa.me/${settings?.whatsapp?.replace(/\D/g, '') || '584126915593'}`,
+      enabled: !!settings?.whatsapp,
     },
     {
       name: "TikTok",
       icon: FaTiktok,
-      url: `https://www.tiktok.com/@corporacion10`,
-      enabled: true, // Always show this based on user request
+      url: `https://www.tiktok.com/@${settings?.tiktok?.replace('@', '') || 'corporacion10'}`,
+      enabled: !!settings?.tiktok,
     },
     {
       name: "Instagram",
       icon: Instagram,
-      url: `https://www.instagram.com/corporacion1plus`,
-      enabled: true, // Always show this based on user request
+      url: `https://www.instagram.com/${settings?.meta?.replace('@', '') || 'corporacion1plus'}`,
+      enabled: !!settings?.meta,
     },
     {
       name: "Facebook",
       icon: Facebook,
       url: `https://www.facebook.com/corporacion1plus`,
-      enabled: true, // Always show this based on user request
+      enabled: true, // This one is still hardcoded as per original user request
     },
   ];
 
