@@ -17,29 +17,35 @@ export function useUser() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      setNeedsProfileCreation(false); // Reset on each check
-
-      if (authUser && firestore) {
-        setIsProfileLoading(true);
-        const userDocRef = doc(firestore, 'users', authUser.uid);
-        try {
-          const docSnap = await getDoc(userDocRef);
-          if (docSnap.exists()) {
-            setUserProfile(docSnap.data() as UserProfile);
-          } else {
-            // Profile doesn't exist, flag it for creation.
-            setUserProfile(null);
-            setNeedsProfileCreation(true);
-          }
-        } catch (error) {
-          console.error("Error fetching user profile:", error);
-          setUserProfile(null);
-        } finally {
-          setIsProfileLoading(false);
-        }
-      } else {
-        // No authenticated user
+      if (!authUser || !firestore) {
         setUserProfile(null);
+        setNeedsProfileCreation(false);
+        setIsProfileLoading(false);
+        return;
+      }
+
+      setIsProfileLoading(true);
+      const userDocRef = doc(firestore, 'users', authUser.uid);
+      
+      try {
+        const docSnap = await getDoc(userDocRef);
+        if (docSnap.exists()) {
+          setUserProfile(docSnap.data() as UserProfile);
+          setNeedsProfileCreation(false);
+        } else {
+          // User is authenticated, but no profile exists.
+          // Flag this so the UI can show the creation modal.
+          setUserProfile(null);
+          setNeedsProfileCreation(true);
+        }
+      } catch (error) {
+        // This might happen if rules prevent even checking for the doc.
+        // For our current rules, it shouldn't, but as a fallback,
+        // we assume profile needs creation.
+        console.error("Error fetching user profile:", error);
+        setUserProfile(null);
+        setNeedsProfileCreation(true);
+      } finally {
         setIsProfileLoading(false);
       }
     };
@@ -47,12 +53,13 @@ export function useUser() {
     if (!isAuthLoading) {
       fetchProfile();
     }
+
   }, [authUser, isAuthLoading, firestore]);
 
   return {
     user: userProfile,
     isUserLoading: isAuthLoading || isProfileLoading,
-    userError: userError,
-    needsProfileCreation, // Expose the flag to the UI
+    userError,
+    needsProfileCreation,
   };
 }
