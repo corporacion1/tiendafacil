@@ -11,6 +11,7 @@ import { useSettings } from '@/contexts/settings-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FirstTimeSetupModal } from '@/components/first-time-setup-modal';
 import { SecurityProvider } from '@/contexts/security-context';
+import { SettingsProvider } from '@/contexts/settings-context';
 
 function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -79,7 +80,9 @@ function AppShell({ children }: { children: React.ReactNode }) {
 export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   return (
     <SecurityProvider>
-      <AppShell>{children}</AppShell>
+        <SettingsProvider>
+            <AppShell>{children}</AppShell>
+        </SettingsProvider>
     </SecurityProvider>
   )
 }
