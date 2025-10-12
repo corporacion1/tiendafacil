@@ -6,11 +6,11 @@ import { usePathname, useRouter } from 'next/navigation';
 import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { cn } from '@/lib/utils';
-import { Footer } from './footer';
+import { Footer } from '../components/footer';
 import { useSecurity } from '@/contexts/security-context';
 import { useSettings } from '@/contexts/settings-context';
-import { Skeleton } from './ui/skeleton';
-import { FirstTimeSetupModal } from './first-time-setup-modal';
+import { Skeleton } from '@/components/ui/skeleton';
+import { FirstTimeSetupModal } from '../components/first-time-setup-modal';
 
 
 export function AppShell({ children }: { children: React.ReactNode }) {

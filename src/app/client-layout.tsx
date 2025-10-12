@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from 'next/navigation';
-import { AppShell } from "@/components/app-shell";
+import { AppShell } from "@/app/app-shell"; // Updated import path
 import { Footer } from '@/components/footer';
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
