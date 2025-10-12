@@ -5,6 +5,7 @@ import { useState, useMemo, useEffect } from "react";
 import { File, MoreHorizontal, Search, FileSpreadsheet, FileJson, FileText, Printer, Eye } from "lucide-react";
 import { format, subDays, startOfWeek, startOfMonth, startOfYear, parseISO } from "date-fns";
 import { collection, query, where } from "firebase/firestore";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -48,25 +49,40 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/settings-context";
 import { SessionReportPreview } from "@/components/session-report-preview";
-import { useFirestore } from "@/firebase";
 import { mockSales, mockPurchases, mockProducts, defaultCustomers, mockCashSessions } from "@/lib/data";
 
 type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
 
 export default function ReportsPage() {
-    const { settings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
+    const { settings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings, useDemoData } = useSettings();
     const firestore = useFirestore();
     const isSuperAdmin = userProfile?.role === 'superAdmin';
     
-    // --- LOCAL DATA HOOKS ---
-    const [salesData, setSalesData] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
-    const [purchasesData, setPurchasesData] = useState(mockPurchases.map(p => ({...p, storeId: activeStoreId})));
-    const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})));
-    const [customers, setCustomers] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
-    const [cashSessionsData, setCashSessionsData] = useState(mockCashSessions.map(cs => ({...cs, storeId: activeStoreId})));
-    const isLoading = isLoadingSettings;
-    // --- END LOCAL DATA ---
+    // Firestore Data Hooks (conditional)
+    const salesQuery = useMemoFirebase(() => (!useDemoData && firestore && activeStoreId) ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)) : null, [useDemoData, firestore, activeStoreId]);
+    const { data: salesFromDB, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
+    
+    const purchasesQuery = useMemoFirebase(() => (!useDemoData && firestore && activeStoreId) ? query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId)) : null, [useDemoData, firestore, activeStoreId]);
+    const { data: purchasesFromDB, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
 
+    const productsQuery = useMemoFirebase(() => (!useDemoData && firestore && activeStoreId) ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [useDemoData, firestore, activeStoreId]);
+    const { data: productsFromDB, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+
+    const customersQuery = useMemoFirebase(() => (!useDemoData && firestore && activeStoreId) ? query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId)) : null, [useDemoData, firestore, activeStoreId]);
+    const { data: customersFromDB, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
+
+    const cashSessionsQuery = useMemoFirebase(() => (!useDemoData && firestore && activeStoreId) ? query(collection(firestore, 'cashSessions'), where('storeId', '==', activeStoreId)) : null, [useDemoData, firestore, activeStoreId]);
+    const { data: cashSessionsFromDB, isLoading: isLoadingCashSessions } = useCollection<CashSession>(cashSessionsQuery);
+    
+    // Conditionally use local or Firestore data
+    const salesData = useMemo(() => useDemoData ? mockSales : (salesFromDB || []), [useDemoData, salesFromDB]);
+    const purchasesData = useMemo(() => useDemoData ? mockPurchases : (purchasesFromDB || []), [useDemoData, purchasesFromDB]);
+    const products = useMemo(() => useDemoData ? mockProducts : (productsFromDB || []), [useDemoData, productsFromDB]);
+    const customers = useMemo(() => useDemoData ? defaultCustomers : (customersFromDB || []), [useDemoData, customersFromDB]);
+    const cashSessionsData = useMemo(() => useDemoData ? mockCashSessions : (cashSessionsFromDB || []), [useDemoData, cashSessionsFromDB]);
+
+    const isLoading = isLoadingSettings || (!useDemoData && (isLoadingSales || isLoadingPurchases || isLoadingProducts || isLoadingCustomers || isLoadingCashSessions));
+    
     const [selectedSessionDetails, setSelectedSessionDetails] = useState<CashSession | null>(null);
     const [sessionForReport, setSessionForReport] = useState<CashSession | null>(null);
     const [isReportPreviewOpen, setIsReportPreviewOpen] = useState(false);

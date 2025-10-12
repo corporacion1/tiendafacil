@@ -119,7 +119,7 @@ export default function AdsPage() {
   const adsQuery = useMemoFirebase(() => (!useDemoData && firestore) ? query(collection(firestore, 'ads')) : null, [firestore, useDemoData]);
   const { data: adsFromDB, isLoading: isLoadingAds } = useCollection<Ad>(adsQuery);
   
-  const ads = useMemo(() => useDemoData ? mockAds.map(ad => ({...ad, createdAt: new Date().toISOString()})) : adsFromDB, [useDemoData, adsFromDB]);
+  const ads = useMemo(() => useDemoData ? mockAds.map(ad => ({...ad, createdAt: new Date().toISOString()})) : (adsFromDB || []), [useDemoData, adsFromDB]);
   const isLoading = isLoadingSettings || (!useDemoData && isLoadingAds);
 
   const [adToEdit, setAdToEdit] = useState<Ad | null>(null);
