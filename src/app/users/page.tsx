@@ -246,7 +246,7 @@ export default function UsersPage() {
                         </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                  ))}
+                ))}
               </TableBody>
             </Table>
         </CardContent>
@@ -273,3 +273,5 @@ export default function UsersPage() {
     </>
   );
 }
+
+    

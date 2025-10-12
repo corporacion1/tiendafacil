@@ -32,38 +32,46 @@ export const defaultStore: Store = {
 };
 
 // --- USUARIOS POR DEFECTO ---
-export const defaultUsers: Omit<UserProfile, 'createdAt' | 'uid' | 'phone'>[] = [
+export const defaultUsers: UserProfile[] = [
     {
+        uid: '5QLaiiIr4mcGsjRXVGeGx50nrpk1',
         email: 'corporacion1@gmail.com',
         displayName: 'Jorge Negrete',
         photoURL: 'https://i.imgur.com/8bXhQXa.png',
         role: 'superAdmin',
         status: 'active',
         storeId: defaultStoreId,
+        createdAt: new Date().toISOString(),
     },
     {
+        uid: 'user_admin_001',
         email: 'admin@tiendafacil.com',
         displayName: 'admin',
         photoURL: '/tienda_facil_logo.svg',
         role: 'admin',
         status: 'active',
         storeId: defaultStoreId,
+        createdAt: new Date().toISOString(),
     },
     {
+        uid: 'user_pos_001',
         email: 'pos@tiendafacil.com',
         displayName: 'POS Demo',
         photoURL: '/tienda_facil_logo.svg',
         role: 'pos',
         status: 'active',
         storeId: defaultStoreId,
+        createdAt: new Date().toISOString(),
     },
     {
+        uid: 'user_demo_001',
         email: 'demo@tiendafacil.com',
         displayName: 'User Demo',
         photoURL: '/tienda_facil_logo.svg',
         role: 'user',
         status: 'active',
         storeId: defaultStoreId,
+        createdAt: new Date().toISOString(),
     }
 ];
 
@@ -307,3 +315,5 @@ export async function factoryReset() {
   console.log("factoryReset is disabled. Using local data.");
   return;
 }
+
+    
