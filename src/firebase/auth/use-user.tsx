@@ -1,58 +1,91 @@
 
+
 'use client';
 import { useEffect, useState } from 'react';
 import { useUser as useAuthUser } from '@/firebase/provider';
 import type { UserProfile } from '@/lib/types';
 import { defaultUsers } from '@/lib/data';
+import { useFirestore } from '@/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+
+const SUPER_ADMIN_UID = '5QLaiiIr4mcGsjRXVGeGx50nrpk1';
 
 /**
- * Hook to get the currently authenticated user's profile by MERGING
- * the auth user object with a local user profile definition from `defaultUsers`.
- * This avoids a Firestore call on startup to prevent permission errors.
+ * Hook to get the currently authenticated user's profile.
+ * - Merges auth data with Firestore profile data.
+ * - Handles the crucial first-time login for the SuperAdmin.
  */
 export function useUser() {
   const { user: authUser, isUserLoading: isAuthLoading, userError } = useAuthUser();
-  const [mergedUser, setMergedUser] = useState<UserProfile | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const firestore = useFirestore();
 
   useEffect(() => {
-    if (isAuthLoading) {
-      return;
-    }
-
-    if (authUser) {
-      // Find a matching local profile to get the role and status.
-      const localProfile = defaultUsers.find(u => u.uid === authUser.uid);
-
-      if (localProfile) {
-        // If a local profile is found (like for superAdmin), merge them.
-        // Google's info (name, photo) takes precedence.
-        setMergedUser({
-          ...localProfile, // Gets role, status from local data
-          uid: authUser.uid, // Ensure authUser's UID is used
-          displayName: authUser.displayName, // Use Google's display name
-          email: authUser.email, // Use Google's email
-          photoURL: authUser.photoURL, // Use Google's photo
-        });
-      } else {
-        // If no local profile, create a default 'user' profile using Google's info.
-        setMergedUser({
-          uid: authUser.uid,
-          displayName: authUser.displayName,
-          email: authUser.email,
-          photoURL: authUser.photoURL,
-          role: 'user', // Default role
-          status: 'active',
-          createdAt: new Date().toISOString(),
-        });
+    const fetchOrCreateProfile = async () => {
+      if (!authUser || !firestore) {
+        setUserProfile(null);
+        setIsProfileLoading(false);
+        return;
       }
-    } else {
-      setMergedUser(null);
+
+      setIsProfileLoading(true);
+      const userDocRef = doc(firestore, 'users', authUser.uid);
+
+      try {
+        const docSnap = await getDoc(userDocRef);
+
+        if (docSnap.exists()) {
+          // Profile exists, use it
+          setUserProfile(docSnap.data() as UserProfile);
+        } else {
+          // Profile does not exist, check if it's the super admin
+          if (authUser.uid === SUPER_ADMIN_UID) {
+            console.log('SuperAdmin first login detected. Creating profile...');
+            const superAdminProfile: UserProfile = {
+              uid: authUser.uid,
+              email: authUser.email,
+              displayName: authUser.displayName,
+              photoURL: authUser.photoURL,
+              role: 'superAdmin',
+              status: 'active',
+              createdAt: new Date().toISOString(),
+            };
+            // Create the document in Firestore
+            await setDoc(userDocRef, superAdminProfile);
+            setUserProfile(superAdminProfile);
+          } else {
+            // It's a new regular user, create a default profile
+            const newUserProfile: UserProfile = {
+              uid: authUser.uid,
+              email: authUser.email,
+              displayName: authUser.displayName,
+              photoURL: authUser.photoURL,
+              role: 'user',
+              status: 'active',
+              storeRequest: true, // Default to requesting a store
+              createdAt: new Date().toISOString(),
+            };
+            await setDoc(userDocRef, newUserProfile);
+            setUserProfile(newUserProfile);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching or creating user profile:", error);
+        // Potentially handle this error state, maybe by setting an error state
+      } finally {
+        setIsProfileLoading(false);
+      }
+    };
+
+    if (!isAuthLoading) {
+      fetchOrCreateProfile();
     }
-  }, [authUser, isAuthLoading]);
+  }, [authUser, isAuthLoading, firestore]);
 
   return {
-    user: mergedUser,
-    isUserLoading: isAuthLoading,
+    user: userProfile,
+    isUserLoading: isAuthLoading || isProfileLoading,
     userError: userError,
   };
 }

@@ -1,4 +1,5 @@
 
+
 'use client';
 import {
   writeBatch,
@@ -22,60 +23,24 @@ import {
   mockCurrencyRates,
 } from './data';
 
+// This function is deprecated and should not be used.
+// The "Modo Demo" switch handles the transition to live data.
 export async function forceSeedDatabase(firestore: Firestore): Promise<boolean> {
-  try {
-    console.log('Iniciando el proceso de sembrado forzado...');
-
-    const collectionsToSeed = [
-      { name: 'stores', data: [defaultStore], storeId: undefined, idKey: 'id' },
-      { name: 'products', data: mockProducts, storeId: defaultStoreId, idKey: 'id' },
-      { name: 'customers', data: defaultCustomers, storeId: defaultStoreId, idKey: 'id' },
-      { name: 'suppliers', data: defaultSuppliers, storeId: defaultStoreId, idKey: 'id' },
-      { name: 'units', data: initialUnits, storeId: defaultStoreId, idKey: 'id' },
-      { name: 'families', data: initialFamilies, storeId: defaultStoreId, idKey: 'id' },
-      { name: 'warehouses', data: initialWarehouses, storeId: defaultStoreId, idKey: 'id' },
-      { name: 'ads', data: mockAds, storeId: undefined, idKey: 'id' },
-      { name: 'users', data: defaultUsers, storeId: undefined, idKey: 'uid' },
-    ];
-    
-    // Seed currency rates as a subcollection
-    const currencyRatesRef = collection(firestore, 'stores', defaultStoreId, 'currencyRates');
-    const currencyBatch = writeBatch(firestore);
-    mockCurrencyRates.forEach(rate => {
-        const docRef = doc(currencyRatesRef);
-        currencyBatch.set(docRef, rate);
-    });
-    await currencyBatch.commit();
-    console.log('Subcolección "currencyRates" sembrada.');
-
-    for (const { name, data, storeId, idKey } of collectionsToSeed) {
-      const batch = writeBatch(firestore);
-      data.forEach((item: any) => {
-        const docId = item[idKey] || doc(collection(firestore, name)).id;
-        const docRef = doc(firestore, name, docId);
-        const dataToSet = storeId && name !== 'stores' ? { ...item, storeId } : item;
-        batch.set(docRef, dataToSet);
-      });
-      await batch.commit();
-      console.log(`Colección "${name}" sembrada.`);
-    }
-
-    console.log('Sembrado forzado completado.');
-    return true;
-  } catch (error) {
-    console.error('Error durante el sembrado forzado:', error);
-    throw error;
-  }
+  console.warn('forceSeedDatabase is deprecated and should not be used.');
+  return false;
 }
 
-export async function factoryReset(firestore: Firestore) {
-  const collections = ['products', 'customers', 'suppliers', 'units', 'families', 'warehouses', 'sales', 'purchases', 'ads', 'users', 'stores', 'cashSessions'];
-  console.log("Iniciando restauración de fábrica...");
+export async function factoryReset(firestore: Firestore, storeId: string) {
+  const collectionsToDelete = ['products', 'customers', 'suppliers', 'units', 'families', 'warehouses', 'sales', 'purchases', 'ads', 'cashSessions'];
+  console.log(`Iniciando restauración de fábrica para la tienda: ${storeId}...`);
 
-  for (const collectionName of collections) {
+  for (const collectionName of collectionsToDelete) {
     try {
       const collectionRef = collection(firestore, collectionName);
-      const snapshot = await getDocs(collectionRef);
+      // Firestore does not allow querying by storeId on all collections, so we delete all.
+      // This is a dangerous operation, hence the triple confirmation.
+      const snapshot = await getDocs(collectionRef); 
+      
       if (snapshot.empty) {
         console.log(`Colección "${collectionName}" ya está vacía.`);
         continue;
@@ -92,5 +57,32 @@ export async function factoryReset(firestore: Firestore) {
       // We continue even if one collection fails to delete
     }
   }
+
+  // Also delete subcollections like currencyRates
+  try {
+      const ratesRef = collection(firestore, 'stores', storeId, 'currencyRates');
+      const ratesSnapshot = await getDocs(ratesRef);
+      const ratesBatch = writeBatch(firestore);
+      ratesSnapshot.forEach(doc => ratesBatch.delete(doc.ref));
+      await ratesBatch.commit();
+      console.log('Subcolección "currencyRates" eliminada.');
+  } catch (error) {
+       console.error(`Error al eliminar la subcolección "currencyRates":`, error);
+  }
+
+  // Finally, reset the store document itself to default, but keep the ID and owner.
+  try {
+    const storeDocRef = doc(firestore, 'stores', storeId);
+    await setDoc(storeDocRef, {
+        ...defaultStore,
+        id: storeId, // Keep original ID
+        ownerId: defaultStore.ownerId, // Ensure owner is the superAdmin
+        useDemoData: true, // IMPORTANT: Force back to demo mode
+    });
+     console.log(`Documento de la tienda "${storeId}" ha sido restaurado.`);
+  } catch(error) {
+      console.error(`Error al restaurar el documento de la tienda:`, error);
+  }
+
   console.log("Restauración de fábrica completada.");
 }

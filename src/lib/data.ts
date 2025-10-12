@@ -1,4 +1,5 @@
 
+
 import type { Product, Sale, Unit, Family, Warehouse, Customer, Purchase, Ad, UserProfile, Store, CurrencyRate, Supplier, PendingOrder, CashSession } from '@/lib/types';
 import { PlaceHolderImages } from './placeholder-images';
 import { subDays, addDays, startOfWeek, startOfMonth, startOfYear } from 'date-fns';
@@ -29,25 +30,15 @@ export const defaultStore: Store = {
   whatsapp: "+584126915593",
   tiktok: "@tiendafacil",
   meta: "@tiendafacil",
-  useDemoData: true, // Use demo data by default
+  useDemoData: true, 
 };
 
 // --- USUARIOS POR DEFECTO ---
 export const defaultUsers: UserProfile[] = [
     {
-        uid: '5QLaiiIr4mcGsjRXVGeGx50nrpk1',
-        email: 'corporacion1@gmail.com',
-        displayName: 'Jorge Negrete',
-        photoURL: 'https://i.imgur.com/8bXhQXa.png',
-        role: 'superAdmin',
-        status: 'active',
-        storeId: defaultStoreId,
-        createdAt: new Date().toISOString(),
-    },
-    {
         uid: 'user_admin_001',
         email: 'admin@tiendafacil.com',
-        displayName: 'admin',
+        displayName: 'Admin Demo',
         photoURL: '/tienda_facil_logo.svg',
         role: 'admin',
         status: 'active',
@@ -179,22 +170,8 @@ export const businessCategories: string[] = [
     'Otro'
 ];
 
-// DEPRECATED - These will no longer be used for initial state
+// Transaccional data is now empty by default.
 export const mockSales: Omit<Sale, 'storeId'>[] = [];
 export const mockPurchases: Omit<Purchase, 'storeId'>[] = [];
 export let pendingOrdersState: PendingOrder[] = [];
 export const mockCashSessions: CashSession[] = [];
-// --- END DEPRECATED ---
-
-
-// This function now just returns false to satisfy the call in login page, but does nothing.
-export async function forceSeedDatabase(): Promise<boolean> {
-  console.log("forceSeedDatabase is disabled. Seeding is handled via settings page.");
-  return false;
-}
-
-// This function does nothing.
-export async function factoryReset() {
-  console.log("factoryReset is disabled. Reset is handled via settings page.");
-  return;
-}

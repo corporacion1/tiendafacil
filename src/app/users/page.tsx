@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -49,16 +50,8 @@ export default function UsersPage() {
   const usersQuery = useMemoFirebase(() => (firestore && !useDemoData) ? query(collection(firestore, 'users')) : null, [firestore, useDemoData]);
   const { data: usersFromDB, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersQuery);
   
-  const [users, setUsers] = useState<UserProfile[]>(defaultUsers);
-  const isLoading = useMemo(() => useDemoData ? false : isLoadingUsers, [useDemoData, isLoadingUsers]);
-
-  useEffect(() => {
-    if (useDemoData) {
-      setUsers(defaultUsers);
-    } else if (usersFromDB) {
-      setUsers(usersFromDB);
-    }
-  }, [useDemoData, usersFromDB]);
+  const users = useMemo(() => useDemoData ? defaultUsers : (usersFromDB || []), [useDemoData, usersFromDB]);
+  const isLoading = isLoadingUsers;
   
   const [searchTerm, setSearchTerm] = useState('');
   const [userToAction, setUserToAction] = useState<UserProfile | null>(null);
@@ -82,8 +75,6 @@ export default function UsersPage() {
       
       const userDocRef = doc(firestore, 'users', userToAction.uid);
       setDocumentNonBlocking(userDocRef, { role: newRole }, { merge: true });
-
-      setUsers(prevUsers => prevUsers.map(u => u.uid === userToAction.uid ? { ...u, role: newRole } : u));
       
       toast({
           title: 'Rol Actualizado',
@@ -101,8 +92,6 @@ export default function UsersPage() {
     if (actionType === 'promote') {
       const newStoreId = `store-${userToAction.uid.slice(0, 8)}`;
       setDocumentNonBlocking(userDocRef, { role: 'admin', storeId: newStoreId, storeRequest: false }, { merge: true });
-
-      setUsers(prevUsers => prevUsers.map(u => u.uid === userToAction.uid ? { ...u, role: 'admin', storeId: newStoreId, storeRequest: false } : u));
       
       toast({
           title: "Usuario Promovido",
@@ -112,8 +101,6 @@ export default function UsersPage() {
     } else if (actionType === 'disable') {
        const newStatus = userToAction.status === 'disabled' ? 'active' : 'disabled';
        setDocumentNonBlocking(userDocRef, { status: newStatus }, { merge: true });
-
-       setUsers(prevUsers => prevUsers.map(u => u.uid === userToAction.uid ? { ...u, status: newStatus } : u));
        
        toast({
             title: `Usuario ${newStatus === 'disabled' ? 'Deshabilitado' : 'Habilitado'}`,

@@ -20,12 +20,13 @@ import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { businessCategories, mockSales, mockProducts, initialUnits, initialFamilies, initialWarehouses } from "@/lib/data";
-import { forceSeedDatabase, factoryReset } from "@/lib/seed";
-import { useFirestore } from "@/firebase";
+import { factoryReset } from "@/lib/seed";
+import { useFirestore, useCollection } from "@/firebase";
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { collection, doc, query, where } from "firebase/firestore";
 import Image from "next/image";
 import { getDisplayImageUrl } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 
 
 function ChangePinDialog() {
@@ -118,18 +119,18 @@ function ChangePinDialog() {
 
 export default function SettingsPage() {
     const { hasPin, setPin, removePin, checkPin } = useSecurity();
-    const { settings, currencyRates, setCurrencyRates, userProfile, activeStoreId } = useSettings();
+    const { settings, currencyRates, userProfile, activeStoreId, families, units, warehouses, useDemoData, setUseDemoData } = useSettings();
     const firestore = useFirestore();
     
     const [localSettings, setLocalSettings] = useState<Partial<Settings>>(settings || {});
     const [imageError, setImageError] = useState(false);
     
-    // --- LOCAL DATA HOOKS ---
-    const [products, setProducts] = useState(mockProducts);
-    const [sales, setSales] = useState(mockSales);
-    const [localUnits, setLocalUnits] = useState(initialUnits);
-    const [localFamilies, setLocalFamilies] = useState(initialFamilies);
-    const [localWarehouses, setLocalWarehouses] = useState(initialWarehouses);
+    const { data: products } = useCollection<Product>(
+        useDemoData ? null : query(collection(firestore, 'products'), where('storeId', '==', activeStoreId))
+    );
+    const { data: sales } = useCollection<Sale>(
+        useDemoData ? null : query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId))
+    );
     
     const [isClient, setIsClient] = useState(false);
 
@@ -153,6 +154,7 @@ export default function SettingsPage() {
     const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
     const [resetPin, setResetPin] = useState('');
     const [resetConfirmationText, setResetConfirmationText] = useState('');
+    const [resetConfirmationCheck, setResetConfirmationCheck] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
 
     const isSuperAdmin = userProfile?.role === 'superAdmin';
@@ -221,13 +223,13 @@ export default function SettingsPage() {
 
         switch(type) {
             case 'unit': 
-                name = nameFinder(localUnits || [], id);
+                name = nameFinder(units || [], id);
                 return name ? itemList.some(p => p.unit === name) : false;
             case 'family':
-                name = nameFinder(localFamilies || [], id);
+                name = nameFinder(families || [], id);
                 return name ? itemList.some(p => p.family === name) : false;
             case 'warehouse':
-                name = nameFinder(localWarehouses || [], id);
+                name = nameFinder(warehouses || [], id);
                 return name ? itemList.some(p => p.warehouse === name) : false;
             default: return false;
         }
@@ -259,11 +261,11 @@ export default function SettingsPage() {
             return;
         }
         
-        if (resetConfirmationText !== 'RESTAURAR') {
+        if (resetConfirmationText !== 'RESTAURAR' || !resetConfirmationCheck) {
              toast({
                 variant: "destructive",
                 title: "Confirmación incorrecta",
-                description: "Debes escribir 'RESTAURAR' para confirmar."
+                description: "Debes escribir 'RESTAURAR' y marcar la casilla para confirmar."
             });
             return;
         }
@@ -275,20 +277,21 @@ export default function SettingsPage() {
         });
         
         try {
-            await factoryReset(firestore);
+            await factoryReset(firestore, activeStoreId);
             
-            localStorage.clear();
+            // Re-enable demo mode in local storage
+            localStorage.setItem('tienda_facil_use_demo_data', 'true');
             
             setIsResetConfirmOpen(false);
 
             toast({
                 title: 'Restauración Completa',
-                description: 'Todos los datos han sido eliminados. La página se recargará.',
+                description: 'Los datos han sido eliminados y el Modo Demo ha sido reactivado. La página se recargará.',
             });
 
             setTimeout(() => {
                 window.location.reload();
-            }, 1500);
+            }, 2000);
         } catch (error) {
              toast({
                 variant: "destructive",
@@ -300,30 +303,6 @@ export default function SettingsPage() {
             setIsProcessing(false);
         }
 
-    };
-
-    const handleSeedDatabase = async () => {
-        setIsProcessing(true);
-        toast({
-            title: 'Poblando Base de Datos',
-            description: 'Insertando datos de demostración en Firestore...',
-        });
-        try {
-            await forceSeedDatabase(firestore);
-            toast({
-                title: '¡Éxito!',
-                description: 'La base de datos ha sido poblada. La página se recargará.',
-            });
-            setTimeout(() => window.location.reload(), 1500);
-        } catch (error: any) {
-            toast({
-                variant: 'destructive',
-                title: 'Error al Poblar los Datos',
-                description: error.message || 'Ocurrió un error inesperado.',
-            });
-        } finally {
-            setIsProcessing(false);
-        }
     };
 
     const renderManagementCard = (
@@ -605,9 +584,9 @@ export default function SettingsPage() {
                      <Separator />
                      <h3 className="text-lg font-medium">Clasificación de Productos</h3>
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-                        {renderManagementCard("Unidades de Medida", "Gestiona las unidades para tus productos.", localUnits || [], 'unit')}
-                        {renderManagementCard("Familias de Productos", "Organiza tus productos en familias.", localFamilies || [], 'family')}
-                        {renderManagementCard("Almacenes", "Gestiona los almacenes de destino.", localWarehouses || [], 'warehouse')}
+                        {renderManagementCard("Unidades de Medida", "Gestiona las unidades para tus productos.", units || [], 'unit')}
+                        {renderManagementCard("Familias de Productos", "Organiza tus productos en familias.", families || [], 'family')}
+                        {renderManagementCard("Almacenes", "Gestiona los almacenes de destino.", warehouses || [], 'warehouse')}
                     </div>
                 </CardContent>
                 <CardFooter className="border-t px-6 py-4 flex justify-end">
@@ -777,29 +756,29 @@ export default function SettingsPage() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
-                            <div>
-                                <p className="font-medium">Poblar Base de Datos</p>
+                           <div>
+                                <p className="font-medium">Modo Demo</p>
                                 <p className="text-sm text-muted-foreground">
-                                    Añade datos de demostración a la base de datos (productos, clientes, etc.). Sobreescribirá los datos existentes si tienen el mismo ID.
+                                    {useDemoData ? 'Actualmente usando datos locales. Desactiva para usar la base de datos.' : 'Usando la base de datos en tiempo real.'}
                                 </p>
                             </div>
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
-                                    <Button variant="secondary" disabled={isProcessing}>
-                                        <Database className="mr-2 h-4 w-4" />
-                                        {isProcessing ? 'Procesando...' : 'Poblar con Datos Demo'}
-                                    </Button>
+                                    <Switch checked={!useDemoData} />
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                     <AlertDialogHeader>
-                                        <AlertDialogTitle>¿Poblar la base de datos?</AlertDialogTitle>
+                                        <AlertDialogTitle>¿Confirmar cambio de modo?</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                            Esta acción cargará los datos de demostración a la fuerza. Es útil si la base de datos está vacía o corrupta.
+                                            {useDemoData 
+                                                ? 'Estás a punto de conectar la aplicación a la base de datos en vivo. Se requiere que la tienda esté configurada y tenga al menos un producto y una tasa de cambio.'
+                                                : 'Estás a punto de activar el Modo Demo. La aplicación usará datos locales.'
+                                            }
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
                                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                        <AlertDialogAction onClick={handleSeedDatabase}>Sí, poblar</AlertDialogAction>
+                                        <AlertDialogAction onClick={() => setUseDemoData(!useDemoData)}>Sí, proceder</AlertDialogAction>
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
                             </AlertDialog>
@@ -808,18 +787,18 @@ export default function SettingsPage() {
                             <div>
                                 <p className="font-medium text-destructive">Restaurar Datos de Fábrica</p>
                                 <p className="text-sm text-muted-foreground">
-                                    Borra todos los datos de todas las colecciones.
+                                    Borra todos los datos de la tienda actual en la base de datos y reactiva el Modo Demo.
                                 </p>
                             </div>
                             <AlertDialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
                                 <AlertDialogTrigger asChild>
-                                    <Button variant="destructive" disabled={isProcessing}>Restaurar Datos de Fábrica</Button>
+                                    <Button variant="destructive" disabled={isProcessing}>Restaurar</Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                     <AlertDialogHeader>
                                         <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                            Esta es tu última oportunidad. Para confirmar el borrado total de datos, completa lo siguiente.
+                                            Esta es tu última oportunidad. Esta acción es irreversible. Para confirmar, completa lo siguiente:
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <div className="space-y-4 py-4">
@@ -846,12 +825,18 @@ export default function SettingsPage() {
                                                 placeholder="RESTAURAR"
                                             />
                                         </div>
+                                         <div className="flex items-center space-x-2">
+                                            <Checkbox id="reset-confirm-check" checked={resetConfirmationCheck} onCheckedChange={(checked) => setResetConfirmationCheck(checked as boolean)} />
+                                            <Label htmlFor="reset-confirm-check" className="text-sm font-medium leading-none text-destructive">
+                                                Entiendo que esto borrará todos mis datos permanentemente.
+                                            </Label>
+                                        </div>
                                     </div>
                                     <AlertDialogFooter>
-                                        <AlertDialogCancel onClick={() => { setResetPin(''); setResetConfirmationText(''); }}>Cancelar</AlertDialogCancel>
+                                        <AlertDialogCancel onClick={() => { setResetPin(''); setResetConfirmationText(''); setResetConfirmationCheck(false); }}>Cancelar</AlertDialogCancel>
                                         <AlertDialogAction
                                             onClick={handleFactoryReset}
-                                            disabled={isProcessing || resetConfirmationText !== 'RESTAURAR' || (hasPin && resetPin.length !== 4)}
+                                            disabled={isProcessing || resetConfirmationText !== 'RESTAURAR' || (hasPin && resetPin.length !== 4) || !resetConfirmationCheck}
                                             className="bg-destructive hover:bg-destructive/90"
                                         >
                                             {isProcessing ? 'Restaurando...' : 'Restaurar y Borrar Todo'}
