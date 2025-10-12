@@ -3,15 +3,15 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-// This page now acts as an entry point, redirecting directly to the catalog page.
+const defaultStoreId = process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'default';
+
 export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace('/catalog');
+    router.replace(`/catalog/${defaultStoreId}`);
   }, [router]);
 
-  // Render a loading indicator while redirecting.
   return (
       <div className="flex items-center justify-center min-h-screen">
         <p>Cargando catálogo...</p>

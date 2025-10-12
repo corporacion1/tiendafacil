@@ -38,13 +38,13 @@ const CURRENCY_PREF_STORAGE_KEY = 'tienda_facil_currency_pref';
 const ACTIVE_STORE_ID_STORAGE_KEY = 'tienda_facil_active_store_id';
 const DEMO_DATA_FLAG_KEY = 'tienda_facil_use_demo_data';
 
-export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
+export const SettingsProvider = ({ children, serverSettings }: { children: React.ReactNode, serverSettings?: Settings }) => {
   const { toast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
-  const auth = useAuth(); // Use the hook to get the auth instance
-  const firestore = useFirestore(); // Use the hook to get the firestore instance
-  const { user: authUser } = useAuthUserHook(); // Get the raw auth user
+  const auth = useAuth();
+  const firestore = useFirestore();
+  const { user: authUser } = useAuthUserHook();
 
   const [useDemoData, setUseDemoDataState] = useState<boolean>(true);
   const [isLoadingPersistence, setIsLoadingPersistence] = useState(true);
@@ -71,11 +71,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, []);
 
   const { user: userProfile, isUserLoading, needsProfileCreation } = useUserHook();
-
-  // Determine if we are on a public page
-  const isPublicPage = useMemo(() => pathname === '/' || pathname.startsWith('/catalog'), [pathname]);
   
-  // Memoize Firestore references, but only if not on a public page and not in demo mode
+  const isPublicPage = useMemo(() => pathname.startsWith('/catalog/'), [pathname]);
+  
   const canFetchFirestoreData = !isPublicPage && !useDemoData;
   
   const storeRef = useMemoFirebase(() => (canFetchFirestoreData && firestore) ? doc(firestore, 'stores', activeStoreId) : null, [canFetchFirestoreData, firestore, activeStoreId]);
@@ -90,7 +88,11 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { data: unitsFromDB } = useCollection(unitsRef);
   const { data: warehousesFromDB } = useCollection(warehousesRef);
 
-  const settings = useMemo(() => (useDemoData || isPublicPage) ? defaultStore : settingsFromDB, [useDemoData, isPublicPage, settingsFromDB]);
+  const settings = useMemo(() => {
+    if (serverSettings) return serverSettings;
+    return useDemoData ? defaultStore : settingsFromDB;
+  }, [useDemoData, settingsFromDB, serverSettings]);
+  
   const currencyRates = useMemo(() => (useDemoData || isPublicPage) ? mockCurrencyRates.map((r,i)=>({...r, id: `rate-${i}`})) : (ratesFromDB || []), [useDemoData, isPublicPage, ratesFromDB]);
   const families = useMemo(() => (useDemoData || isPublicPage) ? initialFamilies : (familiesFromDB || []), [useDemoData, isPublicPage, familiesFromDB]);
   const units = useMemo(() => (useDemoData || isPublicPage) ? initialUnits : (unitsFromDB || []), [useDemoData, isPublicPage, unitsFromDB]);

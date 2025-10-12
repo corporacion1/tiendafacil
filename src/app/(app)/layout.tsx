@@ -30,7 +30,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
       return;
     }
     if (!useDemoData && !userProfile) {
-      router.replace('/catalog');
+      router.replace(`/catalog/${process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'default'}`);
       return;
     }
     
@@ -81,7 +81,9 @@ function AppShell({ children }: { children: React.ReactNode }) {
 export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   return (
     <SecurityProvider>
+      <SettingsProvider>
         <AppShell>{children}</AppShell>
+      </SettingsProvider>
     </SecurityProvider>
   )
 }

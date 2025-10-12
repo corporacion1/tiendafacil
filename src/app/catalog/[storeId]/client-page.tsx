@@ -16,9 +16,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import type { Product, CartItem, Sale, Customer, PendingOrder, Ad, Family } from "@/lib/types";
-import { pendingOrdersState, mockAds, mockProducts, initialFamilies } from "@/lib/data";
-import { useSettings } from "@/contexts/settings-context";
+import type { Product, CartItem, Sale, Customer, PendingOrder, Ad, Family, Settings } from "@/lib/types";
+import { pendingOrdersState } from "@/lib/data";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,9 +25,9 @@ import { Label } from "@/components/ui/label";
 import { isPast, format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { LoginModal } from "../login/page";
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { LoginModal } from "@/app/login/page";
+import { useAuth, useUser } from "@/firebase";
+import { SettingsProvider, useSettings } from "@/contexts/settings-context";
 
 
 const AdCard = ({ ad }: { ad: Ad }) => {
@@ -117,28 +116,16 @@ const CatalogProductCard = ({ product, onAddToCart, onImageClick }: { product: P
     );
 }
 
-
-export default function CatalogPage() {
+function CatalogPageContent({ serverStoreSettings, serverProducts, serverAds }: { serverStoreSettings: Settings, serverProducts: Product[], serverAds: Ad[] }) {
     const { toast } = useToast();
     const router = useRouter();
-    const { settings, activeSymbol, activeRate, isLoadingSettings, userProfile, useDemoData, activeStoreId, families } = useSettings();
-    const firestore = useFirestore();
+    const { user, isUserLoading } = useUser();
+    
+    // Use server-provided data as the source of truth, managed by the client context
+    const { settings, activeSymbol, activeRate, families } = useSettings();
+    const products = serverProducts;
+    const allAds = serverAds;
 
-    const productsQuery = useMemoFirebase(() => 
-        (firestore && !useDemoData) ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, 
-    [firestore, useDemoData, activeStoreId]);
-    const { data: productsFromDB, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
-
-    const adsQuery = useMemoFirebase(() => 
-        (firestore && !useDemoData) ? query(collection(firestore, 'ads')) : null,
-    [firestore, useDemoData]);
-    const { data: adsFromDB, isLoading: isLoadingAds } = useCollection<Ad>(adsQuery);
-    
-    const products = useMemo(() => useDemoData ? mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})) : productsFromDB, [useDemoData, productsFromDB, activeStoreId]);
-    const allAds = useMemo(() => useDemoData ? mockAds.map(ad => ({...ad, createdAt: new Date().toISOString()})) : adsFromDB, [useDemoData, adsFromDB]);
-    
-    const isLoading = isLoadingSettings || isLoadingProducts || isLoadingAds;
-    
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
     const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const scrollDirectionRef = useRef<'down' | 'up'>('down');
@@ -221,7 +208,7 @@ export default function CatalogPage() {
             window.removeEventListener('scroll', resetInactivityTimer);
             window.removeEventListener('keydown', resetInactivityTimer);
         };
-    }, [isLoading]);
+    }, []);
 
     const handleOpenAddToCartDialog = (product: Product) => {
         setProductToAdd(product);
@@ -362,7 +349,7 @@ export default function CatalogPage() {
             storeId: settings.id,
         };
 
-        // Add to the shared state
+        // TODO: Replace with Server Action
         pendingOrdersState.push(newPendingOrder);
         setLocalOrders(prev => [...prev, newPendingOrder]);
 
@@ -566,7 +553,7 @@ export default function CatalogPage() {
                                     )}
                                 </SheetContent>
                             </Sheet>
-                            {isLoadingSettings ? <div className="h-9 w-9 sm:w-24 bg-muted rounded-md animate-pulse" /> : userProfile ? (
+                            {isUserLoading ? <div className="h-9 w-9 sm:w-24 bg-muted rounded-md animate-pulse" /> : user ? (
                                 <Button asChild variant="outline" size="icon" className="sm:size-auto sm:px-4">
                                     <Link href="/dashboard">
                                         <UserCircle className="h-4 w-4 sm:mr-2" />
@@ -632,25 +619,16 @@ export default function CatalogPage() {
                             </div>
                         </div>
                     </div>
-
-                    {isLoading ? (
-                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-                            {[...Array(12)].map((_, i) => (
-                                 <Card key={i} className="animate-pulse"><div className="aspect-square bg-muted rounded-t-lg"></div><div className="p-4 space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-8 bg-muted rounded w-full"></div></div></Card>
-                            ))}
-                        </div>
-                    ) : (
-                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-                            {itemsForGrid.map((item, index) => {
-                                if ('views' in item) { // This is an Ad
-                                    return <AdCard key={`ad-${item.id}-${index}`} ad={item} />;
-                                }
-                                // This is a Product
-                                return <CatalogProductCard key={item.id} product={item} onAddToCart={handleOpenAddToCartDialog} onImageClick={handleImageClick} />;
-                            })}
-                        </div>
-                    )}
-                     {itemsForGrid.length === 0 && !isLoading && (
+                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+                        {itemsForGrid.map((item, index) => {
+                            if ('views' in item) { // This is an Ad
+                                return <AdCard key={`ad-${item.id}-${index}`} ad={item} />;
+                            }
+                            // This is a Product
+                            return <CatalogProductCard key={item.id} product={item} onAddToCart={handleOpenAddToCartDialog} onImageClick={handleImageClick} />;
+                        })}
+                    </div>
+                     {itemsForGrid.length === 0 && (
                         <div className="text-center py-16 text-muted-foreground">
                             <Package className="mx-auto h-12 w-12 mb-4" />
                             <h3 className="text-lg font-semibold">No se encontraron productos</h3>
@@ -829,3 +807,17 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
+
+
+export default function CatalogClientPage({ serverStoreSettings, serverProducts, serverAds }: { serverStoreSettings: Settings, serverProducts: Product[], serverAds: Ad[] }) {
+    return (
+        <SettingsProvider serverSettings={serverStoreSettings}>
+            <CatalogPageContent 
+                serverStoreSettings={serverStoreSettings}
+                serverProducts={serverProducts}
+                serverAds={serverAds}
+            />
+        </SettingsProvider>
+    );
+}
+
