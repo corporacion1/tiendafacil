@@ -14,6 +14,8 @@ import { FirstTimeSetupModal } from '@/components/first-time-setup-modal';
 import { SecurityProvider } from '@/contexts/security-context';
 import { SettingsProvider } from '@/contexts/settings-context';
 
+const defaultStoreId = process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'default';
+
 function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -24,21 +26,29 @@ function AppShell({ children }: { children: React.ReactNode }) {
   const toggleSidebar = () => {
     setIsSidebarExpanded(prev => !prev);
   };
+  
+  const isPublicRoute = pathname.startsWith('/catalog');
 
   useEffect(() => {
-    if (isLoadingSettings) {
-      return;
-    }
-    if (!useDemoData && !userProfile) {
-      router.replace(`/catalog/${process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'default'}`);
+    if (isPublicRoute || isLoadingSettings) {
       return;
     }
     
-    if (userProfile) {
+    // In demo mode or if user is logged in, lock the app if needed
+    if (useDemoData || userProfile) {
       lockApp();
+    } else if (!useDemoData && !userProfile) {
+      // If not in demo mode and no user, redirect to the default catalog
+      router.replace(`/catalog/${defaultStoreId}`);
     }
-  }, [pathname, userProfile, isLoadingSettings, router, lockApp, useDemoData]);
+  }, [pathname, userProfile, isLoadingSettings, router, lockApp, useDemoData, isPublicRoute]);
+  
+  // Do not render the protected shell for public catalog pages
+  if (isPublicRoute) {
+    return <>{children}</>;
+  }
 
+  // Skeleton loader for protected routes while settings/user are loading.
   if (isLoadingSettings || (!useDemoData && !userProfile)) {
     return (
         <div className="flex min-h-screen w-full bg-muted/40">
@@ -85,5 +95,5 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
         <AppShell>{children}</AppShell>
       </SettingsProvider>
     </SecurityProvider>
-  )
+  );
 }

@@ -10,6 +10,7 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
+    // Redirect to the dynamic catalog page with the default store ID
     router.replace(`/catalog/${defaultStoreId}`);
   }, [router]);
 

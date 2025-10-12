@@ -14,6 +14,8 @@ import { FirstTimeSetupModal } from '@/components/first-time-setup-modal';
 import { SecurityProvider } from '@/contexts/security-context';
 import { SettingsProvider } from '@/contexts/settings-context';
 
+const defaultStoreId = process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'default';
+
 function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -28,21 +30,16 @@ function AppShell({ children }: { children: React.ReactNode }) {
   const isPublicRoute = pathname.startsWith('/catalog');
 
   useEffect(() => {
-    // Public routes don't need security checks.
     if (isPublicRoute || isLoadingSettings) {
       return;
     }
     
-    // If not using demo data AND there's no user profile, redirect to catalog.
-    // This allows the public catalog to be seen without a login in a live environment.
-    if (!useDemoData && !userProfile) {
-      router.replace(`/catalog/${process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'default'}`);
-      return;
-    }
-    
-    // If we have a user profile (in live mode) or are in demo mode, lock the app if needed.
-    if (userProfile || useDemoData) {
+    // In demo mode or if user is logged in, lock the app if needed
+    if (useDemoData || userProfile) {
       lockApp();
+    } else if (!useDemoData && !userProfile) {
+      // If not in demo mode and no user, redirect to the default catalog
+      router.replace(`/catalog/${defaultStoreId}`);
     }
   }, [pathname, userProfile, isLoadingSettings, router, lockApp, useDemoData, isPublicRoute]);
   
