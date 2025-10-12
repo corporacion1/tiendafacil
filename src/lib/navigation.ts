@@ -1,3 +1,4 @@
+
 import {
   Boxes,
   FileText,
@@ -15,10 +16,10 @@ import {
 export const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: '/catalog', label: 'Catálogo', icon: LayoutGrid },
-  { href: '/pos', label: 'Punto de Venta', icon: ShoppingCart },
   { href: "/products", label: "Productos", icon: PackagePlus },
   { href: "/inventory", label: "Inventario", icon: Boxes },
   { href: "/purchases", label: "Compras", icon: Store },
+  { href: '/pos', label: 'Punto de Venta', icon: ShoppingCart },
   { href: "/credits", label: "Créditos", icon: CreditCard },
   { href: "/reports", label: "Reportes", icon: FileText },
 ];
