@@ -57,12 +57,13 @@ const getDate = (d: any): Date => {
 
 
 export default function Dashboard() {
-  const { activeSymbol, activeRate, isLoadingSettings } = useSettings();
+  const { activeSymbol, activeRate, isLoadingSettings, activeStoreId } = useSettings();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
   
-  const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: 'local'})));
-  const [purchases, setPurchases] = useState(mockPurchases.map(p => ({...p, storeId: 'local'})));
-  const [products, setProductsState] = useState(mockProducts.map(p => ({...p, storeId: 'local'})));
+  // --- LOCAL DATA HOOKS ---
+  const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
+  const [purchases, setPurchases] = useState(mockPurchases.map(p => ({...p, storeId: activeStoreId})));
+  const [products, setProductsState] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId})));
 
   const recentMovements: InventoryMovement[] = useMemo(() => {
     const saleMovements = sales.flatMap(sale => 
@@ -365,5 +366,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-    

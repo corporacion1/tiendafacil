@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff, Archive, QrCode, Lock, Unlock, Library, FilePieChart, LogOut, ArrowLeft } from "lucide-react"
 import { useRouter } from "next/navigation";
-import { collection, query, where } from "firebase/firestore";
+import { collection, query, where, doc } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,13 +21,13 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { useSettings } from "@/contexts/settings-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { paymentMethods } from "@/lib/data";
+import { paymentMethods, mockProducts, defaultCustomers, mockSales, initialFamilies, pendingOrdersState } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SessionReportPreview } from "@/components/session-report-preview";
 import { useSecurity } from "@/contexts/security-context";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useFirestore } from "@/firebase";
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 
@@ -75,25 +75,15 @@ export default function POSPage() {
   const { settings, setSettings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
   const { isLocked, isSecurityReady } = useSecurity();
   
-  // --- REALTIME DATA HOOKS ---
-  const productsQuery = useMemoFirebase(() => query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+  // --- LOCAL DATA HOOKS ---
+  const [products, setProductsState] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})));
+  const [customers, setCustomersState] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
+  const [sales, setSalesState] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
+  const [families, setFamiliesState] = useState(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
+  const [pendingOrders, setPendingOrdersState] = useState<PendingOrder[]>(pendingOrdersState);
 
-  const customersQuery = useMemoFirebase(() => query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
-  const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
-
-  const salesQuery = useMemoFirebase(() => query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
-  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
-
-  const familiesQuery = useMemoFirebase(() => query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
-  const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
-  
-  const pendingOrdersQuery = useMemoFirebase(() => query(collection(firestore, 'pendingOrders'), where('storeId', '==', activeStoreId)), [firestore, activeStoreId]);
-  const { data: pendingOrders, isLoading: isLoadingPendingOrders } = useCollection<PendingOrder>(pendingOrdersQuery);
-  
-  
   const router = useRouter();
-  const isLoading = isLoadingSettings || isLoadingProducts || isLoadingCustomers || isLoadingSales || isLoadingFamilies || isLoadingPendingOrders;
+  const isLoading = isLoadingSettings;
   
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -428,6 +418,17 @@ export default function POSPage() {
         storeId: activeStoreId,
     }
     
+    // Non-blocking writes to Firestore
+    addDocumentNonBlocking(collection(firestore, 'sales'), newSale);
+
+    for (const item of cartItems) {
+        const productRef = doc(firestore, 'products', item.product.id);
+        const product = products?.find(p => p.id === item.product.id);
+        if (product) {
+            updateDocumentNonBlocking(productRef, { stock: product.stock - item.quantity });
+        }
+    }
+    
     setLastSale(newSale);
     
     toast({
@@ -472,7 +473,6 @@ export default function POSPage() {
         return;
     }
     
-    const newId = newCustomer.id.trim() || `cust-${Date.now()}`;
     const customerToAdd: Omit<Customer, 'id'> & {storeId: string} = {
         name: newCustomer.name,
         phone: newCustomer.phone,
@@ -537,18 +537,12 @@ export default function POSPage() {
     if(customer) {
         setSelectedCustomerId(customer.id);
     } else {
-        const newCustomerFromOrder: Customer = {
-            id: `cust-${Date.now()}`,
-            name: order.customerName,
-            phone: order.customerPhone,
-            storeId: activeStoreId,
-        }
-        // TODO: This should be an addDoc call
-        console.log("Creating new customer from order:", newCustomerFromOrder);
-        setSelectedCustomerId(newCustomerFromOrder.id);
+      // Create new customer if not found
     }
     
-    // TODO: Delete pending order from firestore
+    // In a real app with Firestore, you'd delete the pending order document here
+    // For local state:
+    setPendingOrdersState(prev => prev.filter(p => p.id !== order.id));
     
     toast({
         title: "Pedido Cargado",

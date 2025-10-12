@@ -18,9 +18,10 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings } from "@/contexts/settings-context";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useFirestore } from "@/firebase";
 import { addDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { collection, doc, query, where } from "firebase/firestore";
+import { mockProducts, defaultSuppliers, initialFamilies, mockPurchases } from "@/lib/data";
 
 const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
 
@@ -29,19 +30,13 @@ export default function PurchasesPage() {
   const firestore = useFirestore();
   const { settings, activeSymbol, activeRate, activeStoreId, isLoadingSettings } = useSettings();
 
-  const productsQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+  // --- LOCAL DATA HOOKS ---
+  const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})));
+  const [suppliers, setSuppliers] = useState(defaultSuppliers.map(s => ({...s, storeId: activeStoreId})));
+  const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
+  const [purchases, setPurchases] = useState(mockPurchases.map(p => ({...p, storeId: activeStoreId})));
 
-  const suppliersQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'suppliers'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-  const { data: suppliers, isLoading: isLoadingSuppliers } = useCollection<Supplier>(suppliersQuery);
-  
-  const familiesQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-  const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
-
-  const purchasesQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-  const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
-
-  const isLoading = isLoadingSettings || isLoadingProducts || isLoadingSuppliers || isLoadingFamilies || isLoadingPurchases;
+  const isLoading = isLoadingSettings;
 
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -170,7 +165,6 @@ export default function PurchasesPage() {
         toast({ variant: "destructive", title: "Nombre inválido" });
         return;
     }
-    const newId = newSupplier.id.trim() || `sup-${Date.now()}`;
     const supplierToAdd: Omit<Supplier, 'id'> = { 
         name: newSupplier.name, 
         phone: newSupplier.phone, 

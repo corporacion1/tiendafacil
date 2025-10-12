@@ -48,7 +48,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/settings-context";
 import { SessionReportPreview } from "@/components/session-report-preview";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useFirestore } from "@/firebase";
+import { mockSales, mockPurchases, mockProducts, defaultCustomers, mockCashSessions } from "@/lib/data";
 
 type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
 
@@ -57,20 +58,12 @@ export default function ReportsPage() {
     const firestore = useFirestore();
     const isSuperAdmin = userProfile?.role === 'superAdmin';
     
-    const salesQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-    const { data: salesData, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
-    
-    const purchasesQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-    const { data: purchasesData, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
-    
-    const productsQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
-
-    const customersQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-    const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
-
-    const cashSessionsQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'cashSessions'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-    const { data: cashSessionsData, isLoading: isLoadingSessions } = useCollection<CashSession>(cashSessionsQuery);
+    // --- LOCAL DATA HOOKS ---
+    const [salesData, setSalesData] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
+    const [purchasesData, setPurchasesData] = useState(mockPurchases.map(p => ({...p, storeId: activeStoreId})));
+    const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})));
+    const [customers, setCustomers] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
+    const [cashSessionsData, setCashSessionsData] = useState(mockCashSessions.map(cs => ({...cs, storeId: activeStoreId})));
 
     const [selectedSessionDetails, setSelectedSessionDetails] = useState<CashSession | null>(null);
     const [sessionForReport, setSessionForReport] = useState<CashSession | null>(null);
@@ -109,7 +102,7 @@ export default function ReportsPage() {
     }, [salesData, purchasesData]);
 
 
-    const isLoading = isLoadingSettings || isLoadingSales || isLoadingPurchases || isLoadingProducts || isLoadingCustomers || isLoadingSessions;
+    const isLoading = isLoadingSettings;
     
     const [selectedSaleDetails, setSelectedSaleDetails] = useState<Sale | null>(null);
     const [saleForTicket, setSaleForTicket] = useState<Sale | null>(null);

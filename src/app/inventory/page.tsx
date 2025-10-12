@@ -34,9 +34,10 @@ import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { ProductForm } from "@/components/product-form";
 import { useSettings } from "@/contexts/settings-context";
 import { format, parseISO } from "date-fns";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useFirestore } from "@/firebase";
 import { query, collection, where, doc } from "firebase/firestore";
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { mockProducts, mockSales } from "@/lib/data";
 
 
 const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewMovements, setProductToDelete }: {
@@ -130,16 +131,12 @@ export default function InventoryPage() {
   const firestore = useFirestore();
   const { activeSymbol, activeRate, activeStoreId, isLoadingSettings } = useSettings();
 
-  const productsQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+  // --- LOCAL DATA HOOKS ---
+  const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})));
+  const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
+  const [inventoryMovements, setInventoryMovements] = useState<InventoryMovement[]>([]);
   
-  const salesQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
-
-  const inventoryMovementsQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'inventoryMovements'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-  const { data: inventoryMovements, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(inventoryMovementsQuery);
-
-  const isLoading = isLoadingSettings || isLoadingProducts || isLoadingSales || isLoadingMovements;
+  const isLoading = isLoadingSettings;
   
   const [isMovementsDialogOpen, setIsMovementsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);

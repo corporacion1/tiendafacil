@@ -16,10 +16,10 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import type { Sale, Payment, Product } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
-import { paymentMethods } from "@/lib/data";
+import { paymentMethods, mockSales } from "@/lib/data";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useFirestore } from "@/firebase";
 import { addDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { collection, query, where, doc } from "firebase/firestore";
 
@@ -28,8 +28,8 @@ export default function CreditsPage() {
     const firestore = useFirestore();
     const { settings, activeSymbol, activeRate, activeStoreId, isLoadingSettings } = useSettings();
 
-    const salesQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-    const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
+    // --- LOCAL DATA HOOKS ---
+    const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
     
     const [isClient, setIsClient] = useState(false)
 
@@ -37,7 +37,7 @@ export default function CreditsPage() {
         setIsClient(true)
     }, [])
 
-    const isLoading = isLoadingSettings || isLoadingSales;
+    const isLoading = isLoadingSettings;
 
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);

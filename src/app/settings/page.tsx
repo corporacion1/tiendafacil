@@ -19,9 +19,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { businessCategories } from "@/lib/data";
+import { businessCategories, mockSales, mockProducts, initialUnits, initialFamilies, initialWarehouses } from "@/lib/data";
 import { forceSeedDatabase, factoryReset } from "@/lib/seed";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useFirestore } from "@/firebase";
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { collection, doc, query, where } from "firebase/firestore";
 import Image from "next/image";
@@ -123,22 +123,13 @@ export default function SettingsPage() {
     
     const [localSettings, setLocalSettings] = useState<Partial<Settings>>(settings || {});
     const [imageError, setImageError] = useState(false);
-
-    const productsQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-    const { data: products } = useCollection<Product>(productsQuery);
-
-    const salesQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-    const { data: sales } = useCollection<Sale>(salesQuery);
-
-    const unitsQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'units'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-    const { data: localUnits, isLoading: isLoadingUnits } = useCollection<Unit>(unitsQuery);
-
-    const familiesQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-    const { data: localFamilies, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
     
-    const warehousesQuery = useMemoFirebase(() => activeStoreId ? query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-    const { data: localWarehouses, isLoading: isLoadingWarehouses } = useCollection<Warehouse>(warehousesQuery);
-    
+    // --- LOCAL DATA HOOKS ---
+    const [products, setProducts] = useState(mockProducts);
+    const [sales, setSales] = useState(mockSales);
+    const [localUnits, setLocalUnits] = useState(initialUnits);
+    const [localFamilies, setLocalFamilies] = useState(initialFamilies);
+    const [localWarehouses, setLocalWarehouses] = useState(initialWarehouses);
     
     const [isClient, setIsClient] = useState(false);
 
@@ -252,7 +243,7 @@ export default function SettingsPage() {
             return;
         }
         
-        const docToDelete = doc(firestore, type, id);
+        const docToDelete = doc(firestore, type + 's', id);
         await deleteDocumentNonBlocking(docToDelete);
 
         toast({ title: 'Elemento Eliminado' });
