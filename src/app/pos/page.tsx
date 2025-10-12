@@ -1,7 +1,8 @@
+
 "use client"
 import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
-import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff, Archive, QrCode, Lock, Unlock, Library, FilePieChart, LogOut, ArrowLeft } from "lucide-react"
+import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff, Archive, QrCode, Lock, Unlock, Library, FilePieChart, LogOut, ArrowLeft, Armchair } from "lucide-react"
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button"
@@ -745,7 +746,6 @@ export default function POSPage() {
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2">
             <Card 
                 className={cn("sticky top-6 flex flex-col", !isSessionReady && "opacity-50 pointer-events-none")}
-                style={{ height: 'calc(100vh - 4.5rem)' }}
             >
                 <CardHeader className="flex flex-row justify-between items-center">
                     <CardTitle>Carrito de Compra</CardTitle>
@@ -771,7 +771,7 @@ export default function POSPage() {
                         </AlertDialog>
                     )}
                 </CardHeader>
-                <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden p-6 pt-0">
+                <CardContent className="h-full w-full flex-1 flex flex-col gap-4 overflow-hidden p-6 pt-0" style={{ minHeight: 'calc(100vh - 10rem)' }}>
                     <div className="space-y-2">
                         <Label htmlFor="customer">Cliente *</Label>
                         <div className="flex gap-2">
