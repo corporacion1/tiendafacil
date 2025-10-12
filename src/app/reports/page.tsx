@@ -263,7 +263,7 @@ export default function ReportsPage() {
 
     const filterByDate = (data: (Sale | Purchase | InventoryMovement | (Payment & { saleId: string; customerName: string; }) | CashSession)[]) => {
         if (!dateFilterQuery || !data) return data || [];
-        const filterDateKey = 'openingDate' in data[0] ? 'openingDate' : 'date';
+        const filterDateKey = data.length > 0 && 'openingDate' in data[0] ? 'openingDate' : 'date';
         return data.filter(item => {
             const itemDate = (item as any)[filterDateKey];
             return itemDate ? getDate(itemDate) >= dateFilterQuery : false;

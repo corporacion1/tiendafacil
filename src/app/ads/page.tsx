@@ -28,6 +28,12 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
     const [imageError, setImageError] = useState(false);
     const imageUrl = getDisplayImageUrl(ad.imageUrl);
     const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
+    const [isClient, setIsClient] = useState(false);
+
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
+
 
     const getStatusVariant = (status: Ad['status']) => {
         if (isExpired) return 'secondary';
@@ -73,7 +79,7 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
             <TableCell className="hidden md:table-cell">
                 <div className="flex items-center gap-1">
                     {isExpired && <AlertTriangle className="h-4 w-4 text-amber-500" />}
-                    <span>{getFormattedDate(ad.expiryDate)}</span>
+                    <span>{isClient ? getFormattedDate(ad.expiryDate) : '...'}</span>
                 </div>
             </TableCell>
             <TableCell className="hidden md:table-cell">
