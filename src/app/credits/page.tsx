@@ -34,7 +34,7 @@ export default function CreditsPage() {
     const { data: salesFromDB, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
     const sales = useMemo(() => useDemoData ? mockSales.map(s => ({...s, storeId: activeStoreId})) : salesFromDB, [useDemoData, salesFromDB, activeStoreId]);
 
-    const isLoading = isLoadingSettings || isLoadingSales;
+    const isLoading = isLoadingSettings || (!useDemoData && isLoadingSales);
     
     const [isClient, setIsClient] = useState(false)
 
@@ -123,7 +123,7 @@ export default function CreditsPage() {
     }
 
     const handleSavePayments = async () => {
-        if (!selectedSale || payments.length === 0) {
+        if (!selectedSale || payments.length === 0 || !firestore) {
             toast({ variant: "destructive", title: "No hay pagos que guardar." });
             return;
         }

@@ -146,7 +146,7 @@ export default function Dashboard() {
 
     filteredPurchases.forEach(purchase => {
         const purchaseDate = getDate(purchase.date);
-        const dateKey = format(purchaseDate, dateFormat);
+        const dateKey = format(purchaseDate, 'yyyy-MM-dd');
 
         if (!dataByDate[dateKey]) {
             dataByDate[dateKey] = { date: format(purchaseDate, dateFormat), sales: 0, profit: 0, unitsSold: 0, unitsPurchased: 0 };

@@ -19,11 +19,11 @@ export default function ProductsPage() {
   const router = useRouter();
 
   async function onSubmit(data: Omit<Product, 'id' | 'storeId'>) {
-    if (!activeStoreId) {
+    if (!activeStoreId || !firestore) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se ha seleccionado ninguna tienda.",
+        description: "No se ha seleccionado ninguna tienda o la base de datos no está disponible.",
       });
       return false;
     }

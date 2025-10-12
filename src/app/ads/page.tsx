@@ -137,7 +137,7 @@ export default function AdsPage() {
   };
   
   function handleUpdateAd(data: Omit<Ad, 'id' | 'views' | 'createdAt'> & { id?: string }) {
-    if (!data.id) return false;
+    if (!data.id || !firestore) return false;
     
     setDocumentNonBlocking(doc(firestore, 'ads', data.id), data, { merge: true });
 
@@ -150,6 +150,7 @@ export default function AdsPage() {
   }
 
   function handleCreateAd(data: Omit<Ad, 'id' | 'views' | 'createdAt'>) {
+    if (!firestore) return false;
     const newAd: Omit<Ad, 'id'> = {
       ...data,
       views: 0,
@@ -168,6 +169,7 @@ export default function AdsPage() {
   }
   
   const handleDelete = async (adId: string) => {
+    if (!firestore) return;
     deleteDocumentNonBlocking(doc(firestore, 'ads', adId));
 
     toast({

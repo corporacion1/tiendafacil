@@ -129,14 +129,20 @@ const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewM
 export default function InventoryPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
-  const { activeSymbol, activeRate, activeStoreId, isLoadingSettings } = useSettings();
+  const { activeSymbol, activeRate, activeStoreId, isLoadingSettings, useDemoData } = useSettings();
 
-  // --- USE LOCAL DATA ---
-  const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId})));
-  const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
+  const productsQuery = useMemoFirebase(() => (firestore && !useDemoData) ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, useDemoData, activeStoreId]);
+  const { data: productsFromDB, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+  
+  const salesQuery = useMemoFirebase(() => (firestore && !useDemoData) ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)) : null, [firestore, useDemoData, activeStoreId]);
+  const { data: salesFromDB, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
+  
+  const products = useMemo(() => useDemoData ? mockProducts.map(p => ({...p, storeId: activeStoreId})) : productsFromDB, [useDemoData, productsFromDB, activeStoreId]);
+  const sales = useMemo(() => useDemoData ? mockSales.map(s => ({...s, storeId: activeStoreId})) : salesFromDB, [useDemoData, salesFromDB, activeStoreId]);
+
   const [inventoryMovements, setInventoryMovements] = useState<InventoryMovement[]>([]);
-  const isLoading = isLoadingSettings;
-  // --- END LOCAL DATA ---
+  const isLoading = isLoadingSettings || (!useDemoData && (isLoadingProducts || isLoadingSales));
+
   
   const [isMovementsDialogOpen, setIsMovementsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -163,7 +169,7 @@ export default function InventoryPage() {
   };
 
   function handleUpdateProduct(data: Omit<Product, 'id'> & { id?: string }) {
-    if (!data.id) return false;
+    if (!data.id || !firestore) return false;
 
     const productDocRef = doc(firestore, 'products', data.id);
     setDocumentNonBlocking(productDocRef, data, { merge: true });
@@ -193,6 +199,7 @@ export default function InventoryPage() {
         return;
     }
     
+    if (!firestore) return;
     const productDocRef = doc(firestore, 'products', productId);
     deleteDocumentNonBlocking(productDocRef);
 
@@ -211,7 +218,7 @@ export default function InventoryPage() {
   }
 
   const handleMoveInventory = async () => {
-    if (!movementProduct || !movementType || movementQuantity <= 0 || !movementResponsible.trim()) {
+    if (!movementProduct || !movementType || movementQuantity <= 0 || !movementResponsible.trim() || !firestore) {
       toast({
         variant: "destructive",
         title: "Datos incompletos",

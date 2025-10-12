@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -50,7 +49,7 @@ export default function UsersPage() {
   const usersQuery = useMemoFirebase(() => (firestore && !useDemoData) ? query(collection(firestore, 'users')) : null, [firestore, useDemoData]);
   const { data: usersFromDB, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersQuery);
   
-  const users = useMemo(() => useDemoData ? defaultUsers : (usersFromDB || []), [useDemoData, usersFromDB]);
+  const users = useMemo(() => useDemoData ? [] : (usersFromDB || []), [useDemoData, usersFromDB]);
   const isLoading = isLoadingUsers;
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -71,7 +70,7 @@ export default function UsersPage() {
   };
   
   const confirmRoleChange = async () => {
-      if (!userToAction || useDemoData) return;
+      if (!userToAction || useDemoData || !firestore) return;
       
       const userDocRef = doc(firestore, 'users', userToAction.uid);
       setDocumentNonBlocking(userDocRef, { role: newRole }, { merge: true });
@@ -86,7 +85,7 @@ export default function UsersPage() {
   }
 
   const confirmAction = async () => {
-    if (!userToAction || !actionType || useDemoData) return;
+    if (!userToAction || !actionType || useDemoData || !firestore) return;
     const userDocRef = doc(firestore, 'users', userToAction.uid);
 
     if (actionType === 'promote') {

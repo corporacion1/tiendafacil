@@ -80,7 +80,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { data: warehousesFromDB } = useCollection(warehousesRef);
   
   const settings = useMemo(() => useDemoData ? defaultStore : settingsFromDB, [useDemoData, settingsFromDB]);
-  const userProfile = authUserProfile; // User profile now ALWAYS comes from the auth hook.
+  const userProfile = authUserProfile; 
 
   const currencyRates = useMemo(() => useDemoData ? mockCurrencyRates.map((r,i)=>({...r, id: `rate-${i}`})) : (ratesFromDB || []), [useDemoData, ratesFromDB]);
   const families = useMemo(() => useDemoData ? initialFamilies : (familiesFromDB || []), [useDemoData, familiesFromDB]);
@@ -153,10 +153,10 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
 
   useEffect(() => {
-     if (!isLoadingDemoFlag && !isUserLoading && !userProfile && !pathname.startsWith('/catalog') && !pathname.startsWith('/login')) {
+     if (!isLoadingDemoFlag && !isUserLoading && !userProfile && !useDemoData && !pathname.startsWith('/catalog') && !pathname.startsWith('/login')) {
       router.push('/catalog');
     }
-  }, [isLoadingDemoFlag, isUserLoading, userProfile, pathname, router]);
+  }, [isLoadingDemoFlag, isUserLoading, userProfile, pathname, router, useDemoData]);
 
   const handleSetSettings = (newSettings: Settings) => {
     if(activeStoreId && firestore) {
