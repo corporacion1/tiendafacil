@@ -2,7 +2,7 @@
 "use client"
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
-import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff, Archive, QrCode } from "lucide-react"
+import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff, Archive, QrCode, Lock, Unlock, Library, FilePieChart, LogOut } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,19 +12,124 @@ import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import type { Product, CartItem, Customer, Sale, InventoryMovement, Family, Payment, PendingOrder } from "@/lib/types";
+import type { Product, CartItem, Customer, Sale, InventoryMovement, Family, Payment, PendingOrder, CashSession } from "@/lib/types";
 import { TicketPreview } from "@/components/ticket-preview";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { paymentMethods, mockProducts, defaultCustomers, mockSales, initialFamilies, pendingOrdersState } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+
+const SessionReportPreview = ({ isOpen, onOpenChange, session, type, sales, onConfirm }: {
+    isOpen: boolean;
+    onOpenChange: (isOpen: boolean) => void;
+    session: CashSession;
+    type: 'X' | 'Z';
+    sales: Sale[];
+    onConfirm?: () => void;
+}) => {
+    const ticketRef = useRef<HTMLDivElement>(null);
+    const { settings, activeSymbol, activeRate } = useSettings();
+
+    const handlePrint = () => {
+        const printContent = ticketRef.current;
+        if (!printContent) return;
+
+        const printWindow = window.open('', '', 'height=800,width=600');
+        if (printWindow) {
+            printWindow.document.write('<html><head><title>Reporte de Caja</title>');
+            printWindow.document.write(`
+                <style>
+                    @import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&display=swap');
+                    body { font-family: 'Inconsolata', monospace; width: 80mm; margin: 0; padding: 10px; color: #000; background: #fff; }
+                    .report { font-size: 12px; line-height: 1.5; }
+                    h1, h2, h3 { text-align: center; margin: 5px 0; text-transform: uppercase; }
+                    h1 { font-size: 18px; }
+                    h2 { font-size: 16px; }
+                    h3 { font-size: 14px; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 5px 0; }
+                    .section { margin-top: 15px; }
+                    .line { display: flex; justify-content: space-between; }
+                    .line.total { font-weight: bold; border-top: 1px solid #000; padding-top: 5px; margin-top: 5px; }
+                    .line.grand-total { font-size: 14px; }
+                    .separator { border-top: 1px dashed #000; margin: 10px 0; }
+                    @page { size: 80mm auto; margin: 5mm; }
+                </style>
+            `);
+            printWindow.document.write('</head><body>');
+            printWindow.document.write(printContent.innerHTML);
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+            printWindow.close();
+            onOpenChange(false);
+            if(onConfirm) onConfirm();
+        }
+    };
+    
+    const paymentSummary = sales.flatMap(s => s.payments).reduce((acc, p) => {
+        acc[p.method] = (acc[p.method] || 0) + p.amount;
+        return acc;
+    }, {} as Record<string, number>);
+
+    const totalSales = sales.reduce((sum, s) => sum + s.total, 0);
+    const totalPayments = sales.flatMap(s => s.payments).reduce((sum, p) => sum + p.amount, 0);
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Reporte de Caja - Corte {type}</DialogTitle>
+                </DialogHeader>
+                <div className="overflow-y-auto p-2 border rounded-md bg-gray-50 dark:bg-gray-800 max-h-[60vh]">
+                    <div ref={ticketRef} className="report" style={{ fontFamily: "'Inconsolata', monospace", color: '#000', backgroundColor: '#fff', padding: '10px' }}>
+                        <h1>{settings?.name}</h1>
+                        <h2>Reporte de Caja (Corte {type})</h2>
+                        <div className="line"><span>Fecha:</span> <span>{format(new Date(), 'dd/MM/yyyy HH:mm')}</span></div>
+                        <div className="line"><span>Cajero:</span> <span>{session.openedBy}</span></div>
+                        <div className="line"><span>Sesión:</span> <span>{session.id}</span></div>
+                        <div className="separator"></div>
+                        <div className="section">
+                            <h3>Resumen de Ventas</h3>
+                            <div className="line"><span>Total Ventas:</span> <span>{activeSymbol}{(totalSales * activeRate).toFixed(2)}</span></div>
+                            <div className="line"><span>Total Pagos:</span> <span>{activeSymbol}{(totalPayments * activeRate).toFixed(2)}</span></div>
+                            <div className="line"><span>Ventas a Crédito:</span> <span>{activeSymbol}{((totalSales - totalPayments) * activeRate).toFixed(2)}</span></div>
+                        </div>
+                        <div className="section">
+                            <h3>Detalle de Pagos</h3>
+                            {Object.entries(paymentSummary).map(([method, amount]) => (
+                                <div key={method} className="line"><span>{method}:</span> <span>{activeSymbol}{(amount * activeRate).toFixed(2)}</span></div>
+                            ))}
+                        </div>
+                        {type === 'Z' && (
+                            <div className="section">
+                                <h3>Cierre de Caja</h3>
+                                <div className="line"><span>Fondo de Caja:</span> <span>{activeSymbol}{(session.openingBalance * activeRate).toFixed(2)}</span></div>
+                                <div className="line"><span>Efectivo Esperado:</span> <span>{activeSymbol}{(session.calculatedCash * activeRate).toFixed(2)}</span></div>
+                                <div className="line"><span>Efectivo Contado:</span> <span>{activeSymbol}{( (session.closingBalance || 0) * activeRate).toFixed(2)}</span></div>
+                                <div className="line total grand-total"><span>Diferencia:</span> <span>{activeSymbol}{( (session.difference || 0) * activeRate).toFixed(2)}</span></div>
+                            </div>
+                        )}
+                        <div className="separator"></div>
+                         <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                            {type === 'X' ? 'CORTE PARCIAL DE CAJA' : 'CIERRE DEFINITIVO DE CAJA'}
+                        </div>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="secondary" onClick={() => onOpenChange(false)}>Cerrar</Button>
+                    <Button onClick={handlePrint}>Imprimir Reporte</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
 
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
     const { activeSymbol, activeRate } = useSettings();
@@ -70,7 +175,6 @@ export default function POSPage() {
   const { toast } = useToast();
   const { settings, setSettings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
   
-  // Use local data
   const [products, setProductsState] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})));
   const [customers, setCustomers] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
   const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>(pendingOrdersState);
@@ -78,8 +182,6 @@ export default function POSPage() {
   const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
 
   const isLoading = isLoadingSettings;
-  
-  const [scannedOrderId, setScannedOrderId] = useState('');
   
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -91,7 +193,6 @@ export default function POSPage() {
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [isCustomerSearchOpen, setIsCustomerSearchOpen] = useState(false);
 
-  // New state for multi-payment
   const [isProcessSaleDialogOpen, setIsProcessSaleDialogOpen] = useState(false);
   const [payments, setPayments] = useState<Omit<Payment, 'id' | 'date'>[]>([]);
   const [currentPaymentMethod, setCurrentPaymentMethod] = useState('efectivo');
@@ -106,9 +207,107 @@ export default function POSPage() {
   
   const [isClient, setIsClient] = useState(false);
 
+  // --- Cash Session State ---
+  const [activeSession, setActiveSession] = useState<CashSession | null>(null);
+  const [isSessionModalOpen, setIsSessionModalOpen] = useState(false);
+  const [openingBalance, setOpeningBalance] = useState<number | string>('');
+  
+  const [isClosingModalOpen, setIsClosingModalOpen] = useState(false);
+  const [closingBalance, setClosingBalance] = useState<number | string>('');
+  
+  const [reportType, setReportType] = useState<'X' | 'Z' | null>(null);
+  const [sessionForReport, setSessionForReport] = useState<CashSession | null>(null);
+
+
   useEffect(() => {
     setIsClient(true);
+    // On load, check if there's an active session. If not, prompt to open one.
+    // For this simulation, we'll assume no session is open on first load.
+    if (!activeSession) {
+      setIsSessionModalOpen(true);
+    }
   }, []);
+
+  const handleOpenSession = () => {
+      const balance = Number(openingBalance);
+      if (isNaN(balance) || balance < 0) {
+          toast({ variant: 'destructive', title: 'Monto inválido.' });
+          return;
+      }
+      const newSession: CashSession = {
+          id: `SES-${Date.now()}`,
+          storeId: activeStoreId,
+          openingDate: new Date().toISOString(),
+          openingBalance: balance,
+          status: 'open',
+          openedBy: userProfile?.displayName || 'Usuario Desconocido',
+          salesIds: [],
+          transactions: {},
+          closingDate: null,
+          closingBalance: null,
+          calculatedCash: 0,
+          difference: 0,
+          closedBy: null
+      };
+      setActiveSession(newSession);
+      setIsSessionModalOpen(false);
+      setOpeningBalance('');
+      toast({ title: 'Caja Abierta', description: `La sesión de caja ha comenzado con un fondo de ${activeSymbol}${balance.toFixed(2)}` });
+  };
+  
+  const salesInCurrentSession = useMemo(() => {
+    if (!activeSession) return [];
+    return sales.filter(s => activeSession.salesIds.includes(s.id));
+  }, [sales, activeSession]);
+  
+  const handleShowReportX = () => {
+      if (!activeSession) return;
+      setReportType('X');
+      setSessionForReport(activeSession);
+  };
+  
+  const handleCloseSession = () => {
+    if (!activeSession) return;
+
+    const finalClosingBalance = Number(closingBalance);
+    if (isNaN(finalClosingBalance) || finalClosingBalance < 0) {
+        toast({ variant: 'destructive', title: 'Monto de cierre inválido' });
+        return;
+    }
+
+    const cashPayments = salesInCurrentSession
+        .flatMap(s => s.payments)
+        .filter(p => p.method === 'Efectivo')
+        .reduce((sum, p) => sum + p.amount, 0);
+
+    const calculatedCash = activeSession.openingBalance + cashPayments;
+    const difference = finalClosingBalance - calculatedCash;
+
+    const closedSession: CashSession = {
+        ...activeSession,
+        status: 'closed',
+        closingDate: new Date().toISOString(),
+        closingBalance: finalClosingBalance,
+        calculatedCash,
+        difference,
+        closedBy: userProfile?.displayName || 'N/A'
+    };
+    
+    // We show the report first, and then clear the state on report dialog close
+    setReportType('Z');
+    setSessionForReport(closedSession);
+  };
+  
+  const finalizeSessionClosure = () => {
+    // In a real app, this would save the closed session to DB
+    setActiveSession(null);
+    setIsClosingModalOpen(false);
+    setClosingBalance('');
+    setIsSessionModalOpen(true); // Prompt to open a new session
+    toast({ title: 'Caja Cerrada', description: 'La sesión ha finalizado. Puedes iniciar una nueva.' });
+  }
+
+  const isSessionReady = useMemo(() => !!activeSession, [activeSession]);
 
   const generateSaleId = () => {
     const series = settings?.saleSeries || 'SALE';
@@ -126,6 +325,10 @@ export default function POSPage() {
   const selectedCustomer = customerList.find(c => c.id === selectedCustomerId) ?? null;
 
   const addToCart = (product: Product) => {
+    if (!isSessionReady) {
+        toast({ variant: "destructive", title: "Caja Cerrada", description: "Debes abrir una nueva sesión de caja para vender." });
+        return;
+    }
     setCartItems(prevItems => {
       const existingItem = prevItems.find(item => item.product.id === product.id && item.price === product.price);
       if (existingItem) {
@@ -274,8 +477,8 @@ export default function POSPage() {
       toast({ variant: "destructive", title: "Carrito vacío"});
       return;
     }
-    if (!settings) {
-        toast({ variant: "destructive", title: "Error", description: "La configuración de la tienda no está disponible."});
+    if (!settings || !activeSession) {
+        toast({ variant: "destructive", title: "Error", description: "No hay una sesión de caja activa."});
         return;
     }
     
@@ -312,12 +515,8 @@ export default function POSPage() {
         storeId: activeStoreId,
     }
 
-    // --- SIMULATED LOCAL DATA UPDATE ---
-
-    // 1. Create Sale
     setSales(prev => [newSale, ...prev]);
 
-    // 2. Update product stock
     let updatedProducts = [...products];
     for (const item of cartItems) {
         updatedProducts = updatedProducts.map(p => 
@@ -328,8 +527,10 @@ export default function POSPage() {
     }
     setProductsState(updatedProducts);
     
-    // 3. Update correlative in settings
     setSettings({ ...settings, saleCorrelative: (settings.saleCorrelative || 0) + 1 });
+    
+    // Update active session
+    setActiveSession(prev => prev ? {...prev, salesIds: [...prev.salesIds, saleId]} : null);
     
     setLastSale(newSale);
     
@@ -361,7 +562,7 @@ export default function POSPage() {
       return;
     }
     setTicketType('quote');
-    setLastSale(null); // Ensure we don't show a previous sale ID
+    setLastSale(null);
     setIsPrintPreviewOpen(true);
   };
 
@@ -384,7 +585,6 @@ export default function POSPage() {
         storeId: activeStoreId,
     };
     
-    // --- SIMULATED LOCAL DATA UPDATE ---
     setCustomers(prev => [...prev, customerToAdd]);
     
     setSelectedCustomerId(newId);
@@ -451,7 +651,6 @@ export default function POSPage() {
         setSelectedCustomerId(newCustomerFromOrder.id);
     }
 
-    // Remove from local pending orders state
     const orderIndex = pendingOrdersState.findIndex(p => p.id === order.id);
     if (orderIndex > -1) {
       pendingOrdersState.splice(orderIndex, 1);
@@ -490,11 +689,32 @@ export default function POSPage() {
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-3 lg:gap-8">
             <Card>
                 <CardHeader>
-                    <CardTitle>Productos</CardTitle>
+                    <div className="flex justify-between items-start flex-wrap">
+                        <CardTitle>Productos</CardTitle>
+                        <div className="flex items-center gap-2">
+                             {activeSession ? (
+                                <>
+                                    <Badge variant="secondary" className="flex items-center gap-2">
+                                        <Unlock className="h-4 w-4 text-green-500"/>
+                                        <span>Caja Abierta por: {activeSession.openedBy}</span>
+                                    </Badge>
+                                    <Button size="sm" variant="outline" onClick={handleShowReportX}><FilePieChart className="mr-2 h-4 w-4"/> Corte X</Button>
+                                    <DialogTrigger asChild>
+                                        <Button size="sm" variant="destructive" onClick={() => setIsClosingModalOpen(true)}><LogOut className="mr-2 h-4 w-4"/> Cerrar Caja</Button>
+                                    </DialogTrigger>
+                                </>
+                            ) : (
+                                <Badge variant="destructive" className="flex items-center gap-2">
+                                    <Lock className="h-4 w-4"/>
+                                    <span>Caja Cerrada</span>
+                                </Badge>
+                            )}
+                        </div>
+                    </div>
                     <div className="mt-4 flex flex-wrap gap-2">
-                        <Dialog>
+                         <Dialog>
                             <DialogTrigger asChild>
-                                <Button variant="outline">
+                                <Button variant="outline" disabled={!isSessionReady}>
                                     <QrCode className="mr-2 h-4 w-4" />
                                     Escanear Pedido
                                 </Button>
@@ -503,7 +723,7 @@ export default function POSPage() {
                                 <DialogHeader>
                                     <DialogTitle>Cargar Pedido por ID</DialogTitle>
                                     <DialogDescription>
-                                        Ingresa el ID del pedido (obtenido del código QR) para cargarlo en el carrito.
+                                        Ingresa el ID del pedido para cargarlo en el carrito.
                                     </DialogDescription>
                                 </DialogHeader>
                                 <div className="flex gap-2 py-4">
@@ -523,7 +743,7 @@ export default function POSPage() {
                         </Dialog>
                         <Dialog>
                             <DialogTrigger asChild>
-                                <Button variant="secondary">
+                                <Button variant="secondary" disabled={!isSessionReady}>
                                     <Archive className="mr-2 h-4 w-4" />
                                     Pedidos Pendientes
                                     {pendingOrders.length > 0 && <Badge variant="destructive" className="ml-2">{pendingOrders.length}</Badge>}
@@ -532,9 +752,6 @@ export default function POSPage() {
                             <DialogContent>
                                 <DialogHeader>
                                     <DialogTitle>Pedidos Pendientes del Catálogo</DialogTitle>
-                                    <DialogDescription>
-                                        Aquí están los pedidos generados por los clientes desde el catálogo en línea.
-                                    </DialogDescription>
                                 </DialogHeader>
                                 <div className="py-4 max-h-96 overflow-y-auto">
                                     {isLoading && <p>Cargando pedidos...</p>}
@@ -551,15 +768,6 @@ export default function POSPage() {
                                                     </div>
                                                     <Button size="sm" onClick={() => loadPendingOrder(order)}>Cargar</Button>
                                                 </div>
-                                                <Separator className="my-2" />
-                                                <ul className="text-sm space-y-1">
-                                                    {order.items.map(item => (
-                                                        <li key={item.productId} className="flex justify-between">
-                                                            <span>{item.quantity} x {item.productName}</span>
-                                                            <span>${(item.quantity * item.price).toFixed(2)}</span>
-                                                        </li>
-                                                    ))}
-                                                </ul>
                                                 <Separator className="my-2" />
                                                 <p className="text-right font-bold">Total: ${order.total.toFixed(2)}</p>
                                             </div>
@@ -581,8 +789,9 @@ export default function POSPage() {
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="flex-grow"
+                        disabled={!isSessionReady}
                         />
-                        <Select value={selectedFamily} onValueChange={setSelectedFamily}>
+                        <Select value={selectedFamily} onValueChange={setSelectedFamily} disabled={!isSessionReady}>
                         <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="Filtrar por familia" />
                         </SelectTrigger>
@@ -599,23 +808,32 @@ export default function POSPage() {
                 </CardHeader>
                 <CardContent>
                 {isLoading && <p>Cargando productos...</p>}
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {filteredProducts.map((product) => (
-                    <ProductCard 
-                        key={product.id} 
-                        product={product} 
-                        onAddToCart={addToCart}
-                        onShowDetails={setProductDetails}
-                    />
-                    ))}
-                </div>
+                 {!isSessionReady && (
+                    <div className="h-96 flex flex-col items-center justify-center text-muted-foreground bg-muted/50 rounded-lg">
+                        <Lock className="h-16 w-16 mb-4"/>
+                        <h3 className="text-xl font-semibold">Caja Cerrada</h3>
+                        <p>Debes iniciar una nueva sesión para poder facturar.</p>
+                    </div>
+                )}
+                {isSessionReady && (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {filteredProducts.map((product) => (
+                        <ProductCard 
+                            key={product.id} 
+                            product={product} 
+                            onAddToCart={addToCart}
+                            onShowDetails={setProductDetails}
+                        />
+                        ))}
+                    </div>
+                )}
                 </CardContent>
             </Card>
         </div>
 
         {/* Cart Section (Right Column) */}
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2">
-          <Card className="sticky top-6 flex flex-col h-[calc(100vh-3.5rem)]">
+          <Card className={cn("sticky top-6 flex flex-col h-[calc(100vh-3.5rem)]", !isSessionReady && "opacity-50 pointer-events-none")}>
               <CardHeader className="flex flex-row justify-between items-center">
                   <CardTitle>Carrito de Compra</CardTitle>
                   {cartItems.length > 0 && (
@@ -949,10 +1167,80 @@ export default function POSPage() {
         payments={ticketType === 'sale' ? lastSale?.payments : undefined}
       />
     )}
+    
+    {/* Open Session Modal */}
+    <Dialog open={isSessionModalOpen && !activeSession} onOpenChange={setIsSessionModalOpen}>
+        <DialogContent onInteractOutside={(e) => e.preventDefault()}>
+            <DialogHeader>
+                <DialogTitle>Abrir Caja</DialogTitle>
+                <DialogDescription>
+                    Debes iniciar una nueva sesión de caja para empezar a vender. Ingresa el monto del fondo de caja inicial.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-2">
+                <Label htmlFor="opening-balance">Fondo de Caja ({activeSymbol})</Label>
+                <Input
+                    id="opening-balance"
+                    type="number"
+                    value={openingBalance}
+                    onChange={(e) => setOpeningBalance(e.target.value)}
+                    placeholder="0.00"
+                    autoFocus
+                />
+            </div>
+            <DialogFooter>
+                <Button onClick={handleOpenSession} disabled={!openingBalance || Number(openingBalance) < 0}>Iniciar Sesión</Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+
+    {/* Close Session Modal */}
+    <Dialog open={isClosingModalOpen} onOpenChange={setIsClosingModalOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Cerrar Caja (Corte Z)</DialogTitle>
+                <DialogDescription>
+                    Ingresa el monto total de efectivo contado en caja para generar el reporte de cierre.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-2">
+                <Label htmlFor="closing-balance">Efectivo Contado en Caja ({activeSymbol})</Label>
+                <Input
+                    id="closing-balance"
+                    type="number"
+                    value={closingBalance}
+                    onChange={(e) => setClosingBalance(e.target.value)}
+                    placeholder="0.00"
+                    autoFocus
+                />
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setIsClosingModalOpen(false)}>Cancelar</Button>
+                <Button variant="destructive" onClick={handleCloseSession} disabled={!closingBalance || Number(closingBalance) < 0}>Generar Corte Z y Cerrar</Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+
+    {/* Report Preview Modal */}
+    {sessionForReport && reportType && (
+        <SessionReportPreview
+            isOpen={!!reportType}
+            onOpenChange={(isOpen) => {
+                if (!isOpen) {
+                    setReportType(null);
+                    setSessionForReport(null);
+                    if(reportType === 'Z') {
+                        finalizeSessionClosure();
+                    }
+                }
+            }}
+            session={sessionForReport}
+            type={reportType}
+            sales={salesInCurrentSession}
+            onConfirm={reportType === 'Z' ? finalizeSessionClosure : undefined}
+        />
+    )}
   </Dialog>
   );
 }
 
-    
-
-    
