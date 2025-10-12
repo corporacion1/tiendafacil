@@ -1,6 +1,6 @@
 
 "use client"
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff, Archive, QrCode, Lock, Unlock, Library, FilePieChart, LogOut } from "lucide-react"
 
@@ -206,6 +206,7 @@ export default function POSPage() {
   const [productImageError, setImageError] = useState(false);
   
   const [isClient, setIsClient] = useState(false);
+  const [scannedOrderId, setScannedOrderId] = useState('');
 
   // --- Cash Session State ---
   const [activeSession, setActiveSession] = useState<CashSession | null>(null);
@@ -1243,4 +1244,3 @@ export default function POSPage() {
   </Dialog>
   );
 }
-
