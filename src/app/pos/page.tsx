@@ -436,7 +436,7 @@ export default function POSPage() {
         }
     }
     
-    if(settings.saleCorrelative !== undefined) {
+    if(settings.saleCorrelative !== undefined && firestore) {
       const newCorrelative = (settings.saleCorrelative || 0) + 1;
       const settingsDocRef = doc(firestore, 'stores', activeStoreId);
       setDocumentNonBlocking(settingsDocRef, { saleCorrelative: newCorrelative }, { merge: true });
