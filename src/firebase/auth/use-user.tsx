@@ -8,6 +8,7 @@ import { defaultUsers } from '@/lib/data';
 /**
  * Hook to get the currently authenticated user's profile from LOCAL DATA.
  * This hook is modified to avoid Firestore calls and prevent permission errors.
+ * It now merges real auth data (displayName, photoURL) with local role data.
  */
 export function useUser() {
   const { user: authUser, isUserLoading: isAuthLoading, userError } = useAuthUser();
@@ -21,14 +22,26 @@ export function useUser() {
     }
 
     if (authUser) {
-      // Find the user profile from the local mock data array.
-      const profile = defaultUsers.find(u => u.uid === authUser.uid);
-      if (profile) {
-        setUserProfile(profile);
-      } else {
-        // If not found, fall back to the first admin user as a default for the demo.
-        setUserProfile(defaultUsers.find(u => u.role === 'superAdmin') || null);
-      }
+      // Find a matching user in our local data to get the role.
+      const localUser = defaultUsers.find(u => u.uid === authUser.uid);
+      
+      // Construct a new user profile object.
+      // Prioritize real data from Google Auth (displayName, email, photoURL).
+      // Fallback to local data if something is missing.
+      // Crucially, take the 'role' and 'storeId' from our local definition.
+      const profile: UserProfile = {
+        uid: authUser.uid,
+        email: authUser.email,
+        displayName: authUser.displayName,
+        photoURL: authUser.photoURL,
+        role: localUser?.role || 'user', // Use role from local data, or default to 'user'
+        status: localUser?.status || 'active',
+        storeId: localUser?.storeId,
+        createdAt: localUser?.createdAt || new Date().toISOString(),
+      };
+      
+      setUserProfile(profile);
+
     } else {
       setUserProfile(null);
     }
