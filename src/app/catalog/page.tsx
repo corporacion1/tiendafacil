@@ -6,7 +6,7 @@ import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid,
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { format, isPast } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -21,11 +21,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { LoginModal } from "@/app/login/page";
-import type { Product, CartItem, Sale, Customer, PendingOrder, Ad, Family } from "@/lib/types";
-import { pendingOrdersState, defaultStoreId, mockProducts, mockAds, initialFamilies } from "@/lib/data";
+import type { Product, CartItem, Sale, Customer, PendingOrder, Ad, Family, Settings } from "@/lib/types";
+import { pendingOrdersState, defaultStore, mockProducts, mockAds } from "@/lib/data";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
-import { useSettings } from "@/contexts/settings-context";
+import { useAuth, useUser } from "@/firebase";
+import { SettingsProvider, useSettings } from "@/contexts/settings-context";
 
 
 const AdCard = ({ ad }: { ad: Ad }) => {
@@ -114,17 +115,20 @@ const CatalogProductCard = ({ product, onAddToCart, onImageClick }: { product: P
     );
 }
 
-export default function CatalogPage() {
+function CatalogPageContent() {
     const { toast } = useToast();
     const router = useRouter();
-    const { settings, activeSymbol, activeRate, isLoadingSettings, userProfile } = useSettings();
+    const { user, isUserLoading } = useUser();
+    
+    // Use local mock data
+    const serverStoreSettings = defaultStore;
+    const serverProducts = mockProducts.map(p => ({ ...p, createdAt: new Date().toISOString(), storeId: serverStoreSettings.id }));
+    const serverAds = mockAds.map(ad => ({ ...ad, createdAt: new Date().toISOString() }));
 
-    const [products, setProducts] = useState<Product[]>(mockProducts.map(p => ({...p, storeId: defaultStoreId, createdAt: new Date().toISOString()})));
-    const [families, setFamilies] = useState<Family[]>(initialFamilies.map(f => ({...f, storeId: defaultStoreId})));
-    const [allAds, setAllAds] = useState<Ad[]>(mockAds.map(ad => ({...ad, createdAt: new Date().toISOString()})));
-    
-    const [isLoading, setIsLoading] = useState(true);
-    
+    const { settings, activeSymbol, activeRate, families } = useSettings();
+    const products = serverProducts;
+    const allAds = serverAds;
+
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
     const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const scrollDirectionRef = useRef<'down' | 'up'>('down');
@@ -156,12 +160,6 @@ export default function CatalogPage() {
     useEffect(() => {
         setIsClient(true)
     }, [])
-
-    useEffect(() => {
-        if(isClient) {
-            setIsLoading(false);
-        }
-    }, [isClient]);
 
     useEffect(() => {
         const INACTIVITY_TIMEOUT = 3000; 
@@ -213,7 +211,7 @@ export default function CatalogPage() {
             window.removeEventListener('scroll', resetInactivityTimer);
             window.removeEventListener('keydown', resetInactivityTimer);
         };
-    }, [isLoading]);
+    }, []);
 
     const handleOpenAddToCartDialog = (product: Product) => {
         setProductToAdd(product);
@@ -354,7 +352,7 @@ export default function CatalogPage() {
             storeId: settings.id,
         };
 
-        // Add to the shared state
+        // TODO: Replace with Server Action
         pendingOrdersState.push(newPendingOrder);
         setLocalOrders(prev => [...prev, newPendingOrder]);
 
@@ -385,6 +383,7 @@ export default function CatalogPage() {
     };
 
     const handleEditLocalOrder = (order: PendingOrder) => {
+        if (!products) return;
         setCart(order.items.map(item => {
             const product = products.find(p => p.id === item.productId);
             return product ? { product, quantity: item.quantity, price: item.price } : null;
@@ -397,6 +396,10 @@ export default function CatalogPage() {
         if (trigger) trigger.click();
     };
     
+    const dashboardHref = () => {
+        return '/dashboard';
+    };
+
     if (!isClient) {
         return null;
     }
@@ -557,9 +560,9 @@ export default function CatalogPage() {
                                     )}
                                 </SheetContent>
                             </Sheet>
-                            {isLoadingSettings ? <div className="h-9 w-9 sm:w-24 bg-muted rounded-md animate-pulse" /> : userProfile ? (
+                            {isUserLoading ? <div className="h-9 w-9 sm:w-24 bg-muted rounded-md animate-pulse" /> : user ? (
                                 <Button asChild variant="outline" size="icon" className="sm:size-auto sm:px-4">
-                                    <Link href="/dashboard">
+                                    <Link href={dashboardHref()}>
                                         <UserCircle className="h-4 w-4 sm:mr-2" />
                                         <span className="sr-only sm:not-sr-only">Dashboard</span>
                                     </Link>
@@ -623,25 +626,16 @@ export default function CatalogPage() {
                             </div>
                         </div>
                     </div>
-
-                    {isLoading ? (
-                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-                            {[...Array(12)].map((_, i) => (
-                                 <Card key={i} className="animate-pulse"><div className="aspect-square bg-muted rounded-t-lg"></div><div className="p-4 space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-8 bg-muted rounded w-full"></div></div></Card>
-                            ))}
-                        </div>
-                    ) : (
-                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-                            {itemsForGrid.map((item, index) => {
-                                if ('views' in item) { // This is an Ad
-                                    return <AdCard key={`ad-${item.id}-${index}`} ad={item} />;
-                                }
-                                // This is a Product
-                                return <CatalogProductCard key={item.id} product={item} onAddToCart={handleOpenAddToCartDialog} onImageClick={handleImageClick} />;
-                            })}
-                        </div>
-                    )}
-                     {itemsForGrid.length === 0 && !isLoading && (
+                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
+                        {itemsForGrid.map((item, index) => {
+                            if ('views' in item) { // This is an Ad
+                                return <AdCard key={`ad-${item.id}-${index}`} ad={item} />;
+                            }
+                            // This is a Product
+                            return <CatalogProductCard key={item.id} product={item} onAddToCart={handleOpenAddToCartDialog} onImageClick={handleImageClick} />;
+                        })}
+                    </div>
+                     {itemsForGrid.length === 0 && (
                         <div className="text-center py-16 text-muted-foreground">
                             <Package className="mx-auto h-12 w-12 mb-4" />
                             <h3 className="text-lg font-semibold">No se encontraron productos</h3>
@@ -819,4 +813,13 @@ export default function CatalogPage() {
             </div>
         </Dialog>
     );
+}
+
+// Wrapping with SettingsProvider just in case, to maintain context consistency
+export default function CatalogPageWrapper() {
+  return (
+    <SettingsProvider>
+      <CatalogPage />
+    </SettingsProvider>
+  )
 }

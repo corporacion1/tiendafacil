@@ -23,30 +23,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setIsSidebarExpanded(prev => !prev);
   };
   
-  const isPublicRoute = pathname.startsWith('/catalog') || pathname === '/';
+  const isPublicPage = pathname.startsWith('/catalog') || pathname === '/';
 
   useEffect(() => {
-    if (isPublicRoute || isLoadingSettings) {
+    if (isPublicPage || isLoadingSettings) {
       return;
     }
     
-    // If not in demo mode and no user is logged in, redirect to the public catalog.
     if (!useDemoData && !userProfile) {
       router.replace(`/catalog`);
       return;
     }
     
-    // In demo mode or if a user is logged in, lock the app if a PIN is set.
     lockApp();
 
-  }, [pathname, userProfile, isLoadingSettings, router, lockApp, useDemoData, isPublicRoute]);
+  }, [pathname, userProfile, isLoadingSettings, router, lockApp, useDemoData, isPublicPage]);
   
-  // This layout is only for protected routes. Public routes are handled by the root layout.
-  if (isPublicRoute) {
-    return <>{children}</>;
+  if (isPublicPage) {
+    return (
+      <div className="flex min-h-screen w-full flex-col">
+        <main className="flex-1">{children}</main>
+        <Footer />
+      </div>
+    );
   }
 
-  // Skeleton loader for protected routes while settings/user are loading.
   if (isLoadingSettings || (!useDemoData && !userProfile)) {
     return (
         <div className="flex min-h-screen w-full bg-muted/40">
@@ -62,6 +63,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <main className="flex-1 p-4 sm:px-6 sm:py-0"><Skeleton className="h-full w-full" /></main>
             </div>
         </div>
+    );
+  }
+
+  if (!userProfile && !isPublicPage && !useDemoData) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+      </div>
     );
   }
   
