@@ -8,7 +8,7 @@ import { doc, collection, getDocs, limit, query, where } from 'firebase/firestor
 import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { CurrencyRate, Settings, UserProfile, Product } from '@/lib/types';
 import { defaultStore, defaultUsers, defaultStoreId, mockCurrencyRates, initialFamilies, initialUnits, initialWarehouses, mockProducts } from '@/lib/data';
-import { useUser as useAuthUserHook } from '@/firebase/provider';
+import { useUser as useAuthUserHook } from '@/firebase/auth/use-user';
 
 type DisplayCurrency = 'primary' | 'secondary';
 
@@ -46,8 +46,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const firestore = useFirestore();
 
   const { user: authUser, isUserLoading } = useAuthUserHook();
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-
+  
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   const [useDemoData, setUseDemoDataState] = useState<boolean>(true);
@@ -61,6 +60,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       setUseDemoDataState(true);
     }
   }, []);
+
+  const userProfile = authUser;
 
   // Firestore hooks - Now conditional based on useDemoData
   const storeRef = useMemoFirebase(() => (!useDemoData && firestore) ? doc(firestore, 'stores', activeStoreId) : null, [firestore, activeStoreId, useDemoData]);
@@ -85,74 +86,53 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const units = useMemo(() => useDemoData ? initialUnits : (unitsFromDB || []), [useDemoData, unitsFromDB]);
   const warehouses = useMemo(() => useDemoData ? initialWarehouses : (warehousesFromDB || []), [useDemoData, warehousesFromDB]);
 
-  const setUseDemoData = useCallback(async (useDemo: boolean): Promise<boolean> => {
+ const setUseDemoData = useCallback(async (useDemo: boolean): Promise<boolean> => {
       if (useDemo === false) {
           if (!firestore || !activeStoreId) {
               toast({ variant: 'destructive', title: 'Error', description: 'La conexión a la base de datos no está lista.' });
               return false;
           }
           
-          // The settings object will be from local data when switching, so we check it directly
-          if (!settings || !settings.name || !settings.primaryCurrencySymbol) {
-              toast({ variant: 'destructive', title: 'Configuración Incompleta', description: 'Por favor, completa el nombre de la tienda y el símbolo de la moneda principal antes de salir del modo demo.' });
-              return false;
-          }
+          // --- VALIDATION LOGIC ---
+          const validationChecks = [
+              { check: async () => settingsFromDB && settingsFromDB.name, message: 'El nombre de la tienda no está configurado.' },
+              { check: async () => settingsFromDB && settingsFromDB.address, message: 'La dirección de la tienda no está configurada.' },
+              { check: async () => settingsFromDB && settingsFromDB.phone, message: 'El teléfono de la tienda no está configurado.' },
+              { check: async () => settingsFromDB && settingsFromDB.businessType, message: 'El tipo de negocio no está configurado.' },
+              { check: async () => settingsFromDB && settingsFromDB.primaryCurrencyName, message: 'El nombre de la moneda principal no está configurado.' },
+              { check: async () => settingsFromDB && settingsFromDB.primaryCurrencySymbol, message: 'El símbolo de la moneda principal no está configurado.' },
+              { check: async () => settingsFromDB && settingsFromDB.secondaryCurrencyName, message: 'El nombre de la moneda secundaria no está configurado.' },
+              { check: async () => settingsFromDB && settingsFromDB.secondaryCurrencySymbol, message: 'El símbolo de la moneda secundaria no está configurado.' },
+              { check: async () => { const snapshot = await getDocs(query(collection(firestore, 'stores', activeStoreId, 'currencyRates'), limit(1))); return !snapshot.empty; }, message: 'Debes registrar al menos una tasa de cambio.' },
+              { check: async () => { const snapshot = await getDocs(query(collection(firestore, 'products'), where('storeId', '==', activeStoreId), limit(1))); return !snapshot.empty; }, message: 'Debes crear al menos un producto.' },
+              { check: async () => { const snapshot = await getDocs(query(collection(firestore, 'units'), where('storeId', '==', activeStoreId), limit(1))); return !snapshot.empty; }, message: 'Debes crear al menos una unidad de medida.' },
+              { check: async () => { const snapshot = await getDocs(query(collection(firestore, 'families'), where('storeId', '==', activeStoreId), limit(1))); return !snapshot.empty; }, message: 'Debes crear al menos una familia de productos.' },
+              { check: async () => { const snapshot = await getDocs(query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId), limit(1))); return !snapshot.empty; }, message: 'Debes crear al menos un almacén.' },
+          ];
 
-          const ratesQuery = query(collection(firestore, 'stores', activeStoreId, 'currencyRates'), limit(1));
-          const ratesSnapshot = await getDocs(ratesQuery);
-          if (ratesSnapshot.empty) {
-              toast({ variant: 'destructive', title: 'Falta Tasa de Cambio', description: 'Debes registrar al menos una tasa de cambio para la moneda secundaria.' });
-              return false;
-          }
-
-          const productsQuery = query(collection(firestore, 'products'), where('storeId', '==', activeStoreId), limit(1));
-          const productsSnapshot = await getDocs(productsQuery);
-          if (productsSnapshot.empty) {
-              toast({ variant: 'destructive', title: 'No Hay Productos', description: 'Debes crear al menos un producto antes de salir del modo demo.' });
-              return false;
+          for (const { check, message } of validationChecks) {
+              const isValid = await check();
+              if (!isValid) {
+                  toast({ variant: 'destructive', title: 'Configuración Incompleta', description: message });
+                  return false;
+              }
           }
       }
 
       try {
           localStorage.setItem(DEMO_DATA_FLAG_KEY, useDemo.toString());
           setUseDemoDataState(useDemo);
-          toast({ title: useDemo ? 'Modo Demo Activado' : 'Modo Demo Desactivado', description: 'La aplicación ahora leerá los datos correspondientes.' });
-          setTimeout(() => window.location.reload(), 500);
+          toast({ title: useDemo ? 'Modo Demo Activado' : 'Modo Demo Desactivado', description: 'La aplicación ahora leerá los datos correspondientes. La página se recargará.' });
+          setTimeout(() => window.location.reload(), 1500);
           return true;
       } catch (error) {
           console.error("Could not access localStorage for demo flag", error);
           toast({ variant: 'destructive', title: 'Error de Almacenamiento' });
           return false;
       }
-  }, [firestore, activeStoreId, toast, settings]);
+  }, [firestore, activeStoreId, toast, settingsFromDB]);
 
-  useEffect(() => {
-    if (!isUserLoading && authUser) {
-        // Find a matching local profile to get the role and status.
-        const localProfile = defaultUsers.find(u => u.uid === authUser.uid);
-        if (localProfile) {
-            setUserProfile({
-                ...localProfile,
-                displayName: authUser.displayName,
-                email: authUser.email,
-                photoURL: authUser.photoURL,
-            });
-        } else {
-            setUserProfile({
-                uid: authUser.uid,
-                displayName: authUser.displayName,
-                email: authUser.email,
-                photoURL: authUser.photoURL,
-                role: 'user',
-                status: 'active',
-                createdAt: new Date().toISOString(),
-            });
-        }
-    } else if (!isUserLoading && !authUser) {
-        setUserProfile(null);
-    }
-  }, [authUser, isUserLoading]);
-  
+
   useEffect(() => {
     try {
       const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY) as DisplayCurrency;
@@ -212,7 +192,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const activeCurrency = displayCurrency;
   const activeSymbol = activeCurrency === 'primary' ? (settings?.primaryCurrencySymbol || '$') : (settings?.secondaryCurrencySymbol || 'Bs.');
-  const latestRate = (currencyRates && currencyRates.length > 0) ? currencyRates[0].rate : 1;
+  const latestRate = (currencyRates && currencyRates.length > 0) ? currencyRates.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].rate : 1;
   const activeRate = activeCurrency === 'primary' ? 1 : (latestRate > 0 ? latestRate : 1);
 
   const isLoading = isUserLoading || (!useDemoData && isLoadingSettingsDoc);
@@ -252,3 +232,5 @@ export const useSettings = (): SettingsContextType => {
   }
   return context;
 };
+
+    
