@@ -22,7 +22,7 @@ export const defaultStore: Store = {
   primaryCurrencySymbol: "$",
   secondaryCurrencyName: "Bolívar Digital",
   secondaryCurrencySymbol: "Bs.",
-  saleSeries: "VENTA",
+  saleSeries: "SALE",
   saleCorrelative: 1,
   tax1: 16,
   tax2: 0,
