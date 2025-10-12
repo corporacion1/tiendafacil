@@ -47,6 +47,42 @@
       "description": "Procesador AMD Ryzen 9 7950X",
       "imageUrl": "https://picsum.photos/seed/cpu2/500/500",
       "imageHint": "cpu processor"
+    },
+    {
+      "id": "9",
+      "description": "Impresora Multifuncional",
+      "imageUrl": "https://picsum.photos/seed/printer1/500/500",
+      "imageHint": "multifunction printer"
+    },
+    {
+      "id": "10",
+      "description": "Proyector LED Full HD",
+      "imageUrl": "https://picsum.photos/seed/projector1/500/500",
+      "imageHint": "led projector"
+    },
+    {
+      "id": "11",
+      "description": "Teclado Mecánico RGB",
+      "imageUrl": "https://picsum.photos/seed/keyboard1/500/500",
+      "imageHint": "mechanical keyboard"
+    },
+    {
+      "id": "12",
+      "description": "Mouse Gamer Inalámbrico",
+      "imageUrl": "https://picsum.photos/seed/mouse1/500/500",
+      "imageHint": "gaming mouse"
+    },
+    {
+      "id": "13",
+      "description": "Cartucho de Tinta Negra",
+      "imageUrl": "https://picsum.photos/seed/ink1/500/500",
+      "imageHint": "ink cartridge"
+    },
+    {
+      "id": "14",
+      "description": "Webcam Full HD 1080p",
+      "imageUrl": "https://picsum.photos/seed/webcam1/500/500",
+      "imageHint": "hd webcam"
     }
   ]
 }

@@ -103,6 +103,9 @@ export const initialFamilies: Omit<Family, 'storeId'>[] = [
     { id: 'fam-2', name: 'Procesadores' },
     { id: 'fam-3', name: 'Memoria RAM' },
     { id: 'fam-4', name: 'Almacenamiento' },
+    { id: 'fam-5', name: 'Impresoras y Accesorios' },
+    { id: 'fam-6', name: 'Proyectores' },
+    { id: 'fam-7', name: 'Accesorios de Cómputo' },
 ];
 
 export const initialWarehouses: Omit<Warehouse, 'storeId'>[] = [
@@ -130,6 +133,36 @@ export const mockProducts: Omit<Product, 'createdAt' | 'storeId'>[] = [
     id: "prod-4", name: "SSD NVMe 2TB", sku: "SSD-NVME-2TB-04", stock: 40, price: 149.99, wholesalePrice: 140.00, cost: 125.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Almacenamiento", warehouse: "Almacén Principal",
     description: "Unidad de estado sólido de 2TB con velocidades de lectura/escritura ultrarrápidas.",
     imageUrl: PlaceHolderImages.find(p => p.id === '4')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '4')?.imageHint,
+  },
+  {
+    id: "prod-5", name: "Impresora Multifuncional EcoTank", sku: "EPS-ET4800-05", stock: 30, price: 279.99, wholesalePrice: 265.00, cost: 240.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Impresoras y Accesorios", warehouse: "Almacén Principal",
+    description: "Imprime miles de páginas con los tanques de tinta de súper alta capacidad.",
+    imageUrl: PlaceHolderImages.find(p => p.id === '9')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '9')?.imageHint,
+  },
+  {
+    id: "prod-6", name: "Proyector LED Full HD", sku: "PROJ-LED-FHD-06", stock: 18, price: 199.99, wholesalePrice: 185.00, cost: 160.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Proyectores", warehouse: "Almacén Principal",
+    description: "Proyector compacto y potente con resolución nativa 1080p y 9500 lúmenes.",
+    imageUrl: PlaceHolderImages.find(p => p.id === '10')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '10')?.imageHint,
+  },
+  {
+    id: "prod-7", name: "Teclado Mecánico RGB", sku: "ACC-KEYB-RGB-07", stock: 60, price: 89.99, wholesalePrice: 80.00, cost: 70.00, status: "promotion", tax1: true, tax2: false, unit: "Unidad", family: "Accesorios de Cómputo", warehouse: "Almacén Principal",
+    description: "Teclado mecánico con switches rojos e iluminación RGB personalizable.",
+    imageUrl: PlaceHolderImages.find(p => p.id === '11')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '11')?.imageHint,
+  },
+  {
+    id: "prod-8", name: "Mouse Gamer Inalámbrico", sku: "ACC-MSE-WRLS-08", stock: 75, price: 49.99, wholesalePrice: 45.00, cost: 35.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Accesorios de Cómputo", warehouse: "Almacén Principal",
+    description: "Mouse ligero con sensor óptico de alta precisión y tecnología inalámbrica de baja latencia.",
+    imageUrl: PlaceHolderImages.find(p => p.id === '12')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '12')?.imageHint,
+  },
+  {
+    id: "prod-9", name: "Cartucho de Tinta Negra 544", sku: "INK-544-BLK-09", stock: 150, price: 14.99, wholesalePrice: 12.50, cost: 10.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Impresoras y Accesorios", warehouse: "Almacén Principal",
+    description: "Cartucho de tinta original para impresoras EcoTank. Rendimiento de 4500 páginas.",
+    imageUrl: PlaceHolderImages.find(p => p.id === '13')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '13')?.imageHint,
+  },
+  {
+    id: "prod-10", name: "Webcam Full HD 1080p", sku: "ACC-CAM-FHD-10", stock: 45, price: 39.99, wholesalePrice: 35.00, cost: 30.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Accesorios de Cómputo", warehouse: "Almacén Principal",
+    description: "Webcam con micrófono incorporado, ideal para streaming y videoconferencias.",
+    imageUrl: PlaceHolderImages.find(p => p.id === '14')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '14')?.imageHint,
   },
 ];
 
@@ -180,6 +213,18 @@ export const mockAds: Omit<Ad, 'createdAt'>[] = [
     views: 1250, status: 'active', targetBusinessTypes: ['Tecnologia', 'Servicios Profesionales'],
     expiryDate: addDays(new Date(), 30).toISOString(),
   },
+  {
+    id: "ad-2", sku: "PUB-REST-001", name: "El Sabor de la Casa", description: "Prueba nuestras nuevas hamburguesas gourmet.", price: 15.50,
+    imageUrl: "https://images.unsplash.com/photo-1571091718767-18b5b1457add?q=80&w=600&auto=format&fit=crop", imageHint: "gourmet burger",
+    views: 850, status: 'active', targetBusinessTypes: ['Restaurante'],
+    expiryDate: addDays(new Date(), 15).toISOString(),
+  },
+  {
+    id: "ad-3", sku: "OFERTA-MODA-01", name: "Nueva Colección Invierno", description: "Descubre las últimas tendencias para esta temporada.", price: 49.99,
+    imageUrl: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=600&auto=format&fit=crop", imageHint: "fashion collection",
+    views: 2300, status: 'active', targetBusinessTypes: ['Tienda de Ropa', 'Salud y Belleza'],
+    expiryDate: addDays(new Date(), 45).toISOString(),
+  },
 ];
 
 export const paymentMethods = [
@@ -221,3 +266,5 @@ export async function factoryReset() {
   console.log("factoryReset is disabled. Using local data.");
   return;
 }
+
+    
