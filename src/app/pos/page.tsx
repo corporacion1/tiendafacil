@@ -142,11 +142,9 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
                     <Button size="sm">Agregar</Button>
                 </div>
-                 <DialogTrigger asChild>
-                    <Button size="icon" variant="ghost" className="absolute top-1 right-1 h-7 w-7 text-white opacity-0 group-hover:opacity-100 transition-opacity z-20" onClick={(e) => { e.stopPropagation(); onShowDetails(product); }}>
-                        <ZoomIn className="h-5 w-5" />
-                    </Button>
-                </DialogTrigger>
+                <Button size="icon" variant="ghost" className="absolute top-1 right-1 h-7 w-7 text-white opacity-0 group-hover:opacity-100 transition-opacity z-20" onClick={(e) => { e.stopPropagation(); onShowDetails(product); }}>
+                    <ZoomIn className="h-5 w-5" />
+                </Button>
                 {imageUrl && !imageError ? (
                     <Image
                         src={imageUrl}
@@ -680,12 +678,17 @@ export default function POSPage() {
     }
   };
 
+  const handleShowDetails = (product: Product) => {
+    setImageError(false);
+    setProductDetails(product);
+  }
+
   if (!isClient) {
     return null;
   }
 
   return (
-    <Dialog onOpenChange={(open) => { if (!open) setProductDetails(null); setImageError(false); }}>
+    <Dialog onOpenChange={(open) => { if (!open) setProductDetails(null); }}>
       <div className="grid flex-1 auto-rows-max items-start gap-4 lg:grid-cols-5 lg:gap-8">
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-3 lg:gap-8">
             <Card>
@@ -823,7 +826,7 @@ export default function POSPage() {
                             key={product.id} 
                             product={product} 
                             onAddToCart={addToCart}
-                            onShowDetails={setProductDetails}
+                            onShowDetails={handleShowDetails}
                         />
                         ))}
                     </div>
@@ -1170,7 +1173,11 @@ export default function POSPage() {
     )}
     
     {/* Open Session Modal */}
-    <Dialog open={isSessionModalOpen && !activeSession} onOpenChange={setIsSessionModalOpen}>
+    <Dialog open={isSessionModalOpen && !activeSession} onOpenChange={(isOpen) => {
+        // Prevent closing by clicking outside
+        if (!activeSession) return;
+        setIsSessionModalOpen(isOpen);
+    }}>
         <DialogContent onInteractOutside={(e) => e.preventDefault()}>
             <DialogHeader>
                 <DialogTitle>Abrir Caja</DialogTitle>
