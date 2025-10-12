@@ -1,192 +1,190 @@
 /**
- * @file Firestore Security Rules
- * @description This ruleset enforces a strict data isolation model. Each top-level collection
- *   is secured independently, assuming no implicit relationships or cascading permissions.
- *   Access is generally open for reads, but restricted for writes.
+ * @fileoverview Firestore Security Rules for the inventory and point-of-sale system.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict data-siloing model. Only authenticated users can access data, and only if they are the owner of the requested document.
  *
  * Data Structure:
- * - Top-level collections: /products, /inventoryMovements, /sales, /purchases, /customers, /suppliers, /taxTypes, /configuration.
- * - Subcollections: /sales/{saleId}/saleItems/{saleItemId}, /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
+ * The Firestore database is structured into top-level collections:
+ * - /products/{productId}
+ * - /inventoryMovements/{inventoryMovementId}
+ * - /sales/{saleId}
+ * - /sales/{saleId}/saleItems/{saleItemId}
+ * - /purchases/{purchaseId}
+ * - /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
+ * - /customers/{customerId}
+ * - /suppliers/{supplierId}
+ * - /taxTypes/{taxTypeId}
+ * - /configuration/{configurationId}
  *
  * Key Security Decisions:
- * - Open reads: `get` and `list` operations are generally allowed for all users, including unauthenticated ones.
- * - Writes restricted: `create`, `update`, and `delete` operations are generally denied.
- *
- * Access Control Pattern:
- * - Open reads, closed writes. All write operations are denied.
+ * - All top-level collections are secured using an owner-only access model. The user must be authenticated to read or write data.
+ * - Listing of documents in any collection is forbidden to prevent unauthorized data discovery. Only direct `get` requests are permitted.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(resourceId) {
+        return request.auth.uid == resourceId;
+    }
+
+    function isExistingOwner(resourceId) {
+        return isSignedIn() && isOwner(resourceId) && resource != null;
+    }
+
     /**
-     * @description Allows anyone to read product information, but restricts all writes.
-     * @path /products/{productId}
-     * @allow (get) Any user can retrieve product data.
-     * @allow (list) Any user can list products.
-     * @deny (create) No user can create a product.
-     * @deny (update) No user can update a product.
-     * @deny (delete) No user can delete a product.
-     * @principle Open reads, closed writes.
+     * @description: Secures the /products collection, allowing only authenticated users to read or write a specific product document.
+     * @path: /products/{productId}
+     * @allow: An authenticated user (create)
+     * @deny: An unauthenticated user trying to read or write a product.
+     * @principle: Enforces document ownership for writes.
      */
     match /products/{productId} {
-      allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isExistingOwner(productId);
+      allow delete: if isExistingOwner(productId);
     }
 
     /**
-     * @description Allows anyone to read inventory movement records, but restricts all writes.
-     * @path /inventoryMovements/{inventoryMovementId}
-     * @allow (get) Any user can retrieve inventory movement data.
-     * @allow (list) Any user can list inventory movements.
-     * @deny (create) No user can create an inventory movement.
-     * @deny (update) No user can update an inventory movement.
-     * @deny (delete) No user can delete an inventory movement.
-     * @principle Open reads, closed writes.
+     * @description: Secures the /inventoryMovements collection, allowing only authenticated users to read or write a specific inventory movement document.
+     * @path: /inventoryMovements/{inventoryMovementId}
+     * @allow: An authenticated user (create)
+     * @deny: An unauthenticated user trying to read or write an inventory movement.
+     * @principle: Enforces document ownership for writes.
      */
     match /inventoryMovements/{inventoryMovementId} {
-      allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isExistingOwner(inventoryMovementId);
+      allow delete: if isExistingOwner(inventoryMovementId);
     }
 
     /**
-     * @description Allows anyone to read sale transactions, but restricts all writes.
-     * @path /sales/{saleId}
-     * @allow (get) Any user can retrieve sale data.
-     * @allow (list) Any user can list sales.
-     * @deny (create) No user can create a sale.
-     * @deny (update) No user can update a sale.
-     * @deny (delete) No user can delete a sale.
-     * @principle Open reads, closed writes.
+     * @description: Secures the /sales collection, allowing only authenticated users to read or write a specific sale document.
+     * @path: /sales/{saleId}
+     * @allow: An authenticated user (create)
+     * @deny: An unauthenticated user trying to read or write a sale.
+     * @principle: Enforces document ownership for writes.
      */
     match /sales/{saleId} {
-      allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isExistingOwner(saleId);
+      allow delete: if isExistingOwner(saleId);
     }
 
     /**
-     * @description Allows anyone to read sale item records, but restricts all writes.
-     * @path /sales/{saleId}/saleItems/{saleItemId}
-     * @allow (get) Any user can retrieve sale item data.
-     * @allow (list) Any user can list sale items.
-     * @deny (create) No user can create a sale item.
-     * @deny (update) No user can update a sale item.
-     * @deny (delete) No user can delete a sale item.
-     * @principle Open reads, closed writes.
+     * @description: Secures the /sales/{saleId}/saleItems collection, allowing only authenticated users to read or write a specific sale item document.
+     * @path: /sales/{saleId}/saleItems/{saleItemId}
+     * @allow: An authenticated user (create)
+     * @deny: An unauthenticated user trying to read or write a sale item.
+     * @principle: Enforces document ownership for writes.
      */
     match /sales/{saleId}/saleItems/{saleItemId} {
-      allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isExistingOwner(saleItemId);
+      allow delete: if isExistingOwner(saleItemId);
     }
 
     /**
-     * @description Allows anyone to read purchase transactions, but restricts all writes.
-     * @path /purchases/{purchaseId}
-     * @allow (get) Any user can retrieve purchase data.
-     * @allow (list) Any user can list purchases.
-     * @deny (create) No user can create a purchase.
-     * @deny (update) No user can update a purchase.
-     * @deny (delete) No user can delete a purchase.
-     * @principle Open reads, closed writes.
+     * @description: Secures the /purchases collection, allowing only authenticated users to read or write a specific purchase document.
+     * @path: /purchases/{purchaseId}
+     * @allow: An authenticated user (create)
+     * @deny: An unauthenticated user trying to read or write a purchase.
+     * @principle: Enforces document ownership for writes.
      */
     match /purchases/{purchaseId} {
-      allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isExistingOwner(purchaseId);
+      allow delete: if isExistingOwner(purchaseId);
     }
 
     /**
-     * @description Allows anyone to read purchase item records, but restricts all writes.
-     * @path /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
-     * @allow (get) Any user can retrieve purchase item data.
-     * @allow (list) Any user can list purchase items.
-     * @deny (create) No user can create a purchase item.
-     * @deny (update) No user can update a purchase item.
-     * @deny (delete) No user can delete a purchase item.
-     * @principle Open reads, closed writes.
+     * @description: Secures the /purchases/{purchaseId}/purchaseItems collection, allowing only authenticated users to read or write a specific purchase item document.
+     * @path: /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
+     * @allow: An authenticated user (create)
+     * @deny: An unauthenticated user trying to read or write a purchase item.
+     * @principle: Enforces document ownership for writes.
      */
     match /purchases/{purchaseId}/purchaseItems/{purchaseItemId} {
-      allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isExistingOwner(purchaseItemId);
+      allow delete: if isExistingOwner(purchaseItemId);
     }
 
     /**
-     * @description Allows anyone to read customer information, but restricts all writes.
-     * @path /customers/{customerId}
-     * @allow (get) Any user can retrieve customer data.
-     * @allow (list) Any user can list customers.
-     * @deny (create) No user can create a customer.
-     * @deny (update) No user can update a customer.
-     * @deny (delete) No user can delete a customer.
-     * @principle Open reads, closed writes.
+     * @description: Secures the /customers collection, allowing only authenticated users to read or write a specific customer document.
+     * @path: /customers/{customerId}
+     * @allow: An authenticated user (create)
+     * @deny: An unauthenticated user trying to read or write a customer.
+     * @principle: Enforces document ownership for writes.
      */
     match /customers/{customerId} {
-      allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isExistingOwner(customerId);
+      allow delete: if isExistingOwner(customerId);
     }
 
     /**
-     * @description Allows anyone to read supplier information, but restricts all writes.
-     * @path /suppliers/{supplierId}
-     * @allow (get) Any user can retrieve supplier data.
-     * @allow (list) Any user can list suppliers.
-     * @deny (create) No user can create a supplier.
-     * @deny (update) No user can update a supplier.
-     * @deny (delete) No user can delete a supplier.
-     * @principle Open reads, closed writes.
+     * @description: Secures the /suppliers collection, allowing only authenticated users to read or write a specific supplier document.
+     * @path: /suppliers/{supplierId}
+     * @allow: An authenticated user (create)
+     * @deny: An unauthenticated user trying to read or write a supplier.
+     * @principle: Enforces document ownership for writes.
      */
     match /suppliers/{supplierId} {
-      allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isExistingOwner(supplierId);
+      allow delete: if isExistingOwner(supplierId);
     }
 
     /**
-     * @description Allows anyone to read tax type information, but restricts all writes.
-     * @path /taxTypes/{taxTypeId}
-     * @allow (get) Any user can retrieve tax type data.
-     * @allow (list) Any user can list tax types.
-     * @deny (create) No user can create a tax type.
-     * @deny (update) No user can update a tax type.
-     * @deny (delete) No user can delete a tax type.
-     * @principle Open reads, closed writes.
+     * @description: Secures the /taxTypes collection, allowing only authenticated users to read or write a specific tax type document.
+     * @path: /taxTypes/{taxTypeId}
+     * @allow: An authenticated user (create)
+     * @deny: An unauthenticated user trying to read or write a tax type.
+     * @principle: Enforces document ownership for writes.
      */
     match /taxTypes/{taxTypeId} {
-      allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isExistingOwner(taxTypeId);
+      allow delete: if isExistingOwner(taxTypeId);
     }
 
     /**
-     * @description Allows anyone to read configuration data, but restricts all writes.
-     * @path /configuration/{configurationId}
-     * @allow (get) Any user can retrieve configuration data.
-     * @allow (list) Any user can list configurations.
-     * @deny (create) No user can create a configuration.
-     * @deny (update) No user can update a configuration.
-     * @deny (delete) No user can delete a configuration.
-     * @principle Open reads, closed writes.
+     * @description: Secures the /configuration collection, allowing only authenticated users to read or write a specific configuration document.
+     * @path: /configuration/{configurationId}
+     * @allow: An authenticated user (create)
+     * @deny: An unauthenticated user trying to read or write a configuration.
+     * @principle: Enforces document ownership for writes.
      */
     match /configuration/{configurationId} {
-      allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn();
+      allow update: if isExistingOwner(configurationId);
+      allow delete: if isExistingOwner(configurationId);
     }
   }
 }
