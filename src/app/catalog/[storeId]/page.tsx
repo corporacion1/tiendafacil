@@ -1,4 +1,5 @@
 
+
 import { getStoreData } from '@/firebase/server';
 import CatalogClientPage from './client-page';
 import { notFound } from 'next/navigation';

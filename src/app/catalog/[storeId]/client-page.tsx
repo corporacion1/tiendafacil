@@ -23,7 +23,7 @@ import { Logo } from "@/components/logo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { isPast, format } from "date-fns";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { LoginModal } from "@/app/login/page";
 import { useAuth, useUser } from "@/firebase";
@@ -119,9 +119,9 @@ const CatalogProductCard = ({ product, onAddToCart, onImageClick }: { product: P
 function CatalogPageContent({ serverStoreSettings, serverProducts, serverAds }: { serverStoreSettings: Settings, serverProducts: Product[], serverAds: Ad[] }) {
     const { toast } = useToast();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { user, isUserLoading } = useUser();
     
-    // Use server-provided data as the source of truth, managed by the client context
     const { settings, activeSymbol, activeRate, families } = useSettings();
     const products = serverProducts;
     const allAds = serverAds;
@@ -393,6 +393,11 @@ function CatalogPageContent({ serverStoreSettings, serverProducts, serverAds }: 
         if (trigger) trigger.click();
     };
     
+    const dashboardHref = () => {
+        const storeId = searchParams.get('storeId');
+        return storeId ? `/dashboard?storeId=${storeId}` : '/dashboard';
+    };
+
     if (!isClient) {
         return null;
     }
@@ -555,7 +560,7 @@ function CatalogPageContent({ serverStoreSettings, serverProducts, serverAds }: 
                             </Sheet>
                             {isUserLoading ? <div className="h-9 w-9 sm:w-24 bg-muted rounded-md animate-pulse" /> : user ? (
                                 <Button asChild variant="outline" size="icon" className="sm:size-auto sm:px-4">
-                                    <Link href="/dashboard">
+                                    <Link href={dashboardHref()}>
                                         <UserCircle className="h-4 w-4 sm:mr-2" />
                                         <span className="sr-only sm:not-sr-only">Dashboard</span>
                                     </Link>
@@ -820,4 +825,3 @@ export default function CatalogClientPage({ serverStoreSettings, serverProducts,
         </SettingsProvider>
     );
 }
-
