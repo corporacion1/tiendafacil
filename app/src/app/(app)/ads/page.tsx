@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
-import { File, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X, Package, Check, ImageOff, FileText, FileSpreadsheet, FileJson, Store, AlertTriangle } from "lucide-react";
+import { MoreHorizontal, PlusCircle, Search, Package, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,7 +17,6 @@ import type { Ad } from "@/lib/types";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { AdForm } from "@/components/ad-form";
 import { format, isPast } from "date-fns";
-import { useRouter } from "next/navigation";
 import { mockAds as initialMockAds } from "@/lib/data";
 
 const AdRow = ({ ad, handleEdit, setAdToDelete }: {
@@ -33,7 +32,6 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
     useEffect(() => {
         setIsClient(true);
     }, []);
-
 
     const getStatusVariant = (status: Ad['status']) => {
         if (isExpired) return 'secondary';
@@ -110,7 +108,6 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
 export default function AdsPage() {
   const { toast } = useToast();
   
-  // Revert to using local state with mock data
   const [ads, setAds] = useState(() => initialMockAds.map(ad => ({ ...ad, createdAt: new Date().toISOString() })));
   const isLoading = false;
 
@@ -299,3 +296,5 @@ export default function AdsPage() {
     </>
   );
 }
+
+    

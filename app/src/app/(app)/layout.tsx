@@ -95,3 +95,5 @@ export default function AuthenticatedLayout({ children }: { children: React.Reac
     </SecurityProvider>
   );
 }
+
+    
