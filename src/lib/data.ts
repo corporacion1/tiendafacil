@@ -1,5 +1,5 @@
 
-import type { Product, Sale, Unit, Family, Warehouse, Customer, Purchase, Ad, UserProfile, Store, CurrencyRate, Supplier, PendingOrder } from '@/lib/types';
+import type { Product, Sale, Unit, Family, Warehouse, Customer, Purchase, Ad, UserProfile, Store, CurrencyRate, Supplier, PendingOrder, CashSession } from '@/lib/types';
 import { PlaceHolderImages } from './placeholder-images';
 import { subDays, addDays, startOfWeek, startOfMonth, startOfYear } from 'date-fns';
 
@@ -227,6 +227,39 @@ export const mockAds: Omit<Ad, 'createdAt'>[] = [
   },
 ];
 
+export const mockCashSessions: CashSession[] = [
+    { // Sesión cerrada del mes pasado
+        id: 'SES-001',
+        storeId: defaultStoreId,
+        openingDate: subDays(startOfMonth(today), 5).toISOString(),
+        closingDate: subDays(startOfMonth(today), 5).toISOString(),
+        openingBalance: 100,
+        closingBalance: 1905.00,
+        calculatedCash: 1899.99, // 100 (apertura) + 1799.99 (tarjeta, pero asumamos fue efectivo para el ejemplo)
+        difference: 5.01,
+        status: 'closed',
+        openedBy: 'Admin',
+        closedBy: 'Admin',
+        salesIds: ['SALE-001'],
+        transactions: { 'tarjeta': 1799.99 }
+    },
+    { // Sesión cerrada de esta semana
+        id: 'SES-002',
+        storeId: defaultStoreId,
+        openingDate: subDays(today, 2).toISOString(),
+        closingDate: subDays(today, 2).toISOString(),
+        openingBalance: 50,
+        closingBalance: 345.00,
+        calculatedCash: 350.00, // 50 (apertura) + 300 (pago-movil, que contaría como efectivo en caja)
+        difference: -5.00,
+        status: 'closed',
+        openedBy: 'Demo',
+        closedBy: 'Demo',
+        salesIds: ['SALE-002'],
+        transactions: { 'pago-movil': 300 }
+    },
+];
+
 export const paymentMethods = [
     { id: 'efectivo', name: 'Efectivo', requiresRef: false },
     { id: 'transferencia', name: 'Transferencia', requiresRef: true },
@@ -266,5 +299,3 @@ export async function factoryReset() {
   console.log("factoryReset is disabled. Using local data.");
   return;
 }
-
-    

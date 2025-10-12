@@ -2,7 +2,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react";
-import { File, MoreHorizontal, Search, FileSpreadsheet, FileJson, FileText } from "lucide-react";
+import { File, MoreHorizontal, Search, FileSpreadsheet, FileJson, FileText, Printer } from "lucide-react";
 import { format, subDays, startOfWeek, startOfMonth, startOfYear, parseISO } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -39,14 +39,14 @@ import {
     DialogClose,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Sale, CartItem, Customer, Product, InventoryMovement, Purchase, Payment } from "@/lib/types";
+import { Sale, CartItem, Customer, Product, InventoryMovement, Purchase, Payment, CashSession } from "@/lib/types";
 import { TicketPreview } from "@/components/ticket-preview";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/settings-context";
-import { mockSales, mockPurchases, mockProducts, defaultCustomers } from "@/lib/data";
+import { mockSales, mockPurchases, mockProducts, defaultCustomers, mockCashSessions } from "@/lib/data";
 
 type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
 
@@ -59,6 +59,8 @@ export default function ReportsPage() {
     const [purchasesData, setPurchasesData] = useState(mockPurchases.map(p => ({...p, storeId: activeStoreId})));
     const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})));
     const [customers, setCustomers] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
+    const [cashSessionsData, setCashSessionsData] = useState(mockCashSessions.map(cs => ({...cs, storeId: activeStoreId})));
+
 
     const [isClient, setIsClient] = useState(false)
 
@@ -188,6 +190,18 @@ export default function ReportsPage() {
                     monto: (p.amount * activeRate).toFixed(2),
                 }));
                 break;
+            case 'sessions':
+                dataToExport = filteredCashSessions.map(cs => ({
+                    id: cs.id,
+                    fecha_apertura: cs.openingDate ? getDate(cs.openingDate).toISOString() : '',
+                    fecha_cierre: cs.closingDate ? getDate(cs.closingDate).toISOString() : '',
+                    abierto_por: cs.openedBy,
+                    cerrado_por: cs.closedBy,
+                    saldo_inicial: cs.openingBalance.toFixed(2),
+                    saldo_contado: cs.closingBalance?.toFixed(2) || '0.00',
+                    diferencia: cs.difference.toFixed(2),
+                    estado: cs.status
+                }));
         }
 
         if (dataToExport.length === 0) {
@@ -243,11 +257,15 @@ export default function ReportsPage() {
         return customers.find(c => c.name === sale.customerName) || { id: 'unknown', name: sale.customerName, phone: '', address: '', storeId: activeStoreId };
     }
 
-    const filterByDate = (data: (Sale | Purchase | InventoryMovement | (Payment & { saleId: string; customerName: string; }))[]) => {
+    const filterByDate = (data: (Sale | Purchase | InventoryMovement | (Payment & { saleId: string; customerName: string; }) | CashSession)[]) => {
         if (!dateFilterQuery || !data) return data || [];
-        return data.filter(item => getDate(item.date) >= dateFilterQuery!);
+        const filterDateKey = 'openingDate' in data[0] ? 'openingDate' : 'date';
+        return data.filter(item => {
+            const itemDate = (item as any)[filterDateKey];
+            return itemDate ? getDate(itemDate) >= dateFilterQuery : false;
+        });
     };
-
+    
     const sortedSales = useMemo(() => {
         if (!salesData) return [];
         return [...salesData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -295,6 +313,20 @@ export default function ReportsPage() {
             (p.reference && p.reference.toLowerCase().includes(searchTerm.toLowerCase()))
         ) as (Payment & { saleId: string; customerName: string; })[];
     }, [allPayments, searchTerm, dateFilterQuery]);
+
+     const sortedCashSessions = useMemo(() => {
+        if (!cashSessionsData) return [];
+        return [...cashSessionsData].sort((a, b) => new Date(b.openingDate).getTime() - new Date(a.openingDate).getTime());
+    }, [cashSessionsData]);
+
+    const filteredCashSessions = useMemo(() => {
+        return filterByDate(sortedCashSessions).filter(cs =>
+            cs.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            cs.openedBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (cs.closedBy && cs.closedBy.toLowerCase().includes(searchTerm.toLowerCase()))
+        ) as CashSession[];
+    }, [sortedCashSessions, searchTerm, dateFilterQuery]);
+
 
     const salesTotal = useMemo(() => {
         return filteredSales.reduce((acc, sale) => acc + sale.total, 0);
@@ -351,6 +383,7 @@ export default function ReportsPage() {
           <TabsTrigger value="sales">Ventas</TabsTrigger>
           <TabsTrigger value="purchases">Compras</TabsTrigger>
           <TabsTrigger value="payments">Pagos</TabsTrigger>
+          <TabsTrigger value="sessions">Cierres de Caja</TabsTrigger>
           <TabsTrigger value="movements">Movimientos</TabsTrigger>
           <TabsTrigger value="inventory">Inventario</TabsTrigger>
         </TabsList>
@@ -531,6 +564,72 @@ export default function ReportsPage() {
                     </TableFooter>
                 </Table>}
             </CardContent>
+        </Card>
+      </TabsContent>
+
+       <TabsContent value="sessions">
+        <Card>
+          <CardHeader>
+            <CardTitle>Reporte de Cierres de Caja</CardTitle>
+            <CardDescription>Un historial de todas las sesiones de caja.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading && <p className="text-center">Cargando sesiones...</p>}
+            {!isLoading && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID Sesión</TableHead>
+                    <TableHead>Apertura</TableHead>
+                    <TableHead>Cierre</TableHead>
+                    <TableHead>Abierto por</TableHead>
+                    <TableHead className="text-right">Diferencia</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead><span className="sr-only">Acciones</span></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredCashSessions.map((session) => (
+                    <TableRow key={session.id}>
+                      <TableCell className="font-medium">{session.id}</TableCell>
+                      <TableCell>
+                        {isClient && session.openingDate ? format(getDate(session.openingDate), 'dd/MM/yy HH:mm') : '...'}
+                      </TableCell>
+                      <TableCell>
+                        {isClient && session.closingDate ? format(getDate(session.closingDate), 'dd/MM/yy HH:mm') : 'N/A'}
+                      </TableCell>
+                      <TableCell>{session.openedBy}</TableCell>
+                      <TableCell className={`text-right font-semibold ${session.difference > 0 ? 'text-green-600' : session.difference < 0 ? 'text-destructive' : ''}`}>
+                        {activeSymbol}{(session.difference * activeRate).toFixed(2)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={session.status === 'closed' ? 'secondary' : 'default'}>
+                          {session.status === 'closed' ? 'Cerrada' : 'Abierta'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {session.status === 'closed' && (
+                           <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button aria-haspopup="true" size="icon" variant="ghost">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem>
+                                <Printer className="mr-2 h-4 w-4" />
+                                Reimprimir Corte Z
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
         </Card>
       </TabsContent>
 
