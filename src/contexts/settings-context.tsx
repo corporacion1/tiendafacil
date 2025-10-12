@@ -1,14 +1,14 @@
 
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
-import { doc, collection } from 'firebase/firestore';
+import { doc, collection, getDocs, limit, query, where } from 'firebase/firestore';
 import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
-import { defaultStore, defaultUsers, defaultStoreId, mockCurrencyRates, forceSeedDatabase } from '@/lib/data';
-import { useUser as useAuthUserHook } from '@/firebase/provider'; // Use the original hook
+import type { CurrencyRate, Settings, UserProfile, Product } from '@/lib/types';
+import { defaultStore, defaultUsers, defaultStoreId, mockCurrencyRates, initialFamilies, initialUnits, initialWarehouses, mockProducts } from '@/lib/data';
+import { useUser as useAuthUserHook } from '@/firebase/provider';
 
 type DisplayCurrency = 'primary' | 'secondary';
 
@@ -26,13 +26,18 @@ interface SettingsContextType {
   switchStore: (storeId: string) => void;
   isLoadingSettings: boolean;
   userProfile: UserProfile | null;
+  useDemoData: boolean;
+  setUseDemoData: (useDemo: boolean) => Promise<boolean>;
+  families: any[];
+  units: any[];
+  warehouses: any[];
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 const CURRENCY_PREF_STORAGE_KEY = 'tienda_facil_currency_pref';
 const ACTIVE_STORE_ID_STORAGE_KEY = 'tienda_facil_active_store_id';
-const DB_SEEDED_FLAG_KEY = 'tienda_facil_db_seeded_v1_forced_final';
+const DEMO_DATA_FLAG_KEY = 'tienda_facil_use_demo_data';
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
@@ -43,15 +48,81 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { user: authUser, isUserLoading } = useAuthUserHook();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
-  // --- LOCAL DATA ---
-  const [settings, setSettingsState] = useState<Settings | null>(defaultStore);
-  const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>(mockCurrencyRates.map((r, i) => ({ ...r, id: `rate-${i}` })));
-  const isLoadingSettingsDoc = false;
-  // --- END LOCAL DATA ---
-
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
+  const [useDemoData, setUseDemoDataState] = useState<boolean>(true);
+
+  useEffect(() => {
+    try {
+      const demoFlag = localStorage.getItem(DEMO_DATA_FLAG_KEY);
+      setUseDemoDataState(demoFlag === null ? true : demoFlag === 'true');
+    } catch (error) {
+      console.error("Could not access localStorage for demo flag", error);
+      setUseDemoDataState(true);
+    }
+  }, []);
+
+  const storeRef = useMemoFirebase(() => firestore ? doc(firestore, 'stores', activeStoreId) : null, [firestore, activeStoreId]);
+  const { data: settingsFromDB, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(storeRef);
+
+  const ratesRef = useMemoFirebase(() => firestore ? collection(firestore, 'stores', activeStoreId, 'currencyRates') : null, [firestore, activeStoreId]);
+  const { data: ratesFromDB } = useCollection<CurrencyRate>(ratesRef);
+
+  const familiesRef = useMemoFirebase(() => firestore ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+  const { data: familiesFromDB } = useCollection(familiesRef);
+
+  const unitsRef = useMemoFirebase(() => firestore ? query(collection(firestore, 'units'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+  const { data: unitsFromDB } = useCollection(unitsRef);
   
+  const warehousesRef = useMemoFirebase(() => firestore ? query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+  const { data: warehousesFromDB } = useCollection(warehousesRef);
+  
+  const settings = useMemo(() => useDemoData ? defaultStore : settingsFromDB, [useDemoData, settingsFromDB]);
+  const currencyRates = useMemo(() => useDemoData ? mockCurrencyRates.map((r,i)=>({...r, id: `rate-${i}`})) : (ratesFromDB || []), [useDemoData, ratesFromDB]);
+  const families = useMemo(() => useDemoData ? initialFamilies : (familiesFromDB || []), [useDemoData, familiesFromDB]);
+  const units = useMemo(() => useDemoData ? initialUnits : (unitsFromDB || []), [useDemoData, unitsFromDB]);
+  const warehouses = useMemo(() => useDemoData ? initialWarehouses : (warehousesFromDB || []), [useDemoData, warehousesFromDB]);
+
+  const setUseDemoData = useCallback(async (useDemo: boolean): Promise<boolean> => {
+      if (useDemo === false) {
+          if (!firestore || !activeStoreId) {
+              toast({ variant: 'destructive', title: 'Error', description: 'La conexión a la base de datos no está lista.' });
+              return false;
+          }
+
+          if (!settings || !settings.name || !settings.primaryCurrencySymbol) {
+              toast({ variant: 'destructive', title: 'Configuración Incompleta', description: 'Por favor, completa el nombre de la tienda y el símbolo de la moneda principal antes de salir del modo demo.' });
+              return false;
+          }
+
+          const ratesQuery = query(collection(firestore, 'stores', activeStoreId, 'currencyRates'), limit(1));
+          const ratesSnapshot = await getDocs(ratesQuery);
+          if (ratesSnapshot.empty) {
+              toast({ variant: 'destructive', title: 'Falta Tasa de Cambio', description: 'Debes registrar al menos una tasa de cambio para la moneda secundaria.' });
+              return false;
+          }
+
+          const productsQuery = query(collection(firestore, 'products'), where('storeId', '==', activeStoreId), limit(1));
+          const productsSnapshot = await getDocs(productsQuery);
+          if (productsSnapshot.empty) {
+              toast({ variant: 'destructive', title: 'No Hay Productos', description: 'Debes crear al menos un producto antes de salir del modo demo.' });
+              return false;
+          }
+      }
+
+      try {
+          localStorage.setItem(DEMO_DATA_FLAG_KEY, useDemo.toString());
+          setUseDemoDataState(useDemo);
+          toast({ title: useDemo ? 'Modo Demo Activado' : 'Modo Demo Desactivado', description: 'La aplicación ahora leerá los datos correspondientes.' });
+          setTimeout(() => window.location.reload(), 500);
+          return true;
+      } catch (error) {
+          console.error("Could not access localStorage for demo flag", error);
+          toast({ variant: 'destructive', title: 'Error de Almacenamiento' });
+          return false;
+      }
+  }, [firestore, activeStoreId, toast, settings]);
+
   useEffect(() => {
     if (!isUserLoading && authUser) {
         const localProfile = defaultUsers.find(u => u.uid === authUser.uid);
@@ -63,7 +134,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
                 photoURL: authUser.photoURL,
             });
         } else {
-            // Default 'user' profile for unknown users
             setUserProfile({
                 uid: authUser.uid,
                 displayName: authUser.displayName,
@@ -78,40 +148,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         setUserProfile(null);
     }
   }, [authUser, isUserLoading]);
-
-
-  useEffect(() => {
-    const seedDatabase = async () => {
-        try {
-            const isSeeded = localStorage.getItem(DB_SEEDED_FLAG_KEY);
-            if (!isSeeded) {
-                toast({
-                    title: 'Poblando Base de Datos...',
-                    description: 'Por favor espera. Esto solo ocurrirá una vez.',
-                });
-                await forceSeedDatabase(firestore);
-                localStorage.setItem(DB_SEEDED_FLAG_KEY, 'true');
-                toast({
-                    title: '¡Base de Datos Poblada!',
-                    description: 'Los datos de demostración se han cargado. Refresca la página para verlos.',
-                });
-                // No need to reload, changes will be written, but UI shows local data
-            }
-        } catch (error) {
-            console.error("Database seeding failed:", error);
-             toast({
-                variant: 'destructive',
-                title: 'Error al poblar la base de datos',
-                description: 'No se pudieron cargar los datos de demostración.',
-            });
-        }
-    };
-    if (firestore) {
-        seedDatabase();
-    }
-  }, [firestore, toast]);
   
-
   useEffect(() => {
     try {
       const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY) as DisplayCurrency;
@@ -138,9 +175,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [isUserLoading, authUser, pathname, router]);
 
   const handleSetSettings = (newSettings: Settings) => {
-    setSettingsState(newSettings);
-    // Write to DB non-blockingly
-    if(activeStoreId) {
+    if(activeStoreId && firestore) {
       const settingsDoc = doc(firestore, 'stores', activeStoreId);
       setDocumentNonBlocking(settingsDoc, newSettings, { merge: true });
     }
@@ -173,7 +208,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const activeCurrency = displayCurrency;
   const activeSymbol = activeCurrency === 'primary' ? (settings?.primaryCurrencySymbol || '$') : (settings?.secondaryCurrencySymbol || 'Bs.');
-  const latestRate = (currencyRates.length > 0) ? currencyRates[0].rate : 1;
+  const latestRate = (currencyRates && currencyRates.length > 0) ? currencyRates[0].rate : 1;
   const activeRate = activeCurrency === 'primary' ? 1 : (latestRate > 0 ? latestRate : 1);
 
   const isLoading = isUserLoading || isLoadingSettingsDoc;
@@ -187,11 +222,16 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     activeSymbol, 
     activeRate, 
     currencyRates,
-    setCurrencyRates,
+    setCurrencyRates: () => {},
     activeStoreId,
     switchStore,
     isLoadingSettings: isLoading,
     userProfile,
+    useDemoData,
+    setUseDemoData,
+    families,
+    units,
+    warehouses
   };
 
   return (

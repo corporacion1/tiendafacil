@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import type { Product, CartItem, Sale, Customer, PendingOrder, Ad, Family } from "@/lib/types";
-import { trackAdClick, defaultStoreId, pendingOrdersState, mockAds, mockProducts, initialFamilies } from "@/lib/data";
+import { pendingOrdersState, mockAds, mockProducts, initialFamilies } from "@/lib/data";
 import { useSettings } from "@/contexts/settings-context";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
@@ -33,7 +33,7 @@ import { collection, query, where } from 'firebase/firestore';
 
 const AdCard = ({ ad }: { ad: Ad }) => {
     return (
-        <a href={ad.imageUrl} target="_blank" rel="noopener noreferrer" className="block group" onClick={() => trackAdClick(ad.id)}>
+        <a href={ad.imageUrl} target="_blank" rel="noopener noreferrer" className="block group">
             <Card className="overflow-hidden group flex flex-col bg-accent/20 border-accent/50 hover:border-accent transition-all">
                 <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative cursor-pointer">
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent z-10" />
@@ -121,13 +121,23 @@ const CatalogProductCard = ({ product, onAddToCart, onImageClick }: { product: P
 export default function CatalogPage() {
     const { toast } = useToast();
     const router = useRouter();
-    const { settings, activeSymbol, activeRate, isLoadingSettings, userProfile } = useSettings();
+    const { settings, activeSymbol, activeRate, isLoadingSettings, userProfile, useDemoData, activeStoreId, families } = useSettings();
+    const firestore = useFirestore();
+
+    const productsQuery = useMemoFirebase(() => 
+        (firestore && !useDemoData) ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, 
+    [firestore, useDemoData, activeStoreId]);
+    const { data: productsFromDB, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+
+    const adsQuery = useMemoFirebase(() => 
+        (firestore && !useDemoData) ? query(collection(firestore, 'ads')) : null,
+    [firestore, useDemoData]);
+    const { data: adsFromDB, isLoading: isLoadingAds } = useCollection<Ad>(adsQuery);
     
-    // --- USE LOCAL DATA ---
-    const [products, setProductsState] = useState(mockProducts.map(p => ({...p, storeId: settings?.id || defaultStoreId, createdAt: new Date().toISOString()})));
-    const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: settings?.id || defaultStoreId, id: f.id || `fam-${Math.random()}`})));
-    const [allAds, setAllAds] = useState(mockAds.map(ad => ({...ad, createdAt: new Date().toISOString()})));
-    const isLoading = false;
+    const products = useMemo(() => useDemoData ? mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})) : productsFromDB, [useDemoData, productsFromDB, activeStoreId]);
+    const allAds = useMemo(() => useDemoData ? mockAds.map(ad => ({...ad, createdAt: new Date().toISOString()})) : adsFromDB, [useDemoData, adsFromDB]);
+    
+    const isLoading = isLoadingSettings || isLoadingProducts || isLoadingAds;
     
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
     const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -293,8 +303,6 @@ export default function CatalogPage() {
         }
         return items;
     }, [sortedAndFilteredProducts, allAds, settings]);
-
-    const familyFilters = ["all", ...(families || []).map(f => f.name)];
     
     const handleOpenOrderDialog = () => {
         if(cart.length === 0) {

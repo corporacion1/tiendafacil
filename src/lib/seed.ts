@@ -16,13 +16,10 @@ import {
   initialUnits,
   initialFamilies,
   initialWarehouses,
-  mockSales,
-  mockPurchases,
   mockAds,
   defaultUsers,
   defaultStoreId,
   mockCurrencyRates,
-  mockCashSessions
 } from './data';
 
 export async function forceSeedDatabase(firestore: Firestore): Promise<boolean> {
@@ -37,11 +34,8 @@ export async function forceSeedDatabase(firestore: Firestore): Promise<boolean> 
       { name: 'units', data: initialUnits, storeId: defaultStoreId, idKey: 'id' },
       { name: 'families', data: initialFamilies, storeId: defaultStoreId, idKey: 'id' },
       { name: 'warehouses', data: initialWarehouses, storeId: defaultStoreId, idKey: 'id' },
-      { name: 'sales', data: mockSales, storeId: defaultStoreId, idKey: 'id' },
-      { name: 'purchases', data: mockPurchases, storeId: defaultStoreId, idKey: 'id' },
       { name: 'ads', data: mockAds, storeId: undefined, idKey: 'id' },
       { name: 'users', data: defaultUsers, storeId: undefined, idKey: 'uid' },
-      { name: 'cashSessions', data: mockCashSessions, storeId: defaultStoreId, idKey: 'id'},
     ];
     
     // Seed currency rates as a subcollection

@@ -19,8 +19,8 @@ import { AdForm } from "@/components/ad-form";
 import { format, isPast } from "date-fns";
 import { useRouter } from "next/navigation";
 import { mockAds } from "@/lib/data";
-import { useFirestore } from "@/firebase";
-import { collection, doc } from "firebase/firestore";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, doc, query } from "firebase/firestore";
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 const AdRow = ({ ad, handleEdit, setAdToDelete }: {
@@ -113,17 +113,19 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
 export default function AdsPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
-  const [ads, setAds] = useState(mockAds.map(ad => ({...ad, createdAt: new Date().toISOString()})));
-  const [isLoading, setIsLoading] = useState(false);
-
-  const sortedAds = useMemo(() => {
-    return [...ads].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [ads]);
-
+  
+  const adsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'ads')) : null, [firestore]);
+  const { data: ads, isLoading } = useCollection<Ad>(adsQuery);
+  
   const [adToEdit, setAdToEdit] = useState<Ad | null>(null);
   const [adToDelete, setAdToDelete] = useState<Ad | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
+  const sortedAds = useMemo(() => {
+    if (!ads) return [];
+    return [...ads].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [ads]);
 
   const handleEdit = (ad: Ad) => {
     setAdToEdit(ad);

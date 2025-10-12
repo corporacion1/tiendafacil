@@ -26,12 +26,15 @@ import { collection, query, where, doc } from "firebase/firestore";
 export default function CreditsPage() {
     const { toast } = useToast();
     const firestore = useFirestore();
-    const { settings, activeSymbol, activeRate, activeStoreId, isLoadingSettings } = useSettings();
+    const { settings, activeSymbol, activeRate, activeStoreId, isLoadingSettings, useDemoData } = useSettings();
 
-    // --- USE LOCAL DATA ---
-    const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
-    const isLoading = isLoadingSettings;
-    // --- END LOCAL DATA ---
+    const salesQuery = useMemoFirebase(() =>
+        (firestore && !useDemoData) ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)) : null
+    , [firestore, useDemoData, activeStoreId]);
+    const { data: salesFromDB, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
+    const sales = useMemo(() => useDemoData ? mockSales.map(s => ({...s, storeId: activeStoreId})) : salesFromDB, [useDemoData, salesFromDB, activeStoreId]);
+
+    const isLoading = isLoadingSettings || isLoadingSales;
     
     const [isClient, setIsClient] = useState(false)
 

@@ -28,15 +28,21 @@ const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
 export default function PurchasesPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
-  const { settings, activeSymbol, activeRate, activeStoreId, isLoadingSettings } = useSettings();
+  const { settings, activeSymbol, activeRate, activeStoreId, isLoadingSettings, useDemoData, families } = useSettings();
 
-  // --- USE LOCAL DATA ---
-  const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId})));
-  const [suppliers, setSuppliers] = useState(defaultSuppliers.map(s => ({...s, storeId: activeStoreId})));
-  const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
-  const [purchases, setPurchases] = useState(mockPurchases.map(p => ({...p, storeId: activeStoreId})));
-  const isLoading = isLoadingSettings;
-  // --- END LOCAL DATA ---
+  const productsQuery = useMemoFirebase(() => (firestore && !useDemoData) ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, useDemoData, activeStoreId]);
+  const suppliersQuery = useMemoFirebase(() => (firestore && !useDemoData) ? query(collection(firestore, 'suppliers'), where('storeId', '==', activeStoreId)) : null, [firestore, useDemoData, activeStoreId]);
+  const purchasesQuery = useMemoFirebase(() => (firestore && !useDemoData) ? query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId)) : null, [firestore, useDemoData, activeStoreId]);
+  
+  const { data: productsFromDB, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+  const { data: suppliersFromDB, isLoading: isLoadingSuppliers } = useCollection<Supplier>(suppliersQuery);
+  const { data: purchasesFromDB, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
+
+  const products = useMemo(() => useDemoData ? mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})) : productsFromDB, [useDemoData, productsFromDB, activeStoreId]);
+  const suppliers = useMemo(() => useDemoData ? defaultSuppliers.map(s => ({...s, storeId: activeStoreId})) : suppliersFromDB, [useDemoData, suppliersFromDB, activeStoreId]);
+  const purchases = useMemo(() => useDemoData ? mockPurchases.map(p => ({...p, storeId: activeStoreId})) : purchasesFromDB, [useDemoData, purchasesFromDB, activeStoreId]);
+
+  const isLoading = isLoadingSettings || (!useDemoData && (isLoadingProducts || isLoadingSuppliers || isLoadingPurchases));
 
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");

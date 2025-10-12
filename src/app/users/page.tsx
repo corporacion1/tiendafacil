@@ -14,8 +14,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import { useSettings } from "@/contexts/settings-context";
-import { useFirestore } from "@/firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { doc, setDoc, query, collection } from "firebase/firestore";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { defaultUsers } from "@/lib/data";
 
@@ -42,14 +42,23 @@ const getStatusVariant = (status: UserProfile['status'] | undefined) => {
 }
 
 export default function UsersPage() {
-  const { userProfile: currentUserProfile, switchStore } = useSettings();
+  const { userProfile: currentUserProfile, switchStore, useDemoData } = useSettings();
   const firestore = useFirestore();
   const { toast } = useToast();
   
-  // --- USE LOCAL DATA ---
+  const usersQuery = useMemoFirebase(() => (firestore && !useDemoData) ? query(collection(firestore, 'users')) : null, [firestore, useDemoData]);
+  const { data: usersFromDB, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersQuery);
+  
   const [users, setUsers] = useState<UserProfile[]>(defaultUsers);
-  const isLoading = false;
-  // --- END LOCAL DATA ---
+  const isLoading = useMemo(() => useDemoData ? false : isLoadingUsers, [useDemoData, isLoadingUsers]);
+
+  useEffect(() => {
+    if (useDemoData) {
+      setUsers(defaultUsers);
+    } else if (usersFromDB) {
+      setUsers(usersFromDB);
+    }
+  }, [useDemoData, usersFromDB]);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [userToAction, setUserToAction] = useState<UserProfile | null>(null);
@@ -69,12 +78,11 @@ export default function UsersPage() {
   };
   
   const confirmRoleChange = async () => {
-      if (!userToAction) return;
+      if (!userToAction || useDemoData) return;
       
       const userDocRef = doc(firestore, 'users', userToAction.uid);
       setDocumentNonBlocking(userDocRef, { role: newRole }, { merge: true });
 
-      // Update local state to reflect change immediately
       setUsers(prevUsers => prevUsers.map(u => u.uid === userToAction.uid ? { ...u, role: newRole } : u));
       
       toast({
@@ -87,14 +95,13 @@ export default function UsersPage() {
   }
 
   const confirmAction = async () => {
-    if (!userToAction || !actionType) return;
+    if (!userToAction || !actionType || useDemoData) return;
     const userDocRef = doc(firestore, 'users', userToAction.uid);
 
     if (actionType === 'promote') {
       const newStoreId = `store-${userToAction.uid.slice(0, 8)}`;
       setDocumentNonBlocking(userDocRef, { role: 'admin', storeId: newStoreId, storeRequest: false }, { merge: true });
 
-      // Update local state
       setUsers(prevUsers => prevUsers.map(u => u.uid === userToAction.uid ? { ...u, role: 'admin', storeId: newStoreId, storeRequest: false } : u));
       
       toast({
@@ -106,7 +113,6 @@ export default function UsersPage() {
        const newStatus = userToAction.status === 'disabled' ? 'active' : 'disabled';
        setDocumentNonBlocking(userDocRef, { status: newStatus }, { merge: true });
 
-       // Update local state
        setUsers(prevUsers => prevUsers.map(u => u.uid === userToAction.uid ? { ...u, status: newStatus } : u));
        
        toast({
@@ -231,7 +237,7 @@ export default function UsersPage() {
                     <TableCell>
                        <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button aria-haspopup="true" size="icon" variant="ghost" disabled={user.uid === currentUserProfile?.uid}>
+                                <Button aria-haspopup="true" size="icon" variant="ghost" disabled={user.uid === currentUserProfile?.uid || useDemoData}>
                                     <MoreHorizontal className="h-4 w-4" />
                                 </Button>
                             </DropdownMenuTrigger>

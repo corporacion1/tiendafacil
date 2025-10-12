@@ -1,3 +1,4 @@
+
 import { FieldValue } from 'firebase/firestore';
 
 export type UserRole = 'superAdmin' | 'admin' | 'user' | 'pos';
@@ -38,6 +39,7 @@ export type Store = {
     secondaryCurrencySymbol?: string;
     tax1?: number;
     tax2?: number;
+    useDemoData?: boolean; // <-- NEW FLAG
 };
 
 // The Settings type is now an alias for Store for consistency in the context

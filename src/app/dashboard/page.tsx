@@ -38,6 +38,9 @@ import { useSettings } from "@/contexts/settings-context";
 import { InventoryMovement, Product, Purchase, Sale } from "@/lib/types";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { mockSales, mockPurchases, mockProducts } from "@/lib/data";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, query, where } from "firebase/firestore";
+
 
 type TimeFilter = 'day' | 'week' | 'month';
 
@@ -57,15 +60,26 @@ const getDate = (d: any): Date => {
 
 
 export default function Dashboard() {
-  const { activeSymbol, activeRate, isLoadingSettings, activeStoreId } = useSettings();
+  const { activeSymbol, activeRate, isLoadingSettings, activeStoreId, useDemoData } = useSettings();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
-  
-  // --- LOCAL DATA HOOKS ---
-  const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
-  const [purchases, setPurchases] = useState(mockPurchases.map(p => ({...p, storeId: activeStoreId})));
-  const [products, setProductsState] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId})));
+  const firestore = useFirestore();
+
+  const salesQuery = useMemoFirebase(() => (firestore && !useDemoData) ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)) : null, [firestore, useDemoData, activeStoreId]);
+  const purchasesQuery = useMemoFirebase(() => (firestore && !useDemoData) ? query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId)) : null, [firestore, useDemoData, activeStoreId]);
+  const productsQuery = useMemoFirebase(() => (firestore && !useDemoData) ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, useDemoData, activeStoreId]);
+
+  const { data: salesFromDB, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
+  const { data: purchasesFromDB, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
+  const { data: productsFromDB, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+
+  const sales = useMemo(() => useDemoData ? mockSales.map(s => ({...s, storeId: activeStoreId})) : salesFromDB, [useDemoData, salesFromDB, activeStoreId]);
+  const purchases = useMemo(() => useDemoData ? mockPurchases.map(p => ({...p, storeId: activeStoreId})) : purchasesFromDB, [useDemoData, purchasesFromDB, activeStoreId]);
+  const products = useMemo(() => useDemoData ? mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})) : productsFromDB, [useDemoData, productsFromDB, activeStoreId]);
+
+  const isLoading = isLoadingSettings || ( !useDemoData && (isLoadingSales || isLoadingPurchases || isLoadingProducts));
 
   const recentMovements: InventoryMovement[] = useMemo(() => {
+    if (!sales || !purchases) return [];
     const saleMovements = sales.flatMap(sale => 
         sale.items.map(item => ({
             id: `mov-sale-${sale.id}-${item.productId}`,
@@ -89,8 +103,6 @@ export default function Dashboard() {
     return [...saleMovements, ...purchaseMovements].sort((a,b) => getDate(b.date).getTime() - getDate(a.date).getTime())
   }, [sales, purchases]);
 
-
-  const isLoading = isLoadingSettings;
 
   const cutoffDate = useMemo(() => {
     const now = new Date();
