@@ -81,9 +81,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
 export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   return (
     <SecurityProvider>
-        <SettingsProvider>
-            <AppShell>{children}</AppShell>
-        </SettingsProvider>
+        <AppShell>{children}</AppShell>
     </SecurityProvider>
   )
 }
