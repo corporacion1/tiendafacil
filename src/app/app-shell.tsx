@@ -32,15 +32,18 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
     if (isPublicPage) return;
 
     if (!isLoadingSettings && !userProfile && !useDemoData) {
+      // If we are in live mode and there is no user profile, redirect.
       router.replace('/catalog');
       return;
     }
     
+    // If we have a user (in live mode), lock the app with PIN if necessary.
     if (userProfile) {
       lockApp();
     }
   }, [pathname, userProfile, isLoadingSettings, isPublicPage, router, lockApp, useDemoData]);
 
+  // Loading skeleton shown while settings or user profile are being fetched in live mode.
   if (isLoadingSettings || (!useDemoData && !userProfile)) {
     return (
         <div className="flex min-h-screen w-full bg-muted/40">
@@ -80,6 +83,7 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
   );
 }
 
+// AppShell now wraps the content with the necessary providers for protected routes.
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <SecurityProvider>

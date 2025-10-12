@@ -4,8 +4,8 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
-import { doc, collection, getDocs, limit, query, where } from 'firebase/firestore';
-import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { doc, collection, getDocs, limit, query, where, getDoc } from 'firebase/firestore';
+import { useDoc, useCollection, useFirestore, useMemoFirebase, useAuth, useUser as useAuthUserHook } from '@/firebase';
 import type { CurrencyRate, Settings, UserProfile, Product } from '@/lib/types';
 import { defaultStore, defaultStoreId, mockCurrencyRates, initialFamilies, initialUnits, initialWarehouses } from '@/lib/data';
 import { useUser as useUserHook } from '@/firebase/auth/use-user';
@@ -42,7 +42,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { toast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
-  const firestore = useFirestore();
+  const auth = useAuth(); // Use the hook to get the auth instance
+  const firestore = useFirestore(); // Use the hook to get the firestore instance
+  const { user: authUser } = useAuthUserHook(); // Get the raw auth user
 
   const [useDemoData, setUseDemoDataState] = useState<boolean>(true);
   const [isLoadingPersistence, setIsLoadingPersistence] = useState(true);
@@ -50,7 +52,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   
-  // Step 1: Load flags from localStorage immediately and synchronously if possible.
   useEffect(() => {
     try {
       const demoFlag = localStorage.getItem(DEMO_DATA_FLAG_KEY);
@@ -71,11 +72,17 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const { user: userProfile, isUserLoading, needsProfileCreation } = useUserHook();
 
-  const storeRef = useMemoFirebase(() => (!useDemoData && firestore) ? doc(firestore, 'stores', activeStoreId) : null, [useDemoData, firestore, activeStoreId]);
-  const ratesRef = useMemoFirebase(() => (!useDemoData && firestore) ? collection(firestore, 'stores', activeStoreId, 'currencyRates') : null, [useDemoData, firestore, activeStoreId]);
-  const familiesRef = useMemoFirebase(() => (!useDemoData && firestore) ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [useDemoData, firestore, activeStoreId]);
-  const unitsRef = useMemoFirebase(() => (!useDemoData && firestore) ? query(collection(firestore, 'units'), where('storeId', '==', activeStoreId)) : null, [useDemoData, firestore, activeStoreId]);
-  const warehousesRef = useMemoFirebase(() => (!useDemoData && firestore) ? query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId)) : null, [useDemoData, firestore, activeStoreId]);
+  // Determine if we are on a public page
+  const isPublicPage = useMemo(() => pathname === '/' || pathname.startsWith('/catalog'), [pathname]);
+  
+  // Memoize Firestore references, but only if not on a public page and not in demo mode
+  const canFetchFirestoreData = !isPublicPage && !useDemoData;
+  
+  const storeRef = useMemoFirebase(() => (canFetchFirestoreData && firestore) ? doc(firestore, 'stores', activeStoreId) : null, [canFetchFirestoreData, firestore, activeStoreId]);
+  const ratesRef = useMemoFirebase(() => (canFetchFirestoreData && firestore) ? collection(firestore, 'stores', activeStoreId, 'currencyRates') : null, [canFetchFirestoreData, firestore, activeStoreId]);
+  const familiesRef = useMemoFirebase(() => (canFetchFirestoreData && firestore) ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [canFetchFirestoreData, firestore, activeStoreId]);
+  const unitsRef = useMemoFirebase(() => (canFetchFirestoreData && firestore) ? query(collection(firestore, 'units'), where('storeId', '==', activeStoreId)) : null, [canFetchFirestoreData, firestore, activeStoreId]);
+  const warehousesRef = useMemoFirebase(() => (canFetchFirestoreData && firestore) ? query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId)) : null, [canFetchFirestoreData, firestore, activeStoreId]);
   
   const { data: settingsFromDB, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(storeRef);
   const { data: ratesFromDB } = useCollection<CurrencyRate>(ratesRef);
@@ -83,16 +90,16 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { data: unitsFromDB } = useCollection(unitsRef);
   const { data: warehousesFromDB } = useCollection(warehousesRef);
 
-  const settings = useMemo(() => useDemoData ? defaultStore : settingsFromDB, [useDemoData, settingsFromDB]);
-  const currencyRates = useMemo(() => useDemoData ? mockCurrencyRates.map((r,i)=>({...r, id: `rate-${i}`})) : (ratesFromDB || []), [useDemoData, ratesFromDB]);
-  const families = useMemo(() => useDemoData ? initialFamilies : (familiesFromDB || []), [useDemoData, familiesFromDB]);
-  const units = useMemo(() => useDemoData ? initialUnits : (unitsFromDB || []), [useDemoData, unitsFromDB]);
-  const warehouses = useMemo(() => useDemoData ? initialWarehouses : (warehousesFromDB || []), [useDemoData, warehousesFromDB]);
+  const settings = useMemo(() => (useDemoData || isPublicPage) ? defaultStore : settingsFromDB, [useDemoData, isPublicPage, settingsFromDB]);
+  const currencyRates = useMemo(() => (useDemoData || isPublicPage) ? mockCurrencyRates.map((r,i)=>({...r, id: `rate-${i}`})) : (ratesFromDB || []), [useDemoData, isPublicPage, ratesFromDB]);
+  const families = useMemo(() => (useDemoData || isPublicPage) ? initialFamilies : (familiesFromDB || []), [useDemoData, isPublicPage, familiesFromDB]);
+  const units = useMemo(() => (useDemoData || isPublicPage) ? initialUnits : (unitsFromDB || []), [useDemoData, isPublicPage, unitsFromDB]);
+  const warehouses = useMemo(() => (useDemoData || isPublicPage) ? initialWarehouses : (warehousesFromDB || []), [useDemoData, isPublicPage, warehousesFromDB]);
   
-  const isLoading = isLoadingPersistence || isUserLoading || (!useDemoData && isLoadingSettingsDoc);
+  const isLoading = isLoadingPersistence || isUserLoading || (!useDemoData && !isPublicPage && isLoadingSettingsDoc);
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || isPublicPage) return;
 
     if (userProfile?.role === 'superAdmin' && localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY)) {
       setActiveStoreId(localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY)!);
@@ -103,41 +110,50 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       } catch (e) { console.warn('localStorage not available for storeId') }
     }
 
-  }, [isLoading, userProfile]);
+  }, [isLoading, isPublicPage, userProfile]);
 
   const setUseDemoData = useCallback(async (useDemo: boolean): Promise<boolean> => {
       if (useDemo === false) {
-          if (!firestore) {
-              toast({ variant: 'destructive', title: 'Error', description: 'La conexión a la base de datos no está lista.' });
+          if (!firestore || !authUser) {
+              toast({ variant: 'destructive', title: 'Error', description: 'La conexión a la base de datos o la autenticación no está lista.' });
               return false;
           }
-          const storeDoc = await getDocs(query(collection(firestore, 'stores'), where('id', '==', activeStoreId), limit(1)));
-          if (storeDoc.empty) {
-              toast({ variant: 'destructive', title: 'Configuración Incompleta', description: 'No se encontró la configuración de la tienda en la base de datos.' });
+          
+          try {
+            const userDocSnap = await getDoc(doc(firestore, 'users', authUser.uid));
+            if (!userDocSnap.exists() || !userDocSnap.data()?.storeId) {
+                toast({ variant: 'destructive', title: 'Configuración Incompleta', description: 'Tu perfil de usuario no está completo o no tienes una tienda asignada.' });
+                return false;
+            }
+            const userStoreId = userDocSnap.data().storeId;
+            const storeDoc = await getDoc(doc(firestore, 'stores', userStoreId));
+
+            if (!storeDoc.exists()) {
+                toast({ variant: 'destructive', title: 'Configuración Incompleta', description: 'No se encontró la configuración de tu tienda en la base de datos.' });
+                return false;
+            }
+
+            const liveSettings = storeDoc.data() as Settings;
+
+            const validationChecks = [
+                { check: !!liveSettings.name, message: 'El nombre de la tienda no está configurado.' },
+                { check: !!liveSettings.address, message: 'La dirección de la tienda no está configurada.' },
+                { check: !!liveSettings.phone, message: 'El teléfono de la tienda no está configurado.' },
+                { check: !!liveSettings.businessType, message: 'El tipo de negocio no está configurado.' },
+                { check: async () => { const snapshot = await getDocs(query(collection(firestore, 'stores', userStoreId, 'currencyRates'), limit(1))); return !snapshot.empty; }, message: 'Debes registrar al menos una tasa de cambio.' },
+            ];
+
+            for (const { check, message } of validationChecks) {
+                const isValid = typeof check === 'function' ? await check() : check;
+                if (!isValid) {
+                    toast({ variant: 'destructive', title: 'Configuración Incompleta', description: message });
+                    return false;
+                }
+            }
+          } catch (error) {
+              console.error("Validation error:", error);
+              toast({ variant: 'destructive', title: 'Error de Validación', description: 'No se pudo verificar la configuración de la tienda.' });
               return false;
-          }
-          const liveSettings = storeDoc.docs[0].data() as Settings;
-
-          const validationChecks = [
-              { check: !!liveSettings.name, message: 'El nombre de la tienda no está configurado.' },
-              { check: !!liveSettings.address, message: 'La dirección de la tienda no está configurada.' },
-              { check: !!liveSettings.phone, message: 'El teléfono de la tienda no está configurado.' },
-              { check: !!liveSettings.businessType, message: 'El tipo de negocio no está configurado.' },
-              { check: !!liveSettings.primaryCurrencyName, message: 'El nombre de la moneda principal no está configurado.' },
-              { check: !!liveSettings.primaryCurrencySymbol, message: 'El símbolo de la moneda principal no está configurado.' },
-              { check: async () => { const snapshot = await getDocs(query(collection(firestore, 'stores', activeStoreId, 'currencyRates'), limit(1))); return !snapshot.empty; }, message: 'Debes registrar al menos una tasa de cambio.' },
-              { check: async () => { const snapshot = await getDocs(query(collection(firestore, 'products'), where('storeId', '==', activeStoreId), limit(1))); return !snapshot.empty; }, message: 'Debes crear al menos un producto.' },
-              { check: async () => { const snapshot = await getDocs(query(collection(firestore, 'units'), where('storeId', '==', activeStoreId), limit(1))); return !snapshot.empty; }, message: 'Debes crear al menos una unidad de medida.' },
-              { check: async () => { const snapshot = await getDocs(query(collection(firestore, 'families'), where('storeId', '==', activeStoreId), limit(1))); return !snapshot.empty; }, message: 'Debes crear al menos una familia de productos.' },
-              { check: async () => { const snapshot = await getDocs(query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId), limit(1))); return !snapshot.empty; }, message: 'Debes crear al menos un almacén.' },
-          ];
-
-          for (const { check, message } of validationChecks) {
-              const isValid = typeof check === 'function' ? await check() : check;
-              if (!isValid) {
-                  toast({ variant: 'destructive', title: 'Configuración Incompleta', description: message });
-                  return false;
-              }
           }
       }
 
@@ -152,7 +168,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
           toast({ variant: 'destructive', title: 'Error de Almacenamiento' });
           return false;
       }
-  }, [firestore, activeStoreId, toast]);
+  }, [firestore, authUser, toast]);
 
   const switchStore = (storeId: string) => {
     if (userProfile?.role === 'superAdmin') {
