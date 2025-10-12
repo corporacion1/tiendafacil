@@ -1,5 +1,4 @@
 
-
 import type { Product, Sale, Unit, Family, Warehouse, Customer, Purchase, Ad, UserProfile, Store, CurrencyRate, Supplier, PendingOrder, CashSession } from '@/lib/types';
 import { PlaceHolderImages } from './placeholder-images';
 import { subDays, addDays, startOfWeek, startOfMonth, startOfYear } from 'date-fns';
@@ -30,10 +29,68 @@ export const defaultStore: Store = {
   whatsapp: "+584126915593",
   tiktok: "@tiendafacil",
   meta: "@tiendafacil",
-  useDemoData: true, 
 };
 
-// --- DATOS DE MUESTRA FUNDACIONALES (NO TRANSACCIONALES) ---
+// --- USUARIOS POR DEFECTO ---
+export const defaultUsers: UserProfile[] = [
+    {
+        uid: '5QLaiiIr4mcGsjRXVGeGx50nrpk1',
+        email: 'corporacion1@gmail.com',
+        displayName: 'Jorge Negrete',
+        photoURL: 'https://i.imgur.com/8bXhQXa.png',
+        role: 'superAdmin',
+        status: 'active',
+        storeId: defaultStoreId,
+        createdAt: new Date().toISOString(),
+    },
+    {
+        uid: 'user_admin_001',
+        email: 'admin@tiendafacil.com',
+        displayName: 'admin',
+        photoURL: '/tienda_facil_logo.svg',
+        role: 'admin',
+        status: 'active',
+        storeId: defaultStoreId,
+        createdAt: new Date().toISOString(),
+    },
+    {
+        uid: 'user_pos_001',
+        email: 'pos@tiendafacil.com',
+        displayName: 'POS Demo',
+        photoURL: '/tienda_facil_logo.svg',
+        role: 'pos',
+        status: 'active',
+        storeId: defaultStoreId,
+        createdAt: new Date().toISOString(),
+    },
+    {
+        uid: 'user_demo_001',
+        email: 'demo@tiendafacil.com',
+        displayName: 'User Demo',
+        photoURL: '/tienda_facil_logo.svg',
+        role: 'user',
+        status: 'active',
+        storeId: defaultStoreId,
+        createdAt: new Date().toISOString(),
+    }
+];
+
+// --- DATOS DE MUESTRA (TODOS CONECTADOS AL storeId por defecto) ---
+
+export let pendingOrdersState: PendingOrder[] = [
+    {
+        id: 'PEND-DEMO-001',
+        date: new Date().toISOString(),
+        customerName: 'Jorge Negrete (Ejemplo)',
+        customerPhone: '555-123-4567',
+        items: [
+            { productId: "prod-4", productName: "SSD NVMe 2TB", quantity: 1, price: 149.99 },
+            { productId: "prod-3", productName: "Memoria RAM 32GB DDR5", quantity: 2, price: 129.99 }
+        ],
+        total: 409.97,
+        storeId: defaultStoreId
+    }
+];
 
 export const mockCurrencyRates: Omit<CurrencyRate, 'id'>[] = [
     { rate: 195.249100, date: new Date().toISOString() },
@@ -98,6 +155,71 @@ export const mockProducts: Omit<Product, 'createdAt' | 'storeId'>[] = [
     description: "Imprime miles de páginas con los tanques de tinta de súper alta capacidad.",
     imageUrl: PlaceHolderImages.find(p => p.id === '9')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '9')?.imageHint,
   },
+  {
+    id: "prod-6", name: "Proyector LED Full HD", sku: "PROJ-LED-FHD-06", stock: 18, price: 199.99, wholesalePrice: 185.00, cost: 160.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Proyectores", warehouse: "Almacén Principal",
+    description: "Proyector compacto y potente con resolución nativa 1080p y 9500 lúmenes.",
+    imageUrl: PlaceHolderImages.find(p => p.id === '10')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '10')?.imageHint,
+  },
+  {
+    id: "prod-7", name: "Teclado Mecánico RGB", sku: "ACC-KEYB-RGB-07", stock: 60, price: 89.99, wholesalePrice: 80.00, cost: 70.00, status: "promotion", tax1: true, tax2: false, unit: "Unidad", family: "Accesorios de Cómputo", warehouse: "Almacén Principal",
+    description: "Teclado mecánico con switches rojos e iluminación RGB personalizable.",
+    imageUrl: PlaceHolderImages.find(p => p.id === '11')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '11')?.imageHint,
+  },
+  {
+    id: "prod-8", name: "Mouse Gamer Inalámbrico", sku: "ACC-MSE-WRLS-08", stock: 75, price: 49.99, wholesalePrice: 45.00, cost: 35.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Accesorios de Cómputo", warehouse: "Almacén Principal",
+    description: "Mouse ligero con sensor óptico de alta precisión y tecnología inalámbrica de baja latencia.",
+    imageUrl: PlaceHolderImages.find(p => p.id === '12')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '12')?.imageHint,
+  },
+  {
+    id: "prod-9", name: "Cartucho de Tinta Negra 544", sku: "INK-544-BLK-09", stock: 150, price: 14.99, wholesalePrice: 12.50, cost: 10.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Impresoras y Accesorios", warehouse: "Almacén Principal",
+    description: "Cartucho de tinta original para impresoras EcoTank. Rendimiento de 4500 páginas.",
+    imageUrl: PlaceHolderImages.find(p => p.id === '13')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '13')?.imageHint,
+  },
+  {
+    id: "prod-10", name: "Webcam Full HD 1080p", sku: "ACC-CAM-FHD-10", stock: 45, price: 39.99, wholesalePrice: 35.00, cost: 30.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Accesorios de Cómputo", warehouse: "Almacén Principal",
+    description: "Webcam con micrófono incorporado, ideal para streaming y videoconferencias.",
+    imageUrl: PlaceHolderImages.find(p => p.id === '14')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '14')?.imageHint,
+  },
+];
+
+const today = new Date();
+export const mockSales: Omit<Sale, 'storeId'>[] = [
+    { // Venta del mes pasado (para tener datos históricos)
+        id: "SALE-001", customerId: "cust-1", customerName: "John Doe",
+        items: [ { productId: "prod-1", productName: "Tarjeta Gráfica RTX 4090", quantity: 1, price: 1799.99 } ],
+        total: 1799.99, date: subDays(startOfMonth(today), 5).toISOString(), transactionType: 'contado', status: 'paid', paidAmount: 1799.99,
+        payments: [{ id: 'pay-sale-001', amount: 1799.99, date: subDays(startOfMonth(today), 5).toISOString(), method: 'tarjeta', reference: '1234', receivedBy: 'Admin' }]
+    },
+    { // Venta de la semana actual
+        id: "SALE-002", customerId: "cust-2", customerName: "Jane Smith",
+        items: [ { productId: "prod-2", productName: "Procesador Intel Core i9-13900K", quantity: 1, price: 589.00 } ],
+        total: 589.00, date: subDays(today, 2).toISOString(), transactionType: 'credito', status: 'unpaid', paidAmount: 300,
+        payments: [{ id: 'pay-sale-002', amount: 300, date: subDays(today, 2).toISOString(), method: 'pago-movil', reference: '012345', receivedBy: 'Demo' }]
+    },
+     { // Venta de hoy
+        id: "SALE-003", customerId: "eventual", customerName: "Cliente Eventual",
+        items: [ { productId: "prod-3", productName: "Memoria RAM 32GB DDR5", quantity: 2, price: 129.99 } ],
+        total: 259.98, date: new Date().toISOString(), transactionType: 'contado', status: 'paid', paidAmount: 259.98,
+        payments: [{ id: 'pay-sale-003', amount: 259.98, date: new Date().toISOString(), method: 'efectivo', reference: '', receivedBy: 'Admin' }]
+    },
+];
+
+export const mockPurchases: Omit<Purchase, 'storeId'>[] = [
+    { // Compra del mes pasado
+        id: "PUR-001", supplierId: "sup-1", supplierName: "TechData Corp",
+        items: [ { productId: "prod-1", productName: "Tarjeta Gráfica RTX 4090", quantity: 10, cost: 1600.00 } ],
+        total: 16000, date: subDays(startOfMonth(today), 10).toISOString(), documentNumber: "INV-TD-8899", responsible: "Admin",
+    },
+    { // Compra de esta semana
+        id: "PUR-002", supplierId: "sup-2", supplierName: "PC Components LLC",
+        items: [ { productId: "prod-4", productName: "SSD NVMe 2TB", quantity: 20, cost: 125.00 } ],
+        total: 2500, date: startOfWeek(today).toISOString(), documentNumber: "INV-PC-1122", responsible: "Admin",
+    },
+    { // Compra de hoy
+        id: "PUR-003", supplierId: "sup-1", supplierName: "TechData Corp",
+        items: [ { productId: "prod-2", productName: "Procesador Intel Core i9-13900K", quantity: 15, cost: 520.00 } ],
+        total: 7800, date: new Date().toISOString(), documentNumber: "INV-TD-9001", responsible: "Admin",
+    },
 ];
 
 export const mockAds: Omit<Ad, 'createdAt'>[] = [
@@ -113,6 +235,45 @@ export const mockAds: Omit<Ad, 'createdAt'>[] = [
     views: 850, status: 'active', targetBusinessTypes: ['Restaurante'],
     expiryDate: addDays(new Date(), 15).toISOString(),
   },
+  {
+    id: "ad-3", sku: "OFERTA-MODA-01", name: "Nueva Colección Invierno", description: "Descubre las últimas tendencias para esta temporada.", price: 49.99,
+    imageUrl: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=600&auto=format&fit=crop", imageHint: "fashion collection",
+    views: 2300, status: 'active', targetBusinessTypes: ['Tienda de Ropa', 'Salud y Belleza'],
+    expiryDate: addDays(new Date(), 45).toISOString(),
+  },
+];
+
+export const mockCashSessions: CashSession[] = [
+    { // Sesión cerrada del mes pasado
+        id: 'SES-001',
+        storeId: defaultStoreId,
+        openingDate: subDays(startOfMonth(today), 5).toISOString(),
+        closingDate: subDays(startOfMonth(today), 5).toISOString(),
+        openingBalance: 100,
+        closingBalance: 1905.00,
+        calculatedCash: 1899.99, // 100 (apertura) + 1799.99 (tarjeta, pero asumamos fue efectivo para el ejemplo)
+        difference: 5.01,
+        status: 'closed',
+        openedBy: 'Admin',
+        closedBy: 'Admin',
+        salesIds: ['SALE-001'],
+        transactions: { 'tarjeta': 1799.99 }
+    },
+    { // Sesión cerrada de esta semana
+        id: 'SES-002',
+        storeId: defaultStoreId,
+        openingDate: subDays(today, 2).toISOString(),
+        closingDate: subDays(today, 2).toISOString(),
+        openingBalance: 50,
+        closingBalance: 345.00,
+        calculatedCash: 350.00, // 50 (apertura) + 300 (pago-movil, que contaría como efectivo en caja)
+        difference: -5.00,
+        status: 'closed',
+        openedBy: 'Demo',
+        closedBy: 'Demo',
+        salesIds: ['SALE-002'],
+        transactions: { 'pago-movil': 300 }
+    },
 ];
 
 export const paymentMethods = [
@@ -136,8 +297,23 @@ export const businessCategories: string[] = [
     'Otro'
 ];
 
-// Transaccional data is now empty by default.
-export const mockSales: Omit<Sale, 'storeId'>[] = [];
-export const mockPurchases: Omit<Purchase, 'storeId'>[] = [];
-export let pendingOrdersState: PendingOrder[] = [];
-export const mockCashSessions: CashSession[] = [];
+// In a real app, this would be a server-side operation
+export function trackAdClick(adId: string) {
+    // This is a mock function, in a real app this would call a server endpoint
+    // to track the click and update the ad's view count in the database.
+    console.log(`Ad click tracked for: ${adId}`);
+}
+
+// This function now just returns false to satisfy the call in login page, but does nothing.
+export async function forceSeedDatabase(): Promise<boolean> {
+  console.log("forceSeedDatabase is disabled. Using local data.");
+  return false;
+}
+
+// This function does nothing.
+export async function factoryReset() {
+  console.log("factoryReset is disabled. Using local data.");
+  return;
+}
+
+    
