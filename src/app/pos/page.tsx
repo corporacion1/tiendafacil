@@ -20,16 +20,12 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { useSettings } from "@/contexts/settings-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { paymentMethods, mockProducts, defaultCustomers, mockSales, initialFamilies, pendingOrdersState } from "@/lib/data";
+import { paymentMethods, mockProducts, defaultCustomers, mockSales, initialFamilies, pendingOrdersState, defaultStore, defaultUsers } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SessionReportPreview } from "@/components/session-report-preview";
 import { useSecurity } from "@/contexts/security-context";
-import { useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc } from "firebase/firestore";
-import { useCollection } from "@/firebase/firestore/use-collection";
-import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
@@ -74,21 +70,14 @@ export default function POSPage() {
   const { toast } = useToast();
   const { settings, setSettings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
   const { isLocked, isSecurityReady } = useSecurity();
-  const firestore = useFirestore();
   
-  const productsRef = useMemoFirebase(() => firestore ? collection(firestore, 'products') : null, [firestore]);
-  const { data: products } = useCollection<Product>(productsRef);
-
-  const customersRef = useMemoFirebase(() => firestore ? collection(firestore, 'customers') : null, [firestore]);
-  const { data: customers } = useCollection<Customer>(customersRef);
-
+  // --- LOCAL DATA STATE ---
+  const [products, setProductsState] = useState<Product[]>(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})));
+  const [customers, setCustomersState] = useState<Customer[]>(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
+  const [sales, setSalesState] = useState<Sale[]>(mockSales.map(s => ({...s, storeId: activeStoreId})));
+  const [families, setFamiliesState] = useState<Family[]>(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
+  
   const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>(pendingOrdersState);
-  
-  const salesRef = useMemoFirebase(() => firestore ? collection(firestore, 'sales') : null, [firestore]);
-  const { data: sales } = useCollection<Sale>(salesRef);
-  
-  const familiesRef = useMemoFirebase(() => firestore ? collection(firestore, 'families') : null, [firestore]);
-  const { data: families } = useCollection<Family>(familiesRef);
   
   const router = useRouter();
   const isLoading = isLoadingSettings;
@@ -388,8 +377,8 @@ export default function POSPage() {
       toast({ variant: "destructive", title: "Carrito vacío"});
       return;
     }
-    if (!settings || !activeSession || !salesRef) {
-        toast({ variant: "destructive", title: "Error", description: "No hay una sesión de caja activa o la referencia de ventas no está disponible."});
+    if (!settings || !activeSession) {
+        toast({ variant: "destructive", title: "Error", description: "No hay una sesión de caja activa."});
         return;
     }
     
@@ -407,7 +396,8 @@ export default function POSPage() {
         date: new Date().toISOString(),
     }));
 
-    const newSale: Omit<Sale, 'id'> = {
+    const newSale: Sale = {
+        id: saleId,
         customerId: selectedCustomer?.id ?? 'eventual',
         customerName: selectedCustomer?.name ?? 'Cliente Eventual',
         items: cartItems.map(item => ({
@@ -425,29 +415,29 @@ export default function POSPage() {
         storeId: activeStoreId,
     }
     
-    const saleDocRef = doc(salesRef, saleId);
-    setDocumentNonBlocking(saleDocRef, newSale, {});
+    setSalesState(prev => [...prev, newSale]);
 
-    if (productsRef && products) {
-        for (const item of cartItems) {
-            const productDocRef = doc(productsRef, item.product.id);
-            const newStock = item.product.stock - item.quantity;
-            setDocumentNonBlocking(productDocRef, { stock: newStock }, { merge: true });
-        }
+    let updatedProducts = [...products];
+    for (const item of cartItems) {
+        updatedProducts = updatedProducts.map(p => 
+            p.id === item.product.id 
+                ? { ...p, stock: p.stock - item.quantity }
+                : p
+        );
     }
+    setProductsState(updatedProducts);
     
-    if(settings.saleCorrelative !== undefined && firestore) {
+    if(settings.saleCorrelative !== undefined) {
       const newCorrelative = (settings.saleCorrelative || 0) + 1;
-      const settingsDocRef = doc(firestore, 'stores', activeStoreId);
-      setDocumentNonBlocking(settingsDocRef, { saleCorrelative: newCorrelative }, { merge: true });
+      setSettings({ ...settings, saleCorrelative: newCorrelative });
     }
     
     setActiveSession(prev => prev ? {...prev, salesIds: [...prev.salesIds, saleId]} : null);
     
-    setLastSale({ ...newSale, id: saleId });
+    setLastSale(newSale);
     
     toast({
-        title: "Venta Procesada",
+        title: "Venta Procesada (Simulación)",
         description: `La venta #${saleId} ha sido registrada.`,
     });
     
@@ -487,28 +477,23 @@ export default function POSPage() {
         });
         return;
     }
-
-    if (!customersRef) {
-        toast({ variant: 'destructive', title: 'Error', description: 'No se pudo obtener la referencia a la colección de clientes.' });
-        return;
-    }
     
     const newId = newCustomer.id.trim() || `cust-${Date.now()}`;
-    const customerToAdd: Omit<Customer, 'id'> = {
+    const customerToAdd: Customer = {
+        id: newId,
         name: newCustomer.name,
         phone: newCustomer.phone,
         address: newCustomer.address,
         storeId: activeStoreId,
     };
     
-    const customerDocRef = doc(customersRef, newId);
-    setDocumentNonBlocking(customerDocRef, customerToAdd, {});
+    setCustomersState(prev => [...prev, customerToAdd]);
     
     setSelectedCustomerId(newId);
     setNewCustomer({ id: '', name: '', phone: '', address: '' });
     setIsCustomerDialogOpen(false);
     toast({
-        title: "Cliente Agregado",
+        title: "Cliente Agregado (Simulación)",
         description: `El cliente "${customerToAdd.name}" ha sido agregado y seleccionado.`,
     });
   };
@@ -557,16 +542,15 @@ export default function POSPage() {
     const customer = (customers || []).find(c => c.phone === order.customerPhone || c.name === order.customerName);
     if(customer) {
         setSelectedCustomerId(customer.id);
-    } else if (customersRef) {
-        const newCustomerFromOrder: Omit<Customer, 'id'> = {
+    } else {
+        const newCustomerFromOrder: Customer = {
+            id: `cust-${Date.now()}`,
             name: order.customerName,
             phone: order.customerPhone,
             storeId: activeStoreId,
         }
-        const newId = `cust-${Date.now()}`;
-        const customerDocRef = doc(customersRef, newId);
-        setDocumentNonBlocking(customerDocRef, newCustomerFromOrder, {});
-        setSelectedCustomerId(newId);
+        setCustomersState(prev => [...prev, newCustomerFromOrder]);
+        setSelectedCustomerId(newCustomerFromOrder.id);
     }
 
     const orderIndex = pendingOrdersState.findIndex(p => p.id === order.id);
@@ -844,7 +828,7 @@ export default function POSPage() {
                                 </div>
                                 <DialogFooter>
                                     <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-                                    <Button onClick={handleAddNewCustomer} disabled={!isNewCustomerFormDirty || !newCustomer.name.trim()}>Guardar Proveedor</Button>
+                                    <Button onClick={handleAddNewCustomer} disabled={!isNewCustomerFormDirty || !newCustomer.name.trim()}>Guardar Cliente</Button>
                                 </DialogFooter>
                             </DialogContent>
                         </Dialog>

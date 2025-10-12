@@ -12,13 +12,9 @@ import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useSettings } from "@/contexts/settings-context";
-import { useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc } from "firebase/firestore";
-import { useCollection } from "@/firebase/firestore/use-collection";
-import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { defaultUsers } from "@/lib/data";
 
 const getRoleVariant = (role: UserProfile['role']) => {
   switch (role) {
@@ -44,11 +40,10 @@ const getStatusVariant = (status: UserProfile['status'] | undefined) => {
 
 export default function UsersPage() {
   const { userProfile: currentUserProfile, switchStore } = useSettings();
-  const firestore = useFirestore();
   const { toast } = useToast();
   
-  const usersRef = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
-  const { data: users, isLoading } = useCollection<UserProfile>(usersRef);
+  const [users, setUsers] = useState<UserProfile[]>(defaultUsers);
+  const isLoading = false; // Data is local
   
   const [searchTerm, setSearchTerm] = useState('');
   const [userToAction, setUserToAction] = useState<UserProfile | null>(null);
@@ -68,14 +63,13 @@ export default function UsersPage() {
   };
   
   const confirmRoleChange = async () => {
-      if (!userToAction || !firestore) return;
+      if (!userToAction) return;
       
-      const userDocRef = doc(firestore, 'users', userToAction.uid);
-      setDocumentNonBlocking(userDocRef, { role: newRole }, { merge: true });
+      setUsers(prev => prev.map(u => u.uid === userToAction.uid ? { ...u, role: newRole } : u));
       
       toast({
-          title: 'Rol Actualizado',
-          description: `${userToAction.displayName} ahora es ${newRole}.`
+          title: 'Rol Actualizado (Simulación)',
+          description: `${userToAction.displayName} ahora es ${newRole}.`,
       });
 
       setUserToAction(null);
@@ -83,29 +77,23 @@ export default function UsersPage() {
   }
 
   const confirmAction = async () => {
-    if (!userToAction || !actionType || !firestore) return;
-
-    const userDocRef = doc(firestore, 'users', userToAction.uid);
+    if (!userToAction || !actionType) return;
 
     if (actionType === 'promote') {
       const newStoreId = `store-${userToAction.uid.slice(0, 8)}`;
-      setDocumentNonBlocking(userDocRef, {
-          role: 'admin',
-          storeId: newStoreId,
-          storeRequest: false,
-      }, { merge: true });
+      setUsers(prev => prev.map(u => u.uid === userToAction.uid ? { ...u, role: 'admin', storeId: newStoreId, storeRequest: false } : u));
       
       toast({
-          title: "Usuario Promovido",
+          title: "Usuario Promovido (Simulación)",
           description: `${userToAction.displayName} ahora es un administrador con la tienda ${newStoreId}.`,
       });
 
     } else if (actionType === 'disable') {
        const newStatus = userToAction.status === 'disabled' ? 'active' : 'disabled';
-       setDocumentNonBlocking(userDocRef, { status: newStatus }, { merge: true });
+       setUsers(prev => prev.map(u => u.uid === userToAction.uid ? { ...u, status: newStatus } : u));
        
        toast({
-            title: `Usuario ${newStatus === 'disabled' ? 'Deshabilitado' : 'Habilitado'}`,
+            title: `Usuario ${newStatus === 'disabled' ? 'Deshabilitado' : 'Habilitado'} (Simulación)`,
             description: `La cuenta de "${userToAction.displayName}" ha sido ${newStatus === 'disabled' ? 'deshabilitada' : 'habilitada'}.`,
         });
     }

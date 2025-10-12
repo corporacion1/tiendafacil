@@ -3,9 +3,11 @@
 import { useEffect } from 'react';
 import { useUser as useAuthUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useDoc } from '@/firebase/firestore/use-doc';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, serverTimestamp } from 'firebase/firestore';
 import type { UserProfile } from '@/lib/types';
 import { defaultStoreId } from '@/lib/data';
+import { setDocumentNonBlocking } from '../non-blocking-updates';
+
 
 /**
  * Hook to get the currently authenticated user's profile from Firestore.
@@ -39,9 +41,7 @@ export function useUser() {
       };
       
       // Use a non-blocking write to create the user profile document.
-      setDoc(userProfileRef, newUserProfile, { merge: true }).catch(error => {
-          console.error("Error creating user profile:", error);
-      });
+      setDocumentNonBlocking(userProfileRef, newUserProfile, { merge: true });
     }
   }, [authUser, userProfile, isProfileLoading, userProfileRef]);
 

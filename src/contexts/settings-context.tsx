@@ -5,13 +5,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
-import { defaultStoreId, defaultStore, mockCurrencyRates } from '@/lib/data';
-import { useUser } from '@/firebase/auth/use-user';
-import { useDoc } from '@/firebase/firestore/use-doc';
-import { doc, collection } from 'firebase/firestore';
-import { useFirestore, useMemoFirebase } from '@/firebase';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-
+import { defaultStoreId, defaultStore, mockCurrencyRates, defaultUsers } from '@/lib/data';
+import { useUser as useAuthUserFromFirebase } from '@/firebase/auth/use-user'; // Keep for auth state, but not for profile data
 
 type DisplayCurrency = 'primary' | 'secondary';
 
@@ -40,58 +35,57 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { toast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
-  const firestore = useFirestore();
 
-  const { user, isUserLoading } = useUser();
-  const userProfile = user; // user from useUser is already the UserProfile
+  // We still use this to know IF a user is logged in via Firebase Auth
+  const { user: authUser, isUserLoading: isAuthLoading } = useAuthUserFromFirebase();
 
+  // --- LOCAL STATE MANAGEMENT ---
+  const [settings, setSettingsState] = useState<Settings | null>(defaultStore);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
-  
-  // Fetch Store Settings from Firestore
-  const storeRef = useMemoFirebase(() => {
-    if (!firestore || !activeStoreId) return null;
-    return doc(firestore, 'stores', activeStoreId);
-  }, [firestore, activeStoreId]);
-  
-  const { data: settings, isLoading: isLoadingStore } = useDoc<Settings>(storeRef);
-  
-  // TODO: Implement currency rates fetching from Firestore
   const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>(mockCurrencyRates);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const isLoadingSettings = isUserLoading || isLoadingStore;
-  
-  // Cargar preferencias y datos iniciales una sola vez
+  // Load preferences and set user profile from local data
   useEffect(() => {
     try {
       const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY) as DisplayCurrency;
       if (storedCurrencyPref) setDisplayCurrency(storedCurrencyPref);
-      
-      const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY);
-      if(userProfile?.role === 'superAdmin' && storedStoreId) {
-          setActiveStoreId(storedStoreId);
-      } else if (userProfile?.storeId) {
-          setActiveStoreId(userProfile.storeId);
-      }
 
+      const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY);
+
+      if (authUser) {
+        // Find user profile from local mock data
+        const profile = defaultUsers.find(u => u.uid === authUser.uid) || defaultUsers.find(u => u.role === 'superAdmin')!;
+        setUserProfile(profile);
+
+        if (profile.role === 'superAdmin' && storedStoreId) {
+          setActiveStoreId(storedStoreId);
+        } else if (profile.storeId) {
+          setActiveStoreId(profile.storeId);
+        }
+      } else {
+        setUserProfile(null);
+      }
+    
     } catch (error) {
       console.error("Could not access localStorage", error);
+    } finally {
+        setIsLoading(false);
     }
-  }, [userProfile]);
+  }, [authUser]);
+
 
   useEffect(() => {
-     if (!isUserLoading && !userProfile && !pathname.startsWith('/catalog')) {
+     if (!isAuthLoading && !authUser && !pathname.startsWith('/catalog')) {
       router.push('/catalog');
     }
-  }, [isUserLoading, userProfile, pathname, router]);
+  }, [isAuthLoading, authUser, pathname, router]);
 
   const handleSetSettings = (newSettings: Settings) => {
-    if (!storeRef) {
-        toast({ variant: 'destructive', title: "Error", description: "No hay referencia a la tienda para guardar." });
-        return;
-    }
-    setDocumentNonBlocking(storeRef, newSettings, { merge: true });
-    toast({ title: "Configuración Guardada", description: "Tus cambios han sido guardados en Firestore." });
+    setSettingsState(newSettings);
+    toast({ title: "Configuración Guardada (Simulación)", description: "Tus cambios se han guardado localmente." });
   };
 
   const switchStore = (storeId: string) => {
@@ -135,7 +129,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     setCurrencyRates,
     activeStoreId,
     switchStore,
-    isLoadingSettings,
+    isLoadingSettings: isLoading || isAuthLoading,
     userProfile,
   };
 
