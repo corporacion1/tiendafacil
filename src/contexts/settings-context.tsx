@@ -45,11 +45,12 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const pathname = usePathname();
   const firestore = useFirestore();
 
-  const { user: userProfile, isUserLoading } = useUserHook();
+  const { user: authUserProfile, isUserLoading } = useUserHook();
   
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   const [useDemoData, setUseDemoDataState] = useState<boolean>(true);
+  const [isLoadingDemoFlag, setIsLoadingDemoFlag] = useState(true);
 
   useEffect(() => {
     try {
@@ -58,10 +59,11 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     } catch (error) {
       console.error("Could not access localStorage for demo flag", error);
       setUseDemoDataState(true);
+    } finally {
+      setIsLoadingDemoFlag(false);
     }
   }, []);
 
-  // Firestore hooks - Now conditional based on useDemoData
   const storeRef = useMemoFirebase(() => (!useDemoData && firestore) ? doc(firestore, 'stores', activeStoreId) : null, [firestore, activeStoreId, useDemoData]);
   const { data: settingsFromDB, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(storeRef);
 
@@ -77,21 +79,21 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const warehousesRef = useMemoFirebase(() => (!useDemoData && firestore) ? query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId, useDemoData]);
   const { data: warehousesFromDB } = useCollection(warehousesRef);
   
-  // Data sources are now properly conditional
   const settings = useMemo(() => useDemoData ? defaultStore : settingsFromDB, [useDemoData, settingsFromDB]);
+  const userProfile = useMemo(() => useDemoData ? (defaultUsers.find(u => u.role === 'admin') || null) : authUserProfile, [useDemoData, authUserProfile]);
+
   const currencyRates = useMemo(() => useDemoData ? mockCurrencyRates.map((r,i)=>({...r, id: `rate-${i}`})) : (ratesFromDB || []), [useDemoData, ratesFromDB]);
   const families = useMemo(() => useDemoData ? initialFamilies : (familiesFromDB || []), [useDemoData, familiesFromDB]);
   const units = useMemo(() => useDemoData ? initialUnits : (unitsFromDB || []), [useDemoData, unitsFromDB]);
   const warehouses = useMemo(() => useDemoData ? initialWarehouses : (warehousesFromDB || []), [useDemoData, warehousesFromDB]);
 
- const setUseDemoData = useCallback(async (useDemo: boolean): Promise<boolean> => {
+  const setUseDemoData = useCallback(async (useDemo: boolean): Promise<boolean> => {
       if (useDemo === false) {
           if (!firestore || !activeStoreId) {
               toast({ variant: 'destructive', title: 'Error', description: 'La conexión a la base de datos no está lista.' });
               return false;
           }
           
-          // --- VALIDATION LOGIC ---
           const validationChecks = [
               { check: async () => settingsFromDB && settingsFromDB.name, message: 'El nombre de la tienda no está configurado.' },
               { check: async () => settingsFromDB && settingsFromDB.address, message: 'La dirección de la tienda no está configurada.' },
@@ -151,10 +153,10 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
 
   useEffect(() => {
-     if (!isUserLoading && !userProfile && !pathname.startsWith('/catalog') && !pathname.startsWith('/login')) {
+     if (!isLoadingDemoFlag && !isUserLoading && !userProfile && !useDemoData && !pathname.startsWith('/catalog') && !pathname.startsWith('/login')) {
       router.push('/catalog');
     }
-  }, [isUserLoading, userProfile, pathname, router]);
+  }, [isLoadingDemoFlag, isUserLoading, userProfile, useDemoData, pathname, router]);
 
   const handleSetSettings = (newSettings: Settings) => {
     if(activeStoreId && firestore) {
@@ -193,7 +195,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const latestRate = (currencyRates && currencyRates.length > 0) ? currencyRates.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].rate : 1;
   const activeRate = activeCurrency === 'primary' ? 1 : (latestRate > 0 ? latestRate : 1);
 
-  const isLoading = isUserLoading || (!useDemoData && isLoadingSettingsDoc);
+  const isLoading = isUserLoading || isLoadingDemoFlag || (!useDemoData && isLoadingSettingsDoc);
 
   const contextValue: SettingsContextType = {
     settings, 
@@ -230,5 +232,3 @@ export const useSettings = (): SettingsContextType => {
   }
   return context;
 };
-
-    

@@ -8,107 +8,139 @@ import { useFirestore } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { SUPER_ADMIN_UID } from '@/firebase/auth/use-user';
 import type { UserProfile } from '@/lib/types';
 import { useSettings } from '@/contexts/settings-context';
+import Image from 'next/image';
 
 export function FirstTimeSetupModal() {
-  const { user: authUser, isUserLoading: isAuthLoading } = useAuthUser();
-  const { user: profile, isUserLoading: isProfileLoading } = useUserProfile();
+  const { user: authUser } = useAuthUser();
+  const { needsProfileCreation } = useUserProfile();
   const { useDemoData } = useSettings();
   const firestore = useFirestore();
   const { toast } = useToast();
   
-  const [showModal, setShowModal] = useState(false);
-  const [isCreatingProfile, setIsCreatingProfile] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [formData, setFormData] = useState({
+    displayName: '',
+    email: '',
+    phone: '',
+  });
 
   useEffect(() => {
-    // Determine if the modal should be shown
-    const isSuperAdmin = authUser?.uid === SUPER_ADMIN_UID;
-    const profileDoesNotExist = !profile && !isProfileLoading;
-    const notInDemoMode = !useDemoData;
-    
-    if (isSuperAdmin && profileDoesNotExist && notInDemoMode) {
-      setShowModal(true);
+    // Show modal if user is authenticated, needs a profile, and demo mode is off.
+    if (authUser && needsProfileCreation && !useDemoData) {
+      setFormData({
+        displayName: authUser.displayName || '',
+        email: authUser.email || '',
+        phone: authUser.phoneNumber || '',
+      });
+      setIsOpen(true);
     } else {
-      setShowModal(false);
+      setIsOpen(false);
     }
-  }, [authUser, profile, isProfileLoading, useDemoData]);
+  }, [authUser, needsProfileCreation, useDemoData]);
 
   const handleCreateProfile = async () => {
     if (!authUser || !firestore) {
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo conectar a Firebase.' });
       return;
     }
+    if (!formData.displayName.trim() || !formData.email.trim()) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Nombre y correo son requeridos.' });
+        return;
+    }
 
-    setIsCreatingProfile(true);
+    setIsProcessing(true);
 
-    const superAdminProfile: UserProfile = {
+    const role = authUser.uid === SUPER_ADMIN_UID ? 'superAdmin' : 'user';
+    const storeRequest = role === 'user'; // Request a store if you are a regular user
+
+    const newUserProfile: UserProfile = {
       uid: authUser.uid,
-      email: authUser.email,
-      displayName: authUser.displayName,
+      email: formData.email,
+      displayName: formData.displayName,
       photoURL: authUser.photoURL,
-      role: 'superAdmin',
+      phone: formData.phone || null,
+      role: role,
       status: 'active',
+      storeRequest: storeRequest,
       createdAt: new Date().toISOString(),
     };
     
     try {
       const userDocRef = doc(firestore, 'users', authUser.uid);
-      await setDoc(userDocRef, superAdminProfile);
+      await setDoc(userDocRef, newUserProfile);
       
       toast({
-        title: '¡Perfil de SuperAdmin Creado!',
-        description: 'Tu cuenta ha sido configurada. La página se recargará.',
+        title: '¡Perfil Creado!',
+        description: 'Tu cuenta ha sido configurada. La página se recargará para aplicar los cambios.',
       });
 
-      // reload the page to refetch the profile correctly.
       setTimeout(() => window.location.reload(), 2000);
       
     } catch (error: any) {
-      console.error('Error creating super admin profile:', error);
+      console.error('Error creating user profile:', error);
       toast({
         variant: 'destructive',
         title: 'Error al Crear Perfil',
         description: error.message || 'Ocurrió un error inesperado.',
       });
     } finally {
-      setIsCreatingProfile(false);
+      setIsProcessing(false);
     }
   };
 
-  // We don't want to show anything if we're still checking auth or in demo mode
-  if (isAuthLoading || useDemoData || !showModal) {
+  if (!isOpen) {
     return null;
   }
 
   return (
-    <Dialog open={showModal} onOpenChange={() => {}}>
+    <Dialog open={isOpen} onOpenChange={() => {}}>
       <DialogContent onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle>¡Bienvenido, SuperAdmin!</DialogTitle>
+          <DialogTitle>¡Bienvenido! Completa tu Registro</DialogTitle>
           <DialogDescription>
-            Detectamos que es tu primer inicio de sesión. Para continuar, necesitas crear tu perfil de administrador en la base de datos.
+            Es tu primer inicio de sesión. Por favor, confirma tus datos para crear tu perfil.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4 text-center">
-            <p>Esta acción es segura y necesaria para tomar control de la aplicación.</p>
+        <div className="py-4 space-y-4">
+            <div className="flex items-center gap-4">
+                {authUser?.photoURL && (
+                    <Image src={authUser.photoURL} alt="Avatar" width={64} height={64} className="rounded-full" />
+                )}
+                <div className="flex-grow space-y-2">
+                    <Label htmlFor="displayName">Nombre a Mostrar</Label>
+                    <Input id="displayName" value={formData.displayName} onChange={(e) => setFormData(prev => ({...prev, displayName: e.target.value}))} />
+                </div>
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="email">Correo Electrónico</Label>
+                <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData(prev => ({...prev, email: e.target.value}))} />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="phone">Teléfono (Opcional)</Label>
+                <Input id="phone" type="tel" value={formData.phone} onChange={(e) => setFormData(prev => ({...prev, phone: e.target.value}))} placeholder="Ej: 584121234567" />
+            </div>
         </div>
         <DialogFooter>
           <Button 
             className="w-full" 
             onClick={handleCreateProfile}
-            disabled={isCreatingProfile}
+            disabled={isProcessing}
           >
-            {isCreatingProfile ? (
+            {isProcessing ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Creando Perfil...
               </>
             ) : (
-              'Crear mi Perfil de SuperAdmin'
+              'Confirmar y Crear Perfil'
             )}
           </Button>
         </DialogFooter>
