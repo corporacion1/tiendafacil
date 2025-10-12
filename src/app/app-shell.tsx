@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -11,9 +10,11 @@ import { useSecurity } from '@/contexts/security-context';
 import { useSettings } from '@/contexts/settings-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FirstTimeSetupModal } from '../components/first-time-setup-modal';
+import { SecurityProvider } from '@/contexts/security-context';
+import { SettingsProvider } from '@/contexts/settings-context';
 
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+function AppShellContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { lockApp } = useSecurity();
@@ -27,33 +28,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isPublicPage = pathname === '/' || pathname.startsWith('/catalog');
 
   useEffect(() => {
-    // Si no estamos en una página pública y (no hay perfil de usuario Y no estamos en modo demo)
-    if (!isLoadingSettings && !isPublicPage && !userProfile) {
-      // Redirigir inmediatamente al catálogo.
+    if (isPublicPage) return;
+
+    if (!isLoadingSettings && !userProfile && !useDemoData) {
       router.replace('/catalog');
-      return; // Detener la ejecución de otros efectos.
+      return;
     }
     
-    // Bloquear la app con PIN si corresponde
-    if (!isPublicPage && userProfile) {
+    if (userProfile) {
       lockApp();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, userProfile, isLoadingSettings, isPublicPage, router]);
+  }, [pathname, userProfile, isLoadingSettings, isPublicPage, router, lockApp, useDemoData]);
 
-  if (isPublicPage) {
-    return (
-      <div className="flex min-h-screen w-full flex-col">
-        <main className="flex-1">{children}</main>
-        <FirstTimeSetupModal />
-        <Footer />
-      </div>
-    );
-  }
-
-  // Si estamos en una página protegida, pero aún cargando o sin perfil, mostramos un loader.
-  // El useEffect de arriba se encargará de la redirección.
-  if (isLoadingSettings || !userProfile) {
+  if (isLoadingSettings || (!useDemoData && !userProfile)) {
     return (
         <div className="flex min-h-screen w-full bg-muted/40">
             <div className={cn("hidden sm:flex flex-col border-r bg-background transition-all duration-300", isSidebarExpanded ? "w-56" : "w-20")}>
@@ -76,7 +63,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <SiteSidebar isExpanded={isSidebarExpanded} />
         <div className={cn(
           "flex flex-1 flex-col transition-all duration-300",
-          isExpanded ? "sm:pl-56" : "sm:pl-20"
+          isSidebarExpanded ? "sm:pl-56" : "sm:pl-20"
         )}>
           <SiteHeader toggleSidebar={toggleSidebar} isSidebarExpanded={isSidebarExpanded} />
           <main className={cn(
@@ -90,4 +77,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
   );
+}
+
+export function AppShell({ children }: { children: React.ReactNode }) {
+  return (
+    <SecurityProvider>
+      <SettingsProvider>
+        <AppShellContent>{children}</AppShellContent>
+      </SettingsProvider>
+    </SecurityProvider>
+  )
 }
