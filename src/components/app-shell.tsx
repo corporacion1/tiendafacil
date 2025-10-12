@@ -27,21 +27,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isPublicPage = pathname === '/' || pathname.startsWith('/catalog');
 
   useEffect(() => {
-    // Si no estamos en modo demo y no hay un usuario cargado, redirigimos al catálogo.
-    if (!isLoadingSettings && !useDemoData && !userProfile && !isPublicPage) {
-      router.replace('/catalog');
+    // If settings are still loading, do nothing yet.
+    if (isLoadingSettings) {
       return;
     }
-    
-    // Bloquear la app con PIN si corresponde (solo en páginas protegidas y con perfil de usuario).
-    if (!isPublicPage && userProfile) {
-      lockApp();
-    }
-  // El eslint-disable es para evitar un loop de dependencias complejo con el router.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, userProfile, isLoadingSettings, useDemoData, isPublicPage]);
 
-  // Si es una página pública (catálogo), la mostramos directamente.
+    // If we are on a protected page...
+    if (!isPublicPage) {
+      // ...and we are NOT in demo mode AND there is no user profile...
+      if (!useDemoData && !userProfile) {
+        // ...redirect to the public catalog page.
+        router.replace('/catalog');
+        return;
+      }
+      
+      // If we have a user (in live mode), lock the app with PIN if necessary.
+      // In demo mode, we assume access is granted without a PIN for simplicity.
+      if (userProfile) {
+        lockApp();
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, userProfile, isLoadingSettings, useDemoData, router]);
+
+  // If it's a public page, render it without the main shell.
   if (isPublicPage) {
     return (
       <div className="flex min-h-screen w-full flex-col">
@@ -52,9 +61,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Si es una página protegida, pero aún está cargando la data o no hay perfil, mostramos un esqueleto.
-  // El useEffect de arriba se encargará de la redirección si es necesario.
-  if (isLoadingSettings || (!userProfile && !useDemoData)) {
+  // If settings are loading, or if we are in live mode but the user profile is not yet available, show a loading skeleton.
+  // This prevents rendering a protected page before the redirection logic in useEffect can run.
+  if (isLoadingSettings || (!useDemoData && !userProfile)) {
     return (
         <div className="flex min-h-screen w-full bg-muted/40">
             <div className={cn("hidden sm:flex flex-col border-r bg-background transition-all duration-300", isSidebarExpanded ? "w-56" : "w-20")}>
@@ -72,7 +81,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
   
-  // Si todo está correcto (usuario logueado o modo demo activo), mostramos la app completa.
+  // If we've passed all checks, render the full application shell for an authenticated user or demo mode.
   return (
       <div className="flex min-h-screen w-full bg-muted/40">
         <SiteSidebar isExpanded={isSidebarExpanded} />
