@@ -120,9 +120,7 @@ export default function Dashboard() {
         let totalUnitsSold = 0;
         sale.items.forEach(item => {
             const product = products?.find(p => p.id === item.productId);
-            if (product) {
-                costOfGoods += product.cost * item.quantity;
-            }
+            costOfGoods += (product?.cost || 0) * item.quantity;
             totalUnitsSold += item.quantity;
         });
       
@@ -133,7 +131,7 @@ export default function Dashboard() {
 
     filteredPurchases.forEach(purchase => {
         const purchaseDate = getDate(purchase.date);
-        const dateKey = format(purchaseDate, dateFormat);
+        const dateKey = format(purchaseDate, 'yyyy-MM-dd'); // Corrected to use the same format as sales
 
         if (!dataByDate[dateKey]) {
             dataByDate[dateKey] = { date: format(purchaseDate, dateFormat), sales: 0, profit: 0, unitsSold: 0, unitsPurchased: 0 };

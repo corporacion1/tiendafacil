@@ -1,10 +1,11 @@
+
 "use client"
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
-import { defaultStoreId, defaultStore, mockCurrencyRates } from '@/lib/data';
+import { defaultStoreId, defaultStore, mockCurrencyRates, defaultUsers } from '@/lib/data';
 import { useUser } from '@/firebase/auth/use-user'; // Use our modified local data hook
 
 type DisplayCurrency = 'primary' | 'secondary';
@@ -130,4 +131,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 export const useSettings = (): SettingsContextType => {
   const context = useContext(SettingsContext);
   if (context === undefined) {
-    throw new Error('useSettings must be used
+    throw new Error('useSettings must be used within a SettingsProvider');
+  }
+  return context;
+};
