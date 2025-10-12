@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -24,42 +23,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setIsSidebarExpanded(prev => !prev);
   };
 
-  const isPublicPage = pathname === '/' || pathname.startsWith('/catalog');
-
   useEffect(() => {
     // If settings are still loading, do nothing yet.
     if (isLoadingSettings) {
       return;
     }
-
-    // If we are on a protected page...
-    if (!isPublicPage) {
-      // ...and we are NOT in demo mode AND there is no user profile...
-      if (!useDemoData && !userProfile) {
-        // ...redirect to the public catalog page.
-        router.replace('/catalog');
-        return;
-      }
-      
-      // If we have a user (in live mode), lock the app with PIN if necessary.
-      // In demo mode, we assume access is granted without a PIN for simplicity.
-      if (userProfile) {
-        lockApp();
-      }
+    // If we are NOT in demo mode AND there is no user profile...
+    if (!useDemoData && !userProfile) {
+      // ...redirect to the public catalog page.
+      router.replace('/catalog');
+      return;
+    }
+    
+    // If we have a user (in live mode), lock the app with PIN if necessary.
+    // In demo mode, we assume access is granted without a PIN for simplicity.
+    if (userProfile) {
+      lockApp();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, userProfile, isLoadingSettings, useDemoData, router]);
 
-  // If it's a public page, render it without the main shell.
-  if (isPublicPage) {
-    return (
-      <div className="flex min-h-screen w-full flex-col">
-        <main className="flex-1">{children}</main>
-        <FirstTimeSetupModal />
-        <Footer />
-      </div>
-    );
-  }
 
   // If settings are loading, or if we are in live mode but the user profile is not yet available, show a loading skeleton.
   // This prevents rendering a protected page before the redirection logic in useEffect can run.
@@ -84,6 +67,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // If we've passed all checks, render the full application shell for an authenticated user or demo mode.
   return (
       <div className="flex min-h-screen w-full bg-muted/40">
+        <FirstTimeSetupModal />
         <SiteSidebar isExpanded={isSidebarExpanded} />
         <div className={cn(
           "flex flex-1 flex-col transition-all duration-300",
@@ -94,7 +78,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             "flex-1 overflow-y-auto",
             "grid items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8"
           )}>
-            <FirstTimeSetupModal />
             {children}
           </main>
           <Footer />
