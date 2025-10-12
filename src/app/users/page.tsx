@@ -14,9 +14,10 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import { useSettings } from "@/contexts/settings-context";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc, query } from "firebase/firestore";
+import { useFirestore } from "@/firebase";
+import { doc, setDoc } from "firebase/firestore";
 import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { defaultUsers } from "@/lib/data";
 
 const getRoleVariant = (role: UserProfile['role']) => {
   switch (role) {
@@ -45,8 +46,10 @@ export default function UsersPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   
-  const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
-  const { data: users, isLoading } = useCollection<UserProfile>(usersQuery);
+  // --- USE LOCAL DATA ---
+  const [users, setUsers] = useState<UserProfile[]>(defaultUsers);
+  const isLoading = false;
+  // --- END LOCAL DATA ---
   
   const [searchTerm, setSearchTerm] = useState('');
   const [userToAction, setUserToAction] = useState<UserProfile | null>(null);
@@ -70,6 +73,9 @@ export default function UsersPage() {
       
       const userDocRef = doc(firestore, 'users', userToAction.uid);
       setDocumentNonBlocking(userDocRef, { role: newRole }, { merge: true });
+
+      // Update local state to reflect change immediately
+      setUsers(prevUsers => prevUsers.map(u => u.uid === userToAction.uid ? { ...u, role: newRole } : u));
       
       toast({
           title: 'Rol Actualizado',
@@ -87,6 +93,9 @@ export default function UsersPage() {
     if (actionType === 'promote') {
       const newStoreId = `store-${userToAction.uid.slice(0, 8)}`;
       setDocumentNonBlocking(userDocRef, { role: 'admin', storeId: newStoreId, storeRequest: false }, { merge: true });
+
+      // Update local state
+      setUsers(prevUsers => prevUsers.map(u => u.uid === userToAction.uid ? { ...u, role: 'admin', storeId: newStoreId, storeRequest: false } : u));
       
       toast({
           title: "Usuario Promovido",
@@ -96,6 +105,9 @@ export default function UsersPage() {
     } else if (actionType === 'disable') {
        const newStatus = userToAction.status === 'disabled' ? 'active' : 'disabled';
        setDocumentNonBlocking(userDocRef, { status: newStatus }, { merge: true });
+
+       // Update local state
+       setUsers(prevUsers => prevUsers.map(u => u.uid === userToAction.uid ? { ...u, status: newStatus } : u));
        
        toast({
             title: `Usuario ${newStatus === 'disabled' ? 'Deshabilitado' : 'Habilitado'}`,
