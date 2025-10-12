@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -820,20 +821,4 @@ export default function CatalogPage() {
             </div>
         </Dialog>
     );
-}, dashboard/page.tsx: "use client";
-
-import { useSettings } from "@/contexts/settings-context";
-
-export default function DashboardPage() {
-  const { settings } = useSettings();
-  
-  return (
-    <div className="flex items-center justify-center h-full">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold">Bienvenido al Dashboard</h1>
-        <p className="text-muted-foreground">Este es el panel de control para la tienda: {settings?.name}</p>
-        <p className="text-muted-foreground mt-4">Módulo en construcción.</p>
-      </div>
-    </div>
-  );
 }
