@@ -2,178 +2,240 @@
  * @fileoverview Firestore Security Rules for the inventory and point-of-sale system.
  *
  * Core Philosophy:
- * This ruleset enforces a strict data segregation model. All collections are top-level and access is determined by the specific needs of the application.  Data is NOT generally user-owned unless otherwise specified.
+ * This ruleset enforces a strict data access model based on clearly defined paths for different data types.
+ * It assumes that all top-level collections represent distinct entities with individual access control requirements.
  *
  * Data Structure:
- * - `/products/{productId}`: Product information.
- * - `/inventoryMovements/{inventoryMovementId}`: Inventory movements.
- * - `/sales/{saleId}`: Sales transactions.
- * - `/sales/{saleId}/saleItems/{saleItemId}`: Sale items.
- * - `/purchases/{purchaseId}`: Purchase transactions.
- * - `/purchases/{purchaseId}/purchaseItems/{purchaseItemId}`: Purchase items.
- * - `/customers/{customerId}`: Customer information.
- * - `/suppliers/{supplierId}`: Supplier information.
- * - `/taxTypes/{taxTypeId}`: Tax type information.
- * - `/configuration/{configurationId}`: Business configuration data.
+ * The Firestore database consists of several top-level collections: products, inventoryMovements, sales,
+ * purchases, customers, suppliers, taxTypes, and configuration.  Sales and purchases also contain subcollections.
  *
  * Key Security Decisions:
- * - No implicit ownership: Unless explicitly stated, access is not tied to the authenticated user.  This allows for centralized management of application data.
- * - No user listing: Listing of documents is generally disallowed unless the data is explicitly intended to be public.
+ * - All collections are secured using path-based rules with `get` and `list` permissions explicitly defined.
+ * - Write permissions (`create`, `update`, `delete`) are restricted to authenticated users.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to product information.
+     * @description Controls access to the products collection.
      * @path /products/{productId}
      * @allow get, list: if true;
-     * @allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @deny create: if true;
-     * @deny update: if true;
-     * @deny delete: if true;
-     * @principle Public read, owner-only writes (currently disabled for prototyping).
+     * @allow create: if isSignedIn();
+     * @allow update: if isSignedIn();
+     * @allow delete: if isSignedIn();
+     * @deny get: if false;
+     * @deny list: if false;
+     * @deny create: if false;
+     * @deny update: if false;
+     * @deny delete: if false;
+     * @principle Allows any user to read product information, but requires authentication for write operations.
      */
     match /products/{productId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to inventory movement records.
+     * @description Controls access to the inventoryMovements collection.
      * @path /inventoryMovements/{inventoryMovementId}
      * @allow get, list: if true;
-     * @allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @deny create: if true;
-     * @deny update: if true;
-     * @deny delete: if true;
-     * @principle Public read, owner-only writes (currently disabled for prototyping).
+     * @allow create: if isSignedIn();
+     * @allow update: if isSignedIn();
+     * @allow delete: if isSignedIn();
+     * @deny get: if false;
+     * @deny list: if false;
+     * @deny create: if false;
+     * @deny update: if false;
+     * @deny delete: if false;
+     * @principle Allows any user to read inventory movement records, but requires authentication for write operations.
      */
     match /inventoryMovements/{inventoryMovementId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to sales transactions.
+     * @description Controls access to the sales collection.
      * @path /sales/{saleId}
      * @allow get, list: if true;
-     * @allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @deny create: if true;
-     * @deny update: if true;
-     * @deny delete: if true;
-     * @principle Public read, owner-only writes (currently disabled for prototyping).
+     * @allow create: if isSignedIn();
+     * @allow update: if isSignedIn();
+     * @allow delete: if isSignedIn();
+     * @deny get: if false;
+     * @deny list: if false;
+     * @deny create: if false;
+     * @deny update: if false;
+     * @deny delete: if false;
+     * @principle Allows any user to read sales transactions, but requires authentication for write operations.
      */
     match /sales/{saleId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-
-      /**
-       * @description Controls access to individual sale items related to a specific sale.
-       * @path /sales/{saleId}/saleItems/{saleItemId}
-       * @allow get, list: if true;
-       * @allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-       * @deny create: if true;
-       * @deny update: if true;
-       * @deny delete: if true;
-       * @principle Public read, owner-only writes (currently disabled for prototyping).
-       */
-      match /saleItems/{saleItemId} {
-        allow get, list: if true;
-        allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-      }
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to purchase transactions.
+     * @description Controls access to the saleItems subcollection within a sale document.
+     * @path /sales/{saleId}/saleItems/{saleItemId}
+     * @allow get, list: if true;
+     * @allow create: if isSignedIn();
+     * @allow update: if isSignedIn();
+     * @allow delete: if isSignedIn();
+     * @deny get: if false;
+     * @deny list: if false;
+     * @deny create: if false;
+     * @deny update: if false;
+     * @deny delete: if false;
+     * @principle Allows any user to read sale items, but requires authentication for write operations.
+     */
+    match /sales/{saleId}/saleItems/{saleItemId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+    /**
+     * @description Controls access to the purchases collection.
      * @path /purchases/{purchaseId}
      * @allow get, list: if true;
-     * @allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @deny create: if true;
-     * @deny update: if true;
-     * @deny delete: if true;
-     * @principle Public read, owner-only writes (currently disabled for prototyping).
+     * @allow create: if isSignedIn();
+     * @allow update: if isSignedIn();
+     * @allow delete: if isSignedIn();
+     * @deny get: if false;
+     * @deny list: if false;
+     * @deny create: if false;
+     * @deny update: if false;
+     * @deny delete: if false;
+     * @principle Allows any user to read purchase transactions, but requires authentication for write operations.
      */
     match /purchases/{purchaseId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-
-      /**
-       * @description Controls access to individual purchase items related to a specific purchase.
-       * @path /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
-       * @allow get, list: if true;
-       * @allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-       * @deny create: if true;
-       * @deny update: if true;
-       * @deny delete: if true;
-       * @principle Public read, owner-only writes (currently disabled for prototyping).
-       */
-      match /purchaseItems/{purchaseItemId} {
-        allow get, list: if true;
-        allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-      }
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to customer information.
-     * @path /customers/{customerId}
+     * @description Controls access to the purchaseItems subcollection within a purchase document.
+     * @path /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
      * @allow get, list: if true;
-     * @allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @deny create: if true;
-     * @deny update: if true;
-     * @deny delete: if true;
-     * @principle Public read, owner-only writes (currently disabled for prototyping).
+     * @allow create: if isSignedIn();
+     * @allow update: if isSignedIn();
+     * @allow delete: if isSignedIn();
+     * @deny get: if false;
+     * @deny list: if false;
+     * @deny create: if false;
+     * @deny update: if false;
+     * @deny delete: if false;
+     * @principle Allows any user to read purchase items, but requires authentication for write operations.
+     */
+    match /purchases/{purchaseId}/purchaseItems/{purchaseItemId} {
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
+    }
+
+    /**
+     * @description Controls access to the customers collection.
+     * @path /customers/{customerId}
+     * @allow get: if isOwner(customerId);
+     * @allow list: if false;
+     * @allow create: if isOwner(customerId);
+     * @allow update: if isOwner(customerId);
+     * @allow delete: if isOwner(customerId);
+     * @deny get: if !isSignedIn();
+     * @deny create: if !isSignedIn();
+     * @deny update: if !isSignedIn();
+     * @deny delete: if !isSignedIn();
+     * @principle Enforces document ownership for full access to customer data.
      */
     match /customers/{customerId} {
-      allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow get: if isOwner(customerId);
+      allow list: if false;
+      allow create: if isOwner(customerId);
+      allow update: if isOwner(customerId);
+      allow delete: if isOwner(customerId);
     }
 
     /**
-     * @description Controls access to supplier information.
+     * @description Controls access to the suppliers collection.
      * @path /suppliers/{supplierId}
      * @allow get, list: if true;
-     * @allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @deny create: if true;
-     * @deny update: if true;
-     * @deny delete: if true;
-     * @principle Public read, owner-only writes (currently disabled for prototyping).
+     * @allow create: if isSignedIn();
+     * @allow update: if isSignedIn();
+     * @allow delete: if isSignedIn();
+     * @deny get: if false;
+     * @deny list: if false;
+     * @deny create: if false;
+     * @deny update: if false;
+     * @deny delete: if false;
+     * @principle Allows any user to read supplier information, but requires authentication for write operations.
      */
     match /suppliers/{supplierId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to tax type information.
+     * @description Controls access to the taxTypes collection.
      * @path /taxTypes/{taxTypeId}
      * @allow get, list: if true;
-     * @allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @deny create: if true;
-     * @deny update: if true;
-     * @deny delete: if true;
-     * @principle Public read, owner-only writes (currently disabled for prototyping).
+     * @allow create: if isSignedIn();
+     * @allow update: if isSignedIn();
+     * @allow delete: if isSignedIn();
+     * @deny get: if false;
+     * @deny list: if false;
+     * @deny create: if false;
+     * @deny update: if false;
+     * @deny delete: if false;
+     * @principle Allows any user to read tax type information, but requires authentication for write operations.
      */
     match /taxTypes/{taxTypeId} {
       allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
 
     /**
-     * @description Controls access to business configuration data.
+     * @description Controls access to the configuration collection.
      * @path /configuration/{configurationId}
-     * @allow get: if true;
-     * @allow list: if false;
-     * @allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
-     * @deny create: if true;
-     * @deny update: if true;
-     * @deny delete: if true;
-     * @principle Public read, owner-only writes (currently disabled for prototyping).
+     * @allow get, list: if true;
+     * @allow create: if isSignedIn();
+     * @allow update: if isSignedIn();
+     * @allow delete: if isSignedIn();
+     * @deny get: if false;
+     * @deny list: if false;
+     * @deny create: if false;
+     * @deny update: if false;
+     * @deny delete: if false;
+     * @principle Allows any user to read business configuration data, but requires authentication for write operations.
      */
     match /configuration/{configurationId} {
-      allow get: if true;
-      allow list: if false;
-      allow create, update, delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+      allow get, list: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn();
+      allow delete: if isSignedIn();
     }
+  }
+
+  // Helper function to determine if the user is signed in
+  function isSignedIn() {
+    return request.auth != null;
+  }
+
+  // Helper function to determine if the user is the owner of the document
+  function isOwner(userId) {
+    return request.auth.uid == userId;
   }
 }
