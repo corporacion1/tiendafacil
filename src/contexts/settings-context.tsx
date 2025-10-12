@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { doc, collection, getDocs, limit, query, where } from 'firebase/firestore';
 import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { CurrencyRate, Settings, UserProfile, Product } from '@/lib/types';
-import { defaultStore, defaultStoreId, mockCurrencyRates, initialFamilies, initialUnits, initialWarehouses, mockProducts } from '@/lib/data';
+import { defaultStore, defaultStoreId, mockCurrencyRates, initialFamilies, initialUnits, initialWarehouses } from '@/lib/data';
 import { useUser as useUserHook } from '@/firebase/auth/use-user';
 
 type DisplayCurrency = 'primary' | 'secondary';
@@ -21,7 +21,6 @@ interface SettingsContextType {
   activeSymbol: string;
   activeRate: number;
   currencyRates: CurrencyRate[];
-  setCurrencyRates: React.Dispatch<React.SetStateAction<CurrencyRate[]>>;
   activeStoreId: string;
   switchStore: (storeId: string) => void;
   isLoadingSettings: boolean;
@@ -45,64 +44,96 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const pathname = usePathname();
   const firestore = useFirestore();
 
-  const { user: authUserProfile, isUserLoading } = useUserHook();
+  const [useDemoData, setUseDemoDataState] = useState<boolean>(true);
+  const [isLoadingPersistence, setIsLoadingPersistence] = useState(true);
   
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
-  const [useDemoData, setUseDemoDataState] = useState<boolean>(true);
-  const [isLoadingDemoFlag, setIsLoadingDemoFlag] = useState(true);
-
+  
+  // Step 1: Load flags from localStorage immediately and synchronously if possible.
   useEffect(() => {
     try {
       const demoFlag = localStorage.getItem(DEMO_DATA_FLAG_KEY);
+      const currencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY) as DisplayCurrency | null;
+      const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY);
+
       setUseDemoDataState(demoFlag === null ? true : demoFlag === 'true');
+      if (currencyPref) setDisplayCurrency(currencyPref);
+      if (storedStoreId) setActiveStoreId(storedStoreId);
+      
     } catch (error) {
-      console.error("Could not access localStorage for demo flag", error);
+      console.warn("Could not access localStorage. Defaulting to demo mode.", error);
       setUseDemoDataState(true);
     } finally {
-      setIsLoadingDemoFlag(false);
+      setIsLoadingPersistence(false);
     }
   }, []);
 
-  const storeRef = useMemoFirebase(() => (!useDemoData && firestore) ? doc(firestore, 'stores', activeStoreId) : null, [firestore, activeStoreId, useDemoData]);
+  // Step 2: Conditionally prepare Firebase queries ONLY if not in demo mode.
+  const storeRef = useMemoFirebase(() => (!useDemoData && firestore) ? doc(firestore, 'stores', activeStoreId) : null, [useDemoData, firestore, activeStoreId]);
+  const ratesRef = useMemoFirebase(() => (!useDemoData && firestore) ? collection(firestore, 'stores', activeStoreId, 'currencyRates') : null, [useDemoData, firestore, activeStoreId]);
+  const familiesRef = useMemoFirebase(() => (!useDemoData && firestore) ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [useDemoData, firestore, activeStoreId]);
+  const unitsRef = useMemoFirebase(() => (!useDemoData && firestore) ? query(collection(firestore, 'units'), where('storeId', '==', activeStoreId)) : null, [useDemoData, firestore, activeStoreId]);
+  const warehousesRef = useMemoFirebase(() => (!useDemoData && firestore) ? query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId)) : null, [useDemoData, firestore, activeStoreId]);
+
+  // Step 3: Fetch data from Firebase, which will do nothing if refs are null.
+  const { user: authUserProfile, isUserLoading, needsProfileCreation } = useUserHook(useDemoData);
   const { data: settingsFromDB, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(storeRef);
-
-  const ratesRef = useMemoFirebase(() => (!useDemoData && firestore) ? collection(firestore, 'stores', activeStoreId, 'currencyRates') : null, [firestore, activeStoreId, useDemoData]);
   const { data: ratesFromDB } = useCollection<CurrencyRate>(ratesRef);
-
-  const familiesRef = useMemoFirebase(() => (!useDemoData && firestore) ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId, useDemoData]);
   const { data: familiesFromDB } = useCollection(familiesRef);
-
-  const unitsRef = useMemoFirebase(() => (!useDemoData && firestore) ? query(collection(firestore, 'units'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId, useDemoData]);
   const { data: unitsFromDB } = useCollection(unitsRef);
-  
-  const warehousesRef = useMemoFirebase(() => (!useDemoData && firestore) ? query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId, useDemoData]);
   const { data: warehousesFromDB } = useCollection(warehousesRef);
-  
-  const settings = useMemo(() => useDemoData ? defaultStore : settingsFromDB, [useDemoData, settingsFromDB]);
-  const userProfile = authUserProfile; 
 
+  // Step 4: Combine demo data and live data based on the flag.
+  const settings = useMemo(() => useDemoData ? defaultStore : settingsFromDB, [useDemoData, settingsFromDB]);
   const currencyRates = useMemo(() => useDemoData ? mockCurrencyRates.map((r,i)=>({...r, id: `rate-${i}`})) : (ratesFromDB || []), [useDemoData, ratesFromDB]);
   const families = useMemo(() => useDemoData ? initialFamilies : (familiesFromDB || []), [useDemoData, familiesFromDB]);
   const units = useMemo(() => useDemoData ? initialUnits : (unitsFromDB || []), [useDemoData, unitsFromDB]);
   const warehouses = useMemo(() => useDemoData ? initialWarehouses : (warehousesFromDB || []), [useDemoData, warehousesFromDB]);
+  const userProfile = authUserProfile;
+
+  // Final loading state.
+  const isLoading = isLoadingPersistence || isUserLoading || (!useDemoData && isLoadingSettingsDoc);
+
+  // This effect manages redirection and storeId persistence.
+  useEffect(() => {
+    if (isLoading) return; // Wait until everything is loaded.
+
+    if (userProfile?.role === 'superAdmin' && localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY)) {
+      setActiveStoreId(localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY)!);
+    } else if (userProfile?.storeId) {
+      setActiveStoreId(userProfile.storeId);
+      try {
+        localStorage.setItem(ACTIVE_STORE_ID_STORAGE_KEY, userProfile.storeId);
+      } catch (e) { console.warn('localStorage not available for storeId') }
+    }
+
+    if (!userProfile && !useDemoData && !pathname.startsWith('/catalog') && !pathname.startsWith('/login')) {
+      router.replace('/catalog');
+    }
+  }, [isLoading, userProfile, useDemoData, pathname, router]);
 
   const setUseDemoData = useCallback(async (useDemo: boolean): Promise<boolean> => {
       if (useDemo === false) {
-          if (!firestore || !activeStoreId) {
+          if (!firestore) {
               toast({ variant: 'destructive', title: 'Error', description: 'La conexión a la base de datos no está lista.' });
               return false;
           }
-          
+          // Fetch settings directly to validate
+          const storeDoc = await getDocs(query(collection(firestore, 'stores'), where('id', '==', activeStoreId), limit(1)));
+          if (storeDoc.empty) {
+              toast({ variant: 'destructive', title: 'Configuración Incompleta', description: 'No se encontró la configuración de la tienda en la base de datos.' });
+              return false;
+          }
+          const liveSettings = storeDoc.docs[0].data() as Settings;
+
           const validationChecks = [
-              { check: async () => settingsFromDB && settingsFromDB.name, message: 'El nombre de la tienda no está configurado.' },
-              { check: async () => settingsFromDB && settingsFromDB.address, message: 'La dirección de la tienda no está configurada.' },
-              { check: async () => settingsFromDB && settingsFromDB.phone, message: 'El teléfono de la tienda no está configurado.' },
-              { check: async () => settingsFromDB && settingsFromDB.businessType, message: 'El tipo de negocio no está configurado.' },
-              { check: async () => settingsFromDB && settingsFromDB.primaryCurrencyName, message: 'El nombre de la moneda principal no está configurado.' },
-              { check: async () => settingsFromDB && settingsFromDB.primaryCurrencySymbol, message: 'El símbolo de la moneda principal no está configurado.' },
-              { check: async () => settingsFromDB && settingsFromDB.secondaryCurrencyName, message: 'El nombre de la moneda secundaria no está configurado.' },
-              { check: async () => settingsFromDB && settingsFromDB.secondaryCurrencySymbol, message: 'El símbolo de la moneda secundaria no está configurado.' },
+              { check: !!liveSettings.name, message: 'El nombre de la tienda no está configurado.' },
+              { check: !!liveSettings.address, message: 'La dirección de la tienda no está configurada.' },
+              { check: !!liveSettings.phone, message: 'El teléfono de la tienda no está configurado.' },
+              { check: !!liveSettings.businessType, message: 'El tipo de negocio no está configurado.' },
+              { check: !!liveSettings.primaryCurrencyName, message: 'El nombre de la moneda principal no está configurado.' },
+              { check: !!liveSettings.primaryCurrencySymbol, message: 'El símbolo de la moneda principal no está configurado.' },
               { check: async () => { const snapshot = await getDocs(query(collection(firestore, 'stores', activeStoreId, 'currencyRates'), limit(1))); return !snapshot.empty; }, message: 'Debes registrar al menos una tasa de cambio.' },
               { check: async () => { const snapshot = await getDocs(query(collection(firestore, 'products'), where('storeId', '==', activeStoreId), limit(1))); return !snapshot.empty; }, message: 'Debes crear al menos un producto.' },
               { check: async () => { const snapshot = await getDocs(query(collection(firestore, 'units'), where('storeId', '==', activeStoreId), limit(1))); return !snapshot.empty; }, message: 'Debes crear al menos una unidad de medida.' },
@@ -130,54 +161,20 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
           toast({ variant: 'destructive', title: 'Error de Almacenamiento' });
           return false;
       }
-  }, [firestore, activeStoreId, toast, settingsFromDB]);
-
-
-  useEffect(() => {
-    try {
-      const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY) as DisplayCurrency;
-      if (storedCurrencyPref) setDisplayCurrency(storedCurrencyPref);
-
-      const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY);
-      
-      if (userProfile?.role === 'superAdmin' && storedStoreId) {
-        setActiveStoreId(storedStoreId);
-      } else if (userProfile?.storeId) {
-        setActiveStoreId(userProfile.storeId);
-      }
-
-    } catch (error) {
-      console.error("Could not access localStorage", error);
-    }
-  }, [userProfile]);
-
-
-  useEffect(() => {
-     if (!isLoadingDemoFlag && !isUserLoading && !userProfile && !useDemoData && !pathname.startsWith('/catalog') && !pathname.startsWith('/login')) {
-      router.push('/catalog');
-    }
-  }, [isLoadingDemoFlag, isUserLoading, userProfile, pathname, router, useDemoData]);
-
-  const handleSetSettings = (newSettings: Settings) => {
-    if(activeStoreId && firestore) {
-      const settingsDoc = doc(firestore, 'stores', activeStoreId);
-      //setDocumentNonBlocking(settingsDoc, newSettings, { merge: true });
-    }
-    toast({ title: "Configuración Guardada", description: "Los cambios se están guardando en la nube." });
-  };
+  }, [firestore, activeStoreId, toast]);
 
   const switchStore = (storeId: string) => {
-      if (userProfile?.role === 'superAdmin') {
-        setActiveStoreId(storeId);
-        try {
-            localStorage.setItem(ACTIVE_STORE_ID_STORAGE_KEY, storeId);
-        } catch (error) {
-            console.error("Could not save storeId to localStorage", error);
-        }
-        toast({ title: `Cambiado a la tienda ${storeId}` });
-      } else {
-        toast({ variant: 'destructive', title: 'Acción no permitida' });
+    if (userProfile?.role === 'superAdmin') {
+      setActiveStoreId(storeId);
+      try {
+          localStorage.setItem(ACTIVE_STORE_ID_STORAGE_KEY, storeId);
+      } catch (error) {
+          console.error("Could not save storeId to localStorage", error);
       }
+      toast({ title: `Cambiado a la tienda ${storeId}` });
+    } else {
+      toast({ variant: 'destructive', title: 'Acción no permitida' });
+    }
   };
 
   const toggleDisplayCurrency = () => {
@@ -186,7 +183,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     try {
       localStorage.setItem(CURRENCY_PREF_STORAGE_KEY, newPreference);
     } catch(error) {
-      console.error("Could not access localStorage to set currency preference", error);
+      console.warn("Could not access localStorage to set currency preference", error);
     }
   };
 
@@ -195,18 +192,15 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const latestRate = (currencyRates && currencyRates.length > 0) ? currencyRates.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].rate : 1;
   const activeRate = activeCurrency === 'primary' ? 1 : (latestRate > 0 ? latestRate : 1);
 
-  const isLoading = isUserLoading || isLoadingDemoFlag || (!useDemoData && isLoadingSettingsDoc);
-
   const contextValue: SettingsContextType = {
     settings, 
-    setSettings: handleSetSettings, 
+    setSettings: () => {}, 
     displayCurrency, 
     toggleDisplayCurrency, 
     activeCurrency, 
     activeSymbol, 
     activeRate, 
     currencyRates,
-    setCurrencyRates: () => {},
     activeStoreId,
     switchStore,
     isLoadingSettings: isLoading,
@@ -215,7 +209,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     setUseDemoData,
     families,
     units,
-    warehouses
+    warehouses,
   };
 
   return (
