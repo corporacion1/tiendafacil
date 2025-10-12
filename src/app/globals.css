@@ -81,7 +81,7 @@
     --background: 220 15% 96%;
     --foreground: 224 70% 8%;
 
-    --card: 220 15% 99%;
+    --card: 220 15% 100%;
     --card-foreground: 224 70% 8%;
 
     --popover: 220 15% 100%;
@@ -124,4 +124,43 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+}
+
+/* System Theme (Windows XP style) */
+[data-theme="system"] {
+  --background: 207 43% 36%; /* XP Blue background */
+  --foreground: 0 0% 100%; /* White text */
+
+  --card: 210 22% 93%; /* Light grey card background */
+  --card-foreground: 0 0% 0%; /* Black card text */
+
+  --popover: 210 22% 98%; /* Even lighter popover */
+  --popover-foreground: 0 0% 0%;
+
+  --primary: 215 80% 51%; /* XP Blue for buttons */
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 210 22% 85%; /* Lighter grey for secondary elements */
+  --secondary-foreground: 0 0% 0%;
+
+  --muted: 210 22% 89%; /* Muted grey */
+  --muted-foreground: 0 0% 40%;
+
+  --accent: 120 60% 34%; /* XP Green for accent */
+  --accent-foreground: 0 0% 100%;
+
+  --destructive: 0 72% 51%; /* Standard red for destructive actions */
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 210 18% 75%; /* Grey border */
+  --input: 0 0% 100%; /* White input background */
+  --ring: 215 80% 51%;
+
+  --radius: 0.3rem; /* Sharper corners like XP */
+
+  --chart-1: 215 80% 51%;
+  --chart-2: 120 60% 34%;
+  --chart-3: 25 84% 50%;
+  --chart-4: 280 75% 55%;
+  --chart-5: 0 72% 51%;
 }
