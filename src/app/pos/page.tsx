@@ -595,7 +595,7 @@ export default function POSPage() {
   }
 
   return (
-    <Dialog onOpenChange={(open) => { if (!open) setProductDetails(null); }}>
+    <div>
       <div className="grid flex-1 auto-rows-max items-start gap-4 lg:grid-cols-5 lg:gap-8">
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-3 lg:gap-8">
             <Card>
@@ -610,9 +610,7 @@ export default function POSPage() {
                                         <span>Caja Abierta por: {activeSession.openedBy}</span>
                                     </Badge>
                                     <Button size="sm" variant="outline" onClick={handleShowReportX}><FilePieChart className="mr-2 h-4 w-4"/> Corte X</Button>
-                                    <DialogTrigger asChild>
-                                        <Button size="sm" variant="destructive" onClick={() => setIsClosingModalOpen(true)}><LogOut className="mr-2 h-4 w-4"/> Cerrar Caja</Button>
-                                    </DialogTrigger>
+                                    <Button size="sm" variant="destructive" onClick={() => setIsClosingModalOpen(true)}><LogOut className="mr-2 h-4 w-4"/> Cerrar Caja</Button>
                                 </>
                             ) : (
                                 <Badge variant="destructive" className="flex items-center gap-2">
@@ -1014,60 +1012,62 @@ export default function POSPage() {
         </div>
       </div>
     
-    <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-            <DialogTitle>{productDetails?.name}</DialogTitle>
-            <DialogDescription>SKU: {productDetails?.sku}</DialogDescription>
-        </DialogHeader>
-        {productDetails && (
-            <div className="grid gap-4">
-                 <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
-                    {getDisplayImageUrl(productDetails.imageUrl) && !productImageError ? (
-                        <Image
-                            src={getDisplayImageUrl(productDetails.imageUrl)}
-                            alt={productDetails.name}
-                            fill
-                            sizes="300px"
-                            className="object-cover"
-                            data-ai-hint={productDetails.imageHint}
-                            onError={() => setImageError(true)}
-                        />
-                        ) : (
-                        <Package className="w-16 h-16 text-muted-foreground" />
-                    )}
-                 </div>
-                 <div className="grid gap-2">
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Disponibilidad:</span>
-                        <span className="font-semibold">{productDetails.stock} unidades</span>
+    <Dialog open={!!productDetails} onOpenChange={(open) => !open && setProductDetails(null)}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle>{productDetails?.name}</DialogTitle>
+                <DialogDescription>SKU: {productDetails?.sku}</DialogDescription>
+            </DialogHeader>
+            {productDetails && (
+                <div className="grid gap-4">
+                    <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
+                        {getDisplayImageUrl(productDetails.imageUrl) && !productImageError ? (
+                            <Image
+                                src={getDisplayImageUrl(productDetails.imageUrl)}
+                                alt={productDetails.name}
+                                fill
+                                sizes="300px"
+                                className="object-cover"
+                                data-ai-hint={productDetails.imageHint}
+                                onError={() => setImageError(true)}
+                            />
+                            ) : (
+                            <Package className="w-16 h-16 text-muted-foreground" />
+                        )}
                     </div>
-                     <Separator />
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Precio Detal:</span>
-                        <span className="font-semibold">{activeSymbol}{(productDetails.price * activeRate).toFixed(2)}</span>
+                    <div className="grid gap-2">
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Disponibilidad:</span>
+                            <span className="font-semibold">{productDetails.stock} unidades</span>
+                        </div>
+                        <Separator />
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Precio Detal:</span>
+                            <span className="font-semibold">{activeSymbol}{(productDetails.price * activeRate).toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Precio Mayor:</span>
+                            <span className="font-semibold">{activeSymbol}{(productDetails.wholesalePrice * activeRate).toFixed(2)}</span>
+                        </div>
                     </div>
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Precio Mayor:</span>
-                        <span className="font-semibold">{activeSymbol}{(productDetails.wholesalePrice * activeRate).toFixed(2)}</span>
-                    </div>
-                 </div>
-            </div>
-        )}
-        <DialogFooter>
-            <DialogClose asChild>
-                <Button variant="secondary">Cerrar</Button>
-            </DialogClose>
-            <Button onClick={() => {
-                if(productDetails) {
-                    addToCart(productDetails);
-                    setProductDetails(null);
-                    toast({title: `"${productDetails.name}" agregado al carrito`})
-                }
-            }}>
-                Agregar al Carrito
-            </Button>
-        </DialogFooter>
-    </DialogContent>
+                </div>
+            )}
+            <DialogFooter>
+                <DialogClose asChild>
+                    <Button variant="secondary">Cerrar</Button>
+                </DialogClose>
+                <Button onClick={() => {
+                    if(productDetails) {
+                        addToCart(productDetails);
+                        setProductDetails(null);
+                        toast({title: `"${productDetails.name}" agregado al carrito`})
+                    }
+                }}>
+                    Agregar al Carrito
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
     
     {(isPrintPreviewOpen && (cartItems.length > 0 || lastSale)) && (
       <TicketPreview
@@ -1161,6 +1161,6 @@ export default function POSPage() {
             onConfirm={reportType === 'Z' ? finalizeSessionClosure : undefined}
         />
     )}
-  </Dialog>
+  </div>
   );
 }
