@@ -205,3 +205,19 @@ export type AdClick = {
     timestamp: string;
     userAgent: string;
 };
+
+export type CashSession = {
+  id: string;
+  storeId: string;
+  openingDate: string;
+  closingDate: string | null;
+  openingBalance: number;
+  closingBalance: number | null;
+  calculatedCash: number;
+  difference: number;
+  status: 'open' | 'closed';
+  openedBy: string;
+  closedBy: string | null;
+  salesIds: string[];
+  transactions: Record<string, number>;
+};

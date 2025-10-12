@@ -319,6 +319,28 @@
         "storeName",
         "currency"
       ]
+    },
+    "CashSession": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CashSession",
+      "type": "object",
+      "description": "Represents a single cash register session, from opening to closing.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the session." },
+        "storeId": { "type": "string", "description": "The store this session belongs to." },
+        "openingDate": { "type": "string", "format": "date-time", "description": "Timestamp of when the session was opened." },
+        "closingDate": { "type": ["string", "null"], "format": "date-time", "description": "Timestamp of when the session was closed." },
+        "openingBalance": { "type": "number", "description": "The initial cash amount in the register." },
+        "closingBalance": { "type": ["number", "null"], "description": "The final counted cash amount at the end of the session." },
+        "calculatedCash": { "type": "number", "description": "The expected cash amount based on transactions." },
+        "difference": { "type": "number", "description": "The difference between closingBalance and calculatedCash." },
+        "status": { "type": "string", "enum": ["open", "closed"], "description": "The current status of the session." },
+        "openedBy": { "type": "string", "description": "UID of the user who opened the session." },
+        "closedBy": { "type": ["string", "null"], "description": "UID of the user who closed the session." },
+        "salesIds": { "type": "array", "items": { "type": "string" }, "description": "List of sale IDs associated with this session." },
+        "transactions": { "type": "object", "additionalProperties": { "type": "number" }, "description": "A summary of total amounts for each payment method." }
+      },
+      "required": ["id", "storeId", "openingDate", "openingBalance", "status", "openedBy", "salesIds", "transactions"]
     }
   },
   "auth": {
@@ -546,6 +568,30 @@
             {
               "name": "customerId",
               "description": "The unique ID of the customer."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/stores/{storeId}/sessions/{sessionId}",
+        "definition": {
+          "entityName": "CashSession",
+          "schema": {
+            "$ref": "#/backend/entities/CashSession"
+          },
+          "description": "Stores cash register session data for a specific store.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The UID of the user who owns the store."
+            },
+            {
+              "name": "storeId",
+              "description": "The unique ID of the store."
+            },
+            {
+              "name": "sessionId",
+              "description": "The unique ID of the cash session."
             }
           ]
         }
