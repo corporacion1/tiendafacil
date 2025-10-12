@@ -22,6 +22,7 @@ import { mockAds } from "@/lib/data";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, doc, query } from "firebase/firestore";
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { useSettings } from "@/contexts/settings-context";
 
 const AdRow = ({ ad, handleEdit, setAdToDelete }: {
     ad: Ad;
@@ -113,10 +114,14 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
 export default function AdsPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
+  const { useDemoData, isLoadingSettings } = useSettings();
   
-  const adsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'ads')) : null, [firestore]);
-  const { data: ads, isLoading } = useCollection<Ad>(adsQuery);
+  const adsQuery = useMemoFirebase(() => (!useDemoData && firestore) ? query(collection(firestore, 'ads')) : null, [firestore, useDemoData]);
+  const { data: adsFromDB, isLoading: isLoadingAds } = useCollection<Ad>(adsQuery);
   
+  const ads = useMemo(() => useDemoData ? mockAds.map(ad => ({...ad, createdAt: new Date().toISOString()})) : adsFromDB, [useDemoData, adsFromDB]);
+  const isLoading = isLoadingSettings || (!useDemoData && isLoadingAds);
+
   const [adToEdit, setAdToEdit] = useState<Ad | null>(null);
   const [adToDelete, setAdToDelete] = useState<Ad | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
