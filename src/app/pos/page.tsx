@@ -2,7 +2,8 @@
 "use client"
 import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
-import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff, Archive, QrCode, Lock, Unlock, Library, FilePieChart, LogOut } from "lucide-react"
+import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff, Archive, QrCode, Lock, Unlock, Library, FilePieChart, LogOut, ArrowLeft } from "lucide-react"
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -73,7 +74,7 @@ export default function POSPage() {
   const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>(pendingOrdersState);
   const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
   const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
-
+  const router = useRouter();
   const isLoading = isLoadingSettings;
   
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -1069,9 +1070,9 @@ export default function POSPage() {
     
     {/* Open Session Modal */}
     <Dialog open={isSessionModalOpen && !activeSession} onOpenChange={(isOpen) => {
-        // Prevent closing by clicking outside
-        if (!activeSession) return;
-        setIsSessionModalOpen(isOpen);
+        if (activeSession) { // Only allow closing if a session is active (which shouldn't happen here)
+            setIsSessionModalOpen(isOpen);
+        }
     }}>
         <DialogContent onInteractOutside={(e) => e.preventDefault()}>
             <DialogHeader>
@@ -1091,7 +1092,11 @@ export default function POSPage() {
                     autoFocus
                 />
             </div>
-            <DialogFooter>
+            <DialogFooter className="sm:justify-between">
+                <Button variant="secondary" onClick={() => router.push('/dashboard')}>
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Volver al Dashboard
+                </Button>
                 <Button onClick={handleOpenSession} disabled={!openingBalance || Number(openingBalance) < 0}>Iniciar Sesión</Button>
             </DialogFooter>
         </DialogContent>
