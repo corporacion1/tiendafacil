@@ -6,11 +6,10 @@ import { useRouter } from 'next/navigation';
 
 const defaultStoreId = process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'default';
 
-export default function HomePage() {
+export default function CatalogRedirectPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to the dynamic catalog page with the default store ID
     router.replace(`/catalog/${defaultStoreId}`);
   }, [router]);
 
