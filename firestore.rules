@@ -1,192 +1,143 @@
 /**
  * @file Firestore Security Rules
- * @description This ruleset enforces a strict data access model for an inventory and point-of-sale system.
- *
- * Core Philosophy:
- * All collections except `products`, `customers`, `suppliers`, and `taxTypes` should be secured against public access.
- * For `products`, `customers`, `suppliers`, and `taxTypes` collections, read access is public, but write access is restricted to authenticated users.
- * The `configuration` collection is secured against public access.
+ * @description This ruleset enforces a strict authorization model where only authenticated users can access data, and write access is generally disallowed unless explicitly permitted.
  *
  * Data Structure:
- * - /products/{productId}: Stores product information.
- * - /inventoryMovements/{inventoryMovementId}: Stores inventory movement records.
- * - /sales/{saleId}: Stores sales transactions.
- * - /sales/{saleId}/saleItems/{saleItemId}: Stores individual sale items related to a specific sale.
- * - /purchases/{purchaseId}: Stores purchase transactions.
- * - /purchases/{purchaseId}/purchaseItems/{purchaseItemId}: Stores individual purchase items related to a specific purchase.
- * - /customers/{customerId}: Stores customer information.
- * - /suppliers/{supplierId}: Stores supplier information.
- * - /taxTypes/{taxTypeId}: Stores tax type information.
- * - /configuration/{configurationId}: Stores business configuration data.
+ * - All data is stored in top-level collections: /products, /inventoryMovements, /sales, /purchases, /customers, /suppliers, /taxTypes, /configuration.
+ * - Subcollections are used for nested data like saleItems under sales and purchaseItems under purchases.
  *
  * Key Security Decisions:
- * - No user listing is allowed.
- * - Strict ownership is enforced for write operations on the `/products`, `/customers`, `/suppliers`, and `/taxTypes` collections.
- * - The `configuration` collection should be protected to prevent unauthorized modification of business settings.
- * - All collections that are not explicitly public require authentication to access.
- *
- * Denormalization for Authorization:
- *   No denormalization is explicitly required, as the current structure uses path-based ownership and requires authentication for most collections.
+ * - All collections require user authentication for both read and write access.
+ * - Listing operations are generally disallowed to prevent information leakage, unless the collection is intended for public data.
+ * - This ruleset prioritizes security by default, denying access unless explicitly granted.
+ * - No data shape validation is performed beyond requiring authentication.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Controls access to the /products collection. Allows public read access, but restricts write access to authenticated users.
+     * @description Controls access to the /products collection.
      * @path /products/{productId}
-     * @allow (get, list): Public read access is allowed.
-     * @allow (create): Only authenticated users with a matching `id` field can create.
-     * @allow (update, delete): Only the user who created the document can update or delete it, and only if the document exists.
-     * @deny (create): If the `id` field doesn't match the authenticated user's ID.
-     * @deny (update, delete): If the user is not authenticated, or if the document doesn't exist.
-     * @principle Enforces document ownership for writes, allows public reads.
+     * @allow (get, list): Authenticated user can read.
+     * @deny (create, update, delete): No one can write.
+     * @principle Requires authentication for read access; no write access granted.
      */
     match /products/{productId} {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.id == request.auth.uid;
-      allow update, delete: if isExistingOwner(request.auth.uid, resource.data.id);
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Controls access to the /inventoryMovements collection. Only authenticated users can access this collection.
+     * @description Controls access to the /inventoryMovements collection.
      * @path /inventoryMovements/{inventoryMovementId}
-     * @allow (get, list): Only authenticated users can read.
-     * @allow (create, update, delete): Only authenticated users can write.
-     * @deny (get, list, create, update, delete): If the user is not authenticated.
-     * @principle Requires authentication for all operations.
+     * @allow (get, list): Authenticated user can read.
+     * @deny (create, update, delete): No one can write.
+     * @principle Requires authentication for read access; no write access granted.
      */
     match /inventoryMovements/{inventoryMovementId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Controls access to the /sales collection. Only authenticated users can access this collection.
+     * @description Controls access to the /sales collection.
      * @path /sales/{saleId}
-     * @allow (get, list): Only authenticated users can read.
-     * @allow (create, update, delete): Only authenticated users can write.
-     * @deny (get, list, create, update, delete): If the user is not authenticated.
-     * @principle Requires authentication for all operations.
+     * @allow (get, list): Authenticated user can read.
+     * @deny (create, update, delete): No one can write.
+     * @principle Requires authentication for read access; no write access granted.
      */
     match /sales/{saleId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Controls access to the /sales/{saleId}/saleItems collection. Only authenticated users can access this collection.
+     * @description Controls access to the /sales/{saleId}/saleItems collection.
      * @path /sales/{saleId}/saleItems/{saleItemId}
-     * @allow (get, list): Only authenticated users can read.
-     * @allow (create, update, delete): Only authenticated users can write.
-     * @deny (get, list, create, update, delete): If the user is not authenticated.
-     * @principle Requires authentication for all operations.
+     * @allow (get, list): Authenticated user can read.
+     * @deny (create, update, delete): No one can write.
+     * @principle Requires authentication for read access; no write access granted.
      */
     match /sales/{saleId}/saleItems/{saleItemId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Controls access to the /purchases collection. Only authenticated users can access this collection.
+     * @description Controls access to the /purchases collection.
      * @path /purchases/{purchaseId}
-     * @allow (get, list): Only authenticated users can read.
-     * @allow (create, update, delete): Only authenticated users can write.
-     * @deny (get, list, create, update, delete): If the user is not authenticated.
-     * @principle Requires authentication for all operations.
+     * @allow (get, list): Authenticated user can read.
+     * @deny (create, update, delete): No one can write.
+     * @principle Requires authentication for read access; no write access granted.
      */
     match /purchases/{purchaseId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Controls access to the /purchases/{purchaseId}/purchaseItems collection. Only authenticated users can access this collection.
+     * @description Controls access to the /purchases/{purchaseId}/purchaseItems collection.
      * @path /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
-     * @allow (get, list): Only authenticated users can read.
-     * @allow (create, update, delete): Only authenticated users can write.
-     * @deny (get, list, create, update, delete): If the user is not authenticated.
-     * @principle Requires authentication for all operations.
+     * @allow (get, list): Authenticated user can read.
+     * @deny (create, update, delete): No one can write.
+     * @principle Requires authentication for read access; no write access granted.
      */
     match /purchases/{purchaseId}/purchaseItems/{purchaseItemId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Controls access to the /customers collection. Allows public read access, but restricts write access to authenticated users.
+     * @description Controls access to the /customers collection.
      * @path /customers/{customerId}
-     * @allow (get, list): Public read access is allowed.
-     * @allow (create): Only authenticated users with a matching `id` field can create.
-     * @allow (update, delete): Only the user who created the document can update or delete it, and only if the document exists.
-     * @deny (create): If the `id` field doesn't match the authenticated user's ID.
-     * @deny (update, delete): If the user is not authenticated, or if the document doesn't exist.
-     * @principle Enforces document ownership for writes, allows public reads.
+     * @allow (get, list): Authenticated user can read.
+     * @deny (create, update, delete): No one can write.
+     * @principle Requires authentication for read access; no write access granted.
      */
     match /customers/{customerId} {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.id == request.auth.uid;
-      allow update, delete: if isExistingOwner(request.auth.uid, resource.data.id);
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Controls access to the /suppliers collection. Allows public read access, but restricts write access to authenticated users.
+     * @description Controls access to the /suppliers collection.
      * @path /suppliers/{supplierId}
-     * @allow (get, list): Public read access is allowed.
-     * @allow (create): Only authenticated users with a matching `id` field can create.
-     * @allow (update, delete): Only the user who created the document can update or delete it, and only if the document exists.
-     * @deny (create): If the `id` field doesn't match the authenticated user's ID.
-     * @deny (update, delete): If the user is not authenticated, or if the document doesn't exist.
-     * @principle Enforces document ownership for writes, allows public reads.
+     * @allow (get, list): Authenticated user can read.
+     * @deny (create, update, delete): No one can write.
+     * @principle Requires authentication for read access; no write access granted.
      */
     match /suppliers/{supplierId} {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.id == request.auth.uid;
-      allow update, delete: if isExistingOwner(request.auth.uid, resource.data.id);
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Controls access to the /taxTypes collection. Allows public read access, but restricts write access to authenticated users.
+     * @description Controls access to the /taxTypes collection.
      * @path /taxTypes/{taxTypeId}
-     * @allow (get, list): Public read access is allowed.
-     * @allow (create): Only authenticated users with a matching `id` field can create.
-     * @allow (update, delete): Only the user who created the document can update or delete it, and only if the document exists.
-     * @deny (create): If the `id` field doesn't match the authenticated user's ID.
-     * @deny (update, delete): If the user is not authenticated, or if the document doesn't exist.
-     * @principle Enforces document ownership for writes, allows public reads.
+     * @allow (get, list): Authenticated user can read.
+     * @deny (create, update, delete): No one can write.
+     * @principle Requires authentication for read access; no write access granted.
      */
     match /taxTypes/{taxTypeId} {
-      allow get, list: if true;
-      allow create: if isSignedIn() && request.resource.data.id == request.auth.uid;
-      allow update, delete: if isExistingOwner(request.auth.uid, resource.data.id);
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if false;
     }
 
     /**
-     * @description Controls access to the /configuration collection. Only authenticated users can access this collection.
+     * @description Controls access to the /configuration collection.
      * @path /configuration/{configurationId}
-     * @allow (get, list): Only authenticated users can read.
-     * @allow (create, update, delete): Only authenticated users can write.
-     * @deny (get, list, create, update, delete): If the user is not authenticated.
-     * @principle Requires authentication for all operations.
+     * @allow (get, list): Authenticated user can read.
+     * @deny (create, update, delete): No one can write.
+     * @principle Requires authentication for read access; no write access granted.
      */
     match /configuration/{configurationId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if isSignedIn();
+      allow create, update, delete: if false;
     }
-  }
 
-  // Helper function to determine if the user is signed in
-  function isSignedIn() {
-    return request.auth != null;
-  }
-
-  // Helper function to determine if the user is the owner of the document
-  function isOwner(userId) {
-    return request.auth.uid == userId;
-  }
-
-  // Helper function to determine if the user is the owner of the document and if the document exists
-  function isExistingOwner(userId, ownerId) {
-      return isSignedIn() && isOwner(userId) && resource != null && ownerId == userId;
+    function isSignedIn() {
+      return request.auth != null;
+    }
   }
 }

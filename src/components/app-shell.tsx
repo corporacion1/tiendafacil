@@ -27,20 +27,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isPublicPage = pathname === '/' || pathname.startsWith('/catalog');
 
   useEffect(() => {
-    // Si no estamos en una página pública y (no hay perfil de usuario Y no estamos en modo demo)
-    if (!isLoadingSettings && !isPublicPage && !userProfile && !useDemoData) {
-      // Redirigir inmediatamente al catálogo.
+    // Si no estamos en modo demo y no hay un usuario cargado, redirigimos al catálogo.
+    if (!isLoadingSettings && !useDemoData && !userProfile && !isPublicPage) {
       router.replace('/catalog');
-      return; // Detener la ejecución de otros efectos.
+      return;
     }
     
-    // Bloquear la app con PIN si corresponde
+    // Bloquear la app con PIN si corresponde (solo en páginas protegidas y con perfil de usuario).
     if (!isPublicPage && userProfile) {
       lockApp();
     }
+  // El eslint-disable es para evitar un loop de dependencias complejo con el router.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, userProfile, isLoadingSettings, isPublicPage, router, useDemoData]);
+  }, [pathname, userProfile, isLoadingSettings, useDemoData, isPublicPage]);
 
+  // Si es una página pública (catálogo), la mostramos directamente.
   if (isPublicPage) {
     return (
       <div className="flex min-h-screen w-full flex-col">
@@ -51,7 +52,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Si estamos en una página protegida, pero aún cargando o sin perfil (y no en modo demo), mostramos un loader.
+  // Si es una página protegida, pero aún está cargando la data o no hay perfil, mostramos un esqueleto.
+  // El useEffect de arriba se encargará de la redirección si es necesario.
   if (isLoadingSettings || (!userProfile && !useDemoData)) {
     return (
         <div className="flex min-h-screen w-full bg-muted/40">
@@ -70,6 +72,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
   
+  // Si todo está correcto (usuario logueado o modo demo activo), mostramos la app completa.
   return (
       <div className="flex min-h-screen w-full bg-muted/40">
         <SiteSidebar isExpanded={isSidebarExpanded} />
