@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import type { Product, CartItem, Sale, Customer, PendingOrder, Ad, Family } from "@/lib/types";
-import { trackAdClick, defaultStoreId, pendingOrdersState } from "@/lib/data";
+import { trackAdClick, defaultStoreId, pendingOrdersState, mockAds } from "@/lib/data";
 import { useSettings } from "@/contexts/settings-context";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
@@ -130,8 +130,9 @@ export default function CatalogPage() {
     const familiesQuery = useMemoFirebase(() => query(collection(firestore, 'families'), where('storeId', '==', settings?.id || defaultStoreId)), [firestore, settings?.id]);
     const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
     
-    const adsQuery = useMemoFirebase(() => query(collection(firestore, 'ads')), [firestore]);
-    const { data: allAds, isLoading: isLoadingAds } = useCollection<Ad>(adsQuery);
+    // Use local mockAds to avoid Firestore permission issues on this public page
+    const allAds = mockAds.map(ad => ({...ad, createdAt: ad.createdAt || new Date().toISOString()}));
+    const isLoadingAds = false;
     
     const isLoading = isLoadingSettings || isLoadingProducts || isLoadingFamilies || isLoadingAds;
     
@@ -827,5 +828,7 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
+
+    
 
     
