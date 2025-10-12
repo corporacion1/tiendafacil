@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Providers } from '@/components/providers';
 import { Toaster } from "@/components/ui/toaster";
+import { SettingsProvider } from '@/contexts/settings-context';
 
 export const metadata: Metadata = {
   title: 'TIENDA FACIL - Tu Comercio',
@@ -24,7 +25,9 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
          <Providers>
-            {children}
+            <SettingsProvider>
+              {children}
+            </SettingsProvider>
             <Toaster />
         </Providers>
       </body>
