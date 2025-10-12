@@ -1,73 +1,88 @@
-
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { ProductForm } from "@/components/product-form";
-import type { Product } from "@/lib/types";
-import { useSettings } from "@/contexts/settings-context";
-import { useFirestore } from "@/firebase";
-import { collection } from "firebase/firestore";
-import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { SiteSidebar } from "@/components/site-sidebar";
+import { SiteHeader } from "@/components/site-header";
+import { cn } from '@/lib/utils';
+import { Footer } from '@/components/footer';
+import { useSecurity } from '@/contexts/security-context';
+import { useSettings } from '@/contexts/settings-context';
+import { Skeleton } from '@/components/ui/skeleton';
+import { FirstTimeSetupModal } from '@/components/first-time-setup-modal';
+import { SecurityProvider } from '@/contexts/security-context';
+import { SettingsProvider } from '@/contexts/settings-context';
 
-
-export default function ProductsPage() {
-  const { toast } = useToast();
-  const firestore = useFirestore();
-  const { activeStoreId } = useSettings();
+function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const router = useRouter();
+  const { lockApp } = useSecurity();
+  const { userProfile, isLoadingSettings, useDemoData } = useSettings();
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
-  async function onSubmit(data: Omit<Product, 'id' | 'storeId'>) {
-    if (!activeStoreId || !firestore) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se ha seleccionado ninguna tienda o la base de datos no está disponible.",
-      });
-      return false;
+  const toggleSidebar = () => {
+    setIsSidebarExpanded(prev => !prev);
+  };
+
+  useEffect(() => {
+    if (isLoadingSettings) {
+      return;
     }
-    const newProduct: Omit<Product, 'id'> = {
-      ...data,
-      storeId: activeStoreId,
-      createdAt: new Date().toISOString(),
-    };
+    if (!useDemoData && !userProfile) {
+      router.replace('/catalog');
+      return;
+    }
     
-    try {
-      const productsCollection = collection(firestore, 'products');
-      await addDocumentNonBlocking(productsCollection, newProduct);
-      
-      toast({
-        title: "Producto Creado",
-        description: `El producto "${data.name}" ha sido creado exitosamente.`,
-      });
-      
-      // Optional: redirect to inventory page after creation
-      router.push('/inventory');
-      
-      return true; // Indicates the form should be reset
-    } catch(error: any) {
-        console.error("Error creating product:", error);
-        toast({
-            variant: "destructive",
-            title: "Error al crear producto",
-            description: error.message || "Ocurrió un error inesperado.",
-        });
-        return false;
+    if (userProfile) {
+      lockApp();
     }
+  }, [pathname, userProfile, isLoadingSettings, router, lockApp, useDemoData]);
+
+  if (isLoadingSettings || (!useDemoData && !userProfile)) {
+    return (
+        <div className="flex min-h-screen w-full bg-muted/40">
+            <div className={cn("hidden sm:flex flex-col border-r bg-background transition-all duration-300", isSidebarExpanded ? "w-56" : "w-20")}>
+                <div className="flex h-[60px] items-center border-b justify-center p-2"><Skeleton className="h-10 w-28" /></div>
+                <div className="flex flex-col gap-2 p-2"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /></div>
+            </div>
+            <div className={cn("flex flex-1 flex-col transition-all duration-300", isSidebarExpanded ? "sm:pl-56" : "sm:pl-20")}>
+                <div className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+                    <Skeleton className="h-9 w-9" />
+                    <div className="ml-auto flex items-center gap-2"><Skeleton className="h-8 w-24" /><Skeleton className="h-9 w-9 rounded-full" /></div>
+                </div>
+                <main className="flex-1 p-4 sm:px-6 sm:py-0"><Skeleton className="h-full w-full" /></main>
+            </div>
+        </div>
+    );
   }
   
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Crear Producto</CardTitle>
-        <CardDescription>
-          Completa el formulario para agregar un nuevo producto a tu inventario.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ProductForm onSubmit={onSubmit} />
-      </CardContent>
-    </Card>
+      <div className="flex min-h-screen w-full bg-muted/40">
+        <SiteSidebar isExpanded={isSidebarExpanded} />
+        <div className={cn(
+          "flex flex-1 flex-col transition-all duration-300",
+          isSidebarExpanded ? "sm:pl-56" : "sm:pl-20"
+        )}>
+          <SiteHeader toggleSidebar={toggleSidebar} isSidebarExpanded={isSidebarExpanded} />
+          <main className={cn(
+            "flex-1 overflow-y-auto",
+            "grid items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8"
+          )}>
+            <FirstTimeSetupModal />
+            {children}
+          </main>
+          <Footer />
+        </div>
+      </div>
   );
+}
+
+export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <SecurityProvider>
+      <SettingsProvider>
+        <AppShell>{children}</AppShell>
+      </SettingsProvider>
+    </SecurityProvider>
+  )
 }

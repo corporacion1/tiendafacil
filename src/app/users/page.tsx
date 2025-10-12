@@ -1,296 +1,88 @@
-
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import type { UserProfile, UserRole } from "@/lib/types";
-import { MoreHorizontal, Search, UserPlus, Shield, Check, Mail, Phone, ExternalLink, UserX } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from "@/components/ui/dropdown-menu";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
-import Image from "next/image";
-import { useSettings } from "@/contexts/settings-context";
-import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { doc, setDoc, query, collection } from "firebase/firestore";
-import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
-import { defaultUsers } from "@/lib/data";
+import { useState, useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { SiteSidebar } from "@/components/site-sidebar";
+import { SiteHeader } from "@/components/site-header";
+import { cn } from '@/lib/utils';
+import { Footer } from '@/components/footer';
+import { useSecurity } from '@/contexts/security-context';
+import { useSettings } from '@/contexts/settings-context';
+import { Skeleton } from '@/components/ui/skeleton';
+import { FirstTimeSetupModal } from '@/components/first-time-setup-modal';
+import { SecurityProvider } from '@/contexts/security-context';
+import { SettingsProvider } from '@/contexts/settings-context';
 
-const getRoleVariant = (role: UserProfile['role']) => {
-  switch (role) {
-    case 'superAdmin': return 'destructive';
-    case 'admin': return 'default';
-    case 'user':
-    default: return 'secondary';
-  }
-};
+function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { lockApp } = useSecurity();
+  const { userProfile, isLoadingSettings, useDemoData } = useSettings();
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
-const getRoleIcon = (role: UserProfile['role']) => {
-  switch (role) {
-    case 'superAdmin': return <Shield className="h-4 w-4 mr-2" />;
-    case 'admin': return <UserPlus className="h-4 w-4 mr-2" />;
-    case 'user':
-    default: return <UserPlus className="h-4 w-4 mr-2" />;
-  }
-};
+  const toggleSidebar = () => {
+    setIsSidebarExpanded(prev => !prev);
+  };
 
-const getStatusVariant = (status: UserProfile['status'] | undefined) => {
-    return status === 'disabled' ? 'destructive' : 'outline';
-}
-
-export default function UsersPage() {
-  const { userProfile: currentUserProfile, switchStore, useDemoData } = useSettings();
-  const firestore = useFirestore();
-  const { toast } = useToast();
-  
-  const usersQuery = useMemoFirebase(() => (firestore && !useDemoData) ? query(collection(firestore, 'users')) : null, [firestore, useDemoData]);
-  const { data: usersFromDB, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersQuery);
-  
-  const users = useMemo(() => useDemoData ? [] : (usersFromDB || []), [useDemoData, usersFromDB]);
-  const isLoading = isLoadingUsers;
-  
-  const [searchTerm, setSearchTerm] = useState('');
-  const [userToAction, setUserToAction] = useState<UserProfile | null>(null);
-  const [actionType, setActionType] = useState<'promote' | 'disable' | 'changeRole' | null>(null);
-  const [newRole, setNewRole] = useState<UserRole>('user');
-
-  const handleAction = (user: UserProfile, type: 'promote' | 'disable' | 'changeRole', role?: UserRole) => {
-    if (currentUserProfile?.role !== 'superAdmin') {
-      toast({ variant: 'destructive', title: 'Permiso denegado' });
+  useEffect(() => {
+    if (isLoadingSettings) {
       return;
     }
-    setUserToAction(user);
-    setActionType(type);
-    if (role) {
-      setNewRole(role);
+    if (!useDemoData && !userProfile) {
+      router.replace('/catalog');
+      return;
     }
-  };
-  
-  const confirmRoleChange = async () => {
-      if (!userToAction || useDemoData || !firestore) return;
-      
-      const userDocRef = doc(firestore, 'users', userToAction.uid);
-      setDocumentNonBlocking(userDocRef, { role: newRole }, { merge: true });
-      
-      toast({
-          title: 'Rol Actualizado',
-          description: `${userToAction.displayName} ahora es ${newRole}.`,
-      });
-
-      setUserToAction(null);
-      setActionType(null);
-  }
-
-  const confirmAction = async () => {
-    if (!userToAction || !actionType || useDemoData || !firestore) return;
-    const userDocRef = doc(firestore, 'users', userToAction.uid);
-
-    if (actionType === 'promote') {
-      const newStoreId = `store-${userToAction.uid.slice(0, 8)}`;
-      setDocumentNonBlocking(userDocRef, { role: 'admin', storeId: newStoreId, storeRequest: false }, { merge: true });
-      
-      toast({
-          title: "Usuario Promovido",
-          description: `${userToAction.displayName} ahora es un administrador con la tienda ${newStoreId}.`,
-      });
-
-    } else if (actionType === 'disable') {
-       const newStatus = userToAction.status === 'disabled' ? 'active' : 'disabled';
-       setDocumentNonBlocking(userDocRef, { status: newStatus }, { merge: true });
-       
-       toast({
-            title: `Usuario ${newStatus === 'disabled' ? 'Deshabilitado' : 'Habilitado'}`,
-            description: `La cuenta de "${userToAction.displayName}" ha sido ${newStatus === 'disabled' ? 'deshabilitada' : 'habilitada'}.`,
-        });
+    
+    if (userProfile) {
+      lockApp();
     }
+  }, [pathname, userProfile, isLoadingSettings, router, lockApp, useDemoData]);
 
-    setUserToAction(null);
-    setActionType(null);
-  };
-
-  const filteredUsers = useMemo(() => {
-    if (!users) return [];
-    return users.filter(u =>
-      (u.displayName && u.displayName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (u.email && u.email.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-  }, [users, searchTerm]);
-  
-  const allStores = useMemo(() => {
-      const stores: { id: string; name: string; }[] = [];
-      if (users) {
-        users.forEach(u => {
-            if (u.role === 'admin' && u.storeId && u.displayName) {
-                stores.push({ id: u.storeId, name: `${u.displayName}'s Store` });
-            }
-        });
-      }
-      return stores;
-  }, [users]);
-
-  if (currentUserProfile?.role !== 'superAdmin') {
+  if (isLoadingSettings || (!useDemoData && !userProfile)) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Acceso Denegado</CardTitle>
-          <CardDescription>No tienes permisos para ver esta página.</CardDescription>
-        </CardHeader>
-      </Card>
+        <div className="flex min-h-screen w-full bg-muted/40">
+            <div className={cn("hidden sm:flex flex-col border-r bg-background transition-all duration-300", isSidebarExpanded ? "w-56" : "w-20")}>
+                <div className="flex h-[60px] items-center border-b justify-center p-2"><Skeleton className="h-10 w-28" /></div>
+                <div className="flex flex-col gap-2 p-2"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-full" /></div>
+            </div>
+            <div className={cn("flex flex-1 flex-col transition-all duration-300", isSidebarExpanded ? "sm:pl-56" : "sm:pl-20")}>
+                <div className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
+                    <Skeleton className="h-9 w-9" />
+                    <div className="ml-auto flex items-center gap-2"><Skeleton className="h-8 w-24" /><Skeleton className="h-9 w-9 rounded-full" /></div>
+                </div>
+                <main className="flex-1 p-4 sm:px-6 sm:py-0"><Skeleton className="h-full w-full" /></main>
+            </div>
+        </div>
     );
   }
-
+  
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-                <CardTitle>Gestión de Usuarios</CardTitle>
-                <CardDescription>Administra los usuarios y sus roles en el sistema.</CardDescription>
-            </div>
-          </div>
-          <div className="relative w-full max-w-sm mt-4">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Buscar por nombre o correo..."
-              className="pl-8 sm:w-full"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading && <p>Cargando usuarios...</p>}
-          {!isLoading && <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="hidden sm:table-cell">Avatar</TableHead>
-                  <TableHead>Usuario</TableHead>
-                  <TableHead>Rol / Tienda</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Contacto</TableHead>
-                  <TableHead>Solicitud</TableHead>
-                  <TableHead><span className="sr-only">Acciones</span></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUsers.map((user) => (
-                  <TableRow key={user.uid} className={user.status === 'disabled' ? 'opacity-50' : ''}>
-                     <TableCell className="hidden sm:table-cell">
-                        <div className="relative flex items-center justify-center w-10 h-10 bg-muted rounded-full overflow-hidden">
-                          {user.photoURL ? (
-                              <Image src={user.photoURL} alt={user.displayName || 'Avatar'} fill sizes="40px" className="object-cover" />
-                          ) : (
-                              <UserPlus className="h-5 w-5 text-muted-foreground" />
-                          )}
-                        </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-medium">{user.displayName}</div>
-                      <div className="text-sm text-muted-foreground">{user.email}</div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getRoleVariant(user.role)}>
-                        {getRoleIcon(user.role)}
-                        {user.role}
-                      </Badge>
-                      {user.storeId && user.role === 'admin' && (
-                        <div className="text-xs text-muted-foreground mt-1">{user.storeId}</div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                        <Badge variant={getStatusVariant(user.status)}>
-                            {user.status === 'disabled' ? 'Deshabilitado' : 'Activo'}
-                        </Badge>
-                    </TableCell>
-                    <TableCell>
-                        <div className="flex flex-col gap-1">
-                            {user.email && <a href={`mailto:${user.email}`} className="flex items-center gap-1 text-xs hover:underline"><Mail className="h-3 w-3" /> {user.email}</a>}
-                            {user.phone && <a href={`tel:${user.phone}`} className="flex items-center gap-1 text-xs hover:underline"><Phone className="h-3 w-3" /> {user.phone}</a>}
-                        </div>
-                    </TableCell>
-                    <TableCell>
-                      {user.storeRequest && (
-                        <Badge variant="outline" className="text-amber-500 border-amber-500">
-                          ¡Quiere una tienda!
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                       <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button aria-haspopup="true" size="icon" variant="ghost" disabled={user.uid === currentUserProfile?.uid || useDemoData}>
-                                    <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                {user.role === 'user' && user.storeRequest && (
-                                    <DropdownMenuItem onSelect={() => handleAction(user, 'promote')}>
-                                        <Shield className="mr-2 h-4 w-4" /> Promover a Admin
-                                    </DropdownMenuItem>
-                                )}
-                                <DropdownMenuSub>
-                                    <DropdownMenuSubTrigger>Cambiar Rol</DropdownMenuSubTrigger>
-                                    <DropdownMenuPortal>
-                                        <DropdownMenuSubContent>
-                                            <DropdownMenuItem onSelect={() => handleAction(user, 'changeRole', 'user')}>
-                                                <Check className={`mr-2 h-4 w-4 ${user.role === 'user' ? 'opacity-100' : 'opacity-0'}`} />
-                                                User
-                                            </DropdownMenuItem>
-                                             <DropdownMenuItem onSelect={() => handleAction(user, 'changeRole', 'admin')}>
-                                                <Check className={`mr-2 h-4 w-4 ${user.role === 'admin' ? 'opacity-100' : 'opacity-0'}`} />
-                                                Admin
-                                            </DropdownMenuItem>
-                                             <DropdownMenuItem onSelect={() => handleAction(user, 'changeRole', 'superAdmin')}>
-                                                <Check className={`mr-2 h-4 w-4 ${user.role === 'superAdmin' ? 'opacity-100' : 'opacity-0'}`} />
-                                                SuperAdmin
-                                            </DropdownMenuItem>
-                                        </DropdownMenuSubContent>
-                                    </DropdownMenuPortal>
-                                </DropdownMenuSub>
-                                {user.storeId && 
-                                    <DropdownMenuItem onSelect={() => switchStore(user.storeId)}>
-                                        <ExternalLink className="mr-2 h-4 w-4" /> Ver como este usuario
-                                    </DropdownMenuItem>
-                                }
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-destructive" onSelect={() => handleAction(user, 'disable')}>
-                                    <UserX className="mr-2 h-4 w-4" />
-                                    {user.status === 'disabled' ? 'Habilitar Usuario' : 'Deshabilitar Usuario'}
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>}
-        </CardContent>
-      </Card>
-      
-      <AlertDialog open={!!userToAction} onOpenChange={(isOpen) => !isOpen && setUserToAction(null)}>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>¿Confirmar Acción?</AlertDialogTitle>
-                <AlertDialogDescription>
-                    {actionType === 'promote' && `Estás a punto de promover a "${userToAction?.displayName}" a administrador. Se le asignará una nueva tienda. ¿Estás seguro?`}
-                    {actionType === 'disable' && `Estás a punto de ${userToAction?.status === 'disabled' ? 'habilitar' : 'deshabilitar'} la cuenta de "${userToAction?.displayName}".`}
-                    {actionType === 'changeRole' && `¿Estás seguro de que quieres cambiar el rol de "${userToAction?.displayName}" a ${newRole}?`}
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setUserToAction(null)}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={actionType === 'changeRole' ? confirmRoleChange : confirmAction}>
-                    Sí, confirmar
-                </AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+      <div className="flex min-h-screen w-full bg-muted/40">
+        <SiteSidebar isExpanded={isSidebarExpanded} />
+        <div className={cn(
+          "flex flex-1 flex-col transition-all duration-300",
+          isSidebarExpanded ? "sm:pl-56" : "sm:pl-20"
+        )}>
+          <SiteHeader toggleSidebar={toggleSidebar} isSidebarExpanded={isSidebarExpanded} />
+          <main className={cn(
+            "flex-1 overflow-y-auto",
+            "grid items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8"
+          )}>
+            <FirstTimeSetupModal />
+            {children}
+          </main>
+          <Footer />
+        </div>
+      </div>
   );
+}
+
+export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <SecurityProvider>
+      <SettingsProvider>
+        <AppShell>{children}</AppShell>
+      </SettingsProvider>
+    </SecurityProvider>
+  )
 }
