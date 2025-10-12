@@ -16,9 +16,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import type { Product, CartItem, Sale, Customer, PendingOrder, Ad, Family } from "@/lib/types";
-import { mockProducts, initialFamilies, mockAds, pendingOrdersState, defaultStoreId } from "@/lib/data";
-import { useSettings } from "@/contexts/settings-context";
+import type { Product, CartItem, PendingOrder, Ad, Family } from "@/lib/types";
+import { defaultStoreId, mockProducts, initialFamilies, mockAds, pendingOrdersState } from "@/lib/data";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -27,6 +26,7 @@ import { isPast, format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { LoginModal } from "../login/page";
+import { useSettings } from "@/contexts/settings-context";
 
 
 const AdCard = ({ ad }: { ad: Ad }) => {

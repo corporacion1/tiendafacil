@@ -57,4 +57,3 @@ export function useUser() {
 }
 
 export const SUPER_ADMIN_UID = '5QLaiiIr4mcGsjRXVGeGx50nrpk1';
-

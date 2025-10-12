@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { cn } from '@/lib/utils';
@@ -13,6 +13,7 @@ import { Skeleton } from './ui/skeleton';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { lockApp } = useSecurity();
   const { userProfile, isLoadingSettings } = useSettings();
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
@@ -24,11 +25,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isPublicPage = pathname === '/' || pathname.startsWith('/catalog');
 
   useEffect(() => {
+    if (isLoadingSettings) return;
+
+    if (!isPublicPage && !userProfile) {
+      router.replace('/catalog');
+    }
+
     if (!isPublicPage && userProfile) {
       lockApp();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, userProfile]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, userProfile, isLoadingSettings]);
 
   if (isPublicPage) {
     return (
@@ -39,7 +46,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (isLoadingSettings) {
+  if (isLoadingSettings || (!userProfile && !isPublicPage)) {
     return (
         <div className="flex min-h-screen w-full bg-muted/40">
             <div className={cn("hidden sm:flex flex-col border-r bg-background transition-all duration-300", isSidebarExpanded ? "w-56" : "w-20")}>
@@ -54,16 +61,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <main className="flex-1 p-4 sm:px-6 sm:py-0"><Skeleton className="h-full w-full" /></main>
             </div>
         </div>
-    );
-  }
-
-  if (!userProfile && !isPublicPage) {
-    // This state should ideally not be reached if redirection logic is sound,
-    // but serves as a fallback loading state.
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
-      </div>
     );
   }
   
