@@ -486,12 +486,12 @@ export default function POSPage() {
 
   return (
     <Dialog onOpenChange={(open) => { if (!open) setProductDetails(null); setImageError(false); }}>
-      <div className="grid flex-1 auto-rows-max gap-4 lg:grid-cols-5 lg:gap-8">
+      <div className="grid flex-1 auto-rows-max items-start gap-4 lg:grid-cols-5 lg:gap-8">
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-3 lg:gap-8">
             <Card>
                 <CardHeader>
                     <CardTitle>Productos</CardTitle>
-                     <div className="mt-4 flex flex-wrap gap-2">
+                    <div className="mt-4 flex flex-wrap gap-2">
                         <Dialog>
                             <DialogTrigger asChild>
                                 <Button variant="outline">
@@ -767,31 +767,32 @@ export default function POSPage() {
                   )}
                 </div>
               </CardContent>
-              {cartItems.length > 0 && (
-                <CardFooter className="flex flex-col gap-2 mt-auto border-t pt-4">
-                  <div className="w-full space-y-2 text-sm">
-                      <div className="flex justify-between">
-                          <span>Subtotal</span>
-                          <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
-                      </div>
-                      {settings?.tax1 && settings.tax1 > 0 && tax1Amount > 0 && (
-                          <div className="flex justify-between">
-                              <span>Impuesto {settings.tax1}%</span>
-                              <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</span>
-                          </div>
-                      )}
-                      {settings?.tax2 && settings.tax2 > 0 && tax2Amount > 0 && (
-                          <div className="flex justify-between">
-                              <span>Impuesto {settings.tax2}%</span>
-                              <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
-                          </div>
-                      )}
-                      <Separator />
-                      <div className="flex justify-between font-bold text-lg">
-                          <span>Total</span>
-                          <span>{activeSymbol}{(total * activeRate).toFixed(2)}</span>
-                      </div>
-                  </div>
+              <CardFooter className="flex flex-col gap-2 mt-auto border-t pt-4">
+                  {cartItems.length > 0 && (
+                    <div className="w-full space-y-2 text-sm">
+                        <div className="flex justify-between">
+                            <span>Subtotal</span>
+                            <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
+                        </div>
+                        {settings?.tax1 && settings.tax1 > 0 && tax1Amount > 0 && (
+                            <div className="flex justify-between">
+                                <span>Impuesto {settings.tax1}%</span>
+                                <span>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</span>
+                            </div>
+                        )}
+                        {settings?.tax2 && settings.tax2 > 0 && tax2Amount > 0 && (
+                            <div className="flex justify-between">
+                                <span>Impuesto {settings.tax2}%</span>
+                                <span>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</span>
+                            </div>
+                        )}
+                        <Separator />
+                        <div className="flex justify-between font-bold text-lg">
+                            <span>Total</span>
+                            <span>{activeSymbol}{(total * activeRate).toFixed(2)}</span>
+                        </div>
+                    </div>
+                  )}
                   <Dialog open={isProcessSaleDialogOpen} onOpenChange={(isOpen) => { setIsProcessSaleDialogOpen(isOpen); if (!isOpen) resetPaymentModal(); }}>
                       <DialogTrigger asChild>
                           <Button className="w-full bg-primary hover:bg-primary/90" size="lg" disabled={cartItems.length === 0}>
@@ -877,8 +878,7 @@ export default function POSPage() {
                       <FileText className="mr-2 h-4 w-4" />
                       Imprimir Cotización
                   </Button>
-                </CardFooter>
-              )}
+              </CardFooter>
           </Card>
         </div>
       </div>
@@ -952,5 +952,7 @@ export default function POSPage() {
   </Dialog>
   );
 }
+
+    
 
     
