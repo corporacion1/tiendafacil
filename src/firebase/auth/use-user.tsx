@@ -8,7 +8,7 @@ import { doc, getDoc } from 'firebase/firestore';
 
 export const SUPER_ADMIN_UID = '5QLaiiIr4mcGsjRXVGeGx50nrpk1';
 
-export function useUser(useDemoData: boolean) {
+export function useUser() {
   const { user: authUser, isUserLoading: isAuthLoading, userError } = useAuthUser();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
@@ -16,16 +16,8 @@ export function useUser(useDemoData: boolean) {
   const firestore = useFirestore();
 
   useEffect(() => {
-    // If in demo mode, there's no real user profile to fetch. Clear state.
-    if (useDemoData) {
-      setUserProfile(null);
-      setNeedsProfileCreation(false);
-      setIsProfileLoading(false);
-      return;
-    }
-    
-    // If not in demo mode, proceed with fetching profile.
     const fetchProfile = async () => {
+      // Si no hay usuario autenticado de Firebase, no hay nada que hacer.
       if (!authUser || !firestore) {
         setUserProfile(null);
         setNeedsProfileCreation(false);
@@ -33,34 +25,38 @@ export function useUser(useDemoData: boolean) {
         return;
       }
 
+      // Si hay un usuario autenticado, siempre intentamos cargar su perfil.
       setIsProfileLoading(true);
       const userDocRef = doc(firestore, 'users', authUser.uid);
       
       try {
         const docSnap = await getDoc(userDocRef);
         if (docSnap.exists()) {
+          // El perfil existe, lo cargamos en el estado.
           setUserProfile(docSnap.data() as UserProfile);
           setNeedsProfileCreation(false);
         } else {
+          // El perfil NO existe. Lo marcamos para creación.
           setUserProfile(null);
           setNeedsProfileCreation(true);
         }
       } catch (error) {
-        console.error("Error fetching user profile:", error);
+        // Un error de permisos aquí es normal la primera vez.
+        // Lo importante es marcar que se necesita crear el perfil.
+        console.error("Error fetching user profile (may be expected on first login):", error);
         setUserProfile(null);
-        // This might happen on first login due to rules, which is expected.
-        // The UI will use needsProfileCreation to show the modal.
         setNeedsProfileCreation(true);
       } finally {
         setIsProfileLoading(false);
       }
     };
 
+    // Solo ejecutar si la autenticación de Firebase no está cargando.
     if (!isAuthLoading) {
       fetchProfile();
     }
 
-  }, [authUser, isAuthLoading, firestore, useDemoData]);
+  }, [authUser, isAuthLoading, firestore]);
 
   return {
     user: userProfile,

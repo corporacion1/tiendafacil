@@ -27,14 +27,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isPublicPage = pathname === '/' || pathname.startsWith('/catalog');
 
   useEffect(() => {
-    // Si no estamos cargando, no estamos en una página pública y no hay perfil de usuario...
+    // Si no estamos en una página pública y (no hay perfil de usuario Y no estamos en modo demo)
     if (!isLoadingSettings && !isPublicPage && !userProfile) {
       // Redirigir inmediatamente al catálogo.
       router.replace('/catalog');
       return; // Detener la ejecución de otros efectos.
     }
     
-    // Bloquear la app con PIN si corresponde (solo en páginas protegidas y si hay perfil)
+    // Bloquear la app con PIN si corresponde
     if (!isPublicPage && userProfile) {
       lockApp();
     }
@@ -52,7 +52,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   // Si estamos en una página protegida, pero aún cargando o sin perfil, mostramos un loader.
-  // El useEffect de arriba se encargará de la redirección si es necesario.
+  // El useEffect de arriba se encargará de la redirección.
   if (isLoadingSettings || !userProfile) {
     return (
         <div className="flex min-h-screen w-full bg-muted/40">

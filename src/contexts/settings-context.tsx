@@ -69,35 +69,30 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, []);
 
-  // Step 2: Conditionally prepare Firebase queries ONLY if not in demo mode.
+  const { user: userProfile, isUserLoading, needsProfileCreation } = useUserHook();
+
   const storeRef = useMemoFirebase(() => (!useDemoData && firestore) ? doc(firestore, 'stores', activeStoreId) : null, [useDemoData, firestore, activeStoreId]);
   const ratesRef = useMemoFirebase(() => (!useDemoData && firestore) ? collection(firestore, 'stores', activeStoreId, 'currencyRates') : null, [useDemoData, firestore, activeStoreId]);
   const familiesRef = useMemoFirebase(() => (!useDemoData && firestore) ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [useDemoData, firestore, activeStoreId]);
   const unitsRef = useMemoFirebase(() => (!useDemoData && firestore) ? query(collection(firestore, 'units'), where('storeId', '==', activeStoreId)) : null, [useDemoData, firestore, activeStoreId]);
   const warehousesRef = useMemoFirebase(() => (!useDemoData && firestore) ? query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId)) : null, [useDemoData, firestore, activeStoreId]);
-
-  // Step 3: Fetch data from Firebase, which will do nothing if refs are null.
-  const { user: authUserProfile, isUserLoading, needsProfileCreation } = useUserHook(useDemoData);
+  
   const { data: settingsFromDB, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(storeRef);
   const { data: ratesFromDB } = useCollection<CurrencyRate>(ratesRef);
   const { data: familiesFromDB } = useCollection(familiesRef);
   const { data: unitsFromDB } = useCollection(unitsRef);
   const { data: warehousesFromDB } = useCollection(warehousesRef);
 
-  // Step 4: Combine demo data and live data based on the flag.
   const settings = useMemo(() => useDemoData ? defaultStore : settingsFromDB, [useDemoData, settingsFromDB]);
   const currencyRates = useMemo(() => useDemoData ? mockCurrencyRates.map((r,i)=>({...r, id: `rate-${i}`})) : (ratesFromDB || []), [useDemoData, ratesFromDB]);
   const families = useMemo(() => useDemoData ? initialFamilies : (familiesFromDB || []), [useDemoData, familiesFromDB]);
   const units = useMemo(() => useDemoData ? initialUnits : (unitsFromDB || []), [useDemoData, unitsFromDB]);
   const warehouses = useMemo(() => useDemoData ? initialWarehouses : (warehousesFromDB || []), [useDemoData, warehousesFromDB]);
-  const userProfile = authUserProfile;
-
-  // Final loading state.
+  
   const isLoading = isLoadingPersistence || isUserLoading || (!useDemoData && isLoadingSettingsDoc);
 
-  // This effect manages redirection and storeId persistence.
   useEffect(() => {
-    if (isLoading) return; // Wait until everything is loaded.
+    if (isLoading) return;
 
     if (userProfile?.role === 'superAdmin' && localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY)) {
       setActiveStoreId(localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY)!);
@@ -108,10 +103,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       } catch (e) { console.warn('localStorage not available for storeId') }
     }
 
-    if (!userProfile && !useDemoData && !pathname.startsWith('/catalog') && !pathname.startsWith('/login')) {
-      router.replace('/catalog');
-    }
-  }, [isLoading, userProfile, useDemoData, pathname, router]);
+  }, [isLoading, userProfile]);
 
   const setUseDemoData = useCallback(async (useDemo: boolean): Promise<boolean> => {
       if (useDemo === false) {
@@ -119,7 +111,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
               toast({ variant: 'destructive', title: 'Error', description: 'La conexión a la base de datos no está lista.' });
               return false;
           }
-          // Fetch settings directly to validate
           const storeDoc = await getDocs(query(collection(firestore, 'stores'), where('id', '==', activeStoreId), limit(1)));
           if (storeDoc.empty) {
               toast({ variant: 'destructive', title: 'Configuración Incompleta', description: 'No se encontró la configuración de la tienda en la base de datos.' });
@@ -142,7 +133,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
           ];
 
           for (const { check, message } of validationChecks) {
-              const isValid = await check();
+              const isValid = typeof check === 'function' ? await check() : check;
               if (!isValid) {
                   toast({ variant: 'destructive', title: 'Configuración Incompleta', description: message });
                   return false;

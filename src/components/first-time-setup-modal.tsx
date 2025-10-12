@@ -14,13 +14,11 @@ import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { SUPER_ADMIN_UID } from '@/firebase/auth/use-user';
 import type { UserProfile } from '@/lib/types';
-import { useSettings } from '@/contexts/settings-context';
 import Image from 'next/image';
 
 export function FirstTimeSetupModal() {
   const { user: authUser } = useAuthUser();
   const { needsProfileCreation } = useUserProfile();
-  const { useDemoData } = useSettings();
   const firestore = useFirestore();
   const { toast } = useToast();
   
@@ -33,8 +31,8 @@ export function FirstTimeSetupModal() {
   });
 
   useEffect(() => {
-    // Show modal if user is authenticated, needs a profile, and demo mode is off.
-    if (authUser && needsProfileCreation && !useDemoData) {
+    // Show modal if user is authenticated and needs a profile.
+    if (authUser && needsProfileCreation) {
       setFormData({
         displayName: authUser.displayName || '',
         email: authUser.email || '',
@@ -44,7 +42,7 @@ export function FirstTimeSetupModal() {
     } else {
       setIsOpen(false);
     }
-  }, [authUser, needsProfileCreation, useDemoData]);
+  }, [authUser, needsProfileCreation]);
 
   const handleCreateProfile = async () => {
     if (!authUser || !firestore) {
@@ -58,8 +56,10 @@ export function FirstTimeSetupModal() {
 
     setIsProcessing(true);
 
+    // Asigna el rol basado en el UID.
     const role = authUser.uid === SUPER_ADMIN_UID ? 'superAdmin' : 'user';
-    const storeRequest = role === 'user'; // Request a store if you are a regular user
+    // Solicita una tienda solo si es un usuario normal.
+    const storeRequest = role === 'user'; 
 
     const newUserProfile: UserProfile = {
       uid: authUser.uid,
@@ -82,6 +82,7 @@ export function FirstTimeSetupModal() {
         description: 'Tu cuenta ha sido configurada. La página se recargará para aplicar los cambios.',
       });
 
+      // Recarga la página para que los nuevos datos del perfil se carguen correctamente.
       setTimeout(() => window.location.reload(), 2000);
       
     } catch (error: any) {
@@ -115,12 +116,12 @@ export function FirstTimeSetupModal() {
                     <Image src={authUser.photoURL} alt="Avatar" width={64} height={64} className="rounded-full" />
                 )}
                 <div className="flex-grow space-y-2">
-                    <Label htmlFor="displayName">Nombre a Mostrar</Label>
+                    <Label htmlFor="displayName">Nombre a Mostrar *</Label>
                     <Input id="displayName" value={formData.displayName} onChange={(e) => setFormData(prev => ({...prev, displayName: e.target.value}))} />
                 </div>
             </div>
             <div className="space-y-2">
-                <Label htmlFor="email">Correo Electrónico</Label>
+                <Label htmlFor="email">Correo Electrónico *</Label>
                 <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData(prev => ({...prev, email: e.target.value}))} />
             </div>
             <div className="space-y-2">

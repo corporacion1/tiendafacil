@@ -11,6 +11,10 @@ export default function HomePage() {
     router.replace('/catalog');
   }, [router]);
 
-  // Render nothing, or a loading indicator while redirecting.
-  return null;
+  // Render a loading indicator while redirecting.
+  return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Cargando catálogo...</p>
+      </div>
+  );
 }
