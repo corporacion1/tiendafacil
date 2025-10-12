@@ -1,37 +1,44 @@
 /**
- * @fileoverview Firestore Security Rules for the inventory and point-of-sale system.
- *
- * Core Philosophy:
- * This ruleset provides basic security for all the data, but data validation has been omitted to allow for rapid prototyping.
- * This ruleset is configured to prioritize a locked-down authorization strategy. All collections are protected by default,
- * and access is explicitly granted.
+ * @file Firestore Security Rules
+ * @description This ruleset enforces a strict data-centric security model for a point-of-sale application.
  *
  * Data Structure:
- * The Firestore database consists of several top-level collections: `products`, `inventoryMovements`, `sales`, `purchases`, `customers`, `suppliers`, `taxTypes`, and `configuration`.
- * Subcollections `saleItems` are nested under `sales` and `purchaseItems` are nested under `purchases`.
+ * - Top-level collections: /products, /inventoryMovements, /sales, /purchases, /customers, /suppliers, /taxTypes, /configuration
+ * - Subcollections: /sales/{saleId}/saleItems, /purchases/{purchaseId}/purchaseItems
  *
  * Key Security Decisions:
- * - All top-level collections are protected by default.
- * - No user-specific data trees exist in this prototype, so there are no user-ownership checks.
+ * - No user-specific data or ownership is specified. All data is treated as requiring authentication to access.
+ * - List operations are disabled unless specifically allowed.
+ * - All write operations require authentication and are denied by default, requiring specific rules to be enabled.
+ *
+ * Access Control:
+ * - get: Authenticated users only.
+ * - list: Denied unless specifically allowed.
+ * - create: Denied unless specifically allowed.
+ * - update: Denied unless specifically allowed.
+ * - delete: Denied unless specifically allowed.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Secure access to the /products collection.
+     * @description Manages access to product information.
      * @path /products/{productId}
-     * @allow get, list: if false;
-     * @allow create, update, delete: if false;
-     * @deny get: A user tries to read a product document.
-     * @deny list: A user tries to list all product documents.
-     * @deny create: A user tries to create a product document.
-     * @deny update: A user tries to update a product document.
-     * @deny delete: A user tries to delete a product document.
-     * @principle Prevents any access to product documents by default.
+     * @allow get: if isSignedIn();
+     * @deny get: if false;
+     * @allow list: if false;
+     * @deny list: if true;
+     * @allow create: if false;
+     * @deny create: if true;
+     * @allow update: if false;
+     * @deny update: if true;
+     * @allow delete: if false;
+     * @deny delete: if true;
+     * @principle Requires authentication to access products.
      */
     match /products/{productId} {
-      allow get: if false;
+      allow get: if isSignedIn();
       allow list: if false;
       allow create: if false;
       allow update: if false;
@@ -39,19 +46,22 @@ service cloud.firestore {
     }
 
     /**
-     * @description Secure access to the /inventoryMovements collection.
+     * @description Manages access to inventory movement records.
      * @path /inventoryMovements/{inventoryMovementId}
-     * @allow get, list: if false;
-     * @allow create, update, delete: if false;
-     * @deny get: A user tries to read an inventory movement document.
-     * @deny list: A user tries to list all inventory movement documents.
-     * @deny create: A user tries to create an inventory movement document.
-     * @deny update: A user tries to update an inventory movement document.
-     * @deny delete: A user tries to delete an inventory movement document.
-     * @principle Prevents any access to inventory movement documents by default.
+     * @allow get: if isSignedIn();
+     * @deny get: if false;
+     * @allow list: if false;
+     * @deny list: if true;
+     * @allow create: if false;
+     * @deny create: if true;
+     * @allow update: if false;
+     * @deny update: if true;
+     * @allow delete: if false;
+     * @deny delete: if true;
+     * @principle Requires authentication to access inventory movements.
      */
     match /inventoryMovements/{inventoryMovementId} {
-      allow get: if false;
+      allow get: if isSignedIn();
       allow list: if false;
       allow create: if false;
       allow update: if false;
@@ -59,38 +69,44 @@ service cloud.firestore {
     }
 
     /**
-     * @description Secure access to the /sales collection.
+     * @description Manages access to sales transactions.
      * @path /sales/{saleId}
-     * @allow get, list: if false;
-     * @allow create, update, delete: if false;
-     * @deny get: A user tries to read a sale document.
-     * @deny list: A user tries to list all sale documents.
-     * @deny create: A user tries to create a sale document.
-     * @deny update: A user tries to update a sale document.
-     * @deny delete: A user tries to delete a sale document.
-     * @principle Prevents any access to sale documents by default.
+     * @allow get: if isSignedIn();
+     * @deny get: if false;
+     * @allow list: if false;
+     * @deny list: if true;
+     * @allow create: if false;
+     * @deny create: if true;
+     * @allow update: if false;
+     * @deny update: if true;
+     * @allow delete: if false;
+     * @deny delete: if true;
+     * @principle Requires authentication to access sales transactions.
      */
     match /sales/{saleId} {
-      allow get: if false;
+      allow get: if isSignedIn();
       allow list: if false;
       allow create: if false;
       allow update: if false;
       allow delete: if false;
 
       /**
-       * @description Secure access to the /sales/{saleId}/saleItems collection.
+       * @description Manages access to individual sale items related to a specific sale.
        * @path /sales/{saleId}/saleItems/{saleItemId}
-       * @allow get, list: if false;
-       * @allow create, update, delete: if false;
-       * @deny get: A user tries to read a sale item document.
-       * @deny list: A user tries to list all sale item documents.
-       * @deny create: A user tries to create a sale item document.
-       * @deny update: A user tries to update a sale item document.
-       * @deny delete: A user tries to delete a sale item document.
-       * @principle Prevents any access to sale item documents by default.
+       * @allow get: if isSignedIn();
+       * @deny get: if false;
+       * @allow list: if false;
+       * @deny list: if true;
+       * @allow create: if false;
+       * @deny create: if true;
+       * @allow update: if false;
+       * @deny update: if true;
+       * @allow delete: if false;
+       * @deny delete: if true;
+       * @principle Requires authentication to access sale items.
        */
       match /saleItems/{saleItemId} {
-        allow get: if false;
+        allow get: if isSignedIn();
         allow list: if false;
         allow create: if false;
         allow update: if false;
@@ -99,38 +115,44 @@ service cloud.firestore {
     }
 
     /**
-     * @description Secure access to the /purchases collection.
+     * @description Manages access to purchase transactions.
      * @path /purchases/{purchaseId}
-     * @allow get, list: if false;
-     * @allow create, update, delete: if false;
-     * @deny get: A user tries to read a purchase document.
-     * @deny list: A user tries to list all purchase documents.
-     * @deny create: A user tries to create a purchase document.
-     * @deny update: A user tries to update a purchase document.
-     * @deny delete: A user tries to delete a purchase document.
-     * @principle Prevents any access to purchase documents by default.
+     * @allow get: if isSignedIn();
+     * @deny get: if false;
+     * @allow list: if false;
+     * @deny list: if true;
+     * @allow create: if false;
+     * @deny create: if true;
+     * @allow update: if false;
+     * @deny update: if true;
+     * @allow delete: if false;
+     * @deny delete: if true;
+     * @principle Requires authentication to access purchase transactions.
      */
     match /purchases/{purchaseId} {
-      allow get: if false;
+      allow get: if isSignedIn();
       allow list: if false;
       allow create: if false;
       allow update: if false;
       allow delete: if false;
 
       /**
-       * @description Secure access to the /purchases/{purchaseId}/purchaseItems collection.
+       * @description Manages access to individual purchase items related to a specific purchase.
        * @path /purchases/{purchaseId}/purchaseItems/{purchaseItemId}
-       * @allow get, list: if false;
-       * @allow create, update, delete: if false;
-       * @deny get: A user tries to read a purchase item document.
-       * @deny list: A user tries to list all purchase item documents.
-       * @deny create: A user tries to create a purchase item document.
-       * @deny update: A user tries to update a purchase item document.
-       * @deny delete: A user tries to delete a purchase item document.
-       * @principle Prevents any access to purchase item documents by default.
+       * @allow get: if isSignedIn();
+       * @deny get: if false;
+       * @allow list: if false;
+       * @deny list: if true;
+       * @allow create: if false;
+       * @deny create: if true;
+       * @allow update: if false;
+       * @deny update: if true;
+       * @allow delete: if false;
+       * @deny delete: if true;
+       * @principle Requires authentication to access purchase items.
        */
       match /purchaseItems/{purchaseItemId} {
-        allow get: if false;
+        allow get: if isSignedIn();
         allow list: if false;
         allow create: if false;
         allow update: if false;
@@ -139,19 +161,22 @@ service cloud.firestore {
     }
 
     /**
-     * @description Secure access to the /customers collection.
+     * @description Manages access to customer information.
      * @path /customers/{customerId}
-     * @allow get, list: if false;
-     * @allow create, update, delete: if false;
-     * @deny get: A user tries to read a customer document.
-     * @deny list: A user tries to list all customer documents.
-     * @deny create: A user tries to create a customer document.
-     * @deny update: A user tries to update a customer document.
-     * @deny delete: A user tries to delete a customer document.
-     * @principle Prevents any access to customer documents by default.
+     * @allow get: if isSignedIn();
+     * @deny get: if false;
+     * @allow list: if false;
+     * @deny list: if true;
+     * @allow create: if false;
+     * @deny create: if true;
+     * @allow update: if false;
+     * @deny update: if true;
+     * @allow delete: if false;
+     * @deny delete: if true;
+     * @principle Requires authentication to access customer information.
      */
     match /customers/{customerId} {
-      allow get: if false;
+      allow get: if isSignedIn();
       allow list: if false;
       allow create: if false;
       allow update: if false;
@@ -159,19 +184,22 @@ service cloud.firestore {
     }
 
     /**
-     * @description Secure access to the /suppliers collection.
+     * @description Manages access to supplier information.
      * @path /suppliers/{supplierId}
-     * @allow get, list: if false;
-     * @allow create, update, delete: if false;
-     * @deny get: A user tries to read a supplier document.
-     * @deny list: A user tries to list all supplier documents.
-     * @deny create: A user tries to create a supplier document.
-     * @deny update: A user tries to update a supplier document.
-     * @deny delete: A user tries to delete a supplier document.
-     * @principle Prevents any access to supplier documents by default.
+     * @allow get: if isSignedIn();
+     * @deny get: if false;
+     * @allow list: if false;
+     * @deny list: if true;
+     * @allow create: if false;
+     * @deny create: if true;
+     * @allow update: if false;
+     * @deny update: if true;
+     * @allow delete: if false;
+     * @deny delete: if true;
+     * @principle Requires authentication to access supplier information.
      */
     match /suppliers/{supplierId} {
-      allow get: if false;
+      allow get: if isSignedIn();
       allow list: if false;
       allow create: if false;
       allow update: if false;
@@ -179,19 +207,22 @@ service cloud.firestore {
     }
 
     /**
-     * @description Secure access to the /taxTypes collection.
+     * @description Manages access to tax type information.
      * @path /taxTypes/{taxTypeId}
-     * @allow get, list: if false;
-     * @allow create, update, delete: if false;
-     * @deny get: A user tries to read a tax type document.
-     * @deny list: A user tries to list all tax type documents.
-     * @deny create: A user tries to create a tax type document.
-     * @deny update: A user tries to update a tax type document.
-     * @deny delete: A user tries to delete a tax type document.
-     * @principle Prevents any access to tax type documents by default.
+     * @allow get: if isSignedIn();
+     * @deny get: if false;
+     * @allow list: if false;
+     * @deny list: if true;
+     * @allow create: if false;
+     * @deny create: if true;
+     * @allow update: if false;
+     * @deny update: if true;
+     * @allow delete: if false;
+     * @deny delete: if true;
+     * @principle Requires authentication to access tax type information.
      */
     match /taxTypes/{taxTypeId} {
-      allow get: if false;
+      allow get: if isSignedIn();
       allow list: if false;
       allow create: if false;
       allow update: if false;
@@ -199,34 +230,34 @@ service cloud.firestore {
     }
 
     /**
-     * @description Secure access to the /configuration collection.
+     * @description Manages access to business configuration data.
      * @path /configuration/{configurationId}
-     * @allow get, list: if false;
-     * @allow create, update, delete: if false;
-     * @deny get: A user tries to read a configuration document.
-     * @deny list: A user tries to list all configuration documents.
-     * @deny create: A user tries to create a configuration document.
-     * @deny update: A user tries to update a configuration document.
-     * @deny delete: A user tries to delete a configuration document.
-     * @principle Prevents any access to configuration documents by default.
+     * @allow get: if isSignedIn();
+     * @deny get: if false;
+     * @allow list: if false;
+     * @deny list: if true;
+     * @allow create: if false;
+     * @deny create: if true;
+     * @allow update: if false;
+     * @deny update: if true;
+     * @allow delete: if false;
+     * @deny delete: if true;
+     * @principle Requires authentication to access configuration data.
      */
     match /configuration/{configurationId} {
-      allow get: if false;
+      allow get: if isSignedIn();
       allow list: if false;
       allow create: if false;
       allow update: if false;
       allow delete: if false;
     }
-        /**
-     * @description Secure access to the /stores collection.
-     * @path /stores/{storeId}
-     */
-    match /stores/{storeId} {
-      allow get: if false;
-      allow list: if false;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
-    }
+  }
+
+  /**
+   * @description Checks if the user is signed in.
+   * @return {bool} True if the user is signed in, false otherwise.
+   */
+  function isSignedIn() {
+    return request.auth != null;
   }
 }
