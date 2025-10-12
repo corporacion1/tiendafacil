@@ -1,4 +1,5 @@
 
+
 "use client";
 
 // This layout is now simpler, as the parent layout handles the footer.

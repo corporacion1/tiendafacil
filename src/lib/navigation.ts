@@ -1,9 +1,11 @@
 
 import { Boxes, FileText, Home, PackagePlus, Settings, ShoppingCart, Store, CreditCard, LayoutGrid, Megaphone, Users } from "lucide-react";
 
+const defaultStoreId = process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'default';
+
 export const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: Home },
-    { href: "/catalog", label: "Catálogo", icon: LayoutGrid },
+    { href: `/catalog/${defaultStoreId}`, label: "Catálogo", icon: LayoutGrid },
     { href: "/products", label: "Productos", icon: PackagePlus },
     { href: "/inventory", label: "Inventario", icon: Boxes },
     { href: "/purchases", label: "Compras", icon: Store },
