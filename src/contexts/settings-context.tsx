@@ -62,21 +62,23 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, []);
 
-  const storeRef = useMemoFirebase(() => firestore ? doc(firestore, 'stores', activeStoreId) : null, [firestore, activeStoreId]);
+  // Firestore hooks - Now conditional based on useDemoData
+  const storeRef = useMemoFirebase(() => (!useDemoData && firestore) ? doc(firestore, 'stores', activeStoreId) : null, [firestore, activeStoreId, useDemoData]);
   const { data: settingsFromDB, isLoading: isLoadingSettingsDoc } = useDoc<Settings>(storeRef);
 
-  const ratesRef = useMemoFirebase(() => firestore ? collection(firestore, 'stores', activeStoreId, 'currencyRates') : null, [firestore, activeStoreId]);
+  const ratesRef = useMemoFirebase(() => (!useDemoData && firestore) ? collection(firestore, 'stores', activeStoreId, 'currencyRates') : null, [firestore, activeStoreId, useDemoData]);
   const { data: ratesFromDB } = useCollection<CurrencyRate>(ratesRef);
 
-  const familiesRef = useMemoFirebase(() => firestore ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+  const familiesRef = useMemoFirebase(() => (!useDemoData && firestore) ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId, useDemoData]);
   const { data: familiesFromDB } = useCollection(familiesRef);
 
-  const unitsRef = useMemoFirebase(() => firestore ? query(collection(firestore, 'units'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+  const unitsRef = useMemoFirebase(() => (!useDemoData && firestore) ? query(collection(firestore, 'units'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId, useDemoData]);
   const { data: unitsFromDB } = useCollection(unitsRef);
   
-  const warehousesRef = useMemoFirebase(() => firestore ? query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+  const warehousesRef = useMemoFirebase(() => (!useDemoData && firestore) ? query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId, useDemoData]);
   const { data: warehousesFromDB } = useCollection(warehousesRef);
   
+  // Data sources are now properly conditional
   const settings = useMemo(() => useDemoData ? defaultStore : settingsFromDB, [useDemoData, settingsFromDB]);
   const currencyRates = useMemo(() => useDemoData ? mockCurrencyRates.map((r,i)=>({...r, id: `rate-${i}`})) : (ratesFromDB || []), [useDemoData, ratesFromDB]);
   const families = useMemo(() => useDemoData ? initialFamilies : (familiesFromDB || []), [useDemoData, familiesFromDB]);
@@ -89,7 +91,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
               toast({ variant: 'destructive', title: 'Error', description: 'La conexión a la base de datos no está lista.' });
               return false;
           }
-
+          
+          // The settings object will be from local data when switching, so we check it directly
           if (!settings || !settings.name || !settings.primaryCurrencySymbol) {
               toast({ variant: 'destructive', title: 'Configuración Incompleta', description: 'Por favor, completa el nombre de la tienda y el símbolo de la moneda principal antes de salir del modo demo.' });
               return false;
@@ -125,6 +128,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   useEffect(() => {
     if (!isUserLoading && authUser) {
+        // Find a matching local profile to get the role and status.
         const localProfile = defaultUsers.find(u => u.uid === authUser.uid);
         if (localProfile) {
             setUserProfile({
@@ -211,7 +215,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const latestRate = (currencyRates && currencyRates.length > 0) ? currencyRates[0].rate : 1;
   const activeRate = activeCurrency === 'primary' ? 1 : (latestRate > 0 ? latestRate : 1);
 
-  const isLoading = isUserLoading || isLoadingSettingsDoc;
+  const isLoading = isUserLoading || (!useDemoData && isLoadingSettingsDoc);
 
   const contextValue: SettingsContextType = {
     settings, 
