@@ -76,7 +76,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <SiteSidebar isExpanded={isSidebarExpanded} />
         <div className={cn(
           "flex flex-1 flex-col transition-all duration-300",
-          isSidebarExpanded ? "sm:pl-56" : "sm:pl-20"
+          isExpanded ? "sm:pl-56" : "sm:pl-20"
         )}>
           <SiteHeader toggleSidebar={toggleSidebar} isSidebarExpanded={isSidebarExpanded} />
           <main className={cn(
