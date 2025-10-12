@@ -7,7 +7,6 @@ import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid,
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
-import { collection, query, where } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
@@ -18,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import type { Product, CartItem, Sale, Customer, PendingOrder, Ad, Family } from "@/lib/types";
-import { trackAdClick, defaultStoreId, pendingOrdersState, mockAds } from "@/lib/data";
+import { trackAdClick, defaultStoreId, pendingOrdersState, mockAds, mockProducts, initialFamilies } from "@/lib/data";
 import { useSettings } from "@/contexts/settings-context";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
@@ -28,7 +27,6 @@ import { isPast, format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { LoginModal } from "../login/page";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 
 
 const AdCard = ({ ad }: { ad: Ad }) => {
@@ -122,19 +120,13 @@ export default function CatalogPage() {
     const { toast } = useToast();
     const router = useRouter();
     const { settings, activeSymbol, activeRate, isLoadingSettings, userProfile } = useSettings();
-    const firestore = useFirestore();
-
-    const productsQuery = useMemoFirebase(() => query(collection(firestore, 'products'), where('storeId', '==', settings?.id || defaultStoreId)), [firestore, settings?.id]);
-    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
-
-    const familiesQuery = useMemoFirebase(() => query(collection(firestore, 'families'), where('storeId', '==', settings?.id || defaultStoreId)), [firestore, settings?.id]);
-    const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
     
-    // Use local mockAds to avoid Firestore permission issues on this public page
-    const allAds = mockAds.map(ad => ({...ad, createdAt: ad.createdAt || new Date().toISOString()}));
-    const isLoadingAds = false;
-    
-    const isLoading = isLoadingSettings || isLoadingProducts || isLoadingFamilies || isLoadingAds;
+    // --- LOCAL DATA ---
+    const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: settings?.id || defaultStoreId, createdAt: new Date().toISOString()})));
+    const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: settings?.id || defaultStoreId})));
+    const [allAds, setAllAds] = useState(mockAds.map(ad => ({...ad, createdAt: ad.createdAt || new Date().toISOString()})));
+
+    const isLoading = isLoadingSettings;
     
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
     const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -828,7 +820,3 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
-
-    
-
-    
