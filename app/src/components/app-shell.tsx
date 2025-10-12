@@ -75,11 +75,3 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <main className={cn(
             "flex-1 overflow-y-auto",
             "grid items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8"
-          )}>
-            {children}
-          </main>
-          <Footer />
-        </div>
-      </div>
-  );
-}

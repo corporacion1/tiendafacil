@@ -7,13 +7,9 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to a known-good, simple page.
     router.replace('/catalog');
   }, [router]);
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
-    </div>
-  );
-}
+        <div className="h-8 w-8 animate-spin rounded-full border-4
