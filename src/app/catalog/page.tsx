@@ -7,6 +7,7 @@ import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid,
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
@@ -16,8 +17,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import type { Product, CartItem, PendingOrder, Ad, Family } from "@/lib/types";
-import { pendingOrdersState, mockProducts, initialFamilies, mockAds, defaultStoreId } from "@/lib/data";
+import type { Product, CartItem, PendingOrder, Ad, Family, Store } from "@/lib/types";
+import { pendingOrdersState, mockProducts, initialFamilies, mockAds, defaultStore, defaultStoreId } from "@/lib/data";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -119,15 +120,29 @@ const CatalogProductCard = ({ product, onAddToCart, onImageClick }: { product: P
 export default function CatalogPage() {
     const { toast } = useToast();
     const router = useRouter();
-    const { settings, activeSymbol, activeRate, isLoadingSettings, userProfile } = useSettings();
-    const storeIdForCatalog = defaultStoreId;
+    const searchParams = useSearchParams();
+    
+    // Determine the storeId from URL, fallback to default, then the user's active store
+    const { settings: loggedInUserSettings, activeSymbol, activeRate, isLoadingSettings, userProfile } = useSettings();
+    const urlStoreId = searchParams.get('storeId');
+    const storeIdForCatalog = urlStoreId || defaultStoreId;
     
     // --- LOCAL DATA ---
-    const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: storeIdForCatalog, createdAt: new Date().toISOString() })));
-    const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: storeIdForCatalog })));
-    const [allAds, setAllAds] = useState(mockAds.map(ad => ({...ad, createdAt: new Date().toISOString() })));
+    const [products] = useState(() => mockProducts.map(p => ({...p, storeId: p.storeId || storeIdForCatalog, createdAt: new Date().toISOString() })));
+    const [families] = useState(() => initialFamilies.map(f => ({...f, storeId: f.storeId || storeIdForCatalog })));
+    const [allAds] = useState(() => mockAds.map(ad => ({...ad, createdAt: new Date().toISOString() })));
+    const [allStores] = useState<Store[]>([defaultStore]); // In a real app, this would be a list of all stores
     const isLoading = false;
     // --- END LOCAL DATA ---
+
+    const currentStoreSettings = useMemo(() => {
+        // If a user is logged in AND the catalog storeId matches their active store, use their full settings.
+        if(loggedInUserSettings && loggedInUserSettings.id === storeIdForCatalog) {
+            return loggedInUserSettings;
+        }
+        // Otherwise, find the public store info from the list (or use default)
+        return allStores.find(s => s.id === storeIdForCatalog) || defaultStore;
+    }, [storeIdForCatalog, allStores, loggedInUserSettings]);
 
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
     const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -260,6 +275,7 @@ export default function CatalogPage() {
         return (products || [])
           .filter(
             (product) =>
+              product.storeId === storeIdForCatalog &&
               (product.status === 'active' || product.status === 'promotion') &&
               product.stock > 0 &&
               (selectedFamily === 'all' || product.family === selectedFamily) &&
@@ -271,12 +287,12 @@ export default function CatalogPage() {
             if (a.status !== 'promotion' && b.status === 'promotion') return 1;
             return a.name.localeCompare(b.name);
           });
-      }, [products, searchTerm, selectedFamily]);
+      }, [products, searchTerm, selectedFamily, storeIdForCatalog]);
     
     const itemsForGrid = useMemo(() => {
         const relevantAds = (allAds || []).filter(ad => {
             const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
-            return !isExpired && ad.status === 'active';
+            return !isExpired && ad.status === 'active' && ad.targetBusinessTypes.includes(currentStoreSettings.businessType);
         });
         
         const shuffledAds = [...relevantAds].sort(() => Math.random() - 0.5);
@@ -291,7 +307,7 @@ export default function CatalogPage() {
             }
         }
         return items;
-    }, [sortedAndFilteredProducts, allAds]);
+    }, [sortedAndFilteredProducts, allAds, currentStoreSettings.businessType]);
     
     const handleOpenOrderDialog = () => {
         if(cart.length === 0) {
@@ -314,7 +330,7 @@ export default function CatalogPage() {
     
     const generateShareQrCode = async () => {
         try {
-            const url = window.location.href;
+            const url = `${window.location.origin}${window.location.pathname}?storeId=${storeIdForCatalog}`;
             setShareUrl(url);
             const dataUrl = await QRCode.toDataURL(url, { width: 256 });
             setShareQrCodeUrl(dataUrl);
@@ -611,7 +627,7 @@ export default function CatalogPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                     <SelectItem value="all">Todas las familias</SelectItem>
-                                        {(families || []).map(family => (
+                                        {(families.filter(f => f.storeId === storeIdForCatalog) || []).map(family => (
                                             <SelectItem key={family.id} value={family.name}>
                                             {family.name}
                                             </SelectItem>
@@ -799,17 +815,17 @@ export default function CatalogPage() {
                 </Dialog>
 
                 <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
-                    {settings?.whatsapp && (
+                    {currentStoreSettings?.whatsapp && (
                         <Button asChild size="icon" className="rounded-full h-14 w-14 bg-[#25D366] hover:bg-[#128C7E] shadow-lg">
-                            <a href={`https://wa.me/${settings.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">
+                            <a href={`https://wa.me/${currentStoreSettings.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">
                                 <FaWhatsapp className="h-7 w-7" />
                                 <span className="sr-only">WhatsApp</span>
                             </a>
                         </Button>
                     )}
-                    {settings?.meta && (
+                    {currentStoreSettings?.meta && (
                          <Button asChild size="icon" className="rounded-full h-14 w-14 bg-gradient-to-br from-purple-400 to-pink-600 text-white shadow-lg">
-                            <a href={`https://www.instagram.com/${settings.meta.replace('@', '')}`} target="_blank" rel="noopener noreferrer">
+                            <a href={`https://www.instagram.com/${currentStoreSettings.meta.replace('@', '')}`} target="_blank" rel="noopener noreferrer">
                                 <Instagram className="h-7 w-7" />
                                 <span className="sr-only">Instagram</span>
                             </a>
@@ -820,5 +836,3 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
-
-    
