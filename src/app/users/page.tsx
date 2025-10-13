@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import { useSettings } from "@/contexts/settings-context";
 import { useCollection, useFirestore, setDocumentNonBlocking, useMemoFirebase } from "@/firebase";
-import { collection, doc } from "firebase/firestore";
+import { collection, doc, query, where } from "firebase/firestore";
 import { forceSeedDatabase, factoryReset } from "@/lib/seed";
 import { useSecurity } from "@/contexts/security-context";
 
@@ -50,8 +50,12 @@ export default function UsersPage() {
   const firestore = useFirestore();
   const { hasPin, checkPin } = useSecurity();
   
-  const usersCollectionRef = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
-  const { data: users, isLoading } = useCollection<UserProfile>(usersCollectionRef);
+  const usersQuery = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'users'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId]);
+
+  const { data: users, isLoading } = useCollection<UserProfile>(usersQuery);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [userToAction, setUserToAction] = useState<UserProfile | null>(null);
