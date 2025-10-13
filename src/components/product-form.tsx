@@ -20,8 +20,7 @@ import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
 import { useSettings } from "@/contexts/settings-context";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, query, where } from "firebase/firestore";
+import { initialFamilies, initialUnits, initialWarehouses, mockProducts } from "@/lib/data";
 
 const productSchema = z.object({
   id: z.string().optional(),
@@ -80,19 +79,15 @@ const calculateProfit = (currentPrice: number, cost: number): string => {
 
 export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onCancel }) => {
   const { toast } = useToast();
-  const { settings, activeStoreId } = useSettings();
-  const firestore = useFirestore();
+  const { settings } = useSettings();
   
-  const productsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-  const unitsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'units'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-  const familiesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-  const warehousesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+  // --- LOCAL DATA FOR FORM ---
+  const [products] = useState(mockProducts);
+  const [units] = useState(initialUnits);
+  const [families] = useState(initialFamilies);
+  const [warehouses] = useState(initialWarehouses);
+  // -------------------------
 
-  const { data: products } = useCollection<Product>(productsQuery);
-  const { data: units } = useCollection<Unit>(unitsQuery);
-  const { data: families } = useCollection<Family>(familiesQuery);
-  const { data: warehouses } = useCollection<Warehouse>(warehousesQuery);
-  
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: getInitialValues(product),
@@ -483,4 +478,3 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     </Form>
   );
 };
-

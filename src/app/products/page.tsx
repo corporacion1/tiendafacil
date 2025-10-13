@@ -1,41 +1,34 @@
 
 "use client";
 
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { ProductForm } from "@/components/product-form";
 import type { Product } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
-import { useFirestore, addDocumentNonBlocking } from "@/firebase";
-import { collection } from "firebase/firestore";
+import { mockProducts } from "@/lib/data";
 
 export default function ProductsPage() {
   const { toast } = useToast();
   const { activeStoreId } = useSettings();
-  const firestore = useFirestore();
+  
+  // Manage products in local state for the demo
+  const [products, setProducts] = useState(mockProducts);
 
   function onSubmit(data: Omit<Product, 'id' | 'storeId' | 'createdAt'>) {
-    if (!firestore) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo conectar a la base de datos.",
-      });
-      return false;
-    }
-
-    const productsCollectionRef = collection(firestore, 'products');
-    const newProduct: Omit<Product, 'id'> = {
+    const newProduct: Product = {
       ...data,
+      id: `prod-${Date.now()}`,
       storeId: activeStoreId,
       createdAt: new Date().toISOString(),
     };
-    
-    addDocumentNonBlocking(productsCollectionRef, newProduct);
+
+    setProducts(prev => [newProduct, ...prev]);
     
     toast({
-      title: "Producto Creado",
-      description: `El producto "${data.name}" ha sido creado exitosamente.`,
+      title: "Producto Creado (DEMO)",
+      description: `El producto "${data.name}" ha sido creado localmente.`,
     });
     
     return true; // Indicates the form should be reset
