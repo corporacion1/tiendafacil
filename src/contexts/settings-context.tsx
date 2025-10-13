@@ -35,17 +35,35 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 const CURRENCY_PREF_STORAGE_KEY = 'tienda_facil_currency_pref';
 const ACTIVE_STORE_ID_STORAGE_KEY = 'tienda_facil_active_store_id';
 
-
 function AppLoadingScreen() {
     return (
         <div className="flex min-h-screen w-full items-center justify-center bg-background">
             <div className="flex flex-col items-center gap-4">
                 <div className="h-12 w-12 animate-spin rounded-full border-4 border-muted border-t-primary" />
-                <p className="text-muted-foreground">Cargando configuración de la tienda...</p>
+                <p className="text-muted-foreground">Cargando aplicación...</p>
             </div>
         </div>
     );
 }
+
+const StoreSettingsLoader = ({ activeStoreId, onSettingsLoaded }: { activeStoreId: string, onSettingsLoaded: (settings: Settings) => void }) => {
+    const firestore = useFirestore();
+    const storeDocRef = useMemoFirebase(() => firestore ? doc(firestore, 'stores', activeStoreId) : null, [firestore, activeStoreId]);
+    const { data: storeSettings, isLoading } = useDoc<Settings>(storeDocRef);
+
+    useEffect(() => {
+        if (storeSettings) {
+            onSettingsLoaded(storeSettings);
+        } else if (!isLoading && !storeSettings) {
+            // If not loading and settings are still null, it means the doc doesn't exist.
+            // We fall back to default store settings to allow the app to function.
+            onSettingsLoaded(defaultStore);
+        }
+    }, [storeSettings, isLoading, onSettingsLoaded]);
+
+    return null; // This component doesn't render anything
+};
+
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
@@ -56,10 +74,10 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { user: userProfile, isUserLoading: isAuthLoading, needsProfileCreation } = useAuthUser();
   
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
+  const [settings, setSettingsState] = useState<Settings | null>(null);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   
-  // This state will now gate the main app rendering
-  const [isReadyToRender, setIsReadyToRender] = useState(false);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     try {
@@ -74,45 +92,41 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, [userProfile]);
 
-  const storeDocRef = useMemoFirebase(() => {
-    if (!firestore || !activeStoreId) return null;
-    return doc(firestore, 'stores', activeStoreId);
-  }, [firestore, activeStoreId]);
-
-  const { data: storeSettingsData, isLoading: isLoadingStoreSettings } = useDoc<Settings>(storeDocRef);
-  
   const ratesCollectionRef = useMemoFirebase(() => firestore ? collection(firestore, 'stores', activeStoreId, 'currencyRates') : null, [firestore, activeStoreId]);
   const { data: currencyRates } = useCollection<CurrencyRate>(ratesCollectionRef);
-
-  const settings = storeSettingsData ?? defaultStore;
-
+  
   useEffect(() => {
-    if (isAuthLoading) return;
+    const isPublicPath = pathname.startsWith('/catalog') || pathname === '/';
+    if (isAuthLoading) return; // Wait for user status to be resolved
 
     if (needsProfileCreation) {
-      setIsReadyToRender(true); // Ready to render the setup modal
+      // If setup is needed, we are "ready" to show the setup modal.
+      setIsReady(true);
       return;
     }
 
-    const isPublicPath = pathname.startsWith('/catalog') || pathname === '/';
     if (!userProfile && !isPublicPath) {
       router.replace('/catalog');
-      setIsReadyToRender(true); // Ready to render public page
+      // If redirecting, we are also "ready" from this provider's perspective.
+      setIsReady(true);
       return;
     }
-    
-    if (!isLoadingStoreSettings) {
-        setIsReadyToRender(true); // Ready once user and settings are loaded
+
+    if (settings) {
+      // If settings are already loaded, we are ready.
+      setIsReady(true);
     }
 
-  }, [isAuthLoading, userProfile, needsProfileCreation, isLoadingStoreSettings, pathname, router]);
+  }, [isAuthLoading, needsProfileCreation, userProfile, settings, pathname, router]);
+
   
   const handleSetSettings = useCallback((newSettings: Partial<Settings>) => {
-    if (storeDocRef) {
+    if (firestore) {
+      const storeDocRef = doc(firestore, 'stores', activeStoreId);
       setDocumentNonBlocking(storeDocRef, newSettings, { merge: true });
       toast({ title: "Configuración guardada", description: "Tus cambios se están guardando en la nube." });
     }
-  }, [storeDocRef, toast]);
+  }, [firestore, activeStoreId, toast]);
 
   const switchStore = (storeId: string) => {
       if (userProfile?.role === 'superAdmin') {
@@ -123,7 +137,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
             console.error("Could not save storeId to localStorage", error);
         }
         toast({ title: `Cambiado a la tienda ${storeId}` });
-        router.refresh();
+        window.location.reload(); // Force reload to ensure all contexts reset
       } else {
         toast({ variant: 'destructive', title: 'Acción no permitida' });
       }
@@ -144,12 +158,12 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const latestRate = (currencyRates && currencyRates.length > 0) ? currencyRates[0].rate : 1;
   const activeRate = activeCurrency === 'primary' ? 1 : (latestRate > 0 ? latestRate : 1);
   
-  if (!isReadyToRender && !pathname.startsWith('/catalog')) {
-      return <AppLoadingScreen />;
-  }
-
   if (needsProfileCreation) {
     return <FirstTimeSetupModal />;
+  }
+
+  if (!isReady && !pathname.startsWith('/catalog')) {
+      return <AppLoadingScreen />;
   }
 
   const contextValue: SettingsContextType = {
@@ -163,12 +177,13 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     currencyRates: currencyRates || [],
     activeStoreId,
     switchStore,
-    isLoadingSettings: isLoadingStoreSettings || isAuthLoading,
+    isLoadingSettings: !settings,
     userProfile,
   };
 
   return (
     <SettingsContext.Provider value={contextValue}>
+      {!settings && !needsProfileCreation && <StoreSettingsLoader activeStoreId={activeStoreId} onSettingsLoaded={setSettingsState} />}
       {children}
     </SettingsContext.Provider>
   );
