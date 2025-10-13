@@ -18,20 +18,12 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings } from "@/contexts/settings-context";
-import { mockProducts, defaultSuppliers, initialFamilies, mockPurchases } from "@/lib/data";
 
 const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
 
 export default function PurchasesPage() {
   const { toast } = useToast();
-  const { settings, activeSymbol, activeRate, activeStoreId } = useSettings();
-
-  // --- LOCAL DATA ---
-  const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString() })));
-  const [suppliers, setSuppliers] = useState(defaultSuppliers.map(s => ({...s, storeId: activeStoreId })));
-  const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: activeStoreId })));
-  const [purchases, setPurchases] = useState(mockPurchases.map(p => ({...p, storeId: activeStoreId })));
-  // --- END LOCAL DATA ---
+  const { settings, activeSymbol, activeRate, activeStoreId, products, setProducts, suppliers, setSuppliers, families, purchases, setPurchases } = useSettings();
 
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -534,5 +526,3 @@ export default function PurchasesPage() {
     </div>
   );
 }
-
-    

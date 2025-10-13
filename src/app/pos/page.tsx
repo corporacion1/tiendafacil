@@ -20,7 +20,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { useSettings } from "@/contexts/settings-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { paymentMethods, pendingOrdersState, mockProducts, defaultCustomers, mockSales, initialFamilies } from "@/lib/data";
+import { paymentMethods, pendingOrdersState } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -68,16 +68,15 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
 
 export default function POSPage() {
   const { toast } = useToast();
-  const { settings, setSettings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
+  const { 
+    settings, setSettings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings,
+    products, setProducts, customers, setCustomers, sales, setSales, families,
+    pendingOrders: pendingOrdersContext, setPendingOrders
+  } = useSettings();
   const { isLocked, isSecurityReady } = useSecurity();
   const router = useRouter();
 
   // --- USE LOCAL DATA ---
-  const [products, setProductsState] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString() })));
-  const [customers, setCustomers] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
-  const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
-  const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
-  const [pendingOrders, setPendingOrdersState] = useState<PendingOrder[]>(pendingOrdersState);
   const isLoading = isLoadingSettings;
   // --- END LOCAL DATA ---
   
@@ -426,7 +425,7 @@ export default function POSPage() {
                 : p
         );
     }
-    setProductsState(updatedProducts);
+    setProducts(updatedProducts);
     
     setActiveSession(prev => {
         if (!prev) return null;
@@ -553,7 +552,7 @@ export default function POSPage() {
         setSelectedCustomerId(customer.id);
     }
     
-    setPendingOrdersState(prev => prev.filter(p => p.id !== order.id));
+    setPendingOrders(prev => prev.filter(p => p.id !== order.id));
     
     toast({
         title: "Pedido Cargado",
@@ -567,7 +566,7 @@ export default function POSPage() {
         toast({ variant: "destructive", title: "Carrito no está vacío" });
         return;
     }
-    const order = (pendingOrdersState || []).find(o => o.id === scannedOrderId);
+    const order = (pendingOrdersContext || []).find(o => o.id === scannedOrderId);
     if (order) {
         loadPendingOrder(order);
         setScannedOrderId('');
@@ -730,7 +729,7 @@ export default function POSPage() {
                                 <Button variant="secondary" disabled={!isSessionReady}>
                                     <Archive className="mr-2 h-4 w-4" />
                                     Pedidos Pendientes
-                                    {pendingOrdersState && pendingOrdersState.length > 0 && <Badge variant="destructive" className="ml-2">{pendingOrdersState.length}</Badge>}
+                                    {pendingOrdersContext && pendingOrdersContext.length > 0 && <Badge variant="destructive" className="ml-2">{pendingOrdersContext.length}</Badge>}
                                 </Button>
                             </DialogTrigger>
                             <DialogContent>
@@ -739,11 +738,11 @@ export default function POSPage() {
                                 </DialogHeader>
                                 <div className="py-4 max-h-96 overflow-y-auto">
                                     {isLoading && <p>Cargando pedidos...</p>}
-                                    {!isLoading && (!pendingOrdersState || pendingOrdersState.length === 0) ? (
+                                    {!isLoading && (!pendingOrdersContext || pendingOrdersContext.length === 0) ? (
                                         <p className="text-center text-muted-foreground py-8">No hay pedidos pendientes.</p>
                                     ) : (
                                         <div className="space-y-4">
-                                        {(pendingOrdersState || []).map(order => (
+                                        {(pendingOrdersContext || []).map(order => (
                                             <div key={order.id} className="p-4 border rounded-lg">
                                                 <div className="flex justify-between items-start">
                                                     <div>
