@@ -19,7 +19,7 @@ import { useSettings } from "@/contexts/settings-context";
 import { paymentMethods } from "@/lib/data";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase, FirestorePermissionError, errorEmitter } from "@/firebase";
 import { collection, doc, updateDoc, query, where } from "firebase/firestore";
 
 export default function CreditsPage() {
@@ -110,7 +110,7 @@ export default function CreditsPage() {
         setCurrentPaymentMethod('efectivo');
     }
 
-    const handleSavePayments = async () => {
+    const handleSavePayments = () => {
         if (!selectedSale || payments.length === 0 || !firestore) {
             toast({ variant: "destructive", title: "No hay pagos que guardar o falta conexión." }); return;
         }
@@ -125,10 +125,19 @@ export default function CreditsPage() {
         const newStatus = updatedPaidAmount >= selectedSale.total ? 'paid' : 'unpaid';
 
         const saleDocRef = doc(firestore, 'sales', selectedSale.id);
-        await updateDoc(saleDocRef, {
+        const updatedData = {
             payments: [...(selectedSale.payments || []), ...newPayments],
             paidAmount: updatedPaidAmount,
             status: newStatus,
+        };
+        
+        updateDoc(saleDocRef, updatedData).catch(serverError => {
+            const contextualError = new FirestorePermissionError({
+                path: saleDocRef.path,
+                operation: 'update',
+                requestResourceData: updatedData,
+            });
+            errorEmitter.emit('permission-error', contextualError);
         });
 
         setSelectedSale(null);
@@ -429,3 +438,5 @@ export default function CreditsPage() {
         </>
     );
 }
+
+    
