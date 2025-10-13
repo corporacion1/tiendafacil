@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
@@ -20,37 +19,21 @@ interface SecurityContextType {
 
 const SecurityContext = createContext<SecurityContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'tienda_facil_pin';
+const DEMO_PIN = '1234'; // Using a hardcoded demo PIN
 
 export const SecurityProvider = ({ children }: { children: React.ReactNode }) => {
-  const [storedPin, setStoredPin] = useState<string | null>(null);
   const [isLocked, setIsLocked] = useState(false);
-  const [hasPin, setHasPin] = useState(false);
+  const [hasPin, setHasPin] = useState(true); // Assume demo pin is always set
   const [isSecurityReady, setIsSecurityReady] = useState(false);
-  const { toast } = useToast();
   const pathname = usePathname();
+  const { toast } = useToast();
 
   useEffect(() => {
-    try {
-      const pinFromStorage = localStorage.getItem(STORAGE_KEY);
-      if (pinFromStorage) {
-        setStoredPin(pinFromStorage);
-        setHasPin(true);
-        // Lock the app on initial load if a PIN is set
-        setIsLocked(true); 
-      } else {
-        setHasPin(false);
-        setIsLocked(false);
-      }
-    } catch (error) {
-        console.error("Could not access localStorage for PIN", error);
-    } finally {
-        setIsSecurityReady(true);
-    }
+    // In a pure local demo, we can consider security ready immediately.
+    setIsSecurityReady(true);
   }, []);
 
   const lockApp = useCallback(() => {
-    // Only lock if a PIN is set and we are not on a public page
     const isPublicPage = pathname.startsWith('/catalog') || pathname.startsWith('/login');
     if (hasPin && !isPublicPage) {
       setIsLocked(true);
@@ -58,65 +41,32 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
   }, [hasPin, pathname]);
 
   const unlockApp = useCallback((pin: string) => {
-    if (pin === storedPin) {
+    if (pin === DEMO_PIN) {
       setIsLocked(false);
       return true;
     }
     return false;
-  }, [storedPin]);
+  }, []);
 
   const checkPin = useCallback((pin: string) => {
-    return pin === storedPin;
-  }, [storedPin]);
-
-  const setPin = useCallback((newPin: string, confirmPin: string) => {
-    if (newPin !== confirmPin || newPin.length !== 4) return false;
-    try {
-        localStorage.setItem(STORAGE_KEY, newPin);
-        setStoredPin(newPin);
-        setHasPin(true);
-        setIsLocked(true); // Lock after setting a new pin
-        return true;
-    } catch (error) {
-        console.error("Failed to set PIN in localStorage", error);
-        toast({
-            variant: "destructive",
-            title: "Error de Almacenamiento",
-            description: "No se pudo guardar el PIN. El almacenamiento local podría estar lleno o deshabilitado."
-        });
-        return false;
-    }
-  }, [toast]);
-
-  const changePin = useCallback((oldPin: string, newPin: string, confirmPin: string) => {
-    if (oldPin !== storedPin) return false;
-    if (newPin !== confirmPin || newPin.length !== 4) return false;
-     try {
-        localStorage.setItem(STORAGE_KEY, newPin);
-        setStoredPin(newPin);
-        setIsLocked(true); // Re-lock after changing pin
-        return true;
-    } catch (error) {
-        console.error("Failed to change PIN in localStorage", error);
-        toast({
-            variant: "destructive",
-            title: "Error de Almacenamiento",
-            description: "No se pudo guardar el nuevo PIN."
-        });
-        return false;
-    }
-  }, [storedPin, toast]);
-
-  const removePin = useCallback(() => {
-     try {
-        localStorage.removeItem(STORAGE_KEY);
-        setStoredPin(null);
-        setHasPin(false);
-        setIsLocked(false);
-    } catch (error) {
-        console.error("Failed to remove PIN from localStorage", error);
-    }
+    return pin === DEMO_PIN;
   }, []);
+
+  // Mocking PIN management functions
+  const setPin = (newPin: string, confirmPin: string): boolean => {
+    toast({ title: "Función no disponible en modo DEMO" });
+    return false;
+  }
+  
+  const removePin = () => {
+    toast({ title: "Función no disponible en modo DEMO" });
+  }
+
+  const changePin = (oldPin: string, newPin: string, confirmPin: string): boolean => {
+    if (oldPin !== DEMO_PIN) return false;
+    toast({ title: "Función no disponible en modo DEMO" });
+    return false;
+  }
 
   const value = {
     isLocked,
