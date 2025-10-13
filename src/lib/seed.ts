@@ -157,5 +157,3 @@ export async function factoryReset(firestore: Firestore, storeId: string) {
 
   console.log("Restauración de fábrica completada.");
 }
-
-    

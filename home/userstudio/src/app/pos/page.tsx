@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff, Archive, QrCode, Lock, Unlock, Library, FilePieChart, LogOut, ArrowLeft, Armchair } from "lucide-react"
 import { useRouter } from "next/navigation";
-import { collection, doc, writeBatch } from "firebase/firestore";
+import { collection, doc, writeBatch, query, where } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -28,7 +28,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { SessionReportPreview } from "@/components/session-report-preview";
 import { useSecurity } from "@/contexts/security-context";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { setDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
@@ -77,10 +77,10 @@ export default function POSPage() {
   const router = useRouter();
 
   // --- FETCH DATA FROM FIRESTORE ---
-  const productsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'products') : null, [firestore]);
-  const customersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'customers') : null, [firestore]);
-  const familiesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'families') : null, [firestore]);
-  const salesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'sales') : null, [firestore]);
+  const productsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+  const customersQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+  const familiesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+  const salesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
 
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
   const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
@@ -501,27 +501,26 @@ export default function POSPage() {
         });
         return;
     }
-    if (!firestore) return;
+    if (!firestore || !activeStoreId) return;
     
-    const newId = `cust-${Date.now()}`;
-    const customerToAdd: Customer = {
-        id: newId,
+    const customerToAdd: Omit<Customer, 'id'> = {
         name: newCustomer.name,
         phone: newCustomer.phone,
         address: newCustomer.address,
         storeId: activeStoreId,
     };
     
-    const customerDocRef = doc(firestore, 'customers', newId);
-    await setDocumentNonBlocking(customerDocRef, customerToAdd, {});
+    const newDocRef = await addDocumentNonBlocking(collection(firestore, 'customers'), customerToAdd);
 
-    setSelectedCustomerId(newId);
-    setNewCustomer({ id: '', name: '', phone: '', address: '' });
-    setIsCustomerDialogOpen(false);
-    toast({
-        title: "Cliente Agregado",
-        description: `El cliente "${customerToAdd.name}" ha sido agregado y seleccionado.`,
-    });
+    if (newDocRef) {
+        setSelectedCustomerId(newDocRef.id);
+        setNewCustomer({ id: '', name: '', phone: '', address: '' });
+        setIsCustomerDialogOpen(false);
+        toast({
+            title: "Cliente Agregado",
+            description: `El cliente "${customerToAdd.name}" ha sido agregado y seleccionado.`,
+        });
+    }
   };
 
   const filteredProducts = useMemo(() => {
@@ -1178,3 +1177,4 @@ export default function POSPage() {
     </>
   );
 }
+

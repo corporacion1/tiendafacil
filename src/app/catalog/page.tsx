@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -18,7 +19,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import type { Product, CartItem, PendingOrder, Ad, Family } from "@/lib/types";
-import { pendingOrdersState, initialFamilies, mockAds } from "@/lib/data";
+import { pendingOrdersState } from "@/lib/data";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -130,9 +131,7 @@ export default function CatalogPage() {
     const familiesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
     const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
     
-    // Using mockAds for now to avoid permission issues if ads are not store-specific
-    const [allAds, setAllAds] = useState(mockAds);
-    const isLoadingAds = false;
+    const { data: allAds, isLoading: isLoadingAds } = useCollection<Ad>(useMemoFirebase(() => firestore ? collection(firestore, 'ads') : null, [firestore]));
 
     const isLoading = isLoadingSettings || isLoadingProducts || isLoadingFamilies || isLoadingAds;
     
@@ -492,7 +491,7 @@ export default function CatalogPage() {
                                                                             <p className="text-sm text-muted-foreground">{isClient ? format(new Date(order.date), 'dd/MM/yyyy HH:mm') : '...'}</p>
                                                                         </div>
                                                                         <div className="flex items-center gap-1">
-                                                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={()={() => handleReShowQR(order.id)}}>
+                                                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleReShowQR(order.id)}>
                                                                                 <QrCode className="h-4 w-4" />
                                                                             </Button>
                                                                             <DropdownMenu>
@@ -829,4 +828,3 @@ export default function CatalogPage() {
     );
 }
 
-    
