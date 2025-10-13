@@ -16,19 +16,14 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import type { Sale, Payment } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
-import { paymentMethods, mockSales } from "@/lib/data";
+import { paymentMethods } from "@/lib/data";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 
 export default function CreditsPage() {
     const { toast } = useToast();
-    const { settings, activeSymbol, activeRate, activeStoreId, userProfile } = useSettings();
+    const { settings, activeSymbol, activeRate, sales, setSales, isLoadingSettings } = useSettings();
 
-    // --- LOCAL DATA ---
-    const [sales, setSales] = useState(() => mockSales.map(s => ({...s, storeId: activeStoreId})));
-    const isLoading = false;
-    // --- END LOCAL DATA ---
-    
     const [isClient, setIsClient] = useState(false);
     useEffect(() => { setIsClient(true) }, []);
 
@@ -134,7 +129,7 @@ export default function CreditsPage() {
         setPaymentDialogOpen(false);
         resetPaymentForm();
         
-        toast({ title: "Abono Registrado (DEMO)", description: `Se agregaron ${payments.length} pago(s) a la venta ${selectedSale.id}.`});
+        toast({ title: "Abono Registrado", description: `Se agregaron ${payments.length} pago(s) a la venta ${selectedSale.id}.`});
     };
     
     const filteredSales = useMemo(() => {
@@ -169,9 +164,9 @@ export default function CreditsPage() {
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {isLoading && <TableRow><TableCell colSpan={8} className="text-center">Cargando créditos...</TableCell></TableRow>}
-                {!isLoading && salesToRender.length === 0 && <TableRow><TableCell colSpan={8} className="text-center">No hay ventas a crédito que coincidan.</TableCell></TableRow>}
-                {!isLoading && salesToRender.map((sale) => {
+                {isLoadingSettings && <TableRow><TableCell colSpan={8} className="text-center">Cargando créditos...</TableCell></TableRow>}
+                {!isLoadingSettings && salesToRender.length === 0 && <TableRow><TableCell colSpan={8} className="text-center">No hay ventas a crédito que coincidan.</TableCell></TableRow>}
+                {!isLoadingSettings && salesToRender.map((sale) => {
                     const balance = sale.total - (sale.paidAmount || 0);
                     return (
                         <TableRow key={sale.id}>
