@@ -727,7 +727,7 @@ export default function CatalogPage() {
                 </Dialog>
                 
                 <Dialog open={!!productDetails} onOpenChange={(open) => { if (!open) setProductDetails(null); }}>
-                    <DialogContent className="sm:max-w-2xl">
+                    <DialogContent onOpenAutoFocus={(e) => e.preventDefault()} className="sm:max-w-2xl">
                         <DialogHeader>
                             <DialogTitle>Detalles del Producto</DialogTitle>
                             <DialogDescription>Información detallada del producto seleccionado.</DialogDescription>
