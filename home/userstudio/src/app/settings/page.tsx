@@ -227,7 +227,7 @@ export default function SettingsPage() {
         }
         
         let docRef;
-        if (firestore) {
+        if (firestore && activeStoreId) {
             if (type === 'unit') docRef = doc(firestore, 'units', id);
             if (type === 'family') docRef = doc(firestore, 'families', id);
             if (type === 'warehouse') docRef = doc(firestore, 'warehouses', id);
