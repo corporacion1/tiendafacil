@@ -130,17 +130,26 @@ export default function InventoryPage() {
   const { activeSymbol, activeRate, activeStoreId, isLoadingSettings } = useSettings();
   const firestore = useFirestore();
 
-  // --- Firestore Data ---
-  const productsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-  const salesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-  const movementsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'inventoryMovements'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+  const productsQuery = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId]);
+
+  const salesQuery = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId]);
+
+  const movementsQuery = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'inventoryMovements'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId]);
 
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
   const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
   const { data: inventoryMovements, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsQuery);
   
   const isLoading = isLoadingSettings || isLoadingProducts || isLoadingSales || isLoadingMovements;
-  // --- End Firestore Data ---
   
   const [isMovementsDialogOpen, setIsMovementsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -644,5 +653,3 @@ export default function InventoryPage() {
     </>
   );
 }
-
-    

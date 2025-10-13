@@ -124,21 +124,25 @@ export default function CatalogPage() {
     const { settings, activeSymbol, activeRate, isLoadingSettings, userProfile, activeStoreId } = useSettings();
     const firestore = useFirestore();
 
-    const productsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+    const productsQuery = useMemoFirebase(() => {
+        if (!firestore || !activeStoreId) return null;
+        return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
+    }, [firestore, activeStoreId]);
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
 
-    const familiesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+    const familiesQuery = useMemoFirebase(() => {
+        if (!firestore || !activeStoreId) return null;
+        return query(collection(firestore, 'families'), where('storeId', '==', activeStoreId));
+    }, [firestore, activeStoreId]);
     const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
     
     const adsQuery = useMemoFirebase(() => {
-        if (firestore && settings?.businessType) {
-            return query(
-                collection(firestore, 'ads'), 
-                where('targetBusinessTypes', 'array-contains', settings.businessType),
-                where('status', '==', 'active')
-            );
-        }
-        return null;
+        if (!firestore || !settings?.businessType) return null;
+        return query(
+            collection(firestore, 'ads'), 
+            where('targetBusinessTypes', 'array-contains', settings.businessType),
+            where('status', '==', 'active')
+        );
     }, [firestore, settings?.businessType]);
 
     const { data: allAds, isLoading: isLoadingAds } = useCollection<Ad>(adsQuery);

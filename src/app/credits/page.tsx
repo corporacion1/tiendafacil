@@ -27,9 +27,19 @@ export default function CreditsPage() {
     const { settings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
     const firestore = useFirestore();
 
-    const salesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId), where('transactionType', '==', 'credito')) : null, [firestore, activeStoreId]);
+    const salesQuery = useMemoFirebase(() => {
+        if (!firestore || !activeStoreId) return null;
+        return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId), where('transactionType', '==', 'credito'));
+    }, [firestore, activeStoreId]);
+
     const { data: creditSales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
-    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]));
+
+    const productsQuery = useMemoFirebase(() => {
+        if (!firestore || !activeStoreId) return null;
+        return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
+    }, [firestore, activeStoreId]);
+    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+
 
     const [isClient, setIsClient] = useState(false);
     useEffect(() => { setIsClient(true) }, []);
@@ -424,4 +434,3 @@ export default function CreditsPage() {
         </>
     );
 }
-

@@ -29,10 +29,25 @@ export default function PurchasesPage() {
   const { settings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
   const firestore = useFirestore();
 
-  const productsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-  const suppliersQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'suppliers'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-  const familiesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-  const purchasesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+  const productsQuery = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId]);
+
+  const suppliersQuery = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'suppliers'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId]);
+
+  const familiesQuery = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'families'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId]);
+
+  const purchasesQuery = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId]);
 
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
   const { data: suppliers, isLoading: isLoadingSuppliers } = useCollection<Supplier>(suppliersQuery);
@@ -544,4 +559,3 @@ export default function PurchasesPage() {
     </div>
   );
 }
-

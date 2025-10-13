@@ -76,11 +76,25 @@ export default function POSPage() {
   const firestore = useFirestore();
   const router = useRouter();
 
-  // --- FETCH DATA FROM FIRESTORE ---
-  const productsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-  const customersQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-  const familiesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-  const salesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+  const productsQuery = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId]);
+
+  const customersQuery = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId]);
+
+  const familiesQuery = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'families'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId]);
+  
+  const salesQuery = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId]);
 
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
   const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
@@ -89,7 +103,6 @@ export default function POSPage() {
   
   const [pendingOrders, setPendingOrdersState] = useState<PendingOrder[]>(pendingOrdersState);
   const isLoading = isLoadingSettings || isLoadingProducts || isLoadingCustomers || isLoadingFamilies || isLoadingSales;
-  // --- END FIRESTORE DATA ---
   
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -202,7 +215,6 @@ export default function POSPage() {
         closedBy: userProfile?.displayName || 'N/A'
     };
     
-    // We show the report first, and then clear the state on report dialog close
     setReportType('Z');
     setSessionForReport(closedSession);
   };
@@ -215,7 +227,7 @@ export default function POSPage() {
     setActiveSession(null);
     setIsClosingModalOpen(false);
     setClosingBalance('');
-    setIsSessionModalOpen(true); // Prompt to open a new session
+    setIsSessionModalOpen(true);
     toast({ title: 'Caja Cerrada', description: 'La sesión ha finalizado. Puedes iniciar una nueva.' });
   }
 
@@ -450,7 +462,6 @@ export default function POSPage() {
             transactions: newTransactions
         };
         setActiveSession(updatedSession);
-        // Defer session update slightly to not block UI
         setTimeout(() => {
             const sessionDocRef = doc(firestore, 'cashSessions', updatedSession.id);
             setDocumentNonBlocking(sessionDocRef, updatedSession, { merge: true });
@@ -567,12 +578,8 @@ export default function POSPage() {
     const customer = (customers || []).find(c => c.phone === order.customerPhone || c.name === order.customerName);
     if(customer) {
         setSelectedCustomerId(customer.id);
-    } else {
-      // Create new customer if not found
     }
     
-    // In a real app with Firestore, you'd delete the pending order document here
-    // For local state:
     setPendingOrdersState(prev => prev.filter(p => p.id !== order.id));
     
     toast({
@@ -1123,7 +1130,7 @@ export default function POSPage() {
     
     {/* Open Session Modal */}
     <Dialog open={isSessionModalOpen && !activeSession} onOpenChange={(isOpen) => {
-        if (activeSession) { // Only allow closing if a session is active (which shouldn't happen here)
+        if (activeSession) {
             setIsSessionModalOpen(isOpen);
         }
     }}>
