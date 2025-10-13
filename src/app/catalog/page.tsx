@@ -169,7 +169,7 @@ export default function CatalogPage() {
     const [lastAutoOpenedSku, setLastAutoOpenedSku] = useState<string | null>(null);
     const [selectedFamily, setSelectedFamily] = useState<string>("all");
     
-    const [localOrders, setLocalOrders] = useState<PendingOrder[]>(() => pendingOrdersContext || []);
+    const [localOrders, setLocalOrders] = useState<PendingOrder[]>([]);
     const [isEditingOrder, setIsEditingOrder] = useState(false);
     
     const [isClient, setIsClient] = useState(false)
@@ -213,7 +213,7 @@ export default function CatalogPage() {
             }
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [sortedAndFilteredProducts, searchTerm]);
+    }, [sortedAndFilteredProducts]);
 
     useEffect(() => {
         setLastAutoOpenedSku(null);
@@ -849,6 +849,8 @@ export default function CatalogPage() {
     );
 }
 
+
+    
 
     
 
