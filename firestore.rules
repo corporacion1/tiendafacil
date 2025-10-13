@@ -1,243 +1,223 @@
 /**
  * @file Firestore Security Rules
- * @description This ruleset enforces a multi-tenant data model where data is generally accessible but creates, updates, and deletes are restricted to specific stores.
+ * @description This ruleset enforces a multi-tenant data model where most collections are shared globally but access is controlled by a 'storeId' field on each document. Only authenticated users can access data.
  *
  * Data Structure:
- * - Top-level collections: /products, /sales, /purchases, /customers, /suppliers, /units, /families, /warehouses, /ads, /cashSessions
- * - Store-specific documents will have a `storeId` field.
- * - User profiles are stored under /users/{userId}.
+ * - /stores/{storeId}: Stores settings for each business.
+ * - /products: Products available in the system, each associated with a store via 'storeId'.
+ * - /sales: Sales records, each associated with a store via 'storeId'.
+ * - /purchases: Purchase records, each associated with a store via 'storeId'.
+ * - /customers: Customer records, each associated with a store via 'storeId'.
+ * - /suppliers: Supplier records, each associated with a store via 'storeId'.
+ * - /units: Measurement units, each associated with a store via 'storeId'.
+ * - /families: Product families, each associated with a store via 'storeId'.
+ * - /warehouses: Warehouse locations, each associated with a store via 'storeId'.
+ * - /ads: Advertisements available in the system. Public read, owner writes.
+ * - /cashSessions: Cash register sessions.
+ * - /users/{userId}: Public user profiles.
  *
  * Key Security Decisions:
- * - Global Collections: Read access is generally open (for prototyping), but write access is restricted based on `storeId`.
- * - User Profiles: Strict user-ownership model for /users/{userId} documents.
+ * - All collections except /ads and /users/{userId} require a 'storeId' for access control.
+ * - Global listing of documents is disallowed to prevent data leakage across stores. Reads and writes are restricted to authenticated users and validated based on the 'storeId' field.
+ * - The /ads collection allows public reads but restricts writes to owners (determined by a denormalized 'ownerId' field on the document).
+ * - The /users/{userId} collection enforces strict user-ownership.
  *
  * Denormalization for Authorization:
- * - The `storeId` field is crucial for authorizing write operations. Documents must have this field set correctly.
+ * - All store-specific collections require the `storeId` field on each document.
+ *   This allows rules to quickly validate that the user has access to a specific store's data.
+ *   Example: `allow read: if isSignedIn() && resource.data.storeId == getStoreIdFromRequest()`
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the user is signed in.
-     * @path N/A (Helper Function)
-     * @allow N/A (Helper Function)
-     * @deny N/A (Helper Function)
-     * @principle Authentication is required for certain operations.
-     */
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    /**
-     * @description Checks if the authenticated user ID matches the provided user ID.
-     * @path N/A (Helper Function)
-     * @allow N/A (Helper Function)
-     * @deny N/A (Helper Function)
-     * @principle Enforces user-ownership.
-     */
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    /**
-     * @description Checks if the authenticated user is the owner of the existing document.
-     * @path N/A (Helper Function)
-     * @allow N/A (Helper Function)
-     * @deny N/A (Helper Function)
-     * @principle Enforces user-ownership and verifies document existence.
-     */
-    function isExistingOwner(userId) {
-      return (isOwner(userId) && resource != null);
-    }
-    
-    /**
-     * @description Grants access to store settings based on store ID.
+     * @description Controls access to store settings.
      * @path /stores/{storeId}
-     * @allow (get, list) if true (for prototyping).
-     * @allow (create, update, delete) if the request is authenticated.
-     * @deny (create, update, delete) if the request is not authenticated.
-     * @principle Requires user authentication for creating, updating, or deleting store settings.
+     * @allow (get) Authenticated user accessing a specific store's settings.
+     * @deny (create) Unauthorized user attempting to create store settings.
+     * @principle Enforces store-level access control.
      */
     match /stores/{storeId} {
-      allow get, list: if true; // Open for prototyping
-      allow create, update, delete: if isSignedIn();
+      allow get: if isSignedIn() && request.auth.uid == storeId;
+      allow list: if false;
+      allow create: if false;
+      allow update: if isSignedIn() && request.auth.uid == storeId;
+      allow delete: if isSignedIn() && request.auth.uid == storeId;
     }
 
     /**
-     * @description Grants access to the global products collection.
+     * @description Controls access to products.
      * @path /products/{productId}
-     * @allow (get, list) if true (for prototyping).
-     * @allow (create) if the incoming `storeId` matches the request.auth.uid
-     * @allow (update, delete) if the resource exists and the `storeId` matches the request.auth.uid.
-     * @deny (create) if the `storeId` does not match the request.auth.uid.
-     * @deny (update, delete) if the `storeId` does not match the request.auth.uid.
-     * @principle Enforces store-ownership for writes.
+     * @allow (create) Authenticated user creating a product with a valid storeId.
+     * @deny (update) Unauthorized user attempting to modify a product in a different store.
+     * @principle Enforces store-level access control.
      */
     match /products/{productId} {
-      allow get, list: if true; // Open for prototyping
-      allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
-      allow update: if isSignedIn() && resource != null && resource.data.storeId == request.auth.uid;
-      allow delete: if isSignedIn() && resource != null && resource.data.storeId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.storeId == getStoreIdFromRequest();
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.storeId == getStoreIdFromRequest();
+      allow update: if isSignedIn() && request.resource.data.storeId == getStoreIdFromRequest();
+      allow delete: if isSignedIn() && resource.data.storeId == getStoreIdFromRequest();
     }
 
     /**
-     * @description Grants access to the global sales collection.
+     * @description Controls access to sales records.
      * @path /sales/{saleId}
-     * @allow (get, list) if true (for prototyping).
-     * @allow (create) if the incoming `storeId` matches the request.auth.uid
-     * @allow (update, delete) if the resource exists and the `storeId` matches the request.auth.uid.
-     * @deny (create) if the `storeId` does not match the request.auth.uid.
-     * @deny (update, delete) if the `storeId` does not match the request.auth.uid.
-     * @principle Enforces store-ownership for writes.
+     * @allow (create) Authenticated user creating a sale record with a valid storeId.
+     * @deny (update) Unauthorized user attempting to modify a sale record in a different store.
+     * @principle Enforces store-level access control.
      */
     match /sales/{saleId} {
-      allow get, list: if true; // Open for prototyping
-      allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
-      allow update: if isSignedIn() && resource != null && resource.data.storeId == request.auth.uid;
-      allow delete: if isSignedIn() && resource != null && resource.data.storeId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.storeId == getStoreIdFromRequest();
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.storeId == getStoreIdFromRequest();
+      allow update: if isSignedIn() && request.resource.data.storeId == getStoreIdFromRequest();
+      allow delete: if isSignedIn() && resource.data.storeId == getStoreIdFromRequest();
     }
 
     /**
-     * @description Grants access to the global purchases collection.
+     * @description Controls access to purchase records.
      * @path /purchases/{purchaseId}
-     * @allow (get, list) if true (for prototyping).
-     * @allow (create) if the incoming `storeId` matches the request.auth.uid
-     * @allow (update, delete) if the resource exists and the `storeId` matches the request.auth.uid.
-     * @deny (create) if the `storeId` does not match the request.auth.uid.
-     * @deny (update, delete) if the `storeId` does not match the request.auth.uid.
-     * @principle Enforces store-ownership for writes.
+     * @allow (create) Authenticated user creating a purchase record with a valid storeId.
+     * @deny (update) Unauthorized user attempting to modify a purchase record in a different store.
+     * @principle Enforces store-level access control.
      */
     match /purchases/{purchaseId} {
-      allow get, list: if true; // Open for prototyping
-      allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
-      allow update: if isSignedIn() && resource != null && resource.data.storeId == request.auth.uid;
-      allow delete: if isSignedIn() && resource != null && resource.data.storeId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.storeId == getStoreIdFromRequest();
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.storeId == getStoreIdFromRequest();
+          allow update: if isSignedIn() && request.resource.data.storeId == getStoreIdFromRequest();
+      allow delete: if isSignedIn() && resource.data.storeId == getStoreIdFromRequest();
     }
 
     /**
-     * @description Grants access to the global customers collection.
+     * @description Controls access to customer records.
      * @path /customers/{customerId}
-     * @allow (get, list) if true (for prototyping).
-     * @allow (create) if the incoming `storeId` matches the request.auth.uid
-     * @allow (update, delete) if the resource exists and the `storeId` matches the request.auth.uid.
-     * @deny (create) if the `storeId` does not match the request.auth.uid.
-     * @deny (update, delete) if the `storeId` does not match the request.auth.uid.
-     * @principle Enforces store-ownership for writes.
+     * @allow (create) Authenticated user creating a customer record with a valid storeId.
+     * @deny (update) Unauthorized user attempting to modify a customer record in a different store.
+     * @principle Enforces store-level access control.
      */
     match /customers/{customerId} {
-      allow get, list: if true; // Open for prototyping
-      allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
-      allow update: if isSignedIn() && resource != null && resource.data.storeId == request.auth.uid;
-      allow delete: if isSignedIn() && resource != null && resource.data.storeId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.storeId == getStoreIdFromRequest();
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.storeId == getStoreIdFromRequest();
+         allow update: if isSignedIn() && request.resource.data.storeId == getStoreIdFromRequest();
+      allow delete: if isSignedIn() && resource.data.storeId == getStoreIdFromRequest();
     }
 
     /**
-     * @description Grants access to the global suppliers collection.
+     * @description Controls access to supplier records.
      * @path /suppliers/{supplierId}
-     * @allow (get, list) if true (for prototyping).
-     * @allow (create) if the incoming `storeId` matches the request.auth.uid
-     * @allow (update, delete) if the resource exists and the `storeId` matches the request.auth.uid.
-     * @deny (create) if the `storeId` does not match the request.auth.uid.
-     * @deny (update, delete) if the `storeId` does not match the request.auth.uid.
-     * @principle Enforces store-ownership for writes.
+     * @allow (create) Authenticated user creating a supplier record with a valid storeId.
+     * @deny (update) Unauthorized user attempting to modify a supplier record in a different store.
+     * @principle Enforces store-level access control.
      */
     match /suppliers/{supplierId} {
-      allow get, list: if true; // Open for prototyping
-      allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
-      allow update: if isSignedIn() && resource != null && resource.data.storeId == request.auth.uid;
-      allow delete: if isSignedIn() && resource != null && resource.data.storeId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.storeId == getStoreIdFromRequest();
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.storeId == getStoreIdFromRequest();
+      allow update: if isSignedIn() && request.resource.data.storeId == getStoreIdFromRequest();
+      allow delete: if isSignedIn() && resource.data.storeId == getStoreIdFromRequest();
     }
 
-    /**
-     * @description Grants access to the global units collection.
+        /**
+     * @description Controls access to units records.
      * @path /units/{unitId}
-     * @allow (get, list) if true (for prototyping).
-     * @allow (create) if the incoming `storeId` matches the request.auth.uid
-     * @allow (update, delete) if the resource exists and the `storeId` matches the request.auth.uid.
-     * @deny (create) if the `storeId` does not match the request.auth.uid.
-     * @deny (update, delete) if the `storeId` does not match the request.auth.uid.
-     * @principle Enforces store-ownership for writes.
+     * @allow (create) Authenticated user creating a unit record with a valid storeId.
+     * @deny (update) Unauthorized user attempting to modify a unit record in a different store.
+     * @principle Enforces store-level access control.
      */
     match /units/{unitId} {
-      allow get, list: if true; // Open for prototyping
-      allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
-      allow update: if isSignedIn() && resource != null && resource.data.storeId == request.auth.uid;
-      allow delete: if isSignedIn() && resource != null && resource.data.storeId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.storeId == getStoreIdFromRequest();
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.storeId == getStoreIdFromRequest();
+      allow update: if isSignedIn() && request.resource.data.storeId == getStoreIdFromRequest();
+      allow delete: if isSignedIn() && resource.data.storeId == getStoreIdFromRequest();
     }
 
     /**
-     * @description Grants access to the global families collection.
+     * @description Controls access to families records.
      * @path /families/{familyId}
-     * @allow (get, list) if true (for prototyping).
-     * @allow (create) if the incoming `storeId` matches the request.auth.uid
-     * @allow (update, delete) if the resource exists and the `storeId` matches the request.auth.uid.
-     * @deny (create) if the `storeId` does not match the request.auth.uid.
-     * @deny (update, delete) if the `storeId` does not match the request.auth.uid.
-     * @principle Enforces store-ownership for writes.
+     * @allow (create) Authenticated user creating a family record with a valid storeId.
+     * @deny (update) Unauthorized user attempting to modify a family record in a different store.
+     * @principle Enforces store-level access control.
      */
     match /families/{familyId} {
-      allow get, list: if true; // Open for prototyping
-      allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
-      allow update: if isSignedIn() && resource != null && resource.data.storeId == request.auth.uid;
-      allow delete: if isSignedIn() && resource != null && resource.data.storeId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.storeId == getStoreIdFromRequest();
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.storeId == getStoreIdFromRequest();
+      allow update: if isSignedIn() && request.resource.data.storeId == getStoreIdFromRequest();
+      allow delete: if isSignedIn() && resource.data.storeId == getStoreIdFromRequest();
     }
 
     /**
-     * @description Grants access to the global warehouses collection.
+     * @description Controls access to warehouses records.
      * @path /warehouses/{warehouseId}
-     * @allow (get, list) if true (for prototyping).
-     * @allow (create) if the incoming `storeId` matches the request.auth.uid
-     * @allow (update, delete) if the resource exists and the `storeId` matches the request.auth.uid.
-     * @deny (create) if the `storeId` does not match the request.auth.uid.
-     * @deny (update, delete) if the `storeId` does not match the request.auth.uid.
-     * @principle Enforces store-ownership for writes.
+     * @allow (create) Authenticated user creating a warehouse record with a valid storeId.
+     * @deny (update) Unauthorized user attempting to modify a warehouse record in a different store.
+     * @principle Enforces store-level access control.
      */
     match /warehouses/{warehouseId} {
-      allow get, list: if true; // Open for prototyping
-      allow create: if isSignedIn() && request.resource.data.storeId == request.auth.uid;
-      allow update: if isSignedIn() && resource != null && resource.data.storeId == request.auth.uid;
-      allow delete: if isSignedIn() && resource != null && resource.data.storeId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.storeId == getStoreIdFromRequest();
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.storeId == getStoreIdFromRequest();
+     allow update: if isSignedIn() && request.resource.data.storeId == getStoreIdFromRequest();
+      allow delete: if isSignedIn() && resource.data.storeId == getStoreIdFromRequest();
     }
 
     /**
-     * @description Grants access to the global ads collection.
+     * @description Controls access to advertisements.
      * @path /ads/{adId}
-     * @allow (get, list) if true (for prototyping).
-     * @allow (create, update, delete) if isSignedIn().
-     * @deny (create, update, delete) if not isSignedIn().
+     * @allow (get, list) Public access to retrieve and list advertisements.
+     * @deny (create, update, delete) Unauthorized user attempting to modify an ad.
+     * @principle Public read access with owner-only writes, enforced by the presence of an 'ownerId' field.
      */
     match /ads/{adId} {
-      allow get, list: if true; // Open for prototyping
-      allow create, update, delete: if isSignedIn();
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
     /**
-     * @description Grants access to the global cashSessions collection.
+     * @description Controls access to cash sessions.
      * @path /cashSessions/{cashSessionId}
-     * @allow (get, list) if true (for prototyping).
-     * @allow (create, update, delete) if isSignedIn().
-     * @deny (create, update, delete) if not isSignedIn().
      */
     match /cashSessions/{cashSessionId} {
-      allow get, list: if true; // Open for prototyping
-      allow create, update, delete: if isSignedIn();
+      allow get: if isSignedIn() && resource.data.storeId == getStoreIdFromRequest();
+      allow list: if false;
+      allow create: if isSignedIn() && request.resource.data.storeId == getStoreIdFromRequest();
+       allow update: if isSignedIn() && request.resource.data.storeId == getStoreIdFromRequest();
+      allow delete: if isSignedIn() && resource.data.storeId == getStoreIdFromRequest();
     }
 
     /**
-     * @description Grants access to user profiles.
+     * @description Controls access to user profiles.
      * @path /users/{userId}
-     * @allow (get, list) if true (for prototyping).
-     * @allow (create) if the request.auth.uid matches the userId.
-     * @allow (update, delete) if the request.auth.uid matches the userId and the resource exists.
-     * @deny (create) if the request.auth.uid does not match the userId.
-     * @deny (update, delete) if the request.auth.uid does not match the userId.
-     * @principle Enforces user-ownership for profiles.
+     * @allow (create) User creating their own profile.
+     * @deny (update, delete) Unauthorized user attempting to modify or delete another user's profile.
+     * @principle Enforces strict user-ownership for profiles.
      */
     match /users/{userId} {
-      allow get, list: if true; // Open for prototyping
-      allow create: if isOwner(userId);
-      allow update, delete: if isExistingOwner(userId);
+      allow get: if isSignedIn() && isOwner(userId);
+      allow list: if false;
+      allow create: if isSignedIn() && isOwner(userId);
+      allow update: if isSignedIn() && isOwner(userId);
+      allow delete: if isSignedIn() && isOwner(userId);
     }
+  }
+
+  // Helper functions
+  function isSignedIn() {
+    return request.auth != null;
+  }
+
+  function isOwner(userId) {
+    return request.auth.uid == userId;
+  }
+
+  function getStoreIdFromRequest() {
+      return request.auth.uid;
   }
 }
