@@ -7,24 +7,26 @@ import { getFirestore, Firestore } from 'firebase/firestore';
 import { getAuth, Auth } from 'firebase/auth';
 
 import { firebaseConfig } from './config';
-import { FirebaseProvider, useFirebaseApp, useFirestore, useAuth } from './client-provider';
 import { useUser } from './auth/use-user';
 import { useCollection, WithId } from './firestore/use-collection';
 import { CollectionReference, DocumentReference, Query, doc, collection } from 'firebase/firestore';
 
-function initializeFirebase() {
-  if (getApps().length) {
-    const app = getApp();
-    const auth = getAuth(app);
-    const firestore = getFirestore(app);
-    return { app, auth, firestore };
-  } else {
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const firestore = getFirestore(app);
-    return { app, auth, firestore };
-  }
+let app: FirebaseApp;
+let auth: Auth;
+let firestore: Firestore;
+
+if (getApps().length) {
+  app = getApp();
+} else {
+  app = initializeApp(firebaseConfig);
 }
+
+auth = getAuth(app);
+firestore = getFirestore(app);
+
+const useAuth = () => auth;
+const useFirestore = () => firestore;
+const useFirebaseApp = () => app;
 
 function useMemoFirebase<T extends DocumentReference | CollectionReference | Query>(
   factory: () => T | null,
@@ -44,8 +46,6 @@ export {
   useFirebaseApp,
   useFirestore,
   useAuth,
-  initializeFirebase,
-  FirebaseProvider,
   useMemoFirebase,
   doc,
   collection
