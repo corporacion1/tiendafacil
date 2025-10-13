@@ -149,6 +149,7 @@ export default function SettingsPage() {
     const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
     const [resetPin, setResetPin] = useState('');
     const [resetConfirmationText, setResetConfirmationText] = useState('');
+    const [isRemovePinConfirmOpen, setIsRemovePinConfirmOpen] = useState(false);
 
 
      useEffect(() => {
@@ -618,7 +619,7 @@ export default function SettingsPage() {
                  <CardFooter className="border-t px-6 py-4 flex justify-end">
                     <Button className="bg-primary hover:bg-primary/90" onClick={saveAllSettings} disabled={!isDirty}>Guardar Configuración de Monedas</Button>
                 </CardFooter>
-            </Card>
+            </Card>>
 
             <Card>
                 <CardHeader>
@@ -635,7 +636,31 @@ export default function SettingsPage() {
                         </div>
                          <div className="flex items-center gap-4">
                             {hasPin && <ChangePinDialog />}
-                            <Switch checked={hasPin} onCheckedChange={(checked) => { if (!checked) { handleRemovePin() } else if (!hasPin) { document.getElementById('new-pin-trigger')?.click() } }} />
+                            <AlertDialog open={isRemovePinConfirmOpen} onOpenChange={setIsRemovePinConfirmOpen}>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>¿Desactivar PIN?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Esto desactivará el bloqueo por PIN de la aplicación.
+                                            Cualquier persona con acceso a este dispositivo podrá usarla. ¿Estás seguro?
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleRemovePin}>Sí, desactivar</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                            <Switch 
+                                checked={hasPin} 
+                                onCheckedChange={(checked) => { 
+                                    if (!checked) { 
+                                        setIsRemovePinConfirmOpen(true);
+                                    } else if (!hasPin) { 
+                                        document.getElementById('new-pin-trigger')?.click();
+                                    } 
+                                }} 
+                            />
                         </div>
                     </div>
                     {!hasPin && (
@@ -731,4 +756,3 @@ export default function SettingsPage() {
     );
 }
 
-    
