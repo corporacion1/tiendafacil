@@ -132,8 +132,8 @@ export default function CatalogPage() {
         products,
         families,
         ads: allAds,
-        setPendingOrders,
-        pendingOrders
+        pendingOrders,
+        setPendingOrders
     } = useSettings();
     
     const urlStoreId = searchParams.get('storeId');
@@ -156,6 +156,7 @@ export default function CatalogPage() {
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
     const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const scrollDirectionRef = useRef<'down' | 'up'>('down');
+    const autoCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     const [productDetails, setProductDetails] = useState<Product | null>(null);
     const [productImageError, setProductImageError] = useState(false);
@@ -186,11 +187,67 @@ export default function CatalogPage() {
     useEffect(() => {
         setIsClient(true)
     }, [])
+    
+    const sortedAndFilteredProducts = useMemo(() => {
+        if (!products) return [];
+        return products
+          .filter(
+            (product) =>
+              product.storeId === storeIdForCatalog &&
+              (product.status === 'active' || product.status === 'promotion') &&
+              product.stock > 0 &&
+              (selectedFamily === 'all' || product.family === selectedFamily) &&
+              (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase())))
+          )
+          .sort((a, b) => {
+            if (a.status === 'promotion' && b.status !== 'promotion') return -1;
+            if (a.status !== 'promotion' && b.status === 'promotion') return 1;
+            return a.name.localeCompare(b.name);
+          });
+      }, [products, searchTerm, selectedFamily, storeIdForCatalog]);
+
+    useEffect(() => {
+        // Clear any existing auto-close timer when the details modal is manually closed
+        if (!productDetails && autoCloseTimerRef.current) {
+            clearTimeout(autoCloseTimerRef.current);
+            autoCloseTimerRef.current = null;
+        }
+    }, [productDetails]);
+
+    useEffect(() => {
+        if (searchTerm && sortedAndFilteredProducts.length === 1) {
+            const product = sortedAndFilteredProducts[0];
+            const isExactMatch = product.sku?.toLowerCase() === searchTerm.toLowerCase() ||
+                                 product.name.toLowerCase() === searchTerm.toLowerCase();
+
+            if (isExactMatch && product.sku !== lastAutoOpenedSku) {
+                setProductDetails(product);
+                setLastAutoOpenedSku(product.sku);
+
+                if (autoCloseTimerRef.current) {
+                    clearTimeout(autoCloseTimerRef.current);
+                }
+
+                autoCloseTimerRef.current = setTimeout(() => {
+                    setProductDetails(null);
+                    setLastAutoOpenedSku(null); // Allow re-opening if searched again
+                }, 3000); 
+            }
+        } else {
+             if (autoCloseTimerRef.current) {
+                clearTimeout(autoCloseTimerRef.current);
+                autoCloseTimerRef.current = null;
+            }
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [sortedAndFilteredProducts, searchTerm]);
 
     useEffect(() => {
         // Reset the auto-open guard when search term changes
         setLastAutoOpenedSku(null);
     }, [searchTerm]);
+
     
     const validatePhoneNumber = (phone: string): string | null => {
         if (!phone) return "El teléfono es requerido.";
@@ -312,37 +369,6 @@ export default function CatalogPage() {
     };
     
     const subtotal = useMemo(() => cart.reduce((acc, item) => acc + item.price * item.quantity, 0), [cart]);
-
-    const sortedAndFilteredProducts = useMemo(() => {
-        return (products || [])
-          .filter(
-            (product) =>
-              product.storeId === storeIdForCatalog &&
-              (product.status === 'active' || product.status === 'promotion') &&
-              product.stock > 0 &&
-              (selectedFamily === 'all' || product.family === selectedFamily) &&
-              (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase())))
-          )
-          .sort((a, b) => {
-            if (a.status === 'promotion' && b.status !== 'promotion') return -1;
-            if (a.status !== 'promotion' && b.status === 'promotion') return 1;
-            return a.name.localeCompare(b.name);
-          });
-      }, [products, searchTerm, selectedFamily, storeIdForCatalog]);
-
-    useEffect(() => {
-        if (searchTerm && sortedAndFilteredProducts.length === 1) {
-            const product = sortedAndFilteredProducts[0];
-            const isExactMatch = product.sku?.toLowerCase() === searchTerm.toLowerCase() ||
-                                 product.name.toLowerCase() === searchTerm.toLowerCase();
-
-            if (isExactMatch && product.sku !== lastAutoOpenedSku) {
-                setProductDetails(product);
-                setLastAutoOpenedSku(product.sku);
-            }
-        }
-    }, [sortedAndFilteredProducts, searchTerm, lastAutoOpenedSku]);
     
     const itemsForGrid = useMemo(() => {
         const relevantAds = (allAds || []).filter(ad => {
