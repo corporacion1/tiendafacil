@@ -126,26 +126,27 @@ export default function CatalogPage() {
     const storeIdForCatalog = useSettings().activeStoreId || defaultStoreId;
 
     const productsQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
+        if (!firestore || !storeIdForCatalog) return null;
         return query(collection(firestore, 'products'), where('storeId', '==', storeIdForCatalog));
     }, [firestore, storeIdForCatalog]);
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
 
     const familiesQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
+        if (!firestore || !storeIdForCatalog) return null;
         return query(collection(firestore, 'families'), where('storeId', '==', storeIdForCatalog));
     }, [firestore, storeIdForCatalog]);
     const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
     
     const adsQuery = useMemoFirebase(() => {
-        if (firestore && settings?.businessType) {
+        if (!firestore) return null;
+        if (settings?.businessType) {
             return query(
                 collection(firestore, 'ads'), 
                 where('targetBusinessTypes', 'array-contains', settings.businessType),
                 where('status', '==', 'active')
             );
         }
-        return firestore ? query(collection(firestore, 'ads'), where('status', '==', 'active')) : null;
+        return query(collection(firestore, 'ads'), where('status', '==', 'active'));
     }, [firestore, settings?.businessType]);
 
     const { data: allAds, isLoading: isLoadingAds } = useCollection<Ad>(adsQuery);

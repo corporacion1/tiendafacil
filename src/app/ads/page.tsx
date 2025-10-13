@@ -18,7 +18,7 @@ import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { AdForm } from "@/components/ad-form";
 import { format, isPast } from "date-fns";
 import { useRouter } from "next/navigation";
-import { useCollection, useFirestore } from "@/firebase";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, doc } from "firebase/firestore";
 import { addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
@@ -112,7 +112,10 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
 export default function AdsPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
-  const adsCollectionRef = useMemo(() => firestore ? collection(firestore, 'ads') : null, [firestore]);
+  
+  const adsCollectionRef = useMemoFirebase(() => {
+    return firestore ? collection(firestore, 'ads') : null;
+  }, [firestore]);
   const { data: ads, isLoading } = useCollection<Ad>(adsCollectionRef);
 
   const sortedAds = useMemo(() => {
@@ -144,14 +147,15 @@ export default function AdsPage() {
   }
 
   function handleCreateAd(data: Omit<Ad, 'id' | 'views' | 'createdAt'>) {
-    if (!adsCollectionRef) return false;
+    if (!firestore) return false;
+    const adsCollection = collection(firestore, 'ads');
     const newAd: Omit<Ad, 'id'> = {
       ...data,
       views: 0,
       createdAt: new Date().toISOString(),
     };
 
-    addDocumentNonBlocking(adsCollectionRef, newAd);
+    addDocumentNonBlocking(adsCollection, newAd);
     
     toast({
       title: "Anuncio Creado",
@@ -304,4 +308,3 @@ export default function AdsPage() {
     </>
   );
 }
-
