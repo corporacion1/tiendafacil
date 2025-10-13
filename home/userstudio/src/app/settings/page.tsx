@@ -711,7 +711,7 @@ export default function SettingsPage() {
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-destructive">
                             <AlertTriangle />
-                            Ajustes Avanzados
+                            Ajusts Avanzados del Sistema
                         </CardTitle>
                         <CardDescription>
                         Acciones peligrosas que pueden resultar en la pérdida de datos.
@@ -820,6 +820,3 @@ export default function SettingsPage() {
         </div>
     );
 }
-
-
-
