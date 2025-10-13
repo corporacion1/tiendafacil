@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import type { CurrencyRate, Settings, UserProfile, UserRole } from "@/lib/types";
 import { defaultStore, defaultStoreId, mockCurrencyRates, defaultUsers } from '@/lib/data';
+import { useUser } from '@/firebase';
 
 type DisplayCurrency = 'primary' | 'secondary';
 
@@ -24,14 +25,13 @@ interface SettingsContextType {
   isLoadingSettings: boolean;
   userProfile: UserProfile | null;
   setUserProfile: (user: UserProfile | null) => void;
-  firebaseUser: UserProfile | null; // Keep name for compatibility, but it's a UserProfile now
+  firebaseUser: UserProfile | null;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
 const CURRENCY_PREF_STORAGE_KEY = 'tienda_facil_currency_pref';
 const ACTIVE_STORE_ID_STORAGE_KEY = 'tienda_facil_active_store_id';
-const LOGGED_IN_USER_ID_STORAGE_KEY = 'tienda_facil_logged_in_user_uid';
 
 
 function AppLoadingScreen() {
@@ -49,6 +49,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { toast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
+  const { user: firebaseUser, isLoading: isLoadingAuth } = useUser();
 
   const [settings, setLocalSettings] = useState<Settings | null>(defaultStore);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -60,7 +61,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   useEffect(() => {
     setIsClient(true);
-
     const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY) || defaultStoreId;
     setActiveStoreId(storedStoreId);
     
@@ -68,41 +68,40 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     if (storedCurrencyPref === 'secondary') {
       setDisplayCurrency('secondary');
     }
-    
-    // --- LOCAL AUTH SIMULATION ---
-    const loggedInUserUID = localStorage.getItem(LOGGED_IN_USER_ID_STORAGE_KEY);
-    let userToLoad: UserProfile | null = null;
-    
-    if (loggedInUserUID) {
-        userToLoad = defaultUsers.find(u => u.uid === loggedInUserUID) || null;
-    }
-
-    if (!userToLoad) {
-        // Fallback to superAdmin if no user is logged in for demo purposes
-        userToLoad = defaultUsers.find(u => u.role === 'superAdmin') || defaultUsers[0];
-    }
-    
-    setUserProfile(userToLoad);
-    localStorage.setItem(LOGGED_IN_USER_ID_STORAGE_KEY, userToLoad.uid);
-    // --- END LOCAL AUTH SIMULATION ---
-
-    setIsLoading(false);
   }, []);
+
+  useEffect(() => {
+    if (!isLoadingAuth) {
+      if (firebaseUser) {
+        // Find user in our local data. If not found, create a new 'user' profile.
+        const existingUser = defaultUsers.find(u => u.uid === firebaseUser.uid);
+        if (existingUser) {
+          setUserProfile(existingUser);
+        } else {
+          const newUserProfile: UserProfile = {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            photoURL: firebaseUser.photoURL,
+            role: 'user', // Default role for new users
+            status: 'active',
+            storeId: defaultStoreId, 
+            createdAt: new Date().toISOString(),
+          };
+          // In a real app, you would save this new user to the database.
+          // For demo purposes, we can add it to the local array if needed.
+          setUserProfile(newUserProfile);
+        }
+      } else {
+        setUserProfile(null);
+      }
+      setIsLoading(false);
+    }
+  }, [firebaseUser, isLoadingAuth]);
 
   const handleSetSettings = useCallback((newSettings: Partial<Settings>) => {
     setLocalSettings(prev => ({ ...(prev || defaultStore), ...newSettings }));
   }, []);
-  
-  const handleSetUserProfile = (user: UserProfile | null) => {
-    setUserProfile(user);
-    if (user) {
-        localStorage.setItem(LOGGED_IN_USER_ID_STORAGE_KEY, user.uid);
-    } else {
-        localStorage.removeItem(LOGGED_IN_USER_ID_STORAGE_KEY);
-        // On sign out, redirect to public page
-        router.push(`/catalog?storeId=${defaultStoreId}`);
-    }
-  }
 
   const switchStore = (storeId: string) => {
     setActiveStoreId(storeId);
@@ -124,6 +123,12 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       console.error("Could not access localStorage", error);
     }
   };
+  
+  const handleSetUserProfile = (user: UserProfile | null) => {
+    // This function is now mainly for local state updates if needed,
+    // as auth state is driven by the useUser hook.
+    setUserProfile(user);
+  }
 
   const activeSymbol = displayCurrency === 'primary' ? (settings?.primaryCurrencySymbol || '$') : (settings?.secondaryCurrencySymbol || 'Bs.');
   const latestRate = currencyRates.length > 0 ? currencyRates[0].rate : 1;
@@ -150,7 +155,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     isLoadingSettings: isLoading,
     userProfile,
     setUserProfile: handleSetUserProfile,
-    firebaseUser: userProfile, // Keep alias for components that use it
+    firebaseUser,
   };
 
   return (

@@ -28,6 +28,8 @@ import { Logo } from "./logo";
 import { navItems, settingsNav } from "@/lib/navigation";
 import { Badge } from "./ui/badge";
 import { defaultStoreId } from "@/lib/data";
+import { useAuth } from "@/firebase";
+import { signOut } from "firebase/auth";
 
 interface SiteHeaderProps {
   toggleSidebar: () => void;
@@ -38,15 +40,18 @@ export function SiteHeader({ toggleSidebar, isSidebarExpanded }: SiteHeaderProps
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
-  const { settings, activeCurrency, toggleDisplayCurrency, activeStoreId, userProfile, firebaseUser, setUserProfile, isLoadingSettings } = useSettings();
+  const { settings, activeCurrency, toggleDisplayCurrency, activeStoreId, userProfile, firebaseUser, isLoadingSettings } = useSettings();
+  const auth = useAuth();
   
-  const handleSignOut = () => {
-    setUserProfile(null);
-    toast({
-        title: "Sesión Cerrada",
-        description: "Has cerrado sesión correctamente.",
-    });
-    router.push(`/catalog?storeId=${defaultStoreId}`);
+  const handleSignOut = async () => {
+    if (auth) {
+        await signOut(auth);
+        toast({
+            title: "Sesión Cerrada",
+            description: "Has cerrado sesión correctamente.",
+        });
+        router.push(`/catalog?storeId=${defaultStoreId}`);
+    }
   }
 
   const inactiveSymbol = activeCurrency === 'primary' 

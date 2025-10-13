@@ -8,7 +8,8 @@ import { Logo } from '@/components/logo';
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useSettings } from "@/contexts/settings-context";
-import { defaultUsers } from "@/lib/data";
+import { useAuth } from "@/firebase";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
 const GoogleIcon = () => (
     <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -23,24 +24,32 @@ export function LoginModal({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const { toast } = useToast();
     const [isOpen, setIsOpen] = useState(false);
-    const { setUserProfile } = useSettings();
+    const auth = useAuth();
 
     const handleSignIn = async () => {
-        // --- LOCAL DEMO SIGN IN ---
-        const adminUser = defaultUsers.find(u => u.role === 'admin');
-        if (adminUser) {
-            setUserProfile(adminUser);
+        if (!auth) {
             toast({
-                title: "¡Bienvenido (DEMO)!",
-                description: "Has iniciado sesión como administrador.",
+                variant: "destructive",
+                title: "Error de autenticación",
+                description: "El servicio de autenticación no está disponible.",
+            });
+            return;
+        }
+        try {
+            const provider = new GoogleAuthProvider();
+            await signInWithPopup(auth, provider);
+            toast({
+                title: "¡Bienvenido!",
+                description: "Has iniciado sesión correctamente.",
             });
             setIsOpen(false);
             router.push('/dashboard');
-        } else {
+        } catch (error: any) {
+            console.error("Error during sign-in:", error);
             toast({
                 variant: "destructive",
-                title: "Error de Demo",
-                description: "No se encontró el usuario administrador de demostración.",
+                title: "Error al iniciar sesión",
+                description: error.message || "Ocurrió un error inesperado.",
             });
         }
     };
@@ -61,7 +70,7 @@ export function LoginModal({ children }: { children: React.ReactNode }) {
                 <div className="py-4">
                     <Button onClick={handleSignIn} className="w-full">
                         <GoogleIcon />
-                        Ingresar con Google (DEMO)
+                        Ingresar con Google
                     </Button>
                 </div>
             </DialogContent>

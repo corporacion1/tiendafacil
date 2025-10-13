@@ -11,6 +11,7 @@ import { useSecurity } from '@/contexts/security-context';
 import { useSettings } from '@/contexts/settings-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PinModal } from '@/components/pin-modal';
+import { useAuth } from '@/firebase';
 
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -18,6 +19,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { isLocked, lockApp } = useSecurity();
   const { userProfile, isLoadingSettings } = useSettings();
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+  const auth = useAuth(); // Get auth instance
 
   const toggleSidebar = () => {
     setIsSidebarExpanded(prev => !prev);
