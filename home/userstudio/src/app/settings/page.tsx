@@ -24,7 +24,6 @@ import { getDisplayImageUrl } from "@/lib/utils";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { collection, doc, query, where, writeBatch } from "firebase/firestore";
 import { setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
-import { forceSeedDatabase, factoryReset } from "@/lib/seed";
 
 
 function ChangePinDialog() {
@@ -116,7 +115,7 @@ function ChangePinDialog() {
 }
 
 export default function SettingsPage() {
-    const { hasPin, setPin, removePin, checkPin } = useSecurity();
+    const { hasPin, setPin, removePin } = useSecurity();
     const { settings, setSettings, currencyRates, userProfile, activeStoreId } = useSettings();
     const firestore = useFirestore();
     
@@ -158,8 +157,6 @@ export default function SettingsPage() {
 
     const [isProcessing, setIsProcessing] = useState(false);
 
-    const isSuperAdmin = userProfile?.role === 'superAdmin';
-
      useEffect(() => {
         setLocalSettings(settings || {});
     }, [settings]);
@@ -175,10 +172,6 @@ export default function SettingsPage() {
         const { id, value } = e.target;
         setLocalSettings(prev => ({ ...prev, [id]: value }));
     };
-    
-    const handleSwitchChange = (id: 'useDemoData', checked: boolean) => {
-        setLocalSettings(prev => ({ ...prev, [id]: checked }));
-    }
 
     const handleSelectChange = (id: string, value: string) => {
         setLocalSettings(prev => ({ ...prev, [id]: value }));
