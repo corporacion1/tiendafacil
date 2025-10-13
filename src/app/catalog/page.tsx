@@ -169,7 +169,7 @@ export default function CatalogPage() {
     const [lastAutoOpenedSku, setLastAutoOpenedSku] = useState<string | null>(null);
     const [selectedFamily, setSelectedFamily] = useState<string>("all");
     
-    const [localOrders, setLocalOrders] = useState<PendingOrder[]>(() => pendingOrdersContext);
+    const [localOrders, setLocalOrders] = useState<PendingOrder[]>(() => pendingOrdersContext || []);
     const [isEditingOrder, setIsEditingOrder] = useState(false);
     
     const [isClient, setIsClient] = useState(false)
@@ -179,7 +179,7 @@ export default function CatalogPage() {
     }, [])
 
     useEffect(() => {
-        setLocalOrders(pendingOrdersContext);
+        setLocalOrders(pendingOrdersContext || []);
     }, [pendingOrdersContext]);
     
     const sortedAndFilteredProducts = useMemo(() => {
@@ -849,5 +849,7 @@ export default function CatalogPage() {
     );
 }
 
+
+    
 
     
