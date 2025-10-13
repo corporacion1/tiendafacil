@@ -3,6 +3,11 @@ import { useEffect, useState } from 'react';
 import { useUser as useAuthUser } from '@/firebase/provider';
 import type { UserProfile } from '@/lib/types';
 import { defaultUsers } from '@/lib/data';
+import { SUPER_ADMIN_UID } from '@/firebase/auth/use-user';
+
+
+export { SUPER_ADMIN_UID } from '@/firebase/auth/use-user';
+
 
 /**
  * Hook to get the currently authenticated user's profile from LOCAL DATA.
@@ -39,13 +44,13 @@ export function useUser() {
           status: localUser.status,
           storeId: localUser.storeId,
           createdAt: localUser.createdAt || new Date().toISOString(),
+          phone: authUser.phoneNumber,
         };
         setUserProfile(profile);
         setNeedsProfileCreation(false);
       } else {
         // If the authenticated user is not in our local data, it might be a new user.
-        // In a real app, this is where you'd trigger the profile creation flow.
-        // For this local-data version, we'll flag it.
+        // This will trigger the FirstTimeSetupModal
         setUserProfile(null);
         setNeedsProfileCreation(true);
       }
