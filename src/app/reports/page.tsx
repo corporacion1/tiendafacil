@@ -47,21 +47,21 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/settings-context";
 import { SessionReportPreview } from "@/components/session-report-preview";
-import { mockSales, mockPurchases, mockProducts, defaultCustomers, mockCashSessions } from "@/lib/data";
 
 type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
 
 export default function ReportsPage() {
-    const { settings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
-
-    // --- LOCAL DATA ---
-    const [salesData, setSalesData] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
-    const [purchasesData, setPurchasesData] = useState(mockPurchases.map(p => ({...p, storeId: activeStoreId})));
-    const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString() })));
-    const [customers, setCustomers] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
-    const [cashSessionsData, setCashSessionsData] = useState(mockCashSessions.map(cs => ({...cs, storeId: activeStoreId})));
-    const isLoading = isLoadingSettings;
-    // --- END LOCAL DATA ---
+    const { 
+        settings, 
+        activeSymbol, 
+        activeRate, 
+        isLoadingSettings,
+        sales: salesData,
+        purchases: purchasesData,
+        products,
+        customers,
+        cashSessions: cashSessionsData,
+    } = useSettings();
 
     const [selectedSessionDetails, setSelectedSessionDetails] = useState<CashSession | null>(null);
     const [sessionForReport, setSessionForReport] = useState<CashSession | null>(null);
@@ -257,7 +257,7 @@ export default function ReportsPage() {
     
     const getTicketCustomer = (sale: Sale | null): Customer | null => {
         if (!sale || !customers) return null;
-        return customers.find(c => c.name === sale.customerName) || { id: 'unknown', name: sale.customerName, phone: '', address: '', storeId: activeStoreId };
+        return customers.find(c => c.name === sale.customerName) || { id: 'unknown', name: sale.customerName, phone: '', address: '', storeId: settings?.id || '' };
     }
 
     const filterByDate = (data: (Sale | Purchase | InventoryMovement | (Payment & { saleId: string; customerName: string; }) | CashSession)[]) => {
@@ -444,8 +444,8 @@ export default function ReportsPage() {
             <CardDescription>Un resumen de todas las ventas realizadas.</CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading && <p className="text-center">Cargando ventas...</p>}
-            {!isLoading && <Table>
+            {isLoadingSettings && <p className="text-center">Cargando ventas...</p>}
+            {!isLoadingSettings && <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Fecha</TableHead>
@@ -501,8 +501,8 @@ export default function ReportsPage() {
                 <CardDescription>Un resumen de todas las compras a proveedores.</CardDescription>
             </CardHeader>
             <CardContent>
-                {isLoading && <p className="text-center">Cargando compras...</p>}
-                {!isLoading && <Table>
+                {isLoadingSettings && <p className="text-center">Cargando compras...</p>}
+                {!isLoadingSettings && <Table>
                     <TableHeader>
                         <TableRow>
                             <TableHead>Fecha</TableHead>
@@ -539,8 +539,8 @@ export default function ReportsPage() {
                 <CardDescription>Un resumen de todos los pagos y abonos recibidos.</CardDescription>
             </CardHeader>
             <CardContent>
-                {isLoading && <p className="text-center">Cargando pagos...</p>}
-                {!isLoading && <Table>
+                {isLoadingSettings && <p className="text-center">Cargando pagos...</p>}
+                {!isLoadingSettings && <Table>
                     <TableHeader>
                         <TableRow>
                             <TableHead>Fecha</TableHead>
@@ -581,8 +581,8 @@ export default function ReportsPage() {
             <CardDescription>Un historial de todas las sesiones de caja.</CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading && <p className="text-center">Cargando sesiones...</p>}
-            {!isLoading && (
+            {isLoadingSettings && <p className="text-center">Cargando sesiones...</p>}
+            {!isLoadingSettings && (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -651,8 +651,8 @@ export default function ReportsPage() {
                 <CardDescription>Un historial de todas las entradas y salidas de stock.</CardDescription>
             </CardHeader>
             <CardContent>
-                 {isLoading && <p className="text-center">Cargando movimientos...</p>}
-                 {!isLoading && <Table>
+                 {isLoadingSettings && <p className="text-center">Cargando movimientos...</p>}
+                 {!isLoadingSettings && <Table>
                     <TableHeader>
                         <TableRow>
                             <TableHead>Producto</TableHead>
@@ -687,8 +687,8 @@ export default function ReportsPage() {
                 <CardDescription>Estado actual de todo tu inventario.</CardDescription>
             </CardHeader>
             <CardContent>
-                 {isLoading && <p className="text-center">Cargando inventario...</p>}
-                 {!isLoading && <Table>
+                 {isLoadingSettings && <p className="text-center">Cargando inventario...</p>}
+                 {!isLoadingSettings && <Table>
                     <TableHeader>
                         <TableRow>
                             <TableHead>SKU</TableHead>
