@@ -1,9 +1,9 @@
 
 'use client';
 import { useEffect, useState } from 'react';
-import { useUser as useFirebaseAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser as useFirebaseAuth, useFirestore } from '@/firebase';
 import type { UserProfile } from '@/lib/types';
-import { doc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { defaultUsers } from '@/lib/data'; // Import default users
 
 export const SUPER_ADMIN_UID = "5QLaiiIr4mcGsjRXVGeGx50nrpk1";
