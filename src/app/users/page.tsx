@@ -3,25 +3,30 @@
 
 import { useState, useMemo, useEffect } from "react";
 import type { UserProfile, UserRole } from "@/lib/types";
-import { MoreHorizontal, Search, UserPlus, Shield, Check, Mail, Phone, ExternalLink, UserX } from "lucide-react";
+import { MoreHorizontal, Search, UserPlus, Shield, Check, Mail, Phone, ExternalLink, UserX, Armchair, AlertTriangle, Database } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import { useSettings } from "@/contexts/settings-context";
-import { defaultUsers } from "@/lib/data";
+import { useCollection, useFirestore, setDocumentNonBlocking } from "@/firebase";
+import { collection, doc } from "firebase/firestore";
+import { forceSeedDatabase, factoryReset } from "@/lib/seed";
+import { useSecurity } from "@/contexts/security-context";
 
 const getRoleVariant = (role: UserProfile['role']) => {
   switch (role) {
     case 'superAdmin': return 'destructive';
     case 'admin': return 'default';
+    case 'pos': return 'secondary';
     case 'user':
-    default: return 'secondary';
+    default: return 'outline';
   }
 };
 
@@ -29,6 +34,7 @@ const getRoleIcon = (role: UserProfile['role']) => {
   switch (role) {
     case 'superAdmin': return <Shield className="h-4 w-4 mr-2" />;
     case 'admin': return <UserPlus className="h-4 w-4 mr-2" />;
+    case 'pos': return <Armchair className="h-4 w-4 mr-2" />;
     case 'user':
     default: return <UserPlus className="h-4 w-4 mr-2" />;
   }
@@ -39,16 +45,24 @@ const getStatusVariant = (status: UserProfile['status'] | undefined) => {
 }
 
 export default function UsersPage() {
-  const { userProfile: currentUserProfile, switchStore } = useSettings();
+  const { userProfile: currentUserProfile, switchStore, activeStoreId } = useSettings();
   const { toast } = useToast();
+  const firestore = useFirestore();
+  const { hasPin, checkPin } = useSecurity();
   
-  const [users, setUsers] = useState<UserProfile[]>(defaultUsers);
-  const isLoading = false; // Data is local
+  const usersCollectionRef = useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]);
+  const { data: users, isLoading } = useCollection<UserProfile>(usersCollectionRef);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [userToAction, setUserToAction] = useState<UserProfile | null>(null);
   const [actionType, setActionType] = useState<'promote' | 'disable' | 'changeRole' | null>(null);
   const [newRole, setNewRole] = useState<UserRole>('user');
+
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [resetPin, setResetPin] = useState('');
+  const [resetConfirmationText, setResetConfirmationText] = useState('');
+
 
   const handleAction = (user: UserProfile, type: 'promote' | 'disable' | 'changeRole', role?: UserRole) => {
     if (currentUserProfile?.role !== 'superAdmin') {
@@ -63,12 +77,13 @@ export default function UsersPage() {
   };
   
   const confirmRoleChange = async () => {
-      if (!userToAction) return;
+      if (!userToAction || !firestore) return;
       
-      setUsers(prev => prev.map(u => u.uid === userToAction.uid ? { ...u, role: newRole } : u));
+      const userDocRef = doc(firestore, 'users', userToAction.uid);
+      setDocumentNonBlocking(userDocRef, { role: newRole }, { merge: true });
       
       toast({
-          title: 'Rol Actualizado (Simulación)',
+          title: 'Rol Actualizado',
           description: `${userToAction.displayName} ahora es ${newRole}.`,
       });
 
@@ -77,23 +92,25 @@ export default function UsersPage() {
   }
 
   const confirmAction = async () => {
-    if (!userToAction || !actionType) return;
+    if (!userToAction || !firestore) return;
+
+    const userDocRef = doc(firestore, 'users', userToAction.uid);
 
     if (actionType === 'promote') {
       const newStoreId = `store-${userToAction.uid.slice(0, 8)}`;
-      setUsers(prev => prev.map(u => u.uid === userToAction.uid ? { ...u, role: 'admin', storeId: newStoreId, storeRequest: false } : u));
+      setDocumentNonBlocking(userDocRef, { role: 'admin', storeId: newStoreId, storeRequest: false }, { merge: true });
       
       toast({
-          title: "Usuario Promovido (Simulación)",
+          title: "Usuario Promovido",
           description: `${userToAction.displayName} ahora es un administrador con la tienda ${newStoreId}.`,
       });
 
     } else if (actionType === 'disable') {
        const newStatus = userToAction.status === 'disabled' ? 'active' : 'disabled';
-       setUsers(prev => prev.map(u => u.uid === userToAction.uid ? { ...u, status: newStatus } : u));
+       setDocumentNonBlocking(userDocRef, { status: newStatus }, { merge: true });
        
        toast({
-            title: `Usuario ${newStatus === 'disabled' ? 'Deshabilitado' : 'Habilitado'} (Simulación)`,
+            title: `Usuario ${newStatus === 'disabled' ? 'Deshabilitado' : 'Habilitado'}`,
             description: `La cuenta de "${userToAction.displayName}" ha sido ${newStatus === 'disabled' ? 'deshabilitada' : 'habilitada'}.`,
         });
     }
@@ -101,6 +118,49 @@ export default function UsersPage() {
     setUserToAction(null);
     setActionType(null);
   };
+  
+  const handleSeedDatabase = async () => {
+      if (!firestore) return;
+      setIsProcessing(true);
+      toast({ title: 'Poblando Base de Datos', description: 'Cargando datos de demostración...' });
+      try {
+          await forceSeedDatabase(firestore, activeStoreId);
+          toast({ title: '¡Éxito!', description: 'Datos cargados. La página se recargará.' });
+          setTimeout(() => window.location.reload(), 1500);
+      } catch (error: any) {
+          toast({ variant: 'destructive', title: 'Error', description: error.message });
+      } finally {
+          setIsProcessing(false);
+      }
+  };
+
+  const handleFactoryReset = async () => {
+    if (!firestore) return;
+    if(hasPin && !checkPin(resetPin)) {
+         toast({ variant: "destructive", title: "PIN Incorrecto" });
+        return;
+    }
+    
+    if (resetConfirmationText !== 'RESTAURAR') {
+         toast({ variant: "destructive", title: "Confirmación incorrecta" });
+        return;
+    }
+
+    setIsProcessing(true);
+    toast({ title: 'Restaurando...', description: 'Por favor, espera.' });
+    
+    try {
+        await factoryReset(firestore, activeStoreId);
+        setIsResetConfirmOpen(false);
+        toast({ title: 'Restauración Completa', description: 'La página se recargará.' });
+        setTimeout(() => window.location.reload(), 1500);
+    } catch (error) {
+         toast({ variant: "destructive", title: "Error en la Restauración" });
+    } finally {
+        setIsProcessing(false);
+    }
+  };
+
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
@@ -176,7 +236,7 @@ export default function UsersPage() {
                           {user.photoURL ? (
                               <Image src={user.photoURL} alt={user.displayName || 'Avatar'} fill sizes="40px" className="object-cover" />
                           ) : (
-                              <UserPlus className="h-5 w-5 text-muted-foreground" />
+                              <Armchair className="h-5 w-5 text-muted-foreground" />
                           )}
                         </div>
                     </TableCell>
@@ -233,6 +293,10 @@ export default function UsersPage() {
                                                 <Check className={`mr-2 h-4 w-4 ${user.role === 'user' ? 'opacity-100' : 'opacity-0'}`} />
                                                 User
                                             </DropdownMenuItem>
+                                            <DropdownMenuItem onSelect={() => handleAction(user, 'changeRole', 'pos')}>
+                                                <Check className={`mr-2 h-4 w-4 ${user.role === 'pos' ? 'opacity-100' : 'opacity-0'}`} />
+                                                Pos
+                                            </DropdownMenuItem>
                                              <DropdownMenuItem onSelect={() => handleAction(user, 'changeRole', 'admin')}>
                                                 <Check className={`mr-2 h-4 w-4 ${user.role === 'admin' ? 'opacity-100' : 'opacity-0'}`} />
                                                 Admin
@@ -262,6 +326,104 @@ export default function UsersPage() {
               </TableBody>
             </Table>}
         </CardContent>
+      </Card>
+      
+       <Card className="mt-6">
+          <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-destructive">
+                  <AlertTriangle />
+                  Ajustes Avanzados del Sistema
+              </CardTitle>
+              <CardDescription>
+              Acciones peligrosas que pueden resultar en la pérdida de datos.
+              </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+              <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
+                  <div>
+                      <p className="font-medium">Poblar Base de Datos</p>
+                      <p className="text-sm text-muted-foreground">
+                          Añade datos de demostración a la base de datos (productos, clientes, etc.).
+                      </p>
+                  </div>
+                  <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                          <Button variant="secondary" disabled={isProcessing}>
+                              <Database className="mr-2 h-4 w-4" />
+                              {isProcessing ? 'Procesando...' : 'Poblar con Datos Demo'}
+                          </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                          <AlertDialogHeader>
+                              <AlertDialogTitle>¿Poblar la base de datos?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                  Esta acción cargará los datos de demostración a la fuerza. Es útil si la base de datos está vacía o corrupta.
+                              </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={handleSeedDatabase}>Sí, poblar</AlertDialogAction>
+                          </AlertDialogFooter>
+                      </AlertDialogContent>
+                  </AlertDialog>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
+                  <div>
+                      <p className="font-medium text-destructive">Restaurar Datos de Fábrica</p>
+                      <p className="text-sm text-muted-foreground">
+                          Borra todos los datos de todas las colecciones.
+                      </p>
+                  </div>
+                  <AlertDialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
+                      <AlertDialogTrigger asChild>
+                          <Button variant="destructive" disabled={isProcessing}>Restaurar Datos de Fábrica</Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                          <AlertDialogHeader>
+                              <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                  Esta es tu última oportunidad. Para confirmar el borrado total de datos, completa lo siguiente.
+                              </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <div className="space-y-4 py-4">
+                              {hasPin && (
+                                  <div className="space-y-2">
+                                      <Label htmlFor="reset-pin">PIN de Seguridad</Label>
+                                      <Input
+                                          id="reset-pin"
+                                          type="password"
+                                          value={resetPin}
+                                          onChange={(e) => setResetPin(e.target.value)}
+                                          maxLength={4}
+                                          placeholder="****"
+                                          autoFocus
+                                      />
+                                  </div>
+                              )}
+                              <div className="space-y-2">
+                                  <Label htmlFor="reset-confirm-text">Escribe "RESTAURAR" para confirmar</Label>
+                                  <Input
+                                      id="reset-confirm-text"
+                                      value={resetConfirmationText}
+                                      onChange={(e) => setResetConfirmationText(e.target.value)}
+                                      placeholder="RESTAURAR"
+                                  />
+                              </div>
+                          </div>
+                          <AlertDialogFooter>
+                              <AlertDialogCancel onClick={() => { setResetPin(''); setResetConfirmationText(''); }}>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                  onClick={handleFactoryReset}
+                                  disabled={isProcessing || resetConfirmationText !== 'RESTAURAR' || (hasPin && resetPin.length !== 4)}
+                                  className="bg-destructive hover:bg-destructive/90"
+                              >
+                                  {isProcessing ? 'Restaurando...' : 'Restaurar y Borrar Todo'}
+                              </AlertDialogAction>
+                          </AlertDialogFooter>
+                      </AlertDialogContent>
+                  </AlertDialog>
+              </div>
+          </CardContent>
       </Card>
       
       <AlertDialog open={!!userToAction} onOpenChange={(isOpen) => !isOpen && setUserToAction(null)}>
