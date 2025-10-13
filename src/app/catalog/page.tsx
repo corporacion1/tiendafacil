@@ -131,7 +131,7 @@ export default function CatalogPage() {
         products,
         families,
         ads: allAds,
-        pendingOrders,
+        pendingOrders: pendingOrdersContext,
         setPendingOrders
     } = useSettings();
     
@@ -169,7 +169,7 @@ export default function CatalogPage() {
     const [lastAutoOpenedSku, setLastAutoOpenedSku] = useState<string | null>(null);
     const [selectedFamily, setSelectedFamily] = useState<string>("all");
     
-    const [localOrders, setLocalOrders] = useState<PendingOrder[]>([]);
+    const [localOrders, setLocalOrders] = useState<PendingOrder[]>(() => pendingOrdersContext);
     const [isEditingOrder, setIsEditingOrder] = useState(false);
     
     const [isClient, setIsClient] = useState(false)
@@ -177,6 +177,10 @@ export default function CatalogPage() {
     useEffect(() => {
         setIsClient(true)
     }, [])
+
+    useEffect(() => {
+        setLocalOrders(pendingOrdersContext);
+    }, [pendingOrdersContext]);
     
     const sortedAndFilteredProducts = useMemo(() => {
         if (!products) return [];
@@ -845,3 +849,5 @@ export default function CatalogPage() {
     );
 }
 
+
+    
