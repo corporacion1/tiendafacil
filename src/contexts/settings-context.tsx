@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
 import { useUser as useAuthUser } from '@/firebase/auth/use-user';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, query, orderBy, limit } from 'firebase/firestore';
 import { defaultStore, defaultStoreId } from '@/lib/data';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { FirstTimeSetupModal } from '@/components/first-time-setup-modal';
@@ -17,7 +17,7 @@ type DisplayCurrency = 'primary' | 'secondary';
 
 interface SettingsContextType {
   settings: Settings | null;
-  setSettings: (settings: Settings) => void;
+  setSettings: (settings: Partial<Settings>) => void;
   displayCurrency: DisplayCurrency;
   toggleDisplayCurrency: () => void;
   activeCurrency: 'primary' | 'secondary';
@@ -74,17 +74,23 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [userProfile]);
   
   const storeDocRef = useMemoFirebase(() => {
-    if (firestore && activeStoreId && !isAuthLoading && !needsProfileCreation) {
+    // CRITICAL: Only attempt to fetch if we are NOT in the setup flow.
+    if (firestore && activeStoreId && !isAuthLoading && userProfile) {
       return doc(firestore, 'stores', activeStoreId);
     }
     return null;
-  }, [firestore, activeStoreId, isAuthLoading, needsProfileCreation]);
+  }, [firestore, activeStoreId, isAuthLoading, userProfile]);
 
   const { data: storeSettings, isLoading: isLoadingStoreSettings } = useDoc<Settings>(storeDocRef);
 
   const ratesCollectionRef = useMemoFirebase(() => {
+    // CRITICAL: Only create the query if userProfile exists, avoiding reads for new users.
     if (firestore && activeStoreId && userProfile) {
-        return collection(firestore, 'stores', activeStoreId, 'currencyRates');
+        return query(
+          collection(firestore, 'stores', activeStoreId, 'currencyRates'), 
+          orderBy('date', 'desc'), 
+          limit(30)
+        );
     }
     return null;
   }, [firestore, activeStoreId, userProfile]);
@@ -94,6 +100,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   useEffect(() => {
     if (isAuthLoading) return;
 
+    // If setup is needed, the app is "ready" to show the modal.
     if (needsProfileCreation) {
       setIsReady(true);
       return;
@@ -109,7 +116,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     if (storeSettings) {
       setSettingsState(storeSettings);
       setIsReady(true);
-    } else if (!isLoadingStoreSettings && !storeSettings) {
+    } else if (!isLoadingStoreSettings && !storeSettings && userProfile) {
+      // If no settings are found for an existing user, fallback to default
       setSettingsState(defaultStore);
       setIsReady(true);
     }
@@ -118,7 +126,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   
   const handleSetSettings = useCallback((newSettings: Partial<Settings>) => {
-    if (firestore) {
+    if (firestore && activeStoreId) {
       const storeDocRef = doc(firestore, 'stores', activeStoreId);
       setDocumentNonBlocking(storeDocRef, newSettings, { merge: true });
       toast({ title: "Configuración guardada", description: "Tus cambios se están guardando en la nube." });
@@ -167,7 +175,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const contextValue: SettingsContextType = {
     settings, 
-    setSettings: handleSetSettings as (settings: Settings) => void, 
+    setSettings: handleSetSettings,
     displayCurrency, 
     toggleDisplayCurrency, 
     activeCurrency, 

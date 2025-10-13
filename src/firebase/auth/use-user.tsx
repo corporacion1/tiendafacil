@@ -26,6 +26,13 @@ export function useUser() {
       setNeedsProfileCreation(false);
       return;
     }
+    
+    // This is a simplified check for the first-time user flow.
+    // If we have an authenticated user but no profile has been loaded yet by any mechanism,
+    // we assume they might need one. The SettingsProvider will confirm this.
+    if (authUser && !profile) {
+       // We'll assume they might need a profile. The onSnapshot listener will confirm.
+    }
 
     const userDocRef = doc(firestore, 'users', authUser.uid);
     const unsubscribe = onSnapshot(userDocRef, (docSnapshot) => {
@@ -33,22 +40,18 @@ export function useUser() {
         setProfile(docSnapshot.data() as UserProfile);
         setNeedsProfileCreation(false);
       } else {
-        // User is authenticated, but no profile exists in Firestore.
-        // This is the trigger for the first-time setup.
-        setProfile(null); // Explicitly set profile to null
+        // This is the key: an authenticated user exists, but their profile document does not.
+        // This is the definitive signal for first-time setup.
+        setProfile(null);
         setNeedsProfileCreation(true);
       }
       setIsLoading(false);
     }, (error) => {
-      // Firestore read error. This could happen if rules deny the read.
-      // For initial setup, we must allow the app to proceed.
-      // A fallback mechanism for super admin can be implemented here.
-      if(authUser.uid === SUPER_ADMIN_UID) {
-        console.warn("Firestore read failed for super admin, using local fallback.");
-        setProfile(defaultUsers.find(u => u.uid === SUPER_ADMIN_UID) || null);
-      } else {
-        console.error("useUser - Firestore error:", error);
-      }
+      console.error("useUser - Firestore error:", error);
+      // Even on error, we assume the profile might not exist and trigger the setup flow
+      // This is a safeguard against restrictive rules blocking the initial read.
+      setProfile(null);
+      setNeedsProfileCreation(true);
       setIsLoading(false);
     });
 
