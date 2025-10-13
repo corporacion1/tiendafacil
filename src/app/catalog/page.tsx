@@ -7,7 +7,7 @@ import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid,
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
-import { collection } from "firebase/firestore";
+import { collection, query, where } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import type { Product, CartItem, PendingOrder, Ad, Family } from "@/lib/types";
-import { pendingOrdersState } from "@/lib/data";
+import { pendingOrdersState, initialFamilies, mockAds } from "@/lib/data";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -121,13 +121,19 @@ const CatalogProductCard = ({ product, onAddToCart, onImageClick }: { product: P
 export default function CatalogPage() {
     const { toast } = useToast();
     const router = useRouter();
-    const { settings, activeSymbol, activeRate, isLoadingSettings, userProfile } = useSettings();
+    const { settings, activeSymbol, activeRate, isLoadingSettings, userProfile, activeStoreId } = useSettings();
     const firestore = useFirestore();
 
-    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(useMemoFirebase(() => firestore ? collection(firestore, 'products') : null, [firestore]));
-    const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(useMemoFirebase(() => firestore ? collection(firestore, 'families') : null, [firestore]));
-    const { data: allAds, isLoading: isLoadingAds } = useCollection<Ad>(useMemoFirebase(() => firestore ? collection(firestore, 'ads') : null, [firestore]));
+    const productsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+
+    const familiesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+    const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
     
+    // Using mockAds for now to avoid permission issues if ads are not store-specific
+    const [allAds, setAllAds] = useState(mockAds);
+    const isLoadingAds = false;
+
     const isLoading = isLoadingSettings || isLoadingProducts || isLoadingFamilies || isLoadingAds;
     
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -486,7 +492,7 @@ export default function CatalogPage() {
                                                                             <p className="text-sm text-muted-foreground">{isClient ? format(new Date(order.date), 'dd/MM/yyyy HH:mm') : '...'}</p>
                                                                         </div>
                                                                         <div className="flex items-center gap-1">
-                                                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => handleReShowQR(order.id)}>
+                                                                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={()={() => handleReShowQR(order.id)}}>
                                                                                 <QrCode className="h-4 w-4" />
                                                                             </Button>
                                                                             <DropdownMenu>
@@ -822,6 +828,5 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
-
 
     
