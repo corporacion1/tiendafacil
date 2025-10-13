@@ -203,9 +203,9 @@ export default function CatalogPage() {
       }, [products, searchTerm, selectedFamily, storeIdForCatalog]);
 
     useEffect(() => {
-        if (sortedAndFilteredProducts.length === 1) {
+        const trimmedSearchTerm = searchTerm.trim().toLowerCase();
+        if (sortedAndFilteredProducts.length === 1 && trimmedSearchTerm) {
             const product = sortedAndFilteredProducts[0];
-            const trimmedSearchTerm = searchTerm.trim().toLowerCase();
             const isExactMatch = product.sku?.toLowerCase() === trimmedSearchTerm ||
                                  product.name.toLowerCase() === trimmedSearchTerm;
 
