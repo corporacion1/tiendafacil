@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import { useState, useMemo, useEffect, useCallback } from "react";
@@ -124,7 +123,7 @@ export default function SettingsPage() {
     const [localSettings, setLocalSettings] = useState<Partial<Settings>>(settings || {});
     const [imageError, setImageError] = useState(false);
 
-    // --- Firestore Data ---
+    // --- Firestore Data (Correctly Filtered) ---
     const productsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
     const salesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
     const unitsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'units'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
@@ -214,7 +213,7 @@ export default function SettingsPage() {
             date: new Date().toISOString(),
         };
 
-        if (firestore) {
+        if (firestore && activeStoreId) {
             const ratesColRef = collection(firestore, 'stores', activeStoreId, 'currencyRates');
             addDocumentNonBlocking(ratesColRef, newRateEntry);
             setNewRate("");
@@ -278,14 +277,7 @@ export default function SettingsPage() {
     };
 
     const handleSeedDatabase = async () => {
-        if (!firestore) {
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "No se pudo conectar a la base de datos.",
-            });
-            return;
-        }
+        if (!firestore) return;
         setIsProcessing(true);
         toast({ title: 'Poblando Base de Datos', description: 'Cargando datos de demostración...' });
         try {
@@ -310,7 +302,7 @@ export default function SettingsPage() {
         const [editingItem, setEditingItem] = useState<{id: string, name: string} | null>(null);
 
         const handleAddNewItem = () => {
-             if (newItemName.trim() === '' || !firestore) return;
+             if (newItemName.trim() === '' || !firestore || !activeStoreId) return;
             
             const newEntry = { name: newItemName.trim(), storeId: activeStoreId };
             const colRef = collection(firestore, collectionName);
@@ -827,3 +819,5 @@ export default function SettingsPage() {
         </div>
     );
 }
+
+    
