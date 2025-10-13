@@ -156,7 +156,6 @@ export default function CatalogPage() {
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
     const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const scrollDirectionRef = useRef<'down' | 'up'>('down');
-    const autoCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     const [productDetails, setProductDetails] = useState<Product | null>(null);
     const [productImageError, setProductImageError] = useState(false);
@@ -208,12 +207,25 @@ export default function CatalogPage() {
       }, [products, searchTerm, selectedFamily, storeIdForCatalog]);
 
     useEffect(() => {
-        // Clear any existing auto-close timer when the details modal is manually closed
-        if (!productDetails && autoCloseTimerRef.current) {
-            clearTimeout(autoCloseTimerRef.current);
-            autoCloseTimerRef.current = null;
+        // Function to close the modal
+        const closeDetailsOnActivity = () => {
+            setProductDetails(null);
+        };
+    
+        // Check if the modal was opened automatically
+        if (productDetails && productDetails.sku === lastAutoOpenedSku) {
+            // Listen for keydown or scroll once
+            window.addEventListener('keydown', closeDetailsOnActivity, { once: true });
+            window.addEventListener('scroll', closeDetailsOnActivity, { once: true });
         }
-    }, [productDetails]);
+    
+        // Cleanup function to remove listeners
+        return () => {
+            window.removeEventListener('keydown', closeDetailsOnActivity);
+            window.removeEventListener('scroll', closeDetailsOnActivity);
+        };
+    }, [productDetails, lastAutoOpenedSku]);
+
 
     useEffect(() => {
         if (searchTerm && sortedAndFilteredProducts.length === 1) {
@@ -223,28 +235,14 @@ export default function CatalogPage() {
 
             if (isExactMatch && product.sku !== lastAutoOpenedSku) {
                 setProductDetails(product);
-                setLastAutoOpenedSku(product.sku);
-
-                if (autoCloseTimerRef.current) {
-                    clearTimeout(autoCloseTimerRef.current);
-                }
-
-                autoCloseTimerRef.current = setTimeout(() => {
-                    setProductDetails(null);
-                    setLastAutoOpenedSku(null); // Allow re-opening if searched again
-                }, 3000); 
-            }
-        } else {
-             if (autoCloseTimerRef.current) {
-                clearTimeout(autoCloseTimerRef.current);
-                autoCloseTimerRef.current = null;
+                setLastAutoOpenedSku(product.sku); // Mark this SKU as auto-opened
             }
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sortedAndFilteredProducts, searchTerm]);
 
     useEffect(() => {
-        // Reset the auto-open guard when search term changes
+        // Reset the auto-open guard when search term changes, allowing a new auto-open
         setLastAutoOpenedSku(null);
     }, [searchTerm]);
 
