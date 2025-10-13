@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -131,7 +130,18 @@ export default function CatalogPage() {
     const familiesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
     const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
     
-    const { data: allAds, isLoading: isLoadingAds } = useCollection<Ad>(useMemoFirebase(() => firestore ? collection(firestore, 'ads') : null, [firestore]));
+    const adsQuery = useMemoFirebase(() => {
+        if (firestore && settings?.businessType) {
+            return query(
+                collection(firestore, 'ads'), 
+                where('targetBusinessTypes', 'array-contains', settings.businessType),
+                where('status', '==', 'active')
+            );
+        }
+        return null;
+    }, [firestore, settings?.businessType]);
+
+    const { data: allAds, isLoading: isLoadingAds } = useCollection<Ad>(adsQuery);
 
     const isLoading = isLoadingSettings || isLoadingProducts || isLoadingFamilies || isLoadingAds;
     
@@ -281,9 +291,8 @@ export default function CatalogPage() {
     
     const itemsForGrid = useMemo(() => {
         const relevantAds = (allAds || []).filter(ad => {
-            if (!settings?.businessType) return false;
             const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
-            return ad.status === 'active' && !isExpired && ad.targetBusinessTypes.includes(settings.businessType);
+            return !isExpired;
         });
         
         const shuffledAds = [...relevantAds].sort(() => Math.random() - 0.5);
@@ -298,7 +307,7 @@ export default function CatalogPage() {
             }
         }
         return items;
-    }, [sortedAndFilteredProducts, allAds, settings]);
+    }, [sortedAndFilteredProducts, allAds]);
     
     const handleOpenOrderDialog = () => {
         if(cart.length === 0) {
@@ -827,4 +836,3 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
-
