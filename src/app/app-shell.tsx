@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -9,11 +10,12 @@ import { Footer } from '@/components/footer';
 import { useSecurity } from '@/contexts/security-context';
 import { useSettings } from '@/contexts/settings-context';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PinModal } from '@/components/pin-modal';
 
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { lockApp } = useSecurity();
+  const { isLocked, lockApp } = useSecurity();
   const { userProfile, isLoadingSettings } = useSettings();
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
@@ -24,11 +26,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isPublicPage = pathname === '/' || pathname.startsWith('/catalog');
 
   useEffect(() => {
+    // Lock the app on initial load of a private page or on navigation to it
     if (!isPublicPage && userProfile) {
       lockApp();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname, userProfile]);
+  }, [pathname, userProfile]); // Re-lock when path changes to a private one
 
   if (isPublicPage) {
     return (
@@ -37,6 +40,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Footer />
       </div>
     );
+  }
+  
+  if (isLocked) {
+      return <PinModal />;
   }
 
   if (isLoadingSettings) {
