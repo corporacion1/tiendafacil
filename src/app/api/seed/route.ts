@@ -107,9 +107,10 @@ export async function POST(request: Request) {
     // This will perform the full seeding operation.
     await seedDatabase(storeId);
 
-    return NextResponse.json({ message: 'Database seeded successfully' }, { status: 200 });
+    return NextResponse.json({ message: 'La base de datos ha sido sembrada exitosamente.' }, { status: 200 });
   } catch (error: any) {
     console.error('API Seed Error:', error);
-    return NextResponse.json({ message: 'Internal Server Error', error: error.message }, { status: 500 });
+    return NextResponse.json({ message: 'Error interno del servidor al sembrar los datos.', error: error.message }, { status: 500 });
   }
 }
+

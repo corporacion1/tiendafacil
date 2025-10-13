@@ -379,14 +379,15 @@ export default function SettingsPage() {
                 body: JSON.stringify({ storeId: activeStoreId }),
             });
 
+            const result = await response.json();
+
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Error en el servidor');
+                throw new Error(result.message || 'Ocurrió un error en el servidor.');
             }
 
             toast({
                 title: 'Éxito',
-                description: 'Los datos de demostración se han cargado. La página se recargará.',
+                description: result.message,
             });
             setTimeout(() => window.location.reload(), 2000);
         } catch (error: any) {
@@ -619,7 +620,7 @@ export default function SettingsPage() {
                  <CardFooter className="border-t px-6 py-4 flex justify-end">
                     <Button className="bg-primary hover:bg-primary/90" onClick={saveAllSettings} disabled={!isDirty}>Guardar Configuración de Monedas</Button>
                 </CardFooter>
-            </Card>>
+            </Card>
 
             <Card>
                 <CardHeader>
@@ -636,10 +637,10 @@ export default function SettingsPage() {
                         </div>
                          <div className="flex items-center gap-4">
                             {hasPin && <ChangePinDialog />}
-                            <AlertDialog open={isRemovePinConfirmOpen} onOpenChange={setIsRemovePinConfirmOpen}>
+                             <AlertDialog open={isRemovePinConfirmOpen} onOpenChange={setIsRemovePinConfirmOpen}>
                                 <AlertDialogContent>
                                     <AlertDialogHeader>
-                                        <AlertDialogTitle>¿Desactivar PIN?</AlertDialogTitle>
+                                        <AlertDialogTitle>¿Desactivar PIN de Seguridad?</AlertDialogTitle>
                                         <AlertDialogDescription>
                                             Esto desactivará el bloqueo por PIN de la aplicación.
                                             Cualquier persona con acceso a este dispositivo podrá usarla. ¿Estás seguro?
@@ -654,11 +655,11 @@ export default function SettingsPage() {
                             <Switch 
                                 checked={hasPin} 
                                 onCheckedChange={(checked) => { 
-                                    if (!checked) { 
-                                        setIsRemovePinConfirmOpen(true);
-                                    } else if (!hasPin) { 
+                                    if (!checked) {
+                                         if(hasPin) setIsRemovePinConfirmOpen(true);
+                                    } else {
                                         document.getElementById('new-pin-trigger')?.click();
-                                    } 
+                                    }
                                 }} 
                             />
                         </div>
@@ -755,4 +756,3 @@ export default function SettingsPage() {
         </div>
     );
 }
-
