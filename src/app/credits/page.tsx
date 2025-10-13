@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -13,7 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import type { Sale, Payment, Product } from "@/lib/types";
+import type { Sale, Payment } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
 import { paymentMethods, mockSales } from "@/lib/data";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,11 +22,11 @@ import { Separator } from "@/components/ui/separator";
 
 export default function CreditsPage() {
     const { toast } = useToast();
-    const { settings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
+    const { settings, activeSymbol, activeRate, activeStoreId, userProfile } = useSettings();
 
     // --- LOCAL DATA ---
-    const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
-    const isLoading = isLoadingSettings;
+    const [sales, setSales] = useState(() => mockSales.map(s => ({...s, storeId: activeStoreId})));
+    const isLoading = false;
     // --- END LOCAL DATA ---
     
     const [isClient, setIsClient] = useState(false);
@@ -113,7 +114,7 @@ export default function CreditsPage() {
             date: new Date().toISOString(),
         }));
         
-        const updatedPaidAmount = selectedSale.paidAmount + totalNewPayment;
+        const updatedPaidAmount = (selectedSale.paidAmount || 0) + totalNewPayment;
         const newStatus = updatedPaidAmount >= selectedSale.total ? 'paid' : 'unpaid';
 
         setSales(prevSales => 
@@ -145,8 +146,12 @@ export default function CreditsPage() {
 
     const getFormattedDateTime = (date: any) => {
         if (!date) return '';
-        const dateObj = typeof date === 'string' ? parseISO(date) : date.toDate ? date.toDate() : new Date(date);
-        return format(dateObj, "dd/MM/yyyy HH:mm");
+        try {
+            const dateObj = typeof date === 'string' ? parseISO(date) : date;
+            return format(dateObj, "dd/MM/yyyy HH:mm");
+        } catch (error) {
+            return "Fecha inválida";
+        }
     };
     
     const renderSalesTable = (salesToRender: Sale[]) => (
@@ -246,7 +251,6 @@ export default function CreditsPage() {
                 </Card>
             </Tabs>
             
-            {/* Sale Details Dialog */}
             <Dialog open={!!selectedSale && !paymentDialogOpen} onOpenChange={(isOpen) => !isOpen && setSelectedSale(null)}>
                 <DialogContent className="sm:max-w-3xl">
                     <DialogHeader>
@@ -339,7 +343,6 @@ export default function CreditsPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Add Payment Dialog */}
             <Dialog open={paymentDialogOpen} onOpenChange={(isOpen) => { if(!isOpen) { setPaymentDialogOpen(false); resetPaymentForm(); } else { setPaymentDialogOpen(true); }}}>
                  <DialogContent className="sm:max-w-2xl">
                     <DialogHeader>
