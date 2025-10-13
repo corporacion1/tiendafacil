@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -582,7 +581,7 @@ export default function CatalogPage() {
                                 <LoginModal>
                                     <Button variant="default" size="icon" className="sm:h-auto sm:w-auto sm:px-3 sm:py-2">
                                         <UserCircle className="h-4 w-4 sm:mr-2"/>
-                                        <span className="sr-only sm:not-sr-only">Acceder</span>
+                                        <span className="sr-only sm:not-sr-only">Login</span>
                                     </Button>
                                 </LoginModal>
                             )}
