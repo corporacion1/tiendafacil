@@ -122,7 +122,6 @@ export default function CatalogPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     
-    // Use data from global context
     const { 
         settings: loggedInUserSettings, 
         activeSymbol, 
@@ -139,23 +138,15 @@ export default function CatalogPage() {
     const urlStoreId = searchParams.get('storeId');
     const storeIdForCatalog = urlStoreId || defaultStoreId;
     
-    // --- LOCAL DATA FOR THIS PAGE ---
-    const [allStores] = useState<Store[]>([defaultStore]); // In a real app, this would be a list of all stores
+    const [allStores] = useState<Store[]>([defaultStore]); 
     const isLoading = isLoadingSettings;
-    // --- END LOCAL DATA ---
 
     const currentStoreSettings = useMemo(() => {
-        // If a user is logged in AND the catalog storeId matches their active store, use their full settings.
         if(loggedInUserSettings && loggedInUserSettings.id === storeIdForCatalog) {
             return loggedInUserSettings;
         }
-        // Otherwise, find the public store info from the list (or use default)
         return allStores.find(s => s.id === storeIdForCatalog) || defaultStore;
     }, [storeIdForCatalog, allStores, loggedInUserSettings]);
-
-    const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
-    const scrollDirectionRef = useRef<'down' | 'up'>('down');
 
     const [productDetails, setProductDetails] = useState<Product | null>(null);
     const [productImageError, setProductImageError] = useState(false);
@@ -207,27 +198,6 @@ export default function CatalogPage() {
       }, [products, searchTerm, selectedFamily, storeIdForCatalog]);
 
     useEffect(() => {
-        // Function to close the modal
-        const closeDetailsOnActivity = () => {
-            setProductDetails(null);
-        };
-    
-        // Check if the modal was opened automatically
-        if (productDetails && productDetails.sku === lastAutoOpenedSku) {
-            // Listen for keydown or scroll once
-            window.addEventListener('keydown', closeDetailsOnActivity, { once: true });
-            window.addEventListener('scroll', closeDetailsOnActivity, { once: true });
-        }
-    
-        // Cleanup function to remove listeners
-        return () => {
-            window.removeEventListener('keydown', closeDetailsOnActivity);
-            window.removeEventListener('scroll', closeDetailsOnActivity);
-        };
-    }, [productDetails, lastAutoOpenedSku]);
-
-
-    useEffect(() => {
         if (searchTerm && sortedAndFilteredProducts.length === 1) {
             const product = sortedAndFilteredProducts[0];
             const isExactMatch = product.sku?.toLowerCase() === searchTerm.toLowerCase() ||
@@ -235,14 +205,13 @@ export default function CatalogPage() {
 
             if (isExactMatch && product.sku !== lastAutoOpenedSku) {
                 setProductDetails(product);
-                setLastAutoOpenedSku(product.sku); // Mark this SKU as auto-opened
+                setLastAutoOpenedSku(product.sku); 
             }
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sortedAndFilteredProducts, searchTerm]);
 
     useEffect(() => {
-        // Reset the auto-open guard when search term changes, allowing a new auto-open
         setLastAutoOpenedSku(null);
     }, [searchTerm]);
 
@@ -271,59 +240,6 @@ export default function CatalogPage() {
     const isOrderFormValid = useMemo(() => {
         return customerName.trim() !== '' && customerPhone.trim() !== '' && !validatePhoneNumber(customerPhone);
     }, [customerName, customerPhone]);
-
-
-    useEffect(() => {
-        const INACTIVITY_TIMEOUT = 3000; 
-        
-        const startAutoScroll = () => {
-            if (scrollIntervalRef.current) return;
-            
-            scrollIntervalRef.current = setInterval(() => {
-                const atBottom = (window.innerHeight + window.scrollY) >= document.body.offsetHeight - 2;
-                const atTop = window.scrollY === 0;
-
-                if (atBottom) {
-                    scrollDirectionRef.current = 'up';
-                } else if (atTop) {
-                    scrollDirectionRef.current = 'down';
-                }
-
-                const scrollAmount = scrollDirectionRef.current === 'down' ? 200 : -200;
-                window.scrollBy({ top: scrollAmount, behavior: 'smooth' });
-
-            }, 2000); 
-        };
-
-        const stopAutoScroll = () => {
-            if (scrollIntervalRef.current) {
-                clearInterval(scrollIntervalRef.current);
-                scrollIntervalRef.current = null;
-            }
-        };
-
-        const resetInactivityTimer = () => {
-            stopAutoScroll();
-            if (inactivityTimerRef.current) {
-                clearTimeout(inactivityTimerRef.current);
-            }
-            inactivityTimerRef.current = setTimeout(startAutoScroll, INACTIVITY_TIMEOUT);
-        };
-        
-        window.addEventListener('mousemove', resetInactivityTimer);
-        window.addEventListener('scroll', resetInactivityTimer);
-        window.addEventListener('keydown', resetInactivityTimer);
-
-        resetInactivityTimer();
-
-        return () => {
-            stopAutoScroll();
-            if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
-            window.removeEventListener('mousemove', resetInactivityTimer);
-            window.removeEventListener('scroll', resetInactivityTimer);
-            window.removeEventListener('keydown', resetInactivityTimer);
-        };
-    }, [isLoading]);
 
     const handleOpenAddToCartDialog = (product: Product) => {
         setProductToAdd(product);
@@ -452,7 +368,6 @@ export default function CatalogPage() {
             storeId: storeIdForCatalog,
         };
 
-        // Add to the shared state
         setPendingOrders(prev => [...(prev || []), newPendingOrder]);
         setLocalOrders(prev => [...prev, newPendingOrder]);
 
