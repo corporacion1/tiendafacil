@@ -72,13 +72,21 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, [userProfile]);
 
-  const storeDocRef = useMemoFirebase(() => firestore ? doc(firestore, 'stores', activeStoreId) : null, [firestore, activeStoreId]);
+  const storeDocRef = useMemoFirebase(() => {
+    // Prevent fetching if auth is loading or a profile needs to be created
+    if (isAuthLoading || needsProfileCreation || !firestore) {
+      return null;
+    }
+    return doc(firestore, 'stores', activeStoreId);
+  }, [firestore, activeStoreId, isAuthLoading, needsProfileCreation]);
+
   const { data: storeSettingsData, isLoading: isLoadingStoreSettings, error: storeSettingsError } = useDoc<Settings>(storeDocRef);
   
   const ratesCollectionRef = useMemoFirebase(() => firestore ? collection(firestore, 'stores', activeStoreId, 'currencyRates') : null, [firestore, activeStoreId]);
   const { data: currencyRates } = useCollection<CurrencyRate>(ratesCollectionRef);
 
-  const settings = storeSettingsData || defaultStore;
+  // Use defaultStore as a fallback if the document doesn't exist or there's an error
+  const settings = !storeSettingsData ? defaultStore : storeSettingsData;
 
   useEffect(() => {
     if (isAuthLoading) return;
@@ -88,8 +96,11 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       router.replace('/catalog');
     }
     
-    setIsLoading(isLoadingStoreSettings);
-  }, [isAuthLoading, userProfile, pathname, router, isLoadingStoreSettings]);
+    // The context is loading if auth is loading OR if we are fetching store settings
+    // and no profile needs creation (meaning we expect data to be there).
+    setIsLoading(isAuthLoading || (isLoadingStoreSettings && !needsProfileCreation));
+
+  }, [isAuthLoading, userProfile, pathname, router, isLoadingStoreSettings, needsProfileCreation]);
   
   const handleSetSettings = useCallback((newSettings: Partial<Settings>) => {
     if (storeDocRef) {
@@ -128,7 +139,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const latestRate = (currencyRates && currencyRates.length > 0) ? currencyRates[0].rate : 1;
   const activeRate = activeCurrency === 'primary' ? 1 : (latestRate > 0 ? latestRate : 1);
   
-  const isLoadingContext = isAuthLoading || isLoading;
+  const isLoadingContext = isLoading;
   
   if (needsProfileCreation) {
     return <FirstTimeSetupModal />;
@@ -167,4 +178,3 @@ export const useSettings = (): SettingsContextType => {
   }
   return context;
 };
-

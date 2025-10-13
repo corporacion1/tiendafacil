@@ -18,6 +18,8 @@ import { SUPER_ADMIN_UID, useUser as useUserProfile } from '@/firebase/auth/use-
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { forceSeedDatabase } from '@/lib/seed';
+import { defaultStoreId } from '@/lib/data';
 
 const profileSchema = z.object({
   displayName: z.string().min(1, 'El nombre es requerido.'),
@@ -58,7 +60,7 @@ export function FirstTimeSetupModal() {
     }
   }, [authUser, needsProfileCreation, form]);
 
-  const handleCreateProfile = async (data: ProfileFormValues) => {
+  const handleCreateProfileAndSeed = async (data: ProfileFormValues) => {
     if (!authUser || !firestore) {
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo conectar a Firebase.' });
       return;
@@ -79,6 +81,7 @@ export function FirstTimeSetupModal() {
       status: 'active',
       storeRequest: storeRequest,
       createdAt: new Date().toISOString(),
+      storeId: defaultStoreId, // Assign default store ID to superAdmin
     };
     
     try {
@@ -87,17 +90,28 @@ export function FirstTimeSetupModal() {
       
       toast({
         title: '¡Perfil Creado!',
-        description: 'Tu cuenta ha sido configurada. La página se recargará para aplicar los cambios.',
+        description: 'Configurando tu tienda con datos de demostración...',
       });
 
-      setTimeout(() => window.location.reload(), 2000);
+      // Now, seed the database since the user profile is created
+      const seedSuccess = await forceSeedDatabase(firestore, defaultStoreId);
+
+      if (seedSuccess) {
+        toast({
+            title: '¡Configuración Completa!',
+            description: 'Tu tienda ha sido configurada. La página se recargará para aplicar los cambios.',
+        });
+        setTimeout(() => window.location.reload(), 2000);
+      } else {
+         throw new Error('La siembra de datos falló.');
+      }
       
     } catch (error: any) {
-      console.error('Error creating user profile:', error);
+      console.error('Error durante la configuración inicial:', error);
       toast({
         variant: 'destructive',
-        title: 'Error al Crear Perfil',
-        description: error.message || 'Ocurrió un error inesperado.',
+        title: 'Error en la Configuración',
+        description: error.message || 'Ocurrió un error inesperado al configurar tu tienda.',
       });
     } finally {
       setIsProcessing(false);
@@ -114,11 +128,11 @@ export function FirstTimeSetupModal() {
         <DialogHeader>
           <DialogTitle>¡Bienvenido! Completa tu Registro</DialogTitle>
           <DialogDescription>
-            Es tu primer inicio de sesión. Por favor, confirma tus datos para crear tu perfil.
+            Es tu primer inicio de sesión. Por favor, confirma tus datos para crear tu perfil y configurar tu tienda de demostración.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleCreateProfile)} className="py-4 space-y-4">
+          <form onSubmit={form.handleSubmit(handleCreateProfileAndSeed)} className="py-4 space-y-4">
             <div className="flex items-center gap-4">
               {authUser?.photoURL && (
                 <Image src={authUser.photoURL} alt="Avatar" width={64} height={64} className="rounded-full" />
@@ -177,10 +191,10 @@ export function FirstTimeSetupModal() {
                 {isProcessing ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creando Perfil...
+                    Configurando...
                   </>
                 ) : (
-                  'Confirmar y Crear Perfil'
+                  'Confirmar y Configurar Tienda'
                 )}
               </Button>
             </DialogFooter>

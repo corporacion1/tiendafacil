@@ -1,14 +1,14 @@
 
 'use client';
 import { useEffect, useState } from 'react';
-import { useUser as useAuthUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser as useFirebaseAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import type { UserProfile } from '@/lib/types';
 import { doc } from 'firebase/firestore';
 
 export const SUPER_ADMIN_UID = "5QLaiiIr4mcGsjRXVGeGx50nrpk1";
 
 export function useUser() {
-  const { user: authUser, isUserLoading: isAuthLoading, userError } = useAuthUser();
+  const { user: authUser, isUserLoading: isAuthLoading, userError } = useFirebaseAuth();
   const firestore = useFirestore();
 
   const userDocRef = useMemoFirebase(() => {
@@ -20,7 +20,7 @@ export function useUser() {
 
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserProfile>(userDocRef);
 
-  const needsProfileCreation = !isAuthLoading && !isProfileLoading && authUser && !userProfile;
+  const needsProfileCreation = !isAuthLoading && authUser && !isProfileLoading && !userProfile;
 
   return {
     user: userProfile,
