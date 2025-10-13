@@ -138,16 +138,17 @@ export default function CatalogPage() {
     const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
     
     const adsQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        if (settings?.businessType) {
+        if (!firestore || !settings) return null; // Wait for settings
+        if (settings.businessType) {
             return query(
                 collection(firestore, 'ads'), 
                 where('targetBusinessTypes', 'array-contains', settings.businessType),
                 where('status', '==', 'active')
             );
         }
+        // Fallback query if no businessType is set
         return query(collection(firestore, 'ads'), where('status', '==', 'active'));
-    }, [firestore, settings?.businessType]);
+    }, [firestore, settings]);
 
     const { data: allAds, isLoading: isLoadingAds } = useCollection<Ad>(adsQuery);
 
@@ -844,3 +845,5 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
+
+    
