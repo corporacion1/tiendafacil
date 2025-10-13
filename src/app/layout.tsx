@@ -1,9 +1,8 @@
-
 import type { Metadata } from 'next';
 import './globals.css';
-import { Providers } from '@/components/providers';
+import { Providers } from '@/app/providers';
 import { Toaster } from "@/components/ui/toaster";
-import { AppShell } from '@/components/app-shell';
+import { AppShell } from '@/app/app-shell';
 
 export const metadata: Metadata = {
   title: 'TIENDA FACIL - Tu Comercio',
