@@ -4,7 +4,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { File, MoreHorizontal, Search, FileSpreadsheet, FileJson, FileText, Printer, Eye } from "lucide-react";
 import { format, subDays, startOfWeek, startOfMonth, startOfYear, parseISO } from "date-fns";
-import { collection, query, where } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -47,27 +46,22 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/settings-context";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { SessionReportPreview } from "@/components/session-report-preview";
+import { mockSales, mockPurchases, mockProducts, defaultCustomers, mockCashSessions } from "@/lib/data";
 
 type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
 
 export default function ReportsPage() {
     const { settings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
-    const isSuperAdmin = userProfile?.role === 'superAdmin';
-    const firestore = useFirestore();
 
-    const salesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-    const purchasesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-    const productsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-    const customersQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-    const cashSessionsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'cashSessions'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-    
-    const { data: salesData } = useCollection<Sale>(salesQuery);
-    const { data: purchasesData } = useCollection<Purchase>(purchasesQuery);
-    const { data: products } = useCollection<Product>(productsQuery);
-    const { data: customers } = useCollection<Customer>(customersQuery);
-    const { data: cashSessionsData } = useCollection<CashSession>(cashSessionsQuery);
+    // --- LOCAL DATA ---
+    const [salesData, setSalesData] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
+    const [purchasesData, setPurchasesData] = useState(mockPurchases.map(p => ({...p, storeId: activeStoreId})));
+    const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString() })));
+    const [customers, setCustomers] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
+    const [cashSessionsData, setCashSessionsData] = useState(mockCashSessions.map(cs => ({...cs, storeId: activeStoreId})));
+    const isLoading = isLoadingSettings;
+    // --- END LOCAL DATA ---
 
     const [selectedSessionDetails, setSelectedSessionDetails] = useState<CashSession | null>(null);
     const [sessionForReport, setSessionForReport] = useState<CashSession | null>(null);
@@ -104,9 +98,6 @@ export default function ReportsPage() {
       );
       return [...saleMovements, ...purchaseMovements].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     }, [salesData, purchasesData]);
-
-
-    const isLoading = isLoadingSettings || !salesData || !purchasesData || !products || !customers || !cashSessionsData;
     
     const [selectedSaleDetails, setSelectedSaleDetails] = useState<Sale | null>(null);
     const [saleForTicket, setSaleForTicket] = useState<Sale | null>(null);
@@ -139,7 +130,7 @@ export default function ReportsPage() {
     const getDate = (date: any): Date => {
         if (!date) return new Date();
         if (typeof date === 'string') return parseISO(date);
-        if (date.toDate) return date.toDate(); // For Firebase Timestamps if they ever come back
+        if (date.toDate) return date.toDate();
         return date;
     }
     
@@ -615,7 +606,7 @@ export default function ReportsPage() {
                         {isClient && session.closingDate ? format(getDate(session.closingDate), 'dd/MM/yy HH:mm') : 'N/A'}
                       </TableCell>
                       <TableCell>{session.openedBy}</TableCell>
-                      <TableCell className={`text-right font-semibold ${session.difference > 0 ? 'text-green-600' : session.difference < 0 ? 'text-destructive' : ''}`}>
+                      <TableCell className={`text-right font-semibold ${session.difference !== 0 ? (session.difference > 0 ? 'text-green-600' : 'text-destructive') : ''}`}>
                         {activeSymbol}{(session.difference * activeRate).toFixed(2)}
                       </TableCell>
                       <TableCell>
@@ -873,4 +864,3 @@ export default function ReportsPage() {
     </>
   );
 }
-
