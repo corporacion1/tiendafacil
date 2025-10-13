@@ -31,6 +31,43 @@ import { useSettings } from "@/contexts/settings-context";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 
 
+const AdCard = ({ ad }: { ad: Ad }) => {
+    return (
+        <a href={ad.imageUrl} target="_blank" rel="noopener noreferrer" className="block group">
+            <Card className="overflow-hidden group flex flex-col bg-accent/20 border-accent/50 hover:border-accent transition-all">
+                <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative cursor-pointer">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent z-10" />
+                    {ad.imageUrl ? (
+                        <Image
+                            src={ad.imageUrl}
+                            alt={ad.name}
+                            fill
+                            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+                            className="object-cover transition-transform duration-300 group-hover:scale-105"
+                            data-ai-hint={ad.imageHint}
+                        />
+                    ) : (
+                        <div className="flex items-center justify-center h-full w-full bg-muted">
+                            <Package className="w-16 h-16 text-muted-foreground" />
+                        </div>
+                    )}
+                    <Badge variant="secondary" className="absolute top-2 left-2 z-20 shadow-lg bg-accent text-accent-foreground">
+                        Publicidad
+                    </Badge>
+                    <div className="absolute bottom-0 left-0 right-0 p-4 z-20">
+                         <h3 className="text-lg font-bold text-white drop-shadow-md">{ad.name}</h3>
+                    </div>
+                </CardContent>
+                <CardFooter className="p-2 bg-accent/30 mt-auto flex justify-end items-center">
+                    <span className="text-xs text-accent-foreground/80 mr-2">Ver más</span>
+                    <ArrowRight className="w-4 h-4 text-accent-foreground/80" />
+                </CardFooter>
+            </Card>
+        </a>
+    );
+};
+
+
 const CatalogProductCard = ({ product, onAddToCart, onImageClick }: { product: Product; onAddToCart: (p: Product) => void; onImageClick: (p: Product) => void; }) => {
     const { activeSymbol, activeRate } = useSettings();
     const [imageError, setImageError] = useState(false);
@@ -93,7 +130,20 @@ export default function CatalogPage() {
     const familiesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
     const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
     
-    const isLoading = isLoadingSettings || isLoadingProducts || isLoadingFamilies;
+    const adsQuery = useMemoFirebase(() => {
+        if (firestore && settings?.businessType) {
+            return query(
+                collection(firestore, 'ads'), 
+                where('targetBusinessTypes', 'array-contains', settings.businessType),
+                where('status', '==', 'active')
+            );
+        }
+        return null;
+    }, [firestore, settings?.businessType]);
+
+    const { data: allAds, isLoading: isLoadingAds } = useCollection<Ad>(adsQuery);
+
+    const isLoading = isLoadingSettings || isLoadingProducts || isLoadingFamilies || isLoadingAds;
     
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
     const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -240,8 +290,24 @@ export default function CatalogPage() {
       }, [products, searchTerm, selectedFamily]);
     
     const itemsForGrid = useMemo(() => {
-        return sortedAndFilteredProducts;
-    }, [sortedAndFilteredProducts]);
+        const relevantAds = (allAds || []).filter(ad => {
+            const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
+            return !isExpired;
+        });
+        
+        const shuffledAds = [...relevantAds].sort(() => Math.random() - 0.5);
+
+        const items: (Product | Ad)[] = [...sortedAndFilteredProducts];
+        for (let i = 0; i < shuffledAds.length; i++) {
+            const adIndex = (i + 1) * 9 - 1; // Position 8, 17, 26...
+            if (items.length > adIndex) {
+                items.splice(adIndex, 0, shuffledAds[i]);
+            } else {
+                items.push(shuffledAds[i]);
+            }
+        }
+        return items;
+    }, [sortedAndFilteredProducts, allAds]);
     
     const handleOpenOrderDialog = () => {
         if(cart.length === 0) {
@@ -580,9 +646,13 @@ export default function CatalogPage() {
                         </div>
                     ) : (
                          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-                            {itemsForGrid.map((item, index) => (
-                                <CatalogProductCard key={item.id} product={item} onAddToCart={handleOpenAddToCartDialog} onImageClick={handleImageClick} />
-                            ))}
+                            {itemsForGrid.map((item, index) => {
+                                if ('views' in item) { // This is an Ad
+                                    return <AdCard key={`ad-${item.id}-${index}`} ad={item} />;
+                                }
+                                // This is a Product
+                                return <CatalogProductCard key={item.id} product={item} onAddToCart={handleOpenAddToCartDialog} onImageClick={handleImageClick} />;
+                            })}
                         </div>
                     )}
                      {itemsForGrid.length === 0 && !isLoading && (
@@ -766,5 +836,3 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
-
-    
