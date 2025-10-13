@@ -51,6 +51,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const router = useRouter();
   const pathname = usePathname();
   const firestore = useFirestore();
+  const isPublicPath = pathname.startsWith('/catalog') || pathname === '/';
 
   const { user: userProfile, isUserLoading: isAuthLoading, needsProfileCreation } = useAuthUser();
   
@@ -67,46 +68,47 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         setActiveStoreId(storedStoreId);
       } else if (userProfile?.storeId) {
         setActiveStoreId(userProfile.storeId);
+      } else {
+        setActiveStoreId(defaultStoreId);
       }
     } catch (error) {
       console.error("Could not access localStorage for storeId", error);
+      setActiveStoreId(defaultStoreId);
     }
   }, [userProfile]);
+
+  const storeIdForQuery = isPublicPath ? defaultStoreId : activeStoreId;
   
   const storeDocRef = useMemoFirebase(() => {
-    // CRITICAL: Only attempt to fetch if we are NOT in the setup flow.
-    if (firestore && activeStoreId && !isAuthLoading && userProfile) {
-      return doc(firestore, 'stores', activeStoreId);
+    if (firestore && storeIdForQuery) {
+      return doc(firestore, 'stores', storeIdForQuery);
     }
     return null;
-  }, [firestore, activeStoreId, isAuthLoading, userProfile]);
+  }, [firestore, storeIdForQuery]);
 
   const { data: storeSettings, isLoading: isLoadingStoreSettings } = useDoc<Settings>(storeDocRef);
 
   const ratesCollectionRef = useMemoFirebase(() => {
-    // CRITICAL: Only create the query if userProfile exists, avoiding reads for new users.
-    if (firestore && activeStoreId && userProfile) {
+    if (firestore && storeIdForQuery) {
         return query(
-          collection(firestore, 'stores', activeStoreId, 'currencyRates'), 
+          collection(firestore, 'stores', storeIdForQuery, 'currencyRates'), 
           orderBy('date', 'desc'), 
           limit(30)
         );
     }
     return null;
-  }, [firestore, activeStoreId, userProfile]);
+  }, [firestore, storeIdForQuery]);
 
   const { data: currencyRates } = useCollection<CurrencyRate>(ratesCollectionRef);
   
   useEffect(() => {
     if (isAuthLoading) return;
 
-    // If setup is needed, the app is "ready" to show the modal.
     if (needsProfileCreation) {
       setIsReady(true);
       return;
     }
     
-    const isPublicPath = pathname.startsWith('/catalog') || pathname === '/';
     if (!userProfile && !isPublicPath) {
       router.replace('/catalog');
       setIsReady(true);
@@ -116,13 +118,12 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     if (storeSettings) {
       setSettingsState(storeSettings);
       setIsReady(true);
-    } else if (!isLoadingStoreSettings && !storeSettings && userProfile) {
-      // If no settings are found for an existing user, fallback to default
+    } else if (!isLoadingStoreSettings && !storeSettings && (userProfile || isPublicPath)) {
       setSettingsState(defaultStore);
       setIsReady(true);
     }
 
-  }, [isAuthLoading, needsProfileCreation, userProfile, storeSettings, isLoadingStoreSettings, pathname, router]);
+  }, [isAuthLoading, needsProfileCreation, userProfile, storeSettings, isLoadingStoreSettings, pathname, router, isPublicPath]);
 
   
   const handleSetSettings = useCallback((newSettings: Partial<Settings>) => {
@@ -167,8 +168,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     return <FirstTimeSetupModal />;
   }
 
-  const isPublicPath = pathname.startsWith('/catalog') || pathname === '/';
-
   if (!isReady && !isPublicPath) {
       return <AppLoadingScreen />;
   }
@@ -182,7 +181,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     activeSymbol, 
     activeRate, 
     currencyRates: currencyRates || [],
-    activeStoreId,
+    activeStoreId: storeIdForQuery,
     switchStore,
     isLoadingSettings: !isReady,
     userProfile,
