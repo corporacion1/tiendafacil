@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid, Instagram, Star, Search, UserPlus, QrCode, ZoomIn, Pencil, ArrowRight, RefreshCw, UserCircle, LogOut, MoreHorizontal, Copy } from "lucide-react";
+import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid, Instagram, Star, Search, UserPlus, QrCode, ZoomIn, Pencil, ArrowRight, RefreshCw, UserCircle, LogOut, MoreHorizontal, Copy, AlertCircle } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
@@ -155,13 +155,14 @@ export default function CatalogPage() {
     const [addQuantity, setAddQuantity] = useState(1);
     
     const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
-    const [orderIdForQr, setOrderIdForQr] = useState<string | null>(null);
+    const [orderIdForQr, setOrderIdForQr = useState<string | null>(null);
     const [qrCodeUrl, setQrCodeUrl] = useState('');
     const [shareQrCodeUrl, setShareQrCodeUrl] = useState('');
     const [shareUrl, setShareUrl] = useState('');
 
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
+    const [phoneError, setPhoneError] = useState<string | null>(null);
 
     const [cart, setCart] = useState<CartItem[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
@@ -175,6 +176,32 @@ export default function CatalogPage() {
     useEffect(() => {
         setIsClient(true)
     }, [])
+    
+    const validatePhoneNumber = (phone: string): string | null => {
+        if (!phone) return "El teléfono es requerido.";
+        const phoneRegex = /^(0412|0414|0416|0424|0426)\\d{7}$/;
+        if (!phoneRegex.test(phone)) {
+            return "Formato inválido. Debe ser 0412, 0414, 0416, 0424 o 0426 seguido de 7 dígitos.";
+        }
+        return null;
+    };
+    
+    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        const numericValue = value.replace(/[^0-9]/g, '');
+        setCustomerPhone(numericValue);
+        
+        if (numericValue.length > 0) {
+            setPhoneError(validatePhoneNumber(numericValue));
+        } else {
+            setPhoneError("El teléfono es requerido.");
+        }
+    };
+
+    const isOrderFormValid = useMemo(() => {
+        return customerName.trim() !== '' && customerPhone.trim() !== '' && !validatePhoneNumber(customerPhone);
+    }, [customerName, customerPhone]);
+
 
     useEffect(() => {
         const INACTIVITY_TIMEOUT = 3000; 
@@ -345,7 +372,13 @@ export default function CatalogPage() {
             toast({ variant: 'destructive', title: 'No se pudo identificar la tienda.' });
             return;
         }
-        if (!customerName.trim() || !customerPhone.trim()) {
+        const phoneValidationError = validatePhoneNumber(customerPhone);
+        if (phoneValidationError) {
+            toast({ variant: 'destructive', title: 'Teléfono inválido', description: phoneValidationError });
+            setPhoneError(phoneValidationError);
+            return;
+        }
+        if (!customerName.trim()) {
             toast({ variant: 'destructive', title: 'Nombre y teléfono son requeridos.' });
             return;
         }
@@ -376,6 +409,7 @@ export default function CatalogPage() {
         setCart([]);
         setCustomerName('');
         setCustomerPhone('');
+        setPhoneError(null);
         setIsEditingOrder(false);
 
         toast({
@@ -679,12 +713,19 @@ export default function CatalogPage() {
                             </div>
                              <div className="space-y-2">
                                 <Label htmlFor="customer-phone">Teléfono*</Label>
-                                <Input id="customer-phone" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Ej: 04121234567" />
+                                <Input 
+                                    id="customer-phone" 
+                                    value={customerPhone} 
+                                    onChange={handlePhoneChange} 
+                                    placeholder="Ej: 04121234567" 
+                                    maxLength={11}
+                                />
+                                {phoneError && <p className="text-sm text-destructive flex items-center gap-1"><AlertCircle className="h-3 w-3" />{phoneError}</p>}
                             </div>
                         </div>
                         <DialogFooter>
                             <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-                            <Button onClick={handleGenerateOrder} disabled={!customerName.trim() || !customerPhone.trim()}>{isEditingOrder ? 'Confirmar Actualización' : 'Confirmar Pedido'}</Button>
+                            <Button onClick={handleGenerateOrder} disabled={!isOrderFormValid}>{isEditingOrder ? 'Confirmar Actualización' : 'Confirmar Pedido'}</Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
@@ -836,3 +877,5 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
+
+    
