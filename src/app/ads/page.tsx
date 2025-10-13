@@ -18,7 +18,9 @@ import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { AdForm } from "@/components/ad-form";
 import { format, isPast } from "date-fns";
 import { useRouter } from "next/navigation";
-import { mockAds } from "@/lib/data";
+import { useCollection, useFirestore } from "@/firebase";
+import { collection, doc } from "firebase/firestore";
+import { addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 const AdRow = ({ ad, handleEdit, setAdToDelete }: {
     ad: Ad;
@@ -109,10 +111,12 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
 
 export default function AdsPage() {
   const { toast } = useToast();
-  const [ads, setAds] = useState(mockAds.map(ad => ({...ad, createdAt: new Date().toISOString()})));
-  const [isLoading, setIsLoading] = useState(false);
+  const firestore = useFirestore();
+  const adsCollectionRef = useMemo(() => firestore ? collection(firestore, 'ads') : null, [firestore]);
+  const { data: ads, isLoading } = useCollection<Ad>(adsCollectionRef);
 
   const sortedAds = useMemo(() => {
+    if (!ads) return [];
     return [...ads].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [ads]);
 
@@ -126,12 +130,13 @@ export default function AdsPage() {
   };
   
   function handleUpdateAd(data: Omit<Ad, 'id' | 'views' | 'createdAt'> & { id?: string }) {
-    if (!data.id) return false;
+    if (!data.id || !firestore) return false;
     
-    setAds(prev => prev.map(ad => ad.id === data.id ? {...ad, ...data} : ad));
+    const docRef = doc(firestore, 'ads', data.id);
+    setDocumentNonBlocking(docRef, data, { merge: true });
 
     toast({
-        title: "Anuncio Actualizado (Simulación)",
+        title: "Anuncio Actualizado",
         description: `El anuncio "${data.name}" ha sido actualizado.`,
     });
     setAdToEdit(null);
@@ -139,17 +144,17 @@ export default function AdsPage() {
   }
 
   function handleCreateAd(data: Omit<Ad, 'id' | 'views' | 'createdAt'>) {
-    const newAd: Ad = {
+    if (!adsCollectionRef) return false;
+    const newAd: Omit<Ad, 'id'> = {
       ...data,
-      id: `ad-${Date.now()}`,
       views: 0,
       createdAt: new Date().toISOString(),
     };
 
-    setAds(prev => [newAd, ...prev]);
+    addDocumentNonBlocking(adsCollectionRef, newAd);
     
     toast({
-      title: "Anuncio Creado (Simulación)",
+      title: "Anuncio Creado",
       description: `El anuncio "${data.name}" ha sido creado.`,
     });
     
@@ -158,10 +163,12 @@ export default function AdsPage() {
   }
   
   const handleDelete = async (adId: string) => {
-    setAds(prev => prev.filter(ad => ad.id !== adId));
+    if (!firestore) return;
+    const docRef = doc(firestore, 'ads', adId);
+    deleteDocumentNonBlocking(docRef);
 
     toast({
-      title: "Anuncio Eliminado (Simulación)",
+      title: "Anuncio Eliminado",
       description: "El anuncio ha sido eliminado.",
     });
 
@@ -297,3 +304,4 @@ export default function AdsPage() {
     </>
   );
 }
+

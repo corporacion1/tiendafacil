@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -16,12 +15,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type { Product, Unit, Family, Warehouse } from "@/lib/types";
-import { mockProducts, initialUnits, initialFamilies, initialWarehouses } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
 import { useSettings } from "@/contexts/settings-context";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, query, where } from "firebase/firestore";
 
 const productSchema = z.object({
   id: z.string().optional(),
@@ -81,12 +81,17 @@ const calculateProfit = (currentPrice: number, cost: number): string => {
 export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onCancel }) => {
   const { toast } = useToast();
   const { settings, activeStoreId } = useSettings();
+  const firestore = useFirestore();
+  
+  const productsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+  const unitsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'units'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+  const familiesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+  const warehousesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
 
-  // For a local data app, we manage state here instead of fetching
-  const [products, setProducts] = useState(mockProducts);
-  const [units, setUnits] = useState(initialUnits);
-  const [families, setFamilies] = useState(initialFamilies);
-  const [warehouses, setWarehouses] = useState(initialWarehouses);
+  const { data: products } = useCollection<Product>(productsQuery);
+  const { data: units } = useCollection<Unit>(unitsQuery);
+  const { data: families } = useCollection<Family>(familiesQuery);
+  const { data: warehouses } = useCollection<Warehouse>(warehousesQuery);
   
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -478,3 +483,4 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     </Form>
   );
 };
+

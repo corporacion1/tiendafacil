@@ -4,6 +4,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { File, MoreHorizontal, Search, FileSpreadsheet, FileJson, FileText, Printer, Eye } from "lucide-react";
 import { format, subDays, startOfWeek, startOfMonth, startOfYear, parseISO } from "date-fns";
+import { collection, query, where } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -46,7 +47,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/settings-context";
-import { mockSales, mockPurchases, mockProducts, defaultCustomers, mockCashSessions } from "@/lib/data";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import { SessionReportPreview } from "@/components/session-report-preview";
 
 type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
@@ -54,13 +55,19 @@ type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
 export default function ReportsPage() {
     const { settings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
     const isSuperAdmin = userProfile?.role === 'superAdmin';
+    const firestore = useFirestore();
+
+    const salesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+    const purchasesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+    const productsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+    const customersQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+    const cashSessionsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'cashSessions'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
     
-    // Use local data instead of Firebase
-    const [salesData, setSalesData] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
-    const [purchasesData, setPurchasesData] = useState(mockPurchases.map(p => ({...p, storeId: activeStoreId})));
-    const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})));
-    const [customers, setCustomers] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
-    const [cashSessionsData, setCashSessionsData] = useState(mockCashSessions.map(cs => ({...cs, storeId: activeStoreId})));
+    const { data: salesData } = useCollection<Sale>(salesQuery);
+    const { data: purchasesData } = useCollection<Purchase>(purchasesQuery);
+    const { data: products } = useCollection<Product>(productsQuery);
+    const { data: customers } = useCollection<Customer>(customersQuery);
+    const { data: cashSessionsData } = useCollection<CashSession>(cashSessionsQuery);
 
     const [selectedSessionDetails, setSelectedSessionDetails] = useState<CashSession | null>(null);
     const [sessionForReport, setSessionForReport] = useState<CashSession | null>(null);
@@ -73,6 +80,7 @@ export default function ReportsPage() {
     }, [])
 
     const movementsData: InventoryMovement[] = useMemo(() => {
+      if (!salesData || !purchasesData) return [];
       const saleMovements = salesData.flatMap(sale => 
           sale.items.map(item => ({
               id: `mov-sale-${sale.id}-${item.productId}`,
@@ -98,7 +106,7 @@ export default function ReportsPage() {
     }, [salesData, purchasesData]);
 
 
-    const isLoading = isLoadingSettings;
+    const isLoading = isLoadingSettings || !salesData || !purchasesData || !products || !customers || !cashSessionsData;
     
     const [selectedSaleDetails, setSelectedSaleDetails] = useState<Sale | null>(null);
     const [saleForTicket, setSaleForTicket] = useState<Sale | null>(null);
@@ -380,7 +388,7 @@ export default function ReportsPage() {
     };
 
     const salesForSession = (session: CashSession) => {
-        return salesData.filter(sale => session.salesIds.includes(sale.id));
+        return (salesData || []).filter(sale => session.salesIds.includes(sale.id));
     };
 
   return (
@@ -865,3 +873,4 @@ export default function ReportsPage() {
     </>
   );
 }
+

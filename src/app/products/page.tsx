@@ -6,26 +6,35 @@ import { useToast } from "@/hooks/use-toast";
 import { ProductForm } from "@/components/product-form";
 import type { Product } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
+import { useFirestore, addDocumentNonBlocking } from "@/firebase";
+import { collection } from "firebase/firestore";
 
 export default function ProductsPage() {
   const { toast } = useToast();
   const { activeStoreId } = useSettings();
+  const firestore = useFirestore();
 
   function onSubmit(data: Omit<Product, 'id' | 'storeId' | 'createdAt'>) {
-    const newProductId = `prod-${Date.now()}`;
-    const newProduct: Omit<Product, 'id'> & { id: string; storeId: string; createdAt: string } = {
+    if (!firestore) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo conectar a la base de datos.",
+      });
+      return false;
+    }
+
+    const productsCollectionRef = collection(firestore, 'products');
+    const newProduct: Omit<Product, 'id'> = {
       ...data,
-      id: newProductId,
       storeId: activeStoreId,
       createdAt: new Date().toISOString(),
     };
     
-    // Here you would typically add the new product to your state management
-    // For now, we just show a toast.
-    console.log("New Product (Simulated):", newProduct);
+    addDocumentNonBlocking(productsCollectionRef, newProduct);
     
     toast({
-      title: "Producto Creado (Simulación)",
+      title: "Producto Creado",
       description: `El producto "${data.name}" ha sido creado exitosamente.`,
     });
     
@@ -46,3 +55,4 @@ export default function ProductsPage() {
     </Card>
   );
 }
+

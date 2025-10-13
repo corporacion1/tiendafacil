@@ -16,24 +16,25 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import type { Sale, Payment, Product } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
-import { paymentMethods, mockSales, mockProducts } from "@/lib/data";
+import { paymentMethods } from "@/lib/data";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, doc, updateDoc, query, where } from "firebase/firestore";
 
 export default function CreditsPage() {
     const { toast } = useToast();
     const { settings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
+    const firestore = useFirestore();
 
-    // Use local data instead of Firebase
-    const [sales, setSales] = useState<Sale[]>(mockSales.map(s => ({ ...s, storeId: activeStoreId })));
-    const [products, setProducts] = useState<Product[]>(mockProducts.map(p => ({ ...p, storeId: activeStoreId, createdAt: new Date().toISOString() })));
-    const [isClient, setIsClient] = useState(false)
+    const salesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId), where('transactionType', '==', 'credito')) : null, [firestore, activeStoreId]);
+    const { data: creditSales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
+    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]));
 
-    useEffect(() => {
-        setIsClient(true)
-    }, [])
+    const [isClient, setIsClient] = useState(false);
+    useEffect(() => { setIsClient(true) }, []);
 
-    const isLoading = isLoadingSettings;
+    const isLoading = isLoadingSettings || isLoadingSales || isLoadingProducts;
 
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
@@ -46,31 +47,23 @@ export default function CreditsPage() {
 
     const [searchTerm, setSearchTerm] = useState("");
     
-    const creditSales = useMemo(() => sales.filter(s => s.transactionType === 'credito'), [sales]);
-    
     const totalNewPayment = useMemo(() => payments.reduce((sum, p) => sum + p.amount, 0), [payments]);
     const remainingBalance = useMemo(() => selectedSale ? selectedSale.total - (selectedSale.paidAmount || 0) : 0, [selectedSale]);
     const balanceAfterNewPayments = useMemo(() => remainingBalance - totalNewPayment, [remainingBalance, totalNewPayment]);
 
     useEffect(() => {
         if(paymentDialogOpen && balanceAfterNewPayments > 0) {
-            setCurrentPaymentAmount(balanceAfterNewPayments)
+            setCurrentPaymentAmount(balanceAfterNewPayments);
         } else {
             setCurrentPaymentAmount('');
         }
-    }, [paymentDialogOpen, balanceAfterNewPayments])
+    }, [paymentDialogOpen, balanceAfterNewPayments]);
     
     const isReferenceDuplicate = (reference: string, method: string) => {
-        if (!reference || !method || !sales) return false;
-        // Check current unsaved payments
-        if (payments.some(p => p.method === method && p.reference === reference)) {
-            return true;
-        }
-        // Check all past sales
-        for (const sale of sales) {
-            if (sale.payments && sale.payments.some(p => p.method === method && p.reference === reference)) {
-                return true;
-            }
+        if (!reference || !method || !creditSales) return false;
+        if (payments.some(p => p.method === method && p.reference === reference)) return true;
+        for (const sale of creditSales) {
+            if (sale.payments && sale.payments.some(p => p.method === method && p.reference === reference)) return true;
         }
         return false;
     };
@@ -80,24 +73,19 @@ export default function CreditsPage() {
         const method = paymentMethods.find(m => m.id === currentPaymentMethod);
 
         if (!method || isNaN(amount) || amount <= 0) {
-            toast({ variant: 'destructive', title: 'Monto inválido.' });
-            return;
+            toast({ variant: 'destructive', title: 'Monto inválido.' }); return;
         }
         if (method.requiresRef && !currentPaymentRef.trim()) {
-            toast({ variant: 'destructive', title: 'Referencia requerida.' });
-            return;
+            toast({ variant: 'destructive', title: 'Referencia requerida.' }); return;
         }
         if (method.requiresRef && isReferenceDuplicate(currentPaymentRef.trim(), method.name)) {
-            toast({ variant: 'destructive', title: 'Referencia duplicada', description: 'Este número de referencia ya ha sido utilizado.' });
-            return;
+            toast({ variant: 'destructive', title: 'Referencia duplicada.' }); return;
         }
         if (amount > remainingBalance) {
-             toast({ variant: "destructive", title: "Monto excede el saldo" });
-            return;
+             toast({ variant: "destructive", title: "Monto excede el saldo" }); return;
         }
         if (!paymentReceivedBy.trim()) {
-            toast({ variant: 'destructive', title: 'Falta "Recibido por"', description: 'Debes indicar quién recibió el pago.' });
-            return;
+            toast({ variant: 'destructive', title: 'Falta "Recibido por"' }); return;
         }
 
         setPayments(prev => [...prev, { amount, method: method.name, reference: currentPaymentRef.trim(), receivedBy: paymentReceivedBy.trim() }]);
@@ -118,9 +106,8 @@ export default function CreditsPage() {
     }
 
     const handleSavePayments = async () => {
-        if (!selectedSale || payments.length === 0) {
-            toast({ variant: "destructive", title: "No hay pagos que guardar." });
-            return;
+        if (!selectedSale || payments.length === 0 || !firestore) {
+            toast({ variant: "destructive", title: "No hay pagos que guardar o falta conexión." }); return;
         }
 
         const newPayments: Payment[] = payments.map((p, i) => ({
@@ -132,29 +119,22 @@ export default function CreditsPage() {
         const updatedPaidAmount = selectedSale.paidAmount + totalNewPayment;
         const newStatus = updatedPaidAmount >= selectedSale.total ? 'paid' : 'unpaid';
 
-        // Update local state instead of Firestore
-        setSales(prevSales =>
-            prevSales.map(sale =>
-                sale.id === selectedSale.id
-                    ? {
-                        ...sale,
-                        payments: [...(sale.payments || []), ...newPayments],
-                        paidAmount: updatedPaidAmount,
-                        status: newStatus,
-                      }
-                    : sale
-            )
-        );
+        const saleDocRef = doc(firestore, 'sales', selectedSale.id);
+        await updateDoc(saleDocRef, {
+            payments: [...(selectedSale.payments || []), ...newPayments],
+            paidAmount: updatedPaidAmount,
+            status: newStatus,
+        });
 
-        setSelectedSale(null); // Close details view after saving
+        setSelectedSale(null);
         setPaymentDialogOpen(false);
         resetPaymentForm();
         
-        toast({ title: "Abono Registrado (Simulación)", description: `Se agregaron ${payments.length} pago(s) a la venta ${selectedSale.id}.`});
+        toast({ title: "Abono Registrado", description: `Se agregaron ${payments.length} pago(s) a la venta ${selectedSale.id}.`});
     };
     
     const filteredSales = useMemo(() => {
-        return creditSales.filter(sale =>
+        return (creditSales || []).filter(sale =>
             sale.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
             sale.id.toLowerCase().includes(searchTerm.toLowerCase())
         );
@@ -182,7 +162,7 @@ export default function CreditsPage() {
             </TableHeader>
             <TableBody>
                 {isLoading && <TableRow><TableCell colSpan={8} className="text-center">Cargando créditos...</TableCell></TableRow>}
-                {!isLoading && salesToRender.length === 0 && <TableRow><TableCell colSpan={8} className="text-center">No hay ventas a crédito que coincidan con la búsqueda.</TableCell></TableRow>}
+                {!isLoading && salesToRender.length === 0 && <TableRow><TableCell colSpan={8} className="text-center">No hay ventas a crédito que coincidan.</TableCell></TableRow>}
                 {!isLoading && salesToRender.map((sale) => {
                     const balance = sale.total - (sale.paidAmount || 0);
                     return (
@@ -444,3 +424,4 @@ export default function CreditsPage() {
         </>
     );
 }
+

@@ -18,20 +18,28 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings } from "@/contexts/settings-context";
-import { mockProducts, defaultSuppliers, initialFamilies, mockPurchases } from "@/lib/data";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, query, where, doc, writeBatch } from "firebase/firestore";
+import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
 
 export default function PurchasesPage() {
   const { toast } = useToast();
   const { settings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
+  const firestore = useFirestore();
 
-  const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString()})));
-  const [suppliers, setSuppliers] = useState(defaultSuppliers.map(s => ({...s, storeId: activeStoreId})));
-  const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
-  const [purchases, setPurchases] = useState(mockPurchases.map(p => ({...p, storeId: activeStoreId})));
+  const productsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+  const suppliersQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'suppliers'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+  const familiesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+  const purchasesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
 
-  const isLoading = isLoadingSettings;
+  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+  const { data: suppliers, isLoading: isLoadingSuppliers } = useCollection<Supplier>(suppliersQuery);
+  const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
+  const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
+
+  const isLoading = isLoadingSettings || isLoadingProducts || isLoadingSuppliers || isLoadingFamilies || isLoadingPurchases;
 
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -156,28 +164,31 @@ export default function PurchasesPage() {
 
 
   const handleAddNewSupplier = async () => {
+    if (!firestore || !activeStoreId) return;
     if (newSupplier.name.trim() === "") {
         toast({ variant: "destructive", title: "Nombre inválido" });
         return;
     }
-    const newId = newSupplier.id.trim() || `sup-${Date.now()}`;
-    const supplierToAdd: Supplier = { 
-        id: newId,
+
+    const supplierToAdd = { 
         name: newSupplier.name, 
         phone: newSupplier.phone, 
         address: newSupplier.address,
         storeId: activeStoreId
     };
     
-    setSuppliers(prev => [...prev, supplierToAdd]);
+    const newDocRef = await addDocumentNonBlocking(collection(firestore, 'suppliers'), supplierToAdd);
 
-    setSelectedSupplierId(newId);
-    setNewSupplier({ id: '', name: '', phone: '', address: '' });
-    setIsSupplierDialogOpen(false);
-    toast({ title: "Proveedor Agregado (Simulación)", description: `El proveedor "${supplierToAdd.name}" ha sido agregado.` });
+    if (newDocRef) {
+      setSelectedSupplierId(newDocRef.id);
+      setNewSupplier({ id: '', name: '', phone: '', address: '' });
+      setIsSupplierDialogOpen(false);
+      toast({ title: "Proveedor Agregado", description: `El proveedor "${supplierToAdd.name}" ha sido agregado.` });
+    }
   };
   
   const handleProcessPurchase = async () => {
+    if (!firestore) return;
     if (purchaseItems.length === 0) {
       toast({ variant: "destructive", title: "Orden vacía", description: "Agrega productos para procesar la compra." });
       return;
@@ -200,8 +211,7 @@ export default function PurchasesPage() {
     }
 
     const purchaseId = generatePurchaseId();
-    const newPurchase: Purchase = {
-        id: purchaseId,
+    const newPurchase: Omit<Purchase, 'id'> = {
         supplierId: selectedSupplier.id,
         supplierName: selectedSupplier.name,
         items: purchaseItems,
@@ -212,19 +222,23 @@ export default function PurchasesPage() {
         storeId: activeStoreId,
     };
     
-    setPurchases(prev => [newPurchase, ...prev]);
+    const batch = writeBatch(firestore);
 
-    let updatedProducts = [...products];
+    const purchaseDocRef = doc(firestore, 'purchases', purchaseId);
+    batch.set(purchaseDocRef, newPurchase);
+
     for (const item of purchaseItems) {
-        updatedProducts = updatedProducts.map(p => 
-            p.id === item.productId 
-                ? { ...p, stock: p.stock + item.quantity, cost: item.cost }
-                : p
-        );
+        const productRef = doc(firestore, 'products', item.productId);
+        const productData = products?.find(p => p.id === item.productId);
+        if (productData) {
+            const newStock = productData.stock + item.quantity;
+            batch.update(productRef, { stock: newStock, cost: item.cost });
+        }
     }
-    setProducts(updatedProducts);
+    
+    await batch.commit();
 
-    toast({ title: "Compra Procesada (Simulación)", description: `La compra con ID #${purchaseId} ha sido registrada.` });
+    toast({ title: "Compra Procesada", description: `La compra con ID #${purchaseId} ha sido registrada.` });
     
     setPurchaseItems([]);
     setSelectedSupplierId('');
@@ -530,3 +544,4 @@ export default function PurchasesPage() {
     </div>
   );
 }
+
