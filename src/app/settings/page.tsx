@@ -23,7 +23,7 @@ import { businessCategories } from "@/lib/data";
 import Image from "next/image";
 import { getDisplayImageUrl } from "@/lib/utils";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc, writeBatch } from "firebase/firestore";
+import { collection, doc, writeBatch, query, where } from "firebase/firestore";
 import { setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { forceSeedDatabase, factoryReset } from "@/lib/seed";
 
@@ -125,11 +125,11 @@ export default function SettingsPage() {
     const [imageError, setImageError] = useState(false);
 
     // --- Firestore Data ---
-    const productsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'products') : null, [firestore]);
-    const salesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'sales') : null, [firestore]);
-    const unitsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'units') : null, [firestore]);
-    const familiesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'families') : null, [firestore]);
-    const warehousesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'warehouses') : null, [firestore]);
+    const productsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+    const salesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+    const unitsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'units'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+    const familiesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+    const warehousesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
     
     const { data: products } = useCollection<Product>(productsQuery);
     const { data: sales } = useCollection<Sale>(salesQuery);
@@ -820,7 +820,3 @@ export default function SettingsPage() {
         </div>
     );
 }
-
-    
-
-    
