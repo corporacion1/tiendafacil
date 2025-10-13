@@ -19,7 +19,7 @@ import { AdForm } from "@/components/ad-form";
 import { format, isPast } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useCollection, useFirestore } from "@/firebase";
-import { collection } from "firebase/firestore";
+import { collection, doc } from "firebase/firestore";
 import { addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 const AdRow = ({ ad, handleEdit, setAdToDelete }: {

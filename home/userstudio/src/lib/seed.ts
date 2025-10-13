@@ -1,5 +1,4 @@
 
-
 'use client';
 import {
   writeBatch,
@@ -34,11 +33,6 @@ export async function forceSeedDatabase(firestore: Firestore, storeId: string): 
   const productsRef = collection(firestore, 'products');
   const productsSnapshot = await getDocs(productsRef);
   
-  if (!productsSnapshot.empty) {
-      console.log('Database already has products. Aborting seed.');
-      // return false; // In "force" mode, we proceed anyway.
-  }
-
   console.log(`Starting to seed database for store: ${storeId}...`);
   const batch = writeBatch(firestore);
 
@@ -95,6 +89,13 @@ export async function forceSeedDatabase(firestore: Firestore, storeId: string): 
     batch.set(rateDoc, { ...rate, id: rateDoc.id });
   });
 
+  // Seed Users
+  defaultUsers.forEach(user => {
+    const userDocRef = doc(firestore, 'users', user.uid);
+    batch.set(userDocRef, user);
+  });
+
+
   try {
     await batch.commit();
     console.log("Database seeded successfully!");
@@ -106,14 +107,12 @@ export async function forceSeedDatabase(firestore: Firestore, storeId: string): 
 }
 
 export async function factoryReset(firestore: Firestore, storeId: string) {
-  const collectionsToDelete = ['products', 'customers', 'suppliers', 'units', 'families', 'warehouses', 'sales', 'purchases', 'ads', 'cashSessions'];
+  const collectionsToDelete = ['products', 'customers', 'suppliers', 'units', 'families', 'warehouses', 'sales', 'purchases', 'ads', 'cashSessions', 'users'];
   console.log(`Iniciando restauración de fábrica para la tienda: ${storeId}...`);
 
   for (const collectionName of collectionsToDelete) {
     try {
       const collectionRef = collection(firestore, collectionName);
-      // Firestore does not allow querying by storeId on all collections, so we delete all.
-      // This is a dangerous operation, hence the triple confirmation.
       const snapshot = await getDocs(collectionRef); 
       
       if (snapshot.empty) {
@@ -129,11 +128,9 @@ export async function factoryReset(firestore: Firestore, storeId: string) {
       console.log(`Todos los documentos de la colección "${collectionName}" han sido eliminados.`);
     } catch (error) {
       console.error(`Error al eliminar la colección "${collectionName}":`, error);
-      // We continue even if one collection fails to delete
     }
   }
 
-  // Also delete subcollections like currencyRates
   try {
       const ratesRef = collection(firestore, 'stores', storeId, 'currencyRates');
       const ratesSnapshot = await getDocs(ratesRef);
@@ -145,14 +142,13 @@ export async function factoryReset(firestore: Firestore, storeId: string) {
        console.error(`Error al eliminar la subcolección "currencyRates":`, error);
   }
 
-  // Finally, reset the store document itself to default, but keep the ID and owner.
   try {
     const storeDocRef = doc(firestore, 'stores', storeId);
     await setDoc(storeDocRef, {
         ...defaultStore,
-        id: storeId, // Keep original ID
-        ownerId: defaultStore.ownerId, // Ensure owner is the superAdmin
-        useDemoData: true, // IMPORTANT: Force back to demo mode
+        id: storeId,
+        ownerId: defaultStore.ownerId,
+        useDemoData: true,
     });
      console.log(`Documento de la tienda "${storeId}" ha sido restaurado.`);
   } catch(error) {

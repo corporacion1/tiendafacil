@@ -14,7 +14,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import { useSettings } from "@/contexts/settings-context";
-import { defaultUsers } from "@/lib/data";
+import { useCollection, useFirestore } from "@/firebase";
+import { collection, doc } from "firebase/firestore";
+import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 const getRoleVariant = (role: UserProfile['role']) => {
   switch (role) {
@@ -43,9 +45,10 @@ const getStatusVariant = (status: UserProfile['status'] | undefined) => {
 export default function UsersPage() {
   const { userProfile: currentUserProfile, switchStore } = useSettings();
   const { toast } = useToast();
+  const firestore = useFirestore();
   
-  const [users, setUsers] = useState<UserProfile[]>(defaultUsers);
-  const isLoading = false; // Data is local
+  const usersCollectionRef = useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]);
+  const { data: users, isLoading } = useCollection<UserProfile>(usersCollectionRef);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [userToAction, setUserToAction] = useState<UserProfile | null>(null);
@@ -65,12 +68,13 @@ export default function UsersPage() {
   };
   
   const confirmRoleChange = async () => {
-      if (!userToAction) return;
+      if (!userToAction || !firestore) return;
       
-      setUsers(prev => prev.map(u => u.uid === userToAction.uid ? { ...u, role: newRole } : u));
+      const userDocRef = doc(firestore, 'users', userToAction.uid);
+      setDocumentNonBlocking(userDocRef, { role: newRole }, { merge: true });
       
       toast({
-          title: 'Rol Actualizado (Simulación)',
+          title: 'Rol Actualizado',
           description: `${userToAction.displayName} ahora es ${newRole}.`,
       });
 
@@ -79,23 +83,25 @@ export default function UsersPage() {
   }
 
   const confirmAction = async () => {
-    if (!userToAction || !actionType) return;
+    if (!userToAction || !firestore) return;
+
+    const userDocRef = doc(firestore, 'users', userToAction.uid);
 
     if (actionType === 'promote') {
       const newStoreId = `store-${userToAction.uid.slice(0, 8)}`;
-      setUsers(prev => prev.map(u => u.uid === userToAction.uid ? { ...u, role: 'admin', storeId: newStoreId, storeRequest: false } : u));
+      setDocumentNonBlocking(userDocRef, { role: 'admin', storeId: newStoreId, storeRequest: false }, { merge: true });
       
       toast({
-          title: "Usuario Promovido (Simulación)",
+          title: "Usuario Promovido",
           description: `${userToAction.displayName} ahora es un administrador con la tienda ${newStoreId}.`,
       });
 
     } else if (actionType === 'disable') {
        const newStatus = userToAction.status === 'disabled' ? 'active' : 'disabled';
-       setUsers(prev => prev.map(u => u.uid === userToAction.uid ? { ...u, status: newStatus } : u));
+       setDocumentNonBlocking(userDocRef, { status: newStatus }, { merge: true });
        
        toast({
-            title: `Usuario ${newStatus === 'disabled' ? 'Deshabilitado' : 'Habilitado'} (Simulación)`,
+            title: `Usuario ${newStatus === 'disabled' ? 'Deshabilitado' : 'Habilitado'}`,
             description: `La cuenta de "${userToAction.displayName}" ha sido ${newStatus === 'disabled' ? 'deshabilitada' : 'habilitada'}.`,
         });
     }

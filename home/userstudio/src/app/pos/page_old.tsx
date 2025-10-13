@@ -2,9 +2,8 @@
 "use client"
 import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
-import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff, Archive, QrCode, Lock, Unlock, Library, FilePieChart, LogOut, ArrowLeft, Armchair } from "lucide-react"
+import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff, Archive, QrCode, Lock, Unlock, Library, FilePieChart, LogOut, ArrowLeft } from "lucide-react"
 import { useRouter } from "next/navigation";
-import { collection, doc, writeBatch } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,14 +20,12 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { useSettings } from "@/contexts/settings-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { paymentMethods, pendingOrdersState } from "@/lib/data";
+import { paymentMethods, pendingOrdersState, mockProducts, defaultCustomers, mockSales, initialFamilies } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SessionReportPreview } from "@/components/session-report-preview";
 import { useSecurity } from "@/contexts/security-context";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
@@ -73,23 +70,17 @@ export default function POSPage() {
   const { toast } = useToast();
   const { settings, setSettings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
   const { isLocked, isSecurityReady } = useSecurity();
-  const firestore = useFirestore();
-  const router = useRouter();
-
-  // --- FETCH DATA FROM FIRESTORE ---
-  const productsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'products') : null, [firestore]);
-  const customersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'customers') : null, [firestore]);
-  const familiesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'families') : null, [firestore]);
-  const salesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'sales') : null, [firestore]);
-
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
-  const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
-  const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
-  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
   
+  // --- USE LOCAL DATA ---
+  const [products, setProductsState] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId})));
+  const [customers, setCustomers] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
+  const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
+  const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
   const [pendingOrders, setPendingOrdersState] = useState<PendingOrder[]>(pendingOrdersState);
-  const isLoading = isLoadingSettings || isLoadingProducts || isLoadingCustomers || isLoadingFamilies || isLoadingSales;
-  // --- END FIRESTORE DATA ---
+  const isLoading = isLoadingSettings;
+  // --- END LOCAL DATA ---
+  
+  const router = useRouter();
   
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -208,9 +199,10 @@ export default function POSPage() {
   };
   
   const finalizeSessionClosure = () => {
-    if (sessionForReport && firestore) {
-      const sessionDocRef = doc(firestore, 'cashSessions', sessionForReport.id);
-      setDocumentNonBlocking(sessionDocRef, sessionForReport, { merge: true });
+    if (sessionForReport) {
+      // In a real app, you would save `sessionForReport` to Firestore here.
+      // For demo, we just log it.
+      console.log("Saving closed session (demo):", sessionForReport);
     }
     setActiveSession(null);
     setIsClosingModalOpen(false);
@@ -389,8 +381,8 @@ export default function POSPage() {
       toast({ variant: "destructive", title: "Carrito vacío"});
       return;
     }
-    if (!settings || !activeSession || !firestore) {
-        toast({ variant: "destructive", title: "Error", description: "No hay una sesión de caja activa o la base de datos no está disponible."});
+    if (!settings || !activeSession) {
+        toast({ variant: "destructive", title: "Error", description: "No hay una sesión de caja activa."});
         return;
     }
     
@@ -427,42 +419,38 @@ export default function POSPage() {
         storeId: activeStoreId,
     }
     
-    const batch = writeBatch(firestore);
+    // --- SIMULATED DEMO UPDATE ---
+    setSales(prev => [newSale, ...prev]);
 
-    const saleDocRef = doc(firestore, 'sales', newSale.id);
-    batch.set(saleDocRef, newSale);
-
+    let updatedProducts = [...products];
     for (const item of cartItems) {
-      const productRef = doc(firestore, "products", item.product.id);
-      const newStock = item.product.stock - item.quantity;
-      batch.update(productRef, { stock: newStock });
+        updatedProducts = updatedProducts.map(p => 
+            p.id === item.product.id 
+                ? { ...p, stock: p.stock - item.quantity }
+                : p
+        );
     }
-
-    if(activeSession) {
-        const newTransactions = { ...activeSession.transactions };
+    setProductsState(updatedProducts);
+    
+    setActiveSession(prev => {
+        if (!prev) return null;
+        const newTransactions = { ...prev.transactions };
         finalPayments.forEach(p => {
             newTransactions[p.method] = (newTransactions[p.method] || 0) + p.amount;
         });
-
-        const updatedSession = {
-            ...activeSession,
-            salesIds: [...activeSession.salesIds, saleId],
+        return {
+            ...prev,
+            salesIds: [...prev.salesIds, saleId],
             transactions: newTransactions
         };
-        setActiveSession(updatedSession);
-        // Defer session update slightly to not block UI
-        setTimeout(() => {
-            const sessionDocRef = doc(firestore, 'cashSessions', updatedSession.id);
-            setDocumentNonBlocking(sessionDocRef, updatedSession, { merge: true });
-        }, 500);
-    }
-    
-    await batch.commit();
+    });
+
     setLastSale(newSale);
+    // --- END SIMULATED DEMO UPDATE ---
     
     toast({
-        title: "Venta Procesada",
-        description: `La venta #${saleId} ha sido registrada.`,
+        title: "Venta Procesada (DEMO)",
+        description: `La venta #${saleId} ha sido registrada localmente.`,
     });
     
     setCartItems([]);
@@ -501,7 +489,6 @@ export default function POSPage() {
         });
         return;
     }
-    if (!firestore) return;
     
     const newId = `cust-${Date.now()}`;
     const customerToAdd: Customer = {
@@ -512,14 +499,14 @@ export default function POSPage() {
         storeId: activeStoreId,
     };
     
-    const customerDocRef = doc(firestore, 'customers', newId);
-    await setDocumentNonBlocking(customerDocRef, customerToAdd, {});
+    // In a real app, this would save to Firestore. Here we just update local state.
+    setCustomers(prev => [...prev, customerToAdd]);
 
     setSelectedCustomerId(newId);
     setNewCustomer({ id: '', name: '', phone: '', address: '' });
     setIsCustomerDialogOpen(false);
     toast({
-        title: "Cliente Agregado",
+        title: "Cliente Agregado (DEMO)",
         description: `El cliente "${customerToAdd.name}" ha sido agregado y seleccionado.`,
     });
   };
@@ -608,63 +595,7 @@ export default function POSPage() {
   }
 
   return (
-    <>
-      <Dialog open={!!productDetails} onOpenChange={(open) => { if (!open) setProductDetails(null); }}>
-          <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                  <DialogTitle>{productDetails?.name}</DialogTitle>
-                  <DialogDescription>SKU: {productDetails?.sku}</DialogDescription>
-              </DialogHeader>
-              {productDetails && (
-                  <div className="grid gap-4">
-                      <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
-                          {getDisplayImageUrl(productDetails.imageUrl) && !productImageError ? (
-                              <Image
-                                  src={getDisplayImageUrl(productDetails.imageUrl)}
-                                  alt={productDetails.name}
-                                  fill
-                                  sizes="300px"
-                                  className="object-cover"
-                                  data-ai-hint={productDetails.imageHint}
-                                  onError={() => setImageError(true)}
-                              />
-                              ) : (
-                              <Package className="w-16 h-16 text-muted-foreground" />
-                          )}
-                      </div>
-                      <div className="grid gap-2">
-                          <div className="flex justify-between">
-                              <span className="text-muted-foreground">Disponibilidad:</span>
-                              <span className="font-semibold">{productDetails.stock} unidades</span>
-                          </div>
-                          <Separator />
-                          <div className="flex justify-between">
-                              <span className="text-muted-foreground">Precio Detal:</span>
-                              <span className="font-semibold">{activeSymbol}{(productDetails.price * activeRate).toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                              <span className="text-muted-foreground">Precio Mayor:</span>
-                              <span className="font-semibold">{activeSymbol}{(productDetails.wholesalePrice * activeRate).toFixed(2)}</span>
-                          </div>
-                      </div>
-                  </div>
-              )}
-              <DialogFooter>
-                  <DialogClose asChild>
-                      <Button variant="secondary">Cerrar</Button>
-                  </DialogClose>
-                  <Button onClick={() => {
-                      if(productDetails) {
-                          addToCart(productDetails);
-                          setProductDetails(null);
-                          toast({title: `"${productDetails.name}" agregado al carrito`})
-                      }
-                  }}>
-                      Agregar al Carrito
-                  </Button>
-              </DialogFooter>
-          </DialogContent>
-      </Dialog>
+    <Dialog onOpenChange={(open) => { if (!open) setProductDetails(null); }}>
       <div className="grid flex-1 auto-rows-max items-start gap-4 lg:grid-cols-5 lg:gap-8">
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-3 lg:gap-8">
             <Card>
@@ -679,34 +610,9 @@ export default function POSPage() {
                                         <span>Caja Abierta por: {activeSession.openedBy}</span>
                                     </Badge>
                                     <Button size="sm" variant="outline" onClick={handleShowReportX}><FilePieChart className="mr-2 h-4 w-4"/> Corte X</Button>
-                                    <Dialog open={isClosingModalOpen} onOpenChange={setIsClosingModalOpen}>
-                                        <DialogTrigger asChild>
-                                            <Button size="sm" variant="destructive"><LogOut className="mr-2 h-4 w-4"/> Cerrar Caja</Button>
-                                        </DialogTrigger>
-                                        <DialogContent>
-                                            <DialogHeader>
-                                                <DialogTitle>Cerrar Caja (Corte Z)</DialogTitle>
-                                                <DialogDescription>
-                                                    Ingresa el monto total de efectivo contado en caja para generar el reporte de cierre.
-                                                </DialogDescription>
-                                            </DialogHeader>
-                                            <div className="py-4 space-y-2">
-                                                <Label htmlFor="closing-balance">Efectivo Contado en Caja ({activeSymbol})</Label>
-                                                <Input
-                                                    id="closing-balance"
-                                                    type="number"
-                                                    value={closingBalance}
-                                                    onChange={(e) => setClosingBalance(e.target.value)}
-                                                    placeholder="0.00"
-                                                    autoFocus
-                                                />
-                                            </div>
-                                            <DialogFooter>
-                                                <Button variant="outline" onClick={() => setIsClosingModalOpen(false)}>Cancelar</Button>
-                                                <Button variant="destructive" onClick={handleCloseSession} disabled={!closingBalance || Number(closingBalance) < 0}>Generar Corte Z y Cerrar</Button>
-                                            </DialogFooter>
-                                        </DialogContent>
-                                    </Dialog>
+                                    <DialogTrigger asChild>
+                                        <Button size="sm" variant="destructive" onClick={() => setIsClosingModalOpen(true)}><LogOut className="mr-2 h-4 w-4"/> Cerrar Caja</Button>
+                                    </DialogTrigger>
                                 </>
                             ) : (
                                 <Badge variant="destructive" className="flex items-center gap-2">
@@ -957,7 +863,7 @@ export default function POSPage() {
                             </TableHeader>
                             <TableBody>
                                 {cartItems.map((item) => (
-                                <TableRow key={`${item.product.id}-${item.price}`}>
+                                <TableRow key={item.product.id}>
                                     <TableCell className="font-medium text-xs">
                                         <div className="flex-grow">
                                             <p className="font-medium text-sm">{item.product.name}</p>
@@ -1109,6 +1015,60 @@ export default function POSPage() {
         </div>
       </div>
     
+    <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+            <DialogTitle>{productDetails?.name}</DialogTitle>
+            <DialogDescription>SKU: {productDetails?.sku}</DialogDescription>
+        </DialogHeader>
+        {productDetails && (
+            <div className="grid gap-4">
+                 <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
+                    {getDisplayImageUrl(productDetails.imageUrl) && !productImageError ? (
+                        <Image
+                            src={getDisplayImageUrl(productDetails.imageUrl)}
+                            alt={productDetails.name}
+                            fill
+                            sizes="300px"
+                            className="object-cover"
+                            data-ai-hint={productDetails.imageHint}
+                            onError={() => setImageError(true)}
+                        />
+                        ) : (
+                        <Package className="w-16 h-16 text-muted-foreground" />
+                    )}
+                 </div>
+                 <div className="grid gap-2">
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Disponibilidad:</span>
+                        <span className="font-semibold">{productDetails.stock} unidades</span>
+                    </div>
+                     <Separator />
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Precio Detal:</span>
+                        <span className="font-semibold">{activeSymbol}{(productDetails.price * activeRate).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Precio Mayor:</span>
+                        <span className="font-semibold">{activeSymbol}{(productDetails.wholesalePrice * activeRate).toFixed(2)}</span>
+                    </div>
+                 </div>
+            </div>
+        )}
+        <DialogFooter>
+            <DialogClose asChild>
+                <Button variant="secondary">Cerrar</Button>
+            </DialogClose>
+            <Button onClick={() => {
+                if(productDetails) {
+                    addToCart(productDetails);
+                    setProductDetails(null);
+                    toast({title: `"${productDetails.name}" agregado al carrito`})
+                }
+            }}>
+                Agregar al Carrito
+            </Button>
+        </DialogFooter>
+    </DialogContent>
     
     {(isPrintPreviewOpen && (cartItems.length > 0 || lastSale)) && (
       <TicketPreview
@@ -1156,6 +1116,8 @@ export default function POSPage() {
         </DialogContent>
     </Dialog>
 
+    
+
     {/* Report Preview Modal */}
     {sessionForReport && reportType && (
         <SessionReportPreview
@@ -1175,6 +1137,6 @@ export default function POSPage() {
             onConfirm={reportType === 'Z' ? finalizeSessionClosure : undefined}
         />
     )}
-    </>
+  </Dialog>
   );
 }
