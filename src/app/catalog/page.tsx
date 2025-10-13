@@ -184,6 +184,7 @@ export default function CatalogPage() {
     
     const sortedAndFilteredProducts = useMemo(() => {
         if (!products) return [];
+        const trimmedSearchTerm = searchTerm.trim().toLowerCase();
         return products
           .filter(
             (product) =>
@@ -191,8 +192,8 @@ export default function CatalogPage() {
               (product.status === 'active' || product.status === 'promotion') &&
               product.stock > 0 &&
               (selectedFamily === 'all' || product.family === selectedFamily) &&
-              (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase())))
+              (product.name.toLowerCase().includes(trimmedSearchTerm) ||
+                (product.sku && product.sku.toLowerCase().includes(trimmedSearchTerm)))
           )
           .sort((a, b) => {
             if (a.status === 'promotion' && b.status !== 'promotion') return -1;
@@ -202,10 +203,11 @@ export default function CatalogPage() {
       }, [products, searchTerm, selectedFamily, storeIdForCatalog]);
 
     useEffect(() => {
-        if (searchTerm && sortedAndFilteredProducts.length === 1) {
+        if (sortedAndFilteredProducts.length === 1) {
             const product = sortedAndFilteredProducts[0];
-            const isExactMatch = product.sku?.toLowerCase() === searchTerm.toLowerCase() ||
-                                 product.name.toLowerCase() === searchTerm.toLowerCase();
+            const trimmedSearchTerm = searchTerm.trim().toLowerCase();
+            const isExactMatch = product.sku?.toLowerCase() === trimmedSearchTerm ||
+                                 product.name.toLowerCase() === trimmedSearchTerm;
 
             if (isExactMatch && product.sku !== lastAutoOpenedSku) {
                 setProductDetails(product);
@@ -213,7 +215,7 @@ export default function CatalogPage() {
             }
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [sortedAndFilteredProducts]);
+    }, [sortedAndFilteredProducts, searchTerm]);
 
     useEffect(() => {
         setLastAutoOpenedSku(null);
@@ -483,21 +485,21 @@ export default function CatalogPage() {
                                     </SheetHeader>
                                     <div className="flex-1 overflow-y-auto">
                                         <div className="py-6">
-                                            {cart.length === 0 && localOrders.length === 0 && (
+                                            {cart.length === 0 && (localOrders || []).length === 0 && (
                                                 <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground px-6">
                                                     <ShoppingBag className="h-16 w-16 mb-4" />
                                                     <h3 className="text-lg font-semibold">Tu pedido está vacío</h3>
                                                     <p className="text-sm">Agrega productos del catálogo para comenzar.</p>
                                                 </div>
                                             )}
-                                            {cart.length === 0 && localOrders.length > 0 && (
+                                            {cart.length === 0 && (localOrders || []).length > 0 && (
                                                 <Card className="m-4">
                                                     <CardHeader>
                                                         <CardTitle>Mis Pedidos Recientes</CardTitle>
                                                     </CardHeader>
                                                     <CardContent className="p-4">
                                                         <div className="space-y-4">
-                                                            {localOrders.map(order => (
+                                                            {(localOrders || []).map(order => (
                                                                 <div key={order.id} className="flex flex-col p-3 rounded-md border bg-background">
                                                                     <div className="flex justify-between items-start">
                                                                         <div>
@@ -849,6 +851,8 @@ export default function CatalogPage() {
     );
 }
 
+
+    
 
     
 
