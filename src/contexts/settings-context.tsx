@@ -133,18 +133,19 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   useEffect(() => {
     if (!isLoadingAuth) {
       if (firebaseUser) {
-        const existingUser = initialUsers.find(u => u.uid === firebaseUser.uid);
+        const existingUser = users.find(u => u.uid === firebaseUser.uid);
         if (existingUser) {
           setUserProfile(existingUser);
         } else {
+          // If the user does not exist, create a new profile with 'user' role and a store request
           const newUserProfile: UserProfile = {
             uid: firebaseUser.uid,
             email: firebaseUser.email,
             displayName: firebaseUser.displayName,
             photoURL: firebaseUser.photoURL,
-            role: 'user',
+            role: 'user', 
             status: 'active',
-            storeId: defaultStoreId, 
+            storeRequest: true, // Automatically flag as requesting a store
             createdAt: new Date().toISOString(),
           };
           setUsers(prev => [...prev, newUserProfile]);
@@ -155,7 +156,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       }
       setIsLoading(false);
     }
-  }, [firebaseUser, isLoadingAuth]);
+  }, [firebaseUser, isLoadingAuth, users]);
 
   const handleSetSettings = useCallback((newSettings: Partial<Settings>) => {
     setLocalSettings(prev => ({ ...(prev || initialStore), ...newSettings }));
