@@ -18,43 +18,20 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings } from "@/contexts/settings-context";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, query, where, doc, writeBatch } from "firebase/firestore";
-import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { mockProducts, defaultSuppliers, initialFamilies, mockPurchases } from "@/lib/data";
 
 const generatePurchaseId = () => `COMPRA-${Date.now().toString().slice(-6)}`;
 
 export default function PurchasesPage() {
   const { toast } = useToast();
-  const { settings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
-  const firestore = useFirestore();
+  const { settings, activeSymbol, activeRate, activeStoreId } = useSettings();
 
-  const productsQuery = useMemoFirebase(() => {
-    if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId]);
-
-  const suppliersQuery = useMemoFirebase(() => {
-    if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'suppliers'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId]);
-
-  const familiesQuery = useMemoFirebase(() => {
-    if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'families'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId]);
-
-  const purchasesQuery = useMemoFirebase(() => {
-    if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId]);
-
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
-  const { data: suppliers, isLoading: isLoadingSuppliers } = useCollection<Supplier>(suppliersQuery);
-  const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
-  const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
-
-  const isLoading = isLoadingSettings || isLoadingProducts || isLoadingSuppliers || isLoadingFamilies || isLoadingPurchases;
+  // --- LOCAL DATA ---
+  const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString() })));
+  const [suppliers, setSuppliers] = useState(defaultSuppliers.map(s => ({...s, storeId: activeStoreId })));
+  const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: activeStoreId })));
+  const [purchases, setPurchases] = useState(mockPurchases.map(p => ({...p, storeId: activeStoreId })));
+  // --- END LOCAL DATA ---
 
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -178,32 +155,29 @@ export default function PurchasesPage() {
   const totalCost = subtotal + totalTaxes;
 
 
-  const handleAddNewSupplier = async () => {
-    if (!firestore || !activeStoreId) return;
+  const handleAddNewSupplier = () => {
     if (newSupplier.name.trim() === "") {
         toast({ variant: "destructive", title: "Nombre inválido" });
         return;
     }
 
-    const supplierToAdd = { 
+    const newId = `sup-${Date.now()}`;
+    const supplierToAdd: Supplier = { 
+        id: newId,
         name: newSupplier.name, 
         phone: newSupplier.phone, 
         address: newSupplier.address,
         storeId: activeStoreId
     };
     
-    const newDocRef = await addDocumentNonBlocking(collection(firestore, 'suppliers'), supplierToAdd);
-
-    if (newDocRef) {
-      setSelectedSupplierId(newDocRef.id);
-      setNewSupplier({ id: '', name: '', phone: '', address: '' });
-      setIsSupplierDialogOpen(false);
-      toast({ title: "Proveedor Agregado", description: `El proveedor "${supplierToAdd.name}" ha sido agregado.` });
-    }
+    setSuppliers(prev => [...prev, supplierToAdd]);
+    setSelectedSupplierId(newId);
+    setNewSupplier({ id: '', name: '', phone: '', address: '' });
+    setIsSupplierDialogOpen(false);
+    toast({ title: "Proveedor Agregado (DEMO)", description: `El proveedor "${supplierToAdd.name}" ha sido agregado localmente.` });
   };
   
-  const handleProcessPurchase = async () => {
-    if (!firestore) return;
+  const handleProcessPurchase = () => {
     if (purchaseItems.length === 0) {
       toast({ variant: "destructive", title: "Orden vacía", description: "Agrega productos para procesar la compra." });
       return;
@@ -226,7 +200,8 @@ export default function PurchasesPage() {
     }
 
     const purchaseId = generatePurchaseId();
-    const newPurchase: Omit<Purchase, 'id'> = {
+    const newPurchase: Purchase = {
+        id: purchaseId,
         supplierId: selectedSupplier.id,
         supplierName: selectedSupplier.name,
         items: purchaseItems,
@@ -237,23 +212,24 @@ export default function PurchasesPage() {
         storeId: activeStoreId,
     };
     
-    const batch = writeBatch(firestore);
+    setPurchases(prev => [newPurchase, ...prev]);
 
-    const purchaseDocRef = doc(firestore, 'purchases', purchaseId);
-    batch.set(purchaseDocRef, newPurchase);
-
-    for (const item of purchaseItems) {
-        const productRef = doc(firestore, 'products', item.productId);
-        const productData = products?.find(p => p.id === item.productId);
-        if (productData) {
-            const newStock = productData.stock + item.quantity;
-            batch.update(productRef, { stock: newStock, cost: item.cost });
+    setProducts(prevProds => {
+      const updatedProducts = [...prevProds];
+      for (const item of purchaseItems) {
+        const productIndex = updatedProducts.findIndex(p => p.id === item.productId);
+        if (productIndex !== -1) {
+          updatedProducts[productIndex] = {
+            ...updatedProducts[productIndex],
+            stock: updatedProducts[productIndex].stock + item.quantity,
+            cost: item.cost
+          };
         }
-    }
-    
-    await batch.commit();
+      }
+      return updatedProducts;
+    });
 
-    toast({ title: "Compra Procesada", description: `La compra con ID #${purchaseId} ha sido registrada.` });
+    toast({ title: "Compra Procesada (DEMO)", description: `La compra con ID #${purchaseId} ha sido registrada localmente.` });
     
     setPurchaseItems([]);
     setSelectedSupplierId('');
@@ -296,7 +272,6 @@ export default function PurchasesPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {isLoading && <p>Cargando productos...</p>}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {(filteredProducts || []).map((product) => {
                     return (
@@ -364,7 +339,7 @@ export default function PurchasesPage() {
                         <Popover open={isSupplierSearchOpen} onOpenChange={setIsSupplierSearchOpen}>
                             <PopoverTrigger asChild>
                                 <Button variant="outline" role="combobox" className="w-full justify-between">
-                                    { isLoading ? "Cargando..." : (selectedSupplier ? selectedSupplier.name : "Seleccionar proveedor...") }
+                                    { selectedSupplier ? selectedSupplier.name : "Seleccionar proveedor..." }
                                     <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                 </Button>
                             </PopoverTrigger>
@@ -559,3 +534,5 @@ export default function PurchasesPage() {
     </div>
   );
 }
+
+    

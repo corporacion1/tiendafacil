@@ -15,9 +15,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import { useSettings } from "@/contexts/settings-context";
-import { useCollection, useFirestore, setDocumentNonBlocking, useMemoFirebase } from "@/firebase";
-import { collection, doc } from "firebase/firestore";
 import { useSecurity } from "@/contexts/security-context";
+import { defaultUsers } from "@/lib/data";
 
 const getRoleVariant = (role: UserProfile['role']) => {
   switch (role) {
@@ -46,22 +45,13 @@ const getStatusVariant = (status: UserProfile['status'] | undefined) => {
 export default function UsersPage() {
   const { userProfile: currentUserProfile, switchStore, activeStoreId } = useSettings();
   const { toast } = useToast();
-  const firestore = useFirestore();
-  const { hasPin, checkPin } = useSecurity();
   
-  const usersCollectionRef = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
-  const { data: users, isLoading } = useCollection<UserProfile>(usersCollectionRef);
+  const [users, setUsers] = useState<UserProfile[]>(defaultUsers);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [userToAction, setUserToAction] = useState<UserProfile | null>(null);
   const [actionType, setActionType] = useState<'promote' | 'disable' | 'changeRole' | null>(null);
   const [newRole, setNewRole] = useState<UserRole>('user');
-
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
-  const [resetPin, setResetPin] = useState('');
-  const [resetConfirmationText, setResetConfirmationText] = useState('');
-
 
   const handleAction = (user: UserProfile, type: 'promote' | 'disable' | 'changeRole', role?: UserRole) => {
     if (currentUserProfile?.role !== 'superAdmin') {
@@ -76,13 +66,14 @@ export default function UsersPage() {
   };
   
   const confirmRoleChange = async () => {
-      if (!userToAction || !firestore) return;
+      if (!userToAction) return;
       
-      const userDocRef = doc(firestore, 'users', userToAction.uid);
-      setDocumentNonBlocking(userDocRef, { role: newRole }, { merge: true });
+      setUsers(prevUsers => prevUsers.map(u => 
+        u.uid === userToAction.uid ? { ...u, role: newRole } : u
+      ));
       
       toast({
-          title: 'Rol Actualizado',
+          title: 'Rol Actualizado (DEMO)',
           description: `${userToAction.displayName} ahora es ${newRole}.`,
       });
 
@@ -91,25 +82,27 @@ export default function UsersPage() {
   }
 
   const confirmAction = async () => {
-    if (!userToAction || !firestore) return;
-
-    const userDocRef = doc(firestore, 'users', userToAction.uid);
+    if (!userToAction) return;
 
     if (actionType === 'promote') {
       const newStoreId = `store-${userToAction.uid.slice(0, 8)}`;
-      setDocumentNonBlocking(userDocRef, { role: 'admin', storeId: newStoreId, storeRequest: false }, { merge: true });
+      setUsers(prevUsers => prevUsers.map(u => 
+        u.uid === userToAction.uid ? { ...u, role: 'admin', storeId: newStoreId, storeRequest: false } : u
+      ));
       
       toast({
-          title: "Usuario Promovido",
+          title: "Usuario Promovido (DEMO)",
           description: `${userToAction.displayName} ahora es un administrador con la tienda ${newStoreId}.`,
       });
 
     } else if (actionType === 'disable') {
        const newStatus = userToAction.status === 'disabled' ? 'active' : 'disabled';
-       setDocumentNonBlocking(userDocRef, { status: newStatus }, { merge: true });
+       setUsers(prevUsers => prevUsers.map(u => 
+        u.uid === userToAction.uid ? { ...u, status: newStatus } : u
+      ));
        
        toast({
-            title: `Usuario ${newStatus === 'disabled' ? 'Deshabilitado' : 'Habilitado'}`,
+            title: `Usuario ${newStatus === 'disabled' ? 'Deshabilitado' : 'Habilitado'} (DEMO)`,
             description: `La cuenta de "${userToAction.displayName}" ha sido ${newStatus === 'disabled' ? 'deshabilitada' : 'habilitada'}.`,
         });
     }
@@ -171,8 +164,7 @@ export default function UsersPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading && <p>Cargando usuarios...</p>}
-          {!isLoading && <Table>
+          <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="hidden sm:table-cell">Avatar</TableHead>
@@ -280,7 +272,7 @@ export default function UsersPage() {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>}
+            </Table>
         </CardContent>
       </Card>
       
@@ -305,3 +297,5 @@ export default function UsersPage() {
     </>
   );
 }
+
+    

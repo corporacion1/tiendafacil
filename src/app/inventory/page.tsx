@@ -34,10 +34,7 @@ import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { ProductForm } from "@/components/product-form";
 import { useSettings } from "@/contexts/settings-context";
 import { format, parseISO } from "date-fns";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, query, where, doc, writeBatch } from "firebase/firestore";
-import { setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
-
+import { mockProducts, mockSales } from "@/lib/data";
 
 const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewMovements, setProductToDelete }: {
     product: Product;
@@ -54,7 +51,7 @@ const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewM
         switch (status) {
             case 'active': return 'outline';
             case 'inactive': return 'secondary';
-            case 'promotion': return 'default'; // Or 'destructive', 'secondary', etc.
+            case 'promotion': return 'default';
             default: return 'outline';
         }
     }
@@ -127,30 +124,12 @@ const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewM
 
 export default function InventoryPage() {
   const { toast } = useToast();
-  const { activeSymbol, activeRate, activeStoreId, isLoadingSettings } = useSettings();
-  const firestore = useFirestore();
+  const { activeSymbol, activeRate, activeStoreId } = useSettings();
 
-  const productsQuery = useMemoFirebase(() => {
-    if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId]);
+  const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString() })));
+  const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
+  const [inventoryMovements, setInventoryMovements] = useState<InventoryMovement[]>([]);
 
-  const salesQuery = useMemoFirebase(() => {
-    if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId]);
-
-  const movementsQuery = useMemoFirebase(() => {
-    if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'inventoryMovements'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId]);
-
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
-  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
-  const { data: inventoryMovements, isLoading: isLoadingMovements } = useCollection<InventoryMovement>(movementsQuery);
-  
-  const isLoading = isLoadingSettings || isLoadingProducts || isLoadingSales || isLoadingMovements;
-  
   const [isMovementsDialogOpen, setIsMovementsDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
@@ -175,41 +154,32 @@ export default function InventoryPage() {
     setIsMovementsDialogOpen(true);
   };
 
-  async function handleUpdateProduct(data: Omit<Product, 'id' | 'createdAt' | 'storeId'> & { id?: string }) {
-    if (!data.id || !firestore) return false;
-
-    const docRef = doc(firestore, 'products', data.id);
-    await setDocumentNonBlocking(docRef, data, { merge: true });
-    
+  function handleUpdateProduct(data: Omit<Product, 'id' | 'createdAt' | 'storeId'> & { id?: string }) {
+    if (!data.id) return false;
+    setProducts(prev => prev.map(p => p.id === data.id ? {...p, ...data} : p));
     toast({
-        title: "Producto Actualizado",
-        description: `El producto "${data.name}" ha sido actualizado.`,
+        title: "Producto Actualizado (DEMO)",
+        description: `El producto "${data.name}" ha sido actualizado localmente.`,
     });
     setProductToEdit(null);
     return true;
   }
   
   const handleDelete = (productId: string) => {
-    if (!firestore) return;
-    const isProductInSale = (sales || []).some(sale => sale.items.some(item => item.productId === productId));
-
+    const isProductInSale = sales.some(sale => sale.items.some(item => item.productId === productId));
     if (isProductInSale) {
         toast({
             variant: "destructive",
             title: "Eliminación Bloqueada",
             description: "Este producto no se puede eliminar porque tiene ventas asociadas. Considere cambiar su estado a 'Inactivo'.",
         });
-        setProductToDelete(null);
-        return;
+    } else {
+        setProducts(prev => prev.filter(p => p.id !== productId));
+        toast({
+            title: "Producto Eliminado (DEMO)",
+            description: "El producto ha sido eliminado del inventario.",
+        });
     }
-    
-    const docRef = doc(firestore, 'products', productId);
-    deleteDocumentNonBlocking(docRef);
-
-    toast({
-        title: "Producto Eliminado",
-        description: "El producto ha sido eliminado del inventario.",
-    });
     setProductToDelete(null);
   };
 
@@ -220,8 +190,8 @@ export default function InventoryPage() {
       setMovementResponsible('');
   }
 
-  const handleMoveInventory = async () => {
-    if (!movementProduct || !movementType || movementQuantity <= 0 || !movementResponsible.trim() || !firestore) {
+  const handleMoveInventory = () => {
+    if (!movementProduct || !movementType || movementQuantity <= 0 || !movementResponsible.trim()) {
       toast({
         variant: "destructive",
         title: "Datos incompletos",
@@ -246,12 +216,10 @@ export default function InventoryPage() {
       default: newStock = currentStock; break;
     }
     
-    const batch = writeBatch(firestore);
-
-    const productRef = doc(firestore, 'products', movementProduct.id);
-    batch.update(productRef, { stock: newStock });
+    setProducts(prev => prev.map(p => p.id === movementProduct.id ? {...p, stock: newStock} : p));
     
-    const newMovement: Omit<InventoryMovement, 'id'> = {
+    const newMovement: InventoryMovement = {
+        id: `mov-${Date.now()}`,
         productName: movementProduct.name,
         type: movementType,
         quantity: movementType === 'sale' ? -movementQuantity : (movementType === 'purchase' ? movementQuantity : newStock),
@@ -259,14 +227,10 @@ export default function InventoryPage() {
         responsible: movementResponsible,
         storeId: activeStoreId,
     };
-
-    const movementRef = doc(collection(firestore, 'inventoryMovements'));
-    batch.set(movementRef, newMovement);
-
-    await batch.commit();
+    setInventoryMovements(prev => [newMovement, ...prev]);
 
     toast({
-        title: "Movimiento Registrado",
+        title: "Movimiento Registrado (DEMO)",
         description: `El stock de "${movementProduct.name}" ha sido actualizado a ${newStock}.`,
     });
     resetMovementForm();
@@ -284,12 +248,12 @@ export default function InventoryPage() {
   };
 
   const productMovements = useMemo(() => {
-    if (!selectedProduct || !inventoryMovements) return [];
+    if (!selectedProduct) return [];
     return inventoryMovements.filter(m => m.productName === selectedProduct.name);
   }, [selectedProduct, inventoryMovements]);
 
   const filteredProducts = useMemo(() => {
-    return (products || []).filter(product =>
+    return products.filter(product =>
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase()))
     );
@@ -380,8 +344,6 @@ export default function InventoryPage() {
         </div>
       </CardHeader>
       <CardContent>
-        {isLoading && <p>Cargando productos...</p>}
-        {!isLoading && (
           <Table>
             <TableHeader>
               <TableRow>
@@ -412,11 +374,10 @@ export default function InventoryPage() {
               ))}
             </TableBody>
           </Table>
-        )}
       </CardContent>
       <CardFooter>
         <div className="text-xs text-muted-foreground">
-          Mostrando <strong>1-{productsToRender.length}</strong> de <strong>{(products || []).length}</strong> productos
+          Mostrando <strong>1-{productsToRender.length}</strong> de <strong>{products.length}</strong> productos
         </div>
       </CardFooter>
     </Card>
@@ -498,12 +459,12 @@ export default function InventoryPage() {
                                     <CommandList>
                                         <CommandEmpty>No se encontraron productos.</CommandEmpty>
                                         <CommandGroup>
-                                            {(products || []).map((product) => (
+                                            {products.map((product) => (
                                                 <CommandItem
                                                 key={product.id}
                                                 value={product.name}
                                                 onSelect={(currentValue) => {
-                                                    const product = (products || []).find(p => p.name.toLowerCase() === currentValue.toLowerCase());
+                                                    const product = products.find(p => p.name.toLowerCase() === currentValue.toLowerCase());
                                                     setMovementProduct(product || null);
                                                     setIsProductComboboxOpen(false)
                                                 }}
@@ -653,3 +614,5 @@ export default function InventoryPage() {
     </>
   );
 }
+
+    

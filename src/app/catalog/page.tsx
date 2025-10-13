@@ -7,7 +7,6 @@ import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid,
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
-import { collection, query, where } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
@@ -18,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import type { Product, CartItem, PendingOrder, Ad, Family } from "@/lib/types";
-import { pendingOrdersState, defaultStoreId } from "@/lib/data";
+import { pendingOrdersState, mockProducts, initialFamilies, mockAds, defaultStoreId } from "@/lib/data";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -28,7 +27,6 @@ import { useRouter } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { LoginModal } from "../login/page";
 import { useSettings } from "@/contexts/settings-context";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 
 
 const AdCard = ({ ad }: { ad: Ad }) => {
@@ -122,38 +120,15 @@ export default function CatalogPage() {
     const { toast } = useToast();
     const router = useRouter();
     const { settings, activeSymbol, activeRate, isLoadingSettings, userProfile } = useSettings();
-    const firestore = useFirestore();
-    const storeIdForCatalog = useSettings().activeStoreId || defaultStoreId;
-
-    const productsQuery = useMemoFirebase(() => {
-        if (!firestore || !storeIdForCatalog) return null;
-        return query(collection(firestore, 'products'), where('storeId', '==', storeIdForCatalog));
-    }, [firestore, storeIdForCatalog]);
-    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
-
-    const familiesQuery = useMemoFirebase(() => {
-        if (!firestore || !storeIdForCatalog) return null;
-        return query(collection(firestore, 'families'), where('storeId', '==', storeIdForCatalog));
-    }, [firestore, storeIdForCatalog]);
-    const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
+    const storeIdForCatalog = defaultStoreId;
     
-    const adsQuery = useMemoFirebase(() => {
-        if (!firestore || !settings) return null; // Wait for settings
-        if (settings.businessType) {
-            return query(
-                collection(firestore, 'ads'), 
-                where('targetBusinessTypes', 'array-contains', settings.businessType),
-                where('status', '==', 'active')
-            );
-        }
-        // Fallback query if no businessType is set
-        return query(collection(firestore, 'ads'), where('status', '==', 'active'));
-    }, [firestore, settings]);
+    // --- LOCAL DATA ---
+    const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: storeIdForCatalog, createdAt: new Date().toISOString() })));
+    const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: storeIdForCatalog })));
+    const [allAds, setAllAds] = useState(mockAds.map(ad => ({...ad, createdAt: new Date().toISOString() })));
+    const isLoading = false;
+    // --- END LOCAL DATA ---
 
-    const { data: allAds, isLoading: isLoadingAds } = useCollection<Ad>(adsQuery);
-
-    const isLoading = isLoadingSettings || isLoadingProducts || isLoadingFamilies || isLoadingAds;
-    
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
     const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const scrollDirectionRef = useRef<'down' | 'up'>('down');
@@ -301,7 +276,7 @@ export default function CatalogPage() {
     const itemsForGrid = useMemo(() => {
         const relevantAds = (allAds || []).filter(ad => {
             const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
-            return !isExpired;
+            return !isExpired && ad.status === 'active';
         });
         
         const shuffledAds = [...relevantAds].sort(() => Math.random() - 0.5);

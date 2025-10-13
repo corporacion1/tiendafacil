@@ -16,20 +16,8 @@ import {
   CartesianGrid
 } from "recharts";
 import { subDays, parseISO, format } from "date-fns";
-import { collection, query, where } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import {
   Card,
   CardContent,
@@ -45,15 +33,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/contexts/settings-context";
 import { InventoryMovement, Product, Purchase, Sale } from "@/lib/types";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { useToast } from "@/hooks/use-toast";
-import { useSecurity } from "@/contexts/security-context";
+import { mockSales, mockPurchases, mockProducts } from "@/lib/data";
 
 type TimeFilter = 'day' | 'week' | 'month';
 
@@ -68,36 +52,16 @@ const getDate = (d: any): Date => {
 
 export default function Dashboard() {
   const { activeSymbol, activeRate, isLoadingSettings, activeStoreId, userProfile } = useSettings();
-  const firestore = useFirestore();
-  const { toast } = useToast();
-  const { hasPin, checkPin } = useSecurity();
   const isSuperAdmin = userProfile?.role === 'superAdmin';
 
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
   
-  const salesQuery = useMemoFirebase(() => {
-    if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId]);
-
-  const purchasesQuery = useMemoFirebase(() => {
-    if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId]);
-  
-  const productsQuery = useMemoFirebase(() => {
-    if (!firestore || !activeStoreId) return null;
-    return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
-  }, [firestore, activeStoreId]);
-
-  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
-  const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
-
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
-  const [resetPin, setResetPin] = useState('');
-  const [resetConfirmationText, setResetConfirmationText] = useState('');
+  // --- LOCAL DATA ---
+  const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
+  const [purchases, setPurchases] = useState(mockPurchases.map(p => ({...p, storeId: activeStoreId})));
+  const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString() })));
+  const isLoading = false;
+  // --- END LOCAL DATA ---
 
   const recentMovements: InventoryMovement[] = useMemo(() => {
     if (!sales || !purchases) return [];
@@ -124,8 +88,6 @@ export default function Dashboard() {
     return [...saleMovements, ...purchaseMovements].sort((a,b) => getDate(b.date).getTime() - getDate(a.date).getTime())
   }, [sales, purchases]);
 
-
-  const isLoading = isLoadingSettings || isLoadingSales || isLoadingPurchases || isLoadingProducts;
 
   const cutoffDate = useMemo(() => {
     const now = new Date();
@@ -401,3 +363,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
+    
