@@ -46,25 +46,6 @@ function AppLoadingScreen() {
     );
 }
 
-const StoreSettingsLoader = ({ activeStoreId, onSettingsLoaded }: { activeStoreId: string, onSettingsLoaded: (settings: Settings) => void }) => {
-    const firestore = useFirestore();
-    const storeDocRef = useMemoFirebase(() => firestore ? doc(firestore, 'stores', activeStoreId) : null, [firestore, activeStoreId]);
-    const { data: storeSettings, isLoading } = useDoc<Settings>(storeDocRef);
-
-    useEffect(() => {
-        if (storeSettings) {
-            onSettingsLoaded(storeSettings);
-        } else if (!isLoading && !storeSettings) {
-            // If not loading and settings are still null, it means the doc doesn't exist.
-            // We fall back to default store settings to allow the app to function.
-            onSettingsLoaded(defaultStore);
-        }
-    }, [storeSettings, isLoading, onSettingsLoaded]);
-
-    return null; // This component doesn't render anything
-};
-
-
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
   const router = useRouter();
@@ -91,33 +72,45 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       console.error("Could not access localStorage for storeId", error);
     }
   }, [userProfile]);
+  
+  const storeDocRef = useMemoFirebase(() => {
+    // Only create the ref if we should be fetching settings
+    if (firestore && activeStoreId && !isAuthLoading && !needsProfileCreation) {
+      return doc(firestore, 'stores', activeStoreId);
+    }
+    return null;
+  }, [firestore, activeStoreId, isAuthLoading, needsProfileCreation]);
+
+  const { data: storeSettings, isLoading: isLoadingStoreSettings } = useDoc<Settings>(storeDocRef);
 
   const ratesCollectionRef = useMemoFirebase(() => firestore ? collection(firestore, 'stores', activeStoreId, 'currencyRates') : null, [firestore, activeStoreId]);
   const { data: currencyRates } = useCollection<CurrencyRate>(ratesCollectionRef);
   
   useEffect(() => {
-    const isPublicPath = pathname.startsWith('/catalog') || pathname === '/';
-    if (isAuthLoading) return; // Wait for user status to be resolved
+    if (isAuthLoading) return;
 
     if (needsProfileCreation) {
-      // If setup is needed, we are "ready" to show the setup modal.
       setIsReady(true);
       return;
     }
-
+    
+    const isPublicPath = pathname.startsWith('/catalog') || pathname === '/';
     if (!userProfile && !isPublicPath) {
       router.replace('/catalog');
-      // If redirecting, we are also "ready" from this provider's perspective.
-      setIsReady(true);
+      setIsReady(true); // Ready to show public page or redirect
       return;
     }
 
-    if (settings) {
-      // If settings are already loaded, we are ready.
+    if (storeSettings) {
+      setSettingsState(storeSettings);
+      setIsReady(true);
+    } else if (!isLoadingStoreSettings && !storeSettings) {
+      // If done loading but no settings found, use default (e.g., after profile creation but before reload)
+      setSettingsState(defaultStore);
       setIsReady(true);
     }
 
-  }, [isAuthLoading, needsProfileCreation, userProfile, settings, pathname, router]);
+  }, [isAuthLoading, needsProfileCreation, userProfile, storeSettings, isLoadingStoreSettings, pathname, router]);
 
   
   const handleSetSettings = useCallback((newSettings: Partial<Settings>) => {
@@ -137,7 +130,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
             console.error("Could not save storeId to localStorage", error);
         }
         toast({ title: `Cambiado a la tienda ${storeId}` });
-        window.location.reload(); // Force reload to ensure all contexts reset
+        window.location.reload(); 
       } else {
         toast({ variant: 'destructive', title: 'Acción no permitida' });
       }
@@ -162,7 +155,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     return <FirstTimeSetupModal />;
   }
 
-  if (!isReady && !pathname.startsWith('/catalog')) {
+  const isPublicPath = pathname.startsWith('/catalog') || pathname === '/';
+
+  if (!isReady && !isPublicPath) {
       return <AppLoadingScreen />;
   }
 
@@ -177,13 +172,12 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     currencyRates: currencyRates || [],
     activeStoreId,
     switchStore,
-    isLoadingSettings: !settings,
+    isLoadingSettings: !isReady,
     userProfile,
   };
 
   return (
     <SettingsContext.Provider value={contextValue}>
-      {!settings && !needsProfileCreation && <StoreSettingsLoader activeStoreId={activeStoreId} onSettingsLoaded={setSettingsState} />}
       {children}
     </SettingsContext.Provider>
   );
