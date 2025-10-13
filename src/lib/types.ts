@@ -1,4 +1,5 @@
 
+
 import { FieldValue } from 'firebase/firestore';
 
 export type UserRole = 'superAdmin' | 'admin' | 'user' | 'pos';

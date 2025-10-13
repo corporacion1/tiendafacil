@@ -1,3 +1,4 @@
+
 import type { Product, Sale, Unit, Family, Warehouse, Customer, Purchase, Ad, UserProfile, Store, CurrencyRate, PendingOrder, CashSession } from '@/lib/types';
 import { PlaceHolderImages } from './placeholder-images';
 import { subDays, addDays, startOfWeek, startOfMonth, startOfYear } from 'date-fns';
@@ -28,6 +29,7 @@ export const defaultStore: Store = {
   whatsapp: "+584126915593",
   tiktok: "@tiendafacil",
   meta: "@tiendafacil",
+  useDemoData: true, // <-- SET DEMO MODE TO TRUE
 };
 
 // --- USUARIOS POR DEFECTO ---

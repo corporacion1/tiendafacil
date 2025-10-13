@@ -27,7 +27,7 @@ import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SessionReportPreview } from "@/components/session-report-preview";
 import { useSecurity } from "@/contexts/security-context";
-import { useFirestore } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { setDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 
@@ -76,14 +76,30 @@ export default function POSPage() {
   const firestore = useFirestore();
   const router = useRouter();
 
-  // --- USE LOCAL DATA ---
-  const [products, setProductsState] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString() })));
-  const [customers, setCustomers] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
-  const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
-  const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
+  // --- Firestore Data ---
+  const productsQuery = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId]);
+
+  const customersQuery = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId]);
+
+  const familiesQuery = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'families'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId]);
+  
+  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
+  const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
+  const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
+  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(useMemoFirebase(() => firestore ? collection(firestore, 'sales') : null, [firestore]));
+  
   const [pendingOrders, setPendingOrdersState] = useState<PendingOrder[]>(pendingOrdersState);
-  const isLoading = isLoadingSettings;
-  // --- END LOCAL DATA ---
+  const isLoading = isLoadingSettings || isLoadingProducts || isLoadingCustomers || isLoadingFamilies || isLoadingSales;
+  // --- END DATA ---
   
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -132,6 +148,7 @@ export default function POSPage() {
   }, [isSecurityReady, isLocked, activeSession]);
 
   const handleOpenSession = () => {
+      if(!firestore || !activeStoreId) return;
       const balance = Number(openingBalance);
       if (isNaN(balance) || balance < 0) {
           toast({ variant: 'destructive', title: 'Monto inválido.' });
@@ -152,6 +169,9 @@ export default function POSPage() {
           difference: 0,
           closedBy: null
       };
+
+      setDocumentNonBlocking(doc(firestore, 'cashSessions', newSession.id), newSession, { merge: false });
+      
       setActiveSession(newSession);
       setIsSessionModalOpen(false);
       setOpeningBalance('');
@@ -332,11 +352,11 @@ export default function POSPage() {
   }, [isProcessSaleDialogOpen, remainingBalance]);
 
   const isReferenceDuplicate = (reference: string, method: string) => {
-    if (!reference || !method) return false;
+    if (!reference || !method || !sales) return false;
     if (payments.some(p => p.method === method && p.reference === reference)) {
         return true;
     }
-    for (const sale of (sales || [])) {
+    for (const sale of sales) {
         if (sale.payments && sale.payments.some(p => p.method === method && p.reference === reference)) {
             return true;
         }
@@ -378,7 +398,7 @@ export default function POSPage() {
   }
 
   const handleProcessSale = async (andPrint: boolean) => {
-     if (cartItems.length === 0) {
+     if (cartItems.length === 0 || !firestore || !activeStoreId) {
       toast({ variant: "destructive", title: "Carrito vacío"});
       return;
     }
@@ -395,7 +415,7 @@ export default function POSPage() {
     }
 
     const saleId = generateSaleId();
-    const finalPayments = payments.map((p, i) => ({
+    const finalPayments: Payment[] = payments.map((p, i) => ({
         ...p,
         id: `pay-${saleId}-${i}`,
         date: new Date().toISOString(),
@@ -420,40 +440,42 @@ export default function POSPage() {
         storeId: activeStoreId,
     }
     
-    // --- SIMULATED DEMO UPDATE ---
-    setSales(prev => [newSale, ...prev]);
+    const batch = writeBatch(firestore);
 
-    let updatedProducts = [...products];
-    for (const item of cartItems) {
-        updatedProducts = updatedProducts.map(p => 
-            p.id === item.product.id 
-                ? { ...p, stock: p.stock - item.quantity }
-                : p
-        );
-    }
-    setProductsState(updatedProducts);
-    
-    setActiveSession(prev => {
-        if (!prev) return null;
-        const newTransactions = { ...prev.transactions };
-        finalPayments.forEach(p => {
-            newTransactions[p.method] = (newTransactions[p.method] || 0) + p.amount;
-        });
-        return {
-            ...prev,
-            salesIds: [...prev.salesIds, saleId],
-            transactions: newTransactions
-        };
+    // 1. Add Sale
+    const saleRef = doc(firestore, 'sales', saleId);
+    batch.set(saleRef, newSale);
+
+    // 2. Update Product Stock
+    cartItems.forEach(item => {
+        const productRef = doc(firestore, 'products', item.product.id);
+        const newStock = item.product.stock - item.quantity;
+        batch.update(productRef, { stock: newStock });
     });
-
-    setLastSale(newSale);
-    // --- END SIMULATED DEMO UPDATE ---
+    
+    // 3. Update Cash Session
+    if(activeSession) {
+      const sessionRef = doc(firestore, 'cashSessions', activeSession.id);
+      const newTransactions = { ...activeSession.transactions };
+      finalPayments.forEach(p => {
+          newTransactions[p.method] = (newTransactions[p.method] || 0) + p.amount;
+      });
+      batch.update(sessionRef, {
+        salesIds: [...activeSession.salesIds, saleId],
+        transactions: newTransactions
+      });
+      // Update local state for UI responsiveness
+      setActiveSession(prev => prev ? ({...prev, salesIds: [...prev.salesIds, saleId], transactions: newTransactions}) : null);
+    }
+    
+    await batch.commit();
     
     toast({
-        title: "Venta Procesada (DEMO)",
-        description: `La venta #${saleId} ha sido registrada localmente.`,
+        title: "Venta Procesada",
+        description: `La venta #${saleId} ha sido registrada.`,
     });
     
+    setLastSale(newSale);
     setCartItems([]);
     setIsProcessSaleDialogOpen(false);
     resetPaymentModal();
@@ -482,6 +504,8 @@ export default function POSPage() {
   };
 
   const handleAddNewCustomer = async () => {
+    if (!firestore || !activeStoreId) return;
+
     if (newCustomer.name.trim() === "" || newCustomer.phone.trim() === "") {
         toast({
             variant: "destructive",
@@ -491,25 +515,24 @@ export default function POSPage() {
         return;
     }
     
-    const newId = `cust-${Date.now()}`;
-    const customerToAdd: Customer = {
-        id: newId,
+    const customerToAdd: Omit<Customer, 'id'> = {
         name: newCustomer.name,
         phone: newCustomer.phone,
         address: newCustomer.address,
         storeId: activeStoreId,
     };
     
-    // In a real app, this would save to Firestore. Here we just update local state.
-    setCustomers(prev => [...prev, customerToAdd]);
+    const newDocRef = await addDocumentNonBlocking(collection(firestore, 'customers'), customerToAdd);
 
-    setSelectedCustomerId(newId);
-    setNewCustomer({ id: '', name: '', phone: '', address: '' });
-    setIsCustomerDialogOpen(false);
-    toast({
-        title: "Cliente Agregado (DEMO)",
-        description: `El cliente "${customerToAdd.name}" ha sido agregado y seleccionado.`,
-    });
+    if (newDocRef) {
+      setSelectedCustomerId(newDocRef.id);
+      setNewCustomer({ id: '', name: '', phone: '', address: '' });
+      setIsCustomerDialogOpen(false);
+      toast({
+          title: "Cliente Agregado",
+          description: `El cliente "${customerToAdd.name}" ha sido agregado y seleccionado.`,
+      });
+    }
   };
 
   const filteredProducts = useMemo(() => {
