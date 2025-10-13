@@ -5,12 +5,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { usePathname, useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import type { CurrencyRate, Settings, UserProfile } from "@/lib/types";
-import { defaultStore, defaultStoreId, mockCurrencyRates } from '@/lib/data';
-import { SUPER_ADMIN_UID } from '@/lib/constants';
-import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
-import { firebaseConfig } from '@/firebase/config';
-import { initializeApp, getApps } from 'firebase/app';
-import { doc, getDoc, getFirestore } from 'firebase/firestore';
+import { defaultStore, defaultStoreId, mockCurrencyRates, defaultUsers } from '@/lib/data';
+import type { User } from 'firebase/auth';
 
 type DisplayCurrency = 'primary' | 'secondary';
 
@@ -27,7 +23,7 @@ interface SettingsContextType {
   switchStore: (storeId: string) => void;
   isLoadingSettings: boolean;
   userProfile: UserProfile | null;
-  firebaseUser: User | null;
+  firebaseUser: User | null; // Keep for type consistency, but will be null
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -53,7 +49,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const [settings, setLocalSettings] = useState<Settings | null>(defaultStore);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
   const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>(mockCurrencyRates);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
@@ -63,61 +58,34 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   useEffect(() => {
     setIsClient(true);
     
-    if (!getApps().length) {
-        initializeApp(firebaseConfig);
-    }
-    const auth = getAuth();
-    const db = getFirestore();
-
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-        setIsLoadingSettings(true);
-        if (user) {
-            setFirebaseUser(user);
-            // Fetch user profile from Firestore
-            const userDocRef = doc(db, 'users', user.uid);
-            const userDoc = await getDoc(userDocRef);
-
-            if (userDoc.exists()) {
-                const profileData = userDoc.data() as UserProfile;
-                setUserProfile(profileData);
-                const storeIdToUse = profileData.storeId || localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY) || defaultStoreId;
-                setActiveStoreId(storeIdToUse);
-            } else {
-                 // User exists in Auth, but not in Firestore 'users' collection.
-                 // This is a new user that needs to go through setup.
-                const newUserProfile: UserProfile = {
-                    uid: user.uid,
-                    email: user.email,
-                    displayName: user.displayName,
-                    photoURL: user.photoURL,
-                    role: user.uid === SUPER_ADMIN_UID ? 'superAdmin' : 'user',
-                    status: 'active',
-                    createdAt: new Date().toISOString(),
-                    storeId: user.uid === SUPER_ADMIN_UID ? defaultStoreId : undefined,
-                };
-                setUserProfile(newUserProfile);
-                if (user.uid === SUPER_ADMIN_UID) {
-                     setActiveStoreId(defaultStoreId);
-                }
-            }
-        } else {
-            setFirebaseUser(null);
-            setUserProfile(null);
-            if (!pathname.startsWith('/catalog') && !pathname.startsWith('/login')) {
-                 router.push(`/catalog?storeId=${defaultStoreId}`);
-            }
-        }
-        setIsLoadingSettings(false);
-    });
-
-    try {
-      const storedPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY);
-      if (storedPref === 'secondary') setDisplayCurrency('secondary');
-    } catch (error) {
-      console.error("Could not access localStorage for currency preference", error);
-    }
+    // --- LOCAL DATA SIMULATION ---
+    // Simulate loading user and settings
+    setIsLoadingSettings(true);
     
-    return () => unsubscribe();
+    // Use the superAdmin from mock data as the default logged-in user
+    const superAdminProfile = defaultUsers.find(u => u.role === 'superAdmin');
+    if (superAdminProfile) {
+        setUserProfile(superAdminProfile);
+    }
+
+    const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY) || defaultStoreId;
+    setActiveStoreId(storedStoreId);
+
+    const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY);
+    if (storedCurrencyPref === 'secondary') {
+      setDisplayCurrency('secondary');
+    }
+
+    // Simulate loading time
+    setTimeout(() => {
+        setIsLoadingSettings(false);
+    }, 500);
+
+    // Redirect if not logged in and not on a public page
+    if (!superAdminProfile && !pathname.startsWith('/catalog') && !pathname.startsWith('/login')) {
+        router.push(`/catalog?storeId=${defaultStoreId}`);
+    }
+
   }, [router, pathname]);
 
 
@@ -170,7 +138,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     switchStore,
     isLoadingSettings,
     userProfile,
-    firebaseUser
+    firebaseUser: null // Firebase user is now always null
   };
 
   return (

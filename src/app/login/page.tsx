@@ -7,10 +7,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Logo } from '@/components/logo';
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
-import { SUPER_ADMIN_UID } from "@/lib/constants";
 import type { UserProfile } from "@/lib/types";
+import { useSettings } from "@/contexts/settings-context";
 
 const GoogleIcon = () => (
     <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -27,44 +25,14 @@ export function LoginModal({ children }: { children: React.ReactNode }) {
     const [isOpen, setIsOpen] = useState(false);
 
     const handleSignIn = async () => {
-        const auth = getAuth();
-        const provider = new GoogleAuthProvider();
-
-        try {
-            const result = await signInWithPopup(auth, provider);
-            const user = result.user;
-            
-            const db = getFirestore();
-            const userDocRef = doc(db, "users", user.uid);
-            const userDoc = await getDoc(userDocRef);
-
-            if (!userDoc.exists()) {
-                const newUserProfile: UserProfile = {
-                    uid: user.uid,
-                    email: user.email,
-                    displayName: user.displayName,
-                    photoURL: user.photoURL,
-                    role: user.uid === SUPER_ADMIN_UID ? 'superAdmin' : 'user',
-                    status: 'active',
-                    createdAt: new Date().toISOString(),
-                };
-                 await setDoc(userDocRef, newUserProfile);
-            }
-            
-            toast({
-                title: "¡Bienvenido!",
-                description: "Has iniciado sesión correctamente.",
-            });
-            setIsOpen(false);
-            router.push('/dashboard');
-        } catch (error) {
-            console.error("Error during sign-in:", error);
-            toast({
-                variant: "destructive",
-                title: "Error de inicio de sesión",
-                description: "No se pudo iniciar sesión. Por favor, inténtalo de nuevo.",
-            });
-        }
+        // This is a simulated sign-in for the demo.
+        // In a real app, this would use Firebase Auth.
+        toast({
+            title: "¡Bienvenido (DEMO)!",
+            description: "Has iniciado sesión correctamente.",
+        });
+        setIsOpen(false);
+        router.push('/dashboard');
     };
 
     return (
@@ -83,7 +51,7 @@ export function LoginModal({ children }: { children: React.ReactNode }) {
                 <div className="py-4">
                     <Button onClick={handleSignIn} className="w-full">
                         <GoogleIcon />
-                        Ingresar con Google
+                        Ingresar con Google (DEMO)
                     </Button>
                 </div>
             </DialogContent>
