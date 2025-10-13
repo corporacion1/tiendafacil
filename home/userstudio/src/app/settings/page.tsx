@@ -125,11 +125,11 @@ export default function SettingsPage() {
     const [imageError, setImageError] = useState(false);
 
     // --- Firestore Data ---
-    const productsQuery = useMemoFirebase(() => collection(firestore, 'products'), [firestore]);
-    const salesQuery = useMemoFirebase(() => collection(firestore, 'sales'), [firestore]);
-    const unitsQuery = useMemoFirebase(() => collection(firestore, 'units'), [firestore]);
-    const familiesQuery = useMemoFirebase(() => collection(firestore, 'families'), [firestore]);
-    const warehousesQuery = useMemoFirebase(() => collection(firestore, 'warehouses'), [firestore]);
+    const productsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'products') : null, [firestore]);
+    const salesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'sales') : null, [firestore]);
+    const unitsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'units') : null, [firestore]);
+    const familiesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'families') : null, [firestore]);
+    const warehousesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'warehouses') : null, [firestore]);
     
     const { data: products } = useCollection<Product>(productsQuery);
     const { data: sales } = useCollection<Sale>(salesQuery);
@@ -194,8 +194,12 @@ export default function SettingsPage() {
     };
 
     const saveAllSettings = async () => {
-        setSettings(localSettings as Settings);
-        setIsDirty(false);
+        if (firestore && activeStoreId) {
+            const storeDocRef = doc(firestore, 'stores', activeStoreId);
+            await setDocumentNonBlocking(storeDocRef, localSettings, { merge: true });
+            setIsDirty(false);
+            toast({ title: "Configuración Guardada", description: "Tus cambios se han guardado en la nube." });
+        }
     };
 
     const handleSaveNewRate = () => {
@@ -210,11 +214,12 @@ export default function SettingsPage() {
             date: new Date().toISOString(),
         };
 
-        const ratesColRef = collection(firestore, 'stores', activeStoreId, 'currencyRates');
-        addDocumentNonBlocking(ratesColRef, newRateEntry);
-
-        setNewRate("");
-        toast({ title: "Tasa Guardada", description: `La nueva tasa ha sido registrada.` });
+        if (firestore) {
+            const ratesColRef = collection(firestore, 'stores', activeStoreId, 'currencyRates');
+            addDocumentNonBlocking(ratesColRef, newRateEntry);
+            setNewRate("");
+            toast({ title: "Tasa Guardada", description: `La nueva tasa ha sido registrada.` });
+        }
     };
 
     const isItemInUse = useCallback((type: 'unit' | 'family' | 'warehouse', name: string) => {
@@ -233,13 +238,15 @@ export default function SettingsPage() {
         }
         
         let docRef;
-        if (type === 'unit') docRef = doc(firestore, 'units', id);
-        if (type === 'family') docRef = doc(firestore, 'families', id);
-        if (type === 'warehouse') docRef = doc(firestore, 'warehouses', id);
+        if (firestore) {
+            if (type === 'unit') docRef = doc(firestore, 'units', id);
+            if (type === 'family') docRef = doc(firestore, 'families', id);
+            if (type === 'warehouse') docRef = doc(firestore, 'warehouses', id);
 
-        if (docRef) {
-            deleteDocumentNonBlocking(docRef);
-            toast({ title: 'Elemento Eliminado' });
+            if (docRef) {
+                deleteDocumentNonBlocking(docRef);
+                toast({ title: 'Elemento Eliminado' });
+            }
         }
     };
     
@@ -296,7 +303,7 @@ export default function SettingsPage() {
         const [editingItem, setEditingItem] = useState<{id: string, name: string} | null>(null);
 
         const handleAddNewItem = () => {
-             if (newItemName.trim() === '') return;
+             if (newItemName.trim() === '' || !firestore) return;
             
             const newEntry = { name: newItemName.trim(), storeId: activeStoreId };
             const colRef = collection(firestore, collectionName);
@@ -307,7 +314,7 @@ export default function SettingsPage() {
         };
         
         const handleEditItem = () => {
-            if (!editingItem || editingItem.name.trim() === '') return;
+            if (!editingItem || editingItem.name.trim() === '' || !firestore) return;
             
             const docRef = doc(firestore, collectionName, editingItem.id);
             setDocumentNonBlocking(docRef, { name: editingItem.name }, { merge: true });
@@ -813,4 +820,5 @@ export default function SettingsPage() {
         </div>
     );
 }
+
 
