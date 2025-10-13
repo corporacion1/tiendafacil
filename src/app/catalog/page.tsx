@@ -315,6 +315,18 @@ export default function CatalogPage() {
             return a.name.localeCompare(b.name);
           });
       }, [products, searchTerm, selectedFamily, storeIdForCatalog]);
+
+    useEffect(() => {
+        if (searchTerm && sortedAndFilteredProducts.length === 1) {
+            const product = sortedAndFilteredProducts[0];
+            // Check if it's an exact match on SKU or name to be more precise
+            const isExactMatch = product.sku?.toLowerCase() === searchTerm.toLowerCase() ||
+                                 product.name.toLowerCase() === searchTerm.toLowerCase();
+            if (isExactMatch && product.id !== productDetails?.id) {
+                setProductDetails(sortedAndFilteredProducts[0]);
+            }
+        }
+    }, [sortedAndFilteredProducts, searchTerm, productDetails]);
     
     const itemsForGrid = useMemo(() => {
         const relevantAds = (allAds || []).filter(ad => {
