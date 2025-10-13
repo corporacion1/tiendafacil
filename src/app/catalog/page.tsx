@@ -7,6 +7,7 @@ import { Package, ShoppingBag, Plus, Minus, Trash2, X, Filter, Send, LayoutGrid,
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
+import { collection } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
@@ -17,7 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import type { Product, CartItem, PendingOrder, Ad, Family } from "@/lib/types";
-import { defaultStoreId, mockProducts, initialFamilies, mockAds, pendingOrdersState } from "@/lib/data";
+import { pendingOrdersState } from "@/lib/data";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -27,6 +28,7 @@ import { useRouter } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { LoginModal } from "../login/page";
 import { useSettings } from "@/contexts/settings-context";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 
 
 const AdCard = ({ ad }: { ad: Ad }) => {
@@ -120,12 +122,13 @@ export default function CatalogPage() {
     const { toast } = useToast();
     const router = useRouter();
     const { settings, activeSymbol, activeRate, isLoadingSettings, userProfile } = useSettings();
+    const firestore = useFirestore();
 
-    const [products, setProducts] = useState<Product[]>(mockProducts.map(p => ({...p, storeId: defaultStoreId, createdAt: new Date().toISOString()})));
-    const [families, setFamilies] = useState<Family[]>(initialFamilies.map(f => ({...f, storeId: defaultStoreId})));
-    const [allAds, setAllAds] = useState<Ad[]>(mockAds.map(ad => ({...ad, createdAt: new Date().toISOString()})));
+    const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(useMemoFirebase(() => firestore ? collection(firestore, 'products') : null, [firestore]));
+    const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(useMemoFirebase(() => firestore ? collection(firestore, 'families') : null, [firestore]));
+    const { data: allAds, isLoading: isLoadingAds } = useCollection<Ad>(useMemoFirebase(() => firestore ? collection(firestore, 'ads') : null, [firestore]));
     
-    const [isLoading, setIsLoading] = useState(true);
+    const isLoading = isLoadingSettings || isLoadingProducts || isLoadingFamilies || isLoadingAds;
     
     const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
     const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -158,12 +161,6 @@ export default function CatalogPage() {
     useEffect(() => {
         setIsClient(true)
     }, [])
-
-    useEffect(() => {
-        if(isClient) {
-            setIsLoading(false);
-        }
-    }, [isClient]);
 
     useEffect(() => {
         const INACTIVITY_TIMEOUT = 3000; 
@@ -387,6 +384,7 @@ export default function CatalogPage() {
     };
 
     const handleEditLocalOrder = (order: PendingOrder) => {
+        if (!products) return;
         setCart(order.items.map(item => {
             const product = products.find(p => p.id === item.productId);
             return product ? { product, quantity: item.quantity, price: item.price } : null;
@@ -700,70 +698,72 @@ export default function CatalogPage() {
                     </DialogContent>
                 </Dialog>
                 
-                <DialogContent className="sm:max-w-2xl">
-                    <DialogHeader>
-                        <DialogTitle>Detalles del Producto</DialogTitle>
-                        <DialogDescription>Información detallada del producto seleccionado.</DialogDescription>
-                    </DialogHeader>
-                     {productDetails && (
-                        <>
-                        <div className="grid md:grid-cols-2 gap-6 items-start pt-4">
-                             <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
-                                {getDisplayImageUrl(productDetails.imageUrl) && !productImageError ? (
-                                    <Image
-                                        src={getDisplayImageUrl(productDetails.imageUrl)}
-                                        alt={productDetails.name}
-                                        fill
-                                        sizes="300px"
-                                        className="object-cover"
-                                        data-ai-hint={productDetails.imageHint}
-                                        onError={() => setProductImageError(true)}
-                                    />
-                                    ) : (
-                                    <Package className="w-16 h-16 text-muted-foreground" />
-                                )}
-                             </div>
-                             <div className="grid gap-2">
-                                <h3 className="text-lg font-semibold">{productDetails.name}</h3>
-                                <p className="text-sm text-muted-foreground">SKU: {productDetails?.sku}</p>
-                                <Separator />
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Disponibilidad:</span>
-                                    <span className="font-semibold">{productDetails.stock} unidades</span>
+                <Dialog open={!!productDetails} onOpenChange={(open) => { if (!open) setProductDetails(null); }}>
+                    <DialogContent className="sm:max-w-2xl">
+                        <DialogHeader>
+                            <DialogTitle>Detalles del Producto</DialogTitle>
+                            <DialogDescription>Información detallada del producto seleccionado.</DialogDescription>
+                        </DialogHeader>
+                        {productDetails && (
+                            <>
+                            <div className="grid md:grid-cols-2 gap-6 items-start pt-4">
+                                <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
+                                    {getDisplayImageUrl(productDetails.imageUrl) && !productImageError ? (
+                                        <Image
+                                            src={getDisplayImageUrl(productDetails.imageUrl)}
+                                            alt={productDetails.name}
+                                            fill
+                                            sizes="300px"
+                                            className="object-cover"
+                                            data-ai-hint={productDetails.imageHint}
+                                            onError={() => setProductImageError(true)}
+                                        />
+                                        ) : (
+                                        <Package className="w-16 h-16 text-muted-foreground" />
+                                    )}
                                 </div>
-                                <Separator />
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Precio Detal:</span>
-                                    <span className="font-semibold">{activeSymbol}{(productDetails.price * activeRate).toFixed(2)}</span>
+                                <div className="grid gap-2">
+                                    <h3 className="text-lg font-semibold">{productDetails.name}</h3>
+                                    <p className="text-sm text-muted-foreground">SKU: {productDetails?.sku}</p>
+                                    <Separator />
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Disponibilidad:</span>
+                                        <span className="font-semibold">{productDetails.stock} unidades</span>
+                                    </div>
+                                    <Separator />
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Precio Detal:</span>
+                                        <span className="font-semibold">{activeSymbol}{(productDetails.price * activeRate).toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Precio Mayor:</span>
+                                        <span className="font-semibold">{activeSymbol}{(productDetails.wholesalePrice * activeRate).toFixed(2)}</span>
+                                    </div>
+                                    {productDetails.description && (
+                                        <>
+                                            <Separator/>
+                                            <p className="text-sm text-muted-foreground pt-2">{productDetails.description}</p>
+                                        </>
+                                    )}
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Precio Mayor:</span>
-                                    <span className="font-semibold">{activeSymbol}{(productDetails.wholesalePrice * activeRate).toFixed(2)}</span>
-                                </div>
-                                {productDetails.description && (
-                                    <>
-                                        <Separator/>
-                                        <p className="text-sm text-muted-foreground pt-2">{productDetails.description}</p>
-                                    </>
-                                )}
-                             </div>
-                        </div>
-                        <DialogFooter className="sm:justify-end gap-2">
-                            <DialogClose asChild>
-                                <Button variant="secondary">Cerrar</Button>
-                            </DialogClose>
-                            <Button onClick={() => {
-                                if(productDetails) {
-                                    handleOpenAddToCartDialog(productDetails);
-                                    setProductDetails(null);
-                                }
-                            }}>
-                                <ShoppingBag className="mr-2 h-4 w-4" /> Agregar al Pedido
-                            </Button>
-                        </DialogFooter>
-                        </>
-                    )}
-                </DialogContent>
+                            </div>
+                            <DialogFooter className="sm:justify-end gap-2">
+                                <DialogClose asChild>
+                                    <Button variant="secondary">Cerrar</Button>
+                                </DialogClose>
+                                <Button onClick={() => {
+                                    if(productDetails) {
+                                        handleOpenAddToCartDialog(productDetails);
+                                        setProductDetails(null);
+                                    }
+                                }}>
+                                    <ShoppingBag className="mr-2 h-4 w-4" /> Agregar al Pedido
+                                </Button>
+                            </DialogFooter>
+                            </>
+                        )}
+                    </DialogContent>
+                </Dialog>
 
                 <Dialog open={!!productToAdd} onOpenChange={(isOpen) => !isOpen && setProductToAdd(null)}>
                     <DialogContent>
@@ -822,3 +822,6 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
+
+
+    
