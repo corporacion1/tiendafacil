@@ -2,7 +2,7 @@
 
 "use client"
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useSecurity } from "@/contexts/security-context";
 import { useSettings } from "@/contexts/settings-context";
 import { Button } from "@/components/ui/button";
@@ -13,15 +13,19 @@ import { Switch } from "@/components/ui/switch";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Unit, Family, Warehouse, CurrencyRate, Product, Settings, Sale } from "@/lib/types";
+import type { Unit, Family, Warehouse, CurrencyRate, Product, Settings, Sale, Supplier, Customer, Ad } from "@/lib/types";
 import { Pencil, PlusCircle, Trash2, AlertTriangle, Database, Package, ImageOff } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { businessCategories, initialUnits, initialFamilies, initialWarehouses, mockProducts, defaultStore, mockCurrencyRates, forceSeedDatabase, factoryReset, defaultUsers, mockSales } from "@/lib/data";
+import { businessCategories } from "@/lib/data";
 import Image from "next/image";
 import { getDisplayImageUrl } from "@/lib/utils";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, doc, writeBatch } from "firebase/firestore";
+import { setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { forceSeedDatabase, factoryReset } from "@/lib/seed";
 
 
 function ChangePinDialog() {
@@ -114,16 +118,25 @@ function ChangePinDialog() {
 
 export default function SettingsPage() {
     const { hasPin, setPin, removePin, checkPin } = useSecurity();
-    const { settings, setSettings, currencyRates, setCurrencyRates, userProfile, activeStoreId } = useSettings();
+    const { settings, setSettings, currencyRates, userProfile, activeStoreId } = useSettings();
+    const firestore = useFirestore();
     
     const [localSettings, setLocalSettings] = useState<Partial<Settings>>(settings || {});
     const [imageError, setImageError] = useState(false);
 
-    const [products, setProducts] = useState<Product[]>(mockProducts);
-    const [sales, setSales] = useState<Sale[]>(mockSales); // State for sales
-    const [localUnits, setLocalUnits] = useState<Unit[]>(initialUnits.map(u => ({...u, storeId: activeStoreId})));
-    const [localFamilies, setLocalFamilies] = useState<Family[]>(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
-    const [localWarehouses, setLocalWarehouses] = useState<Warehouse[]>(initialWarehouses.map(w => ({...w, storeId: activeStoreId})));
+    // --- Firestore Data ---
+    const productsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'products') : null, [firestore]);
+    const salesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'sales') : null, [firestore]);
+    const unitsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'units') : null, [firestore]);
+    const familiesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'families') : null, [firestore]);
+    const warehousesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'warehouses') : null, [firestore]);
+    
+    const { data: products } = useCollection<Product>(productsQuery);
+    const { data: sales } = useCollection<Sale>(salesQuery);
+    const { data: localUnits, isLoading: isLoadingUnits } = useCollection<Unit>(unitsQuery);
+    const { data: localFamilies, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
+    const { data: localWarehouses, isLoading: isLoadingWarehouses } = useCollection<Warehouse>(warehousesQuery);
+    // --- End Firestore Data ---
     
     const [isClient, setIsClient] = useState(false);
 
@@ -155,19 +168,21 @@ export default function SettingsPage() {
         setLocalSettings(settings || {});
     }, [settings]);
     
-    useEffect(() => {
-        const mainSettingsChanged = JSON.stringify(localSettings) !== JSON.stringify(settings);
-        const unitsChanged = JSON.stringify(localUnits.map(({storeId, ...rest}) => rest)) !== JSON.stringify(initialUnits);
-        const familiesChanged = JSON.stringify(localFamilies.map(({storeId, ...rest}) => rest)) !== JSON.stringify(initialFamilies);
-        const warehousesChanged = JSON.stringify(localWarehouses.map(({storeId, ...rest}) => rest)) !== JSON.stringify(initialWarehouses);
-
-        setIsDirty(mainSettingsChanged || unitsChanged || familiesChanged || warehousesChanged);
-    }, [localSettings, settings, localUnits, localFamilies, localWarehouses]);
+     useEffect(() => {
+        if (settings) {
+            const mainSettingsChanged = JSON.stringify(localSettings) !== JSON.stringify(settings);
+            setIsDirty(mainSettingsChanged);
+        }
+    }, [localSettings, settings]);
 
     const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
         setLocalSettings(prev => ({ ...prev, [id]: value }));
     };
+    
+    const handleSwitchChange = (id: 'useDemoData', checked: boolean) => {
+        setLocalSettings(prev => ({ ...prev, [id]: checked }));
+    }
 
     const handleSelectChange = (id: string, value: string) => {
         setLocalSettings(prev => ({ ...prev, [id]: value }));
@@ -179,163 +194,99 @@ export default function SettingsPage() {
     };
 
     const saveAllSettings = async () => {
-        // Save main settings
-        setSettings(localSettings as Settings);
-        
-        setIsDirty(false);
-        toast({ title: "Configuración guardada (Simulación)", description: "La configuración ha sido actualizada localmente." });
+        if (firestore && activeStoreId) {
+            const storeDocRef = doc(firestore, 'stores', activeStoreId);
+            await setDocumentNonBlocking(storeDocRef, localSettings, { merge: true });
+            setIsDirty(false);
+            toast({ title: "Configuración Guardada", description: "Tus cambios se han guardado en la nube." });
+        }
     };
 
     const handleSaveNewRate = () => {
         const rateValue = parseFloat(newRate);
         if(isNaN(rateValue) || rateValue <= 0) {
-            toast({
-                variant: 'destructive',
-                title: 'Tasa inválida',
-                description: 'Por favor, ingresa un valor mayor a cero.',
-            });
+            toast({ variant: 'destructive', title: 'Tasa inválida' });
             return;
         }
 
-        const newRateEntry: CurrencyRate = {
-            id: `rate-${Date.now()}`,
+        const newRateEntry: Omit<CurrencyRate, 'id'> = {
             rate: rateValue,
             date: new Date().toISOString(),
         };
 
-        setCurrencyRates(prev => [newRateEntry, ...prev]);
-        setNewRate("");
-        toast({
-            title: "Tasa Guardada (Simulación)",
-            description: `La nueva tasa de ${rateValue} ha sido registrada.`,
-        });
-    };
-
-    const isItemInUse = (type: 'unit' | 'family' | 'warehouse', id: string) => {
-        if (!products) return false;
-        const nameFinder = (items: any[], itemId: string) => (items || []).find(i => i.id === itemId)?.name;
-        
-        let name: string | undefined;
-        let itemList: Product[] = products;
-
-        switch(type) {
-            case 'unit': 
-                name = nameFinder(localUnits, id);
-                return name ? itemList.some(p => p.unit === name) : false;
-            case 'family':
-                name = nameFinder(localFamilies, id);
-                return name ? itemList.some(p => p.family === name) : false;
-            case 'warehouse':
-                name = nameFinder(localWarehouses, id);
-                return name ? itemList.some(p => p.warehouse === name) : false;
-            default: return false;
+        if (firestore) {
+            const ratesColRef = collection(firestore, 'stores', activeStoreId, 'currencyRates');
+            addDocumentNonBlocking(ratesColRef, newRateEntry);
+            setNewRate("");
+            toast({ title: "Tasa Guardada", description: `La nueva tasa ha sido registrada.` });
         }
     };
+
+    const isItemInUse = useCallback((type: 'unit' | 'family' | 'warehouse', name: string) => {
+        if (!products) return false;
+        return products.some(p => p[type] === name);
+    }, [products]);
     
-    const handleDelete = (type: 'unit' | 'family' | 'warehouse', id: string) => {
-        if (isItemInUse(type, id)) {
+    const handleDelete = (type: 'unit' | 'family' | 'warehouse', id: string, name: string) => {
+        if (isItemInUse(type, name)) {
             toast({
                 variant: 'destructive',
                 title: 'Error al eliminar',
-                description: `Este elemento no se puede eliminar porque está siendo usado por uno o más productos.`,
+                description: `"${name}" no se puede eliminar porque está en uso.`,
             });
             return;
         }
         
-        const updater = (setter: React.Dispatch<React.SetStateAction<any[]>>) => {
-            setter(prev => prev.filter(item => item.id !== id));
-        };
+        let docRef;
+        if (firestore) {
+            if (type === 'unit') docRef = doc(firestore, 'units', id);
+            if (type === 'family') docRef = doc(firestore, 'families', id);
+            if (type === 'warehouse') docRef = doc(firestore, 'warehouses', id);
 
-        if (type === 'unit') updater(setLocalUnits);
-        if (type === 'family') updater(setLocalFamilies);
-        if (type === 'warehouse') updater(setLocalWarehouses);
-
-        toast({
-            title: 'Elemento Eliminado (Simulación)',
-            description: 'El elemento se ha eliminado del estado local.',
-        });
+            if (docRef) {
+                deleteDocumentNonBlocking(docRef);
+                toast({ title: 'Elemento Eliminado' });
+            }
+        }
     };
     
     const handleFactoryReset = async () => {
+        if (!firestore) return;
         if(hasPin && !checkPin(resetPin)) {
-             toast({
-                variant: "destructive",
-                title: "PIN Incorrecto",
-                description: "El PIN de seguridad no es correcto."
-            });
+             toast({ variant: "destructive", title: "PIN Incorrecto" });
             return;
         }
         
         if (resetConfirmationText !== 'RESTAURAR') {
-             toast({
-                variant: "destructive",
-                title: "Confirmación incorrecta",
-                description: "Debes escribir 'RESTAURAR' para confirmar."
-            });
+             toast({ variant: "destructive", title: "Confirmación incorrecta" });
             return;
         }
 
         setIsProcessing(true);
-        toast({
-            title: 'Restaurando...',
-            description: 'Por favor, espera mientras se eliminan los datos.',
-        });
+        toast({ title: 'Restaurando...', description: 'Por favor, espera.' });
         
         try {
-            await factoryReset();
-            
-            localStorage.clear();
-            
+            await factoryReset(firestore, activeStoreId);
             setIsResetConfirmOpen(false);
-
-            toast({
-                title: 'Restauración Completa',
-                description: 'Todos los datos han sido eliminados. La página se recargará.',
-            });
-
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
+            toast({ title: 'Restauración Completa', description: 'La página se recargará.' });
+            setTimeout(() => window.location.reload(), 1500);
         } catch (error) {
-             toast({
-                variant: "destructive",
-                title: "Error en la Restauración",
-                description: "No se pudieron eliminar todos los datos.",
-            });
-            console.error("Factory reset failed:", error);
+             toast({ variant: "destructive", title: "Error en la Restauración" });
         } finally {
             setIsProcessing(false);
         }
-
     };
 
     const handleSeedDatabase = async () => {
+        if (!firestore) return;
         setIsProcessing(true);
-        toast({
-            title: 'Poblando Estado Local',
-            description: 'Recargando datos de demostración...',
-        });
+        toast({ title: 'Poblando Base de Datos', description: 'Cargando datos de demostración...' });
         try {
-            const seeded = await forceSeedDatabase();
-            if (seeded) {
-                toast({
-                    title: '¡Éxito!',
-                    description: 'Los datos locales han sido restaurados. La página se recargará.',
-                });
-                setTimeout(() => window.location.reload(), 1500);
-            } else {
-                 toast({
-                    variant: 'default',
-                    title: 'Datos ya Poblados',
-                    description: 'No se realizó ninguna acción.',
-                });
-            }
+            await forceSeedDatabase(firestore, activeStoreId);
+            toast({ title: '¡Éxito!', description: 'Datos cargados. La página se recargará.' });
+            setTimeout(() => window.location.reload(), 1500);
         } catch (error: any) {
-            toast({
-                variant: 'destructive',
-                title: 'Error al Poblar los Datos',
-                description: error.message || 'Ocurrió un error inesperado.',
-            });
+            toast({ variant: 'destructive', title: 'Error', description: error.message });
         } finally {
             setIsProcessing(false);
         }
@@ -345,35 +296,31 @@ export default function SettingsPage() {
         title: string,
         description: string,
         items: any[],
-        setItems: React.Dispatch<React.SetStateAction<any[]>>,
-        type: 'unit' | 'family' | 'warehouse'
+        type: 'unit' | 'family' | 'warehouse',
+        collectionName: string
     ) => {
         const [newItemName, setNewItemName] = useState('');
         const [editingItem, setEditingItem] = useState<{id: string, name: string} | null>(null);
 
         const handleAddNewItem = () => {
-             if (newItemName.trim() === '') {
-                toast({ variant: 'destructive', title: 'Nombre inválido' });
-                return;
-            }
-            const newId = `${type}-${Date.now()}`;
-            const newEntry = { id: newId, name: newItemName.trim(), storeId: activeStoreId };
-            setItems(prev => [...prev, newEntry]);
+             if (newItemName.trim() === '' || !firestore) return;
+            
+            const newEntry = { name: newItemName.trim(), storeId: activeStoreId };
+            const colRef = collection(firestore, collectionName);
+            addDocumentNonBlocking(colRef, newEntry);
             
             setNewItemName('');
-             toast({ title: 'Elemento Agregado (Simulación)' });
+            toast({ title: 'Elemento Agregado' });
         };
         
         const handleEditItem = () => {
-            if (!editingItem || editingItem.name.trim() === '') {
-                 toast({ variant: 'destructive', title: 'Nombre inválido' });
-                return;
-            }
+            if (!editingItem || editingItem.name.trim() === '' || !firestore) return;
             
-            setItems(prev => prev.map(item => item.id === editingItem.id ? editingItem : item));
+            const docRef = doc(firestore, collectionName, editingItem.id);
+            setDocumentNonBlocking(docRef, { name: editingItem.name }, { merge: true });
 
             setEditingItem(null);
-            toast({ title: 'Elemento Editado (Simulación)' });
+            toast({ title: 'Elemento Editado' });
         };
 
         return (
@@ -401,12 +348,12 @@ export default function SettingsPage() {
                                             <AlertDialogHeader>
                                                 <AlertDialogTitle>¿Eliminar "{item.name}"?</AlertDialogTitle>
                                                 <AlertDialogDescription>
-                                                   Esta acción es irreversible. Si este elemento está en uso, no se podrá eliminar.
+                                                   Esta acción es irreversible. {isItemInUse(type, item.name) && 'Este elemento está en uso y no se puede eliminar.'}
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
                                                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => handleDelete(type, item.id)}>
+                                                <AlertDialogAction onClick={() => handleDelete(type, item.id, item.name)} disabled={isItemInUse(type, item.name)}>
                                                     Sí, eliminar
                                                 </AlertDialogAction>
                                             </AlertDialogFooter>
@@ -444,7 +391,6 @@ export default function SettingsPage() {
                         </DialogContent>
                     </Dialog>
                     
-                    {/* Edit Dialog */}
                     <Dialog open={!!editingItem} onOpenChange={(isOpen) => !isOpen && setEditingItem(null)}>
                         <DialogContent>
                              <DialogHeader>
@@ -469,41 +415,23 @@ export default function SettingsPage() {
     
     const handleSetPin = () => {
         if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
-            toast({
-                variant: "destructive",
-                title: "PIN inválido",
-                description: "El PIN debe contener exactamente 4 dígitos numéricos."
-            });
+            toast({ variant: "destructive", title: "PIN inválido" });
             return;
         }
         if (newPin !== confirmPin) {
-            toast({
-                variant: "destructive",
-                title: "Los PINES no coinciden",
-                description: "El nuevo PIN y su confirmación no son iguales."
-            });
+            toast({ variant: "destructive", title: "Los PINES no coinciden" });
             return;
         }
         if (setPin(newPin, confirmPin)) {
-             toast({
-                title: "PIN de seguridad establecido",
-                description: "La aplicación se bloqueará al iniciar o al salir del POS.",
-              });
+             toast({ title: "PIN de seguridad establecido" });
         } else {
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "No se pudo guardar el PIN.",
-             });
+            toast({ variant: "destructive", title: "Error al guardar PIN" });
         }
     };
 
     const handleRemovePin = () => {
         removePin();
-        toast({
-            title: "PIN de seguridad eliminado",
-            description: "La aplicación ya no se bloqueará.",
-        });
+        toast({ title: "PIN de seguridad eliminado" });
     }
 
     const nextSaleCorrelative = useMemo(() => {
@@ -620,9 +548,9 @@ export default function SettingsPage() {
                      <Separator />
                      <h3 className="text-lg font-medium">Clasificación de Productos</h3>
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-                        {renderManagementCard("Unidades de Medida", "Gestiona las unidades para tus productos.", localUnits, setLocalUnits, 'unit')}
-                        {renderManagementCard("Familias de Productos", "Organiza tus productos en familias.", localFamilies, setLocalFamilies, 'family')}
-                        {renderManagementCard("Almacenes", "Gestiona los almacenes de destino.", localWarehouses, setLocalWarehouses, 'warehouse')}
+                        {renderManagementCard("Unidades de Medida", "Gestiona las unidades para tus productos.", localUnits || [], 'unit', 'units')}
+                        {renderManagementCard("Familias de Productos", "Organiza tus productos en familias.", localFamilies || [], 'family', 'families')}
+                        {renderManagementCard("Almacenes", "Gestiona los almacenes de destino.", localWarehouses || [], 'warehouse', 'warehouses')}
                     </div>
                 </CardContent>
                 <CardFooter className="border-t px-6 py-4 flex justify-end">
@@ -630,7 +558,6 @@ export default function SettingsPage() {
                 </CardFooter>
             </Card>
 
-            {/* Currency Management Card */}
             <Card>
                 <CardHeader>
                     <CardTitle>Gestión de Monedas y Tasa de Cambio</CardTitle>
@@ -784,13 +711,25 @@ export default function SettingsPage() {
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-destructive">
                             <AlertTriangle />
-                            Ajustes Avanzados
+                            Ajusts Avanzados del Sistema
                         </CardTitle>
                         <CardDescription>
                         Acciones peligrosas que pueden resultar en la pérdida de datos.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
+                            <div>
+                                <p className="font-medium">Modo Demostración</p>
+                                <p className="text-sm text-muted-foreground">
+                                    {localSettings.useDemoData ? 'Los datos de demostración se cargarán si la base de datos está vacía.' : 'La aplicación utilizará únicamente datos en vivo de Firestore.'}
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <Switch checked={!!localSettings.useDemoData} onCheckedChange={(checked) => handleSwitchChange('useDemoData', checked)} />
+                                <Button onClick={saveAllSettings} disabled={!isDirty}>Guardar</Button>
+                            </div>
+                        </div>
                         <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
                             <div>
                                 <p className="font-medium">Poblar Base de Datos</p>
@@ -881,3 +820,7 @@ export default function SettingsPage() {
         </div>
     );
 }
+
+    
+
+    
