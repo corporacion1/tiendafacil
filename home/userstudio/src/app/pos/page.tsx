@@ -77,10 +77,10 @@ export default function POSPage() {
   const router = useRouter();
 
   // --- FETCH DATA FROM FIRESTORE ---
-  const productsQuery = useMemoFirebase(() => collection(firestore, 'products'), [firestore]);
-  const customersQuery = useMemoFirebase(() => collection(firestore, 'customers'), [firestore]);
-  const familiesQuery = useMemoFirebase(() => collection(firestore, 'families'), [firestore]);
-  const salesQuery = useMemoFirebase(() => collection(firestore, 'sales'), [firestore]);
+  const productsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'products') : null, [firestore]);
+  const customersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'customers') : null, [firestore]);
+  const familiesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'families') : null, [firestore]);
+  const salesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'sales') : null, [firestore]);
 
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
   const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
@@ -389,8 +389,8 @@ export default function POSPage() {
       toast({ variant: "destructive", title: "Carrito vacío"});
       return;
     }
-    if (!settings || !activeSession) {
-        toast({ variant: "destructive", title: "Error", description: "No hay una sesión de caja activa."});
+    if (!settings || !activeSession || !firestore) {
+        toast({ variant: "destructive", title: "Error", description: "No hay una sesión de caja activa o la base de datos no está disponible."});
         return;
     }
     
@@ -501,6 +501,7 @@ export default function POSPage() {
         });
         return;
     }
+    if (!firestore) return;
     
     const newId = `cust-${Date.now()}`;
     const customerToAdd: Customer = {
@@ -512,7 +513,7 @@ export default function POSPage() {
     };
     
     const customerDocRef = doc(firestore, 'customers', newId);
-    setDocumentNonBlocking(customerDocRef, customerToAdd, {});
+    await setDocumentNonBlocking(customerDocRef, customerToAdd, {});
 
     setSelectedCustomerId(newId);
     setNewCustomer({ id: '', name: '', phone: '', address: '' });
@@ -875,7 +876,7 @@ export default function POSPage() {
                             </TableHeader>
                             <TableBody>
                                 {cartItems.map((item) => (
-                                <TableRow key={item.product.id}>
+                                <TableRow key={`${item.product.id}-${item.price}`}>
                                     <TableCell className="font-medium text-xs">
                                         <div className="flex-grow">
                                             <p className="font-medium text-sm">{item.product.name}</p>
@@ -1027,60 +1028,62 @@ export default function POSPage() {
         </div>
       </div>
     
-    <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-            <DialogTitle>{productDetails?.name}</DialogTitle>
-            <DialogDescription>SKU: {productDetails?.sku}</DialogDescription>
-        </DialogHeader>
-        {productDetails && (
-            <div className="grid gap-4">
-                 <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
-                    {getDisplayImageUrl(productDetails.imageUrl) && !productImageError ? (
-                        <Image
-                            src={getDisplayImageUrl(productDetails.imageUrl)}
-                            alt={productDetails.name}
-                            fill
-                            sizes="300px"
-                            className="object-cover"
-                            data-ai-hint={productDetails.imageHint}
-                            onError={() => setImageError(true)}
-                        />
-                        ) : (
-                        <Package className="w-16 h-16 text-muted-foreground" />
-                    )}
-                 </div>
-                 <div className="grid gap-2">
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Disponibilidad:</span>
-                        <span className="font-semibold">{productDetails.stock} unidades</span>
+    <Dialog open={!!productDetails} onOpenChange={(open) => {if (!open) setProductDetails(null)}}>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle>{productDetails?.name}</DialogTitle>
+                <DialogDescription>SKU: {productDetails?.sku}</DialogDescription>
+            </DialogHeader>
+            {productDetails && (
+                <div className="grid gap-4">
+                    <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
+                        {getDisplayImageUrl(productDetails.imageUrl) && !productImageError ? (
+                            <Image
+                                src={getDisplayImageUrl(productDetails.imageUrl)}
+                                alt={productDetails.name}
+                                fill
+                                sizes="300px"
+                                className="object-cover"
+                                data-ai-hint={productDetails.imageHint}
+                                onError={() => setImageError(true)}
+                            />
+                            ) : (
+                            <Package className="w-16 h-16 text-muted-foreground" />
+                        )}
                     </div>
-                     <Separator />
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Precio Detal:</span>
-                        <span className="font-semibold">{activeSymbol}{(productDetails.price * activeRate).toFixed(2)}</span>
+                    <div className="grid gap-2">
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Disponibilidad:</span>
+                            <span className="font-semibold">{productDetails.stock} unidades</span>
+                        </div>
+                        <Separator />
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Precio Detal:</span>
+                            <span className="font-semibold">{activeSymbol}{(productDetails.price * activeRate).toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Precio Mayor:</span>
+                            <span className="font-semibold">{activeSymbol}{(productDetails.wholesalePrice * activeRate).toFixed(2)}</span>
+                        </div>
                     </div>
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Precio Mayor:</span>
-                        <span className="font-semibold">{activeSymbol}{(productDetails.wholesalePrice * activeRate).toFixed(2)}</span>
-                    </div>
-                 </div>
-            </div>
-        )}
-        <DialogFooter>
-            <DialogClose asChild>
-                <Button variant="secondary">Cerrar</Button>
-            </DialogClose>
-            <Button onClick={() => {
-                if(productDetails) {
-                    addToCart(productDetails);
-                    setProductDetails(null);
-                    toast({title: `"${productDetails.name}" agregado al carrito`})
-                }
-            }}>
-                Agregar al Carrito
-            </Button>
-        </DialogFooter>
-    </DialogContent>
+                </div>
+            )}
+            <DialogFooter>
+                <DialogClose asChild>
+                    <Button variant="secondary">Cerrar</Button>
+                </DialogClose>
+                <Button onClick={() => {
+                    if(productDetails) {
+                        addToCart(productDetails);
+                        setProductDetails(null);
+                        toast({title: `"${productDetails.name}" agregado al carrito`})
+                    }
+                }}>
+                    Agregar al Carrito
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
     
     {(isPrintPreviewOpen && (cartItems.length > 0 || lastSale)) && (
       <TicketPreview
@@ -1129,7 +1132,7 @@ export default function POSPage() {
     </Dialog>
 
     {/* Close Session Modal */}
-    <Dialog open={isClosingModalOpen} onOpenChange={setIsClosingModalOpen}>
+    <Dialog open={isClosingModalOpen} onOpenChange={(isOpen) => { if(!isOpen) { setIsClosingModalOpen(false) } else { setIsClosingModalOpen(true) }}}>
         <DialogContent>
             <DialogHeader>
                 <DialogTitle>Cerrar Caja (Corte Z)</DialogTitle>
