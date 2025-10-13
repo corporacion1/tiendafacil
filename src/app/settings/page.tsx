@@ -278,7 +278,14 @@ export default function SettingsPage() {
     };
 
     const handleSeedDatabase = async () => {
-        if (!firestore) return;
+        if (!firestore) {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "No se pudo conectar a la base de datos.",
+            });
+            return;
+        }
         setIsProcessing(true);
         toast({ title: 'Poblando Base de Datos', description: 'Cargando datos de demostración...' });
         try {
@@ -820,5 +827,7 @@ export default function SettingsPage() {
         </div>
     );
 }
+
+    
 
     
