@@ -7,10 +7,10 @@ import { useToast } from "@/hooks/use-toast";
 import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
 import { useUser as useAuthUser } from '@/firebase/auth/use-user';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, writeBatch, getDocs } from 'firebase/firestore';
+import { collection, doc } from 'firebase/firestore';
 import { defaultStore, defaultStoreId } from '@/lib/data';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { forceSeedDatabase } from '@/lib/seed';
+import { FirstTimeSetupModal } from '@/components/first-time-setup-modal';
 import { Skeleton } from '@/components/ui/skeleton';
 
 type DisplayCurrency = 'primary' | 'secondary';
@@ -53,13 +53,12 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const pathname = usePathname();
   const firestore = useFirestore();
 
-  const { user: userProfile, isUserLoading: isAuthLoading } = useAuthUser();
+  const { user: userProfile, isUserLoading: isAuthLoading, needsProfileCreation } = useAuthUser();
   
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   const [isLoading, setIsLoading] = useState(true);
 
-  // Set active store ID from local storage or user profile
   useEffect(() => {
     try {
       const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY);
@@ -74,50 +73,24 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [userProfile]);
 
   const storeDocRef = useMemoFirebase(() => firestore ? doc(firestore, 'stores', activeStoreId) : null, [firestore, activeStoreId]);
-  const { data: storeSettingsData, isLoading: isLoadingStoreSettings } = useDoc<Settings>(storeDocRef);
+  const { data: storeSettingsData, isLoading: isLoadingStoreSettings, error: storeSettingsError } = useDoc<Settings>(storeDocRef);
   
   const ratesCollectionRef = useMemoFirebase(() => firestore ? collection(firestore, 'stores', activeStoreId, 'currencyRates') : null, [firestore, activeStoreId]);
   const { data: currencyRates } = useCollection<CurrencyRate>(ratesCollectionRef);
 
-  // Use Firestore settings if available, otherwise fall back to defaultStore.
   const settings = storeSettingsData || defaultStore;
 
-
-  // Handle redirection and initial loading state
   useEffect(() => {
-    if (isAuthLoading) return; // Wait for user auth to resolve
+    if (isAuthLoading) return;
 
     const isPublicPath = pathname.startsWith('/catalog') || pathname === '/';
     if (!userProfile && !isPublicPath) {
       router.replace('/catalog');
     }
     
-    // The context is considered loaded when auth is resolved and store settings attempt has completed.
     setIsLoading(isLoadingStoreSettings);
-
   }, [isAuthLoading, userProfile, pathname, router, isLoadingStoreSettings]);
   
-  // Seed database if store is in demo mode and has no products
-  useEffect(() => {
-      const seedDataIfNeeded = async () => {
-          if (firestore && settings && settings.useDemoData) {
-              const productsRef = collection(firestore, 'products');
-              const productsSnapshot = await getDocs(productsRef);
-
-              if (productsSnapshot.empty) {
-                  toast({ title: 'Configurando tu tienda demo...', description: 'Estamos agregando datos de ejemplo para que puedas empezar.' });
-                  await forceSeedDatabase(firestore, activeStoreId);
-                  toast({ title: '¡Tienda lista!', description: 'Tus datos de demostración han sido cargados.' });
-                  // Optionally, you can trigger a reload or state update here
-              }
-          }
-      };
-      // Only run seeding if settings are loaded and it's the default store from fallback, or a real one with demoData flag.
-      if (!isLoadingStoreSettings && settings) {
-          seedDataIfNeeded();
-      }
-  }, [firestore, settings, activeStoreId, isLoadingStoreSettings, toast]);
-
   const handleSetSettings = useCallback((newSettings: Partial<Settings>) => {
     if (storeDocRef) {
       setDocumentNonBlocking(storeDocRef, newSettings, { merge: true });
@@ -157,6 +130,10 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   
   const isLoadingContext = isAuthLoading || isLoading;
   
+  if (needsProfileCreation) {
+    return <FirstTimeSetupModal />;
+  }
+
   if (isLoadingContext && !pathname.startsWith('/catalog')) {
       return <AppLoadingScreen />;
   }
@@ -190,3 +167,4 @@ export const useSettings = (): SettingsContextType => {
   }
   return context;
 };
+
