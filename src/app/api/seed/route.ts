@@ -113,4 +113,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: 'Error interno del servidor al sembrar los datos.', error: error.message }, { status: 500 });
   }
 }
-
