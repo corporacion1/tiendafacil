@@ -57,7 +57,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
-  const [isLoading, setIsLoading] = useState(true);
+  
+  // This state will now gate the main app rendering
+  const [isReadyToRender, setIsReadyToRender] = useState(false);
 
   useEffect(() => {
     try {
@@ -73,34 +75,37 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [userProfile]);
 
   const storeDocRef = useMemoFirebase(() => {
-    // Prevent fetching if auth is loading or a profile needs to be created
-    if (isAuthLoading || needsProfileCreation || !firestore) {
-      return null;
-    }
+    if (!firestore || !activeStoreId) return null;
     return doc(firestore, 'stores', activeStoreId);
-  }, [firestore, activeStoreId, isAuthLoading, needsProfileCreation]);
+  }, [firestore, activeStoreId]);
 
-  const { data: storeSettingsData, isLoading: isLoadingStoreSettings, error: storeSettingsError } = useDoc<Settings>(storeDocRef);
+  const { data: storeSettingsData, isLoading: isLoadingStoreSettings } = useDoc<Settings>(storeDocRef);
   
   const ratesCollectionRef = useMemoFirebase(() => firestore ? collection(firestore, 'stores', activeStoreId, 'currencyRates') : null, [firestore, activeStoreId]);
   const { data: currencyRates } = useCollection<CurrencyRate>(ratesCollectionRef);
 
-  // Use defaultStore as a fallback if the document doesn't exist or there's an error
-  const settings = !storeSettingsData ? defaultStore : storeSettingsData;
+  const settings = storeSettingsData ?? defaultStore;
 
   useEffect(() => {
     if (isAuthLoading) return;
 
+    if (needsProfileCreation) {
+      setIsReadyToRender(true); // Ready to render the setup modal
+      return;
+    }
+
     const isPublicPath = pathname.startsWith('/catalog') || pathname === '/';
     if (!userProfile && !isPublicPath) {
       router.replace('/catalog');
+      setIsReadyToRender(true); // Ready to render public page
+      return;
     }
     
-    // The context is loading if auth is loading OR if we are fetching store settings
-    // and no profile needs creation (meaning we expect data to be there).
-    setIsLoading(isAuthLoading || (isLoadingStoreSettings && !needsProfileCreation));
+    if (!isLoadingStoreSettings) {
+        setIsReadyToRender(true); // Ready once user and settings are loaded
+    }
 
-  }, [isAuthLoading, userProfile, pathname, router, isLoadingStoreSettings, needsProfileCreation]);
+  }, [isAuthLoading, userProfile, needsProfileCreation, isLoadingStoreSettings, pathname, router]);
   
   const handleSetSettings = useCallback((newSettings: Partial<Settings>) => {
     if (storeDocRef) {
@@ -139,14 +144,12 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const latestRate = (currencyRates && currencyRates.length > 0) ? currencyRates[0].rate : 1;
   const activeRate = activeCurrency === 'primary' ? 1 : (latestRate > 0 ? latestRate : 1);
   
-  const isLoadingContext = isLoading;
-  
-  if (needsProfileCreation) {
-    return <FirstTimeSetupModal />;
+  if (!isReadyToRender && !pathname.startsWith('/catalog')) {
+      return <AppLoadingScreen />;
   }
 
-  if (isLoadingContext && !pathname.startsWith('/catalog')) {
-      return <AppLoadingScreen />;
+  if (needsProfileCreation) {
+    return <FirstTimeSetupModal />;
   }
 
   const contextValue: SettingsContextType = {
@@ -160,7 +163,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     currencyRates: currencyRates || [],
     activeStoreId,
     switchStore,
-    isLoadingSettings: isLoadingContext,
+    isLoadingSettings: isLoadingStoreSettings || isAuthLoading,
     userProfile,
   };
 
