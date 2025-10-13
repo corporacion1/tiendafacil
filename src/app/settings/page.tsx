@@ -18,7 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { businessCategories, mockProducts, mockSales, initialUnits, initialFamilies, initialWarehouses, defaultStoreId } from "@/lib/data";
+import { businessCategories, defaultStoreId } from "@/lib/data";
 import Image from "next/image";
 import { getDisplayImageUrl } from "@/lib/utils";
 
@@ -113,18 +113,14 @@ function ChangePinDialog() {
 
 export default function SettingsPage() {
     const { hasPin, setPin, removePin, checkPin } = useSecurity();
-    const { settings, setSettings, currencyRates, setCurrencyRates, userProfile, activeStoreId } = useSettings();
+    const { 
+        settings, setSettings, currencyRates, setCurrencyRates, 
+        activeStoreId, sales, products, units, setUnits,
+        families, setFamilies, warehouses, setWarehouses
+    } = useSettings();
     
     const [localSettings, setLocalSettings] = useState<Partial<Settings>>(settings || {});
     const [imageError, setImageError] = useState(false);
-
-    // --- LOCAL DATA MOCKING ---
-    const [products, setProducts] = useState(mockProducts);
-    const [sales, setSales] = useState(mockSales);
-    const [localUnits, setLocalUnits] = useState(initialUnits);
-    const [localFamilies, setLocalFamilies] = useState(initialFamilies);
-    const [localWarehouses, setLocalWarehouses] = useState(initialWarehouses);
-    // --- END LOCAL DATA MOCKING ---
     
     const [isClient, setIsClient] = useState(false);
 
@@ -216,9 +212,9 @@ export default function SettingsPage() {
             return;
         }
         
-        if (type === 'unit') setLocalUnits(prev => prev.filter(item => item.id !== id));
-        if (type === 'family') setLocalFamilies(prev => prev.filter(item => item.id !== id));
-        if (type === 'warehouse') setLocalWarehouses(prev => prev.filter(item => item.id !== id));
+        if (type === 'unit') setUnits(prev => prev.filter(item => item.id !== id));
+        if (type === 'family') setFamilies(prev => prev.filter(item => item.id !== id));
+        if (type === 'warehouse') setWarehouses(prev => prev.filter(item => item.id !== id));
         
         toast({ title: 'Elemento Eliminado' });
     };
@@ -236,9 +232,9 @@ export default function SettingsPage() {
             if (newItemName.trim() === '') return;
             const newEntry = { id: `${type}-${Date.now()}`, name: newItemName.trim(), storeId: activeStoreId };
             
-            if (type === 'unit') setLocalUnits(prev => [...prev, newEntry]);
-            if (type === 'family') setLocalFamilies(prev => [...prev, newEntry]);
-            if (type === 'warehouse') setLocalWarehouses(prev => [...prev, newEntry]);
+            if (type === 'unit') setUnits(prev => [...prev, newEntry]);
+            if (type === 'family') setFamilies(prev => [...prev, newEntry]);
+            if (type === 'warehouse') setWarehouses(prev => [...prev, newEntry]);
 
             setNewItemName('');
             toast({ title: 'Elemento Agregado' });
@@ -247,9 +243,9 @@ export default function SettingsPage() {
         const handleEditItem = () => {
             if (!editingItem || editingItem.name.trim() === '') return;
             
-            if (type === 'unit') setLocalUnits(prev => prev.map(item => item.id === editingItem.id ? editingItem : item));
-            if (type === 'family') setLocalFamilies(prev => prev.map(item => item.id === editingItem.id ? editingItem : item));
-            if (type === 'warehouse') setLocalWarehouses(prev => prev.map(item => item.id === editingItem.id ? editingItem : item));
+            if (type === 'unit') setUnits(prev => prev.map(item => item.id === editingItem.id ? editingItem : item));
+            if (type === 'family') setFamilies(prev => prev.map(item => item.id === editingItem.id ? editingItem : item));
+            if (type === 'warehouse') setWarehouses(prev => prev.map(item => item.id === editingItem.id ? editingItem : item));
             
             setEditingItem(null);
             toast({ title: 'Elemento Editado' });
@@ -495,9 +491,9 @@ export default function SettingsPage() {
                      <Separator />
                      <h3 className="text-lg font-medium">Clasificación de Productos</h3>
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-                        {renderManagementCard("Unidades de Medida", "Gestiona las unidades para tus productos.", localUnits, 'unit')}
-                        {renderManagementCard("Familias de Productos", "Organiza tus productos en familias.", localFamilies, 'family')}
-                        {renderManagementCard("Almacenes", "Gestiona los almacenes de destino.", localWarehouses, 'warehouse')}
+                        {renderManagementCard("Unidades de Medida", "Gestiona las unidades para tus productos.", units, 'unit')}
+                        {renderManagementCard("Familias de Productos", "Organiza tus productos en familias.", families, 'family')}
+                        {renderManagementCard("Almacenes", "Gestiona los almacenes de destino.", warehouses, 'warehouse')}
                     </div>
                 </CardContent>
                 <CardFooter className="border-t px-6 py-4 flex justify-end">
@@ -737,3 +733,5 @@ export default function SettingsPage() {
         </div>
     );
 }
+
+    

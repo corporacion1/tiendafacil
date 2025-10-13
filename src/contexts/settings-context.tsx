@@ -61,7 +61,9 @@ interface SettingsContextType {
   setCashSessions: React.Dispatch<React.SetStateAction<CashSession[]>>;
   pendingOrders: PendingOrder[];
   setPendingOrders: React.Dispatch<React.SetStateAction<PendingOrder[]>>;
-  
+  users: UserProfile[];
+  setUsers: React.Dispatch<React.SetStateAction<UserProfile[]>>;
+
   activeStoreId: string;
   switchStore: (storeId: string) => void;
   isLoadingSettings: boolean;
@@ -107,6 +109,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const [families, setFamilies] = useState<Family[]>(initialFamilies);
   const [warehouses, setWarehouses] = useState<Warehouse[]>(initialWarehouses);
   const [ads, setAds] = useState<Ad[]>(initialAds);
+  const [users, setUsers] = useState<UserProfile[]>(initialUsers);
   const [cashSessions, setCashSessions] = useState<CashSession[]>(initialCashSessions);
   const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>(initialPendingOrders);
   const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>(initialCurrencyRates);
@@ -144,6 +147,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
             storeId: defaultStoreId, 
             createdAt: new Date().toISOString(),
           };
+          setUsers(prev => [...prev, newUserProfile]);
           setUserProfile(newUserProfile);
         }
       } else {
@@ -216,6 +220,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     setCashSessions,
     pendingOrders,
     setPendingOrders,
+    users,
+    setUsers,
     activeStoreId,
     switchStore,
     isLoadingSettings: isLoading,
@@ -238,3 +244,5 @@ export const useSettings = (): SettingsContextType => {
   }
   return context;
 };
+
+    

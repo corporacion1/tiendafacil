@@ -15,8 +15,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import { useSettings } from "@/contexts/settings-context";
-import { useSecurity } from "@/contexts/security-context";
-import { defaultUsers } from "@/lib/data";
 
 const getRoleVariant = (role: UserProfile['role']) => {
   switch (role) {
@@ -43,13 +41,15 @@ const getStatusVariant = (status: UserProfile['status'] | undefined) => {
 }
 
 export default function UsersPage() {
-  const { userProfile: currentUserProfile, switchStore, activeStoreId } = useSettings();
-  const { toast } = useToast();
+  const { 
+    userProfile: currentUserProfile, 
+    switchStore, 
+    users, 
+    setUsers, 
+    isLoadingSettings: isLoading 
+  } = useSettings();
   
-  // --- LOCAL DATA ---
-  const [users, setUsers] = useState<UserProfile[]>(defaultUsers);
-  const isLoading = false;
-  // --- END LOCAL DATA ---
+  const { toast } = useToast();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [userToAction, setUserToAction] = useState<UserProfile | null>(null);
@@ -75,7 +75,7 @@ export default function UsersPage() {
       setUsers(prevUsers => prevUsers.map(u => u.uid === userToAction.uid ? { ...u, role: newRole } : u));
       
       toast({
-          title: 'Rol Actualizado (DEMO)',
+          title: 'Rol Actualizado',
           description: `${userToAction.displayName} ahora es ${newRole}.`,
       });
 
@@ -95,7 +95,7 @@ export default function UsersPage() {
       ));
       
       toast({
-          title: "Usuario Promovido (DEMO)",
+          title: "Usuario Promovido",
           description: `${userToAction.displayName} ahora es un administrador con la tienda ${newStoreId}.`,
       });
 
@@ -104,7 +104,7 @@ export default function UsersPage() {
        setUsers(prevUsers => prevUsers.map(u => u.uid === userToAction.uid ? { ...u, status: newStatus } : u));
        
        toast({
-            title: `Usuario ${newStatus === 'disabled' ? 'Deshabilitado' : 'Habilitado'} (DEMO)`,
+            title: `Usuario ${newStatus === 'disabled' ? 'Deshabilitado' : 'Habilitado'}`,
             description: `La cuenta de "${userToAction.displayName}" ha sido ${newStatus === 'disabled' ? 'deshabilitada' : 'habilitada'}.`,
         });
     }

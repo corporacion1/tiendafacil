@@ -18,7 +18,7 @@ import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { AdForm } from "@/components/ad-form";
 import { format, isPast } from "date-fns";
 import { useRouter } from "next/navigation";
-import { mockAds } from "@/lib/data";
+import { useSettings } from "@/contexts/settings-context";
 
 const AdRow = ({ ad, handleEdit, setAdToDelete }: {
     ad: Ad;
@@ -109,11 +109,7 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
 
 export default function AdsPage() {
   const { toast } = useToast();
-  
-  // --- USE LOCAL DATA ---
-  const [ads, setAds] = useState(mockAds.map(ad => ({...ad, createdAt: new Date().toISOString() })));
-  const isLoading = false;
-  // --- END LOCAL DATA ---
+  const { ads, setAds, isLoadingSettings: isLoading } = useSettings();
 
   const sortedAds = useMemo(() => {
     if (!ads) return [];
@@ -135,8 +131,8 @@ export default function AdsPage() {
     setAds(prevAds => prevAds.map(ad => ad.id === data.id ? { ...ad, ...data } : ad));
 
     toast({
-        title: "Anuncio Actualizado (DEMO)",
-        description: `El anuncio "${data.name}" ha sido actualizado localmente.`,
+        title: "Anuncio Actualizado",
+        description: `El anuncio "${data.name}" ha sido actualizado.`,
     });
     setAdToEdit(null);
     return true;
@@ -153,8 +149,8 @@ export default function AdsPage() {
     setAds(prev => [newAd, ...prev]);
     
     toast({
-      title: "Anuncio Creado (DEMO)",
-      description: `El anuncio "${data.name}" ha sido creado localmente.`,
+      title: "Anuncio Creado",
+      description: `El anuncio "${data.name}" ha sido creado.`,
     });
     
     setIsCreateDialogOpen(false);
@@ -164,8 +160,8 @@ export default function AdsPage() {
   const handleDelete = (adId: string) => {
     setAds(prev => prev.filter(ad => ad.id !== adId));
     toast({
-      title: "Anuncio Eliminado (DEMO)",
-      description: "El anuncio ha sido eliminado de la lista local.",
+      title: "Anuncio Eliminado",
+      description: "El anuncio ha sido eliminado.",
     });
     setAdToDelete(null);
   };
@@ -299,3 +295,5 @@ export default function AdsPage() {
     </>
   );
 }
+
+    
