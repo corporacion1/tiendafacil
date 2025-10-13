@@ -1,12 +1,10 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useUser as useAuthUser } from '@/firebase/provider';
-import { useFirestore } from '@/firebase';
+import { useAuthUser, useFirestore, useUser as useUserProfile } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -14,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { SUPER_ADMIN_UID, useUser as useUserProfile } from '@/firebase/auth/use-user';
+import { SUPER_ADMIN_UID } from '@/firebase/auth/use-user';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
