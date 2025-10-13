@@ -16,7 +16,7 @@ import {
   CartesianGrid
 } from "recharts";
 import { subDays, parseISO, format } from "date-fns";
-import { collection } from "firebase/firestore";
+import { collection, query, where } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -52,13 +52,13 @@ const getDate = (d: any): Date => {
 
 
 export default function Dashboard() {
-  const { activeSymbol, activeRate, isLoadingSettings } = useSettings();
+  const { activeSymbol, activeRate, isLoadingSettings, activeStoreId } = useSettings();
   const firestore = useFirestore();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
   
-  const salesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'sales') : null, [firestore]);
-  const purchasesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'purchases') : null, [firestore]);
-  const productsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'products') : null, [firestore]);
+  const salesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+  const purchasesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+  const productsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
 
   const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
   const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
@@ -366,3 +366,5 @@ export default function Dashboard() {
     </div>
   );
 }
+
+    
