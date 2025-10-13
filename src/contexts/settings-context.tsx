@@ -1,13 +1,11 @@
-
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import type { CurrencyRate, Settings, UserProfile } from "@/lib/types";
-import { defaultStore, defaultStoreId, mockCurrencyRates } from '@/lib/data';
-import { useDoc, useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, setDoc } from 'firebase/firestore';
+import { defaultStore, defaultStoreId, mockCurrencyRates, defaultUsers } from '@/lib/data';
+import { SUPER_ADMIN_UID } from '@/lib/constants';
 
 type DisplayCurrency = 'primary' | 'secondary';
 
@@ -30,6 +28,7 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 const CURRENCY_PREF_STORAGE_KEY = 'tienda_facil_currency_pref';
 const ACTIVE_STORE_ID_STORAGE_KEY = 'tienda_facil_active_store_id';
+const LOGGED_IN_USER_UID_KEY = 'tienda_facil_user_uid';
 
 function AppLoadingScreen() {
     return (
@@ -44,13 +43,15 @@ function AppLoadingScreen() {
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
-  const firestore = useFirestore();
-  const { user: userProfile, isUserLoading, needsProfileCreation } = useUser();
   const router = useRouter();
   const pathname = usePathname();
 
+  const [settings, setLocalSettings] = useState<Settings | null>(defaultStore);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
+  const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>(mockCurrencyRates);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -62,39 +63,40 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY);
       if (storedStoreId) {
         setActiveStoreId(storedStoreId);
-      } else if (userProfile?.storeId) {
-        setActiveStoreId(userProfile.storeId);
       }
+
+      // Simulate user login check
+      const loggedInUserUID = localStorage.getItem(LOGGED_IN_USER_UID_KEY) || SUPER_ADMIN_UID;
+      const profile = defaultUsers.find(u => u.uid === loggedInUserUID);
+      
+      setUserProfile(profile || defaultUsers.find(u => u.role === 'superAdmin')!);
+      
     } catch (error) {
       console.error("Could not access localStorage", error);
+      // Fallback to default super admin if localStorage fails
+      setUserProfile(defaultUsers.find(u => u.role === 'superAdmin')!);
+    } finally {
+        setIsLoadingSettings(false);
     }
-  }, [userProfile?.storeId]);
+  }, []);
   
   useEffect(() => {
-    if (!isUserLoading && !userProfile && !pathname.startsWith('/catalog') && !pathname.startsWith('/login')) {
-        router.push('/login');
+    if (!isLoadingSettings && !userProfile && !pathname.startsWith('/catalog') && !pathname.startsWith('/login')) {
+        // This is a simulated login redirect
+        const superAdmin = defaultUsers.find(u => u.role === 'superAdmin');
+        if(superAdmin) {
+            setUserProfile(superAdmin);
+            localStorage.setItem(LOGGED_IN_USER_UID_KEY, superAdmin.uid);
+        }
+        toast({ title: 'Redirigiendo...', description: 'Inicia sesión para continuar.' });
     }
-  }, [isUserLoading, userProfile, router, pathname]);
-
-  const storeQuery = useMemoFirebase(() => firestore && activeStoreId ? doc(firestore, 'stores', activeStoreId) : null, [firestore, activeStoreId]);
-  const { data: settings, isLoading: isLoadingStoreSettings } = useDoc<Settings>(storeQuery);
-
-  const ratesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'stores', activeStoreId, 'currencyRates'), where('rate', '>', 0)) : null, [firestore, activeStoreId]);
-  const { data: ratesFromDb, isLoading: isLoadingRates } = useCollection<CurrencyRate>(ratesQuery);
-
-  const currencyRates = ratesFromDb ?? (activeStoreId === defaultStoreId ? mockCurrencyRates : []);
+  }, [isLoadingSettings, userProfile, router, pathname, toast]);
 
 
-  const handleSetSettings = useCallback(async (newSettings: Partial<Settings>) => {
-    if (!firestore || !activeStoreId) return;
-    const storeDocRef = doc(firestore, 'stores', activeStoreId);
-    try {
-      await setDoc(storeDocRef, newSettings, { merge: true });
-      toast({ title: "Configuración Guardada", description: "Tus cambios han sido guardados en la base de datos." });
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: "Error al guardar", description: error.message });
-    }
-  }, [firestore, activeStoreId, toast]);
+  const handleSetSettings = useCallback((newSettings: Partial<Settings>) => {
+    setLocalSettings(prev => ({ ...(prev || defaultStore), ...newSettings }));
+    toast({ title: "Configuración Guardada (DEMO)", description: "Tus cambios se han guardado localmente." });
+  }, [toast]);
 
   const switchStore = (storeId: string) => {
     setActiveStoreId(storeId);
@@ -117,31 +119,28 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   };
 
-  const finalSettings = settings ?? (activeStoreId === defaultStoreId ? defaultStore : null);
-  const activeSymbol = displayCurrency === 'primary' ? (finalSettings?.primaryCurrencySymbol || '$') : (finalSettings?.secondaryCurrencySymbol || 'Bs.');
-  
-  const latestRate = (currencyRates || []).length > 0 ? (currencyRates || [])[0].rate : 1;
+  const activeSymbol = displayCurrency === 'primary' ? (settings?.primaryCurrencySymbol || '$') : (settings?.secondaryCurrencySymbol || 'Bs.');
+  const latestRate = currencyRates.length > 0 ? currencyRates[0].rate : 1;
   const activeRate = displayCurrency === 'primary' ? 1 : (latestRate > 0 ? latestRate : 1);
   
-  const isLoading = isUserLoading || isLoadingStoreSettings || isLoadingRates;
   const isPublicPath = pathname.startsWith('/catalog') || pathname === '/' || pathname.startsWith('/login');
   
-  if (isLoading && !isPublicPath && isClient && !needsProfileCreation) {
+  if (isLoadingSettings && !isPublicPath && isClient) {
       return <AppLoadingScreen />;
   }
 
   const contextValue: SettingsContextType = {
-    settings: finalSettings,
+    settings,
     setSettings: handleSetSettings,
     displayCurrency,
     toggleDisplayCurrency,
     activeCurrency: displayCurrency,
     activeSymbol,
     activeRate,
-    currencyRates: currencyRates || [],
+    currencyRates,
     activeStoreId,
     switchStore,
-    isLoadingSettings: isLoading,
+    isLoadingSettings,
     userProfile,
   };
 

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useToast } from "@/hooks/use-toast";
@@ -6,10 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Logo } from '@/components/logo';
 import { useRouter } from "next/navigation";
-import { useSettings } from "@/contexts/settings-context";
 import { useState } from "react";
-import { useAuth } from "@/firebase";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { SUPER_ADMIN_UID } from "@/lib/constants";
 
 const GoogleIcon = () => (
     <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -20,35 +17,24 @@ const GoogleIcon = () => (
     </svg>
 );
 
-
 export function LoginModal({ children }: { children: React.ReactNode }) {
     const router = useRouter();
-    const auth = useAuth();
     const { toast } = useToast();
     const [isOpen, setIsOpen] = useState(false);
 
     const handleSignIn = async () => {
-        const provider = new GoogleAuthProvider();
-        try {
-            await signInWithPopup(auth, provider);
-            toast({
-                title: "¡Bienvenido!",
-                description: "Has iniciado sesión correctamente.",
-            });
-            setIsOpen(false);
-            router.push('/dashboard');
-        } catch (error: any) {
-            if (error.code === 'auth/popup-closed-by-user') {
-                // Silently ignore this error as it's a normal user action
-                return;
-            }
-            console.error("Firebase sign-in error:", error);
-            toast({
-                variant: 'destructive',
-                title: "Error al iniciar sesión",
-                description: error.message || "Ocurrió un error inesperado.",
-            });
-        }
+        // Simulate a successful login by setting a value in localStorage
+        // In a real app, this would be the UID from Firebase Auth.
+        localStorage.setItem('tienda_facil_user_uid', SUPER_ADMIN_UID);
+        
+        toast({
+            title: "¡Bienvenido! (DEMO)",
+            description: "Has iniciado sesión correctamente.",
+        });
+        setIsOpen(false);
+        router.push('/dashboard');
+        // A full reload might be good to ensure all contexts are reset
+        setTimeout(() => window.location.reload(), 500);
     };
 
     return (
@@ -67,7 +53,7 @@ export function LoginModal({ children }: { children: React.ReactNode }) {
                 <div className="py-4">
                     <Button onClick={handleSignIn} className="w-full">
                         <GoogleIcon />
-                        Ingresar con Google
+                        Ingresar con Google (DEMO)
                     </Button>
                 </div>
             </DialogContent>
