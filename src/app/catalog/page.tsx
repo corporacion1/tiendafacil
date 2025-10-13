@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import type { Product, CartItem, PendingOrder, Ad, Family, Store } from "@/lib/types";
-import { pendingOrdersState, initialFamilies, mockAds, defaultStore, defaultStoreId } from "@/lib/data";
+import { initialFamilies, mockAds, defaultStore, defaultStoreId } from "@/lib/data";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -133,6 +133,7 @@ export default function CatalogPage() {
         families,
         ads: allAds,
         setPendingOrders,
+        pendingOrders
     } = useSettings();
     
     const urlStoreId = searchParams.get('storeId');
@@ -327,14 +328,15 @@ export default function CatalogPage() {
     useEffect(() => {
         if (searchTerm && sortedAndFilteredProducts.length === 1) {
             const product = sortedAndFilteredProducts[0];
-            // Check if it's an exact match on SKU or name to be more precise
             const isExactMatch = product.sku?.toLowerCase() === searchTerm.toLowerCase() ||
                                  product.name.toLowerCase() === searchTerm.toLowerCase();
+
+            // Only open if it's an exact match and the modal isn't already open for this product
             if (isExactMatch && product.id !== productDetails?.id) {
-                setProductDetails(sortedAndFilteredProducts[0]);
+                setProductDetails(product);
             }
         }
-    }, [sortedAndFilteredProducts, searchTerm, productDetails]);
+    }, [sortedAndFilteredProducts, searchTerm, productDetails?.id]); // Use productDetails.id to prevent re-triggering
     
     const itemsForGrid = useMemo(() => {
         const relevantAds = (allAds || []).filter(ad => {
@@ -421,7 +423,7 @@ export default function CatalogPage() {
         };
 
         // Add to the shared state
-        setPendingOrders(prev => [...prev, newPendingOrder]);
+        setPendingOrders(prev => [...(prev || []), newPendingOrder]);
         setLocalOrders(prev => [...prev, newPendingOrder]);
 
         await generateQrCode(newOrderId);
