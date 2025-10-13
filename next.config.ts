@@ -50,7 +50,7 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'www.dropbox.com',
         port: '',
-        pathname: '/**',
+        pathname: '/**'
       }
     ],
   },
