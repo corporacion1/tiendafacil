@@ -15,7 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import { useSettings } from "@/contexts/settings-context";
-import { useCollection, useFirestore, setDocumentNonBlocking } from "@/firebase";
+import { useCollection, useFirestore, setDocumentNonBlocking, useMemoFirebase } from "@/firebase";
 import { collection, doc } from "firebase/firestore";
 import { forceSeedDatabase, factoryReset } from "@/lib/seed";
 import { useSecurity } from "@/contexts/security-context";
@@ -50,7 +50,7 @@ export default function UsersPage() {
   const firestore = useFirestore();
   const { hasPin, checkPin } = useSecurity();
   
-  const usersCollectionRef = useMemo(() => firestore ? collection(firestore, 'users') : null, [firestore]);
+  const usersCollectionRef = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
   const { data: users, isLoading } = useCollection<UserProfile>(usersCollectionRef);
   
   const [searchTerm, setSearchTerm] = useState('');
