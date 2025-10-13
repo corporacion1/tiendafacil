@@ -76,7 +76,6 @@ export default function POSPage() {
   const firestore = useFirestore();
   const router = useRouter();
 
-  // --- Firestore Data ---
   const productsQuery = useMemoFirebase(() => {
     if (!firestore || !activeStoreId) return null;
     return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
@@ -92,14 +91,18 @@ export default function POSPage() {
     return query(collection(firestore, 'families'), where('storeId', '==', activeStoreId));
   }, [firestore, activeStoreId]);
   
+  const salesQuery = useMemoFirebase(() => {
+    if (!firestore || !activeStoreId) return null;
+    return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
+  }, [firestore, activeStoreId]);
+
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
   const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
   const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
-  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(useMemoFirebase(() => firestore ? collection(firestore, 'sales') : null, [firestore]));
+  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
   
   const [pendingOrders, setPendingOrdersState] = useState<PendingOrder[]>(pendingOrdersState);
   const isLoading = isLoadingSettings || isLoadingProducts || isLoadingCustomers || isLoadingFamilies || isLoadingSales;
-  // --- END DATA ---
   
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");

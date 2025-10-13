@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import type { Product, CartItem, PendingOrder, Ad, Family } from "@/lib/types";
-import { pendingOrdersState } from "@/lib/data";
+import { pendingOrdersState, defaultStoreId } from "@/lib/data";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -121,28 +121,31 @@ const CatalogProductCard = ({ product, onAddToCart, onImageClick }: { product: P
 export default function CatalogPage() {
     const { toast } = useToast();
     const router = useRouter();
-    const { settings, activeSymbol, activeRate, isLoadingSettings, userProfile, activeStoreId } = useSettings();
+    const { settings, activeSymbol, activeRate, isLoadingSettings, userProfile } = useSettings();
     const firestore = useFirestore();
+    const storeIdForCatalog = useSettings().activeStoreId || defaultStoreId;
 
     const productsQuery = useMemoFirebase(() => {
-        if (!firestore || !activeStoreId) return null;
-        return query(collection(firestore, 'products'), where('storeId', '==', activeStoreId));
-    }, [firestore, activeStoreId]);
+        if (!firestore) return null;
+        return query(collection(firestore, 'products'), where('storeId', '==', storeIdForCatalog));
+    }, [firestore, storeIdForCatalog]);
     const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
 
     const familiesQuery = useMemoFirebase(() => {
-        if (!firestore || !activeStoreId) return null;
-        return query(collection(firestore, 'families'), where('storeId', '==', activeStoreId));
-    }, [firestore, activeStoreId]);
+        if (!firestore) return null;
+        return query(collection(firestore, 'families'), where('storeId', '==', storeIdForCatalog));
+    }, [firestore, storeIdForCatalog]);
     const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
     
     const adsQuery = useMemoFirebase(() => {
-        if (!firestore || !settings?.businessType) return null;
-        return query(
-            collection(firestore, 'ads'), 
-            where('targetBusinessTypes', 'array-contains', settings.businessType),
-            where('status', '==', 'active')
-        );
+        if (firestore && settings?.businessType) {
+            return query(
+                collection(firestore, 'ads'), 
+                where('targetBusinessTypes', 'array-contains', settings.businessType),
+                where('status', '==', 'active')
+            );
+        }
+        return firestore ? query(collection(firestore, 'ads'), where('status', '==', 'active')) : null;
     }, [firestore, settings?.businessType]);
 
     const { data: allAds, isLoading: isLoadingAds } = useCollection<Ad>(adsQuery);
@@ -345,7 +348,7 @@ export default function CatalogPage() {
     }
 
     const handleGenerateOrder = async () => {
-        if (!settings?.id) {
+        if (!storeIdForCatalog) {
             toast({ variant: 'destructive', title: 'No se pudo identificar la tienda.' });
             return;
         }
@@ -368,7 +371,7 @@ export default function CatalogPage() {
                 price: item.price,
             })),
             total: subtotal,
-            storeId: settings.id,
+            storeId: storeIdForCatalog,
         };
 
         // Add to the shared state
