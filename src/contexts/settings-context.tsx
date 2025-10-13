@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
-import type { CurrencyRate, Settings, UserProfile, Product, Customer, Family, Unit, Warehouse, Supplier, Ad } from '@/lib/types';
+import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
 import { useUser as useAuthUser } from '@/firebase/auth/use-user';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, writeBatch, getDocs } from 'firebase/firestore';
@@ -74,10 +74,13 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [userProfile]);
 
   const storeDocRef = useMemoFirebase(() => firestore ? doc(firestore, 'stores', activeStoreId) : null, [firestore, activeStoreId]);
-  const { data: settings, isLoading: isLoadingStoreSettings } = useDoc<Settings>(storeDocRef);
+  const { data: storeSettingsData, isLoading: isLoadingStoreSettings } = useDoc<Settings>(storeDocRef);
   
   const ratesCollectionRef = useMemoFirebase(() => firestore ? collection(firestore, 'stores', activeStoreId, 'currencyRates') : null, [firestore, activeStoreId]);
   const { data: currencyRates } = useCollection<CurrencyRate>(ratesCollectionRef);
+
+  // Use Firestore settings if available, otherwise fall back to defaultStore.
+  const settings = storeSettingsData || defaultStore;
 
 
   // Handle redirection and initial loading state
@@ -89,7 +92,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       router.replace('/catalog');
     }
     
+    // The context is considered loaded when auth is resolved and store settings attempt has completed.
     setIsLoading(isLoadingStoreSettings);
+
   }, [isAuthLoading, userProfile, pathname, router, isLoadingStoreSettings]);
   
   // Seed database if store is in demo mode and has no products
@@ -107,7 +112,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
               }
           }
       };
-      if (!isLoadingStoreSettings && settings) { // Ensure settings are loaded before checking
+      // Only run seeding if settings are loaded and it's the default store from fallback, or a real one with demoData flag.
+      if (!isLoadingStoreSettings && settings) {
           seedDataIfNeeded();
       }
   }, [firestore, settings, activeStoreId, isLoadingStoreSettings, toast]);
