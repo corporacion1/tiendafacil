@@ -1,4 +1,4 @@
-import type { Product, Sale, Unit, Family, Warehouse, Customer, Purchase, Ad, UserProfile, Store, CurrencyRate, Supplier, PendingOrder, CashSession } from '@/lib/types';
+import type { Product, Sale, Unit, Family, Warehouse, Customer, Purchase, Ad, UserProfile, Store, CurrencyRate, PendingOrder, CashSession } from '@/lib/types';
 import { PlaceHolderImages } from './placeholder-images';
 import { subDays, addDays, startOfWeek, startOfMonth, startOfYear } from 'date-fns';
 
@@ -295,26 +295,3 @@ export const businessCategories: string[] = [
     'Salud y Belleza',
     'Otro'
 ];
-
-// In a real app, this would be a server-side operation
-export function trackAdClick(adId: string) {
-    // This is a mock function, in a real app this would call a server endpoint
-    // to track the click and update the ad's view count in the database.
-    const ad = mockAds.find(a => a.id === adId);
-    if(ad) {
-        ad.views++;
-        console.log(`Ad click tracked for: ${adId}. Total views: ${ad.views}`);
-    }
-}
-
-// This function now just returns false to satisfy the call in login page, but does nothing.
-export async function forceSeedDatabase(): Promise<boolean> {
-  console.log("forceSeedDatabase is disabled. Using local data.");
-  return false;
-}
-
-// This function does nothing.
-export async function factoryReset() {
-  console.log("factoryReset is disabled. Using local data.");
-  return;
-}
