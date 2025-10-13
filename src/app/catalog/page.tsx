@@ -424,7 +424,7 @@ export default function CatalogPage() {
                         <div className="flex items-center gap-2">
                              <Dialog>
                                 <DialogTrigger asChild>
-                                    <Button variant="outline" size="icon" className="sm:size-auto sm:px-4" onClick={generateShareQrCode}>
+                                    <Button variant="outline" size="icon" className="sm:h-auto sm:w-auto sm:px-3 sm:py-2" onClick={generateShareQrCode}>
                                         <QrCode className="h-4 w-4 sm:mr-2" />
                                         <span className="sr-only sm:not-sr-only">Compartir</span>
                                     </Button>
@@ -464,7 +464,7 @@ export default function CatalogPage() {
                             </Dialog>
                             <Sheet>
                                 <SheetTrigger asChild>
-                                    <Button id="cart-sheet-trigger" variant="outline" size="icon" className="sm:size-auto sm:px-4 relative">
+                                    <Button id="cart-sheet-trigger" variant="outline" size="icon" className="relative sm:h-auto sm:w-auto sm:px-3 sm:py-2">
                                         <ShoppingBag className="h-4 w-4 sm:mr-2" />
                                         <span className="sr-only sm:not-sr-only">Ver Pedido</span>
                                         {cart.length > 0 && (
@@ -572,7 +572,7 @@ export default function CatalogPage() {
                                 </SheetContent>
                             </Sheet>
                             {isLoadingSettings ? <div className="h-9 w-9 sm:w-24 bg-muted rounded-md animate-pulse" /> : userProfile ? (
-                                <Button asChild variant="outline" size="icon" className="sm:size-auto sm:px-4">
+                                <Button asChild variant="outline" size="icon" className="sm:h-auto sm:w-auto sm:px-3 sm:py-2">
                                     <Link href="/dashboard">
                                         <UserCircle className="h-4 w-4 sm:mr-2" />
                                         <span className="sr-only sm:not-sr-only">Dashboard</span>
@@ -580,7 +580,7 @@ export default function CatalogPage() {
                                 </Button>
                             ) : (
                                 <LoginModal>
-                                    <Button variant="default" size="icon" className="sm:size-auto sm:px-4">
+                                    <Button variant="default" size="icon" className="sm:h-auto sm:w-auto sm:px-3 sm:py-2">
                                         <UserCircle className="h-4 w-4 sm:mr-2"/>
                                         <span className="sr-only sm:not-sr-only">Acceder</span>
                                     </Button>
