@@ -1,3 +1,4 @@
+
 "use client"
 import { useState, useMemo, useEffect } from "react";
 import { ArrowUpRight, DollarSign, Users, Package, ShoppingBag, ArrowLeft, ArrowRight } from "lucide-react";
@@ -15,6 +16,7 @@ import {
   CartesianGrid
 } from "recharts";
 import { subDays, parseISO, format } from "date-fns";
+import { collection } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -36,38 +38,34 @@ import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/contexts/settings-context";
 import { InventoryMovement, Product, Purchase, Sale } from "@/lib/types";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { mockSales, mockPurchases, mockProducts } from "@/lib/data";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 
 type TimeFilter = 'day' | 'week' | 'month';
 
 const getDate = (d: any): Date => {
   if (!d) return new Date();
-  // If it's already a Date object, return it directly. This is the fix.
-  if (d instanceof Date) {
-    return d;
-  }
-  // If it's a Firebase Timestamp, convert it.
-  if (d.toDate) { 
-    return d.toDate();
-  }
-  // If it's a string, parse it.
-  if (typeof d === 'string') {
-    return parseISO(d);
-  }
-  // As a fallback, return the current date.
+  if (d instanceof Date) return d;
+  if (d.toDate) return d.toDate();
+  if (typeof d === 'string') return parseISO(d);
   return new Date();
 }
 
 
 export default function Dashboard() {
   const { activeSymbol, activeRate, isLoadingSettings } = useSettings();
+  const firestore = useFirestore();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
   
-  const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: 'local'})));
-  const [purchases, setPurchases] = useState(mockPurchases.map(p => ({...p, storeId: 'local'})));
-  const [products, setProductsState] = useState(mockProducts.map(p => ({...p, storeId: 'local'})));
+  const salesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'sales') : null, [firestore]);
+  const purchasesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'purchases') : null, [firestore]);
+  const productsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'products') : null, [firestore]);
+
+  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
+  const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
+  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
 
   const recentMovements: InventoryMovement[] = useMemo(() => {
+    if (!sales || !purchases) return [];
     const saleMovements = sales.flatMap(sale => 
         sale.items.map(item => ({
             id: `mov-sale-${sale.id}-${item.productId}`,
@@ -92,7 +90,7 @@ export default function Dashboard() {
   }, [sales, purchases]);
 
 
-  const isLoading = isLoadingSettings;
+  const isLoading = isLoadingSettings || isLoadingSales || isLoadingPurchases || isLoadingProducts;
 
   const cutoffDate = useMemo(() => {
     const now = new Date();
@@ -171,7 +169,7 @@ export default function Dashboard() {
 
   const totalRevenue = useMemo(() => filteredSales.reduce((acc, s) => acc + s.total, 0), [filteredSales]);
   const totalPurchasesValue = useMemo(() => filteredPurchases.reduce((acc, p) => acc + p.total, 0), [filteredPurchases]);
-  const activeProducts = useMemo(() => (products || []).filter(p => p.status === 'active').length, [products]);
+  const activeProducts = useMemo(() => (products || []).filter(p => p.status === 'active' || p.status === 'promotion').length, [products]);
   
   return (
     <div className="flex min-h-screen w-full flex-col">
