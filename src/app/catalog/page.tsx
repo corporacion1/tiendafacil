@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import type { Product, CartItem, PendingOrder, Ad, Family, Store } from "@/lib/types";
-import { pendingOrdersState, mockProducts, initialFamilies, mockAds, defaultStore, defaultStoreId } from "@/lib/data";
+import { pendingOrdersState, initialFamilies, mockAds, defaultStore, defaultStoreId } from "@/lib/data";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -122,17 +122,25 @@ export default function CatalogPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     
-    // Determine the storeId from URL, fallback to default, then the user's active store
-    const { settings: loggedInUserSettings, activeSymbol, activeRate, isLoadingSettings, userProfile } = useSettings();
+    // Use data from global context
+    const { 
+        settings: loggedInUserSettings, 
+        activeSymbol, 
+        activeRate, 
+        isLoadingSettings, 
+        userProfile,
+        products,
+        families,
+        ads: allAds,
+        setPendingOrders,
+    } = useSettings();
+    
     const urlStoreId = searchParams.get('storeId');
     const storeIdForCatalog = urlStoreId || defaultStoreId;
     
-    // --- LOCAL DATA ---
-    const [products] = useState(() => mockProducts.map(p => ({...p, storeId: p.storeId || storeIdForCatalog, createdAt: new Date().toISOString() })));
-    const [families] = useState(() => initialFamilies.map(f => ({...f, storeId: f.storeId || storeIdForCatalog })));
-    const [allAds] = useState(() => mockAds.map(ad => ({...ad, createdAt: new Date().toISOString() })));
+    // --- LOCAL DATA FOR THIS PAGE ---
     const [allStores] = useState<Store[]>([defaultStore]); // In a real app, this would be a list of all stores
-    const isLoading = false;
+    const isLoading = isLoadingSettings;
     // --- END LOCAL DATA ---
 
     const currentStoreSettings = useMemo(() => {
@@ -413,7 +421,7 @@ export default function CatalogPage() {
         };
 
         // Add to the shared state
-        pendingOrdersState.push(newPendingOrder);
+        setPendingOrders(prev => [...prev, newPendingOrder]);
         setLocalOrders(prev => [...prev, newPendingOrder]);
 
         await generateQrCode(newOrderId);
@@ -889,3 +897,5 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
+
+    
