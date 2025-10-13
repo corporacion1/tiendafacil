@@ -20,7 +20,6 @@ import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
 import { useSettings } from "@/contexts/settings-context";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { initialFamilies, initialUnits, initialWarehouses, mockProducts } from "@/lib/data";
 
 const productSchema = z.object({
   id: z.string().optional(),
@@ -79,15 +78,8 @@ const calculateProfit = (currentPrice: number, cost: number): string => {
 
 export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onCancel }) => {
   const { toast } = useToast();
-  const { settings } = useSettings();
+  const { settings, products, units, families, warehouses } = useSettings();
   
-  // --- LOCAL DATA FOR FORM ---
-  const [products] = useState(mockProducts);
-  const [units] = useState(initialUnits);
-  const [families] = useState(initialFamilies);
-  const [warehouses] = useState(initialWarehouses);
-  // -------------------------
-
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: getInitialValues(product),

@@ -7,14 +7,10 @@ import { useToast } from "@/hooks/use-toast";
 import { ProductForm } from "@/components/product-form";
 import type { Product } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
-import { mockProducts } from "@/lib/data";
 
 export default function ProductsPage() {
   const { toast } = useToast();
-  const { activeStoreId } = useSettings();
-  
-  // Manage products in local state for the demo
-  const [products, setProducts] = useState(mockProducts);
+  const { activeStoreId, setProducts } = useSettings();
 
   function onSubmit(data: Omit<Product, 'id' | 'storeId' | 'createdAt'>) {
     const newProduct: Product = {
@@ -27,8 +23,8 @@ export default function ProductsPage() {
     setProducts(prev => [newProduct, ...prev]);
     
     toast({
-      title: "Producto Creado (DEMO)",
-      description: `El producto "${data.name}" ha sido creado localmente.`,
+      title: "Producto Creado",
+      description: `El producto "${data.name}" ha sido agregado al inventario.`,
     });
     
     return true; // Indicates the form should be reset

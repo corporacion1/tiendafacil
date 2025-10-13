@@ -4,8 +4,23 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
-import type { CurrencyRate, Settings, UserProfile, UserRole } from "@/lib/types";
-import { defaultStore, defaultStoreId, mockCurrencyRates, defaultUsers } from '@/lib/data';
+import type { CurrencyRate, Settings, UserProfile, Product, Sale, Purchase, Customer, Supplier, Unit, Family, Warehouse, Ad, CashSession } from "@/lib/types";
+import { 
+    defaultStore as initialStore, 
+    defaultUsers as initialUsers,
+    mockCurrencyRates as initialCurrencyRates,
+    mockProducts as initialProducts,
+    mockSales as initialSales,
+    mockPurchases as initialPurchases,
+    defaultCustomers as initialCustomers,
+    defaultSuppliers as initialSuppliers,
+    initialUnits,
+    initialFamilies,
+    initialWarehouses,
+    mockAds as initialAds,
+    mockCashSessions as initialCashSessions,
+    defaultStoreId
+} from '@/lib/data';
 import { useUser } from '@/firebase';
 
 type DisplayCurrency = 'primary' | 'secondary';
@@ -20,6 +35,29 @@ interface SettingsContextType {
   activeRate: number;
   currencyRates: CurrencyRate[];
   setCurrencyRates: React.Dispatch<React.SetStateAction<CurrencyRate[]>>;
+  
+  // Shared Data States
+  products: Product[];
+  setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
+  sales: Sale[];
+  setSales: React.Dispatch<React.SetStateAction<Sale[]>>;
+  purchases: Purchase[];
+  setPurchases: React.Dispatch<React.SetStateAction<Purchase[]>>;
+  customers: Customer[];
+  setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
+  suppliers: Supplier[];
+  setSuppliers: React.Dispatch<React.SetStateAction<Supplier[]>>;
+  units: Unit[];
+  setUnits: React.Dispatch<React.SetStateAction<Unit[]>>;
+  families: Family[];
+  setFamilies: React.Dispatch<React.SetStateAction<Family[]>>;
+  warehouses: Warehouse[];
+  setWarehouses: React.Dispatch<React.SetStateAction<Warehouse[]>>;
+  ads: Ad[];
+  setAds: React.Dispatch<React.SetStateAction<Ad[]>>;
+  cashSessions: CashSession[];
+  setCashSessions: React.Dispatch<React.SetStateAction<CashSession[]>>;
+  
   activeStoreId: string;
   switchStore: (storeId: string) => void;
   isLoadingSettings: boolean;
@@ -32,7 +70,6 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 const CURRENCY_PREF_STORAGE_KEY = 'tienda_facil_currency_pref';
 const ACTIVE_STORE_ID_STORAGE_KEY = 'tienda_facil_active_store_id';
-
 
 function AppLoadingScreen() {
     return (
@@ -51,10 +88,25 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const pathname = usePathname();
   const { user: firebaseUser, isLoading: isLoadingAuth } = useUser();
 
-  const [settings, setLocalSettings] = useState<Settings | null>(defaultStore);
+  // Main settings state
+  const [settings, setLocalSettings] = useState<Settings | null>(initialStore);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
-  const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>(mockCurrencyRates);
+  
+  // Data states
+  const [products, setProducts] = useState<Product[]>(initialProducts);
+  const [sales, setSales] = useState<Sale[]>(initialSales);
+  const [purchases, setPurchases] = useState<Purchase[]>(initialPurchases);
+  const [customers, setCustomers] = useState<Customer[]>(initialCustomers);
+  const [suppliers, setSuppliers] = useState<Supplier[]>(initialSuppliers);
+  const [units, setUnits] = useState<Unit[]>(initialUnits);
+  const [families, setFamilies] = useState<Family[]>(initialFamilies);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>(initialWarehouses);
+  const [ads, setAds] = useState<Ad[]>(initialAds);
+  const [cashSessions, setCashSessions] = useState<CashSession[]>(initialCashSessions);
+  const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>(initialCurrencyRates);
+  
+  // UI states
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   const [isLoading, setIsLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
@@ -73,8 +125,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   useEffect(() => {
     if (!isLoadingAuth) {
       if (firebaseUser) {
-        // Find user in our local data. If not found, create a new 'user' profile.
-        const existingUser = defaultUsers.find(u => u.uid === firebaseUser.uid);
+        const existingUser = initialUsers.find(u => u.uid === firebaseUser.uid);
         if (existingUser) {
           setUserProfile(existingUser);
         } else {
@@ -83,13 +134,11 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
             email: firebaseUser.email,
             displayName: firebaseUser.displayName,
             photoURL: firebaseUser.photoURL,
-            role: 'user', // Default role for new users
+            role: 'user',
             status: 'active',
             storeId: defaultStoreId, 
             createdAt: new Date().toISOString(),
           };
-          // In a real app, you would save this new user to the database.
-          // For demo purposes, we can add it to the local array if needed.
           setUserProfile(newUserProfile);
         }
       } else {
@@ -100,16 +149,12 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [firebaseUser, isLoadingAuth]);
 
   const handleSetSettings = useCallback((newSettings: Partial<Settings>) => {
-    setLocalSettings(prev => ({ ...(prev || defaultStore), ...newSettings }));
+    setLocalSettings(prev => ({ ...(prev || initialStore), ...newSettings }));
   }, []);
 
   const switchStore = (storeId: string) => {
     setActiveStoreId(storeId);
-    try {
-      localStorage.setItem(ACTIVE_STORE_ID_STORAGE_KEY, storeId);
-    } catch (error) {
-       console.error("Could not access localStorage", error);
-    }
+    localStorage.setItem(ACTIVE_STORE_ID_STORAGE_KEY, storeId);
     toast({ title: `Cambiado a la tienda ${storeId}` });
     window.location.reload();
   };
@@ -117,16 +162,10 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const toggleDisplayCurrency = () => {
     const newPreference = displayCurrency === 'primary' ? 'secondary' : 'primary';
     setDisplayCurrency(newPreference);
-    try {
-      localStorage.setItem(CURRENCY_PREF_STORAGE_KEY, newPreference);
-    } catch(error) {
-      console.error("Could not access localStorage", error);
-    }
+    localStorage.setItem(CURRENCY_PREF_STORAGE_KEY, newPreference);
   };
   
   const handleSetUserProfile = (user: UserProfile | null) => {
-    // This function is now mainly for local state updates if needed,
-    // as auth state is driven by the useUser hook.
     setUserProfile(user);
   }
 
@@ -150,6 +189,26 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     activeRate,
     currencyRates,
     setCurrencyRates,
+    products,
+    setProducts,
+    sales,
+    setSales,
+    purchases,
+    setPurchases,
+    customers,
+    setCustomers,
+    suppliers,
+    setSuppliers,
+    units,
+    setUnits,
+    families,
+    setFamilies,
+    warehouses,
+    setWarehouses,
+    ads,
+    setAds,
+    cashSessions,
+    setCashSessions,
     activeStoreId,
     switchStore,
     isLoadingSettings: isLoading,

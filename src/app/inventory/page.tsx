@@ -34,7 +34,6 @@ import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { ProductForm } from "@/components/product-form";
 import { useSettings } from "@/contexts/settings-context";
 import { format, parseISO } from "date-fns";
-import { mockProducts, mockSales } from "@/lib/data";
 
 const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewMovements, setProductToDelete }: {
     product: Product;
@@ -124,10 +123,8 @@ const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewM
 
 export default function InventoryPage() {
   const { toast } = useToast();
-  const { activeSymbol, activeRate, activeStoreId } = useSettings();
+  const { activeSymbol, activeRate, activeStoreId, products, setProducts, sales } = useSettings();
 
-  const [products, setProducts] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString() })));
-  const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
   const [inventoryMovements, setInventoryMovements] = useState<InventoryMovement[]>([]);
 
   const [isMovementsDialogOpen, setIsMovementsDialogOpen] = useState(false);
@@ -158,8 +155,8 @@ export default function InventoryPage() {
     if (!data.id) return false;
     setProducts(prev => prev.map(p => p.id === data.id ? {...p, ...data} : p));
     toast({
-        title: "Producto Actualizado (DEMO)",
-        description: `El producto "${data.name}" ha sido actualizado localmente.`,
+        title: "Producto Actualizado",
+        description: `El producto "${data.name}" ha sido actualizado.`,
     });
     setProductToEdit(null);
     return true;
@@ -176,7 +173,7 @@ export default function InventoryPage() {
     } else {
         setProducts(prev => prev.filter(p => p.id !== productId));
         toast({
-            title: "Producto Eliminado (DEMO)",
+            title: "Producto Eliminado",
             description: "El producto ha sido eliminado del inventario.",
         });
     }
@@ -230,7 +227,7 @@ export default function InventoryPage() {
     setInventoryMovements(prev => [newMovement, ...prev]);
 
     toast({
-        title: "Movimiento Registrado (DEMO)",
+        title: "Movimiento Registrado",
         description: `El stock de "${movementProduct.name}" ha sido actualizado a ${newStock}.`,
     });
     resetMovementForm();
@@ -614,5 +611,3 @@ export default function InventoryPage() {
     </>
   );
 }
-
-    
