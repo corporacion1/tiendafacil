@@ -11,12 +11,13 @@ export default function ProductsPage() {
   const { toast } = useToast();
   const { activeStoreId } = useSettings();
 
-  function onSubmit(data: Omit<Product, 'id' | 'storeId'>) {
+  function onSubmit(data: Omit<Product, 'id' | 'storeId' | 'createdAt'>) {
     const newProductId = `prod-${Date.now()}`;
-    const newProduct: Omit<Product, 'id'> & { id: string, storeId: string } = {
+    const newProduct: Omit<Product, 'id'> & { id: string; storeId: string; createdAt: string } = {
       ...data,
       id: newProductId,
       storeId: activeStoreId,
+      createdAt: new Date().toISOString(),
     };
     
     // Here you would typically add the new product to your state management
@@ -45,5 +46,3 @@ export default function ProductsPage() {
     </Card>
   );
 }
-
-    

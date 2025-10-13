@@ -72,7 +72,7 @@ export default function POSPage() {
   const { isLocked, isSecurityReady } = useSecurity();
   
   // --- USE LOCAL DATA ---
-  const [products, setProductsState] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId})));
+  const [products, setProductsState] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString() })));
   const [customers, setCustomers] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
   const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
   const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
@@ -595,7 +595,63 @@ export default function POSPage() {
   }
 
   return (
-    <Dialog onOpenChange={(open) => { if (!open) setProductDetails(null); }}>
+    <>
+      <Dialog open={!!productDetails} onOpenChange={(open) => { if (!open) setProductDetails(null); }}>
+          <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                  <DialogTitle>{productDetails?.name}</DialogTitle>
+                  <DialogDescription>SKU: {productDetails?.sku}</DialogDescription>
+              </DialogHeader>
+              {productDetails && (
+                  <div className="grid gap-4">
+                      <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
+                          {getDisplayImageUrl(productDetails.imageUrl) && !productImageError ? (
+                              <Image
+                                  src={getDisplayImageUrl(productDetails.imageUrl)}
+                                  alt={productDetails.name}
+                                  fill
+                                  sizes="300px"
+                                  className="object-cover"
+                                  data-ai-hint={productDetails.imageHint}
+                                  onError={() => setImageError(true)}
+                              />
+                              ) : (
+                              <Package className="w-16 h-16 text-muted-foreground" />
+                          )}
+                      </div>
+                      <div className="grid gap-2">
+                          <div className="flex justify-between">
+                              <span className="text-muted-foreground">Disponibilidad:</span>
+                              <span className="font-semibold">{productDetails.stock} unidades</span>
+                          </div>
+                          <Separator />
+                          <div className="flex justify-between">
+                              <span className="text-muted-foreground">Precio Detal:</span>
+                              <span className="font-semibold">{activeSymbol}{(productDetails.price * activeRate).toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                              <span className="text-muted-foreground">Precio Mayor:</span>
+                              <span className="font-semibold">{activeSymbol}{(productDetails.wholesalePrice * activeRate).toFixed(2)}</span>
+                          </div>
+                      </div>
+                  </div>
+              )}
+              <DialogFooter>
+                  <DialogClose asChild>
+                      <Button variant="secondary">Cerrar</Button>
+                  </DialogClose>
+                  <Button onClick={() => {
+                      if(productDetails) {
+                          addToCart(productDetails);
+                          setProductDetails(null);
+                          toast({title: `"${productDetails.name}" agregado al carrito`})
+                      }
+                  }}>
+                      Agregar al Carrito
+                  </Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
       <div className="grid flex-1 auto-rows-max items-start gap-4 lg:grid-cols-5 lg:gap-8">
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-3 lg:gap-8">
             <Card>
@@ -610,9 +666,34 @@ export default function POSPage() {
                                         <span>Caja Abierta por: {activeSession.openedBy}</span>
                                     </Badge>
                                     <Button size="sm" variant="outline" onClick={handleShowReportX}><FilePieChart className="mr-2 h-4 w-4"/> Corte X</Button>
-                                    <DialogTrigger asChild>
-                                        <Button size="sm" variant="destructive" onClick={() => setIsClosingModalOpen(true)}><LogOut className="mr-2 h-4 w-4"/> Cerrar Caja</Button>
-                                    </DialogTrigger>
+                                    <Dialog open={isClosingModalOpen} onOpenChange={setIsClosingModalOpen}>
+                                        <DialogTrigger asChild>
+                                            <Button size="sm" variant="destructive"><LogOut className="mr-2 h-4 w-4"/> Cerrar Caja</Button>
+                                        </DialogTrigger>
+                                        <DialogContent>
+                                            <DialogHeader>
+                                                <DialogTitle>Cerrar Caja (Corte Z)</DialogTitle>
+                                                <DialogDescription>
+                                                    Ingresa el monto total de efectivo contado en caja para generar el reporte de cierre.
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <div className="py-4 space-y-2">
+                                                <Label htmlFor="closing-balance">Efectivo Contado en Caja ({activeSymbol})</Label>
+                                                <Input
+                                                    id="closing-balance"
+                                                    type="number"
+                                                    value={closingBalance}
+                                                    onChange={(e) => setClosingBalance(e.target.value)}
+                                                    placeholder="0.00"
+                                                    autoFocus
+                                                />
+                                            </div>
+                                            <DialogFooter>
+                                                <Button variant="outline" onClick={() => setIsClosingModalOpen(false)}>Cancelar</Button>
+                                                <Button variant="destructive" onClick={handleCloseSession} disabled={!closingBalance || Number(closingBalance) < 0}>Generar Corte Z y Cerrar</Button>
+                                            </DialogFooter>
+                                        </DialogContent>
+                                    </Dialog>
                                 </>
                             ) : (
                                 <Badge variant="destructive" className="flex items-center gap-2">
@@ -863,7 +944,7 @@ export default function POSPage() {
                             </TableHeader>
                             <TableBody>
                                 {cartItems.map((item) => (
-                                <TableRow key={item.product.id}>
+                                <TableRow key={`${item.product.id}-${item.price}`}>
                                     <TableCell className="font-medium text-xs">
                                         <div className="flex-grow">
                                             <p className="font-medium text-sm">{item.product.name}</p>
@@ -1015,60 +1096,6 @@ export default function POSPage() {
         </div>
       </div>
     
-    <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-            <DialogTitle>{productDetails?.name}</DialogTitle>
-            <DialogDescription>SKU: {productDetails?.sku}</DialogDescription>
-        </DialogHeader>
-        {productDetails && (
-            <div className="grid gap-4">
-                 <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
-                    {getDisplayImageUrl(productDetails.imageUrl) && !productImageError ? (
-                        <Image
-                            src={getDisplayImageUrl(productDetails.imageUrl)}
-                            alt={productDetails.name}
-                            fill
-                            sizes="300px"
-                            className="object-cover"
-                            data-ai-hint={productDetails.imageHint}
-                            onError={() => setImageError(true)}
-                        />
-                        ) : (
-                        <Package className="w-16 h-16 text-muted-foreground" />
-                    )}
-                 </div>
-                 <div className="grid gap-2">
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Disponibilidad:</span>
-                        <span className="font-semibold">{productDetails.stock} unidades</span>
-                    </div>
-                     <Separator />
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Precio Detal:</span>
-                        <span className="font-semibold">{activeSymbol}{(productDetails.price * activeRate).toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Precio Mayor:</span>
-                        <span className="font-semibold">{activeSymbol}{(productDetails.wholesalePrice * activeRate).toFixed(2)}</span>
-                    </div>
-                 </div>
-            </div>
-        )}
-        <DialogFooter>
-            <DialogClose asChild>
-                <Button variant="secondary">Cerrar</Button>
-            </DialogClose>
-            <Button onClick={() => {
-                if(productDetails) {
-                    addToCart(productDetails);
-                    setProductDetails(null);
-                    toast({title: `"${productDetails.name}" agregado al carrito`})
-                }
-            }}>
-                Agregar al Carrito
-            </Button>
-        </DialogFooter>
-    </DialogContent>
     
     {(isPrintPreviewOpen && (cartItems.length > 0 || lastSale)) && (
       <TicketPreview
@@ -1116,33 +1143,6 @@ export default function POSPage() {
         </DialogContent>
     </Dialog>
 
-    {/* Close Session Modal */}
-    <Dialog open={isClosingModalOpen} onOpenChange={setIsClosingModalOpen}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Cerrar Caja (Corte Z)</DialogTitle>
-                <DialogDescription>
-                    Ingresa el monto total de efectivo contado en caja para generar el reporte de cierre.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="py-4 space-y-2">
-                <Label htmlFor="closing-balance">Efectivo Contado en Caja ({activeSymbol})</Label>
-                <Input
-                    id="closing-balance"
-                    type="number"
-                    value={closingBalance}
-                    onChange={(e) => setClosingBalance(e.target.value)}
-                    placeholder="0.00"
-                    autoFocus
-                />
-            </div>
-            <DialogFooter>
-                <Button variant="outline" onClick={() => setIsClosingModalOpen(false)}>Cancelar</Button>
-                <Button variant="destructive" onClick={handleCloseSession} disabled={!closingBalance || Number(closingBalance) < 0}>Generar Corte Z y Cerrar</Button>
-            </DialogFooter>
-        </DialogContent>
-    </Dialog>
-
     {/* Report Preview Modal */}
     {sessionForReport && reportType && (
         <SessionReportPreview
@@ -1162,6 +1162,6 @@ export default function POSPage() {
             onConfirm={reportType === 'Z' ? finalizeSessionClosure : undefined}
         />
     )}
-  </Dialog>
+    </>
   );
 }
