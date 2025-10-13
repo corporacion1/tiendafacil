@@ -78,6 +78,7 @@ export const defaultUsers: UserProfile[] = [
 
 // --- DATOS DE MUESTRA (TODOS CONECTADOS AL storeId por defecto) ---
 
+// This acts as a shared, in-memory state for pending orders between catalog and POS.
 export let pendingOrdersState: PendingOrder[] = [
     {
         id: 'PEND-DEMO-001',

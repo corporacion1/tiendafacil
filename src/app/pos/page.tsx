@@ -567,7 +567,7 @@ export default function POSPage() {
         toast({ variant: "destructive", title: "Carrito no está vacío" });
         return;
     }
-    const order = (pendingOrders || []).find(o => o.id === scannedOrderId);
+    const order = (pendingOrdersState || []).find(o => o.id === scannedOrderId);
     if (order) {
         loadPendingOrder(order);
         setScannedOrderId('');
@@ -730,7 +730,7 @@ export default function POSPage() {
                                 <Button variant="secondary" disabled={!isSessionReady}>
                                     <Archive className="mr-2 h-4 w-4" />
                                     Pedidos Pendientes
-                                    {pendingOrders && pendingOrders.length > 0 && <Badge variant="destructive" className="ml-2">{pendingOrders.length}</Badge>}
+                                    {pendingOrdersState && pendingOrdersState.length > 0 && <Badge variant="destructive" className="ml-2">{pendingOrdersState.length}</Badge>}
                                 </Button>
                             </DialogTrigger>
                             <DialogContent>
@@ -739,11 +739,11 @@ export default function POSPage() {
                                 </DialogHeader>
                                 <div className="py-4 max-h-96 overflow-y-auto">
                                     {isLoading && <p>Cargando pedidos...</p>}
-                                    {!isLoading && (!pendingOrders || pendingOrders.length === 0) ? (
+                                    {!isLoading && (!pendingOrdersState || pendingOrdersState.length === 0) ? (
                                         <p className="text-center text-muted-foreground py-8">No hay pedidos pendientes.</p>
                                     ) : (
                                         <div className="space-y-4">
-                                        {(pendingOrders || []).map(order => (
+                                        {(pendingOrdersState || []).map(order => (
                                             <div key={order.id} className="p-4 border rounded-lg">
                                                 <div className="flex justify-between items-start">
                                                     <div>
