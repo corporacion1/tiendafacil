@@ -8,7 +8,7 @@ import { Logo } from '@/components/logo';
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useSettings } from "@/contexts/settings-context";
-import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { defaultUsers } from "@/lib/data";
 
 const GoogleIcon = () => (
     <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -23,25 +23,24 @@ export function LoginModal({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const { toast } = useToast();
     const [isOpen, setIsOpen] = useState(false);
-    const { firebaseUser } = useSettings();
-    const auth = getAuth();
-    const provider = new GoogleAuthProvider();
+    const { setUserProfile } = useSettings();
 
     const handleSignIn = async () => {
-        try {
-            await signInWithPopup(auth, provider);
+        // --- LOCAL DEMO SIGN IN ---
+        const adminUser = defaultUsers.find(u => u.role === 'admin');
+        if (adminUser) {
+            setUserProfile(adminUser);
             toast({
-                title: "¡Bienvenido!",
-                description: "Has iniciado sesión correctamente.",
+                title: "¡Bienvenido (DEMO)!",
+                description: "Has iniciado sesión como administrador.",
             });
             setIsOpen(false);
             router.push('/dashboard');
-        } catch (error) {
-            console.error("Error signing in with Google: ", error);
+        } else {
             toast({
                 variant: "destructive",
-                title: "Error al iniciar sesión",
-                description: "No se pudo completar el inicio de sesión con Google.",
+                title: "Error de Demo",
+                description: "No se encontró el usuario administrador de demostración.",
             });
         }
     };
@@ -62,7 +61,7 @@ export function LoginModal({ children }: { children: React.ReactNode }) {
                 <div className="py-4">
                     <Button onClick={handleSignIn} className="w-full">
                         <GoogleIcon />
-                        Ingresar con Google
+                        Ingresar con Google (DEMO)
                     </Button>
                 </div>
             </DialogContent>

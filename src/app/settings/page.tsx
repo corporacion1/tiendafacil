@@ -18,7 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { businessCategories, mockProducts, mockSales, initialUnits, initialFamilies, initialWarehouses } from "@/lib/data";
+import { businessCategories, mockProducts, mockSales, initialUnits, initialFamilies, initialWarehouses, defaultStoreId } from "@/lib/data";
 import Image from "next/image";
 import { getDisplayImageUrl } from "@/lib/utils";
 
@@ -113,7 +113,7 @@ function ChangePinDialog() {
 
 export default function SettingsPage() {
     const { hasPin, setPin, removePin, checkPin } = useSecurity();
-    const { settings, setSettings, currencyRates, userProfile, activeStoreId } = useSettings();
+    const { settings, setSettings, currencyRates, setCurrencyRates, userProfile, activeStoreId } = useSettings();
     
     const [localSettings, setLocalSettings] = useState<Partial<Settings>>(settings || {});
     const [imageError, setImageError] = useState(false);
@@ -177,10 +177,10 @@ export default function SettingsPage() {
         setLocalSettings(prev => ({ ...prev, [id]: parseFloat(value) || 0 }));
     };
 
-    const saveAllSettings = async () => {
+    const saveAllSettings = () => {
         setSettings(localSettings);
         setIsDirty(false);
-        toast({ title: "Configuración Guardada (DEMO)", description: "Tus cambios se han guardado localmente." });
+        toast({ title: "Configuración Guardada", description: "Tus cambios se han guardado." });
     };
 
     const handleSaveNewRate = () => {
@@ -189,8 +189,16 @@ export default function SettingsPage() {
             toast({ variant: 'destructive', title: 'Tasa inválida' });
             return;
         }
-        // This would be a DB operation. Here we just show a toast.
-        toast({ title: "Tasa Guardada (DEMO)", description: `La nueva tasa de ${rateValue.toFixed(2)} ha sido registrada localmente.` });
+        
+        const newRateEntry: CurrencyRate = {
+            id: `rate-${Date.now()}`,
+            rate: rateValue,
+            date: new Date().toISOString()
+        };
+        
+        setCurrencyRates(prev => [newRateEntry, ...prev]);
+
+        toast({ title: "Tasa Guardada", description: `La nueva tasa de ${rateValue.toFixed(2)} ha sido registrada.` });
         setNewRate("");
     };
 
@@ -208,12 +216,11 @@ export default function SettingsPage() {
             return;
         }
         
-        // Demo mode: just update local state
         if (type === 'unit') setLocalUnits(prev => prev.filter(item => item.id !== id));
         if (type === 'family') setLocalFamilies(prev => prev.filter(item => item.id !== id));
         if (type === 'warehouse') setLocalWarehouses(prev => prev.filter(item => item.id !== id));
         
-        toast({ title: 'Elemento Eliminado (DEMO)' });
+        toast({ title: 'Elemento Eliminado' });
     };
     
     const renderManagementCard = (
@@ -234,7 +241,7 @@ export default function SettingsPage() {
             if (type === 'warehouse') setLocalWarehouses(prev => [...prev, newEntry]);
 
             setNewItemName('');
-            toast({ title: 'Elemento Agregado (DEMO)' });
+            toast({ title: 'Elemento Agregado' });
         };
         
         const handleEditItem = () => {
@@ -245,7 +252,7 @@ export default function SettingsPage() {
             if (type === 'warehouse') setLocalWarehouses(prev => prev.map(item => item.id === editingItem.id ? editingItem : item));
             
             setEditingItem(null);
-            toast({ title: 'Elemento Editado (DEMO)' });
+            toast({ title: 'Elemento Editado' });
         };
 
         return (
@@ -364,44 +371,18 @@ export default function SettingsPage() {
         return (currentCount + 1).toString().padStart(3, '0');
     }, [sales]);
     
-    const handleSeed = async () => {
+    const handleSeed = () => {
         if (!checkPin(resetPin)) {
             toast({ variant: 'destructive', title: 'PIN incorrecto' });
             return;
         }
         setIsProcessing(true);
-        toast({ title: 'Iniciando reinicio...', description: 'Esto puede tardar un momento.' });
+        toast({ title: 'Simulando reinicio...', description: 'En una app real, esto conectaría a la API. Recargando en 2s.' });
 
-        try {
-            const response = await fetch('/api/seed', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ storeId: activeStoreId }),
-            });
-
-            const result = await response.json();
-
-            if (!response.ok) {
-                throw new Error(result.message || 'Ocurrió un error en el servidor.');
-            }
-
-            toast({
-                title: 'Éxito',
-                description: result.message,
-            });
-            setTimeout(() => window.location.reload(), 2000);
-        } catch (error: any) {
-            toast({
-                variant: 'destructive',
-                title: 'Error al reiniciar los datos',
-                description: error.message,
-            });
-        } finally {
-            setIsProcessing(false);
-            setIsResetConfirmOpen(false);
-            setResetConfirmationText('');
-            setResetPin('');
-        }
+        // Simulate async operation
+        setTimeout(() => {
+            window.location.reload();
+        }, 2000);
     };
 
 
@@ -705,8 +686,8 @@ export default function SettingsPage() {
                 <CardContent>
                     <AlertDialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
                         <AlertDialogTrigger asChild>
-                            <Button variant="destructive" disabled={userProfile?.role !== 'superAdmin' && userProfile?.role !== 'admin'}>
-                                <Database className="mr-2" /> Reiniciar y Sembrar Datos
+                             <Button variant="destructive" disabled={true}>
+                                <Database className="mr-2" /> Reiniciar y Sembrar Datos (Deshabilitado)
                             </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
@@ -750,7 +731,7 @@ export default function SettingsPage() {
                     </AlertDialog>
                 </CardContent>
                 <CardFooter>
-                    <p className="text-xs text-muted-foreground">La siembra de datos restaurará productos, clientes, ventas y configuraciones a su estado original de demostración.</p>
+                    <p className="text-xs text-muted-foreground">La siembra de datos restaurará productos, clientes, ventas y configuraciones a su estado original de demostración. Esta función está actualmente deshabilitada en modo local.</p>
                 </CardFooter>
             </Card>
         </div>

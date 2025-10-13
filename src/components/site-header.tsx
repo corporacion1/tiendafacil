@@ -28,7 +28,6 @@ import { Logo } from "./logo";
 import { navItems, settingsNav } from "@/lib/navigation";
 import { Badge } from "./ui/badge";
 import { defaultStoreId } from "@/lib/data";
-import { getAuth, signOut } from "firebase/auth";
 
 interface SiteHeaderProps {
   toggleSidebar: () => void;
@@ -39,25 +38,15 @@ export function SiteHeader({ toggleSidebar, isSidebarExpanded }: SiteHeaderProps
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
-  const { settings, activeCurrency, toggleDisplayCurrency, activeStoreId, userProfile, firebaseUser, isLoadingSettings } = useSettings();
+  const { settings, activeCurrency, toggleDisplayCurrency, activeStoreId, userProfile, firebaseUser, setUserProfile, isLoadingSettings } = useSettings();
   
-  const handleSignOut = async () => {
-    const auth = getAuth();
-    try {
-      await signOut(auth);
-      toast({
-          title: "Sesión Cerrada",
-          description: "Has cerrado sesión correctamente.",
-      });
-      // Redirect to the public catalog page after sign-out
-      router.push(`/catalog?storeId=${defaultStoreId}`);
-    } catch (error) {
-       toast({
-          variant: "destructive",
-          title: "Error al cerrar sesión",
-          description: "Hubo un problema al intentar cerrar tu sesión.",
-      });
-    }
+  const handleSignOut = () => {
+    setUserProfile(null);
+    toast({
+        title: "Sesión Cerrada",
+        description: "Has cerrado sesión correctamente.",
+    });
+    router.push(`/catalog?storeId=${defaultStoreId}`);
   }
 
   const inactiveSymbol = activeCurrency === 'primary' 
