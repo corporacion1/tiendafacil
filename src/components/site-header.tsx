@@ -28,7 +28,7 @@ import { Logo } from "./logo";
 import { navItems, settingsNav } from "@/lib/navigation";
 import { Badge } from "./ui/badge";
 import { defaultStoreId } from "@/lib/data";
-
+import { getAuth, signOut } from "firebase/auth";
 
 interface SiteHeaderProps {
   toggleSidebar: () => void;
@@ -39,15 +39,25 @@ export function SiteHeader({ toggleSidebar, isSidebarExpanded }: SiteHeaderProps
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
-  const { settings, activeCurrency, toggleDisplayCurrency, activeStoreId, userProfile, isLoadingSettings } = useSettings();
+  const { settings, activeCurrency, toggleDisplayCurrency, activeStoreId, userProfile, firebaseUser, isLoadingSettings } = useSettings();
   
   const handleSignOut = async () => {
-    toast({
-        title: "Sesión Cerrada",
-        description: "Has cerrado sesión correctamente.",
-    });
-    // Redirect to the public catalog page to simulate logout
-    window.location.href = `/catalog?storeId=${defaultStoreId}`;
+    const auth = getAuth();
+    try {
+      await signOut(auth);
+      toast({
+          title: "Sesión Cerrada",
+          description: "Has cerrado sesión correctamente.",
+      });
+      // Redirect to the public catalog page after sign-out
+      router.push(`/catalog?storeId=${defaultStoreId}`);
+    } catch (error) {
+       toast({
+          variant: "destructive",
+          title: "Error al cerrar sesión",
+          description: "Hubo un problema al intentar cerrar tu sesión.",
+      });
+    }
   }
 
   const inactiveSymbol = activeCurrency === 'primary' 
@@ -132,15 +142,15 @@ export function SiteHeader({ toggleSidebar, isSidebarExpanded }: SiteHeaderProps
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
-                    {userProfile?.photoURL && !isLoadingSettings ? (
-                        <Image src={userProfile.photoURL} width={32} height={32} alt="User" className="rounded-full" />
+                    {firebaseUser?.photoURL && !isLoadingSettings ? (
+                        <Image src={firebaseUser.photoURL} width={32} height={32} alt="User" className="rounded-full" />
                     ) : (
                         <UserCircle className="h-6 w-6" />
                     )}
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-                <DropdownMenuLabel>{userProfile?.displayName || userProfile?.email || 'Mi Cuenta'}</DropdownMenuLabel>
+                <DropdownMenuLabel>{userProfile?.displayName || firebaseUser?.email || 'Mi Cuenta'}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={handleSignOut}>
                     <LogOut className="mr-2 h-4 w-4" />

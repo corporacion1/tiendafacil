@@ -6,7 +6,13 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import type { CurrencyRate, Settings, UserProfile } from "@/lib/types";
 import { defaultStore, defaultStoreId, mockCurrencyRates, defaultUsers } from '@/lib/data';
-import type { User } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, type User } from 'firebase/auth';
+import { initializeApp, getApps } from 'firebase/app';
+import { firebaseConfig } from '@/firebase/config';
+
+// Initialize Firebase
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const auth = getAuth(app);
 
 type DisplayCurrency = 'primary' | 'secondary';
 
@@ -23,7 +29,7 @@ interface SettingsContextType {
   switchStore: (storeId: string) => void;
   isLoadingSettings: boolean;
   userProfile: UserProfile | null;
-  firebaseUser: User | null; // Keep for type consistency, but will be null
+  firebaseUser: User | null;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -49,45 +55,59 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const [settings, setLocalSettings] = useState<Settings | null>(defaultStore);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
   const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>(mockCurrencyRates);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
-  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
-    
-    // --- LOCAL DATA SIMULATION ---
-    // Simulate loading user and settings
-    setIsLoadingSettings(true);
-    
-    // Use the superAdmin from mock data as the default logged-in user
-    const superAdminProfile = defaultUsers.find(u => u.role === 'superAdmin');
-    if (superAdminProfile) {
-        setUserProfile(superAdminProfile);
-    }
 
     const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY) || defaultStoreId;
     setActiveStoreId(storedStoreId);
-
+    
     const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY);
     if (storedCurrencyPref === 'secondary') {
       setDisplayCurrency('secondary');
     }
 
-    // Simulate loading time
-    setTimeout(() => {
-        setIsLoadingSettings(false);
-    }, 500);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setFirebaseUser(user);
+      if (user) {
+        // Find the matching user profile from our mock data
+        const profile = defaultUsers.find(u => u.uid === user.uid || u.email === user.email);
+        if (profile) {
+          setUserProfile(profile);
+        } else {
+          // Fallback for demo: if a Google user signs in but isn't in defaultUsers, assign a basic role.
+          const basicProfile: UserProfile = {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            photoURL: user.photoURL,
+            role: 'user', // Assign a default role
+            status: 'active',
+            createdAt: new Date().toISOString(),
+          };
+          setUserProfile(basicProfile);
+        }
+      } else {
+        setUserProfile(null);
+      }
+      setIsLoading(false);
+    });
 
-    // Redirect if not logged in and not on a public page
-    if (!superAdminProfile && !pathname.startsWith('/catalog') && !pathname.startsWith('/login')) {
-        router.push(`/catalog?storeId=${defaultStoreId}`);
-    }
+    return () => unsubscribe();
+  }, []);
 
-  }, [router, pathname]);
-
+  useEffect(() => {
+      const isPublicPath = pathname.startsWith('/catalog') || pathname === '/login' || pathname === '/';
+      if (!isLoading && !firebaseUser && !isPublicPath) {
+          router.push(`/catalog?storeId=${defaultStoreId}`);
+      }
+  }, [isLoading, firebaseUser, pathname, router]);
 
   const handleSetSettings = useCallback((newSettings: Partial<Settings>) => {
     setLocalSettings(prev => ({ ...(prev || defaultStore), ...newSettings }));
@@ -121,7 +141,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   
   const isPublicPath = pathname.startsWith('/catalog') || pathname === '/' || pathname.startsWith('/login');
   
-  if (isLoadingSettings && !isPublicPath && isClient) {
+  if (isLoading && !isPublicPath && isClient) {
       return <AppLoadingScreen />;
   }
 
@@ -136,9 +156,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     currencyRates,
     activeStoreId,
     switchStore,
-    isLoadingSettings,
+    isLoadingSettings: isLoading,
     userProfile,
-    firebaseUser: null // Firebase user is now always null
+    firebaseUser,
   };
 
   return (
