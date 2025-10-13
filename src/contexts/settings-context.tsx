@@ -1,10 +1,11 @@
 
+
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
-import type { CurrencyRate, Settings, UserProfile, Product, Sale, Purchase, Customer, Supplier, Unit, Family, Warehouse, Ad, CashSession } from "@/lib/types";
+import type { CurrencyRate, Settings, UserProfile, Product, Sale, Purchase, Customer, Supplier, Unit, Family, Warehouse, Ad, CashSession, PendingOrder } from "@/lib/types";
 import { 
     defaultStore as initialStore, 
     defaultUsers as initialUsers,
@@ -19,6 +20,7 @@ import {
     initialWarehouses,
     mockAds as initialAds,
     mockCashSessions as initialCashSessions,
+    pendingOrdersState as initialPendingOrders,
     defaultStoreId
 } from '@/lib/data';
 import { useUser } from '@/firebase';
@@ -57,6 +59,8 @@ interface SettingsContextType {
   setAds: React.Dispatch<React.SetStateAction<Ad[]>>;
   cashSessions: CashSession[];
   setCashSessions: React.Dispatch<React.SetStateAction<CashSession[]>>;
+  pendingOrders: PendingOrder[];
+  setPendingOrders: React.Dispatch<React.SetStateAction<PendingOrder[]>>;
   
   activeStoreId: string;
   switchStore: (storeId: string) => void;
@@ -104,6 +108,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const [warehouses, setWarehouses] = useState<Warehouse[]>(initialWarehouses);
   const [ads, setAds] = useState<Ad[]>(initialAds);
   const [cashSessions, setCashSessions] = useState<CashSession[]>(initialCashSessions);
+  const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>(initialPendingOrders);
   const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>(initialCurrencyRates);
   
   // UI states
@@ -209,6 +214,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     setAds,
     cashSessions,
     setCashSessions,
+    pendingOrders,
+    setPendingOrders,
     activeStoreId,
     switchStore,
     isLoadingSettings: isLoading,

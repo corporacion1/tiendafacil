@@ -215,7 +215,7 @@ export default function CatalogPage() {
             }
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [sortedAndFilteredProducts, searchTerm]);
+    }, [sortedAndFilteredProducts]);
 
     useEffect(() => {
         setLastAutoOpenedSku(null);
