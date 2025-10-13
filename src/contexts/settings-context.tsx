@@ -4,23 +4,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
-import type { CurrencyRate, Settings, UserProfile, Product, Sale, Purchase, Customer, Supplier, Unit, Family, Warehouse } from '@/lib/types';
+import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
 import { useUser as useAuthUser } from '@/firebase/auth/use-user';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, query, orderBy, limit } from 'firebase/firestore';
-import { 
-    defaultStore, 
-    defaultStoreId, 
-    mockProducts, 
-    mockSales, 
-    mockPurchases, 
-    defaultCustomers, 
-    defaultSuppliers, 
-    initialUnits, 
-    initialFamilies, 
-    initialWarehouses,
-    mockCurrencyRates
-} from '@/lib/data';
+import { collection, doc, query, where, orderBy, limit } from 'firebase/firestore';
+import { defaultStore, defaultStoreId } from '@/lib/data';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { FirstTimeSetupModal } from '@/components/first-time-setup-modal';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -40,15 +28,6 @@ interface SettingsContextType {
   switchStore: (storeId: string) => void;
   isLoadingSettings: boolean;
   userProfile: UserProfile | null;
-  // Live data hooks replaced by context-provided data
-  products: Product[];
-  sales: Sale[];
-  purchases: Purchase[];
-  customers: Customer[];
-  suppliers: Supplier[];
-  units: Unit[];
-  families: Family[];
-  warehouses: Warehouse[];
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -81,17 +60,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   
   const [isReady, setIsReady] = useState(false);
 
-  // --- LOCAL DEMO DATA STATE ---
-  const [demoProducts, setDemoProducts] = useState<Product[]>([]);
-  const [demoSales, setDemoSales] = useState<Sale[]>([]);
-  const [demoPurchases, setDemoPurchases] = useState<Purchase[]>([]);
-  const [demoCustomers, setDemoCustomers] = useState<Customer[]>([]);
-  const [demoSuppliers, setDemoSuppliers] = useState<Supplier[]>([]);
-  const [demoUnits, setDemoUnits] = useState<Unit[]>([]);
-  const [demoFamilies, setDemoFamilies] = useState<Family[]>([]);
-  const [demoWarehouses, setDemoWarehouses] = useState<Warehouse[]>([]);
-  const [demoRates, setDemoRates] = useState<CurrencyRate[]>([]);
-  
   useEffect(() => {
     try {
       const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY);
@@ -106,18 +74,18 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [userProfile]);
   
   const storeDocRef = useMemoFirebase(() => {
-    // Only fetch if NOT in demo mode
-    if (firestore && activeStoreId && !isAuthLoading && userProfile && !settings?.useDemoData) {
+    // CRITICAL: Only attempt to fetch if we are NOT in the setup flow.
+    if (firestore && activeStoreId && !isAuthLoading && userProfile) {
       return doc(firestore, 'stores', activeStoreId);
     }
     return null;
-  }, [firestore, activeStoreId, isAuthLoading, userProfile, settings?.useDemoData]);
+  }, [firestore, activeStoreId, isAuthLoading, userProfile]);
 
   const { data: storeSettings, isLoading: isLoadingStoreSettings } = useDoc<Settings>(storeDocRef);
 
   const ratesCollectionRef = useMemoFirebase(() => {
-    // Only fetch if NOT in demo mode
-    if (firestore && activeStoreId && userProfile && !settings?.useDemoData) {
+    // CRITICAL: Only create the query if userProfile exists, avoiding reads for new users.
+    if (firestore && activeStoreId && userProfile) {
         return query(
           collection(firestore, 'stores', activeStoreId, 'currencyRates'), 
           orderBy('date', 'desc'), 
@@ -125,13 +93,14 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         );
     }
     return null;
-  }, [firestore, activeStoreId, userProfile, settings?.useDemoData]);
+  }, [firestore, activeStoreId, userProfile]);
 
-  const { data: firestoreRates } = useCollection<CurrencyRate>(ratesCollectionRef);
-
+  const { data: currencyRates } = useCollection<CurrencyRate>(ratesCollectionRef);
+  
   useEffect(() => {
     if (isAuthLoading) return;
 
+    // If setup is needed, the app is "ready" to show the modal.
     if (needsProfileCreation) {
       setIsReady(true);
       return;
@@ -144,39 +113,16 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       return;
     }
 
-    // Logic to decide between Firestore data and demo data
     if (storeSettings) {
-      if(storeSettings.useDemoData) {
-        setSettingsState(defaultStore);
-        setDemoProducts(mockProducts.map(p => ({ ...p, storeId: activeStoreId, createdAt: new Date().toISOString() })));
-        setDemoSales(mockSales.map(s => ({ ...s, storeId: activeStoreId })));
-        setDemoPurchases(mockPurchases.map(p => ({ ...p, storeId: activeStoreId })));
-        setDemoCustomers(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
-        setDemoSuppliers(defaultSuppliers.map(s => ({...s, storeId: activeStoreId})));
-        setDemoUnits(initialUnits.map(u => ({...u, storeId: activeStoreId})));
-        setDemoFamilies(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
-        setDemoWarehouses(initialWarehouses.map(w => ({...w, storeId: activeStoreId})));
-        setDemoRates(mockCurrencyRates);
-      } else {
-        setSettingsState(storeSettings);
-      }
+      setSettingsState(storeSettings);
       setIsReady(true);
     } else if (!isLoadingStoreSettings && !storeSettings && userProfile) {
-      // Fallback to default demo store if no settings are found
+      // If no settings are found for an existing user, fallback to default
       setSettingsState(defaultStore);
-      setDemoProducts(mockProducts.map(p => ({ ...p, storeId: activeStoreId, createdAt: new Date().toISOString() })));
-      setDemoSales(mockSales.map(s => ({ ...s, storeId: activeStoreId })));
-      setDemoPurchases(mockPurchases.map(p => ({ ...p, storeId: activeStoreId })));
-      setDemoCustomers(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
-      setDemoSuppliers(defaultSuppliers.map(s => ({...s, storeId: activeStoreId})));
-      setDemoUnits(initialUnits.map(u => ({...u, storeId: activeStoreId})));
-      setDemoFamilies(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
-      setDemoWarehouses(initialWarehouses.map(w => ({...w, storeId: activeStoreId})));
-      setDemoRates(mockCurrencyRates);
       setIsReady(true);
     }
 
-  }, [isAuthLoading, needsProfileCreation, userProfile, storeSettings, isLoadingStoreSettings, pathname, router, activeStoreId]);
+  }, [isAuthLoading, needsProfileCreation, userProfile, storeSettings, isLoadingStoreSettings, pathname, router]);
 
   
   const handleSetSettings = useCallback((newSettings: Partial<Settings>) => {
@@ -211,26 +157,12 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       console.error("Could not access localStorage to set currency preference", error);
     }
   };
-  
-  const useDemo = settings?.useDemoData ?? true;
 
-  const currencyRates = useDemo ? demoRates : (firestoreRates || []);
   const activeCurrency = displayCurrency;
   const activeSymbol = activeCurrency === 'primary' ? (settings?.primaryCurrencySymbol || '$') : (settings?.secondaryCurrencySymbol || 'Bs.');
   const latestRate = (currencyRates && currencyRates.length > 0) ? currencyRates[0].rate : 1;
   const activeRate = activeCurrency === 'primary' ? 1 : (latestRate > 0 ? latestRate : 1);
   
-  // Conditionally use live data or demo data
-  const { data: liveProducts } = useCollection<Product>(useMemoFirebase(() => !useDemo && firestore ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId, useDemo]));
-  const { data: liveSales } = useCollection<Sale>(useMemoFirebase(() => !useDemo && firestore ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId, useDemo]));
-  const { data: livePurchases } = useCollection<Purchase>(useMemoFirebase(() => !useDemo && firestore ? query(collection(firestore, 'purchases'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId, useDemo]));
-  const { data: liveCustomers } = useCollection<Customer>(useMemoFirebase(() => !useDemo && firestore ? query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId, useDemo]));
-  const { data: liveSuppliers } = useCollection<Supplier>(useMemoFirebase(() => !useDemo && firestore ? query(collection(firestore, 'suppliers'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId, useDemo]));
-  const { data: liveUnits } = useCollection<Unit>(useMemoFirebase(() => !useDemo && firestore ? query(collection(firestore, 'units'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId, useDemo]));
-  const { data: liveFamilies } = useCollection<Family>(useMemoFirebase(() => !useDemo && firestore ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId, useDemo]));
-  const { data: liveWarehouses } = useCollection<Warehouse>(useMemoFirebase(() => !useDemo && firestore ? query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId, useDemo]));
-
-
   if (needsProfileCreation) {
     return <FirstTimeSetupModal />;
   }
@@ -249,19 +181,11 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     activeCurrency, 
     activeSymbol, 
     activeRate, 
-    currencyRates,
+    currencyRates: currencyRates || [],
     activeStoreId,
     switchStore,
     isLoadingSettings: !isReady,
     userProfile,
-    products: useDemo ? demoProducts : (liveProducts || []),
-    sales: useDemo ? demoSales : (liveSales || []),
-    purchases: useDemo ? demoPurchases : (livePurchases || []),
-    customers: useDemo ? demoCustomers : (liveCustomers || []),
-    suppliers: useDemo ? demoSuppliers : (liveSuppliers || []),
-    units: useDemo ? demoUnits : (liveUnits || []),
-    families: useDemo ? demoFamilies : (liveFamilies || []),
-    warehouses: useDemo ? demoWarehouses : (liveWarehouses || []),
   };
 
   return (
