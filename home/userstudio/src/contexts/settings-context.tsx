@@ -83,13 +83,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const { data: storeSettings, isLoading: isLoadingStoreSettings } = useDoc<Settings>(storeDocRef);
 
-  const ratesCollectionRef = useMemoFirebase(() => {
-    if (firestore && activeStoreId && !isAuthLoading && !needsProfileCreation) {
-      return collection(firestore, 'stores', activeStoreId, 'currencyRates');
-    }
-    return null;
-  }, [firestore, activeStoreId, isAuthLoading, needsProfileCreation]);
-  const { data: currencyRates } = useCollection<CurrencyRate>(ratesCollectionRef);
+  // Temporarily disable currencyRates fetching to prevent initial load error
+  const currencyRates: CurrencyRate[] = []; // Fallback to empty array
   
   useEffect(() => {
     if (isAuthLoading) return;
@@ -102,7 +97,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     const isPublicPath = pathname.startsWith('/catalog') || pathname === '/';
     if (!userProfile && !isPublicPath) {
       router.replace('/catalog');
-      setIsReady(true); // Ready to show public page or redirect
+      setIsReady(true);
       return;
     }
 
@@ -110,7 +105,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       setSettingsState(storeSettings);
       setIsReady(true);
     } else if (!isLoadingStoreSettings && !storeSettings) {
-      // If done loading but no settings found, use default (e.g., after profile creation but before reload)
       setSettingsState(defaultStore);
       setIsReady(true);
     }
