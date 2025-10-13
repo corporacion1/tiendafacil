@@ -14,19 +14,30 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import type { Sale, Payment } from "@/lib/types";
+import type { Sale, Payment, Product } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
-import { paymentMethods, mockSales } from "@/lib/data";
+import { paymentMethods } from "@/lib/data";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection, doc, updateDoc, query, where } from "firebase/firestore";
 
 export default function CreditsPage() {
     const { toast } = useToast();
-    const { settings, activeSymbol, activeRate, activeStoreId } = useSettings();
-    const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
+    const { settings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings } = useSettings();
+    const firestore = useFirestore();
 
+    const salesQuery = useMemoFirebase(() => {
+        if (!firestore || !activeStoreId) return null;
+        return query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId));
+    }, [firestore, activeStoreId]);
+
+    const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
+    
     const [isClient, setIsClient] = useState(false);
     useEffect(() => { setIsClient(true) }, []);
+
+    const isLoading = isLoadingSettings || isLoadingSales;
 
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
@@ -39,7 +50,7 @@ export default function CreditsPage() {
 
     const [searchTerm, setSearchTerm] = useState("");
     
-    const creditSales = useMemo(() => sales.filter(s => s.transactionType === 'credito'), [sales]);
+    const creditSales = useMemo(() => (sales || []).filter(s => s.transactionType === 'credito'), [sales]);
     
     const totalNewPayment = useMemo(() => payments.reduce((sum, p) => sum + p.amount, 0), [payments]);
     const remainingBalance = useMemo(() => selectedSale ? selectedSale.total - (selectedSale.paidAmount || 0) : 0, [selectedSale]);
@@ -54,7 +65,7 @@ export default function CreditsPage() {
     }, [paymentDialogOpen, balanceAfterNewPayments]);
     
     const isReferenceDuplicate = (reference: string, method: string) => {
-        if (!reference || !method) return false;
+        if (!reference || !method || !sales) return false;
         if (payments.some(p => p.method === method && p.reference === reference)) return true;
         for (const sale of sales) {
             if (sale.payments && sale.payments.some(p => p.method === method && p.reference === reference)) return true;
@@ -100,8 +111,8 @@ export default function CreditsPage() {
     }
 
     const handleSavePayments = async () => {
-        if (!selectedSale || payments.length === 0) {
-            toast({ variant: "destructive", title: "No hay pagos que guardar." }); return;
+        if (!selectedSale || payments.length === 0 || !firestore) {
+            toast({ variant: "destructive", title: "No hay pagos que guardar o falta conexión." }); return;
         }
 
         const newPayments: Payment[] = payments.map((p, i) => ({
@@ -110,26 +121,21 @@ export default function CreditsPage() {
             date: new Date().toISOString(),
         }));
         
-        const updatedPaidAmount = (selectedSale.paidAmount || 0) + totalNewPayment;
+        const updatedPaidAmount = selectedSale.paidAmount + totalNewPayment;
         const newStatus = updatedPaidAmount >= selectedSale.total ? 'paid' : 'unpaid';
 
-        setSales(prevSales => prevSales.map(sale => {
-            if (sale.id === selectedSale.id) {
-                return {
-                    ...sale,
-                    payments: [...(sale.payments || []), ...newPayments],
-                    paidAmount: updatedPaidAmount,
-                    status: newStatus,
-                };
-            }
-            return sale;
-        }));
+        const saleDocRef = doc(firestore, 'sales', selectedSale.id);
+        await updateDoc(saleDocRef, {
+            payments: [...(selectedSale.payments || []), ...newPayments],
+            paidAmount: updatedPaidAmount,
+            status: newStatus,
+        });
 
         setSelectedSale(null);
         setPaymentDialogOpen(false);
         resetPaymentForm();
         
-        toast({ title: "Abono Registrado (DEMO)", description: `Se agregaron ${payments.length} pago(s) a la venta ${selectedSale.id}.`});
+        toast({ title: "Abono Registrado", description: `Se agregaron ${payments.length} pago(s) a la venta ${selectedSale.id}.`});
     };
     
     const filteredSales = useMemo(() => {
@@ -160,8 +166,9 @@ export default function CreditsPage() {
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {salesToRender.length === 0 && <TableRow><TableCell colSpan={8} className="text-center">No hay ventas a crédito que coincidan.</TableCell></TableRow>}
-                {salesToRender.map((sale) => {
+                {isLoading && <TableRow><TableCell colSpan={8} className="text-center">Cargando créditos...</TableCell></TableRow>}
+                {!isLoading && salesToRender.length === 0 && <TableRow><TableCell colSpan={8} className="text-center">No hay ventas a crédito que coincidan.</TableCell></TableRow>}
+                {!isLoading && salesToRender.map((sale) => {
                     const balance = sale.total - (sale.paidAmount || 0);
                     return (
                         <TableRow key={sale.id}>
@@ -422,5 +429,3 @@ export default function CreditsPage() {
         </>
     );
 }
-
-    

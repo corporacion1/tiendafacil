@@ -6,28 +6,39 @@ import { useToast } from "@/hooks/use-toast";
 import { ProductForm } from "@/components/product-form";
 import type { Product } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
+import { useFirestore, addDocumentNonBlocking } from "@/firebase";
+import { collection } from "firebase/firestore";
 
 export default function ProductsPage() {
   const { toast } = useToast();
   const { activeStoreId } = useSettings();
+  const firestore = useFirestore();
 
   function onSubmit(data: Omit<Product, 'id' | 'storeId' | 'createdAt'>) {
-    // In a real app with a backend, you would send this data to your server/database
-    // For this demo, we'll just log it and show a success message.
+    if (!firestore) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo conectar a la base de datos.",
+      });
+      return false;
+    }
+
+    const productsCollectionRef = collection(firestore, 'products');
+    const newProduct: Omit<Product, 'id'> = {
+      ...data,
+      storeId: activeStoreId,
+      createdAt: new Date().toISOString(),
+    };
     
-    console.log("New product data (local demo):", {
-        ...data,
-        storeId: activeStoreId,
-        createdAt: new Date().toISOString(),
-    });
+    addDocumentNonBlocking(productsCollectionRef, newProduct);
     
     toast({
-      title: "Producto Creado (DEMO)",
-      description: `El producto "${data.name}" se ha creado localmente. Los cambios se perderán al recargar.`,
+      title: "Producto Creado",
+      description: `El producto "${data.name}" ha sido creado exitosamente.`,
     });
     
-    // Returning true tells the form to reset itself.
-    return true;
+    return true; // Indicates the form should be reset
   }
   
   return (
@@ -44,5 +55,3 @@ export default function ProductsPage() {
     </Card>
   );
 }
-
-    

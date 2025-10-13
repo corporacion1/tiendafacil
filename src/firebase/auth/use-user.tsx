@@ -12,6 +12,7 @@ export function useUser() {
   const firestore = useFirestore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [needsProfileCreation, setNeedsProfileCreation] = useState(false);
 
   useEffect(() => {
     if (isAuthLoading) {
@@ -21,20 +22,32 @@ export function useUser() {
     if (!authUser) {
       setProfile(null);
       setIsLoading(false);
+      setNeedsProfileCreation(false);
       return;
     }
 
-    // This hook now only handles loading the profile if it exists.
-    // It no longer signals for profile creation.
-    // That logic has been removed from the app.
-    setProfile(null);
-    setIsLoading(false);
+    const userDocRef = doc(firestore, 'users', authUser.uid);
+    const unsubscribe = onSnapshot(userDocRef, (docSnapshot) => {
+      if (docSnapshot.exists()) {
+        setProfile(docSnapshot.data() as UserProfile);
+        setNeedsProfileCreation(false);
+      } else {
+        setProfile(null);
+        setNeedsProfileCreation(true);
+      }
+      setIsLoading(false);
+    }, (error) => {
+      console.error("useUser - Firestore error:", error);
+      setIsLoading(false);
+    });
 
+    return () => unsubscribe();
   }, [authUser, isAuthLoading, firestore]);
 
   return {
     user: profile,
     isUserLoading: isLoading,
     userError: userError,
+    needsProfileCreation,
   };
 }

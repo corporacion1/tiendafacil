@@ -12,10 +12,11 @@ import {
   Megaphone,
   Users,
 } from 'lucide-react';
+import { defaultStoreId } from './data';
 
 export const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
-  { href: '/catalog', label: 'Catálogo', icon: LayoutGrid },
+  { href: `/catalog?storeId=${defaultStoreId}`, label: 'Catálogo', icon: LayoutGrid },
   { href: "/products", label: "Productos", icon: PackagePlus },
   { href: "/inventory", label: "Inventario", icon: Boxes },
   { href: "/purchases", label: "Compras", icon: Store },
@@ -34,5 +35,3 @@ export const settingsNav = {
   label: 'Configuración',
   icon: Settings,
 };
-
-    

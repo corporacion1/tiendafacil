@@ -13,11 +13,14 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import type { Ad } from "@/lib/types";
+import type { Ad, UserProfile } from "@/lib/types";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { AdForm } from "@/components/ad-form";
 import { format, isPast } from "date-fns";
-import { mockAds } from "@/lib/data";
+import { useRouter } from "next/navigation";
+import { useCollection, useFirestore } from "@/firebase";
+import { collection, doc } from "firebase/firestore";
+import { addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 const AdRow = ({ ad, handleEdit, setAdToDelete }: {
     ad: Ad;
@@ -108,9 +111,12 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
 
 export default function AdsPage() {
   const { toast } = useToast();
-  const [ads, setAds] = useState<Ad[]>(mockAds.map(ad => ({...ad, createdAt: new Date().toISOString() })));
+  const firestore = useFirestore();
+  const adsCollectionRef = useMemo(() => firestore ? collection(firestore, 'ads') : null, [firestore]);
+  const { data: ads, isLoading } = useCollection<Ad>(adsCollectionRef);
 
   const sortedAds = useMemo(() => {
+    if (!ads) return [];
     return [...ads].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }, [ads]);
 
@@ -124,31 +130,32 @@ export default function AdsPage() {
   };
   
   function handleUpdateAd(data: Omit<Ad, 'id' | 'views' | 'createdAt'> & { id?: string }) {
-    if (!data.id) return false;
+    if (!data.id || !firestore) return false;
     
-    setAds(prevAds => prevAds.map(ad => ad.id === data.id ? { ...ad, ...data } : ad));
+    const docRef = doc(firestore, 'ads', data.id);
+    setDocumentNonBlocking(docRef, data, { merge: true });
 
     toast({
-        title: "Anuncio Actualizado (DEMO)",
-        description: `El anuncio "${data.name}" ha sido actualizado localmente.`,
+        title: "Anuncio Actualizado",
+        description: `El anuncio "${data.name}" ha sido actualizado.`,
     });
     setAdToEdit(null);
     return true;
   }
 
   function handleCreateAd(data: Omit<Ad, 'id' | 'views' | 'createdAt'>) {
-    const newAd: Ad = {
+    if (!adsCollectionRef) return false;
+    const newAd: Omit<Ad, 'id'> = {
       ...data,
-      id: `ad-${Date.now()}`,
       views: 0,
       createdAt: new Date().toISOString(),
     };
 
-    setAds(prevAds => [newAd, ...prevAds]);
+    addDocumentNonBlocking(adsCollectionRef, newAd);
     
     toast({
-      title: "Anuncio Creado (DEMO)",
-      description: `El anuncio "${data.name}" ha sido creado localmente.`,
+      title: "Anuncio Creado",
+      description: `El anuncio "${data.name}" ha sido creado.`,
     });
     
     setIsCreateDialogOpen(false);
@@ -156,10 +163,13 @@ export default function AdsPage() {
   }
   
   const handleDelete = async (adId: string) => {
-    setAds(prevAds => prevAds.filter(ad => ad.id !== adId));
+    if (!firestore) return;
+    const docRef = doc(firestore, 'ads', adId);
+    deleteDocumentNonBlocking(docRef);
+
     toast({
-      title: "Anuncio Eliminado (DEMO)",
-      description: "El anuncio ha sido eliminado localmente.",
+      title: "Anuncio Eliminado",
+      description: "El anuncio ha sido eliminado.",
     });
 
     setAdToDelete(null);
@@ -218,36 +228,39 @@ export default function AdsPage() {
           </div>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="hidden w-[64px] sm:table-cell">
-                <span className="sr-only">Imagen</span>
-              </TableHead>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead className="hidden md:table-cell">Vence</TableHead>
-              <TableHead className="hidden md:table-cell">Vistas</TableHead>
-              <TableHead>
-                <span className="sr-only">Acciones</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredAds.map((ad) => (
-              <AdRow
-                key={ad.id}
-                ad={ad}
-                handleEdit={handleEdit}
-                setAdToDelete={setAdToDelete}
-              />
-            ))}
-          </TableBody>
-        </Table>
+        {isLoading && <p>Cargando anuncios...</p>}
+        {!isLoading && (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="hidden w-[64px] sm:table-cell">
+                  <span className="sr-only">Imagen</span>
+                </TableHead>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="hidden md:table-cell">Vence</TableHead>
+                <TableHead className="hidden md:table-cell">Vistas</TableHead>
+                <TableHead>
+                  <span className="sr-only">Acciones</span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredAds.map((ad) => (
+                <AdRow
+                  key={ad.id}
+                  ad={ad}
+                  handleEdit={handleEdit}
+                  setAdToDelete={setAdToDelete}
+                />
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </CardContent>
       <CardFooter>
         <div className="text-xs text-muted-foreground">
-          Mostrando <strong>1-{filteredAds.length}</strong> de <strong>{ads.length}</strong> anuncios
+          Mostrando <strong>1-{filteredAds.length}</strong> de <strong>{(ads || []).length}</strong> anuncios
         </div>
       </CardFooter>
     </Card>
@@ -291,5 +304,3 @@ export default function AdsPage() {
     </>
   );
 }
-
-    

@@ -1,12 +1,17 @@
 
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
 import { useUser as useAuthUser } from '@/firebase/auth/use-user';
-import { defaultStore, defaultStoreId, mockCurrencyRates, defaultUsers } from '@/lib/data';
+import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, doc, query, where, orderBy, limit } from 'firebase/firestore';
+import { defaultStore, defaultStoreId } from '@/lib/data';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { FirstTimeSetupModal } from '@/components/first-time-setup-modal';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type DisplayCurrency = 'primary' | 'secondary';
 
@@ -45,47 +50,86 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { toast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
+  const firestore = useFirestore();
 
-  const { user: authUserProfile, isUserLoading: isAuthLoading } = useAuthUser();
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const { user: userProfile, isUserLoading: isAuthLoading, needsProfileCreation } = useAuthUser();
   
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
-  const [settings, setSettingsState] = useState<Settings | null>(defaultStore);
-  const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>(mockCurrencyRates);
+  const [settings, setSettingsState] = useState<Settings | null>(null);
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-      if (isAuthLoading) return;
-      
-      // Simulate finding a user profile from local data
-      const localUserProfile = defaultUsers.find(u => u.uid === authUserProfile?.uid);
-      setUserProfile(localUserProfile || null);
-
-      try {
-        const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY);
-        if (localUserProfile?.role === 'superAdmin' && storedStoreId) {
-          setActiveStoreId(storedStoreId);
-        } else if (localUserProfile?.storeId) {
-          setActiveStoreId(localUserProfile.storeId);
-        }
-      } catch (error) {
-        console.error("Could not access localStorage for storeId", error);
+    try {
+      const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY);
+      if (userProfile?.role === 'superAdmin' && storedStoreId) {
+        setActiveStoreId(storedStoreId);
+      } else if (userProfile?.storeId) {
+        setActiveStoreId(userProfile.storeId);
       }
-      
-      const isPublicPath = pathname.startsWith('/catalog') || pathname === '/';
-      if (!localUserProfile && !isPublicPath) {
-          router.replace('/catalog');
-      }
+    } catch (error) {
+      console.error("Could not access localStorage for storeId", error);
+    }
+  }, [userProfile]);
+  
+  const storeDocRef = useMemoFirebase(() => {
+    if (firestore && activeStoreId && !isAuthLoading && userProfile) {
+      return doc(firestore, 'stores', activeStoreId);
+    }
+    return null;
+  }, [firestore, activeStoreId, isAuthLoading, userProfile]);
 
+  const { data: storeSettings, isLoading: isLoadingStoreSettings } = useDoc<Settings>(storeDocRef);
+
+  const ratesCollectionRef = useMemoFirebase(() => {
+    if (firestore && activeStoreId && userProfile) {
+        return query(
+          collection(firestore, 'stores', activeStoreId, 'currencyRates'), 
+          orderBy('date', 'desc'), 
+          limit(30)
+        );
+    }
+    return null;
+  }, [firestore, activeStoreId, userProfile]);
+
+  const { data: currencyRates } = useCollection<CurrencyRate>(ratesCollectionRef);
+  
+  useEffect(() => {
+    if (isAuthLoading) return;
+
+    if (needsProfileCreation) {
       setIsReady(true);
-  }, [isAuthLoading, authUserProfile, pathname, router]);
+      return;
+    }
+    
+    const isPublicPath = pathname.startsWith('/catalog') || pathname === '/';
+    if (!userProfile && !isPublicPath) {
+      router.replace(`/catalog?storeId=${defaultStoreId}`);
+      setIsReady(true);
+      return;
+    }
 
+    if (storeSettings) {
+      setSettingsState(storeSettings);
+      setIsReady(true);
+    } else if (!isLoadingStoreSettings && !storeSettings && userProfile) {
+      // This might happen if the store doc doesn't exist yet for a new user
+      // We can provide a default fallback, the FirstTimeSetupModal should handle creation
+      setSettingsState(defaultStore);
+      setIsReady(true);
+    }
+
+  }, [isAuthLoading, needsProfileCreation, userProfile, storeSettings, isLoadingStoreSettings, pathname, router]);
+
+  
   const handleSetSettings = useCallback((newSettings: Partial<Settings>) => {
-    setSettingsState(prev => prev ? {...prev, ...newSettings} : null);
-    toast({ title: "Configuración guardada (DEMO)", description: "Tus cambios se han guardado localmente." });
-  }, [toast]);
+    if (firestore && activeStoreId) {
+      const storeDocRef = doc(firestore, 'stores', activeStoreId);
+      setDocumentNonBlocking(storeDocRef, newSettings, { merge: true });
+      toast({ title: "Configuración guardada", description: "Tus cambios se están guardando en la nube." });
+    }
+  }, [firestore, activeStoreId, toast]);
 
   const switchStore = (storeId: string) => {
       if (userProfile?.role === 'superAdmin') {
@@ -117,6 +161,10 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const latestRate = (currencyRates && currencyRates.length > 0) ? currencyRates[0].rate : 1;
   const activeRate = activeCurrency === 'primary' ? 1 : (latestRate > 0 ? latestRate : 1);
   
+  if (needsProfileCreation) {
+    return <FirstTimeSetupModal />;
+  }
+
   const isPublicPath = pathname.startsWith('/catalog') || pathname === '/';
 
   if (!isReady && !isPublicPath) {
@@ -131,7 +179,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     activeCurrency, 
     activeSymbol, 
     activeRate, 
-    currencyRates,
+    currencyRates: currencyRates || [],
     activeStoreId,
     switchStore,
     isLoadingSettings: !isReady,

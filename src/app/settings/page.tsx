@@ -116,7 +116,7 @@ function ChangePinDialog() {
 
 export default function SettingsPage() {
     const { hasPin, setPin, removePin, checkPin } = useSecurity();
-    const { settings, setSettings: updateSettings, currencyRates, userProfile, activeStoreId } = useSettings();
+    const { settings, setSettings, currencyRates, userProfile, activeStoreId } = useSettings();
     const firestore = useFirestore();
     
     const [localSettings, setLocalSettings] = useState<Partial<Settings>>(settings || {});
@@ -131,9 +131,10 @@ export default function SettingsPage() {
     
     const { data: products } = useCollection<Product>(productsQuery);
     const { data: sales } = useCollection<Sale>(salesQuery);
-    const { data: localUnits } = useCollection<Unit>(unitsQuery);
-    const { data: localFamilies } = useCollection<Family>(familiesQuery);
-    const { data: localWarehouses } = useCollection<Warehouse>(warehousesQuery);
+    const { data: localUnits, isLoading: isLoadingUnits } = useCollection<Unit>(unitsQuery);
+    const { data: localFamilies, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
+    const { data: localWarehouses, isLoading: isLoadingWarehouses } = useCollection<Warehouse>(warehousesQuery);
+    // --- End Firestore Data ---
     
     const [isClient, setIsClient] = useState(false);
 
@@ -388,7 +389,7 @@ export default function SettingsPage() {
         const currentCount = sales?.length || 0;
         return (currentCount + 1).toString().padStart(3, '0');
     }, [sales]);
-
+    
     const handleSeed = async () => {
         if (!checkPin(resetPin)) {
             toast({ variant: 'destructive', title: 'PIN incorrecto' });
@@ -427,6 +428,7 @@ export default function SettingsPage() {
             setResetPin('');
         }
     };
+
 
     return (
         <div className="grid gap-6">
@@ -694,19 +696,18 @@ export default function SettingsPage() {
                     )}
                 </CardContent>
             </Card>
-
              <Card className="border-destructive">
                 <CardHeader>
                     <CardTitle className="text-destructive">Zona de Peligro</CardTitle>
                     <CardDescription>
-                        Estas acciones son irreversibles. Ten mucho cuidado.
+                        Esta acción es irreversible y reiniciará tu tienda a los valores de demostración.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <AlertDialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
                         <AlertDialogTrigger asChild>
-                            <Button variant="destructive" disabled={userProfile?.role !== 'superAdmin'}>
-                                <Database className="mr-2" /> Reiniciar y Sembrar Datos de Demostración
+                            <Button variant="destructive" disabled={userProfile?.role !== 'superAdmin' && userProfile?.role !== 'admin'}>
+                                <Database className="mr-2" /> Reiniciar y Sembrar Datos
                             </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>

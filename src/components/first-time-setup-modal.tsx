@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -78,7 +79,7 @@ export function FirstTimeSetupModal() {
       status: 'active',
       storeRequest: storeRequest,
       createdAt: new Date().toISOString(),
-      storeId: role === 'superAdmin' ? defaultStoreId : undefined,
+      storeId: role === 'superAdmin' ? defaultStoreId : `store-${authUser.uid.slice(0, 8)}`,
     };
     
     try {
@@ -91,13 +92,13 @@ export function FirstTimeSetupModal() {
         description: 'Configurando tu tienda con datos de demostración...',
       });
 
-      // 2. Call the API route to seed the database
+      // 2. Call the API route to seed the database for the new store
       const response = await fetch('/api/seed', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ storeId: defaultStoreId }),
+        body: JSON.stringify({ storeId: newUserProfile.storeId }),
       });
 
       if (!response.ok) {
