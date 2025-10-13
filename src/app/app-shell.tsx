@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { cn } from '@/lib/utils';
@@ -16,6 +16,7 @@ import { useAuth } from '@/firebase';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { isLocked, lockApp } = useSecurity();
   const { userProfile, isLoadingSettings } = useSettings();
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
@@ -28,8 +29,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isPublicPage = pathname === '/' || pathname.startsWith('/catalog');
 
   useEffect(() => {
+    if (userProfile && userProfile.role === 'user' && !isPublicPage) {
+      router.replace('/catalog');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userProfile, pathname, router]);
+
+  useEffect(() => {
     // Lock the app on initial load of a private page or on navigation to it
-    if (!isPublicPage && userProfile) {
+    if (!isPublicPage && userProfile && userProfile.role !== 'user') {
       lockApp();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -40,6 +48,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen w-full flex-col">
         <main className="flex-1">{children}</main>
         <Footer />
+      </div>
+    );
+  }
+  
+  if (userProfile?.role === 'user') {
+     return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
       </div>
     );
   }

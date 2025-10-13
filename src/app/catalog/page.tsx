@@ -179,8 +179,12 @@ export default function CatalogPage() {
     }, [])
 
     useEffect(() => {
-        setLocalOrders(pendingOrdersContext || []);
-    }, [pendingOrdersContext]);
+        if (userProfile && userProfile.role === 'user' && userProfile.phone) {
+             setLocalOrders((pendingOrdersContext || []).filter(o => o.customerPhone === userProfile.phone));
+        } else {
+             setLocalOrders(pendingOrdersContext || []);
+        }
+    }, [pendingOrdersContext, userProfile]);
     
     const sortedAndFilteredProducts = useMemo(() => {
         if (!products) return [];

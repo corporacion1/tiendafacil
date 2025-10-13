@@ -30,6 +30,7 @@ export function useUser(): UseUser {
             email: firebaseUser.email,
             displayName: firebaseUser.displayName,
             photoURL: firebaseUser.photoURL,
+            phone: firebaseUser.phoneNumber,
             // These are defaults, they should be updated from your Firestore user profile
             role: 'user', 
             status: 'active',

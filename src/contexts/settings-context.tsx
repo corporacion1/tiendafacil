@@ -92,7 +92,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { toast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
-  const { user: firebaseUser, isLoading: isLoadingAuth } = useUser();
+  const { user: firebaseAuthUser, isLoading: isLoadingAuth } = useUser();
 
   // Main settings state
   const [settings, setLocalSettings] = useState<Settings | null>(initialStore);
@@ -132,20 +132,21 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   useEffect(() => {
     if (!isLoadingAuth) {
-      if (firebaseUser) {
-        const existingUser = users.find(u => u.uid === firebaseUser.uid);
+      if (firebaseAuthUser) {
+        const existingUser = users.find(u => u.uid === firebaseAuthUser.uid);
         if (existingUser) {
           setUserProfile(existingUser);
         } else {
-          // If the user does not exist, create a new profile with 'user' role and a store request
+          // If the user does not exist, create a new profile with 'user' role
           const newUserProfile: UserProfile = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: firebaseUser.displayName,
-            photoURL: firebaseUser.photoURL,
+            uid: firebaseAuthUser.uid,
+            email: firebaseAuthUser.email,
+            displayName: firebaseAuthUser.displayName,
+            photoURL: firebaseAuthUser.photoURL,
+            phone: firebaseAuthUser.phone,
             role: 'user', 
             status: 'active',
-            storeRequest: true, // Automatically flag as requesting a store
+            storeRequest: false,
             createdAt: new Date().toISOString(),
           };
           setUsers(prev => [...prev, newUserProfile]);
@@ -156,7 +157,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       }
       setIsLoading(false);
     }
-  }, [firebaseUser, isLoadingAuth, users]);
+  }, [firebaseAuthUser, isLoadingAuth, users]);
 
   const handleSetSettings = useCallback((newSettings: Partial<Settings>) => {
     setLocalSettings(prev => ({ ...(prev || initialStore), ...newSettings }));
@@ -228,7 +229,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     isLoadingSettings: isLoading,
     userProfile,
     setUserProfile: handleSetUserProfile,
-    firebaseUser,
+    firebaseUser: firebaseAuthUser,
   };
 
   return (
