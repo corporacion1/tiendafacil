@@ -659,7 +659,7 @@ export default function SettingsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Seguridad</CardTitle>
-                    <CardDescription>Administra el PIN de seguridad y el modo de datos de la aplicación.</CardDescription>
+                    <CardDescription>Administra el PIN de seguridad de la aplicación.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex items-center justify-between rounded-lg border p-4">
@@ -673,15 +673,6 @@ export default function SettingsPage() {
                             {hasPin && <ChangePinDialog />}
                             <Switch checked={hasPin} onCheckedChange={(checked) => { if (!checked) { handleRemovePin() } else if (!hasPin) { document.getElementById('new-pin-trigger')?.click() } }} />
                         </div>
-                    </div>
-                     <div className="flex items-center justify-between rounded-lg border p-4">
-                        <div>
-                            <p className="font-medium">Modo Demostración</p>
-                             <p className="text-sm text-muted-foreground">
-                                {localSettings.useDemoData ? 'Los datos de demostración se cargarán si la base de datos está vacía.' : 'La aplicación utilizará únicamente datos en vivo de Firestore.'}
-                            </p>
-                        </div>
-                         <Switch checked={!!localSettings.useDemoData} onCheckedChange={(checked) => handleSwitchChange('useDemoData', checked)} />
                     </div>
                     {!hasPin && (
                          <Dialog>
@@ -713,9 +704,6 @@ export default function SettingsPage() {
                         </Dialog>
                     )}
                 </CardContent>
-                 <CardFooter className="border-t px-6 py-4 flex justify-end">
-                    <Button onClick={saveAllSettings} disabled={!isDirty}>Guardar Cambios de Seguridad</Button>
-                </CardFooter>
             </Card>
             
             {isSuperAdmin && (
@@ -730,6 +718,18 @@ export default function SettingsPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
+                            <div>
+                                <p className="font-medium">Modo Demostración</p>
+                                <p className="text-sm text-muted-foreground">
+                                    {localSettings.useDemoData ? 'Los datos de demostración se cargarán si la base de datos está vacía.' : 'La aplicación utilizará únicamente datos en vivo de Firestore.'}
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <Switch checked={!!localSettings.useDemoData} onCheckedChange={(checked) => handleSwitchChange('useDemoData', checked)} />
+                                <Button onClick={saveAllSettings} disabled={!isDirty}>Guardar</Button>
+                            </div>
+                        </div>
                         <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
                             <div>
                                 <p className="font-medium">Poblar Base de Datos</p>
@@ -820,5 +820,6 @@ export default function SettingsPage() {
         </div>
     );
 }
+
 
 
