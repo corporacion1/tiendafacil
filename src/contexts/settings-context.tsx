@@ -7,7 +7,6 @@ import { useToast } from "@/hooks/use-toast";
 import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
 import { useUser as useAuthUser } from '@/firebase/auth/use-user';
 import { defaultStore, defaultStoreId, mockCurrencyRates, defaultUsers } from '@/lib/data';
-import { FirstTimeSetupModal } from '@/components/first-time-setup-modal';
 
 type DisplayCurrency = 'primary' | 'secondary';
 
@@ -47,7 +46,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const router = useRouter();
   const pathname = usePathname();
 
-  const { user: authUserProfile, isUserLoading: isAuthLoading, needsProfileCreation } = useAuthUser();
+  const { user: authUserProfile, isUserLoading: isAuthLoading } = useAuthUser();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   
   const [activeStoreId, setActiveStoreId] = useState<string>(defaultStoreId);
@@ -60,6 +59,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   useEffect(() => {
       if (isAuthLoading) return;
       
+      // Simulate finding a user profile from local data
       const localUserProfile = defaultUsers.find(u => u.uid === authUserProfile?.uid);
       setUserProfile(localUserProfile || null);
 
@@ -117,10 +117,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const latestRate = (currencyRates && currencyRates.length > 0) ? currencyRates[0].rate : 1;
   const activeRate = activeCurrency === 'primary' ? 1 : (latestRate > 0 ? latestRate : 1);
   
-  if (needsProfileCreation) {
-    return <FirstTimeSetupModal />;
-  }
-
   const isPublicPath = pathname.startsWith('/catalog') || pathname === '/';
 
   if (!isReady && !isPublicPath) {
@@ -156,5 +152,3 @@ export const useSettings = (): SettingsContextType => {
   }
   return context;
 };
-
-    
