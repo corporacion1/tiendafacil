@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useToast } from "@/hooks/use-toast";
@@ -6,7 +7,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Logo } from '@/components/logo';
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 import { SUPER_ADMIN_UID } from "@/lib/constants";
+import type { UserProfile } from "@/lib/types";
 
 const GoogleIcon = () => (
     <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -23,18 +27,44 @@ export function LoginModal({ children }: { children: React.ReactNode }) {
     const [isOpen, setIsOpen] = useState(false);
 
     const handleSignIn = async () => {
-        // Simulate a successful login by setting a value in localStorage
-        // In a real app, this would be the UID from Firebase Auth.
-        localStorage.setItem('tienda_facil_user_uid', SUPER_ADMIN_UID);
-        
-        toast({
-            title: "¡Bienvenido! (DEMO)",
-            description: "Has iniciado sesión correctamente.",
-        });
-        setIsOpen(false);
-        router.push('/dashboard');
-        // A full reload might be good to ensure all contexts are reset
-        setTimeout(() => window.location.reload(), 500);
+        const auth = getAuth();
+        const provider = new GoogleAuthProvider();
+
+        try {
+            const result = await signInWithPopup(auth, provider);
+            const user = result.user;
+            
+            const db = getFirestore();
+            const userDocRef = doc(db, "users", user.uid);
+            const userDoc = await getDoc(userDocRef);
+
+            if (!userDoc.exists()) {
+                const newUserProfile: UserProfile = {
+                    uid: user.uid,
+                    email: user.email,
+                    displayName: user.displayName,
+                    photoURL: user.photoURL,
+                    role: user.uid === SUPER_ADMIN_UID ? 'superAdmin' : 'user',
+                    status: 'active',
+                    createdAt: new Date().toISOString(),
+                };
+                 await setDoc(userDocRef, newUserProfile);
+            }
+            
+            toast({
+                title: "¡Bienvenido!",
+                description: "Has iniciado sesión correctamente.",
+            });
+            setIsOpen(false);
+            router.push('/dashboard');
+        } catch (error) {
+            console.error("Error during sign-in:", error);
+            toast({
+                variant: "destructive",
+                title: "Error de inicio de sesión",
+                description: "No se pudo iniciar sesión. Por favor, inténtalo de nuevo.",
+            });
+        }
     };
 
     return (
@@ -53,7 +83,7 @@ export function LoginModal({ children }: { children: React.ReactNode }) {
                 <div className="py-4">
                     <Button onClick={handleSignIn} className="w-full">
                         <GoogleIcon />
-                        Ingresar con Google (DEMO)
+                        Ingresar con Google
                     </Button>
                 </div>
             </DialogContent>
@@ -61,8 +91,6 @@ export function LoginModal({ children }: { children: React.ReactNode }) {
     );
 }
 
-// This might be useful if you want a dedicated login page.
-// For now, we are using the modal approach.
 export default function LoginPage() {
     return (
         <div className="flex items-center justify-center min-h-screen">

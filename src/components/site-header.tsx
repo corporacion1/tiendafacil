@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -26,6 +27,7 @@ import { useSettings } from "@/contexts/settings-context";
 import { Logo } from "./logo";
 import { navItems, settingsNav } from "@/lib/navigation";
 import { Badge } from "./ui/badge";
+import { getAuth, signOut } from "firebase/auth";
 
 interface SiteHeaderProps {
   toggleSidebar: () => void;
@@ -36,17 +38,26 @@ export function SiteHeader({ toggleSidebar, isSidebarExpanded }: SiteHeaderProps
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
-  const { settings, activeCurrency, toggleDisplayCurrency, activeStoreId, userProfile, isLoadingSettings } = useSettings();
+  const { settings, activeCurrency, toggleDisplayCurrency, activeStoreId, userProfile, firebaseUser, isLoadingSettings } = useSettings();
   
-  const handleSignOut = () => {
-    // Simulate sign out
-    localStorage.removeItem('tienda_facil_user_uid');
-    toast({
-        title: "Sesión Cerrada (DEMO)",
-        description: "Has cerrado sesión. Serás redirigido.",
-    });
-    // Use window.location to force a full reload and clear state
-    window.location.href = '/catalog';
+  const handleSignOut = async () => {
+    const auth = getAuth();
+    try {
+        await signOut(auth);
+        toast({
+            title: "Sesión Cerrada",
+            description: "Has cerrado sesión correctamente.",
+        });
+        // Full page reload to clear all state
+        window.location.href = `/catalog?storeId=${defaultStoreId}`;
+    } catch (error) {
+        console.error("Error signing out: ", error);
+        toast({
+            variant: "destructive",
+            title: "Error al cerrar sesión",
+            description: "No se pudo cerrar la sesión. Inténtalo de nuevo.",
+        });
+    }
   }
 
   const inactiveSymbol = activeCurrency === 'primary' 
@@ -131,8 +142,8 @@ export function SiteHeader({ toggleSidebar, isSidebarExpanded }: SiteHeaderProps
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
-                    {userProfile?.photoURL && !isLoadingSettings ? (
-                        <Image src={userProfile.photoURL} width={32} height={32} alt="User" className="rounded-full" />
+                    {firebaseUser?.photoURL && !isLoadingSettings ? (
+                        <Image src={firebaseUser.photoURL} width={32} height={32} alt="User" className="rounded-full" />
                     ) : (
                         <UserCircle className="h-6 w-6" />
                     )}

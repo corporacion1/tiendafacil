@@ -1,3 +1,4 @@
+
 "use client";
 
 import { ThemeProvider } from "@/components/theme-provider";
@@ -7,11 +8,11 @@ import { SecurityProvider } from '@/contexts/security-context';
 export function Providers({ children }: { children: React.ReactNode }) {
     return (
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            <SecurityProvider>
-                <SettingsProvider>
+            <SettingsProvider>
+                <SecurityProvider>
                     {children}
-                </SettingsProvider>
-            </SecurityProvider>
+                </SecurityProvider>
+            </SettingsProvider>
         </ThemeProvider>
     );
 }
