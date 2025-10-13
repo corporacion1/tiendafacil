@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import { useState, useMemo, useEffect, useCallback } from "react";
@@ -23,7 +22,7 @@ import { businessCategories } from "@/lib/data";
 import Image from "next/image";
 import { getDisplayImageUrl } from "@/lib/utils";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { collection, doc, writeBatch } from "firebase/firestore";
+import { collection, doc, query, where, writeBatch } from "firebase/firestore";
 import { setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { forceSeedDatabase, factoryReset } from "@/lib/seed";
 
@@ -124,12 +123,12 @@ export default function SettingsPage() {
     const [localSettings, setLocalSettings] = useState<Partial<Settings>>(settings || {});
     const [imageError, setImageError] = useState(false);
 
-    // --- Firestore Data ---
-    const productsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'products') : null, [firestore]);
-    const salesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'sales') : null, [firestore]);
-    const unitsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'units') : null, [firestore]);
-    const familiesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'families') : null, [firestore]);
-    const warehousesQuery = useMemoFirebase(() => firestore ? collection(firestore, 'warehouses') : null, [firestore]);
+    // --- Firestore Data (Correctly Filtered) ---
+    const productsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+    const salesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+    const unitsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'units'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+    const familiesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
+    const warehousesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'warehouses'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
     
     const { data: products } = useCollection<Product>(productsQuery);
     const { data: sales } = useCollection<Sale>(salesQuery);
@@ -157,9 +156,6 @@ export default function SettingsPage() {
     
     const [newRate, setNewRate] = useState<string>("");
 
-    const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
-    const [resetPin, setResetPin] = useState('');
-    const [resetConfirmationText, setResetConfirmationText] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
 
     const isSuperAdmin = userProfile?.role === 'superAdmin';
@@ -214,7 +210,7 @@ export default function SettingsPage() {
             date: new Date().toISOString(),
         };
 
-        if (firestore) {
+        if (firestore && activeStoreId) {
             const ratesColRef = collection(firestore, 'stores', activeStoreId, 'currencyRates');
             addDocumentNonBlocking(ratesColRef, newRateEntry);
             setNewRate("");
@@ -250,48 +246,6 @@ export default function SettingsPage() {
         }
     };
     
-    const handleFactoryReset = async () => {
-        if (!firestore) return;
-        if(hasPin && !checkPin(resetPin)) {
-             toast({ variant: "destructive", title: "PIN Incorrecto" });
-            return;
-        }
-        
-        if (resetConfirmationText !== 'RESTAURAR') {
-             toast({ variant: "destructive", title: "Confirmación incorrecta" });
-            return;
-        }
-
-        setIsProcessing(true);
-        toast({ title: 'Restaurando...', description: 'Por favor, espera.' });
-        
-        try {
-            await factoryReset(firestore, activeStoreId);
-            setIsResetConfirmOpen(false);
-            toast({ title: 'Restauración Completa', description: 'La página se recargará.' });
-            setTimeout(() => window.location.reload(), 1500);
-        } catch (error) {
-             toast({ variant: "destructive", title: "Error en la Restauración" });
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
-    const handleSeedDatabase = async () => {
-        if (!firestore) return;
-        setIsProcessing(true);
-        toast({ title: 'Poblando Base de Datos', description: 'Cargando datos de demostración...' });
-        try {
-            await forceSeedDatabase(firestore, activeStoreId);
-            toast({ title: '¡Éxito!', description: 'Datos cargados. La página se recargará.' });
-            setTimeout(() => window.location.reload(), 1500);
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Error', description: error.message });
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
     const renderManagementCard = (
         title: string,
         description: string,
@@ -303,7 +257,7 @@ export default function SettingsPage() {
         const [editingItem, setEditingItem] = useState<{id: string, name: string} | null>(null);
 
         const handleAddNewItem = () => {
-             if (newItemName.trim() === '' || !firestore) return;
+             if (newItemName.trim() === '' || !firestore || !activeStoreId) return;
             
             const newEntry = { name: newItemName.trim(), storeId: activeStoreId };
             const colRef = collection(firestore, collectionName);
@@ -705,120 +659,6 @@ export default function SettingsPage() {
                     )}
                 </CardContent>
             </Card>
-            
-            {isSuperAdmin && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-destructive">
-                            <AlertTriangle />
-                            Ajusts Avanzados del Sistema
-                        </CardTitle>
-                        <CardDescription>
-                        Acciones peligrosas que pueden resultar en la pérdida de datos.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
-                            <div>
-                                <p className="font-medium">Modo Demostración</p>
-                                <p className="text-sm text-muted-foreground">
-                                    {localSettings.useDemoData ? 'Los datos de demostración se cargarán si la base de datos está vacía.' : 'La aplicación utilizará únicamente datos en vivo de Firestore.'}
-                                </p>
-                            </div>
-                            <div className="flex items-center gap-4">
-                                <Switch checked={!!localSettings.useDemoData} onCheckedChange={(checked) => handleSwitchChange('useDemoData', checked)} />
-                                <Button onClick={saveAllSettings} disabled={!isDirty}>Guardar</Button>
-                            </div>
-                        </div>
-                        <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
-                            <div>
-                                <p className="font-medium">Poblar Base de Datos</p>
-                                <p className="text-sm text-muted-foreground">
-                                    Añade datos de demostración a la base de datos (productos, clientes, etc.). Sobreescribirá los datos existentes si tienen el mismo ID.
-                                </p>
-                            </div>
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="secondary" disabled={isProcessing}>
-                                        <Database className="mr-2 h-4 w-4" />
-                                        {isProcessing ? 'Procesando...' : 'Poblar con Datos Demo'}
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>¿Poblar la base de datos?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            Esta acción cargará los datos de demostración a la fuerza. Es útil si la base de datos está vacía o corrupta.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                        <AlertDialogAction onClick={handleSeedDatabase}>Sí, poblar</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </div>
-                        <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
-                            <div>
-                                <p className="font-medium text-destructive">Restaurar Datos de Fábrica</p>
-                                <p className="text-sm text-muted-foreground">
-                                    Borra todos los datos de todas las colecciones.
-                                </p>
-                            </div>
-                            <AlertDialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="destructive" disabled={isProcessing}>Restaurar Datos de Fábrica</Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            Esta es tu última oportunidad. Para confirmar el borrado total de datos, completa lo siguiente.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <div className="space-y-4 py-4">
-                                        {hasPin && (
-                                            <div className="space-y-2">
-                                                <Label htmlFor="reset-pin">PIN de Seguridad</Label>
-                                                <Input
-                                                    id="reset-pin"
-                                                    type="password"
-                                                    value={resetPin}
-                                                    onChange={(e) => setResetPin(e.target.value)}
-                                                    maxLength={4}
-                                                    placeholder="****"
-                                                    autoFocus
-                                                />
-                                            </div>
-                                        )}
-                                        <div className="space-y-2">
-                                            <Label htmlFor="reset-confirm-text">Escribe "RESTAURAR" para confirmar</Label>
-                                            <Input
-                                                id="reset-confirm-text"
-                                                value={resetConfirmationText}
-                                                onChange={(e) => setResetConfirmationText(e.target.value)}
-                                                placeholder="RESTAURAR"
-                                            />
-                                        </div>
-                                    </div>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel onClick={() => { setResetPin(''); setResetConfirmationText(''); }}>Cancelar</AlertDialogCancel>
-                                        <AlertDialogAction
-                                            onClick={handleFactoryReset}
-                                            disabled={isProcessing || resetConfirmationText !== 'RESTAURAR' || (hasPin && resetPin.length !== 4)}
-                                            className="bg-destructive hover:bg-destructive/90"
-                                        >
-                                            {isProcessing ? 'Restaurando...' : 'Restaurar y Borrar Todo'}
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
         </div>
     );
 }
-
-    
