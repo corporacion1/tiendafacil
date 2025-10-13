@@ -175,6 +175,7 @@ export default function CatalogPage() {
 
     const [cart, setCart] = useState<CartItem[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
+    const [lastAutoOpenedSku, setLastAutoOpenedSku] = useState<string | null>(null);
     const [selectedFamily, setSelectedFamily] = useState<string>("all");
     
     const [localOrders, setLocalOrders] = useState<PendingOrder[]>([]);
@@ -185,6 +186,11 @@ export default function CatalogPage() {
     useEffect(() => {
         setIsClient(true)
     }, [])
+
+    useEffect(() => {
+        // Reset the auto-open guard when search term changes
+        setLastAutoOpenedSku(null);
+    }, [searchTerm]);
     
     const validatePhoneNumber = (phone: string): string | null => {
         if (!phone) return "El teléfono es requerido.";
@@ -331,12 +337,12 @@ export default function CatalogPage() {
             const isExactMatch = product.sku?.toLowerCase() === searchTerm.toLowerCase() ||
                                  product.name.toLowerCase() === searchTerm.toLowerCase();
 
-            // Only open if it's an exact match and the modal isn't already open for this product
-            if (isExactMatch && product.id !== productDetails?.id) {
+            if (isExactMatch && product.sku !== lastAutoOpenedSku) {
                 setProductDetails(product);
+                setLastAutoOpenedSku(product.sku);
             }
         }
-    }, [sortedAndFilteredProducts, searchTerm, productDetails?.id]); // Use productDetails.id to prevent re-triggering
+    }, [sortedAndFilteredProducts, searchTerm, lastAutoOpenedSku]);
     
     const itemsForGrid = useMemo(() => {
         const relevantAds = (allAds || []).filter(ad => {
@@ -899,5 +905,3 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
-
-    
