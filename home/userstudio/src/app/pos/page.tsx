@@ -21,13 +21,13 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { useSettings } from "@/contexts/settings-context";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { paymentMethods, pendingOrdersState } from "@/lib/data";
+import { paymentMethods, pendingOrdersState, mockProducts, defaultCustomers, mockSales, initialFamilies } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SessionReportPreview } from "@/components/session-report-preview";
 import { useSecurity } from "@/contexts/security-context";
-import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { useFirestore } from "@/firebase";
 import { setDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 
 
@@ -76,20 +76,14 @@ export default function POSPage() {
   const firestore = useFirestore();
   const router = useRouter();
 
-  // --- FETCH DATA FROM FIRESTORE ---
-  const productsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-  const customersQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'customers'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-  const familiesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'families'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-  const salesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
-
-  const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
-  const { data: customers, isLoading: isLoadingCustomers } = useCollection<Customer>(customersQuery);
-  const { data: families, isLoading: isLoadingFamilies } = useCollection<Family>(familiesQuery);
-  const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
-  
+  // --- USE LOCAL DATA ---
+  const [products, setProductsState] = useState(mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString() })));
+  const [customers, setCustomers] = useState(defaultCustomers.map(c => ({...c, storeId: activeStoreId})));
+  const [sales, setSales] = useState(mockSales.map(s => ({...s, storeId: activeStoreId})));
+  const [families, setFamilies] = useState(initialFamilies.map(f => ({...f, storeId: activeStoreId})));
   const [pendingOrders, setPendingOrdersState] = useState<PendingOrder[]>(pendingOrdersState);
-  const isLoading = isLoadingSettings || isLoadingProducts || isLoadingCustomers || isLoadingFamilies || isLoadingSales;
-  // --- END FIRESTORE DATA ---
+  const isLoading = isLoadingSettings;
+  // --- END LOCAL DATA ---
   
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -202,7 +196,6 @@ export default function POSPage() {
         closedBy: userProfile?.displayName || 'N/A'
     };
     
-    // We show the report first, and then clear the state on report dialog close
     setReportType('Z');
     setSessionForReport(closedSession);
   };
@@ -215,7 +208,7 @@ export default function POSPage() {
     setActiveSession(null);
     setIsClosingModalOpen(false);
     setClosingBalance('');
-    setIsSessionModalOpen(true); // Prompt to open a new session
+    setIsSessionModalOpen(true);
     toast({ title: 'Caja Cerrada', description: 'La sesión ha finalizado. Puedes iniciar una nueva.' });
   }
 
@@ -389,8 +382,8 @@ export default function POSPage() {
       toast({ variant: "destructive", title: "Carrito vacío"});
       return;
     }
-    if (!settings || !activeSession || !firestore) {
-        toast({ variant: "destructive", title: "Error", description: "No hay una sesión de caja activa o la base de datos no está disponible."});
+    if (!settings || !activeSession) {
+        toast({ variant: "destructive", title: "Error", description: "No hay una sesión de caja activa."});
         return;
     }
     
@@ -427,42 +420,38 @@ export default function POSPage() {
         storeId: activeStoreId,
     }
     
-    const batch = writeBatch(firestore);
+    // --- SIMULATED DEMO UPDATE ---
+    setSales(prev => [newSale, ...prev]);
 
-    const saleDocRef = doc(firestore, 'sales', newSale.id);
-    batch.set(saleDocRef, newSale);
-
+    let updatedProducts = [...products];
     for (const item of cartItems) {
-      const productRef = doc(firestore, "products", item.product.id);
-      const newStock = item.product.stock - item.quantity;
-      batch.update(productRef, { stock: newStock });
+        updatedProducts = updatedProducts.map(p => 
+            p.id === item.product.id 
+                ? { ...p, stock: p.stock - item.quantity }
+                : p
+        );
     }
-
-    if(activeSession) {
-        const newTransactions = { ...activeSession.transactions };
+    setProductsState(updatedProducts);
+    
+    setActiveSession(prev => {
+        if (!prev) return null;
+        const newTransactions = { ...prev.transactions };
         finalPayments.forEach(p => {
             newTransactions[p.method] = (newTransactions[p.method] || 0) + p.amount;
         });
-
-        const updatedSession = {
-            ...activeSession,
-            salesIds: [...activeSession.salesIds, saleId],
+        return {
+            ...prev,
+            salesIds: [...prev.salesIds, saleId],
             transactions: newTransactions
         };
-        setActiveSession(updatedSession);
-        // Defer session update slightly to not block UI
-        setTimeout(() => {
-            const sessionDocRef = doc(firestore, 'cashSessions', updatedSession.id);
-            setDocumentNonBlocking(sessionDocRef, updatedSession, { merge: true });
-        }, 500);
-    }
-    
-    await batch.commit();
+    });
+
     setLastSale(newSale);
+    // --- END SIMULATED DEMO UPDATE ---
     
     toast({
-        title: "Venta Procesada",
-        description: `La venta #${saleId} ha sido registrada.`,
+        title: "Venta Procesada (DEMO)",
+        description: `La venta #${saleId} ha sido registrada localmente.`,
     });
     
     setCartItems([]);
@@ -501,26 +490,26 @@ export default function POSPage() {
         });
         return;
     }
-    if (!firestore || !activeStoreId) return;
     
-    const customerToAdd: Omit<Customer, 'id'> = {
+    const newId = `cust-${Date.now()}`;
+    const customerToAdd: Customer = {
+        id: newId,
         name: newCustomer.name,
         phone: newCustomer.phone,
         address: newCustomer.address,
         storeId: activeStoreId,
     };
     
-    const newDocRef = await addDocumentNonBlocking(collection(firestore, 'customers'), customerToAdd);
+    // In a real app, this would save to Firestore. Here we just update local state.
+    setCustomers(prev => [...prev, customerToAdd]);
 
-    if (newDocRef) {
-        setSelectedCustomerId(newDocRef.id);
-        setNewCustomer({ id: '', name: '', phone: '', address: '' });
-        setIsCustomerDialogOpen(false);
-        toast({
-            title: "Cliente Agregado",
-            description: `El cliente "${customerToAdd.name}" ha sido agregado y seleccionado.`,
-        });
-    }
+    setSelectedCustomerId(newId);
+    setNewCustomer({ id: '', name: '', phone: '', address: '' });
+    setIsCustomerDialogOpen(false);
+    toast({
+        title: "Cliente Agregado (DEMO)",
+        description: `El cliente "${customerToAdd.name}" ha sido agregado y seleccionado.`,
+    });
   };
 
   const filteredProducts = useMemo(() => {
@@ -567,12 +556,8 @@ export default function POSPage() {
     const customer = (customers || []).find(c => c.phone === order.customerPhone || c.name === order.customerName);
     if(customer) {
         setSelectedCustomerId(customer.id);
-    } else {
-      // Create new customer if not found
     }
     
-    // In a real app with Firestore, you'd delete the pending order document here
-    // For local state:
     setPendingOrdersState(prev => prev.filter(p => p.id !== order.id));
     
     toast({
@@ -1123,7 +1108,7 @@ export default function POSPage() {
     
     {/* Open Session Modal */}
     <Dialog open={isSessionModalOpen && !activeSession} onOpenChange={(isOpen) => {
-        if (activeSession) { // Only allow closing if a session is active (which shouldn't happen here)
+        if (activeSession) {
             setIsSessionModalOpen(isOpen);
         }
     }}>
@@ -1177,4 +1162,3 @@ export default function POSPage() {
     </>
   );
 }
-
