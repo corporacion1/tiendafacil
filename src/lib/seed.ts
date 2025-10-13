@@ -1,5 +1,3 @@
-
-'use client';
 import {
   writeBatch,
   doc,
@@ -30,9 +28,6 @@ export async function forceSeedDatabase(firestore: Firestore, storeId: string): 
     return false;
   }
   
-  const productsRef = collection(firestore, 'products');
-  const productsSnapshot = await getDocs(productsRef);
-  
   console.log(`Starting to seed database for store: ${storeId}...`);
   const batch = writeBatch(firestore);
 
@@ -43,7 +38,7 @@ export async function forceSeedDatabase(firestore: Firestore, storeId: string): 
   // Seed Products
   mockProducts.forEach(p => {
     const productDoc = doc(collection(firestore, 'products'));
-    batch.set(productDoc, { ...p, id: productDoc.id, storeId });
+    batch.set(productDoc, { ...p, id: productDoc.id, createdAt: new Date().toISOString(), storeId });
   });
 
   // Seed Customers
@@ -88,14 +83,7 @@ export async function forceSeedDatabase(firestore: Firestore, storeId: string): 
     const rateDoc = doc(ratesRef);
     batch.set(rateDoc, { ...rate, id: rateDoc.id });
   });
-
-  // Seed Users
-  defaultUsers.forEach(user => {
-    const userDocRef = doc(firestore, 'users', user.uid);
-    batch.set(userDocRef, user);
-  });
-
-
+  
   try {
     await batch.commit();
     console.log("Database seeded successfully!");
@@ -104,56 +92,4 @@ export async function forceSeedDatabase(firestore: Firestore, storeId: string): 
     console.error("Error seeding database: ", error);
     throw new Error('Failed to seed database.');
   }
-}
-
-export async function factoryReset(firestore: Firestore, storeId: string) {
-  const collectionsToDelete = ['products', 'customers', 'suppliers', 'units', 'families', 'warehouses', 'sales', 'purchases', 'ads', 'cashSessions', 'users'];
-  console.log(`Iniciando restauración de fábrica para la tienda: ${storeId}...`);
-
-  for (const collectionName of collectionsToDelete) {
-    try {
-      const collectionRef = collection(firestore, collectionName);
-      const snapshot = await getDocs(collectionRef); 
-      
-      if (snapshot.empty) {
-        console.log(`Colección "${collectionName}" ya está vacía.`);
-        continue;
-      }
-      
-      const batch = writeBatch(firestore);
-      snapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
-      await batch.commit();
-      console.log(`Todos los documentos de la colección "${collectionName}" han sido eliminados.`);
-    } catch (error) {
-      console.error(`Error al eliminar la colección "${collectionName}":`, error);
-    }
-  }
-
-  try {
-      const ratesRef = collection(firestore, 'stores', storeId, 'currencyRates');
-      const ratesSnapshot = await getDocs(ratesRef);
-      const ratesBatch = writeBatch(firestore);
-      ratesSnapshot.forEach(doc => ratesBatch.delete(doc.ref));
-      await ratesBatch.commit();
-      console.log('Subcolección "currencyRates" eliminada.');
-  } catch (error) {
-       console.error(`Error al eliminar la subcolección "currencyRates":`, error);
-  }
-
-  try {
-    const storeDocRef = doc(firestore, 'stores', storeId);
-    await setDoc(storeDocRef, {
-        ...defaultStore,
-        id: storeId,
-        ownerId: defaultStore.ownerId,
-        useDemoData: true,
-    });
-     console.log(`Documento de la tienda "${storeId}" ha sido restaurado.`);
-  } catch(error) {
-      console.error(`Error al restaurar el documento de la tienda:`, error);
-  }
-
-  console.log("Restauración de fábrica completada.");
 }

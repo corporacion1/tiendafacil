@@ -16,7 +16,6 @@ import { SUPER_ADMIN_UID } from '@/firebase/auth/use-user';
 import type { UserProfile } from '@/lib/types';
 import Image from 'next/image';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { forceSeedDatabase } from '@/lib/seed';
 import { defaultStoreId } from '@/lib/data';
 
 const profileSchema = z.object({
@@ -79,10 +78,11 @@ export function FirstTimeSetupModal() {
       status: 'active',
       storeRequest: storeRequest,
       createdAt: new Date().toISOString(),
-      storeId: defaultStoreId, // Assign default store ID to superAdmin
+      storeId: role === 'superAdmin' ? defaultStoreId : undefined,
     };
     
     try {
+      // 1. Create the user profile document
       const userDocRef = doc(firestore, 'users', authUser.uid);
       await setDoc(userDocRef, newUserProfile);
       
@@ -91,18 +91,26 @@ export function FirstTimeSetupModal() {
         description: 'Configurando tu tienda con datos de demostración...',
       });
 
-      // Now, seed the database since the user profile is created
-      const seedSuccess = await forceSeedDatabase(firestore, defaultStoreId);
+      // 2. Call the API route to seed the database
+      const response = await fetch('/api/seed', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ storeId: defaultStoreId }),
+      });
 
-      if (seedSuccess) {
-        toast({
-            title: '¡Configuración Completa!',
-            description: 'Tu tienda ha sido configurada. La página se recargará para aplicar los cambios.',
-        });
-        setTimeout(() => window.location.reload(), 2000);
-      } else {
-         throw new Error('La siembra de datos falló.');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'La siembra de datos falló.');
       }
+      
+      toast({
+          title: '¡Configuración Completa!',
+          description: 'Tu tienda ha sido configurada. La página se recargará para aplicar los cambios.',
+      });
+      
+      setTimeout(() => window.location.reload(), 2000);
       
     } catch (error: any) {
       console.error('Error durante la configuración inicial:', error);
