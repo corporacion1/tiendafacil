@@ -57,11 +57,6 @@ export default function UsersPage() {
   const [actionType, setActionType] = useState<'promote' | 'disable' | 'changeRole' | null>(null);
   const [newRole, setNewRole] = useState<UserRole>('user');
 
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
-  const [resetPin, setResetPin] = useState('');
-  const [resetConfirmationText, setResetConfirmationText] = useState('');
-
 
   const handleAction = (user: UserProfile, type: 'promote' | 'disable' | 'changeRole', role?: UserRole) => {
     if (currentUserProfile?.role !== 'superAdmin') {

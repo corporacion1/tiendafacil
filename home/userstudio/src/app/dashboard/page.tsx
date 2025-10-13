@@ -20,17 +20,6 @@ import { collection, query, where } from "firebase/firestore";
 
 import { Button } from "@/components/ui/button";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import {
   Card,
   CardContent,
   CardDescription,
@@ -45,15 +34,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useSettings } from "@/contexts/settings-context";
 import { InventoryMovement, Product, Purchase, Sale } from "@/lib/types";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import { useToast } from "@/hooks/use-toast";
-import { useSecurity } from "@/contexts/security-context";
 
 type TimeFilter = 'day' | 'week' | 'month';
 
@@ -69,8 +54,6 @@ const getDate = (d: any): Date => {
 export default function Dashboard() {
   const { activeSymbol, activeRate, isLoadingSettings, activeStoreId, userProfile } = useSettings();
   const firestore = useFirestore();
-  const { toast } = useToast();
-  const { hasPin, checkPin } = useSecurity();
   const isSuperAdmin = userProfile?.role === 'superAdmin';
 
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
@@ -93,11 +76,6 @@ export default function Dashboard() {
   const { data: sales, isLoading: isLoadingSales } = useCollection<Sale>(salesQuery);
   const { data: purchases, isLoading: isLoadingPurchases } = useCollection<Purchase>(purchasesQuery);
   const { data: products, isLoading: isLoadingProducts } = useCollection<Product>(productsQuery);
-
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
-  const [resetPin, setResetPin] = useState('');
-  const [resetConfirmationText, setResetConfirmationText] = useState('');
 
   const recentMovements: InventoryMovement[] = useMemo(() => {
     if (!sales || !purchases) return [];

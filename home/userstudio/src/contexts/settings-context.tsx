@@ -74,7 +74,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [userProfile]);
   
   const storeDocRef = useMemoFirebase(() => {
-    // CRITICAL: Only attempt to fetch if we are NOT in the setup flow.
     if (firestore && activeStoreId && !isAuthLoading && userProfile) {
       return doc(firestore, 'stores', activeStoreId);
     }
@@ -84,7 +83,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const { data: storeSettings, isLoading: isLoadingStoreSettings } = useDoc<Settings>(storeDocRef);
 
   const ratesCollectionRef = useMemoFirebase(() => {
-    // CRITICAL: Only create the query if userProfile exists, avoiding reads for new users.
     if (firestore && activeStoreId && userProfile) {
         return query(
           collection(firestore, 'stores', activeStoreId, 'currencyRates'), 
@@ -100,7 +98,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   useEffect(() => {
     if (isAuthLoading) return;
 
-    // If setup is needed, the app is "ready" to show the modal.
     if (needsProfileCreation) {
       setIsReady(true);
       return;
@@ -108,7 +105,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     
     const isPublicPath = pathname.startsWith('/catalog') || pathname === '/';
     if (!userProfile && !isPublicPath) {
-      router.replace('/catalog');
+      router.replace(`/catalog?storeId=${defaultStoreId}`);
       setIsReady(true);
       return;
     }
@@ -117,7 +114,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       setSettingsState(storeSettings);
       setIsReady(true);
     } else if (!isLoadingStoreSettings && !storeSettings && userProfile) {
-      // If no settings are found for an existing user, fallback to default
       setSettingsState(defaultStore);
       setIsReady(true);
     }
