@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import type { Product, CartItem, PendingOrder, Ad, Family, Store } from "@/lib/types";
-import { initialFamilies, mockAds, defaultStore, defaultStoreId } from "@/lib/data";
+import { defaultStore, defaultStoreId } from "@/lib/data";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -905,3 +905,4 @@ export default function CatalogPage() {
         </Dialog>
     );
 }
+
