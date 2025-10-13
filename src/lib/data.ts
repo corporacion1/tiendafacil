@@ -29,7 +29,7 @@ export const defaultStore: Store = {
   whatsapp: "+584126915593",
   tiktok: "@tiendafacil",
   meta: "@tiendafacil",
-  useDemoData: true, // <-- SET DEMO MODE TO TRUE
+  useDemoData: true,
 };
 
 // --- USUARIOS POR DEFECTO ---

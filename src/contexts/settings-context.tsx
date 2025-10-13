@@ -1,14 +1,14 @@
 
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
-import type { CurrencyRate, Settings, UserProfile } from '@/lib/types';
+import type { CurrencyRate, Settings, UserProfile, Product, Sale, Customer, Supplier, Unit, Family, Warehouse, Ad, Purchase, CashSession } from '@/lib/types';
 import { useUser as useAuthUser } from '@/firebase/auth/use-user';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, query, where, orderBy, limit } from 'firebase/firestore';
-import { defaultStore, defaultStoreId } from '@/lib/data';
+import { defaultStore, defaultStoreId, mockProducts, mockSales, defaultCustomers, defaultSuppliers, initialUnits, initialFamilies, initialWarehouses, mockAds, mockPurchases, mockCashSessions, mockCurrencyRates } from '@/lib/data';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { FirstTimeSetupModal } from '@/components/first-time-setup-modal';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -28,6 +28,21 @@ interface SettingsContextType {
   switchStore: (storeId: string) => void;
   isLoadingSettings: boolean;
   userProfile: UserProfile | null;
+  isDemoMode: boolean;
+
+  // Demo data for offline/initial state
+  demoData: {
+    products: Product[];
+    sales: Sale[];
+    customers: Customer[];
+    suppliers: Supplier[];
+    units: Unit[];
+    families: Family[];
+    warehouses: Warehouse[];
+    ads: Ad[];
+    purchases: Purchase[];
+    cashSessions: CashSession[];
+  }
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -51,7 +66,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const router = useRouter();
   const pathname = usePathname();
   const firestore = useFirestore();
-  const isPublicPath = pathname.startsWith('/catalog') || pathname === '/';
 
   const { user: userProfile, isUserLoading: isAuthLoading, needsProfileCreation } = useAuthUser();
   
@@ -68,39 +82,37 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         setActiveStoreId(storedStoreId);
       } else if (userProfile?.storeId) {
         setActiveStoreId(userProfile.storeId);
-      } else {
-        setActiveStoreId(defaultStoreId);
       }
     } catch (error) {
       console.error("Could not access localStorage for storeId", error);
-      setActiveStoreId(defaultStoreId);
     }
   }, [userProfile]);
-
-  const storeIdForQuery = isPublicPath ? defaultStoreId : activeStoreId;
   
   const storeDocRef = useMemoFirebase(() => {
-    if (firestore && storeIdForQuery) {
-      return doc(firestore, 'stores', storeIdForQuery);
+    if (firestore && activeStoreId && !isAuthLoading && userProfile) {
+      return doc(firestore, 'stores', activeStoreId);
     }
     return null;
-  }, [firestore, storeIdForQuery]);
+  }, [firestore, activeStoreId, isAuthLoading, userProfile]);
 
   const { data: storeSettings, isLoading: isLoadingStoreSettings } = useDoc<Settings>(storeDocRef);
 
   const ratesCollectionRef = useMemoFirebase(() => {
-    if (firestore && storeIdForQuery) {
+    if (firestore && activeStoreId && userProfile) {
         return query(
-          collection(firestore, 'stores', storeIdForQuery, 'currencyRates'), 
+          collection(firestore, 'stores', activeStoreId, 'currencyRates'), 
           orderBy('date', 'desc'), 
           limit(30)
         );
     }
     return null;
-  }, [firestore, storeIdForQuery]);
+  }, [firestore, activeStoreId, userProfile]);
 
-  const { data: currencyRates } = useCollection<CurrencyRate>(ratesCollectionRef);
+  const { data: currencyRatesData } = useCollection<CurrencyRate>(ratesCollectionRef);
+  const currencyRates = currencyRatesData || mockCurrencyRates;
   
+  const isDemoMode = useMemo(() => storeSettings?.useDemoData !== false, [storeSettings]);
+
   useEffect(() => {
     if (isAuthLoading) return;
 
@@ -109,6 +121,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       return;
     }
     
+    const isPublicPath = pathname.startsWith('/catalog') || pathname === '/';
     if (!userProfile && !isPublicPath) {
       router.replace('/catalog');
       setIsReady(true);
@@ -118,12 +131,13 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     if (storeSettings) {
       setSettingsState(storeSettings);
       setIsReady(true);
-    } else if (!isLoadingStoreSettings && !storeSettings && (userProfile || isPublicPath)) {
+    } else if (!isLoadingStoreSettings && !storeSettings && userProfile) {
+      // If no settings are found for an existing user, fallback to default
       setSettingsState(defaultStore);
       setIsReady(true);
     }
 
-  }, [isAuthLoading, needsProfileCreation, userProfile, storeSettings, isLoadingStoreSettings, pathname, router, isPublicPath]);
+  }, [isAuthLoading, needsProfileCreation, userProfile, storeSettings, isLoadingStoreSettings, pathname, router]);
 
   
   const handleSetSettings = useCallback((newSettings: Partial<Settings>) => {
@@ -168,9 +182,24 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     return <FirstTimeSetupModal />;
   }
 
+  const isPublicPath = pathname.startsWith('/catalog') || pathname === '/';
+
   if (!isReady && !isPublicPath) {
       return <AppLoadingScreen />;
   }
+  
+  const demoData = useMemo(() => ({
+    products: mockProducts.map(p => ({...p, storeId: activeStoreId, createdAt: new Date().toISOString() })),
+    sales: mockSales.map(s => ({...s, storeId: activeStoreId})),
+    customers: defaultCustomers.map(c => ({...c, storeId: activeStoreId})),
+    suppliers: defaultSuppliers.map(s => ({...s, storeId: activeStoreId})),
+    units: initialUnits.map(u => ({...u, storeId: activeStoreId})),
+    families: initialFamilies.map(f => ({...f, storeId: activeStoreId})),
+    warehouses: initialWarehouses.map(w => ({...w, storeId: activeStoreId})),
+    ads: mockAds.map(a => ({...a, createdAt: new Date().toISOString()})),
+    purchases: mockPurchases.map(p => ({...p, storeId: activeStoreId})),
+    cashSessions: mockCashSessions.map(cs => ({...cs, storeId: activeStoreId}))
+  }), [activeStoreId]);
 
   const contextValue: SettingsContextType = {
     settings, 
@@ -181,10 +210,12 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     activeSymbol, 
     activeRate, 
     currencyRates: currencyRates || [],
-    activeStoreId: storeIdForQuery,
+    activeStoreId,
     switchStore,
     isLoadingSettings: !isReady,
     userProfile,
+    isDemoMode,
+    demoData
   };
 
   return (

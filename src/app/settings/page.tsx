@@ -122,6 +122,7 @@ export default function SettingsPage() {
     const [localSettings, setLocalSettings] = useState<Partial<Settings>>(settings || {});
     const [imageError, setImageError] = useState(false);
 
+    // --- Firestore Data (Correctly Filtered) ---
     const productsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'products'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
     const salesQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'sales'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
     const unitsQuery = useMemoFirebase(() => firestore && activeStoreId ? query(collection(firestore, 'units'), where('storeId', '==', activeStoreId)) : null, [firestore, activeStoreId]);
@@ -186,7 +187,8 @@ export default function SettingsPage() {
 
     const saveAllSettings = async () => {
         if (firestore && activeStoreId) {
-            await setDocumentNonBlocking(doc(firestore, 'stores', activeStoreId), localSettings, { merge: true });
+            const storeDocRef = doc(firestore, 'stores', activeStoreId);
+            await setDocumentNonBlocking(storeDocRef, localSettings, { merge: true });
             setIsDirty(false);
             toast({ title: "Configuración Guardada", description: "Tus cambios se han guardado en la nube." });
         }
@@ -754,4 +756,3 @@ export default function SettingsPage() {
         </div>
     );
 }
-

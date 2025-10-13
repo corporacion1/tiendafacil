@@ -40,6 +40,7 @@ export type Store = {
     secondaryCurrencySymbol?: string;
     tax1?: number;
     tax2?: number;
+    useDemoData?: boolean;
 };
 
 // The Settings type is now an alias for Store for consistency in the context
