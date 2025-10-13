@@ -7,8 +7,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Logo } from '@/components/logo';
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { UserProfile } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
+import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 
 const GoogleIcon = () => (
     <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -23,16 +23,27 @@ export function LoginModal({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const { toast } = useToast();
     const [isOpen, setIsOpen] = useState(false);
+    const { firebaseUser } = useSettings();
+    const auth = getAuth();
+    const provider = new GoogleAuthProvider();
 
     const handleSignIn = async () => {
-        // This is a simulated sign-in for the demo.
-        // In a real app, this would use Firebase Auth.
-        toast({
-            title: "¡Bienvenido (DEMO)!",
-            description: "Has iniciado sesión correctamente.",
-        });
-        setIsOpen(false);
-        router.push('/dashboard');
+        try {
+            await signInWithPopup(auth, provider);
+            toast({
+                title: "¡Bienvenido!",
+                description: "Has iniciado sesión correctamente.",
+            });
+            setIsOpen(false);
+            router.push('/dashboard');
+        } catch (error) {
+            console.error("Error signing in with Google: ", error);
+            toast({
+                variant: "destructive",
+                title: "Error al iniciar sesión",
+                description: "No se pudo completar el inicio de sesión con Google.",
+            });
+        }
     };
 
     return (
@@ -51,7 +62,7 @@ export function LoginModal({ children }: { children: React.ReactNode }) {
                 <div className="py-4">
                     <Button onClick={handleSignIn} className="w-full">
                         <GoogleIcon />
-                        Ingresar con Google (DEMO)
+                        Ingresar con Google
                     </Button>
                 </div>
             </DialogContent>
