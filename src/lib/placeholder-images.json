@@ -1,0 +1,88 @@
+{
+  "placeholderImages": [
+    {
+      "id": "1",
+      "description": "Tarjeta Gráfica RTX 4090",
+      "imageUrl": "https://images.unsplash.com/photo-1621164071312-67bb68821b3f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxncmFwaGljcyUyMGNhcmR8ZW58MHx8fHwxNzU5NzQ3MTc1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "graphics card"
+    },
+    {
+      "id": "2",
+      "description": "Procesador Intel Core i9-13900K",
+      "imageUrl": "https://picsum.photos/seed/cpu1/500/500",
+      "imageHint": "cpu processor"
+    },
+    {
+      "id": "3",
+      "description": "Memoria RAM 32GB DDR5",
+      "imageUrl": "https://picsum.photos/seed/ram1/500/500",
+      "imageHint": "ram memory"
+    },
+    {
+      "id": "4",
+      "description": "SSD NVMe 2TB",
+      "imageUrl": "https://images.unsplash.com/photo-1725085815038-279c8139c8a4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxzc2QlMjBkcml2ZXxlbnwwfHx8fDE3NTk3MTUyMDV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "ssd drive"
+    },
+    {
+      "id": "5",
+      "description": "Tarjeta Madre Z790",
+      "imageUrl": "https://picsum.photos/seed/mobo1/500/500",
+      "imageHint": "motherboard"
+    },
+    {
+      "id": "6",
+      "description": "Fuente de Poder 1000W Gold",
+      "imageUrl": "https://picsum.photos/seed/psu1/500/500",
+      "imageHint": "power supply"
+    },
+    {
+      "id": "7",
+      "description": "Tarjeta Gráfica RX 7900 XTX",
+      "imageUrl": "https://images.unsplash.com/photo-1621164071312-67bb68821b3f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxncmFwaGljcyUyMGNhcmR8ZW58MHx8fHwxNzU5NzQ3MTc1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "graphics card"
+    },
+    {
+      "id": "8",
+      "description": "Procesador AMD Ryzen 9 7950X",
+      "imageUrl": "https://picsum.photos/seed/cpu2/500/500",
+      "imageHint": "cpu processor"
+    },
+    {
+      "id": "9",
+      "description": "Impresora Multifuncional",
+      "imageUrl": "https://picsum.photos/seed/printer1/500/500",
+      "imageHint": "multifunction printer"
+    },
+    {
+      "id": "10",
+      "description": "Proyector LED Full HD",
+      "imageUrl": "https://picsum.photos/seed/projector1/500/500",
+      "imageHint": "led projector"
+    },
+    {
+      "id": "11",
+      "description": "Teclado Mecánico RGB",
+      "imageUrl": "https://picsum.photos/seed/keyboard1/500/500",
+      "imageHint": "mechanical keyboard"
+    },
+    {
+      "id": "12",
+      "description": "Mouse Gamer Inalámbrico",
+      "imageUrl": "https://picsum.photos/seed/mouse1/500/500",
+      "imageHint": "gaming mouse"
+    },
+    {
+      "id": "13",
+      "description": "Cartucho de Tinta Negra",
+      "imageUrl": "https://picsum.photos/seed/ink1/500/500",
+      "imageHint": "ink cartridge"
+    },
+    {
+      "id": "14",
+      "description": "Webcam Full HD 1080p",
+      "imageUrl": "https://picsum.photos/seed/webcam1/500/500",
+      "imageHint": "hd webcam"
+    }
+  ]
+}

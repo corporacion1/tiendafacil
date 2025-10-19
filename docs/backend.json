@@ -1,0 +1,168 @@
+
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "type": "object",
+      "description": "Represents a product in the inventory.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier." },
+        "name": { "type": "string", "description": "Product name." },
+        "description": { "type": "string", "description": "Product description." },
+        "price": { "type": "number", "description": "Retail price." },
+        "wholesalePrice": { "type": "number", "description": "Wholesale price." },
+        "cost": { "type": "number", "description": "Cost of the product." },
+        "sku": { "type": "string", "description": "Stock Keeping Unit." },
+        "stock": { "type": "number", "description": "Current stock quantity." },
+        "status": { "type": "string", "enum": ["active", "inactive", "promotion"] },
+        "tax1": { "type": "boolean" },
+        "tax2": { "type": "boolean" },
+        "unit": { "type": "string" },
+        "family": { "type": "string" },
+        "warehouse": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "imageHint": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "storeId": { "type": "string", "description": "The store this product belongs to." }
+      },
+      "required": ["id", "name", "price", "sku", "stock", "storeId"]
+    },
+    "Sale": {
+      "title": "Sale",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "items": { "type": "array", "items": { "type": "object", "properties": { "productId": {"type": "string"}, "productName": {"type": "string"}, "quantity": {"type": "number"}, "price": {"type": "number"} } } },
+        "total": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" },
+        "transactionType": { "type": "string", "enum": ["contado", "credito"] },
+        "status": { "type": "string", "enum": ["paid", "unpaid"] },
+        "paidAmount": { "type": "number" },
+        "payments": { "type": "array", "items": { "$ref": "#/entities/Payment" } },
+        "storeId": { "type": "string" }
+      },
+      "required": ["id", "customerName", "total", "date", "storeId"]
+    },
+    "Purchase": {
+      "title": "Purchase",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "supplierId": { "type": "string" },
+        "supplierName": { "type": "string" },
+        "items": { "type": "array", "items": { "type": "object", "properties": { "productId": {"type": "string"}, "productName": {"type": "string"}, "quantity": {"type": "number"}, "cost": {"type": "number"} } } },
+        "total": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" },
+        "documentNumber": { "type": "string" },
+        "responsible": { "type": "string" },
+        "storeId": { "type": "string" }
+      },
+      "required": ["id", "supplierName", "total", "date", "storeId"]
+    },
+    "Customer": {
+      "title": "Customer",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "storeId": { "type": "string" }
+      },
+      "required": ["id", "name", "storeId"]
+    },
+    "Supplier": {
+      "title": "Supplier",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "storeId": { "type": "string" }
+      },
+      "required": ["id", "name", "storeId"]
+    },
+    "Unit": { "title": "Unit", "type": "object", "properties": { "id": {"type": "string"}, "name": {"type": "string"}, "storeId": {"type": "string"} }, "required": ["id", "name", "storeId"] },
+    "Family": { "title": "Family", "type": "object", "properties": { "id": {"type": "string"}, "name": {"type": "string"}, "storeId": {"type": "string"} }, "required": ["id", "name", "storeId"] },
+    "Warehouse": { "title": "Warehouse", "type": "object", "properties": { "id": {"type": "string"}, "name": {"type": "string"}, "storeId": {"type": "string"} }, "required": ["id", "name", "storeId"] },
+    "Ad": {
+      "title": "Ad",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "sku": { "type": "string" },
+        "price": { "type": "number" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "imageHint": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "views": { "type": "number" },
+        "targetBusinessTypes": { "type": "array", "items": { "type": "string" } },
+        "expiryDate": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "sku"]
+    },
+    "CashSession": { "title": "CashSession", "type": "object", "properties": {}, "required": [] },
+    "Payment": { "title": "Payment", "type": "object", "properties": {}, "required": [] }
+  },
+  "auth": {
+    "providers": ["password", "anonymous", "google.com"]
+  },
+  "firestore": {
+    "/stores/{storeId}": {
+      "schema": "Settings",
+      "description": "Stores general settings and configuration for each business."
+    },
+    "/products": {
+      "schema": "Product",
+      "description": "Global collection of all products for all stores."
+    },
+    "/sales": {
+      "schema": "Sale",
+      "description": "Global collection of all sales for all stores."
+    },
+    "/purchases": {
+      "schema": "Purchase",
+      "description": "Global collection of all purchases for all stores."
+    },
+    "/customers": {
+      "schema": "Customer",
+      "description": "Global collection of all customers for all stores."
+    },
+    "/suppliers": {
+      "schema": "Supplier",
+      "description": "Global collection of all suppliers for all stores."
+    },
+    "/units": {
+      "schema": "Unit",
+      "description": "Global collection of all measurement units for all stores."
+    },
+    "/families": {
+      "schema": "Family",
+      "description": "Global collection of all product families for all stores."
+    },
+    "/warehouses": {
+      "schema": "Warehouse",
+      "description": "Global collection of all warehouses for all stores."
+    },
+    "/ads": {
+      "schema": "Ad",
+      "description": "Global collection for advertisements."
+    },
+    "/cashSessions": {
+      "schema": "CashSession",
+      "description": "Global collection for cash register sessions."
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Stores public profiles for all users."
+    }
+  }
+}
+
+    
