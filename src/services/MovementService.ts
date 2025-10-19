@@ -1,6 +1,27 @@
 import { InventoryMovement, MovementType, ReferenceType } from '@/models/InventoryMovement';
 import { Product } from '@/models/Product';
 
+// Definir el tipo para el documento de InventoryMovement
+interface InventoryMovementDocument {
+  _id: string;
+  productId: string;
+  warehouseId: string;
+  movementType: MovementType;
+  quantity: number;
+  unitCost: number;
+  totalValue: number;
+  referenceType: ReferenceType;
+  referenceId: string;
+  batchId?: string;
+  previousStock: number;
+  newStock: number;
+  userId: string;
+  notes?: string;
+  storeId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface CreateMovementRequest {
   productId: string;
   warehouseId: string;
@@ -44,7 +65,7 @@ export class MovementService {
    * Registra un movimiento de inventario
    * Se integra de forma transparente sin afectar el flujo actual
    */
-  static async recordMovement(request: CreateMovementRequest): Promise<InventoryMovement | null> {
+  static async recordMovement(request: CreateMovementRequest): Promise<InventoryMovementDocument | null> {
     try {
       console.log('📦 [MovementService] Registrando movimiento:', {
         productId: request.productId,
@@ -103,7 +124,7 @@ export class MovementService {
    * Registra múltiples movimientos en lote
    * Útil para compras y ventas con múltiples productos
    */
-  static async recordBatchMovements(requests: CreateMovementRequest[]): Promise<InventoryMovement[]> {
+  static async recordBatchMovements(requests: CreateMovementRequest[]): Promise<InventoryMovementDocument[]> {
     try {
       console.log('📦 [MovementService] Registrando lote de movimientos:', requests.length);
 
@@ -131,15 +152,16 @@ export class MovementService {
     productId: string, 
     storeId: string,
     filters?: MovementFilters
-  ): Promise<InventoryMovement[]> {
+  ): Promise<InventoryMovementDocument[]> {
     try {
       const query: Record<string, unknown> = { productId, storeId };
 
       // Aplicar filtros si se proporcionan
       if (filters?.dateFrom || filters?.dateTo) {
-        query.createdAt = {};
-        if (filters.dateFrom) (query.createdAt as Record<string, unknown>).$gte = filters.dateFrom;
-        if (filters.dateTo) (query.createdAt as Record<string, unknown>).$lte = filters.dateTo;
+        const dateFilter: Record<string, Date> = {};
+        if (filters.dateFrom) dateFilter.$gte = filters.dateFrom;
+        if (filters.dateTo) dateFilter.$lte = filters.dateTo;
+        query.createdAt = dateFilter;
       }
 
       if (filters?.movementTypes?.length) {
@@ -161,7 +183,7 @@ export class MovementService {
       const movements = await InventoryMovement.find(query)
         .sort({ createdAt: -1 })
         .limit(100) // Limitar para rendimiento
-        .lean();
+        .lean() as unknown as InventoryMovementDocument[];
 
       return movements;
 
@@ -256,7 +278,7 @@ export class MovementService {
    * Genera un ID único para operaciones por lotes
    */
   static generateBatchId(): string {
-    return `batch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    return `batch_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
   }
 
   // ========== AUTOMATIC INTEGRATION METHODS ==========
@@ -271,7 +293,7 @@ export class MovementService {
     userId: string,
     storeId: string,
     warehouseId: string = 'main'
-  ): Promise<InventoryMovement[]> {
+  ): Promise<InventoryMovementDocument[]> {
     try {
       console.log('🛒 [MovementService] Registrando movimientos de venta:', saleId);
 
@@ -318,7 +340,7 @@ export class MovementService {
     userId: string,
     storeId: string,
     warehouseId: string = 'main'
-  ): Promise<InventoryMovement[]> {
+  ): Promise<InventoryMovementDocument[]> {
     try {
       console.log('📦 [MovementService] Registrando movimientos de compra:', purchaseId);
 
@@ -367,7 +389,7 @@ export class MovementService {
     userId: string,
     storeId: string,
     warehouseId: string = 'main'
-  ): Promise<InventoryMovement | null> {
+  ): Promise<InventoryMovementDocument | null> {
     try {
       if (initialStock <= 0) {
         return null; // No registrar si no hay stock inicial
@@ -411,7 +433,7 @@ export class MovementService {
     userId: string,
     storeId: string,
     warehouseId: string = 'main'
-  ): Promise<InventoryMovement | null> {
+  ): Promise<InventoryMovementDocument | null> {
     try {
       const adjustmentQuantity = newStock - currentStock;
       

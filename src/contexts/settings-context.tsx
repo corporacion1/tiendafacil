@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import type { CurrencyRate, Settings, UserProfile, Product, Sale, Purchase, Customer, Supplier, Unit, Family, Warehouse, Ad, CashSession, PendingOrder } from "@/lib/types";
 
@@ -19,7 +19,7 @@ interface SettingsContextType {
   activeRate: number;
   currencyRates: CurrencyRate[];
   setCurrencyRates: React.Dispatch<React.SetStateAction<CurrencyRate[]>>;
-  
+
   products: Product[];
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
   sales: Sale[];
@@ -52,6 +52,8 @@ interface SettingsContextType {
   setUserProfile: (user: UserProfile | null) => void;
   signOut: () => Promise<void>;
   seedDatabase: (storeId: string) => Promise<boolean>;
+  fetchCurrencyRates: () => Promise<CurrencyRate | null>;
+  saveCurrencyRate: (rate: number, userId: string) => Promise<boolean>;
 }
 
 
@@ -64,22 +66,18 @@ const CURRENCY_PREF_STORAGE_KEY = 'tienda_facil_currency_pref';
 const ACTIVE_STORE_ID_STORAGE_KEY = 'tienda_facil_active_store_id';
 
 function AppLoadingScreen() {
-    return (
-        <div className="flex min-h-screen w-full items-center justify-center bg-background">
-            <div className="flex flex-col items-center gap-4">
-                <div className="h-12 w-12 animate-spin rounded-full border-4 border-muted border-t-primary" />
-                <p className="text-muted-foreground">Cargando aplicación...</p>
-            </div>
-        </div>
-    );
+  return (
+    <div className="flex min-h-screen w-full items-center justify-center bg-background">
+      <div className="flex flex-col items-center gap-4">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-muted border-t-primary" />
+        <p className="text-muted-foreground">Cargando aplicación...</p>
+      </div>
+    </div>
+  );
 }
-
-// Datos iniciales de ejemplo
-const defaultStoreId = 'default-store';
 
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
-  const router = useRouter();
   const pathname = usePathname();
   const { user: authUser, logout: authSignOut } = useAuth();
 
@@ -102,291 +100,291 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const [cashSessions, setCashSessions] = useState<CashSession[]>([]);
   const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
   const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>([]);
-    
+
   // UI states
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
   const [isLoading, setIsLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
 
   // Función para cargar datos desde MongoDB
-// Función para cargar datos desde MongoDB - DEFINIR DESPUÉS de todos los useState
-const loadDataFromMongoDB = useCallback(async (storeId: string) => {
-  try {
-    setIsLoading(true);
-    
-    console.log(`📥 Cargando datos desde MongoDB para tienda: ${storeId}`);
-    
-    // Primero cargar settings para obtener el businessType
-    let storeSettings = await fetch(`/api/stores?id=${storeId}`)
-      .then(res => res.ok ? res.json() : null)
-      .catch(() => null);
-    
-    // Si no existe la tienda, crear una con datos por defecto
-    if (!storeSettings) {
-      console.log(`⚠️ Tienda ${storeId} no encontrada, creando con datos por defecto...`);
-      
-      const defaultStoreData = {
-        id: storeId,
-        storeId: storeId,
-        name: "Tienda Facil DEMO",
-        ownerIds: ["5QLaiiIr4mcGsjRXVGeGx50nrpk1"],
-        businessType: "Tecnologia",
-        address: "Av. Principal, Local 1, Ciudad",
-        phone: "+58 212-555-1234",
-        slogan: "¡Gracias por tu compra!",
-        logoUrl: "/tienda_facil_logo.svg",
-        status: 'active',
-        primaryCurrencyName: "Dólar Americano",
-        primaryCurrencySymbol: "$",
-        secondaryCurrencyName: "Bolívar Digital",
-        secondaryCurrencySymbol: "Bs.",
-        saleSeries: "SALE",
-        saleCorrelative: 1,
-        tax1: 16,
-        tax2: 0,
-        whatsapp: "+584126915593",
-        tiktok: "@tiendafacil",
-        meta: "@tiendafacil",
-        useDemoData: true,
-      };
-      
-      try {
-        const createResponse = await fetch('/api/stores', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(defaultStoreData)
-        });
-        
-        if (createResponse.ok) {
-          storeSettings = await createResponse.json();
-          console.log(`✅ Tienda creada exitosamente: ${storeSettings.name}`);
-        } else {
-          console.error('❌ Error creando tienda por defecto');
+  // Función para cargar datos desde MongoDB - DEFINIR DESPUÉS de todos los useState
+  const loadDataFromMongoDB = useCallback(async (storeId: string) => {
+    try {
+      setIsLoading(true);
+
+      console.log(`📥 Cargando datos desde MongoDB para tienda: ${storeId}`);
+
+      // Primero cargar settings para obtener el businessType
+      let storeSettings = await fetch(`/api/stores?id=${storeId}`)
+        .then(res => res.ok ? res.json() : null)
+        .catch(() => null);
+
+      // Si no existe la tienda, crear una con datos por defecto
+      if (!storeSettings) {
+        console.log(`⚠️ Tienda ${storeId} no encontrada, creando con datos por defecto...`);
+
+        const defaultStoreData = {
+          id: storeId,
+          storeId: storeId,
+          name: "Tienda Facil DEMO",
+          ownerIds: ["5QLaiiIr4mcGsjRXVGeGx50nrpk1"],
+          businessType: "Tecnologia",
+          address: "Av. Principal, Local 1, Ciudad",
+          phone: "+58 212-555-1234",
+          slogan: "¡Gracias por tu compra!",
+          logoUrl: "/tienda_facil_logo.svg",
+          status: 'active',
+          primaryCurrencyName: "Dólar Americano",
+          primaryCurrencySymbol: "$",
+          secondaryCurrencyName: "Bolívar Digital",
+          secondaryCurrencySymbol: "Bs.",
+          saleSeries: "SALE",
+          saleCorrelative: 1,
+          tax1: 16,
+          tax2: 0,
+          whatsapp: "+584126915593",
+          tiktok: "@tiendafacil",
+          meta: "@tiendafacil",
+          useDemoData: true,
+        };
+
+        try {
+          const createResponse = await fetch('/api/stores', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(defaultStoreData)
+          });
+
+          if (createResponse.ok) {
+            storeSettings = await createResponse.json();
+            console.log(`✅ Tienda creada exitosamente: ${storeSettings.name}`);
+          } else {
+            console.error('❌ Error creando tienda por defecto');
+            storeSettings = defaultStoreData; // Usar datos locales como fallback
+          }
+        } catch (error) {
+          console.error('❌ Error creando tienda:', error);
           storeSettings = defaultStoreData; // Usar datos locales como fallback
         }
-      } catch (error) {
-        console.error('❌ Error creando tienda:', error);
-        storeSettings = defaultStoreData; // Usar datos locales como fallback
       }
-    }
-    
-    // Array de promesas para cargar todos los datos en paralelo
-    const promises = [
-      // Cargar productos
-      fetch(`/api/products?storeId=${storeId}`)
-        .then(res => res.ok ? res.json() : [])
-        .catch(() => []),
-      
-      // Cargar ventas
-      fetch(`/api/sales?storeId=${storeId}`)
-        .then(res => res.ok ? res.json() : [])
-        .catch(() => []),
-      
-      // Cargar compras
-      fetch(`/api/purchases?storeId=${storeId}`)
-        .then(res => res.ok ? res.json() : [])
-        .catch(() => []),
-      
-      // Cargar clientes
-      fetch(`/api/costumers?storeId=${storeId}`)
-        .then(res => res.ok ? res.json() : [])
-        .catch(() => []),
-      
-      // Cargar proveedores
-      fetch(`/api/suppliers?storeId=${storeId}`)
-        .then(res => res.ok ? res.json() : [])
-        .catch(() => []),
-      
-      // Cargar unidades
-      fetch(`/api/units?storeId=${storeId}`)
-        .then(res => res.ok ? res.json() : [])
-        .catch(() => []),
-      
-      // Cargar familias
-      fetch(`/api/families?storeId=${storeId}`)
-        .then(res => res.ok ? res.json() : [])
-        .catch(() => []),
-      
-      // Cargar almacenes
-      fetch(`/api/warehouses?storeId=${storeId}`)
-        .then(res => res.ok ? res.json() : [])
-        .catch(() => []),
-      
-      // Cargar anuncios basados en businessType
-      storeSettings?.businessType 
-        ? fetch(`/api/ads?businessType=${storeSettings.businessType}`)
+
+      // Array de promesas para cargar todos los datos en paralelo
+      const promises = [
+        // Cargar productos
+        fetch(`/api/products?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => []),
+
+        // Cargar ventas
+        fetch(`/api/sales?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => []),
+
+        // Cargar compras
+        fetch(`/api/purchases?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => []),
+
+        // Cargar clientes
+        fetch(`/api/costumers?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => []),
+
+        // Cargar proveedores
+        fetch(`/api/suppliers?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => []),
+
+        // Cargar unidades
+        fetch(`/api/units?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => []),
+
+        // Cargar familias
+        fetch(`/api/families?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => []),
+
+        // Cargar almacenes
+        fetch(`/api/warehouses?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => []),
+
+        // Cargar anuncios basados en businessType
+        storeSettings?.businessType
+          ? fetch(`/api/ads?businessType=${storeSettings.businessType}`)
             .then(res => res.ok ? res.json() : [])
             .catch(() => [])
-        : Promise.resolve([]),
-      
-      // Cargar usuarios
-      fetch(`/api/users?storeId=${storeId}`)
-        .then(res => res.ok ? res.json() : [])
-        .catch(() => []),
-      
-      // Cargar sesiones de caja
-      fetch(`/api/cashsessions?storeId=${storeId}`)
-        .then(res => res.ok ? res.json() : [])
-        .catch(() => []),
-      
-      // Cargar órdenes pendientes
-      fetch(`/api/pending-orders?storeId=${storeId}`)
-        .then(res => res.ok ? res.json() : [])
-        .catch(() => []),
-      
-      // Cargar tasas de cambio
-      fetch(`/api/currency-rates?storeId=${storeId}`)
-        .then(res => res.ok ? res.json() : [])
-        .catch(() => [])
-    ];
+          : Promise.resolve([]),
 
-    // Ejecutar todas las peticiones en paralelo
-    const results = await Promise.allSettled(promises);
+        // Cargar usuarios
+        fetch(`/api/users?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => []),
 
-    // Procesar resultados
-    const [
-      productsResult, salesResult, purchasesResult, 
-      customersResult, suppliersResult, unitsResult, familiesResult,
-      warehousesResult, adsResult, usersResult, cashSessionsResult,
-      pendingOrdersResult, currencyRatesResult
-    ] = results;
+        // Cargar sesiones de caja
+        fetch(`/api/cashsessions?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => []),
 
-    // Contador de datos cargados
-    let loadedCount = 0;
+        // Cargar órdenes pendientes
+        fetch(`/api/pending-orders?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => []),
 
-    // Actualizar estados con los datos recibidos (settings ya se cargaron antes)
-    if (storeSettings) {
-      setLocalSettings(storeSettings);
-      loadedCount++;
+        // Cargar tasas de cambio
+        fetch(`/api/currency-rates?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => [])
+      ];
+
+      // Ejecutar todas las peticiones en paralelo
+      const results = await Promise.allSettled(promises);
+
+      // Procesar resultados
+      const [
+        productsResult, salesResult, purchasesResult,
+        customersResult, suppliersResult, unitsResult, familiesResult,
+        warehousesResult, adsResult, usersResult, cashSessionsResult,
+        pendingOrdersResult, currencyRatesResult
+      ] = results;
+
+      // Contador de datos cargados
+      let loadedCount = 0;
+
+      // Actualizar estados con los datos recibidos (settings ya se cargaron antes)
+      if (storeSettings) {
+        setLocalSettings(storeSettings);
+        loadedCount++;
+      }
+
+      if (productsResult.status === 'fulfilled' && productsResult.value) {
+        setProducts(productsResult.value);
+        loadedCount++;
+      }
+
+      if (salesResult.status === 'fulfilled' && salesResult.value) {
+        setSales(salesResult.value);
+        loadedCount++;
+      }
+
+      if (purchasesResult.status === 'fulfilled' && purchasesResult.value) {
+        setPurchases(purchasesResult.value);
+        loadedCount++;
+      }
+
+      if (customersResult.status === 'fulfilled' && customersResult.value) {
+        setCustomers(customersResult.value);
+        loadedCount++;
+      }
+
+      if (suppliersResult.status === 'fulfilled' && suppliersResult.value) {
+        setSuppliers(suppliersResult.value);
+        loadedCount++;
+      }
+
+      if (unitsResult.status === 'fulfilled' && unitsResult.value) {
+        setUnits(unitsResult.value);
+        loadedCount++;
+      }
+
+      if (familiesResult.status === 'fulfilled' && familiesResult.value) {
+        setFamilies(familiesResult.value);
+        loadedCount++;
+      }
+
+      if (warehousesResult.status === 'fulfilled' && warehousesResult.value) {
+        setWarehouses(warehousesResult.value);
+        loadedCount++;
+      }
+
+      if (adsResult.status === 'fulfilled' && adsResult.value) {
+        setAds(adsResult.value);
+        loadedCount++;
+      }
+
+      if (usersResult.status === 'fulfilled' && usersResult.value) {
+        setUsers(usersResult.value);
+        loadedCount++;
+      }
+
+      if (cashSessionsResult.status === 'fulfilled' && cashSessionsResult.value) {
+        setCashSessions(cashSessionsResult.value);
+        loadedCount++;
+      }
+
+      if (pendingOrdersResult.status === 'fulfilled' && pendingOrdersResult.value) {
+        setPendingOrders(pendingOrdersResult.value);
+        loadedCount++;
+      }
+
+      if (currencyRatesResult.status === 'fulfilled' && currencyRatesResult.value) {
+        setCurrencyRates(currencyRatesResult.value);
+        loadedCount++;
+      }
+
+      console.log(`✅ ${loadedCount}/14 tipos de datos cargados desde MongoDB`);
+
+    } catch (error) {
+      console.error('❌ Error cargando datos desde MongoDB:', error);
+      toast({
+        variant: "destructive",
+        title: "Error de conexión",
+        description: "No se pudieron cargar los datos desde la base de datos"
+      });
+    } finally {
+      setIsLoading(false);
     }
-
-    if (productsResult.status === 'fulfilled' && productsResult.value) {
-      setProducts(productsResult.value);
-      loadedCount++;
-    }
-
-    if (salesResult.status === 'fulfilled' && salesResult.value) {
-      setSales(salesResult.value);
-      loadedCount++;
-    }
-
-    if (purchasesResult.status === 'fulfilled' && purchasesResult.value) {
-      setPurchases(purchasesResult.value);
-      loadedCount++;
-    }
-
-    if (customersResult.status === 'fulfilled' && customersResult.value) {
-      setCustomers(customersResult.value);
-      loadedCount++;
-    }
-
-    if (suppliersResult.status === 'fulfilled' && suppliersResult.value) {
-      setSuppliers(suppliersResult.value);
-      loadedCount++;
-    }
-
-    if (unitsResult.status === 'fulfilled' && unitsResult.value) {
-      setUnits(unitsResult.value);
-      loadedCount++;
-    }
-
-    if (familiesResult.status === 'fulfilled' && familiesResult.value) {
-      setFamilies(familiesResult.value);
-      loadedCount++;
-    }
-
-    if (warehousesResult.status === 'fulfilled' && warehousesResult.value) {
-      setWarehouses(warehousesResult.value);
-      loadedCount++;
-    }
-
-    if (adsResult.status === 'fulfilled' && adsResult.value) {
-      setAds(adsResult.value);
-      loadedCount++;
-    }
-
-    if (usersResult.status === 'fulfilled' && usersResult.value) {
-      setUsers(usersResult.value);
-      loadedCount++;
-    }
-
-    if (cashSessionsResult.status === 'fulfilled' && cashSessionsResult.value) {
-      setCashSessions(cashSessionsResult.value);
-      loadedCount++;
-    }
-
-    if (pendingOrdersResult.status === 'fulfilled' && pendingOrdersResult.value) {
-      setPendingOrders(pendingOrdersResult.value);
-      loadedCount++;
-    }
-
-    if (currencyRatesResult.status === 'fulfilled' && currencyRatesResult.value) {
-      setCurrencyRates(currencyRatesResult.value);
-      loadedCount++;
-    }
-
-    console.log(`✅ ${loadedCount}/14 tipos de datos cargados desde MongoDB`);
-
-  } catch (error) {
-    console.error('❌ Error cargando datos desde MongoDB:', error);
-    toast({
-      variant: "destructive",
-      title: "Error de conexión",
-      description: "No se pudieron cargar los datos desde la base de datos"
-    });
-  } finally {
-    setIsLoading(false);
-  }
-}, []); // Sin dependencias para evitar bucles infinitos
+  }, []); // Sin dependencias para evitar bucles infinitos
 
   // ✅ FUNCIÓN SEEDDATABASE CORREGIDA Y DEFINITIVA
-const seedDatabase = useCallback(async (storeId: string) => {
-  try {
-    console.log('🌱 Iniciando SEED COMPLETO en MongoDB para store:', storeId);
+  const seedDatabase = useCallback(async (storeId: string) => {
+    try {
+      console.log('🌱 Iniciando SEED COMPLETO en MongoDB para store:', storeId);
 
-    const response = await fetch('/api/seed', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ storeId })
-    });
+      const response = await fetch('/api/seed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storeId })
+      });
 
-    // MEJOR MANEJO DE ERRORES
-    if (!response.ok) {
-      let errorMessage = 'Error en API seed';
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorMessage;
-      } catch {
-        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      // MEJOR MANEJO DE ERRORES
+      if (!response.ok) {
+        let errorMessage = 'Error en API seed';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
-      throw new Error(errorMessage);
+
+      const result = await response.json();
+      console.log('✅ SEED COMPLETO exitoso:', result);
+
+      await loadDataFromMongoDB(storeId);
+      return true;
+
+    } catch (error) {
+      console.error('❌ Error en seedDatabase:', error);
+      return false;
     }
-
-    const result = await response.json();
-    console.log('✅ SEED COMPLETO exitoso:', result);
-    
-    await loadDataFromMongoDB(storeId);
-    return true;
-
-  } catch (error) {
-    console.error('❌ Error en seedDatabase:', error);
-    return false;
-  }
-}, []); // Removido loadDataFromMongoDB de las dependencias
+  }, []); // Removido loadDataFromMongoDB de las dependencias
 
   // Cargar configuración inicial al montar el componente
-    useEffect(() => {
+  useEffect(() => {
     setIsClient(true);
-    
+
     // Solo localStorage para preferencias de usuario (tienda activa y moneda display)
     const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY) || 'store_clifp94l0000008l3b1z9f8j7';
     setActiveStoreId(storedStoreId);
-    
+
     const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY);
     if (storedCurrencyPref === 'secondary') {
       setDisplayCurrency('secondary');
     }
-    
+
     // Cargar datos de configuración SOLO desde MongoDB
     loadDataFromMongoDB(storedStoreId);
   }, []); // Solo ejecutar una vez al montar
@@ -402,14 +400,28 @@ const seedDatabase = useCallback(async (storeId: string) => {
 
   // ✅ FUNCIÓN PARA ACTUALIZAR SOLO EL ESTADO (SIN GUARDAR EN BD)
   const updateSettingsState = useCallback((newSettings: Partial<Settings>) => {
-    setLocalSettings(prev => ({ ...(prev || {}), ...newSettings }));
+    setLocalSettings(prev => {
+      if (!prev) {
+        // Si prev es null, crear un objeto Settings básico con los valores requeridos
+        const baseSettings: Settings = {
+          id: newSettings.id || '',
+          storeId: newSettings.storeId || '',
+          name: newSettings.name || '',
+          ownerIds: newSettings.ownerIds || [],
+          status: newSettings.status || 'active',
+          businessType: newSettings.businessType || ''
+        };
+        return { ...baseSettings, ...newSettings };
+      }
+      return { ...prev, ...newSettings };
+    });
   }, []); // Removido settings de las dependencias
 
   // ✅ FUNCIÓN PARA GUARDAR EN BASE DE DATOS SOLAMENTE
   const saveSettingsToDatabase = useCallback(async (settingsToSave?: Partial<Settings>) => {
     try {
       console.log('💾 [Context] Guardando configuración en BD...');
-      
+
       if (!settingsToSave && !settings) {
         throw new Error("No hay configuración para guardar");
       }
@@ -427,10 +439,10 @@ const seedDatabase = useCallback(async (storeId: string) => {
       });
 
       console.log('📥 [Context] Response status:', res.status);
-      
+
       const responseData = await res.json();
       console.log('📥 [Context] Response data:', responseData);
-      
+
       if (!res.ok) {
         throw new Error(responseData.error || "Error al guardar");
       }
@@ -445,133 +457,133 @@ const seedDatabase = useCallback(async (storeId: string) => {
   }, [activeStoreId]); // Removido settings de las dependencias
 
   // ✅ FUNCIÓN GUARDARCURRENCYRATE CORREGIDA Y DEFINITIVA
-// Agrega estas funciones a tu contexto
-const saveCurrencyRate = async (rate: number, userId: string) => {
-  try {
-    console.log('💰 [Context] Guardando tasa:', { rate, userId, activeStoreId });
-    
-    const requestBody = {
-      storeId: activeStoreId,
-      rate,
-      userId
-    };
-    
-    console.log('📤 [Context] Enviando request:', requestBody);
-    
-    const res = await fetch('/api/currency-rates', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody)
-    });
+  // Agrega estas funciones a tu contexto
+  const saveCurrencyRate = async (rate: number, userId: string) => {
+    try {
+      console.log('💰 [Context] Guardando tasa:', { rate, userId, activeStoreId });
 
-    console.log('📥 [Context] Response status:', res.status);
-    
-    const data = await res.json();
-    console.log('📥 [Context] Response data:', data);
-    
-    if (!res.ok) {
-      throw new Error(data.error || `HTTP ${res.status}: ${res.statusText}`);
+      const requestBody = {
+        storeId: activeStoreId,
+        rate,
+        userId
+      };
+
+      console.log('📤 [Context] Enviando request:', requestBody);
+
+      const res = await fetch('/api/currency-rates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+
+      console.log('📥 [Context] Response status:', res.status);
+
+      const data = await res.json();
+      console.log('📥 [Context] Response data:', data);
+
+      if (!res.ok) {
+        throw new Error(data.error || `HTTP ${res.status}: ${res.statusText}`);
+      }
+
+      // Actualizar estado local
+      const newRate = {
+        ...data.data,
+        id: data.data._id || data.data.id || `rate-${Date.now()}`
+      };
+
+      console.log('✅ [Context] Actualizando estado local con:', newRate);
+
+      setCurrencyRates(prev => [newRate, ...prev.filter(r => r.id !== newRate.id)]);
+      return true;
+
+    } catch (error) {
+      console.error("❌ [Context] Error saving rate:", error);
+      return false;
+    }
+  };
+
+  const fetchCurrencyRates = async () => {
+    if (!activeStoreId || activeStoreId === '') {
+      console.warn('activeStoreId no está disponible, omitiendo carga de tasas');
+      return null;
     }
 
-    // Actualizar estado local
-    const newRate = {
-      ...data.data,
-      id: data.data._id || data.data.id || `rate-${Date.now()}`
-    };
-    
-    console.log('✅ [Context] Actualizando estado local con:', newRate);
-    
-    setCurrencyRates(prev => [newRate, ...prev.filter(r => r.id !== newRate.id)]);
-    return true;
+    try {
+      const res = await fetch(`/api/currency-rates?storeId=${activeStoreId}`);
 
-  } catch (error) {
-    console.error("❌ [Context] Error saving rate:", error);
-    return false;
-  }
-};
+      // Verificar si la respuesta es JSON
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('API returned non-JSON response');
+      }
 
-const fetchCurrencyRates = async () => {
-  if (!activeStoreId || activeStoreId === '') {
-    console.warn('activeStoreId no está disponible, omitiendo carga de tasas');
-    return null;
-  }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
 
-  try {
-    const res = await fetch(`/api/currency-rates?storeId=${activeStoreId}`);
-    
-    // Verificar si la respuesta es JSON
-    const contentType = res.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      throw new Error('API returned non-JSON response');
+      // Manejar diferentes estructuras de respuesta
+      let rates = [];
+
+      if (Array.isArray(data)) {
+        // Si la API devuelve directamente un array
+        rates = data;
+      } else if (data.data && Array.isArray(data.data)) {
+        // Si la API devuelve { data: [...] }
+        rates = data.data;
+      } else if (data.history && Array.isArray(data.history)) {
+        // Si la API devuelve { history: [...] }
+        rates = data.history;
+      } else if (data.data?.history && Array.isArray(data.data.history)) {
+        // Si la API devuelve { data: { history: [...] } }
+        rates = data.data.history;
+      }
+
+      // Asegurar que cada tasa tenga un ID único
+      const processedRates = rates.map((rate: Record<string, unknown>) => ({
+        ...rate,
+        id: (rate._id as string) || (rate.id as string) || `rate-${(rate.createdAt as string) || (rate.date as string) || Date.now()}`,
+        rate: rate.rate || rate.value || 1,
+        createdAt: rate.createdAt || rate.date || new Date().toISOString(),
+        createdBy: rate.createdBy || rate.userId || 'Sistema'
+      }));
+
+      setCurrencyRates(processedRates);
+      return data.current || data.data?.current || null;
+
+    } catch (error) {
+      console.error("Error fetching rates:", error);
+      setCurrencyRates([]); // Asegurar que siempre sea array
+      return null;
     }
-    
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
+  };
 
-    // Manejar diferentes estructuras de respuesta
-    let rates = [];
-    
-    if (Array.isArray(data)) {
-      // Si la API devuelve directamente un array
-      rates = data;
-    } else if (data.data && Array.isArray(data.data)) {
-      // Si la API devuelve { data: [...] }
-      rates = data.data;
-    } else if (data.history && Array.isArray(data.history)) {
-      // Si la API devuelve { history: [...] }
-      rates = data.history;
-    } else if (data.data?.history && Array.isArray(data.data.history)) {
-      // Si la API devuelve { data: { history: [...] } }
-      rates = data.data.history;
-    }
+  const switchStore = async (storeId: string) => {
+    console.log('🏪 Cambiando a tienda:', storeId);
+    setActiveStoreId(storeId);
 
-    // Asegurar que cada tasa tenga un ID único
-    const processedRates = rates.map((rate: Record<string, unknown>) => ({
-      ...rate,
-      id: (rate._id as string) || (rate.id as string) || `rate-${(rate.createdAt as string) || (rate.date as string) || Date.now()}`,
-      rate: rate.rate || rate.value || 1,
-      createdAt: rate.createdAt || rate.date || new Date().toISOString(),
-      createdBy: rate.createdBy || rate.userId || 'Sistema'
-    }));
+    // Guardar preferencia de tienda activa en localStorage
+    localStorage.setItem(ACTIVE_STORE_ID_STORAGE_KEY, storeId);
 
-    setCurrencyRates(processedRates);
-    return data.current || data.data?.current || null;
-    
-  } catch (error) {
-    console.error("Error fetching rates:", error);
-    setCurrencyRates([]); // Asegurar que siempre sea array
-    return null;
-  }
-};
+    // Recargar datos de configuración desde MongoDB
+    await loadDataFromMongoDB(storeId);
 
-const switchStore = async (storeId: string) => {
-  console.log('🏪 Cambiando a tienda:', storeId);
-  setActiveStoreId(storeId);
-  
-  // Guardar preferencia de tienda activa en localStorage
-  localStorage.setItem(ACTIVE_STORE_ID_STORAGE_KEY, storeId);
-  
-  // Recargar datos de configuración desde MongoDB
-  await loadDataFromMongoDB(storeId);
-  
-  toast({ title: `Cambiado a la tienda ${storeId}` });
-};
+    toast({ title: `Cambiado a la tienda ${storeId}` });
+  };
 
   const toggleDisplayCurrency = () => {
     const newPreference = displayCurrency === 'primary' ? 'secondary' : 'primary';
     setDisplayCurrency(newPreference);
-    
+
     // Guardar preferencia de moneda display en localStorage
     localStorage.setItem(CURRENCY_PREF_STORAGE_KEY, newPreference);
   };
-  
+
   const handleSetUserProfile = (user: UserProfile | null) => {
     setUserProfile(user);
   };
 
   const handleSignOut = async () => {
     if (authSignOut) {
-      await authSignOut();
+      authSignOut();
       toast({ title: "Sesión cerrada" });
     }
   };
@@ -579,11 +591,11 @@ const switchStore = async (storeId: string) => {
   const activeSymbol = displayCurrency === 'primary' ? (settings?.primaryCurrencySymbol || '$') : (settings?.secondaryCurrencySymbol || 'Bs.');
   const latestRate = currencyRates.length > 0 ? currencyRates[0].rate : 1;
   const activeRate = displayCurrency === 'primary' ? 1 : (latestRate > 0 ? latestRate : 1);
-  
+
   const isPublicPath = pathname.startsWith('/catalog') || pathname === '/' || pathname.startsWith('/login');
-  
+
   if (isLoading && !isPublicPath && isClient) {
-      return <AppLoadingScreen />;
+    return <AppLoadingScreen />;
   }
 
   const contextValue: SettingsContextType = {
