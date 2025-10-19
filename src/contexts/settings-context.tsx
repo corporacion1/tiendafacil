@@ -438,7 +438,7 @@ const seedDatabase = useCallback(async (storeId: string) => {
       console.log('✅ [Context] Configuración guardada exitosamente');
       return true;
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ [Context] Error saving settings:', error);
       throw error;
     }
@@ -526,9 +526,9 @@ const fetchCurrencyRates = async () => {
     }
 
     // Asegurar que cada tasa tenga un ID único
-    const processedRates = rates.map((rate: any) => ({
+    const processedRates = rates.map((rate: Record<string, unknown>) => ({
       ...rate,
-      id: rate._id || rate.id || `rate-${rate.createdAt || rate.date || Date.now()}`,
+      id: (rate._id as string) || (rate.id as string) || `rate-${(rate.createdAt as string) || (rate.date as string) || Date.now()}`,
       rate: rate.rate || rate.value || 1,
       createdAt: rate.createdAt || rate.date || new Date().toISOString(),
       createdBy: rate.createdBy || rate.userId || 'Sistema'

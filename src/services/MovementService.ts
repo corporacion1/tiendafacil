@@ -44,7 +44,7 @@ export class MovementService {
    * Registra un movimiento de inventario
    * Se integra de forma transparente sin afectar el flujo actual
    */
-  static async recordMovement(request: CreateMovementRequest): Promise<any> {
+  static async recordMovement(request: CreateMovementRequest): Promise<InventoryMovement | null> {
     try {
       console.log('📦 [MovementService] Registrando movimiento:', {
         productId: request.productId,
@@ -103,7 +103,7 @@ export class MovementService {
    * Registra múltiples movimientos en lote
    * Útil para compras y ventas con múltiples productos
    */
-  static async recordBatchMovements(requests: CreateMovementRequest[]): Promise<any[]> {
+  static async recordBatchMovements(requests: CreateMovementRequest[]): Promise<InventoryMovement[]> {
     try {
       console.log('📦 [MovementService] Registrando lote de movimientos:', requests.length);
 
@@ -131,15 +131,15 @@ export class MovementService {
     productId: string, 
     storeId: string,
     filters?: MovementFilters
-  ): Promise<any[]> {
+  ): Promise<InventoryMovement[]> {
     try {
-      const query: any = { productId, storeId };
+      const query: Record<string, unknown> = { productId, storeId };
 
       // Aplicar filtros si se proporcionan
       if (filters?.dateFrom || filters?.dateTo) {
         query.createdAt = {};
-        if (filters.dateFrom) query.createdAt.$gte = filters.dateFrom;
-        if (filters.dateTo) query.createdAt.$lte = filters.dateTo;
+        if (filters.dateFrom) (query.createdAt as Record<string, unknown>).$gte = filters.dateFrom;
+        if (filters.dateTo) (query.createdAt as Record<string, unknown>).$lte = filters.dateTo;
       }
 
       if (filters?.movementTypes?.length) {
@@ -271,7 +271,7 @@ export class MovementService {
     userId: string,
     storeId: string,
     warehouseId: string = 'main'
-  ): Promise<any[]> {
+  ): Promise<InventoryMovement[]> {
     try {
       console.log('🛒 [MovementService] Registrando movimientos de venta:', saleId);
 
@@ -318,7 +318,7 @@ export class MovementService {
     userId: string,
     storeId: string,
     warehouseId: string = 'main'
-  ): Promise<any[]> {
+  ): Promise<InventoryMovement[]> {
     try {
       console.log('📦 [MovementService] Registrando movimientos de compra:', purchaseId);
 
@@ -367,7 +367,7 @@ export class MovementService {
     userId: string,
     storeId: string,
     warehouseId: string = 'main'
-  ): Promise<any> {
+  ): Promise<InventoryMovement | null> {
     try {
       if (initialStock <= 0) {
         return null; // No registrar si no hay stock inicial
@@ -411,7 +411,7 @@ export class MovementService {
     userId: string,
     storeId: string,
     warehouseId: string = 'main'
-  ): Promise<any> {
+  ): Promise<InventoryMovement | null> {
     try {
       const adjustmentQuantity = newStock - currentStock;
       
