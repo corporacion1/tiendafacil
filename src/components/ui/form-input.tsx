@@ -42,7 +42,8 @@ const FormInput = React.forwardRef<HTMLInputElement, FormInputProps>(
   }, ref) => {
     const [showPassword, setShowPassword] = React.useState(false);
     const [isFocused, setIsFocused] = React.useState(false);
-    const inputId = id || `input-${React.useId()}`;
+    const generatedId = React.useId();
+    const inputId = id || `input-${generatedId}`;
     const isPassword = type === "password";
     const actualType = isPassword && showPassword ? "text" : type;
 

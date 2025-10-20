@@ -199,7 +199,7 @@ export type Ad = {
   name: string;
   description?: string;
   price: number;
-  imageUrl: string;
+  imageUrl?: string;
   imageHint?: string;
   views: number;
   status: 'active' | 'inactive' | 'paused';

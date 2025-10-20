@@ -598,10 +598,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const isPublicPath = pathname.startsWith('/catalog') || pathname === '/' || pathname.startsWith('/login');
 
-  if (isLoading && !isPublicPath && isClient) {
-    return <AppLoadingScreen />;
-  }
-
   const contextValue: SettingsContextType = useMemo(() => {
     // Log context changes para debugging
     toastLogger.log({
@@ -703,6 +699,10 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     fetchCurrencyRates,
     saveCurrencyRate
   ]);
+
+  if (isLoading && !isPublicPath && isClient) {
+    return <AppLoadingScreen />;
+  }
 
   return (
     <SettingsContext.Provider value={contextValue}>

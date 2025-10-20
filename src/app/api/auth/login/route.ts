@@ -56,6 +56,11 @@ export async function POST(request: Request) {
       // Use direct MongoDB operations instead of Mongoose model
       const mongoose = await import('mongoose');
       const db = mongoose.default.connection.db;
+      
+      if (!db) {
+        throw new Error('Database connection not established');
+      }
+      
       const usersCollection = db.collection('users');
       
       user = await usersCollection.findOne({ email: email.toLowerCase().trim() });

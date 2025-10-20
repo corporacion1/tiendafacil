@@ -1,7 +1,5 @@
-
-import type { NextConfig } from 'next';
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -10,12 +8,6 @@ const nextConfig: NextConfig = {
   },
   images: {
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'firebasestorage.googleapis.com',
-        port: '',
-        pathname: '/**',
-      },
       {
         protocol: 'https',
         hostname: 'images.unsplash.com',
@@ -50,8 +42,8 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'www.dropbox.com',
         port: '',
-        pathname: '/**'
-      }
+        pathname: '/**',
+      },
     ],
   },
   experimental: {

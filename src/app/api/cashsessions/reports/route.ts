@@ -130,7 +130,7 @@ export async function GET(request: Request) {
     console.log('✅ [Reports API] Reporte generado exitosamente');
     return NextResponse.json(report);
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ [Reports API] Error generando reporte:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -188,7 +188,7 @@ export async function POST(request: Request) {
       report
     });
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ [Reports API] Error cerrando sesión:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

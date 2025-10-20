@@ -377,12 +377,17 @@ useEffect(() => {
     }
     }, [saveStatus]);
 
-     const renderManagementCard = (
-        title: string,
-        description: string,
-        items: any[],
-        type: 'unit' | 'family' | 'warehouse'
-    ) => {
+     const ManagementCard = ({
+        title,
+        description,
+        items,
+        type
+    }: {
+        title: string;
+        description: string;
+        items: any[];
+        type: 'unit' | 'family' | 'warehouse';
+    }) => {
         const [newItemName, setNewItemName] = useState('');
         const [editingItem, setEditingItem] = useState<{id: string, name: string} | null>(null);
 
@@ -820,9 +825,9 @@ const handleGoToProduction = async () => {
                     <Separator />
                     <h3 className="text-lg font-medium">Clasificación de Productos</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-                        {renderManagementCard("Unidades de Medida", "Gestiona las unidades para tus productos.", units, 'unit')}
-                        {renderManagementCard("Familias de Productos", "Organiza tus productos en familias.", families, 'family')}
-                        {renderManagementCard("Almacenes", "Gestiona los almacenes de destino.", warehouses, 'warehouse')}
+                        <ManagementCard title="Unidades de Medida" description="Gestiona las unidades para tus productos." items={units} type='unit' />
+                        <ManagementCard title="Familias de Productos" description="Organiza tus productos en familias." items={families} type='family' />
+                        <ManagementCard title="Almacenes" description="Gestiona los almacenes de destino." items={warehouses} type='warehouse' />
                     </div>
                     <Separator />
                     <h3 className="text-lg font-medium">Configuración de Monedas</h3>

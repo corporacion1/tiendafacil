@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { CashSession, SessionStatus } from '@/models/CashSession';
 import { Sale } from '@/models/Sale';
 
-export async function GET(request) {
+export async function GET(request: NextRequest) {
   try {
     await connectToDatabase();
     const { searchParams } = new URL(request.url);
@@ -31,13 +31,13 @@ export async function GET(request) {
     console.log('📊 [CashSessions API] Sesiones encontradas:', cashSessions.length);
     
     return NextResponse.json(cashSessions);
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ [CashSessions API] Error en GET:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-export async function POST(request) {
+export async function POST(request: NextRequest) {
   try {
     await connectToDatabase();
     const data = await request.json();
@@ -79,13 +79,13 @@ export async function POST(request) {
     console.log('✅ [CashSessions API] Sesión creada:', created.id);
     
     return NextResponse.json(created);
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ [CashSessions API] Error creando sesión:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-export async function PUT(request) {
+export async function PUT(request: NextRequest) {
   try {
     await connectToDatabase();
     const data = await request.json();
@@ -149,13 +149,13 @@ export async function PUT(request) {
     console.log('✅ [CashSessions API] Sesión actualizada:', updated.id);
     return NextResponse.json(updated);
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ [CashSessions API] Error actualizando sesión:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-export async function DELETE(request) {
+export async function DELETE(request: NextRequest) {
   try {
     await connectToDatabase();
     const { searchParams } = new URL(request.url);
@@ -167,7 +167,7 @@ export async function DELETE(request) {
     const deleted = await CashSession.findOneAndDelete({ id, storeId });
     if (!deleted) return NextResponse.json({ error: "Sesión de caja no existe" }, { status: 404 });
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

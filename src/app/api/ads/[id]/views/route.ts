@@ -6,12 +6,12 @@ import { handleDatabaseError, logDatabaseOperation } from '@/lib/db-error-handle
 // POST /api/ads/[id]/views - Incrementar vistas de un anuncio
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectToDatabase();
     
-    const { id } = params;
+    const { id } = await params;
 
     if (!id) {
       return NextResponse.json({ error: 'ID es requerido' }, { status: 400 });

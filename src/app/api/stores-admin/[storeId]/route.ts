@@ -6,12 +6,12 @@ import { User } from '@/models/User';
 // GET /api/stores-admin/[storeId] - Get detailed store information
 export async function GET(
   request: Request,
-  { params }: { params: { storeId: string } }
+  { params }: { params: Promise<{ storeId: string }> }
 ) {
   try {
     await connectToDatabase();
     
-    const { storeId } = params;
+    const { storeId } = await params;
     
     if (!storeId) {
       return NextResponse.json(
