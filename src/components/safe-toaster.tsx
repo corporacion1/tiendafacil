@@ -1,0 +1,74 @@
+"use client"
+
+import React from 'react';
+import { useToast } from "@/hooks/use-toast"
+import { toastLogger } from "@/utils/toast-logger"
+import {
+  Toast,
+  ToastClose,
+  ToastDescription,
+  ToastProvider,
+  ToastTitle,
+  ToastViewport,
+} from "@/components/ui/toast"
+import { ErrorBoundary, MinimalErrorFallback } from '@/components/error-boundary';
+
+// Componente Toaster con safeguards adicionales
+function SafeToaster() {
+  const { toasts } = useToast()
+
+  // Log renders para debugging
+  React.useEffect(() => {
+    toastLogger.log({
+      type: 'RENDER',
+      contextData: { toastCount: toasts.length }
+    });
+  }, [toasts.length]);
+
+  // Limitar el número de toasts para prevenir overflow
+  const limitedToasts = React.useMemo(() => {
+    return toasts.slice(0, 5); // Máximo 5 toasts
+  }, [toasts]);
+
+  return (
+    <ToastProvider>
+      {limitedToasts.map(function ({ id, title, description, action, ...props }) {
+        return (
+          <ErrorBoundary 
+            key={id} 
+            context="Toast Individual"
+            fallback={MinimalErrorFallback}
+          >
+            <Toast key={id} {...props}>
+              <div className="grid gap-1">
+                {title && <ToastTitle>{title}</ToastTitle>}
+                {description && (
+                  <ToastDescription>{description}</ToastDescription>
+                )}
+              </div>
+              {action}
+              <ToastClose />
+            </Toast>
+          </ErrorBoundary>
+        )
+      })}
+      <ToastViewport />
+    </ToastProvider>
+  )
+}
+
+// Componente principal con error boundary
+export function Toaster() {
+  return (
+    <ErrorBoundary 
+      context="Sistema de Toast"
+      fallback={() => (
+        <div className="fixed bottom-4 right-4 p-2 bg-destructive/10 text-destructive text-xs rounded">
+          Error en notificaciones
+        </div>
+      )}
+    >
+      <SafeToaster />
+    </ErrorBoundary>
+  );
+}

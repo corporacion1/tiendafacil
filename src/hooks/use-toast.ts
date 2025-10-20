@@ -2,6 +2,7 @@
 
 // Inspired by react-hot-toast library
 import * as React from "react"
+import { toastLogger } from "@/utils/toast-logger"
 
 import type {
   ToastActionElement,
@@ -77,12 +78,22 @@ const addToRemoveQueue = (toastId: string) => {
 export const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case "ADD_TOAST":
+      toastLogger.log({
+        type: 'ADD',
+        toastId: action.toast.id,
+        title: action.toast.title?.toString(),
+        description: action.toast.description?.toString()
+      });
       return {
         ...state,
         toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
       }
 
     case "UPDATE_TOAST":
+      toastLogger.log({
+        type: 'UPDATE',
+        toastId: action.toast.id
+      });
       return {
         ...state,
         toasts: state.toasts.map((t) =>
@@ -92,6 +103,11 @@ export const reducer = (state: State, action: Action): State => {
 
     case "DISMISS_TOAST": {
       const { toastId } = action
+
+      toastLogger.log({
+        type: 'DISMISS',
+        toastId: toastId || 'all'
+      });
 
       // ! Side effects ! - This could be extracted into a dismissToast() action,
       // but I'll keep it here for simplicity
@@ -116,6 +132,10 @@ export const reducer = (state: State, action: Action): State => {
       }
     }
     case "REMOVE_TOAST":
+      toastLogger.log({
+        type: 'REMOVE',
+        toastId: action.toastId || 'all'
+      });
       if (action.toastId === undefined) {
         return {
           ...state,
@@ -143,6 +163,22 @@ function dispatch(action: Action) {
 type Toast = Omit<ToasterToast, "id">
 
 function toast({ ...props }: Toast) {
+  // Evitar toasts duplicados con el mismo título y descripción
+  const isDuplicate = memoryState.toasts.some(existingToast => 
+    existingToast.title === props.title && 
+    existingToast.description === props.description &&
+    existingToast.open !== false
+  )
+  
+  if (isDuplicate) {
+    console.warn('🚫 Toast duplicado evitado:', props.title)
+    return {
+      id: '',
+      dismiss: () => {},
+      update: () => {},
+    }
+  }
+
   const id = genId()
 
   const update = (props: ToasterToast) =>
@@ -175,20 +211,27 @@ function useToast() {
   const [state, setState] = React.useState<State>(memoryState)
 
   React.useEffect(() => {
-    listeners.push(setState)
+    // Usar una función estable para evitar re-registros
+    const stableSetState = (newState: State) => setState(newState)
+    
+    listeners.push(stableSetState)
     return () => {
-      const index = listeners.indexOf(setState)
+      const index = listeners.indexOf(stableSetState)
       if (index > -1) {
         listeners.splice(index, 1)
       }
     }
   }, [])
 
-  return {
+  const dismissToast = React.useCallback((toastId?: string) => {
+    dispatch({ type: "DISMISS_TOAST", toastId })
+  }, [])
+
+  return React.useMemo(() => ({
     ...state,
     toast,
-    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
-  }
+    dismiss: dismissToast,
+  }), [state, dismissToast])
 }
 
 export { useToast, toast }

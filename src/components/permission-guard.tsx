@@ -36,7 +36,7 @@ export function PermissionGuard({
           </p>
           <Button 
             size="sm" 
-            onClick={() => router.push('/login')}
+            onClick={() => router.push('/catalog')}
             className="mt-2"
           >
             <LogIn className="h-4 w-4 mr-2" />

@@ -26,17 +26,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   // Redirige si usuario logueado intenta entrar a página pública (opcional)
   useEffect(() => {
+    // Solo redirigir si no está cargando y hay un cambio real de estado
     if (!loading) {
-      if (!user && !isPublicPage) {
+      if (!user && !isPublicPage && pathname !== '/catalog' && pathname !== '/') {
         console.log('🔄 Redirecting to catalog from:', pathname);
         router.replace('/catalog');
       }
-      // Opcional: si está logueado y en página pública, redirigir al dashboard
-      // else if (user && isPublicPage && pathname !== '/') {
-      //   router.replace('/dashboard');
-      // }
     }
-  }, [loading, user, isPublicPage, pathname, router]);
+  }, [loading, user, pathname]); // Removido isPublicPage y router de dependencias
 
 
   // Mientras carga, muestra loader

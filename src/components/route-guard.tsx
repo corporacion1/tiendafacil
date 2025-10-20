@@ -34,7 +34,7 @@ export function RouteGuard({
           title: "Acceso restringido",
           description: "Debes iniciar sesión para acceder a esta página.",
         });
-        router.push('/login');
+        router.push('/catalog');
         return;
       }
       
@@ -82,7 +82,7 @@ export function RouteGuard({
               {!isLoggedIn ? (
                 <>
                   <Button 
-                    onClick={() => router.push('/login')} 
+                    onClick={() => router.push('/catalog')} 
                     className="flex-1"
                   >
                     Iniciar Sesión

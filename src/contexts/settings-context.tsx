@@ -1,9 +1,10 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePathname } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
+import { toastLogger } from "@/utils/toast-logger";
 import type { CurrencyRate, Settings, UserProfile, Product, Sale, Purchase, Customer, Supplier, Unit, Family, Warehouse, Ad, CashSession, PendingOrder } from "@/lib/types";
 
 type DisplayCurrency = 'primary' | 'secondary';
@@ -107,7 +108,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const [isClient, setIsClient] = useState(false);
 
   // Función para cargar datos desde MongoDB
-  // Función para cargar datos desde MongoDB - DEFINIR DESPUÉS de todos los useState
   const loadDataFromMongoDB = useCallback(async (storeId: string) => {
     try {
       setIsLoading(true);
@@ -335,7 +335,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     } finally {
       setIsLoading(false);
     }
-  }, []); // Sin dependencias para evitar bucles infinitos
+  }, [toast]); // Solo incluir toast como dependencia
 
   // ✅ FUNCIÓN SEEDDATABASE CORREGIDA Y DEFINITIVA
   const seedDatabase = useCallback(async (storeId: string) => {
@@ -363,6 +363,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       const result = await response.json();
       console.log('✅ SEED COMPLETO exitoso:', result);
 
+      // Recargar datos después del seed
       await loadDataFromMongoDB(storeId);
       return true;
 
@@ -370,24 +371,28 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       console.error('❌ Error en seedDatabase:', error);
       return false;
     }
-  }, []); // Removido loadDataFromMongoDB de las dependencias
+  }, [loadDataFromMongoDB]); // Incluir la dependencia correctamente
 
   // Cargar configuración inicial al montar el componente
   useEffect(() => {
-    setIsClient(true);
+    const initializeSettings = async () => {
+      setIsClient(true);
 
-    // Solo localStorage para preferencias de usuario (tienda activa y moneda display)
-    const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY) || 'store_clifp94l0000008l3b1z9f8j7';
-    setActiveStoreId(storedStoreId);
+      // Solo localStorage para preferencias de usuario (tienda activa y moneda display)
+      const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY) || 'store_clifp94l0000008l3b1z9f8j7';
+      setActiveStoreId(storedStoreId);
 
-    const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY);
-    if (storedCurrencyPref === 'secondary') {
-      setDisplayCurrency('secondary');
-    }
+      const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY);
+      if (storedCurrencyPref === 'secondary') {
+        setDisplayCurrency('secondary');
+      }
 
-    // Cargar datos de configuración SOLO desde MongoDB
-    loadDataFromMongoDB(storedStoreId);
-  }, []); // Solo ejecutar una vez al montar
+      // Cargar datos de configuración SOLO desde MongoDB
+      await loadDataFromMongoDB(storedStoreId);
+    };
+
+    initializeSettings();
+  }, []); // Array vacío para ejecutar solo una vez
 
   // Sincroniza userProfile con authUser
   useEffect(() => {
@@ -457,8 +462,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [activeStoreId]); // Removido settings de las dependencias
 
   // ✅ FUNCIÓN GUARDARCURRENCYRATE CORREGIDA Y DEFINITIVA
-  // Agrega estas funciones a tu contexto
-  const saveCurrencyRate = async (rate: number, userId: string) => {
+  const saveCurrencyRate = useCallback(async (rate: number, userId: string) => {
     try {
       console.log('💰 [Context] Guardando tasa:', { rate, userId, activeStoreId });
 
@@ -500,9 +504,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       console.error("❌ [Context] Error saving rate:", error);
       return false;
     }
-  };
+  }, [activeStoreId]);
 
-  const fetchCurrencyRates = async () => {
+  const fetchCurrencyRates = useCallback(async () => {
     if (!activeStoreId || activeStoreId === '') {
       console.warn('activeStoreId no está disponible, omitiendo carga de tasas');
       return null;
@@ -554,9 +558,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       setCurrencyRates([]); // Asegurar que siempre sea array
       return null;
     }
-  };
+  }, [activeStoreId]);
 
-  const switchStore = async (storeId: string) => {
+  const switchStore = useCallback(async (storeId: string) => {
     console.log('🏪 Cambiando a tienda:', storeId);
     setActiveStoreId(storeId);
 
@@ -567,26 +571,26 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     await loadDataFromMongoDB(storeId);
 
     toast({ title: `Cambiado a la tienda ${storeId}` });
-  };
+  }, [loadDataFromMongoDB, toast]);
 
-  const toggleDisplayCurrency = () => {
+  const toggleDisplayCurrency = useCallback(() => {
     const newPreference = displayCurrency === 'primary' ? 'secondary' : 'primary';
     setDisplayCurrency(newPreference);
 
     // Guardar preferencia de moneda display en localStorage
     localStorage.setItem(CURRENCY_PREF_STORAGE_KEY, newPreference);
-  };
+  }, [displayCurrency]);
 
-  const handleSetUserProfile = (user: UserProfile | null) => {
+  const handleSetUserProfile = useCallback((user: UserProfile | null) => {
     setUserProfile(user);
-  };
+  }, []);
 
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     if (authSignOut) {
       authSignOut();
       toast({ title: "Sesión cerrada" });
     }
-  };
+  }, [authSignOut, toast]);
 
   const activeSymbol = displayCurrency === 'primary' ? (settings?.primaryCurrencySymbol || '$') : (settings?.secondaryCurrencySymbol || 'Bs.');
   const latestRate = currencyRates.length > 0 ? currencyRates[0].rate : 1;
@@ -598,7 +602,20 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     return <AppLoadingScreen />;
   }
 
-  const contextValue: SettingsContextType = {
+  const contextValue: SettingsContextType = useMemo(() => {
+    // Log context changes para debugging
+    toastLogger.log({
+      type: 'CONTEXT_CHANGE',
+      contextData: {
+        context: 'SettingsContext',
+        activeStoreId,
+        isLoading,
+        productsCount: products.length,
+        settingsExists: !!settings
+      }
+    });
+
+    return {
     settings,
     updateSettings: updateSettingsState,
     saveSettings: saveSettingsToDatabase,
@@ -642,7 +659,50 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     seedDatabase,
     fetchCurrencyRates,
     saveCurrencyRate
-  };
+  }}, [
+    settings,
+    updateSettingsState,
+    saveSettingsToDatabase,
+    displayCurrency,
+    toggleDisplayCurrency,
+    activeSymbol,
+    activeRate,
+    currencyRates,
+    setCurrencyRates,
+    products,
+    setProducts,
+    sales,
+    setSales,
+    purchases,
+    setPurchases,
+    customers,
+    setCustomers,
+    suppliers,
+    setSuppliers,
+    units,
+    setUnits,
+    families,
+    setFamilies,
+    warehouses,
+    setWarehouses,
+    ads,
+    setAds,
+    cashSessions,
+    setCashSessions,
+    pendingOrders,
+    setPendingOrders,
+    users,
+    setUsers,
+    activeStoreId,
+    switchStore,
+    isLoading,
+    userProfile,
+    handleSetUserProfile,
+    handleSignOut,
+    seedDatabase,
+    fetchCurrencyRates,
+    saveCurrencyRate
+  ]);
 
   return (
     <SettingsContext.Provider value={contextValue}>

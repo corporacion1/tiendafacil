@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext'; // ← ¡Named import!
 import AppShell from '@/app/app-shell';
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/safe-toaster";
 import { SettingsProvider } from '@/contexts/settings-context';
 import { SecurityProvider } from '@/contexts/security-context';
 import { ErrorBoundary, PageErrorFallback } from '@/components/error-boundary';
@@ -49,7 +49,9 @@ export default function RootLayout({
             </ErrorBoundary>
           </AuthProvider>
         </ErrorBoundary>
-        <Toaster />
+        <ErrorBoundary context="Sistema de Notificaciones">
+          <Toaster />
+        </ErrorBoundary>
       </body>
     </html>
   );

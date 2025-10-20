@@ -174,19 +174,16 @@ export default function CatalogPage() {
   const urlStoreId = urlSearchParams.get('storeId');
   const DEMO_STORE_ID = 'store_clifp94l0000008l3b1z9f8j7';
 
-  // Efecto para sincronizar storeId entre URL y contexto
   useEffect(() => {
-    console.log('🔄 URL StoreId:', urlStoreId);
-    console.log('🔄 Active StoreId:', activeStoreId);
-
+    // Para evitar bucles infinitos, ejecuta solo si cambia el valor realmente
     if (urlStoreId && urlStoreId !== activeStoreId) {
-      console.log('🔄 Sincronizando storeId desde URL:', urlStoreId);
       switchStore(urlStoreId);
     } else if (!urlStoreId && activeStoreId !== DEMO_STORE_ID) {
-      console.log('🔄 Redirigiendo a storeId por defecto:', DEMO_STORE_ID);
-      router.replace(`/catalog?storeId=${DEMO_STORE_ID}`);
+      router.replace(`catalog?storeId=${DEMO_STORE_ID}`);
     }
-  }, [urlStoreId, activeStoreId, switchStore, router]);
+    // No incluyas funciones switchStore ni router en dependencias, solo estados
+  }, [urlStoreId, activeStoreId]);
+
 
   // Usar activeStoreId del contexto en lugar de calcularlo
   const storeIdForCatalog = activeStoreId || DEMO_STORE_ID;
@@ -463,7 +460,7 @@ export default function CatalogPage() {
         clearInterval(autoScrollRef.current);
       }
     };
-  }, [isAutoScrolling, allAds, currentStoreSettings.businessType]);
+  }, [isAutoScrolling, allAds, currentStoreSettings?.businessType]);
 
   // Reset ad index when ads change
   useEffect(() => {
@@ -475,7 +472,7 @@ export default function CatalogPage() {
     if (currentAdIndex >= relevantAds.length) {
       setCurrentAdIndex(0);
     }
-  }, [allAds, currentStoreSettings.businessType, currentAdIndex]);
+  }, [allAds, currentStoreSettings?.businessType, currentAdIndex]);
 
   // Auto-scroll del contenedor de productos
   useEffect(() => {
@@ -632,14 +629,7 @@ export default function CatalogPage() {
   }, [customerName, customerPhone]);
 
   const handleOpenAddToCartDialog = (product: Product) => {
-    if (!authUser) {
-      toast({
-        title: "Inicia sesión requerido",
-        description: "Debes iniciar sesión para agregar productos al pedido. ¡Usa el botón morado para crear tu cuenta!",
-        duration: 4000,
-      });
-      return;
-    }
+    // Permitir agregar productos sin autenticación
     setProductToAdd(product);
     setAddQuantity(1);
   };
@@ -743,8 +733,13 @@ export default function CatalogPage() {
       return;
     }
 
-    if (!isLoggedIn || !currentUser) {
-      setShowRegisterModal(true);
+    // Permitir pedidos sin registro, pero requerir datos básicos
+    if (!customerName.trim() || !customerPhone.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Datos requeridos",
+        description: "Por favor completa tu nombre y teléfono para generar el pedido."
+      });
       return;
     }
 
@@ -768,8 +763,8 @@ export default function CatalogPage() {
     const newPendingOrder: PendingOrder = {
       id: newOrderId,
       date: new Date().toISOString(),
-      customerName: currentUser?.name || customerName,
-      customerPhone: currentUser?.phone || customerPhone,
+      customerName: customerName,
+      customerPhone: customerPhone,
       items: cart.map(item => ({
         productId: item.product.id,
         productName: item.product.name,

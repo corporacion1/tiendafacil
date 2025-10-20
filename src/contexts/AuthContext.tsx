@@ -22,16 +22,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [sessionRestored, setSessionRestored] = useState(false);
 
-  // 🔄 RESTAURAR SESIÓN COMPLETA
+  // 🔄 RESTAURAR SESIÓN COMPLETA - Solo una vez
   useEffect(() => {
+    if (sessionRestored) return; // Evitar ejecuciones múltiples
+
     const restoreSession = async () => {
       try {
+        console.log('🔄 Iniciando restauración de sesión...');
+        
         if (typeof window !== 'undefined') {
           const savedToken = localStorage.getItem('token');
           const savedUser = localStorage.getItem('user');
           
           if (savedToken && savedUser) {
+            console.log('📝 Datos de sesión encontrados en localStorage');
+            
             // Verificar si el token sigue válido
             try {
               const verifyRes = await fetch('/api/auth/verify', {
@@ -40,32 +47,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
               if (verifyRes.ok) {
                 // Token válido, restaurar sesión
+                const userData = JSON.parse(savedUser);
                 setToken(savedToken);
-                setUser(JSON.parse(savedUser));
+                setUser(userData);
+                console.log('✅ Sesión restaurada exitosamente para:', userData.email);
               } else {
                 // Token inválido, limpiar
+                console.log('❌ Token inválido, limpiando sesión');
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
+                setToken(null);
+                setUser(null);
               }
             } catch (error) {
-              console.log('No se pudo verificar token, restaurando de localStorage');
+              console.log('⚠️ No se pudo verificar token, restaurando de localStorage');
               // Fallback: restaurar desde localStorage sin verificar
+              const userData = JSON.parse(savedUser);
               setToken(savedToken);
-              setUser(JSON.parse(savedUser));
+              setUser(userData);
             }
+          } else {
+            console.log('📝 No hay sesión guardada');
+            setToken(null);
+            setUser(null);
           }
         }
       } catch (error) {
-        console.error('Error restaurando sesión:', error);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        console.error('❌ Error restaurando sesión:', error);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        }
+        setToken(null);
+        setUser(null);
       } finally {
         setIsLoading(false);
+        setSessionRestored(true);
+        console.log('🏁 Restauración de sesión completada');
       }
     };
 
     restoreSession();
-  }, []);
+  }, [sessionRestored]); // Dependencia para evitar bucles
 
   const login = async (email: string, password: string) => {
     try {
@@ -130,15 +153,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (res.ok && data.success) {
         console.log('✅ [AuthContext] Condiciones de login exitoso cumplidas');
         
-        // Guardar usuario y token en estado y localStorage
-        setUser(data.user);
         const tokenToSave = data.token || 'fake-jwt-token-123';
+        
+        // Actualizar estado de forma atómica para evitar re-renders múltiples
+        setUser(data.user);
         setToken(tokenToSave);
 
         // PERSISTIR EN LOCALSTORAGE
         if (typeof window !== 'undefined') {
-          localStorage.setItem('token', tokenToSave);
-          localStorage.setItem('user', JSON.stringify(data.user));
+          try {
+            localStorage.setItem('token', tokenToSave);
+            localStorage.setItem('user', JSON.stringify(data.user));
+          } catch (storageError) {
+            console.warn('⚠️ Error guardando en localStorage:', storageError);
+          }
         }
 
         try {
@@ -149,7 +177,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } catch (toastError) {
           console.warn('⚠️ [AuthContext] Error mostrando toast de éxito:', toastError);
           // Fallback to simple toast
-          showSimpleSuccessToast("Has iniciado sesión correctamente.");
+          try {
+            showSimpleSuccessToast("Has iniciado sesión correctamente.");
+          } catch (simpleToastError) {
+            console.warn('⚠️ Error con toast simple:', simpleToastError);
+          }
         }
         
         console.log('✅ Login exitoso - Sesión persistida');
@@ -344,11 +376,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Mostrar loading mientras restaura la sesión
   if (isLoading) {
     return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-muted border-t-primary" />
-          <p className="text-muted-foreground">Cargando...</p>
-        </div>
+      <div className="flex min-h-screen w-full items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600" />
       </div>
     );
   }

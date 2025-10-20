@@ -20,7 +20,7 @@ export default function StoresAdminPage() {
   // Check permissions
   useEffect(() => {
     if (!isLoggedIn) {
-      router.push('/auth/login')
+      router.push('/catalog')
       return
     }
 

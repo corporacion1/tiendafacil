@@ -27,7 +27,7 @@ export interface ErrorContext {
   url?: string;
   userAgent?: string;
   timestamp?: string;
-  additionalData?: Record<string, any>;
+  additionalData?: Record<string, unknown>;
 }
 
 export interface AppError {
@@ -59,13 +59,18 @@ export class GlobalErrorHandler {
   /**
    * Maneja errores de API con respuestas HTTP
    */
-  handleApiError(error: any, context?: ErrorContext): void {
+  handleApiError(error: unknown, context?: ErrorContext): void {
     console.error('🔴 [API Error]:', error);
 
     let message = 'Error en el servidor';
     let severity = ErrorSeverity.MEDIUM;
 
-    if (error.status) {
+    // Type guard para verificar si el error tiene propiedades esperadas
+    const isApiError = (err: unknown): err is { status?: number; message?: string; error?: string } => {
+      return typeof err === 'object' && err !== null;
+    };
+
+    if (isApiError(error) && error.status) {
       switch (error.status) {
         case 400:
           message = 'Datos inválidos enviados al servidor';
@@ -111,17 +116,19 @@ export class GlobalErrorHandler {
     }
 
     // Si hay un mensaje específico del servidor, usarlo
-    if (error.message && typeof error.message === 'string') {
-      message = error.message;
-    } else if (error.error && typeof error.error === 'string') {
-      message = error.error;
+    if (isApiError(error)) {
+      if (error.message && typeof error.message === 'string') {
+        message = error.message;
+      } else if (error.error && typeof error.error === 'string') {
+        message = error.error;
+      }
     }
 
     this.logError({
       type: ErrorType.API,
       severity,
       message,
-      originalError: error,
+      originalError: error instanceof Error ? error : new Error(String(error)),
       context
     });
 
@@ -131,28 +138,35 @@ export class GlobalErrorHandler {
   /**
    * Maneja errores de red (fetch, conexión, etc.)
    */
-  handleNetworkError(error: any, context?: ErrorContext): void {
+  handleNetworkError(error: unknown, context?: ErrorContext): void {
     console.error('🌐 [Network Error]:', error);
 
     let message = 'Error de conexión';
     let severity = ErrorSeverity.MEDIUM;
 
-    if (error.name === 'TypeError' && error.message.includes('fetch')) {
-      message = 'No se pudo conectar al servidor. Verifica tu conexión a internet';
-      severity = ErrorSeverity.HIGH;
-    } else if (error.code === 'NETWORK_ERROR') {
-      message = 'Error de red. Verifica tu conexión';
-      severity = ErrorSeverity.HIGH;
-    } else if (error.message?.includes('timeout')) {
-      message = 'La solicitud tardó demasiado. Intenta nuevamente';
-      severity = ErrorSeverity.MEDIUM;
+    // Type guard para errores de red
+    const isNetworkError = (err: unknown): err is { name?: string; message?: string; code?: string } => {
+      return typeof err === 'object' && err !== null;
+    };
+
+    if (isNetworkError(error)) {
+      if (error.name === 'TypeError' && error.message?.includes('fetch')) {
+        message = 'No se pudo conectar al servidor. Verifica tu conexión a internet';
+        severity = ErrorSeverity.HIGH;
+      } else if (error.code === 'NETWORK_ERROR') {
+        message = 'Error de red. Verifica tu conexión';
+        severity = ErrorSeverity.HIGH;
+      } else if (error.message?.includes('timeout')) {
+        message = 'La solicitud tardó demasiado. Intenta nuevamente';
+        severity = ErrorSeverity.MEDIUM;
+      }
     }
 
     this.logError({
       type: ErrorType.NETWORK,
       severity,
       message,
-      originalError: error,
+      originalError: error instanceof Error ? error : new Error(String(error)),
       context
     });
 
@@ -180,7 +194,7 @@ export class GlobalErrorHandler {
   /**
    * Maneja errores de autenticación
    */
-  handleAuthError(error: any, context?: ErrorContext): void {
+  handleAuthError(error: unknown, context?: ErrorContext): void {
     console.error('🔐 [Auth Error]:', error);
 
     const message = 'Error de autenticación. Por favor, inicia sesión nuevamente';
@@ -189,7 +203,7 @@ export class GlobalErrorHandler {
       type: ErrorType.AUTHENTICATION,
       severity: ErrorSeverity.HIGH,
       message,
-      originalError: error,
+      originalError: error instanceof Error ? error : new Error(String(error)),
       context
     });
 
@@ -215,7 +229,7 @@ export class GlobalErrorHandler {
   /**
    * Maneja errores desconocidos o no categorizados
    */
-  handleUnknownError(error: any, context?: ErrorContext): void {
+  handleUnknownError(error: unknown, context?: ErrorContext): void {
     console.error('❓ [Unknown Error]:', error);
 
     let message = 'Ha ocurrido un error inesperado';
@@ -230,7 +244,7 @@ export class GlobalErrorHandler {
       type: ErrorType.UNKNOWN,
       severity: ErrorSeverity.MEDIUM,
       message,
-      originalError: error,
+      originalError: error instanceof Error ? error : new Error(String(error)),
       context
     });
 
@@ -394,20 +408,20 @@ export class GlobalErrorHandler {
 export const errorHandler = GlobalErrorHandler.getInstance();
 
 // Funciones de conveniencia para uso directo
-export const handleApiError = (error: any, context?: ErrorContext) => 
+export const handleApiError = (error: unknown, context?: ErrorContext) => 
   errorHandler.handleApiError(error, context);
 
-export const handleNetworkError = (error: any, context?: ErrorContext) => 
+export const handleNetworkError = (error: unknown, context?: ErrorContext) => 
   errorHandler.handleNetworkError(error, context);
 
 export const handleValidationError = (errors: string[] | string, context?: ErrorContext) => 
   errorHandler.handleValidationError(errors, context);
 
-export const handleAuthError = (error: any, context?: ErrorContext) => 
+export const handleAuthError = (error: unknown, context?: ErrorContext) => 
   errorHandler.handleAuthError(error, context);
 
 export const handleBusinessLogicError = (message: string, context?: ErrorContext) => 
   errorHandler.handleBusinessLogicError(message, context);
 
-export const handleUnknownError = (error: any, context?: ErrorContext) => 
+export const handleUnknownError = (error: unknown, context?: ErrorContext) => 
   errorHandler.handleUnknownError(error, context);
