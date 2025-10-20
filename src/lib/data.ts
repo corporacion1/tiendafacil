@@ -2,6 +2,7 @@ import type { Product, Sale, Unit, Family, Warehouse, Customer, Purchase, Ad, Us
 import { PlaceHolderImages } from './placeholder-images';
 import { subDays, addDays, startOfWeek, startOfMonth, startOfYear } from 'date-fns';
 
+
 // --- IDs ÚNICOS Y CONSTANTES ---
 export const defaultStoreId = 'store_clifp94l0000008l3b1z9f8j7';
 
