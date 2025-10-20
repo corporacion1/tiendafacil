@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { User } from '@/models/User';
 import bcrypt from 'bcryptjs';
-import { usersData } from '@/lib/data';
+import { defaultUsers } from '@/lib/data';
 
 const SALT_ROUNDS = 10;
 
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
         }
 
         // Find corresponding user data with password
-        const userData = usersData.find(u => u.email === dbUser.email || u.uid === dbUser.uid);
+        const userData = defaultUsers.find(u => u.email === dbUser.email || u.uid === dbUser.uid);
         
         if (!userData || !userData.password) {
           console.log(`⚠️ [Password Migration] No se encontró contraseña para ${dbUser.email}, usando contraseña por defecto`);

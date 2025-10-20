@@ -2,5 +2,16 @@
   "extends": [
     "next/core-web-vitals",
     "next/typescript"
-  ]
+  ],
+  "rules": {
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/no-unused-vars": "warn",
+    "react/no-unescaped-entities": "warn",
+    "react-hooks/exhaustive-deps": "warn",
+    "react-hooks/rules-of-hooks": "error",
+    "@typescript-eslint/prefer-as-const": "warn",
+    "prefer-const": "warn",
+    "@typescript-eslint/no-empty-object-type": "warn",
+    "@next/next/no-page-custom-font": "warn"
+  }
 }

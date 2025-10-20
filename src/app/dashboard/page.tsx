@@ -239,8 +239,8 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3">
-          <Card className="w-full xl:col-span-3">
+        <div className="w-full">
+          <Card className="w-full">
             <CardHeader className="flex flex-row items-center">
               <div className="grid gap-2">
                 <CardTitle>Movimientos Recientes</CardTitle>
