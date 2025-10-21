@@ -5,13 +5,13 @@ import { useRouter } from 'next/navigation';
 import { toast } from '@/hooks/use-toast';
 import { UserProfile } from '@/lib/types';
 
-// FIXED TYPE DEFINITION - register returns Promise with success boolean
+// VERCEL CACHE FIX - register returns Promise with success boolean
 type AuthContextType = {
   user: UserProfile | null;
   token: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, phone: string, storeId: string) => Promise<{ success: boolean; error?: string }>;
+  registerUser: (email: string, password: string, phone: string, storeId: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
 };
 
@@ -92,8 +92,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // FIXED REGISTER FUNCTION - Returns Promise with success boolean
-  const register = async (
+  // VERCEL CACHE FIX - Returns Promise with success boolean
+  const registerUser = async (
     email: string,
     password: string,
     phone: string,
@@ -172,7 +172,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         token,
         loading: isLoading,
         login,
-        register,
+        registerUser,
         logout,
       }}
     >

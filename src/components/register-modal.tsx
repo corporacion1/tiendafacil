@@ -37,7 +37,7 @@ export function RegisterModal({
   const [loading, setLoading] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
   const [emailError, setEmailError] = useState('');
-  const { register, login } = useAuth();
+  const { registerUser, login } = useAuth();
 
   const checkEmailAvailability = async (email: string) => {
     if (!validateEmail(email)) {
@@ -91,7 +91,7 @@ export function RegisterModal({
 
     setLoading(true);
     try {
-      const result = await register(email, password, phone, storeId);
+      const result = await registerUser(email, password, phone, storeId);
       
       if (result && result.success) {
         await login(email, password);
