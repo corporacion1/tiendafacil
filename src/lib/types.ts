@@ -44,6 +44,8 @@ export type Store = {
     tax1?: number;
     tax2?: number;
     useDemoData?: boolean;
+    createdAt?: string; // ISO date string for store creation date
+    updatedAt?: string; // ISO date string for last update
 };
 
 // The Settings type is now an alias for Store for consistency in the context
