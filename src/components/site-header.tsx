@@ -26,7 +26,7 @@ import { ThemeToggle } from "./theme-toggle";
 import { useSettings } from "@/contexts/settings-context";
 import { usePermissions } from "@/hooks/use-permissions";
 import { Logo } from "./logo";
-import { navItems, settingsNav } from "@/lib/navigation";
+import { navItems, adminNavItems, settingsNav } from "@/lib/navigation";
 import { Badge } from "./ui/badge";
 import { defaultStoreId } from "@/lib/data";
 import { signOut } from "firebase/auth";
@@ -97,6 +97,20 @@ export function SiteHeader({ toggleSidebar, isSidebarExpanded }: SiteHeaderProps
               <nav className="flex-1 overflow-y-auto sidebar-scroll">
                 <div className="grid gap-6 text-lg font-medium pb-4">
                   {navItems.filter(item => {
+                    const route = item.href.split('?')[0];
+                    return canAccess(route);
+                  }).map((item) => (
+                      <SheetClose asChild key={item.href}>
+                          <Link
+                              href={item.href}
+                              className={`flex items-center gap-4 px-2.5 py-2 rounded-lg transition-colors ${pathname === item.href ? 'text-foreground bg-muted' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}
+                          >
+                              <item.icon className="h-5 w-5" />
+                              {item.label}
+                          </Link>
+                      </SheetClose>
+                  ))}
+                  {adminNavItems.filter(item => {
                     const route = item.href.split('?')[0];
                     return canAccess(route);
                   }).map((item) => (
