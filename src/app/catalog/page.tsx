@@ -28,7 +28,10 @@ import LoginModal from '@/components/login-modal';
 import { useSettings } from "@/contexts/settings-context";
 import { useAuth } from "@/contexts/AuthContext";
 import { AddOrderGuard } from "@/components/permission-guard";
+import { IDGenerator } from "@/lib/id-generator";
 import { StoreRequestButton } from "@/components/store-request-button";
+import { useUserOrders } from "@/hooks/useUserOrders";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import dynamic from 'next/dynamic';
 
 // Importar el scanner dinámicamente para evitar problemas de SSR
@@ -223,8 +226,19 @@ export default function CatalogPage() {
   const [lastAutoOpenedSku, setLastAutoOpenedSku] = useState<string | null>(null);
   const [selectedFamily, setSelectedFamily] = useState<string>("all");
 
-  const [localOrders, setLocalOrders] = useState<PendingOrder[]>([]);
   const [isEditingOrder, setIsEditingOrder] = useState(false);
+
+  // Hook para manejar pedidos del usuario desde la base de datos
+  const { 
+    orders: userOrders, 
+    isLoading: isLoadingOrders, 
+    error: ordersError, 
+    refetch: refetchOrders,
+    isPolling: isPollingOrders
+  } = useUserOrders(authUser?.email, storeIdForCatalog);
+
+  // Hook para estado de red
+  const { isOnline } = useNetworkStatus();
 
   const [isClient, setIsClient] = useState(false)
 
@@ -541,17 +555,7 @@ export default function CatalogPage() {
     };
   }, [isAutoScrolling]);
 
-  useEffect(() => {
-    if (authUser && authUser.phone) {
-      const filteredOrders = (pendingOrdersContext || []).filter(o => o.customerPhone === authUser.phone);
-      const uniqueOrders = Array.from(
-        new Map(filteredOrders.map((order) => [order.id, order])).values()
-      );
-      setLocalOrders(uniqueOrders);
-    } else {
-      setLocalOrders(pendingOrdersContext || []);
-    }
-  }, [pendingOrdersContext, authUser]);
+  // Los pedidos ahora se manejan directamente desde la base de datos via useUserOrders hook
 
   const sortedAndFilteredProducts = useMemo(() => {
     if (!products) {
@@ -733,7 +737,17 @@ export default function CatalogPage() {
       return;
     }
 
-    // Permitir pedidos sin registro, pero requerir datos básicos
+    // REQUERIR LOGIN OBLIGATORIO para generar pedidos
+    if (!authUser || !authUser.email) {
+      toast({
+        variant: "destructive",
+        title: "Login requerido",
+        description: "Debes iniciar sesión para generar un pedido."
+      });
+      return;
+    }
+
+    // Validar datos básicos (aunque ya tenemos el email del usuario logueado)
     if (!customerName.trim() || !customerPhone.trim()) {
       toast({
         variant: "destructive",
@@ -758,13 +772,15 @@ export default function CatalogPage() {
       return;
     }
 
-    const newOrderId = `ORD-${Date.now()}`;
+    const newOrderId = IDGenerator.generate('order');
 
     const newPendingOrder: PendingOrder = {
-      id: newOrderId,
-      date: new Date().toISOString(),
+      orderId: newOrderId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       customerName: customerName,
       customerPhone: customerPhone,
+      customerEmail: authUser.email, // Email del usuario logueado (ya validamos que existe)
       items: cart.map(item => ({
         productId: item.product.id,
         productName: item.product.name,
@@ -773,6 +789,7 @@ export default function CatalogPage() {
       })),
       total: subtotal,
       storeId: storeIdForCatalog,
+      status: 'pending'
     };
 
     // Guardar en MongoDB
@@ -785,8 +802,8 @@ export default function CatalogPage() {
 
       if (!response.ok) throw new Error('Error al guardar en BD');
 
-      setPendingOrders(prev => [...(prev || []), newPendingOrder]);
-      setLocalOrders(prev => [...prev, newPendingOrder]);
+      // Refrescar la lista de pedidos del usuario desde la DB
+      await refetchOrders();
 
     } catch (error) {
       console.error('Error:', error);
@@ -816,21 +833,56 @@ export default function CatalogPage() {
     await generateQrCode(orderId);
   };
 
-  const handleDeleteLocalOrder = (orderId: string) => {
-    setLocalOrders(prev => prev.filter(o => o.id !== orderId));
-    toast({ title: "Pedido eliminado del historial local." });
+  const handleDeleteOrder = async (orderId: string) => {
+    try {
+      // Soft delete: actualizar estado a 'cancelled' en lugar de eliminar
+      const response = await fetch('/api/orders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId,
+          status: 'cancelled'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al cancelar pedido');
+      }
+
+      // Refrescar la lista de pedidos
+      await refetchOrders();
+      
+      toast({ 
+        title: "Pedido cancelado",
+        description: "El pedido ha sido marcado como cancelado."
+      });
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo cancelar el pedido."
+      });
+    }
   };
 
-  const handleEditLocalOrder = (order: PendingOrder) => {
+  const handleEditOrder = (order: PendingOrder) => {
     if (!products) return;
+    
+    // Cargar items del pedido al carrito
     setCart(order.items.map(item => {
       const product = products.find(p => p.id === item.productId);
       return product ? { product, quantity: item.quantity, price: item.price } : null;
     }).filter((i): i is CartItem => i !== null));
+    
+    // Cargar datos del cliente
     setCustomerName(order.customerName);
     setCustomerPhone(order.customerPhone);
-    handleDeleteLocalOrder(order.id);
+    
+    // Marcar como editando (el pedido original se mantendrá hasta que se genere uno nuevo)
     setIsEditingOrder(true);
+    
+    // Abrir el carrito
     const trigger = document.getElementById('cart-sheet-trigger');
     if (trigger) trigger.click();
   };
@@ -931,35 +983,90 @@ export default function CatalogPage() {
                   </SheetTrigger>
                   <SheetContent className="flex w-full flex-col p-0 sm:max-w-lg bg-gradient-to-br from-background via-background to-muted/20 border-0 shadow-2xl">
                     <SheetHeader className="px-6 pt-6 pb-4 bg-gradient-to-r from-primary/5 to-accent/5 border-b border-border/50">
-                      <SheetTitle className="text-xl font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Mi Pedido</SheetTitle>
+                      <div className="flex items-center justify-between">
+                        <SheetTitle className="text-xl font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Mi Pedido</SheetTitle>
+                        {authUser && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            {!isOnline ? (
+                              <>
+                                <div className="w-2 h-2 bg-red-500 rounded-full" />
+                                <span>Sin conexión</span>
+                              </>
+                            ) : isPollingOrders ? (
+                              <>
+                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                                <span>Sincronizando</span>
+                              </>
+                            ) : (
+                              <>
+                                <div className="w-2 h-2 bg-blue-500 rounded-full" />
+                                <span>Conectado</span>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </SheetHeader>
                     <div className="flex-1 overflow-y-auto">
                       <div className="py-6">
-                        {cart.length === 0 && (localOrders || []).length === 0 && (
+                        {/* Loading state */}
+                        {cart.length === 0 && isLoadingOrders && (
+                          <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
+                            <div className="w-20 h-20 bg-gradient-to-br from-primary/10 to-accent/10 rounded-full flex items-center justify-center mb-6 shadow-lg">
+                              <div className="w-8 h-8 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-foreground mb-2">Cargando tus pedidos...</h3>
+                            <p className="text-sm text-muted-foreground">Obteniendo tu historial de pedidos</p>
+                          </div>
+                        )}
+                        
+                        {/* Empty state */}
+                        {cart.length === 0 && userOrders.length === 0 && !isLoadingOrders && (
                           <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
                             <div className="w-20 h-20 bg-gradient-to-br from-primary/10 to-accent/10 rounded-full flex items-center justify-center mb-6 shadow-lg">
                               <ShoppingBag className="h-10 w-10 text-primary/60" />
                             </div>
-                            <h3 className="text-lg font-semibold text-foreground mb-2">Tu pedido está vacío</h3>
-                            <p className="text-sm text-muted-foreground">Agrega productos del catálogo para comenzar</p>
+                            <h3 className="text-lg font-semibold text-foreground mb-2">
+                              {authUser ? "No tienes pedidos aún" : "Inicia sesión para ver tus pedidos"}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {authUser 
+                                ? "Agrega productos del catálogo para crear tu primer pedido" 
+                                : "Puedes agregar productos al carrito, pero necesitas iniciar sesión para generar pedidos"
+                              }
+                            </p>
                           </div>
                         )}
-                        {cart.length === 0 && (localOrders || []).length > 0 && (
+                        {cart.length === 0 && userOrders.length > 0 && (
                           <Card className="m-4 border-0 shadow-lg bg-gradient-to-br from-card to-card/80 rounded-2xl">
                             <CardHeader className="pb-3">
                               <CardTitle className="text-lg bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Mis Pedidos Recientes</CardTitle>
                             </CardHeader>
                             <CardContent className="p-4 pt-0">
                               <div className="space-y-3">
-                                {(localOrders || []).map((order, index) => (
-                                  <div key={`${order.id}-${index}`} className="flex flex-col p-4 rounded-xl border-0 bg-gradient-to-r from-background/80 to-muted/20 shadow-sm hover:shadow-md transition-all duration-200">
+                                {userOrders.map((order, index) => (
+                                  <div key={`${order.orderId}-${index}`} className="flex flex-col p-4 rounded-xl border-0 bg-gradient-to-r from-background/80 to-muted/20 shadow-sm hover:shadow-md transition-all duration-200">
                                     <div className="flex justify-between items-start">
-                                      <div>
-                                        <p className="font-semibold">{order.id}</p>
-                                        <p className="text-sm text-muted-foreground">{isClient ? format(new Date(order.date), 'dd/MM/yyyy HH:mm') : '...'}</p>
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <p className="font-semibold">{order.orderId}</p>
+                                          <Badge 
+                                            variant={order.status === 'pending' ? 'secondary' : 
+                                                    order.status === 'processing' ? 'default' : 
+                                                    order.status === 'processed' ? 'default' : 'destructive'}
+                                            className="text-xs"
+                                          >
+                                            {order.status === 'pending' ? 'Pendiente' :
+                                             order.status === 'processing' ? 'Procesando' :
+                                             order.status === 'processed' ? 'Procesado' :
+                                             order.status === 'cancelled' ? 'Cancelado' : order.status}
+                                          </Badge>
+                                        </div>
+                                        <p className="text-sm text-muted-foreground">{isClient ? format(new Date(order.createdAt), 'dd/MM/yyyy HH:mm') : '...'}</p>
+                                        <p className="text-sm font-medium text-primary">${(order.total * activeRate).toFixed(2)}</p>
                                       </div>
                                       <div className="flex items-center gap-2">
-                                        <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-0 bg-primary/10 hover:bg-primary/20 text-primary shadow-sm" onClick={() => handleReShowQR(order.id)}>
+                                        <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-0 bg-primary/10 hover:bg-primary/20 text-primary shadow-sm" onClick={() => handleReShowQR(order.orderId)}>
                                           <QrCode className="h-4 w-4" />
                                         </Button>
                                         <DropdownMenu>
@@ -969,12 +1076,12 @@ export default function CatalogPage() {
                                             </Button>
                                           </DropdownMenuTrigger>
                                           <DropdownMenuContent>
-                                            <DropdownMenuItem onSelect={() => handleEditLocalOrder(order)}>
+                                            <DropdownMenuItem onSelect={() => handleEditOrder(order)}>
                                               <Pencil className="mr-2 h-4 w-4" /> Editar
                                             </DropdownMenuItem>
                                             <DropdownMenuSeparator />
-                                            <DropdownMenuItem onSelect={() => handleDeleteLocalOrder(order.id)} className="text-destructive">
-                                              <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                                            <DropdownMenuItem onSelect={() => handleDeleteOrder(order.orderId)} className="text-destructive">
+                                              <Trash2 className="mr-2 h-4 w-4" /> Cancelar
                                             </DropdownMenuItem>
                                           </DropdownMenuContent>
                                         </DropdownMenu>
@@ -1023,9 +1130,9 @@ export default function CatalogPage() {
                           </div>
                           <Button size="lg" className="w-full" onClick={handleOpenOrderDialog}>
                             <Send className="mr-2" />
-                            {isLoggedIn ?
+                            {authUser ?
                               (isEditingOrder ? 'Actualizar Pedido' : 'Generar Pedido') :
-                              `Registrarse para Pedido (${cart.length} productos)`
+                              `Inicia Sesión para Pedido (${cart.length} productos)`
                             }
                           </Button>
                           {isLoggedIn && currentUser && (
@@ -1350,6 +1457,7 @@ export default function CatalogPage() {
                   </div>
                 )}
               </div>
+
             </div>
             <DialogFooter className="gap-2 pt-4">
               <DialogClose asChild>
