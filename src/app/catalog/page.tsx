@@ -171,17 +171,6 @@ export default function CatalogPage() {
     switchStore
   } = useSettings();
 
-  // Hook para productos con sincronización automática
-  const { 
-    products: syncedProducts, 
-    isLoading: isLoadingProducts,
-    isPolling: isPollingProducts,
-    lastUpdated: productsLastUpdated
-  } = useProducts(storeIdForCatalog);
-
-  // Usar productos sincronizados si están disponibles, sino usar del contexto
-  const products = syncedProducts.length > 0 ? syncedProducts : contextProducts;
-
   const { user: authUser, logout } = useAuth();
 
   // CORREGIDO: Usar un nombre diferente para searchParams
@@ -199,9 +188,19 @@ export default function CatalogPage() {
     // No incluyas funciones switchStore ni router en dependencias, solo estados
   }, [urlStoreId, activeStoreId]);
 
-
   // Usar activeStoreId del contexto en lugar de calcularlo
   const storeIdForCatalog = activeStoreId || DEMO_STORE_ID;
+
+  // Hook para productos con sincronización automática
+  const { 
+    products: syncedProducts, 
+    isLoading: isLoadingProducts,
+    isPolling: isPollingProducts,
+    lastUpdated: productsLastUpdated
+  } = useProducts(storeIdForCatalog);
+
+  // Usar productos sincronizados si están disponibles, sino usar del contexto
+  const products = syncedProducts.length > 0 ? syncedProducts : contextProducts;
 
   // Debug
   useEffect(() => {
@@ -247,7 +246,7 @@ export default function CatalogPage() {
     error: ordersError, 
     refetch: refetchOrders,
     isPolling: isPollingOrders
-  } = useUserOrders(authUser?.email, storeIdForCatalog);
+  } = useUserOrders(authUser?.email || undefined, storeIdForCatalog);
 
   // Hook para estado de red
   const { isOnline } = useNetworkStatus();
