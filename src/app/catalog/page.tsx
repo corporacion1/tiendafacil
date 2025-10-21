@@ -32,6 +32,7 @@ import { IDGenerator } from "@/lib/id-generator";
 import { StoreRequestButton } from "@/components/store-request-button";
 import { useUserOrders } from "@/hooks/useUserOrders";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { useProducts } from "@/hooks/useProducts";
 import dynamic from 'next/dynamic';
 
 // Importar el scanner dinámicamente para evitar problemas de SSR
@@ -161,7 +162,7 @@ export default function CatalogPage() {
     activeSymbol,
     activeRate,
     isLoadingSettings,
-    products,
+    products: contextProducts,
     families,
     ads: allAds,
     pendingOrders: pendingOrdersContext,
@@ -169,6 +170,17 @@ export default function CatalogPage() {
     activeStoreId,
     switchStore
   } = useSettings();
+
+  // Hook para productos con sincronización automática
+  const { 
+    products: syncedProducts, 
+    isLoading: isLoadingProducts,
+    isPolling: isPollingProducts,
+    lastUpdated: productsLastUpdated
+  } = useProducts(storeIdForCatalog);
+
+  // Usar productos sincronizados si están disponibles, sino usar del contexto
+  const products = syncedProducts.length > 0 ? syncedProducts : contextProducts;
 
   const { user: authUser, logout } = useAuth();
 
@@ -985,26 +997,36 @@ export default function CatalogPage() {
                     <SheetHeader className="px-6 pt-6 pb-4 bg-gradient-to-r from-primary/5 to-accent/5 border-b border-border/50">
                       <div className="flex items-center justify-between">
                         <SheetTitle className="text-xl font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Mi Pedido</SheetTitle>
-                        {authUser && (
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            {!isOnline ? (
-                              <>
-                                <div className="w-2 h-2 bg-red-500 rounded-full" />
-                                <span>Sin conexión</span>
-                              </>
-                            ) : isPollingOrders ? (
-                              <>
-                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                                <span>Sincronizando</span>
-                              </>
-                            ) : (
-                              <>
-                                <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                                <span>Conectado</span>
-                              </>
-                            )}
-                          </div>
-                        )}
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          {/* Estado de conexión */}
+                          {!isOnline ? (
+                            <div className="flex items-center gap-1">
+                              <div className="w-2 h-2 bg-red-500 rounded-full" />
+                              <span>Sin conexión</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <div className="w-2 h-2 bg-green-500 rounded-full" />
+                              <span>Conectado</span>
+                            </div>
+                          )}
+                          
+                          {/* Estado de sincronización de pedidos (solo si está autenticado) */}
+                          {authUser && isPollingOrders && (
+                            <div className="flex items-center gap-1">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                              <span>Pedidos</span>
+                            </div>
+                          )}
+                          
+                          {/* Estado de sincronización de productos */}
+                          {isPollingProducts && (
+                            <div className="flex items-center gap-1">
+                              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
+                              <span>Productos</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </SheetHeader>
                     <div className="flex-1 overflow-y-auto">

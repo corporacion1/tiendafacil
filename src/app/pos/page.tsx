@@ -35,6 +35,7 @@ import { SessionReportPreview } from "@/components/session-report-preview";
 import { useSecurity } from "@/contexts/security-context";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { usePendingOrders } from "@/hooks/usePendingOrders";
+import { useProducts } from "@/hooks/useProducts";
 
 
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
@@ -79,9 +80,19 @@ export default function POSPage() {
   const { toast } = useToast();
   const { 
     settings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings,
-    products, setProducts, customers, setCustomers, sales, setSales, families,
+    products: contextProducts, setProducts, customers, setCustomers, sales, setSales, families,
     pendingOrders: pendingOrdersContext, setPendingOrders
   } = useSettings();
+
+  // Hook para productos con sincronización automática
+  const { 
+    products: syncedProducts, 
+    isLoading: isLoadingProducts,
+    isPolling: isPollingProducts
+  } = useProducts(activeStoreId);
+
+  // Usar productos sincronizados si están disponibles, sino usar del contexto
+  const products = syncedProducts.length > 0 ? syncedProducts : contextProducts;
   const { isPinLocked } = useSecurity();
   const isLocked = isPinLocked;
   const isSecurityReady = true; // Simplified for now
