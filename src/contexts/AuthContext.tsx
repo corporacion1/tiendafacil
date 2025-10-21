@@ -324,6 +324,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // VERCEL FIX: Register function returns Promise with success boolean
   const register = async (
     email: string,
     password: string,
