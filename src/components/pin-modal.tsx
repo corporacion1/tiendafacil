@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export function PinModal() {
   const [pin, setPin] = useState('');
+  // Using checkPin from security context (not unlockApp)
   const { checkPin } = useSecurity();
   const { toast } = useToast();
 
