@@ -783,7 +783,7 @@ export default function CatalogPage() {
       return;
     }
 
-    const newOrderId = IDGenerator.generate('order');
+    const newOrderId = IDGenerator.generate('order', storeIdForCatalog);
 
     const newPendingOrder: PendingOrder = {
       orderId: newOrderId,
