@@ -126,10 +126,10 @@ export const useFormValidation = <T extends Record<string, any>>({
 
       // Pattern validation
       if (rules.pattern) {
-        const pattern = typeof rules.pattern === 'object' 
+        const pattern = typeof rules.pattern === 'object' && 'value' in rules.pattern
           ? rules.pattern.value 
           : rules.pattern;
-        const message = typeof rules.pattern === 'object' 
+        const message = typeof rules.pattern === 'object' && 'message' in rules.pattern
           ? rules.pattern.message 
           : 'Formato inválido';
         
@@ -281,7 +281,7 @@ export const useFormValidation = <T extends Record<string, any>>({
         setTouched(allTouched);
 
         // Mostrar errores de validación
-        const errorMessages = Object.values(validationErrors).filter(Boolean);
+        const errorMessages = Object.values(validationErrors).filter(Boolean) as string[];
         if (errorMessages.length > 0) {
           handleError.validation(errorMessages, {
             action: 'form_validation',

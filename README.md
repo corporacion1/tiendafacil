@@ -261,10 +261,10 @@ Este proyecto es propiedad de **Corporación 1 Plus, C.A.** y está protegido po
 ## 📞 **Soporte y Contacto**
 
 ### **Corporación 1 Plus, C.A.**
-- **Email**: soporte@corporacion1plus.com
-- **Teléfono**: +58 (212) 555-0123
+- **Email**: corporacion1plus@gmail.com
+- **Teléfono**: +58 (412) 691-5593
 - **Sitio Web**: www.corporacion1plus.com
-- **Dirección**: Caracas, Venezuela
+- **Dirección**: Maracaibo, Venezuela
 
 ### **Soporte Técnico**
 - **Documentación**: [docs.tiendafacil.com](https://docs.tiendafacil.com)

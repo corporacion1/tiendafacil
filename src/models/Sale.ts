@@ -58,7 +58,7 @@ SaleSchema.index({ customerId: 1, transactionType: 1 });
 // Middleware para calcular fechas de vencimiento automáticamente
 SaleSchema.pre('save', function(next) {
   // Si es una venta a crédito y no tiene fecha de vencimiento
-  if (this.transactionType === 'credito' && this.creditTerms && !this.creditTerms.dueDate) {
+  if (this.transactionType === 'credito' && this.creditTerms && !this.creditTerms.dueDate && this.date) {
     const saleDate = new Date(this.date);
     const creditDays = this.creditTerms.creditDays || 30;
     const dueDate = new Date(saleDate);

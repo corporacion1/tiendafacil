@@ -135,7 +135,9 @@ export async function healthCheck(): Promise<{ status: string; details: Connecti
   try {
     if (mongoose.connection.readyState === 1) {
       // Test the connection with a simple operation
-      await mongoose.connection.db.admin().ping();
+      if (mongoose.connection.db) {
+        await mongoose.connection.db.admin().ping();
+      }
       return {
         status: 'healthy',
         details: getConnectionStatus()
@@ -149,7 +151,10 @@ export async function healthCheck(): Promise<{ status: string; details: Connecti
   } catch (error) {
     return {
       status: 'error',
-      details: { ...getConnectionStatus(), error: error.message }
+      details: { 
+        ...getConnectionStatus(), 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      } as any
     };
   }
 }

@@ -11,7 +11,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { useSettings } from "@/contexts/settings-context"
 
 export function StoreRequestButton() {
-  const { user, login, register } = useAuth()
+  const { user, login, registerUser } = useAuth()
   const { userProfile, setUserProfile } = useSettings()
   const { toast } = useToast()
   
@@ -82,7 +82,7 @@ export function StoreRequestButton() {
         await requestStore()
       } else {
         // Registrarse
-        await register(formData.email, formData.password, formData.phone, 'pending-store')
+        await registerUser(formData.email, formData.password, formData.phone, 'pending-store')
         
         // Después del registro exitoso, activar la solicitud de tienda
         await requestStore()

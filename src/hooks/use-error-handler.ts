@@ -20,14 +20,14 @@ export const useErrorHandler = () => {
   // Crear contexto base con información del usuario y tienda
   const createBaseContext = useCallback((additionalContext?: Partial<ErrorContext>): ErrorContext => {
     return {
-      userId: user?.id,
+      userId: user?.uid,
       storeId: activeStoreId,
       url: typeof window !== 'undefined' ? window.location.href : undefined,
       userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : undefined,
       timestamp: new Date().toISOString(),
       ...additionalContext
     };
-  }, [user?.id, activeStoreId]);
+  }, [user?.uid, activeStoreId]);
 
   // Wrapper functions con contexto automático
   const handleError = {
@@ -97,8 +97,8 @@ export const useErrorHandler = () => {
         // Si es un error de red y no es el último intento, reintentar
         if (attempt < maxRetries && (
           error instanceof TypeError || 
-          error.name === 'NetworkError' ||
-          error.message?.includes('fetch')
+          (error instanceof Error && error.name === 'NetworkError') ||
+          (error instanceof Error && error.message?.includes('fetch'))
         )) {
           console.log(`🔄 Reintentando solicitud (${attempt + 1}/${maxRetries + 1})...`);
           await new Promise(resolve => setTimeout(resolve, retryDelay * (attempt + 1)));
@@ -106,7 +106,7 @@ export const useErrorHandler = () => {
         }
         
         // Manejar el error según su tipo
-        if (error instanceof TypeError || error.name === 'NetworkError') {
+        if (error instanceof TypeError || (error instanceof Error && error.name === 'NetworkError')) {
           handleError.network(error, { ...context, action: 'fetch_request' });
         } else {
           handleError.api(error, { ...context, action: 'fetch_request' });

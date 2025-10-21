@@ -50,13 +50,13 @@ export function showErrorToast({
 
   toast({
     variant: 'destructive',
-    title: (
+    title: getTitle(),
+    description: (
       <div className="flex items-center gap-2">
         {getIcon()}
-        {getTitle()}
+        {description}
       </div>
     ),
-    description,
     duration
   });
 }

@@ -91,7 +91,7 @@ CashSessionSchema.index({ openedBy: 1, status: 1 });
 // Validación personalizada: solo una sesión abierta por tienda
 CashSessionSchema.pre('save', async function(next) {
   if (this.isNew && this.status === SessionStatus.OPEN) {
-    const existingOpenSession = await this.constructor.findOne({
+    const existingOpenSession = await (this.constructor as any).findOne({
       storeId: this.storeId,
       status: SessionStatus.OPEN,
       _id: { $ne: this._id }

@@ -26,7 +26,7 @@ export class CreditsSyncService {
     }
     
     // Crear cuenta por cobrar
-    const account = AccountReceivable.createFromSale(sale, creditDays, createdBy);
+    const account = (AccountReceivable as any).createFromSale(sale, creditDays, createdBy);
     await account.save();
     
     // Actualizar la venta con la referencia
@@ -228,7 +228,7 @@ export class CreditsSyncService {
         repairs.push({
           type: 'repair_failed',
           issue,
-          error: error.message
+          error: error instanceof Error ? error.message : 'Unknown error'
         });
       }
     }
@@ -260,7 +260,7 @@ export class CreditsSyncService {
         results.push({
           success: false,
           saleId: sale.id,
-          error: error.message
+          error: error instanceof Error ? error.message : 'Unknown error'
         });
       }
     }

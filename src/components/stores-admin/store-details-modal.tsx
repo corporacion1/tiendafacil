@@ -341,7 +341,7 @@ export function StoreDetailsModal({ store, open, onOpenChange }: StoreDetailsMod
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {detailedStore.userRoles.map((userRole) => (
+                    {detailedStore.userRoles.map((userRole: any) => (
                       <div key={userRole.uid} className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex items-center gap-3">
                           <Avatar>
