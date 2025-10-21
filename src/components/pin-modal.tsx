@@ -11,21 +11,29 @@ import { useToast } from '@/hooks/use-toast';
 
 export function PinModal() {
   const [pin, setPin] = useState('');
-  const { unlockApp } = useSecurity();
+  const { checkPin } = useSecurity();
   const { toast } = useToast();
 
-  const handleUnlock = () => {
-    const success = unlockApp(pin);
-    if (success) {
-      toast({
-        title: "Desbloqueado",
-        description: "Bienvenido de nuevo.",
-      });
-    } else {
+  const handleUnlock = async () => {
+    try {
+      const success = await checkPin(pin);
+      if (success) {
+        toast({
+          title: "Desbloqueado",
+          description: "Bienvenido de nuevo.",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "PIN incorrecto",
+          description: "El PIN que ingresaste es incorrecto. Inténtalo de nuevo.",
+        });
+      }
+    } catch (error) {
       toast({
         variant: "destructive",
-        title: "PIN incorrecto",
-        description: "El PIN que ingresaste es incorrecto. Inténtalo de nuevo.",
+        title: "Error",
+        description: "Ocurrió un error al verificar el PIN.",
       });
     }
     setPin('');
