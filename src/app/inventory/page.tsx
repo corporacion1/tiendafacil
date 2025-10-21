@@ -37,94 +37,94 @@ import { useAuth } from "@/contexts/AuthContext";
 import { format, parseISO } from "date-fns";
 
 const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewMovements, setProductToDelete }: {
-    product: Product;
-    activeSymbol: string;
-    activeRate: number;
-    handleEdit: (product: Product) => void;
-    handleViewMovements: (product: Product) => void;
-    setProductToDelete: (product: Product | null) => void;
+  product: Product;
+  activeSymbol: string;
+  activeRate: number;
+  handleEdit: (product: Product) => void;
+  handleViewMovements: (product: Product) => void;
+  setProductToDelete: (product: Product | null) => void;
 }) => {
-    const [imageError, setImageError] = useState(false);
-    const imageUrl = getDisplayImageUrl(product.imageUrl);
+  const [imageError, setImageError] = useState(false);
+  const imageUrl = getDisplayImageUrl(product.imageUrl);
 
-    const getStatusVariant = (status: Product['status']) => {
-        switch (status) {
-            case 'active': return 'outline';
-            case 'inactive': return 'secondary';
-            case 'promotion': return 'default';
-            default: return 'outline';
-        }
+  const getStatusVariant = (status: Product['status']) => {
+    switch (status) {
+      case 'active': return 'outline';
+      case 'inactive': return 'secondary';
+      case 'promotion': return 'default';
+      default: return 'outline';
     }
-    
-    const getStatusLabel = (status: Product['status']) => {
-        switch (status) {
-            case 'active': return 'Activo';
-            case 'inactive': return 'Inactivo';
-            case 'promotion': return 'Promoción';
-            default: return status;
-        }
-    }
+  }
 
-    return (
-        <TableRow>
-            <TableCell className="hidden sm:table-cell">
-                <div className="relative flex items-center justify-center w-10 h-10 bg-muted rounded-md overflow-hidden isolate">
-                    {imageUrl && !imageError ? (
-                    <Image
-                        src={imageUrl}
-                        alt={product.name}
-                        fill
-                        sizes="40px"
-                        className="object-cover"
-                        data-ai-hint={product.imageHint}
-                        onError={() => setImageError(true)}
-                    />
-                    ) : (
-                    <Package className="h-5 w-5 text-muted-foreground" />
-                    )}
-                </div>
-            </TableCell>
-            <TableCell className="font-medium">{product.name}</TableCell>
-            <TableCell>
-                <Badge variant={getStatusVariant(product.status)}>
-                    {getStatusLabel(product.status)}
-                </Badge>
-            </TableCell>
-            <TableCell className="hidden md:table-cell">
-                {activeSymbol}{(product.price * activeRate).toFixed(2)}
-            </TableCell>
-            <TableCell className="hidden md:table-cell">
-                {activeSymbol}{(product.wholesalePrice * activeRate).toFixed(2)}
-            </TableCell>
-            <TableCell className="hidden md:table-cell">
-                {product.stock}
-            </TableCell>
-            <TableCell>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                    <Button aria-haspopup="true" size="icon" variant="ghost">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Toggle menu</span>
-                    </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                    <DropdownMenuItem onSelect={() => handleEdit(product)}>Editar</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => handleViewMovements(product)}>Ver Movimientos</DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem className="text-destructive" onSelect={() => setProductToDelete(product)}>
-                        Eliminar
-                    </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </TableCell>
-        </TableRow>
-    );
+  const getStatusLabel = (status: Product['status']) => {
+    switch (status) {
+      case 'active': return 'Activo';
+      case 'inactive': return 'Inactivo';
+      case 'promotion': return 'Promoción';
+      default: return status;
+    }
+  }
+
+  return (
+    <TableRow>
+      <TableCell className="hidden sm:table-cell">
+        <div className="relative flex items-center justify-center w-10 h-10 bg-muted rounded-md overflow-hidden isolate">
+          {imageUrl && !imageError ? (
+            <Image
+              src={imageUrl}
+              alt={product.name}
+              fill
+              sizes="40px"
+              className="object-cover"
+              data-ai-hint={product.imageHint}
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <Package className="h-5 w-5 text-muted-foreground" />
+          )}
+        </div>
+      </TableCell>
+      <TableCell className="font-medium">{product.name}</TableCell>
+      <TableCell>
+        <Badge variant={getStatusVariant(product.status)}>
+          {getStatusLabel(product.status)}
+        </Badge>
+      </TableCell>
+      <TableCell className="hidden md:table-cell">
+        {activeSymbol}{(product.price * activeRate).toFixed(2)}
+      </TableCell>
+      <TableCell className="hidden md:table-cell">
+        {activeSymbol}{(product.wholesalePrice * activeRate).toFixed(2)}
+      </TableCell>
+      <TableCell className="hidden md:table-cell">
+        {product.stock}
+      </TableCell>
+      <TableCell>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button aria-haspopup="true" size="icon" variant="ghost">
+              <MoreHorizontal className="h-4 w-4" />
+              <span className="sr-only">Toggle menu</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+            <DropdownMenuItem onSelect={() => handleEdit(product)}>Editar</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => handleViewMovements(product)}>Ver Movimientos</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-destructive" onSelect={() => setProductToDelete(product)}>
+              Eliminar
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </TableCell>
+    </TableRow>
+  );
 }
 
 export default function InventoryPage() {
   const { toast } = useToast();
-  const { activeSymbol, activeRate, activeStoreId, products, setProducts, sales } = useSettings();
+  const { activeSymbol, activeRate, activeStoreId, products, setProducts, sales, reloadProducts } = useSettings();
   const { user } = useAuth();
 
   const [inventoryMovements, setInventoryMovements] = useState<InventoryMovement[]>([]);
@@ -135,9 +135,9 @@ export default function InventoryPage() {
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
-  
+
   const [isProductComboboxOpen, setIsProductComboboxOpen] = useState(false)
-  
+
   const [movementProduct, setMovementProduct] = useState<Product | null>(null);
   const [movementType, setMovementType] = useState<'purchase' | 'sale' | 'adjustment' | ''>('');
   const [movementQuantity, setMovementQuantity] = useState<number>(0);
@@ -146,49 +146,117 @@ export default function InventoryPage() {
 
 
   const handleEdit = (product: Product) => {
+    console.log('✏️ [Inventory] Editando producto:', product);
+    console.log('📦 [Inventory] Producto tiene storeId:', product.storeId);
     setProductToEdit(product);
   };
-  
+
   const handleViewMovements = (product: Product) => {
     setSelectedProduct(product);
     setProductMovements([]); // Limpiar movimientos anteriores
     setIsMovementsDialogOpen(true);
   };
 
-  function handleUpdateProduct(data: Omit<Product, 'id' | 'createdAt' | 'storeId'> & { id?: string }) {
+  async function handleUpdateProduct(data: Omit<Product, 'id' | 'createdAt' | 'storeId'> & { id?: string }) {
     if (!data.id) return false;
-    setProducts(prev => prev.map(p => p.id === data.id ? {...p, ...data} : p));
-    toast({
+
+    console.log('🔄 [Inventory] Iniciando actualización de producto:', data.id);
+    console.log('📦 [Inventory] Datos a enviar:', data);
+
+    try {
+      // Guardar en la base de datos
+      const payload = {
+        ...data,
+        storeId: activeStoreId
+      };
+
+      console.log('📤 [Inventory] Enviando PUT a /api/products:', payload);
+
+      const response = await fetch('/api/products', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      console.log('📥 [Inventory] Respuesta del servidor:', response.status, response.statusText);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('❌ [Inventory] Error del servidor:', errorData);
+        throw new Error(errorData.error || 'Error al actualizar el producto');
+      }
+
+      const updatedProduct = await response.json();
+      console.log('✅ [Inventory] Producto actualizado en DB:', updatedProduct);
+
+      // Recargar productos desde la base de datos
+      console.log('🔄 [Inventory] Recargando productos desde DB...');
+      await reloadProducts();
+      console.log('✅ [Inventory] Productos recargados');
+
+      toast({
         title: "Producto Actualizado",
-        description: `El producto "${data.name}" ha sido actualizado.`,
-    });
-    setProductToEdit(null);
-    return true;
+        description: `El producto "${data.name}" ha sido actualizado en la base de datos.`,
+      });
+      setProductToEdit(null);
+      return true;
+    } catch (error) {
+      console.error('❌ [Inventory] Error actualizando producto:', error);
+      toast({
+        variant: "destructive",
+        title: "Error al actualizar",
+        description: error instanceof Error ? error.message : "No se pudo actualizar el producto. Intenta nuevamente.",
+      });
+      return false;
+    }
   }
-  
-  const handleDelete = (productId: string) => {
+
+  const handleDelete = async (productId: string) => {
     const isProductInSale = sales.some(sale => sale.items.some(item => item.productId === productId));
     if (isProductInSale) {
-        toast({
-            variant: "destructive",
-            title: "Eliminación Bloqueada",
-            description: "Este producto no se puede eliminar porque tiene ventas asociadas. Considere cambiar su estado a 'Inactivo'.",
-        });
-    } else {
-        setProducts(prev => prev.filter(p => p.id !== productId));
-        toast({
-            title: "Producto Eliminado",
-            description: "El producto ha sido eliminado del inventario.",
-        });
+      toast({
+        variant: "destructive",
+        title: "Eliminación Bloqueada",
+        description: "Este producto no se puede eliminar porque tiene ventas asociadas. Considere cambiar su estado a 'Inactivo'.",
+      });
+      setProductToDelete(null);
+      return;
     }
-    setProductToDelete(null);
+
+    try {
+      // Eliminar de la base de datos
+      const response = await fetch(`/api/products?id=${productId}&storeId=${activeStoreId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al eliminar el producto');
+      }
+
+      // Recargar productos desde la base de datos
+      await reloadProducts();
+
+      toast({
+        title: "Producto Eliminado",
+        description: "El producto ha sido eliminado de la base de datos.",
+      });
+    } catch (error) {
+      console.error('Error eliminando producto:', error);
+      toast({
+        variant: "destructive",
+        title: "Error al eliminar",
+        description: "No se pudo eliminar el producto. Intenta nuevamente.",
+      });
+    } finally {
+      setProductToDelete(null);
+    }
   };
 
   const resetMovementForm = () => {
-      setMovementProduct(null);
-      setMovementType('');
-      setMovementQuantity(0);
-      setMovementResponsible('');
+    setMovementProduct(null);
+    setMovementType('');
+    setMovementQuantity(0);
+    setMovementResponsible('');
   }
 
   const handleMoveInventory = async () => {
@@ -219,7 +287,7 @@ export default function InventoryPage() {
           productId: movementProduct.id,
           newStock: newStock,
           reason: movementResponsible,
-          userId: user?.id || 'system',
+          userId: (user as any)?.id || 'system',
           storeId: activeStoreId
         };
 
@@ -239,21 +307,21 @@ export default function InventoryPage() {
       } else {
         // Para compras y ventas, usar la API POST de movimientos
         switch (movementType) {
-          case 'purchase': 
+          case 'purchase':
             newStock = currentStock + movementQuantity;
             break;
-          case 'sale': 
+          case 'sale':
             if (currentStock < movementQuantity) {
-              toast({ 
-                variant: "destructive", 
-                title: "Stock insuficiente", 
+              toast({
+                variant: "destructive",
+                title: "Stock insuficiente",
                 description: `No puedes sacar ${movementQuantity} unidades. Stock actual: ${currentStock}.`
               });
               return;
             }
             newStock = currentStock - movementQuantity;
             break;
-          default: 
+          default:
             newStock = currentStock;
             break;
         }
@@ -267,7 +335,7 @@ export default function InventoryPage() {
           quantity: movementType === 'purchase' ? movementQuantity : -movementQuantity,
           referenceType: 'manual_adjustment',
           referenceId: `manual_${Date.now()}`,
-          userId: user?.id || 'system',
+          userId: (user as any)?.id || 'system',
           notes: `${getMovementLabel(movementType)} manual - ${movementResponsible}`,
           storeId: activeStoreId
         };
@@ -297,10 +365,8 @@ export default function InventoryPage() {
         }
       }
 
-      // Actualizar estado local
-      setProducts(prev => prev.map(p => 
-        p.id === movementProduct.id ? {...p, stock: newStock} : p
-      ));
+      // Recargar productos desde la base de datos
+      await reloadProducts();
 
       toast({
         title: "Movimiento Registrado",
@@ -322,38 +388,38 @@ export default function InventoryPage() {
       setIsProcessingMovement(false);
     }
   };
-  
+
   const getMovementLabel = (type: string) => {
     switch (type) {
-        case 'sale': return 'Salida(Descargo)';
-        case 'purchase': return 'Entrada(Compra)';
-        case 'adjustment': return 'Ajuste(Reemplaza Stock)';
-        case 'initial_stock': return 'Stock Inicial';
-        case 'transfer_in': return 'Transferencia Entrada';
-        case 'transfer_out': return 'Transferencia Salida';
-        case 'return': return 'Devolución';
-        case 'damage': return 'Daño/Pérdida';
-        case 'expiry': return 'Vencimiento';
-        default: return type;
+      case 'sale': return 'Salida(Descargo)';
+      case 'purchase': return 'Entrada(Compra)';
+      case 'adjustment': return 'Ajuste(Reemplaza Stock)';
+      case 'initial_stock': return 'Stock Inicial';
+      case 'transfer_in': return 'Transferencia Entrada';
+      case 'transfer_out': return 'Transferencia Salida';
+      case 'return': return 'Devolución';
+      case 'damage': return 'Daño/Pérdida';
+      case 'expiry': return 'Vencimiento';
+      default: return type;
     }
   };
 
   const getMovementVariant = (type: string) => {
     switch (type) {
-        case 'sale': 
-        case 'transfer_out':
-        case 'damage':
-        case 'expiry':
-          return 'destructive';
-        case 'purchase':
-        case 'initial_stock':
-        case 'transfer_in':
-        case 'return':
-          return 'secondary';
-        case 'adjustment':
-          return 'outline';
-        default: 
-          return 'outline';
+      case 'sale':
+      case 'transfer_out':
+      case 'damage':
+      case 'expiry':
+        return 'destructive';
+      case 'purchase':
+      case 'initial_stock':
+      case 'transfer_in':
+      case 'return':
+        return 'secondary';
+      case 'adjustment':
+        return 'outline';
+      default:
+        return 'outline';
     }
   };
 
@@ -392,7 +458,7 @@ export default function InventoryPage() {
       (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase()))
     );
   }, [products, searchTerm]);
-  
+
   const getVisibleProducts = () => {
     let baseFilter = filteredProducts;
     if (activeTab === 'active') baseFilter = baseFilter.filter(p => p.status === 'active');
@@ -413,15 +479,15 @@ export default function InventoryPage() {
     let fileExtension = '';
 
     const dataToExport = data.map(p => ({
-        SKU: p.sku,
-        Nombre: p.name,
-        Estado: p.status,
-        Precio_Detal: (p.price * activeRate).toFixed(2),
-        Precio_Mayor: (p.wholesalePrice * activeRate).toFixed(2),
-        Costo: (p.cost * activeRate).toFixed(2),
-        Stock: p.stock,
-        Unidad: p.unit,
-        Familia: p.family,
+      SKU: p.sku,
+      Nombre: p.name,
+      Estado: p.status,
+      Precio_Detal: (p.price * activeRate).toFixed(2),
+      Precio_Mayor: (p.wholesalePrice * activeRate).toFixed(2),
+      Costo: (p.cost * activeRate).toFixed(2),
+      Stock: p.stock,
+      Unidad: p.unit,
+      Familia: p.family,
     }));
 
     if (format === 'csv') {
@@ -438,7 +504,7 @@ export default function InventoryPage() {
       mimeType = 'application/json';
       fileExtension = 'json';
     } else { // txt
-      content = dataToExport.map(p => 
+      content = dataToExport.map(p =>
         Object.entries(p).map(([key, value]) => `${key}: ${value}`).join('\n')
       ).join('\n\n--------------------------------\n\n');
       mimeType = 'text/plain';
@@ -478,36 +544,36 @@ export default function InventoryPage() {
         </div>
       </CardHeader>
       <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="hidden w-[64px] sm:table-cell">
-                  <span className="sr-only">Imagen</span>
-                </TableHead>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead className="hidden md:table-cell">Precio Detal</TableHead>
-                <TableHead className="hidden md:table-cell">Precio Mayor</TableHead>
-                <TableHead className="hidden md:table-cell">Stock</TableHead>
-                <TableHead>
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {productsToRender.map((product) => (
-                <ProductRow
-                  key={product.id}
-                  product={product}
-                  activeSymbol={activeSymbol}
-                  activeRate={activeRate}
-                  handleEdit={handleEdit}
-                  handleViewMovements={handleViewMovements}
-                  setProductToDelete={setProductToDelete}
-                />
-              ))}
-            </TableBody>
-          </Table>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="hidden w-[64px] sm:table-cell">
+                <span className="sr-only">Imagen</span>
+              </TableHead>
+              <TableHead>Nombre</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead className="hidden md:table-cell">Precio Detal</TableHead>
+              <TableHead className="hidden md:table-cell">Precio Mayor</TableHead>
+              <TableHead className="hidden md:table-cell">Stock</TableHead>
+              <TableHead>
+                <span className="sr-only">Actions</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {productsToRender.map((product) => (
+              <ProductRow
+                key={product.id}
+                product={product}
+                activeSymbol={activeSymbol}
+                activeRate={activeRate}
+                handleEdit={handleEdit}
+                handleViewMovements={handleViewMovements}
+                setProductToDelete={setProductToDelete}
+              />
+            ))}
+          </TableBody>
+        </Table>
       </CardContent>
       <CardFooter>
         <div className="text-xs text-muted-foreground">
@@ -519,198 +585,198 @@ export default function InventoryPage() {
 
   return (
     <>
-    <Tabs defaultValue="all" onValueChange={setActiveTab}>
-      <div className="flex items-center">
-        <TabsList>
-          <TabsTrigger value="all">Todo</TabsTrigger>
-          <TabsTrigger value="active">Activo</TabsTrigger>
-          <TabsTrigger value="inactive">Inactivo</TabsTrigger>
-          <TabsTrigger value="promotion">Promoción</TabsTrigger>
-        </TabsList>
-        <div className="ml-auto flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+      <Tabs defaultValue="all" onValueChange={setActiveTab}>
+        <div className="flex items-center">
+          <TabsList>
+            <TabsTrigger value="all">Todo</TabsTrigger>
+            <TabsTrigger value="active">Activo</TabsTrigger>
+            <TabsTrigger value="inactive">Inactivo</TabsTrigger>
+            <TabsTrigger value="promotion">Promoción</TabsTrigger>
+          </TabsList>
+          <div className="ml-auto flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button size="sm" variant="outline" className="h-8 gap-1">
-                    <File className="h-3.5 w-3.5" />
-                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                  <File className="h-3.5 w-3.5" />
+                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                     Exportar
-                    </span>
+                  </span>
                 </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Formatos de Exportación</DropdownMenuLabel>
                 <DropdownMenuItem onSelect={() => exportData('csv')}>
-                    <FileSpreadsheet className="mr-2 h-4 w-4" />
-                    <span>CSV (para Excel)</span>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  <span>CSV (para Excel)</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => exportData('json')}>
-                    <FileJson className="mr-2 h-4 w-4" />
-                    <span>JSON (Copia de Seguridad)</span>
+                  <FileJson className="mr-2 h-4 w-4" />
+                  <span>JSON (Copia de Seguridad)</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => exportData('txt')}>
-                    <FileText className="mr-2 h-4 w-4" />
-                    <span>TXT (Texto Plano)</span>
+                  <FileText className="mr-2 h-4 w-4" />
+                  <span>TXT (Texto Plano)</span>
                 </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-          <Dialog>
-            <DialogTrigger asChild>
+            <Dialog>
+              <DialogTrigger asChild>
                 <Button size="sm" className="h-8 gap-1 bg-accent hover:bg-accent/90">
-                    <PlusCircle className="h-3.5 w-3.5" />
-                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                  <PlusCircle className="h-3.5 w-3.5" />
+                  <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                     Mover Inventario
-                    </span>
+                  </span>
                 </Button>
-            </DialogTrigger>
-            <DialogContent>
+              </DialogTrigger>
+              <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Mover Inventario</DialogTitle>
-                    <DialogDescription>
-                        Registra una entrada o salida de stock para un producto.
-                    </DialogDescription>
+                  <DialogTitle>Mover Inventario</DialogTitle>
+                  <DialogDescription>
+                    Registra una entrada o salida de stock para un producto.
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="product">Producto *</Label>
-                        <Popover open={isProductComboboxOpen} onOpenChange={setIsProductComboboxOpen}>
-                            <PopoverTrigger asChild>
-                                <Button
-                                variant="outline"
-                                role="combobox"
-                                aria-expanded={isProductComboboxOpen}
-                                className="w-full justify-between"
+                  <div className="space-y-2">
+                    <Label htmlFor="product">Producto *</Label>
+                    <Popover open={isProductComboboxOpen} onOpenChange={setIsProductComboboxOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={isProductComboboxOpen}
+                          className="w-full justify-between"
+                        >
+                          {movementProduct
+                            ? movementProduct.name
+                            : "Selecciona un producto..."}
+                          <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                          <CommandInput placeholder="Buscar producto..." />
+                          <CommandList>
+                            <CommandEmpty>No se encontraron productos.</CommandEmpty>
+                            <CommandGroup>
+                              {products.map((product) => (
+                                <CommandItem
+                                  key={product.id}
+                                  value={product.name}
+                                  onSelect={(currentValue) => {
+                                    const product = products.find(p => p.name.toLowerCase() === currentValue.toLowerCase());
+                                    setMovementProduct(product || null);
+                                    setIsProductComboboxOpen(false)
+                                  }}
                                 >
-                                {movementProduct
-                                    ? movementProduct.name
-                                    : "Selecciona un producto..."}
-                                <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                <Command>
-                                    <CommandInput placeholder="Buscar producto..." />
-                                    <CommandList>
-                                        <CommandEmpty>No se encontraron productos.</CommandEmpty>
-                                        <CommandGroup>
-                                            {products.map((product) => (
-                                                <CommandItem
-                                                key={product.id}
-                                                value={product.name}
-                                                onSelect={(currentValue) => {
-                                                    const product = products.find(p => p.name.toLowerCase() === currentValue.toLowerCase());
-                                                    setMovementProduct(product || null);
-                                                    setIsProductComboboxOpen(false)
-                                                }}
-                                                >
-                                                <Check className={cn(
-                                                    "mr-2 h-4 w-4",
-                                                    movementProduct?.id === product.id ? "opacity-100" : "opacity-0"
-                                                )} />
-                                                {product.name}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="type">Tipo de Movimiento *</Label>
-                         <Select value={movementType} onValueChange={(value: 'purchase' | 'sale' | 'adjustment') => setMovementType(value)}>
-                            <SelectTrigger id="type">
-                                <SelectValue placeholder="Selecciona un tipo" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="purchase">Entrada(Compra)</SelectItem>
-                                <SelectItem value="sale">Salida(Descargo)</SelectItem>
-                                <SelectItem value="adjustment">Ajuste(Reemplaza Stock)</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                     <div className="space-y-2">
-                        <Label htmlFor="quantity">Cantidad *</Label>
-                        <Input id="quantity" type="number" placeholder="0" value={movementQuantity || ''} onChange={(e) => setMovementQuantity(parseInt(e.target.value) || 0)} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="responsable">Responsable *</Label>
-                        <Input id="responsable" type="text" placeholder="Nombre del responsable" value={movementResponsible} onChange={e => setMovementResponsible(e.target.value)} required />
-                    </div>
+                                  <Check className={cn(
+                                    "mr-2 h-4 w-4",
+                                    movementProduct?.id === product.id ? "opacity-100" : "opacity-0"
+                                  )} />
+                                  {product.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="type">Tipo de Movimiento *</Label>
+                    <Select value={movementType} onValueChange={(value: 'purchase' | 'sale' | 'adjustment') => setMovementType(value)}>
+                      <SelectTrigger id="type">
+                        <SelectValue placeholder="Selecciona un tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="purchase">Entrada(Compra)</SelectItem>
+                        <SelectItem value="sale">Salida(Descargo)</SelectItem>
+                        <SelectItem value="adjustment">Ajuste(Reemplaza Stock)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="quantity">Cantidad *</Label>
+                    <Input id="quantity" type="number" placeholder="0" value={movementQuantity || ''} onChange={(e) => setMovementQuantity(parseInt(e.target.value) || 0)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="responsable">Responsable *</Label>
+                    <Input id="responsable" type="text" placeholder="Nombre del responsable" value={movementResponsible} onChange={e => setMovementResponsible(e.target.value)} required />
+                  </div>
                 </div>
                 <DialogFooter>
-                    <DialogClose asChild>
-                        <Button variant="outline" onClick={resetMovementForm} id="close-movement-dialog">Cancelar</Button>
-                    </DialogClose>
-                    <Button onClick={handleMoveInventory} disabled={!isMovementFormValid || isProcessingMovement}>
-                      {isProcessingMovement ? 'Procesando...' : 'Registrar Movimiento'}
-                    </Button>
+                  <DialogClose asChild>
+                    <Button variant="outline" onClick={resetMovementForm} id="close-movement-dialog">Cancelar</Button>
+                  </DialogClose>
+                  <Button onClick={handleMoveInventory} disabled={!isMovementFormValid || isProcessingMovement}>
+                    {isProcessingMovement ? 'Procesando...' : 'Registrar Movimiento'}
+                  </Button>
                 </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
 
+          </div>
         </div>
-      </div>
-      <TabsContent value="all">
-        {renderProductsTable(getVisibleProducts())}
-      </TabsContent>
-      <TabsContent value="active">
-        {renderProductsTable(getVisibleProducts())}
-      </TabsContent>
-      <TabsContent value="inactive">
-        {renderProductsTable(getVisibleProducts())}
-      </TabsContent>
-       <TabsContent value="promotion">
-        {renderProductsTable(getVisibleProducts())}
-      </TabsContent>
-    </Tabs>
+        <TabsContent value="all">
+          {renderProductsTable(getVisibleProducts())}
+        </TabsContent>
+        <TabsContent value="active">
+          {renderProductsTable(getVisibleProducts())}
+        </TabsContent>
+        <TabsContent value="inactive">
+          {renderProductsTable(getVisibleProducts())}
+        </TabsContent>
+        <TabsContent value="promotion">
+          {renderProductsTable(getVisibleProducts())}
+        </TabsContent>
+      </Tabs>
 
-    <Dialog open={!!productToEdit} onOpenChange={(isOpen) => !isOpen && setProductToEdit(null)}>
+      <Dialog open={!!productToEdit} onOpenChange={(isOpen) => !isOpen && setProductToEdit(null)}>
         <DialogContent className="sm:max-w-2xl">
-            <DialogHeader>
-                <DialogTitle>Editar Producto</DialogTitle>
-                <DialogDescription>
-                    Modifica los detalles del producto y guarda los cambios.
-                </DialogDescription>
-            </DialogHeader>
-            <div className="max-h-[80vh] overflow-y-auto p-1">
-                {productToEdit && (
-                    <ProductForm 
-                        product={productToEdit}
-                        onSubmit={handleUpdateProduct}
-                        onCancel={() => setProductToEdit(null)}
-                    />
-                )}
-            </div>
+          <DialogHeader>
+            <DialogTitle>Editar Producto</DialogTitle>
+            <DialogDescription>
+              Modifica los detalles del producto y guarda los cambios.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[80vh] overflow-y-auto p-1">
+            {productToEdit && (
+              <ProductForm
+                product={productToEdit}
+                onSubmit={handleUpdateProduct}
+                onCancel={() => setProductToEdit(null)}
+              />
+            )}
+          </div>
         </DialogContent>
-    </Dialog>
+      </Dialog>
 
-    <AlertDialog open={!!productToDelete} onOpenChange={(isOpen) => !isOpen && setProductToDelete(null)}>
+      <AlertDialog open={!!productToDelete} onOpenChange={(isOpen) => !isOpen && setProductToDelete(null)}>
         <AlertDialogContent>
-            <AlertDialogHeader>
+          <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar Producto?</AlertDialogTitle>
             <AlertDialogDescription>
-                Esta acción es irreversible. ¿Estás seguro de que quieres eliminar "{productToDelete?.name}"?
+              Esta acción es irreversible. ¿Estás seguro de que quieres eliminar "{productToDelete?.name}"?
             </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => productToDelete && handleDelete(productToDelete.id)} className="bg-destructive hover:bg-destructive/90">
-                Sí, eliminar
+              Sí, eliminar
             </AlertDialogAction>
-            </AlertDialogFooter>
+          </AlertDialogFooter>
         </AlertDialogContent>
-    </AlertDialog>
-    
-    <Dialog open={isMovementsDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) { setSelectedProduct(null); setProductMovements([]); } setIsMovementsDialogOpen(isOpen); }}>
-      <DialogContent className="sm:max-w-4xl">
+      </AlertDialog>
+
+      <Dialog open={isMovementsDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) { setSelectedProduct(null); setProductMovements([]); } setIsMovementsDialogOpen(isOpen); }}>
+        <DialogContent className="sm:max-w-4xl">
           <DialogHeader>
-              <DialogTitle>Movimientos de: {selectedProduct?.name}</DialogTitle>
-              <DialogDescription>
+            <DialogTitle>Movimientos de: {selectedProduct?.name}</DialogTitle>
+            <DialogDescription>
               Historial completo de entradas y salidas de este producto.
-              </DialogDescription>
+            </DialogDescription>
           </DialogHeader>
-          
+
           {/* Resumen de movimientos */}
           {selectedProduct && productMovements.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg mb-4">
@@ -750,62 +816,62 @@ export default function InventoryPage() {
           ) : (
             <Table>
               <TableHeader>
-                  <TableRow>
-                      <TableHead>Fecha</TableHead>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Cantidad</TableHead>
-                      <TableHead>Stock Anterior</TableHead>
-                      <TableHead>Stock Nuevo</TableHead>
-                      <TableHead>Referencia</TableHead>
-                      <TableHead>Notas</TableHead>
-                  </TableRow>
+                <TableRow>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Cantidad</TableHead>
+                  <TableHead>Stock Anterior</TableHead>
+                  <TableHead>Stock Nuevo</TableHead>
+                  <TableHead>Referencia</TableHead>
+                  <TableHead>Notas</TableHead>
+                </TableRow>
               </TableHeader>
               <TableBody>
-                  {productMovements.length > 0 ? productMovements.map((movement) => (
-                      <TableRow key={movement._id}>
-                          <TableCell className="text-sm">
-                            {movement.createdAt ? format(parseISO(movement.createdAt), 'dd/MM/yyyy HH:mm') : 'N/A'}
-                          </TableCell>
-                          <TableCell>
-                              <Badge variant={getMovementVariant(movement.movementType)}>
-                                  {getMovementLabel(movement.movementType)}
-                              </Badge>
-                          </TableCell>
-                          <TableCell className={`text-right font-medium ${movement.quantity > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            {movement.quantity > 0 ? '+' : ''}{movement.quantity}
-                          </TableCell>
-                          <TableCell className="text-right text-muted-foreground">
-                            {movement.previousStock}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {movement.newStock}
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {movement.referenceId || 'N/A'}
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
-                            {movement.notes || 'Sin notas'}
-                          </TableCell>
-                      </TableRow>
-                  )) : (
-                    <TableRow>
-                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                          {isLoadingMovements ? 'Cargando...' : 'No hay movimientos para este producto.'}
-                        </TableCell>
-                    </TableRow>
-                  )}
+                {productMovements.length > 0 ? productMovements.map((movement) => (
+                  <TableRow key={movement._id}>
+                    <TableCell className="text-sm">
+                      {movement.createdAt ? format(parseISO(movement.createdAt), 'dd/MM/yyyy HH:mm') : 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getMovementVariant(movement.movementType)}>
+                        {getMovementLabel(movement.movementType)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className={`text-right font-medium ${movement.quantity > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {movement.quantity > 0 ? '+' : ''}{movement.quantity}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">
+                      {movement.previousStock}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {movement.newStock}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {movement.referenceId || 'N/A'}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                      {movement.notes || 'Sin notas'}
+                    </TableCell>
+                  </TableRow>
+                )) : (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                      {isLoadingMovements ? 'Cargando...' : 'No hay movimientos para este producto.'}
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           )}
-            <DialogFooter>
-              <DialogClose asChild>
+          <DialogFooter>
+            <DialogClose asChild>
               <Button type="button" variant="secondary">
-                  Cerrar
+                Cerrar
               </Button>
-              </DialogClose>
+            </DialogClose>
           </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

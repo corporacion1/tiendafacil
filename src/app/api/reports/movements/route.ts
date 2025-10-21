@@ -99,7 +99,7 @@ export async function GET(request: Request) {
     // Estadísticas de movimientos
     const stats = {
       totalMovements: enrichedMovements.length,
-      movementTypes: enrichedMovements.reduce((acc, m) => {
+      movementTypes: enrichedMovements.reduce((acc: any, m: any) => {
         acc[m.movementType] = (acc[m.movementType] || 0) + 1;
         return acc;
       }, {}),

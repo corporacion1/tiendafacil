@@ -14,7 +14,7 @@ export default function TestPage() {
       <h1>🧪 TEST DE AUTENTICACIÓN</h1>
       {user ? (
         <>
-          <p>✅ Usuario: {user.name}</p>
+          <p>✅ Usuario: {(user as any).name || user.displayName}</p>
           <p>📧 Email: {user.email}</p>
           <button onClick={logout}>Cerrar sesión</button>
         </>

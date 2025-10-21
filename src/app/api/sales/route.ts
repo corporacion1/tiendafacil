@@ -47,7 +47,7 @@ export async function POST(request: Request) {
         const batchId = MovementService.generateBatchId();
         
         // Crear movimientos para cada producto (cantidades negativas para salidas)
-        const movementPromises = data.items.map(async (item) => {
+        const movementPromises = data.items.map(async (item: any) => {
           if (!item.productId || !item.quantity || item.quantity <= 0) {
             console.warn('⚠️ [Sales API] Item inválido:', item);
             return null;

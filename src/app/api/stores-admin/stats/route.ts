@@ -36,8 +36,9 @@ export async function GET() {
         
         if (store.ownerIds && store.ownerIds.length > 0) {
           const admin = await User.findOne({ uid: store.ownerIds[0] }).lean();
-          if (admin) {
-            adminName = admin.displayName || admin.email || 'Administrador';
+          const adminData = Array.isArray(admin) ? admin[0] : admin;
+          if (adminData) {
+            adminName = adminData.displayName || adminData.email || 'Administrador';
           }
         }
 

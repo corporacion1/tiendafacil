@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Supplier } from '@/models/Supplier';
 
-export async function GET(request) {
+export async function GET(request: NextRequest) {
   try {
     await connectToDatabase();
     const { searchParams } = new URL(request.url);
@@ -10,12 +10,12 @@ export async function GET(request) {
     if (!storeId) return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
     const suppliers = await Supplier.find({ storeId }).lean();
     return NextResponse.json(suppliers);
-  } catch (error) {
+  } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-export async function POST(request) {
+export async function POST(request: NextRequest) {
   try {
     await connectToDatabase();
     const data = await request.json();
@@ -24,12 +24,12 @@ export async function POST(request) {
     }
     const created = await Supplier.create(data);
     return NextResponse.json(created);
-  } catch (error) {
+  } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-export async function PUT(request) {
+export async function PUT(request: NextRequest) {
   try {
     await connectToDatabase();
     const data = await request.json();
@@ -43,12 +43,12 @@ export async function PUT(request) {
     );
     if (!updated) return NextResponse.json({ error: "Proveedor no encontrado" }, { status: 404 });
     return NextResponse.json(updated);
-  } catch (error) {
+  } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-export async function DELETE(request) {
+export async function DELETE(request: NextRequest) {
   try {
     await connectToDatabase();
     const { searchParams } = new URL(request.url);
@@ -60,7 +60,7 @@ export async function DELETE(request) {
     const deleted = await Supplier.findOneAndDelete({ id, storeId });
     if (!deleted) return NextResponse.json({ error: "Proveedor no existe" }, { status: 404 });
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

@@ -8,7 +8,11 @@ export async function GET(request: Request) {
     await connectToDatabase();
     const session = await getSession(request);
     
+    console.log('📊 [Status API] GET recibido');
+    console.log('👤 [Status API] Session:', session?.user?.id);
+    
     if (!session?.user?.id) {
+      console.log('⚠️ [Status API] Sin sesión - retornando hasPin: false');
       return NextResponse.json({
         hasPin: false,
         isLocked: false,
@@ -17,8 +21,10 @@ export async function GET(request: Request) {
     }
     
     const securityRecord = await Security.findOne({ userId: session.user.id });
+    console.log('🔍 [Status API] Registro encontrado:', !!securityRecord);
     
     if (!securityRecord) {
+      console.log('⚠️ [Status API] No hay registro - retornando hasPin: false');
       return NextResponse.json({
         hasPin: false,
         isLocked: false,
@@ -30,6 +36,8 @@ export async function GET(request: Request) {
     const maxAttempts = 5;
     const remainingAttempts = Math.max(0, maxAttempts - securityRecord.attempts);
     
+    console.log('✅ [Status API] Retornando hasPin: true, isLocked:', !!isLocked);
+    
     return NextResponse.json({
       hasPin: true,
       isLocked: !!isLocked,
@@ -37,7 +45,7 @@ export async function GET(request: Request) {
     });
 
   } catch (error) {
-    console.error('Error en security status:', error);
+    console.error('❌ [Status API] Error:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }

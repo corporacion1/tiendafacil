@@ -38,34 +38,37 @@ export async function GET(
     
     // Get admin information
     let adminInfo = null;
-    if (store.ownerIds && store.ownerIds.length > 0) {
-      const admin = await User.findOne({ uid: store.ownerIds[0] }).lean();
-      if (admin) {
+    const storeData = Array.isArray(store) ? store[0] : store;
+    if (storeData && storeData.ownerIds && storeData.ownerIds.length > 0) {
+      const admin = await User.findOne({ uid: storeData.ownerIds[0] }).lean();
+      const adminData = Array.isArray(admin) ? admin[0] : admin;
+      if (adminData) {
         adminInfo = {
-          uid: admin.uid,
-          email: admin.email,
-          displayName: admin.displayName,
-          phone: admin.phone,
-          role: admin.role,
-          createdAt: admin.createdAt
+          uid: adminData.uid,
+          email: adminData.email,
+          displayName: adminData.displayName,
+          phone: adminData.phone,
+          role: adminData.role,
+          createdAt: adminData.createdAt
         };
       }
     }
 
     // Process user roles from store.userRoles
-    const userRoles = store.userRoles || [];
+    const userRoles = storeData?.userRoles || [];
     const enrichedUserRoles = await Promise.all(
-      userRoles.map(async (userRole) => {
+      userRoles.map(async (userRole: any) => {
         const user = await User.findOne({ uid: userRole.uid }).lean();
+        const userData = Array.isArray(user) ? user[0] : user;
         return {
           uid: userRole.uid,
           role: userRole.role,
-          userInfo: user ? {
-            email: user.email,
-            displayName: user.displayName,
-            phone: user.phone,
-            status: user.status,
-            createdAt: user.createdAt
+          userInfo: userData ? {
+            email: userData.email,
+            displayName: userData.displayName,
+            phone: userData.phone,
+            status: userData.status,
+            createdAt: userData.createdAt
           } : null
         };
       })
@@ -80,11 +83,11 @@ export async function GET(
     }, {} as Record<string, number>);
 
     // Determine if store is in production
-    const isProduction = !store.useDemoData;
+    const isProduction = !storeData?.useDemoData;
 
     const detailedStore = {
       // Basic store information
-      ...store,
+      ...storeData,
       
       // Admin information
       adminInfo,
@@ -101,28 +104,28 @@ export async function GET(
       isProduction,
       
       // Activity information
-      lastActivity: store.updatedAt || store.createdAt,
+      lastActivity: storeData?.updatedAt || storeData?.createdAt,
       
       // Configuration summary
       configuration: {
         primaryCurrency: {
-          name: store.primaryCurrencyName,
-          symbol: store.primaryCurrencySymbol
+          name: storeData?.primaryCurrencyName,
+          symbol: storeData?.primaryCurrencySymbol
         },
         secondaryCurrency: {
-          name: store.secondaryCurrencyName,
-          symbol: store.secondaryCurrencySymbol
+          name: storeData?.secondaryCurrencyName,
+          symbol: storeData?.secondaryCurrencySymbol
         },
         taxes: {
-          tax1: store.tax1,
-          tax2: store.tax2
+          tax1: storeData?.tax1,
+          tax2: storeData?.tax2
         },
         business: {
-          type: store.businessType,
-          address: store.address,
-          phone: store.phone,
-          whatsapp: store.whatsapp,
-          tiktok: store.tiktok
+          type: storeData?.businessType,
+          address: storeData?.address,
+          phone: storeData?.phone,
+          whatsapp: storeData?.whatsapp,
+          tiktok: storeData?.tiktok
         }
       }
     };

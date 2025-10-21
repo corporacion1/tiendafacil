@@ -92,7 +92,7 @@ export async function POST(request: Request) {
     }
     
     // Verificar que sea una venta a crédito
-    if (sale.transactionType !== 'credito') {
+    if ((sale as any).transactionType !== 'credito') {
       return NextResponse.json({ 
         error: 'La venta no es a crédito' 
       }, { status: 400 });
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
     }
     
     // Calcular fechas
-    const saleDate = new Date(sale.date);
+    const saleDate = new Date((sale as any).date);
     const dueDate = new Date(saleDate);
     dueDate.setDate(dueDate.getDate() + creditDays);
     

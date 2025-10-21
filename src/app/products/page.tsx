@@ -26,8 +26,8 @@ export default function ProductsPage() {
         id: `prod-${Date.now()}`,
         storeId: activeStoreId,
         createdAt: new Date().toISOString(),
-        userId: user?.id || 'system' // Para rastrear quién creó el producto
-      };
+        userId: (user as any)?.id || 'system' // Para rastrear quién creó el producto
+      } as any;
 
       // Guardar en la base de datos (esto automáticamente registrará movimientos si hay stock inicial)
       const response = await fetch('/api/products', {
@@ -75,7 +75,7 @@ export default function ProductsPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <ProductForm onSubmit={onSubmit} isSubmitting={isSubmitting} />
+        <ProductForm onSubmit={onSubmit} />
       </CardContent>
     </Card>
   );

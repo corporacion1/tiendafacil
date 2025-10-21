@@ -54,7 +54,8 @@ interface SettingsContextType {
   signOut: () => Promise<void>;
   seedDatabase: (storeId: string) => Promise<boolean>;
   fetchCurrencyRates: () => Promise<CurrencyRate | null>;
-  saveCurrencyRate: (rate: number, userId: string) => Promise<boolean>;
+  saveCurrencyRate: (rate: number, userName: string) => Promise<boolean>;
+  reloadProducts: () => Promise<void>;
 }
 
 
@@ -462,14 +463,14 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [activeStoreId]); // Removido settings de las dependencias
 
   // ✅ FUNCIÓN GUARDARCURRENCYRATE CORREGIDA Y DEFINITIVA
-  const saveCurrencyRate = useCallback(async (rate: number, userId: string) => {
+  const saveCurrencyRate = useCallback(async (rate: number, userName: string) => {
     try {
-      console.log('💰 [Context] Guardando tasa:', { rate, userId, activeStoreId });
+      console.log('💰 [Context] Guardando tasa:', { rate, userName, activeStoreId });
 
       const requestBody = {
         storeId: activeStoreId,
         rate,
-        userId
+        userId: userName
       };
 
       console.log('📤 [Context] Enviando request:', requestBody);
@@ -581,6 +582,22 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     localStorage.setItem(CURRENCY_PREF_STORAGE_KEY, newPreference);
   }, [displayCurrency]);
 
+  const reloadProducts = useCallback(async () => {
+    if (!activeStoreId) return;
+    
+    try {
+      console.log('🔄 Recargando productos desde MongoDB...');
+      const response = await fetch(`/api/products?storeId=${activeStoreId}`);
+      if (response.ok) {
+        const productsData = await response.json();
+        setProducts(productsData);
+        console.log('✅ Productos recargados:', productsData.length);
+      }
+    } catch (error) {
+      console.error('❌ Error recargando productos:', error);
+    }
+  }, [activeStoreId]);
+
   const handleSetUserProfile = useCallback((user: UserProfile | null) => {
     setUserProfile(user);
   }, []);
@@ -654,7 +671,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     signOut: handleSignOut,
     seedDatabase,
     fetchCurrencyRates,
-    saveCurrencyRate
+    saveCurrencyRate,
+    reloadProducts
   }}, [
     settings,
     updateSettingsState,
@@ -697,7 +715,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     handleSignOut,
     seedDatabase,
     fetchCurrencyRates,
-    saveCurrencyRate
+    saveCurrencyRate,
+    reloadProducts
   ]);
 
   if (isLoading && !isPublicPath && isClient) {

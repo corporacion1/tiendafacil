@@ -39,7 +39,7 @@ const getRoleVariant = (role: UserProfile['role']) => {
   switch (role) {
     case 'su': return 'destructive';
     case 'admin': return 'default';
-    case 'pos': return 'secondary';
+    case 'pos' as any: return 'secondary';
     case 'user':
     default: return 'outline';
   }
@@ -49,7 +49,7 @@ const getRoleIcon = (role: UserProfile['role']) => {
   switch (role) {
     case 'su': return <Shield className="h-4 w-4 mr-2" />;
     case 'admin': return <UserPlus className="h-4 w-4 mr-2" />;
-    case 'pos': return <Armchair className="h-4 w-4 mr-2" />;
+    case 'pos' as any: return <Armchair className="h-4 w-4 mr-2" />;
     case 'user':
     default: return <UserPlus className="h-4 w-4 mr-2" />;
   }
@@ -125,7 +125,7 @@ export default function UsersPage() {
     const byRole = {
       su: users.filter(u => u.role === 'su').length,
       admin: users.filter(u => u.role === 'admin').length,
-      pos: users.filter(u => u.role === 'pos').length,
+      pos: users.filter(u => (u as any).role === 'pos').length,
       user: users.filter(u => u.role === 'user').length,
     };
 
@@ -395,8 +395,8 @@ export default function UsersPage() {
                                           <Check className={`mr-2 h-4 w-4 ${user.role === 'user' ? 'opacity-100' : 'opacity-0'}`} />
                                           User
                                       </DropdownMenuItem>
-                                      <DropdownMenuItem onSelect={() => handleAction(user, 'changeRole', 'pos')}>
-                                          <Check className={`mr-2 h-4 w-4 ${user.role === 'pos' ? 'opacity-100' : 'opacity-0'}`} />
+                                      <DropdownMenuItem onSelect={() => handleAction(user, 'changeRole', 'pos' as any)}>
+                                          <Check className={`mr-2 h-4 w-4 ${(user as any).role === 'pos' ? 'opacity-100' : 'opacity-0'}`} />
                                           Pos
                                       </DropdownMenuItem>
                                        <DropdownMenuItem onSelect={() => handleAction(user, 'changeRole', 'admin')}>
@@ -411,7 +411,7 @@ export default function UsersPage() {
                               </DropdownMenuPortal>
                           </DropdownMenuSub>
                           {user.storeId && 
-                              <DropdownMenuItem onSelect={() => switchStore(user.storeId)}>
+                              <DropdownMenuItem onSelect={() => switchStore(user.storeId!)}>
                                   <ExternalLink className="mr-2 h-4 w-4" /> Ver como este usuario
                               </DropdownMenuItem>
                           }

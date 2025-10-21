@@ -1,11 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Purchase } from '@/models/Purchase';
 import { MovementService } from '@/services/MovementService';
 import { MovementType, ReferenceType } from '@/models/InventoryMovement';
 import { Product } from '@/models/Product';
 
-export async function GET(request) {
+export async function GET(request: NextRequest) {
   try {
     await connectToDatabase();
     const { searchParams } = new URL(request.url);
@@ -13,12 +13,12 @@ export async function GET(request) {
     if (!storeId) return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
     const purchases = await Purchase.find({ storeId }).lean();
     return NextResponse.json(purchases);
-  } catch (error) {
+  } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-export async function POST(request) {
+export async function POST(request: NextRequest) {
   try {
     await connectToDatabase();
     const data = await request.json();
@@ -38,7 +38,7 @@ export async function POST(request) {
         const batchId = MovementService.generateBatchId();
         
         // Crear movimientos para cada producto
-        const movementPromises = data.items.map(async (item) => {
+        const movementPromises = data.items.map(async (item: any) => {
           if (!item.productId || !item.quantity || item.quantity <= 0) {
             console.warn('⚠️ [Purchases API] Item inválido:', item);
             return null;
@@ -89,12 +89,12 @@ export async function POST(request) {
     }
     
     return NextResponse.json(created);
-  } catch (error) {
+  } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-export async function PUT(request) {
+export async function PUT(request: NextRequest) {
   try {
     await connectToDatabase();
     const data = await request.json();
@@ -108,12 +108,12 @@ export async function PUT(request) {
     );
     if (!updated) return NextResponse.json({ error: "Compra no encontrada" }, { status: 404 });
     return NextResponse.json(updated);
-  } catch (error) {
+  } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-export async function DELETE(request) {
+export async function DELETE(request: NextRequest) {
   try {
     await connectToDatabase();
     const { searchParams } = new URL(request.url);
@@ -125,7 +125,7 @@ export async function DELETE(request) {
     const deleted = await Purchase.findOneAndDelete({ id, storeId });
     if (!deleted) return NextResponse.json({ error: "Compra no encontrada" }, { status: 404 });
     return NextResponse.json({ message: "Compra eliminada exitosamente" });
-  } catch (error) {
+  } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

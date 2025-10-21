@@ -191,7 +191,7 @@ export default function PurchasesPage() {
             if(product.tax1 && settings.tax1 && settings.tax1 > 0) {
                 tax1Amount += itemSubtotal * (settings.tax1 / 100);
             }
-            if(product.tax2 && settings.tax2 > 0) {
+            if(product.tax2 && settings.tax2 && settings.tax2 > 0) {
                 tax2Amount += itemSubtotal * (settings.tax2 / 100);
             }
         }

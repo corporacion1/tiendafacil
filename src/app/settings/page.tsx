@@ -174,6 +174,8 @@ export default function SettingsPage() {
     const [productionPin, setProductionPin] = useState('');
     const [productionConfirmationText, setProductionConfirmationText] = useState('');
     const [isProcessingProduction, setIsProcessingProduction] = useState(false);
+    
+
 
 
     useEffect(() => {
@@ -217,7 +219,7 @@ export default function SettingsPage() {
     setIsSavingRate(true);
     
     try {
-        const success = await saveCurrencyRate(rateValue, userProfile?.id || 'system');
+        const success = await saveCurrencyRate(rateValue, userProfile?.displayName || 'Sistema');
         if (success) {
             toast({ 
                 title: "✅ Tasa guardada",
@@ -584,7 +586,7 @@ useEffect(() => {
         return (currentCount + 1).toString().padStart(3, '0');
     }, [sales]);
     
-const handleSeed = async () => {
+    const handleSeed = async () => {
   console.log('🌱 [Settings] Iniciando proceso de siembra...');
   console.log('🔐 [Settings] Verificando PIN...');
   
@@ -639,7 +641,9 @@ const handleSeed = async () => {
   }
 };
 
-const handleGoToProduction = async () => {
+
+
+    const handleGoToProduction = async () => {
   console.log('🚀 [Settings] Iniciando proceso de pasar a producción...');
   console.log('🔐 [Settings] Verificando PIN...');
   
@@ -955,15 +959,15 @@ const handleGoToProduction = async () => {
                         </TableHeader>
                         <TableBody>
                         {Array.isArray(currencyRates) && currencyRates.map(rate => (
-                            <TableRow key={rate._id || rate.id || `rate-${rate.date}`}>
+                            <TableRow key={(rate as any)._id || rate.id || `rate-${rate.date}`}>
                             <TableCell>
-                                {new Date(rate.createdAt || rate.date).toLocaleDateString()}
+                                {new Date((rate as any).createdAt || rate.date).toLocaleDateString()}
                             </TableCell>
                             <TableCell className="font-mono">
                                 {rate.rate.toFixed(4)}
                             </TableCell>
                             <TableCell>
-                                {rate.createdBy || 'Sistema'}
+                                {(rate as any).createdBy || 'Sistema'}
                             </TableCell>
                             </TableRow>
                         ))}
@@ -1067,6 +1071,8 @@ const handleGoToProduction = async () => {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+
+
                     {/* Layout responsivo para los botones */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {/* Botón Reiniciar y Sembrar Datos */}
@@ -1075,7 +1081,7 @@ const handleGoToProduction = async () => {
                                 <AlertDialogTrigger asChild>
                                     <Button 
                                         variant="destructive"
-                                        disabled={settings?.status === 'inProduction'}
+                                        disabled={(settings as any)?.status === 'inProduction'}
                                         className="w-full"
                                     >
                                         <Database className="mr-2" /> Reiniciar y Sembrar Datos
@@ -1137,7 +1143,7 @@ const handleGoToProduction = async () => {
                                     <Button 
                                         variant="destructive" 
                                         className="bg-orange-600 hover:bg-orange-700 w-full"
-                                        disabled={settings?.status === 'inProduction' || userRole !== 'su'}
+                                        disabled={(settings as any)?.status === 'inProduction' || userRole !== 'su'}
                                     >
                                         <Package className="mr-2" /> Reiniciar y Pasar a Producción
                                     </Button>
@@ -1203,7 +1209,7 @@ const handleGoToProduction = async () => {
                     <div className="space-y-1 text-xs text-muted-foreground">
                         <p><strong>Reiniciar y Sembrar Datos:</strong> Restaura productos, clientes, ventas y configuraciones a su estado original de demostración.</p>
                         <p><strong>Reiniciar y Pasar a Producción:</strong> Elimina todos los datos demo pero mantiene la configuración de la tienda y usuarios. Marca la tienda como "En Producción". <span className="text-orange-600 font-medium">(Solo Super Usuarios)</span></p>
-                        {settings?.status === 'inProduction' && (
+                        {(settings as any)?.status === 'inProduction' && (
                             <p className="text-orange-600 font-medium">⚠️ Esta tienda está en producción. Los botones de reinicio están deshabilitados.</p>
                         )}
                         {userRole !== 'su' && (

@@ -12,7 +12,11 @@ const AdSchema = new Schema({
   status: String,
   targetBusinessTypes: [String],
   expiryDate: String,
-  createdAt: String
+  createdAt: String,
+  storeId: { type: String, required: true, index: true }
 }, { timestamps: true });
+
+// Índice compuesto para optimización
+AdSchema.index({ storeId: 1, status: 1 });
 
 export const Ad = models.Ad || model('Ad', AdSchema);

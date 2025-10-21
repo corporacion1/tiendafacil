@@ -128,9 +128,13 @@ export function usePermissions() {
   };
   
   const canAccess = (route: string): boolean => {
+    // Rutas públicas que no requieren permisos
+    const publicRoutes = ['/', '/catalog', '/login', '/register'];
+    if (publicRoutes.includes(route)) {
+      return true;
+    }
+    
     switch (route) {
-      case '/catalog':
-        return hasPermission('canViewCatalog');
       case '/products':
         return hasPermission('canViewProducts');
       case '/inventory':
@@ -154,7 +158,9 @@ export function usePermissions() {
       case '/stores-admin':
         return hasPermission('canViewStoresAdmin');
       default:
-        return false;
+        // Si no coincide con ninguna ruta específica, permitir acceso
+        // (para rutas dinámicas o no definidas)
+        return true;
     }
   };
   

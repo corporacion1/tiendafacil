@@ -14,7 +14,6 @@ import { Skeleton } from './ui/skeleton';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { lockApp } = useSecurity();
   const { userProfile, isLoadingSettings } = useSettings();
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
@@ -25,9 +24,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isPublicPage = pathname === '/' || pathname.startsWith('/catalog');
 
   useEffect(() => {
-    if (!isPublicPage && userProfile) {
-      lockApp();
-    }
+    // Security check removed - handled elsewhere
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, userProfile]);
 

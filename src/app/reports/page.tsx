@@ -277,7 +277,7 @@ export default function ReportsPage() {
     const filteredSales = useMemo(() => {
         return filterByDate(sortedSales).filter(s =>
             (s.id as string).toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.customerName.toLowerCase().includes(searchTerm.toLowerCase())
+            ((s as any).customerName || '').toLowerCase().includes(searchTerm.toLowerCase())
         ) as Sale[];
     }, [sortedSales, searchTerm, dateFilterQuery]);
 
@@ -289,14 +289,14 @@ export default function ReportsPage() {
     const filteredPurchases = useMemo(() => {
         return filterByDate(sortedPurchases).filter(p =>
             (p.id as string).toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.supplierName.toLowerCase().includes(searchTerm.toLowerCase())
+            ((p as any).supplierName || '').toLowerCase().includes(searchTerm.toLowerCase())
         ) as Purchase[];
     }, [sortedPurchases, searchTerm, dateFilterQuery]);
 
     const filteredMovements = useMemo(() => {
         const sortedMovements = (movementsData || []).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         return filterByDate(sortedMovements).filter(m =>
-            m.productName.toLowerCase().includes(searchTerm.toLowerCase())
+            ((m as any).productName || '').toLowerCase().includes(searchTerm.toLowerCase())
         ) as InventoryMovement[];
     }, [movementsData, searchTerm, dateFilterQuery]);
 
@@ -311,9 +311,9 @@ export default function ReportsPage() {
 
     const filteredPayments = useMemo(() => {
         return filterByDate(allPayments).filter(p =>
-            p.saleId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (p.reference && p.reference.toLowerCase().includes(searchTerm.toLowerCase()))
+            ((p as any).saleId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            ((p as any).customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            ((p as any).reference && (p as any).reference.toLowerCase().includes(searchTerm.toLowerCase()))
         ) as (Payment & { saleId: string; customerName: string; })[];
     }, [allPayments, searchTerm, dateFilterQuery]);
 
@@ -324,9 +324,9 @@ export default function ReportsPage() {
 
     const filteredCashSessions = useMemo(() => {
         return filterByDate(sortedCashSessions).filter(cs =>
-            cs.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            cs.openedBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (cs.closedBy && cs.closedBy.toLowerCase().includes(searchTerm.toLowerCase()))
+            ((cs as any).id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            ((cs as any).openedBy || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            ((cs as any).closedBy && (cs as any).closedBy.toLowerCase().includes(searchTerm.toLowerCase()))
         ) as CashSession[];
     }, [sortedCashSessions, searchTerm, dateFilterQuery]);
 
@@ -363,10 +363,10 @@ export default function ReportsPage() {
             const product = products.find(p => p.id === item.productId);
             if (product && settings) {
                 const itemSubtotal = item.price * item.quantity;
-                if (product.tax1 && settings.tax1 > 0) {
+                if (product.tax1 && settings.tax1 && settings.tax1 > 0) {
                     tax1Amount += itemSubtotal * (settings.tax1 / 100);
                 }
-                if (product.tax2 && settings.tax2 > 0) {
+                if (product.tax2 && settings.tax2 && settings.tax2 > 0) {
                     tax2Amount += itemSubtotal * (settings.tax2 / 100);
                 }
             }
@@ -880,7 +880,6 @@ export default function ReportsPage() {
                     onOpenChange={(isOpen) => { if (!isOpen) { setSessionForReport(null); } setIsReportPreviewOpen(isOpen); }}
                     session={sessionForReport}
                     type="Z"
-                    sales={salesForSession(sessionForReport)}
                 />
             )}
         </>

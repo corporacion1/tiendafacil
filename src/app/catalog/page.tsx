@@ -1700,7 +1700,7 @@ export default function CatalogPage() {
               <div className="space-y-4">
                 <div className="relative h-64 w-full">
                   <Image
-                    src={selectedAd.imageUrl}
+                    src={selectedAd.imageUrl || '/placeholder.png'}
                     alt={selectedAd.name}
                     fill
                     className="object-cover rounded-lg"

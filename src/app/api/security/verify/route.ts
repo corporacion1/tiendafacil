@@ -93,7 +93,7 @@ export async function POST(request: Request) {
       }, { status: 403 });
     }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ [Verify API] Error completo:', error);
     console.error('❌ [Verify API] Stack trace:', error.stack);
     return NextResponse.json(

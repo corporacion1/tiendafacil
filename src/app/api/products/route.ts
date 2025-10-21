@@ -1,11 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Product } from '@/models/Product';
 import { handleDatabaseError, validateRequiredFields, logDatabaseOperation } from '@/lib/db-error-handler';
 import { MovementService } from '@/services/MovementService';
 import { MovementType, ReferenceType } from '@/models/InventoryMovement';
 
-export async function GET(request) {
+export async function GET(request: NextRequest) {
   try {
     await connectToDatabase();
     const { searchParams } = new URL(request.url);
@@ -24,7 +24,7 @@ export async function GET(request) {
   }
 }
 
-export async function POST(request) {
+export async function POST(request: NextRequest) {
   try {
     await connectToDatabase();
     const data = await request.json();
@@ -68,17 +68,24 @@ export async function POST(request) {
   }
 }
 
-export async function PUT(request) {
+export async function PUT(request: NextRequest) {
   try {
     await connectToDatabase();
     const data = await request.json();
     
+    console.log('📥 [Products API] PUT recibido:', { id: data.id, storeId: data.storeId });
+    console.log('📦 [Products API] Datos completos:', data);
+    
     const validationError = validateRequiredFields(data, ['id', 'storeId']);
     if (validationError) {
+      console.error('❌ [Products API] Error de validación:', validationError);
       return NextResponse.json({ error: validationError }, { status: 400 });
     }
     
     logDatabaseOperation('PUT', 'products', data);
+    
+    console.log('🔍 [Products API] Buscando producto:', { id: data.id, storeId: data.storeId });
+    
     const updated = await Product.findOneAndUpdate(
       { id: data.id, storeId: data.storeId },
       { $set: data },
@@ -86,16 +93,20 @@ export async function PUT(request) {
     );
     
     if (!updated) {
+      console.error('❌ [Products API] Producto no encontrado en DB');
       return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
     }
     
+    console.log('✅ [Products API] Producto actualizado exitosamente:', updated.id);
+    
     return NextResponse.json(updated);
   } catch (error) {
+    console.error('❌ [Products API] Error en PUT:', error);
     return handleDatabaseError(error, 'PUT products');
   }
 }
 
-export async function DELETE(request) {
+export async function DELETE(request: NextRequest) {
   try {
     await connectToDatabase();
     const { searchParams } = new URL(request.url);

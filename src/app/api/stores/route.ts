@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Store } from '@/models/Store';
 
 // Leer tienda actual
-export async function GET(request) {
+export async function GET(request: NextRequest) {
   try {
     await connectToDatabase();
     const { searchParams } = new URL(request.url);
@@ -22,21 +22,22 @@ export async function GET(request) {
       store = await Store.findOne({ id }).lean();
     }
     
-    if (!store) {
+    const storeData = Array.isArray(store) ? store[0] : store;
+    if (!storeData) {
       console.error('❌ [Stores API] Tienda no encontrada:', id);
       return NextResponse.json({ error: "Tienda no encontrada" }, { status: 404 });
     }
     
-    console.log('✅ [Stores API] Tienda encontrada:', store.name);
-    return NextResponse.json(store);
-  } catch (error) {
+    console.log('✅ [Stores API] Tienda encontrada:', storeData.name);
+    return NextResponse.json(storeData);
+  } catch (error: any) {
     console.error('❌ [Stores API] Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
 // Crear tienda
-export async function POST(request) {
+export async function POST(request: NextRequest) {
   try {
     await connectToDatabase();
     const data = await request.json();
@@ -53,14 +54,14 @@ export async function POST(request) {
     console.log('🏪 [Stores API] Creando tienda:', data.storeId);
     const created = await Store.create(data);
     return NextResponse.json(created);
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ [Stores API] Error creando tienda:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
 // Editar tienda/settings
-export async function PUT(request) {
+export async function PUT(request: NextRequest) {
   try {
     await connectToDatabase();
     const data = await request.json();
@@ -95,14 +96,14 @@ export async function PUT(request) {
     
     console.log('✅ [Stores API] Tienda actualizada:', updated.name);
     return NextResponse.json(updated);
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ [Stores API] Error actualizando tienda:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
 // Borrar tienda (si lo permites)
-export async function DELETE(request) {
+export async function DELETE(request: NextRequest) {
   try {
     await connectToDatabase();
     const { searchParams } = new URL(request.url);
@@ -124,7 +125,7 @@ export async function DELETE(request) {
     
     console.log('✅ [Stores API] Tienda eliminada:', deleted.name);
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ [Stores API] Error eliminando tienda:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
