@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from '@/hooks/use-toast';
 import { UserProfile } from '@/lib/types';
 
-// VERCEL CACHE FIX - register returns Promise with success boolean
+// VERCEL CACHE FIX 2025-10-21 - register returns Promise with success boolean
 type AuthContextType = {
   user: UserProfile | null;
   token: string | null;
