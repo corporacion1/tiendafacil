@@ -33,6 +33,8 @@ import { format } from "date-fns";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SessionReportPreview } from "@/components/session-report-preview";
 import { useSecurity } from "@/contexts/security-context";
+import { useNetworkStatus } from "@/hooks/useNetworkStatus";
+import { usePendingOrders } from "@/hooks/usePendingOrders";
 
 
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
@@ -84,6 +86,18 @@ export default function POSPage() {
   const isLocked = isPinLocked;
   const isSecurityReady = true; // Simplified for now
   const router = useRouter();
+
+  // Hook para pedidos pendientes con sincronización automática
+  const { 
+    orders: pendingOrdersFromDB, 
+    isLoading: isLoadingPendingOrders, 
+    isPolling: isPollingOrders,
+    updateOrderStatus,
+    refetch: refetchPendingOrders
+  } = usePendingOrders(activeStoreId);
+
+  // Hook para estado de red
+  const { isOnline } = useNetworkStatus();
 
   // --- USE LOCAL DATA ---
   const isLoading = isLoadingSettings;
@@ -938,7 +952,7 @@ export default function POSPage() {
     try {
         // Buscar si algún producto del carrito proviene de un pedido pendiente
         // Esto se puede hacer comparando productos y cantidades con pedidos en procesamiento
-        const processingOrders = (pendingOrdersContext || []).filter(order => 
+        const processingOrders = pendingOrdersFromDB.filter(order => 
             order.customerPhone === selectedCustomer?.phone ||
             order.customerName === selectedCustomer?.name
         );
@@ -953,13 +967,13 @@ export default function POSPage() {
             const matchPercentage = matchingProducts.length / orderProductIds.length;
             
             if (matchPercentage >= 0.7) {
-                console.log('🔗 Marcando pedido como procesado:', order.id);
+                console.log('🔗 Marcando pedido como procesado:', order.orderId);
                 
                 const orderResponse = await fetch('/api/orders', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        orderId: order.id,
+                        orderId: order.orderId,
                         status: 'processed',
                         processedBy: userProfile?.displayName || (userProfile as any)?.name || 'Usuario POS',
                         saleId: saleId,
@@ -968,9 +982,9 @@ export default function POSPage() {
                 });
 
                 if (orderResponse.ok) {
-                    console.log('✅ Pedido marcado como procesado:', order.id);
+                    console.log('✅ Pedido marcado como procesado:', order.orderId);
                 } else {
-                    console.warn('⚠️ No se pudo marcar pedido como procesado:', order.id);
+                    console.warn('⚠️ No se pudo marcar pedido como procesado:', order.orderId);
                 }
             }
         }
@@ -1156,7 +1170,7 @@ export default function POSPage() {
         return;
     }
 
-    console.log('📦 Cargando pedido:', order.id, 'con', order.items.length, 'productos');
+    console.log('📦 Cargando pedido:', order.orderId, 'con', order.items.length, 'productos');
 
     const orderCartItems: CartItem[] = [];
     const missingProducts: string[] = [];
@@ -1238,33 +1252,26 @@ export default function POSPage() {
         console.log('👤 Cliente no encontrado, datos disponibles:', order.customerName, order.customerPhone);
     }
     
-    // Marcar pedido como "en procesamiento" en lugar de eliminarlo
+    // Marcar pedido como "en procesamiento" usando el nuevo hook
     try {
-        const response = await fetch('/api/orders', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                orderId: order.id,
-                status: 'processing',
-                processedBy: userProfile?.displayName || (userProfile as any)?.name || 'Usuario POS',
-                notes: `Pedido cargado en POS por ${userProfile?.displayName || 'usuario'}`
-            })
+        await updateOrderStatus(
+            order.orderId, 
+            'processing'
+        );
+        
+        console.log('✅ Pedido marcado como en procesamiento:', order.orderId);
+        
+        toast({
+            title: "Pedido cargado",
+            description: `Pedido ${order.orderId} cargado y marcado como en procesamiento.`
         });
-
-        if (response.ok) {
-            console.log('✅ Pedido marcado como en procesamiento:', order.id);
-            
-            // Actualizar estado local - remover de pendientes pero mantener referencia
-            setPendingOrders(prev => prev ? prev.filter(p => p.id !== order.id) : []);
-        } else {
-            console.warn('⚠️ No se pudo actualizar estado del pedido en BD, continuando...');
-            // Aún así remover localmente para UX
-            setPendingOrders(prev => prev ? prev.filter(p => p.id !== order.id) : []);
-        }
     } catch (error) {
         console.warn('⚠️ Error actualizando estado del pedido:', error);
-        // Continuar con la operación aunque falle la actualización
-        setPendingOrders(prev => prev ? prev.filter(p => p.id !== order.id) : []);
+        toast({
+            variant: "destructive",
+            title: "Advertencia",
+            description: "El pedido se cargó pero no se pudo actualizar su estado en la base de datos."
+        });
     }
     
     const loadedCount = orderCartItems.length;
@@ -1273,14 +1280,14 @@ export default function POSPage() {
     toast({
         title: "Pedido Cargado",
         description: loadedCount === totalCount 
-            ? `Pedido ${order.id} cargado completamente (${loadedCount} productos)`
-            : `Pedido ${order.id} cargado parcialmente (${loadedCount}/${totalCount} productos)`
+            ? `Pedido ${order.orderId} cargado completamente (${loadedCount} productos)`
+            : `Pedido ${order.orderId} cargado parcialmente (${loadedCount}/${totalCount} productos)`
     });
     
     // Cerrar modal de pedidos pendientes
     document.getElementById('pending-orders-close-button')?.click();
     
-    console.log('✅ Pedido cargado exitosamente:', order.id);
+    console.log('✅ Pedido cargado exitosamente:', order.orderId);
   };
 
   const loadOrderById = async () => {
@@ -1305,10 +1312,10 @@ export default function POSPage() {
     try {
         console.log('🔍 Buscando pedido:', scannedOrderId);
         
-        // Primero buscar en el contexto local
-        let order = (pendingOrdersContext || []).find(o => o.id === scannedOrderId.trim());
+        // Primero buscar en los pedidos sincronizados desde la DB
+        let order = pendingOrdersFromDB.find(o => o.orderId === scannedOrderId.trim());
         
-        // Si no se encuentra localmente, buscar en la base de datos
+        // Si no se encuentra en los pedidos pendientes, buscar directamente en la base de datos
         if (!order) {
             console.log('📡 Pedido no encontrado localmente, buscando en BD...');
             
@@ -1319,9 +1326,8 @@ export default function POSPage() {
                 order = Array.isArray(orders) ? orders[0] : orders;
                 
                 if (order) {
-                    console.log('✅ Pedido encontrado en BD:', order.id);
-                    // Actualizar contexto local con el pedido encontrado
-                    setPendingOrders(prev => [...(prev || []), order].filter(Boolean) as any[]);
+                    console.log('✅ Pedido encontrado en BD:', order.orderId);
+                    // El pedido se agregará automáticamente a la lista con el próximo polling
                 }
             } else if (response.status === 404) {
                 console.log('❌ Pedido no encontrado en BD');
@@ -1337,7 +1343,7 @@ export default function POSPage() {
             
             toast({
                 title: "Pedido Cargado",
-                description: `Pedido ${order.id} cargado exitosamente en el carrito.`
+                description: `Pedido ${order.orderId} cargado exitosamente en el carrito.`
             });
         } else {
             toast({ 
@@ -1591,7 +1597,9 @@ export default function POSPage() {
                                 <Button variant="secondary" disabled={!isSessionReady}>
                                     <Archive className="mr-2 h-4 w-4" />
                                     Pedidos Pendientes
-                                    {pendingOrdersContext && pendingOrdersContext.length > 0 && <Badge variant="destructive" className="ml-2">{pendingOrdersContext.length}</Badge>}
+                                    {pendingOrdersFromDB.length > 0 && <Badge variant="destructive" className="ml-2">{pendingOrdersFromDB.length}</Badge>}
+                                    {!isOnline && <Badge variant="outline" className="ml-2 text-xs">Sin conexión</Badge>}
+                                    {isPollingOrders && <Badge variant="secondary" className="ml-2 text-xs">Sincronizando</Badge>}
                                 </Button>
                             </DialogTrigger>
                             <DialogContent>
@@ -1599,17 +1607,30 @@ export default function POSPage() {
                                     <DialogTitle>Pedidos Pendientes del Catálogo</DialogTitle>
                                 </DialogHeader>
                                 <div className="py-4 max-h-96 overflow-y-auto">
-                                    {isLoading && <p>Cargando pedidos...</p>}
-                                    {!isLoading && (!pendingOrdersContext || pendingOrdersContext.length === 0) ? (
-                                        <p className="text-center text-muted-foreground py-8">No hay pedidos pendientes.</p>
+                                    {isLoadingPendingOrders && <p>Cargando pedidos...</p>}
+                                    {!isLoadingPendingOrders && pendingOrdersFromDB.length === 0 ? (
+                                        <div className="text-center text-muted-foreground py-8">
+                                            <p>No hay pedidos pendientes.</p>
+                                            {!isOnline && <p className="text-xs mt-2">Sin conexión - algunos pedidos pueden no estar visibles</p>}
+                                        </div>
                                     ) : (
                                         <div className="space-y-4">
-                                        {(pendingOrdersContext || []).map(order => (
-                                            <div key={order.id} className="p-4 border rounded-lg">
+                                        {pendingOrdersFromDB.map(order => (
+                                            <div key={order.orderId} className="p-4 border rounded-lg">
                                                 <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <h4 className="font-semibold">{order.id}</h4>
-                                                        <p className="text-sm text-muted-foreground">{order.customerName} - {format(new Date(order.date as string), 'dd/MM/yyyy HH:mm')}</p>
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <h4 className="font-semibold">{order.orderId}</h4>
+                                                            <Badge 
+                                                                variant={order.status === 'pending' ? 'secondary' : 'default'}
+                                                                className="text-xs"
+                                                            >
+                                                                {order.status === 'pending' ? 'Pendiente' : 
+                                                                 order.status === 'processing' ? 'Procesando' : order.status}
+                                                            </Badge>
+                                                        </div>
+                                                        <p className="text-sm text-muted-foreground">{order.customerName} - {format(new Date(order.createdAt as string), 'dd/MM/yyyy HH:mm')}</p>
+                                                        <p className="text-sm font-medium text-primary">{activeSymbol}{(order.total * activeRate).toFixed(2)}</p>
                                                     </div>
                                                     <Button size="sm" onClick={() => loadPendingOrder(order)}>Cargar</Button>
                                                 </div>
