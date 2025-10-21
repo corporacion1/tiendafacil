@@ -329,7 +329,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     password: string,
     phone: string,
     storeId: string
-  ) => {
+  ): Promise<{ success: boolean; error?: string }> => {
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
