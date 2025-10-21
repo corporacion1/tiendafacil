@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import type { Product, CartItem, PendingOrder, Ad, Family, Store } from "@/lib/types";
+import type { Product, CartItem, PendingOrder, Order, Ad, Family, Store } from "@/lib/types";
 import { defaultStore } from "@/lib/data";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { Logo } from "@/components/logo";
@@ -785,7 +785,7 @@ export default function CatalogPage() {
 
     const newOrderId = IDGenerator.generate('order', storeIdForCatalog);
 
-    const newPendingOrder: PendingOrder = {
+    const newPendingOrder: Order = {
       orderId: newOrderId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
