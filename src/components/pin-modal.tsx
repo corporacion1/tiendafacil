@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -11,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export function PinModal() {
   const [pin, setPin] = useState('');
-  // Using checkPin from security context (not unlockApp)
+  // FIXED: Using checkPin instead of unlockApp
   const { checkPin } = useSecurity();
   const { toast } = useToast();
 
