@@ -53,8 +53,11 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
     try {
       console.log('🔍 [POS] Fetching pending orders for store:', storeId);
       
-      // Obtener solo pedidos pendientes y en procesamiento
-      const response = await fetch(`/api/orders?storeId=${encodeURIComponent(storeId)}&status=pending,processing`);
+      // Obtener solo pedidos pendientes (no procesados)
+      const url = `/api/orders?storeId=${encodeURIComponent(storeId)}&status=pending`;
+      console.log('🔗 [POS] API URL:', url);
+      
+      const response = await fetch(url);
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -62,6 +65,13 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
 
       const data = await response.json();
       console.log('📦 [POS] Pending orders fetched:', data.length);
+      console.log('📋 [POS] Orders data:', data);
+      
+      // Log de clientes únicos para confirmar que son de diferentes usuarios
+      if (Array.isArray(data) && data.length > 0) {
+        const uniqueCustomers = [...new Set(data.map(order => order.customerName))];
+        console.log('👥 [POS] Clientes únicos en pedidos:', uniqueCustomers.length, uniqueCustomers);
+      }
       
       // Convertir formato de respuesta a PendingOrder si es necesario
       const formattedOrders: PendingOrder[] = Array.isArray(data) ? data.map(order => ({

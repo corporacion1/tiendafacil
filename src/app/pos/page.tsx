@@ -110,6 +110,29 @@ export default function POSPage() {
   // Hook para estado de red
   const { isOnline } = useNetworkStatus();
 
+  // Debug logs para pedidos pendientes
+  useEffect(() => {
+    console.log('🔍 [POS Debug] Estado completo de sincronización:', {
+      activeStoreId,
+      // Pedidos
+      pendingOrdersCount: pendingOrdersFromDB.length,
+      isLoadingOrders: isLoadingPendingOrders,
+      isPollingOrders,
+      // Productos
+      productsCount: products.length,
+      syncedProductsCount: syncedProducts.length,
+      contextProductsCount: contextProducts.length,
+      isLoadingProducts,
+      isPollingProducts,
+      // Red
+      isOnline
+    });
+  }, [
+    activeStoreId, pendingOrdersFromDB.length, isLoadingPendingOrders, isPollingOrders,
+    products.length, syncedProducts.length, contextProducts.length, isLoadingProducts, isPollingProducts,
+    isOnline
+  ]);
+
   // --- USE LOCAL DATA ---
   const isLoading = isLoadingSettings;
   // --- END LOCAL DATA ---
@@ -1522,12 +1545,57 @@ export default function POSPage() {
               </DialogFooter>
           </DialogContent>
       </Dialog>
+      {/* Barra de estado de sincronización */}
+      <div className="mb-4 p-3 bg-muted/50 rounded-lg border">
+        <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center gap-4">
+            <span className="font-medium">Estado de Sincronización:</span>
+            
+            {/* Estado de conexión */}
+            <div className="flex items-center gap-1">
+              <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`} />
+              <span className={isOnline ? 'text-green-700' : 'text-red-700'}>
+                {isOnline ? 'Conectado' : 'Sin conexión'}
+              </span>
+            </div>
+            
+            {/* Estado de pedidos */}
+            <div className="flex items-center gap-1">
+              <div className={`w-2 h-2 rounded-full ${isPollingOrders ? 'bg-blue-500 animate-pulse' : 'bg-gray-400'}`} />
+              <span className="text-blue-700">
+                Pedidos: {isPollingOrders ? 'Sincronizando' : 'Pausado'}
+              </span>
+            </div>
+            
+            {/* Estado de productos */}
+            <div className="flex items-center gap-1">
+              <div className={`w-2 h-2 rounded-full ${isPollingProducts ? 'bg-purple-500 animate-pulse' : 'bg-gray-400'}`} />
+              <span className="text-purple-700">
+                Productos: {isPollingProducts ? 'Sincronizando' : 'Pausado'}
+              </span>
+            </div>
+          </div>
+          
+          {/* Contadores */}
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <span>Pedidos pendientes: {pendingOrdersFromDB.length}</span>
+            <span>Productos activos: {products.filter(p => p.status === 'active' || p.status === 'promotion').length}</span>
+          </div>
+        </div>
+      </div>
+      
       <div className="grid flex-1 auto-rows-max items-start gap-4 lg:grid-cols-5 lg:gap-8">
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-3 lg:gap-8">
             <Card>
                 <CardHeader>
                     <div className="flex justify-between items-start flex-wrap">
-                        <CardTitle>Productos</CardTitle>
+                        <div className="flex items-center gap-2">
+                            <CardTitle>Productos</CardTitle>
+                            {/* Indicadores de sincronización */}
+                            {!isOnline && <Badge variant="outline" className="text-xs">Sin conexión</Badge>}
+                            {isPollingProducts && <Badge variant="secondary" className="text-xs">Sincronizando productos</Badge>}
+                            {isLoadingProducts && <Badge variant="secondary" className="text-xs">Cargando...</Badge>}
+                        </div>
                         <div className="flex items-center gap-2">
                              {activeSession ? (
                                 <>
@@ -1607,7 +1675,7 @@ export default function POSPage() {
                             <DialogTrigger asChild>
                                 <Button variant="secondary" disabled={!isSessionReady}>
                                     <Archive className="mr-2 h-4 w-4" />
-                                    Pedidos Pendientes
+                                    Pedidos de Clientes
                                     {pendingOrdersFromDB.length > 0 && <Badge variant="destructive" className="ml-2">{pendingOrdersFromDB.length}</Badge>}
                                     {!isOnline && <Badge variant="outline" className="ml-2 text-xs">Sin conexión</Badge>}
                                     {isPollingOrders && <Badge variant="secondary" className="ml-2 text-xs">Sincronizando</Badge>}
@@ -1615,14 +1683,38 @@ export default function POSPage() {
                             </DialogTrigger>
                             <DialogContent>
                                 <DialogHeader>
-                                    <DialogTitle>Pedidos Pendientes del Catálogo</DialogTitle>
+                                    <DialogTitle>Pedidos Pendientes - Todos los Clientes</DialogTitle>
+                                    <p className="text-sm text-muted-foreground">
+                                        Pedidos generados por clientes desde sus dispositivos, listos para procesar
+                                    </p>
                                 </DialogHeader>
                                 <div className="py-4 max-h-96 overflow-y-auto">
                                     {isLoadingPendingOrders && <p>Cargando pedidos...</p>}
                                     {!isLoadingPendingOrders && pendingOrdersFromDB.length === 0 ? (
                                         <div className="text-center text-muted-foreground py-8">
-                                            <p>No hay pedidos pendientes.</p>
+                                            <p>No hay pedidos pendientes de clientes.</p>
+                                            <p className="text-xs mt-1">Los pedidos aparecerán aquí cuando los clientes los generen desde el catálogo.</p>
                                             {!isOnline && <p className="text-xs mt-2">Sin conexión - algunos pedidos pueden no estar visibles</p>}
+                                            <Button 
+                                                size="sm" 
+                                                variant="outline" 
+                                                className="mt-4"
+                                                onClick={async () => {
+                                                    try {
+                                                        const response = await fetch(`/api/debug/orders?storeId=${activeStoreId}`);
+                                                        const data = await response.json();
+                                                        console.log('🔍 [Debug] Orders info:', data);
+                                                        toast({
+                                                            title: "Debug Info",
+                                                            description: `Total: ${data.totalOrders} pedidos. Ver consola para detalles.`
+                                                        });
+                                                    } catch (error) {
+                                                        console.error('Debug error:', error);
+                                                    }
+                                                }}
+                                            >
+                                                🔍 Debug Orders
+                                            </Button>
                                         </div>
                                     ) : (
                                         <div className="space-y-4">
@@ -1640,8 +1732,13 @@ export default function POSPage() {
                                                                  order.status === 'processing' ? 'Procesando' : order.status}
                                                             </Badge>
                                                         </div>
-                                                        <p className="text-sm text-muted-foreground">{order.customerName} - {format(new Date(order.createdAt as string), 'dd/MM/yyyy HH:mm')}</p>
-                                                        <p className="text-sm font-medium text-primary">{activeSymbol}{(order.total * activeRate).toFixed(2)}</p>
+                                                        <div className="space-y-1">
+                                                            <p className="text-sm font-medium text-blue-600">👤 {order.customerName}</p>
+                                                            {order.customerPhone && <p className="text-xs text-muted-foreground">📞 {order.customerPhone}</p>}
+                                                            {order.customerEmail && <p className="text-xs text-muted-foreground">📧 {order.customerEmail}</p>}
+                                                            <p className="text-xs text-muted-foreground">🕒 {format(new Date(order.createdAt as string), 'dd/MM/yyyy HH:mm')}</p>
+                                                        </div>
+                                                        <p className="text-sm font-medium text-primary mt-2">{activeSymbol}{(order.total * activeRate).toFixed(2)}</p>
                                                     </div>
                                                     <Button size="sm" onClick={() => loadPendingOrder(order)}>Cargar</Button>
                                                 </div>

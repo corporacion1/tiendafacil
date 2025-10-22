@@ -60,12 +60,28 @@ export async function GET(request: Request) {
       query.customerPhone = phone;
     }
     
+    // Filtro por email del cliente (para usuarios autenticados)
+    const customerEmail = searchParams.get('customerEmail');
+    if (customerEmail) {
+      query.customerEmail = customerEmail;
+      console.log('📧 [Orders API] Filtrando por email:', customerEmail);
+    }
+    
     // Filtro por estado
     if (status) {
-      query.status = status;
+      // Si se pasan múltiples estados separados por comas
+      if (status.includes(',')) {
+        const statusArray = status.split(',').map(s => s.trim());
+        query.status = { $in: statusArray };
+        console.log('🔍 [Orders API] Filtrando por múltiples estados:', statusArray);
+      } else {
+        query.status = status;
+        console.log('🔍 [Orders API] Filtrando por estado único:', status);
+      }
     } else {
       // Por defecto, solo mostrar pedidos pendientes y en procesamiento
       query.status = { $in: [OrderStatus.PENDING, OrderStatus.PROCESSING] };
+      console.log('🔍 [Orders API] Usando filtro por defecto: pending, processing');
     }
 
     const orders = await Order.find(query)
@@ -82,10 +98,14 @@ export async function GET(request: Request) {
       
       // Convertir formato para compatibilidad con PendingOrder
       const formattedOrder = {
-        id: order.orderId,
-        date: order.createdAt,
+        orderId: order.orderId,
+        id: order.orderId, // Mantener compatibilidad
+        createdAt: order.createdAt,
+        date: order.createdAt, // Mantener compatibilidad
+        updatedAt: order.updatedAt,
         customerName: order.customerName,
         customerPhone: order.customerPhone,
+        customerEmail: order.customerEmail,
         items: order.items,
         total: order.total,
         storeId: order.storeId,
@@ -97,10 +117,14 @@ export async function GET(request: Request) {
 
     // Para búsquedas generales, devolver lista
     const formattedOrders = orders.map(order => ({
-      id: order.orderId,
-      date: order.createdAt,
+      orderId: order.orderId,
+      id: order.orderId, // Mantener compatibilidad
+      createdAt: order.createdAt,
+      date: order.createdAt, // Mantener compatibilidad
+      updatedAt: order.updatedAt,
       customerName: order.customerName,
       customerPhone: order.customerPhone,
+      customerEmail: order.customerEmail,
       items: order.items,
       total: order.total,
       storeId: order.storeId,
