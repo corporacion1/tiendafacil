@@ -4,7 +4,7 @@ import { Store } from '@/models/Store';
 import { Product } from '@/models/Product';
 import { Sale } from '@/models/Sale';
 import { Purchase } from '@/models/Purchase';
-import { PendingOrder } from '@/models/PendingOrder';
+import Order from '@/models/Order';
 import { CurrencyRate } from '@/models/CurrencyRate';
 import { Customer } from '@/models/Customer';
 import { Supplier } from '@/models/Supplier';
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     await Product.deleteMany({ storeId });
     await Sale.deleteMany({ storeId });
     await Purchase.deleteMany({ storeId });
-    await PendingOrder.deleteMany({ storeId });
+    await Order.deleteMany({ storeId });
     await CurrencyRate.deleteMany({ storeId });
     await Customer.deleteMany({ storeId });
     await Supplier.deleteMany({ storeId });
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
         storeId,
         status: 'inProduction',
         cleanedData: [
-          'products', 'sales', 'purchases', 'pendingOrders',
+          'products', 'sales', 'purchases', 'orders',
           'currencyRates', 'customers', 'suppliers', 'ads',
           'cashSessions', 'inventoryMovements', 'accountsReceivable'
         ],

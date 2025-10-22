@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { CurrencyRate } from '@/models/CurrencyRate';
+import { IDGenerator } from '@/lib/id-generator';
 
 export async function POST(request: Request) {
   try {
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
 
     // 2. Crear nueva tasa activa
     const rateData = {
-      id: `rate_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: IDGenerator.generate('rate'),
       storeId,
       rate: Number(rate),
       date: new Date().toISOString(),

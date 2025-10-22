@@ -1,51 +1,108 @@
 /**
  * ID Generator Utility
  * 
- * Genera identificadores únicos globales para el sistema multitienda.
- * Formato: {prefix}_{storeId}_{timestamp}_{random}
+ * Genera identificadores únicos simples para el sistema.
+ * Formato: {PREFIX}-{13 números aleatorios}
  * 
- * Ejemplo: prod_store123_1234567890_abc123xyz
+ * Ejemplos:
+ * - Ventas: SAL-1234567890123
+ * - Compras: PUR-1234567890123
+ * - Productos: PRO-1234567890123
  */
 
 export class IDGenerator {
+  // Mapeo de prefijos para diferentes tipos de entidades
+  private static readonly PREFIXES = {
+    // Entidades principales
+    'prod': 'PRO',
+    'product': 'PRO',
+    'sale': 'SAL',
+    'purchase': 'PUR',
+    'order': 'ORD',
+    
+    // Clientes y proveedores
+    'cust': 'CUS',
+    'customer': 'CUS',
+    'sup': 'SUP',
+    'supplier': 'SUP',
+    
+    // Configuración
+    'unit': 'UNI',
+    'fam': 'FAM',
+    'family': 'FAM',
+    'wh': 'WAR',
+    'warehouse': 'WAR',
+    
+    // Finanzas
+    'rate': 'RAT',
+    'pay': 'PAY',
+    'payment': 'PAY',
+    'ses': 'SES',
+    'session': 'SES',
+    'ar': 'ACR',
+    'account': 'ACR',
+    
+    // Inventario
+    'mov': 'MOV',
+    'movement': 'MOV',
+    'adj': 'ADJ',
+    'adjustment': 'ADJ',
+    
+    // Otros
+    'pm': 'PME',
+    'cat': 'CAT',
+    'ad': 'ADS'
+  };
+
   /**
-   * Genera un ID único global
+   * Genera un ID único simple
    * 
-   * @param prefix - Prefijo que identifica el tipo de entidad (prod, sale, purchase, etc.)
-   * @param storeId - ID de la tienda
-   * @returns ID único en formato: {prefix}_{storeId}_{timestamp}_{random}
+   * @param type - Tipo de entidad (prod, sale, purchase, etc.)
+   * @param storeId - ID de la tienda (no se usa en el nuevo formato, mantenido por compatibilidad)
+   * @returns ID único en formato: {PREFIX}-{13 números}
    * 
    * @example
-   * IDGenerator.generate('prod', 'store_123')
-   * // Returns: 'prod_store_123_1234567890_abc123xyz'
+   * IDGenerator.generate('sale', 'store_123')
+   * // Returns: 'SAL-1234567890123'
    */
-  static generate(prefix: string, storeId: string): string {
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substr(2, 9);
-    return `${prefix}_${storeId}_${timestamp}_${random}`;
+  static generate(type: string, storeId?: string): string {
+    const prefix = this.PREFIXES[type as keyof typeof this.PREFIXES] || 'GEN';
+    const numbers = this.generateRandomNumbers(13);
+    return `${prefix}-${numbers}`;
   }
 
   /**
    * Genera múltiples IDs únicos en lote
    * 
-   * @param prefix - Prefijo que identifica el tipo de entidad
-   * @param storeId - ID de la tienda
+   * @param type - Tipo de entidad
+   * @param storeId - ID de la tienda (mantenido por compatibilidad)
    * @param count - Cantidad de IDs a generar
    * @returns Array de IDs únicos
    * 
    * @example
    * IDGenerator.generateBatch('prod', 'store_123', 5)
-   * // Returns: ['prod_store_123_...', 'prod_store_123_...', ...]
+   * // Returns: ['PRO-1234567890123', 'PRO-9876543210987', ...]
    */
-  static generateBatch(prefix: string, storeId: string, count: number): string[] {
+  static generateBatch(type: string, storeId: string, count: number): string[] {
     const ids: string[] = [];
     for (let i = 0; i < count; i++) {
-      // Pequeño delay para garantizar timestamps únicos
-      const timestamp = Date.now() + i;
-      const random = Math.random().toString(36).substr(2, 9);
-      ids.push(`${prefix}_${storeId}_${timestamp}_${random}`);
+      ids.push(this.generate(type, storeId));
     }
     return ids;
+  }
+
+  /**
+   * Genera 13 números aleatorios
+   * 
+   * @param length - Longitud de números a generar
+   * @returns String de números aleatorios
+   */
+  private static generateRandomNumbers(length: number): string {
+    let result = '';
+    for (let i = 0; i < length; i++) {
+      result += Math.floor(Math.random() * 10).toString();
+    }
+    return result;
   }
 
   /**
@@ -55,7 +112,7 @@ export class IDGenerator {
    * @returns true si el formato es válido, false en caso contrario
    * 
    * @example
-   * IDGenerator.validate('prod_store_123_1234567890_abc123')
+   * IDGenerator.validate('SAL-1234567890123')
    * // Returns: true
    * 
    * IDGenerator.validate('invalid-id')
@@ -66,72 +123,9 @@ export class IDGenerator {
       return false;
     }
     
-    // Formato: prefix_storeId_timestamp_random
-    // Permite letras, números, guiones y guiones bajos
-    const pattern = /^[a-z0-9]+_[a-z0-9_-]+_\d+_[a-z0-9]+$/i;
+    // Formato: 3 letras mayúsculas + guión + 13 números
+    const pattern = /^[A-Z]{3}-\d{13}$/;
     return pattern.test(id);
-  }
-
-  /**
-   * Extrae el storeId de un ID
-   * 
-   * @param id - ID del cual extraer el storeId
-   * @returns storeId o null si el formato es inválido
-   * 
-   * @example
-   * IDGenerator.extractStoreId('prod_store_123_1234567890_abc123')
-   * // Returns: 'store_123'
-   */
-  static extractStoreId(id: string): string | null {
-    if (!this.validate(id)) {
-      return null;
-    }
-    
-    const parts = id.split('_');
-    
-    // El formato es: prefix_storeId_timestamp_random
-    // Pero storeId puede contener guiones bajos, así que necesitamos
-    // reconstruir todo entre el primer _ y el penúltimo _
-    if (parts.length < 4) {
-      return null;
-    }
-    
-    // Remover prefix (primer elemento)
-    parts.shift();
-    
-    // Remover random (último elemento)
-    parts.pop();
-    
-    // Remover timestamp (ahora último elemento)
-    parts.pop();
-    
-    // Lo que queda es el storeId (puede tener múltiples partes con _)
-    return parts.join('_');
-  }
-
-  /**
-   * Extrae el timestamp de un ID
-   * 
-   * @param id - ID del cual extraer el timestamp
-   * @returns timestamp como número o null si el formato es inválido
-   * 
-   * @example
-   * IDGenerator.extractTimestamp('prod_store_123_1234567890_abc123')
-   * // Returns: 1234567890
-   */
-  static extractTimestamp(id: string): number | null {
-    if (!this.validate(id)) {
-      return null;
-    }
-    
-    const parts = id.split('_');
-    if (parts.length < 4) {
-      return null;
-    }
-    
-    // El timestamp es el penúltimo elemento
-    const timestamp = parseInt(parts[parts.length - 2], 10);
-    return isNaN(timestamp) ? null : timestamp;
   }
 
   /**
@@ -141,15 +135,69 @@ export class IDGenerator {
    * @returns prefijo o null si el formato es inválido
    * 
    * @example
-   * IDGenerator.extractPrefix('prod_store_123_1234567890_abc123')
-   * // Returns: 'prod'
+   * IDGenerator.extractPrefix('SAL-1234567890123')
+   * // Returns: 'SAL'
    */
   static extractPrefix(id: string): string | null {
     if (!this.validate(id)) {
       return null;
     }
     
-    const parts = id.split('_');
-    return parts.length > 0 ? parts[0] : null;
+    return id.split('-')[0];
+  }
+
+  /**
+   * Extrae los números de un ID
+   * 
+   * @param id - ID del cual extraer los números
+   * @returns números como string o null si el formato es inválido
+   * 
+   * @example
+   * IDGenerator.extractNumbers('SAL-1234567890123')
+   * // Returns: '1234567890123'
+   */
+  static extractNumbers(id: string): string | null {
+    if (!this.validate(id)) {
+      return null;
+    }
+    
+    return id.split('-')[1];
+  }
+
+  /**
+   * Obtiene el tipo de entidad basado en el prefijo
+   * 
+   * @param id - ID del cual obtener el tipo
+   * @returns tipo de entidad o null si no se reconoce
+   * 
+   * @example
+   * IDGenerator.getEntityType('SAL-1234567890123')
+   * // Returns: 'sale'
+   */
+  static getEntityType(id: string): string | null {
+    const prefix = this.extractPrefix(id);
+    if (!prefix) return null;
+
+    // Buscar el tipo correspondiente al prefijo
+    for (const [type, typePrefix] of Object.entries(this.PREFIXES)) {
+      if (typePrefix === prefix) {
+        return type;
+      }
+    }
+    
+    return null;
+  }
+
+  // Métodos de compatibilidad con el sistema anterior
+  static extractStoreId(id: string): string | null {
+    // En el nuevo formato no almacenamos storeId en el ID
+    // Retornamos null para mantener compatibilidad
+    return null;
+  }
+
+  static extractTimestamp(id: string): number | null {
+    // En el nuevo formato no almacenamos timestamp en el ID
+    // Retornamos null para mantener compatibilidad
+    return null;
   }
 }

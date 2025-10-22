@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Family } from '@/models/Family';
 import { handleDatabaseError, logDatabaseOperation } from '@/lib/db-error-handler';
+import { IDGenerator } from '@/lib/id-generator';
 
 // GET /api/families - Obtener familias por storeId
 export async function GET(request: NextRequest) {
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     const newFamily = new Family({
       ...body,
-      id: `family-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: IDGenerator.generate('family'),
     });
 
     const savedFamily = await newFamily.save();

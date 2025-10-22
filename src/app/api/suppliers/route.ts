@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Supplier } from '@/models/Supplier';
+import { IDGenerator } from '@/lib/id-generator';
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,7 +20,13 @@ export async function POST(request: NextRequest) {
   try {
     await connectToDatabase();
     const data = await request.json();
-    if (!data.id || !data.name || !data.storeId) {
+    
+    // Generar ID único si no se proporciona
+    if (!data.id) {
+      data.id = IDGenerator.generate('supplier');
+    }
+    
+    if (!data.name || !data.storeId) {
       return NextResponse.json({ error: "Campos requeridos faltantes" }, { status: 400 });
     }
     const created = await Supplier.create(data);

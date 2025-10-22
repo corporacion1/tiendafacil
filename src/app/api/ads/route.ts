@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Ad } from '@/models/Ad';
 import { handleDatabaseError, logDatabaseOperation } from '@/lib/db-error-handler';
+import { IDGenerator } from '@/lib/id-generator';
 
 // Función para inactivar automáticamente anuncios vencidos
 async function inactivateExpiredAds() {
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
 
     const newAd = new Ad({
       ...body,
-      id: `ad-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: IDGenerator.generate('ad'),
       views: 0,
       createdAt: new Date().toISOString(),
     });

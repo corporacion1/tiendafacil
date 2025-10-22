@@ -1,14 +1,18 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import Order, { OrderStatus } from '@/models/Order';
+import { IDGenerator } from '@/lib/id-generator';
 
 export async function POST(request: Request) {
   try {
     await connectToDatabase();
     const body = await request.json();
     
+    // Generar ID único si no se proporciona
+    const orderId = body.orderId || body.id || IDGenerator.generate('order');
+    
     const order = new Order({
-      orderId: body.id,
+      orderId: orderId,
       customerName: body.customerName,
       customerPhone: body.customerPhone,
       customerEmail: body.customerEmail,

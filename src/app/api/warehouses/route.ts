@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Warehouse } from '@/models/Warehouse';
 import { handleDatabaseError, logDatabaseOperation } from '@/lib/db-error-handler';
+import { IDGenerator } from '@/lib/id-generator';
 
 // GET /api/warehouses - Obtener almacenes por storeId
 export async function GET(request: NextRequest) {
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     const newWarehouse = new Warehouse({
       ...body,
-      id: `warehouse-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: IDGenerator.generate('warehouse'),
     });
 
     const savedWarehouse = await newWarehouse.save();

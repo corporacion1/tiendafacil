@@ -4,6 +4,7 @@ import { Sale } from '@/models/Sale';
 import { MovementService } from '@/services/MovementService';
 import { MovementType, ReferenceType } from '@/models/InventoryMovement';
 import { Product } from '@/models/Product';
+import { IDGenerator } from '@/lib/id-generator';
 
 export async function GET(request: Request) {
   try {
@@ -31,7 +32,20 @@ export async function POST(request: Request) {
     await connectToDatabase();
     const data = await request.json();
     
-    if (!data.id || !data.storeId || !data.items) {
+    // Generar ID único si no se proporciona
+    if (!data.id) {
+      data.id = IDGenerator.generate('sale');
+    }
+    
+    // Generar IDs únicos para payments si existen
+    if (data.payments && Array.isArray(data.payments)) {
+      data.payments = data.payments.map((payment: any) => ({
+        ...payment,
+        id: payment.id || IDGenerator.generate('payment')
+      }));
+    }
+    
+    if (!data.storeId || !data.items) {
       return NextResponse.json({ error: "Campos requeridos faltantes" }, { status: 400 });
     }
     

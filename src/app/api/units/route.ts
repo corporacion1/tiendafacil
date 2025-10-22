@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Unit } from '@/models/Unit';
 import { handleDatabaseError, logDatabaseOperation } from '@/lib/db-error-handler';
+import { IDGenerator } from '@/lib/id-generator';
 
 // GET /api/units - Obtener unidades por storeId
 export async function GET(request: NextRequest) {
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     const newUnit = new Unit({
       ...body,
-      id: `unit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: IDGenerator.generate('unit'),
     });
 
     const savedUnit = await newUnit.save();

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { CashSession, SessionStatus } from '@/models/CashSession';
 import { Sale } from '@/models/Sale';
+import { IDGenerator } from '@/lib/id-generator';
 
 export async function GET(request: NextRequest) {
   try {
@@ -42,10 +43,15 @@ export async function POST(request: NextRequest) {
     await connectToDatabase();
     const data = await request.json();
     
+    // Generar ID único si no se proporciona
+    if (!data.id) {
+      data.id = IDGenerator.generate('session');
+    }
+    
     // Validar campos requeridos
-    if (!data.id || !data.storeId || !data.openedBy || data.openingBalance === undefined) {
+    if (!data.storeId || !data.openedBy || data.openingBalance === undefined) {
       return NextResponse.json({ 
-        error: "Campos requeridos: id, storeId, openedBy, openingBalance" 
+        error: "Campos requeridos: storeId, openedBy, openingBalance" 
       }, { status: 400 });
     }
     

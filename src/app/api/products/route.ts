@@ -4,6 +4,7 @@ import { Product } from '@/models/Product';
 import { handleDatabaseError, validateRequiredFields, logDatabaseOperation } from '@/lib/db-error-handler';
 import { MovementService } from '@/services/MovementService';
 import { MovementType, ReferenceType } from '@/models/InventoryMovement';
+import { IDGenerator } from '@/lib/id-generator';
 
 export async function GET(request: NextRequest) {
   try {
@@ -29,7 +30,12 @@ export async function POST(request: NextRequest) {
     await connectToDatabase();
     const data = await request.json();
     
-    const validationError = validateRequiredFields(data, ['id', 'name', 'storeId']);
+    // Generar ID único si no se proporciona
+    if (!data.id) {
+      data.id = IDGenerator.generate('product');
+    }
+    
+    const validationError = validateRequiredFields(data, ['name', 'storeId']);
     if (validationError) {
       return NextResponse.json({ error: validationError }, { status: 400 });
     }

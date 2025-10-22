@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/lib/mongodb'; // Solo inicializa Mongoose
 import bcrypt from 'bcryptjs';
 import {
   defaultStore, mockProducts, mockSales, mockPurchases, defaultUsers,
-  pendingOrdersState, mockCurrencyRates, defaultCustomers,
+  mockOrders, mockCurrencyRates, defaultCustomers,
   defaultSuppliers, initialUnits, initialFamilies, initialWarehouses,
   mockAds, mockCashSessions, paymentMethods, businessCategories,
   mockInventoryMovements
@@ -17,7 +17,7 @@ import { Sale } from '@/models/Sale';
 import { Purchase } from '@/models/Purchase';
 import { Store } from '@/models/Store';
 import { User } from '@/models/User';
-import { PendingOrder } from '@/models/PendingOrder';
+import Order from '@/models/Order';
 import { CurrencyRate } from '@/models/CurrencyRate';
 import { Customer } from '@/models/Customer';
 import { Supplier } from '@/models/Supplier';
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
       products: await Product.deleteMany({ storeId }),
       sales: await Sale.deleteMany({ storeId }),
       purchases: await Purchase.deleteMany({ storeId }),
-      pendingOrders: await PendingOrder.deleteMany({ storeId }),
+      orders: await Order.deleteMany({ storeId }),
       currencyRates: await CurrencyRate.deleteMany({ storeId }),
       customers: await Customer.deleteMany({ storeId }),
       suppliers: await Supplier.deleteMany({ storeId }),
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       products: deleteResults.products.deletedCount,
       sales: deleteResults.sales.deletedCount,
       purchases: deleteResults.purchases.deletedCount,
-      pendingOrders: deleteResults.pendingOrders.deletedCount,
+      orders: deleteResults.orders.deletedCount,
       currencyRates: deleteResults.currencyRates.deletedCount,
       customers: deleteResults.customers.deletedCount,
       suppliers: deleteResults.suppliers.deletedCount,
@@ -190,13 +190,13 @@ export async function POST(request: Request) {
       const purchasesResult = await Purchase.insertMany(purchasesWithUpdatedRefs);
       console.log('✅ [Seed] Compras insertadas:', purchasesResult.length);
       
-      // Actualizar referencias de productId en órdenes pendientes
-      console.log('🔄 [Seed] Actualizando referencias en órdenes pendientes...');
-      const ordersWithUpdatedRefs = pendingOrdersState.map(o => {
+      // Actualizar referencias de productId en órdenes
+      console.log('🔄 [Seed] Actualizando referencias en órdenes...');
+      const ordersWithUpdatedRefs = mockOrders.map(o => {
         const newOrderId = IDGenerator.generate('order', storeId);
         return {
           ...o,
-          id: newOrderId,
+          orderId: newOrderId,
           storeId,
           items: o.items.map(item => {
             const newProductId = productIdMap.get(item.productId) || item.productId;
@@ -211,9 +211,9 @@ export async function POST(request: Request) {
         };
       });
       
-      console.log('📦 [Seed] Insertando órdenes pendientes con referencias actualizadas...');
-      await PendingOrder.insertMany(ordersWithUpdatedRefs);
-      console.log('✅ [Seed] Órdenes pendientes insertadas con referencias actualizadas');
+      console.log('📦 [Seed] Insertando órdenes con referencias actualizadas...');
+      await Order.insertMany(ordersWithUpdatedRefs);
+      console.log('✅ [Seed] Órdenes insertadas con referencias actualizadas');
       
       // Actualizar referencias de productId en movimientos de inventario
       console.log('🔄 [Seed] Actualizando referencias en movimientos de inventario...');

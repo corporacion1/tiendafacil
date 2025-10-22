@@ -80,12 +80,11 @@ export type CartItem = {
   price: number;
 };
 
-export type PendingOrder = {
-  id: string;
-  date: string;
+export type Order = {
+  orderId: string;
   customerName: string;
   customerPhone: string;
-  customerEmail?: string; // Added email
+  customerEmail?: string;
   items: {
       productId: string;
       productName: string;
@@ -94,7 +93,17 @@ export type PendingOrder = {
   }[];
   total: number;
   storeId: string;
+  status: 'pending' | 'processing' | 'processed' | 'cancelled' | 'expired';
+  processedAt?: Date | string;
+  processedBy?: string;
+  saleId?: string;
+  notes?: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 };
+
+// Alias para compatibilidad con código existente
+export type PendingOrder = Order;
 
 export type InventoryMovement = {
   id: string;

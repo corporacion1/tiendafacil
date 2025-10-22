@@ -1,4 +1,4 @@
-import type { Product, Sale, Unit, Family, Warehouse, Customer, Purchase, Ad, UserProfile, Store, CurrencyRate, PendingOrder, CashSession } from '@/lib/types';
+import type { Product, Sale, Unit, Family, Warehouse, Customer, Purchase, Ad, UserProfile, Store, CurrencyRate, CashSession } from '@/lib/types';
 import { PlaceHolderImages } from './placeholder-images';
 import { subDays, addDays, startOfWeek, startOfMonth, startOfYear } from 'date-fns';
 
@@ -107,86 +107,88 @@ export let defaultUsers: UserProfile[] = [
   }
 ];
 
-export let pendingOrdersState: PendingOrder[] = [
+export let mockOrders = [
   {
-    id: 'PEND-DEMO-001',
-    date: new Date().toISOString(),
+    orderId: 'ORD-1234567890123',
     customerName: 'Jorge Negrete (Ejemplo)',
     customerPhone: '04121234567',
+    customerEmail: 'jorge@example.com',
     items: [
-      { productId: "prod-4", productName: "SSD NVMe 2TB", quantity: 1, price: 149.99 },
-      { productId: "prod-3", productName: "Memoria RAM 32GB DDR5", quantity: 2, price: 129.99 }
+      { productId: "PRO-4567890123456", productName: "SSD NVMe 2TB", quantity: 1, price: 149.99 },
+      { productId: "PRO-3456789012345", productName: "Memoria RAM 32GB DDR5", quantity: 2, price: 129.99 }
     ],
     total: 409.97,
-    storeId: defaultStoreId
+    storeId: defaultStoreId,
+    status: 'pending',
+    notes: 'Pedido de demostración'
   }
 ];
 
 export let mockCurrencyRates: CurrencyRate[] = [
-  { id: 'rate-1', rate: 139.50, date: new Date().toISOString(), storeId: defaultStoreId },
-  { id: 'rate-2', rate: 139.45, date: subDays(new Date(), 1).toISOString(), storeId: defaultStoreId },
-  { id: 'rate-3', rate: 139.40, date: subDays(new Date(), 2).toISOString(), storeId: defaultStoreId },
+  { id: 'RAT-1234567890123', rate: 139.50, date: new Date().toISOString(), storeId: defaultStoreId },
+  { id: 'RAT-2345678901234', rate: 139.45, date: subDays(new Date(), 1).toISOString(), storeId: defaultStoreId },
+  { id: 'RAT-3456789012345', rate: 139.40, date: subDays(new Date(), 2).toISOString(), storeId: defaultStoreId },
 ];
 
 export let defaultCustomers: Customer[] = [
-  { id: 'cust-1', name: 'John Doe', phone: '04125551234', address: '123 Main St', storeId: defaultStoreId },
-  { id: 'cust-2', name: 'Jane Smith', phone: '04145555678', address: '456 Oak Ave', storeId: defaultStoreId },
+  { id: 'CUS-1234567890123', name: 'John Doe', phone: '04125551234', address: '123 Main St', storeId: defaultStoreId },
+  { id: 'CUS-2345678901234', name: 'Jane Smith', phone: '04145555678', address: '456 Oak Ave', storeId: defaultStoreId },
 ];
 
 export let defaultSuppliers = [
-  { id: 'sup-1', name: 'TechData Corp', phone: '111-2222', address: '789 Tech Rd', storeId: defaultStoreId },
-  { id: 'sup-2', name: 'PC Components LLC', phone: '333-4444', address: '101 Component Ln', storeId: defaultStoreId },
+  { id: 'SUP-1234567890123', name: 'TechData Corp', phone: '111-2222', address: '789 Tech Rd', storeId: defaultStoreId },
+  { id: 'SUP-2345678901234', name: 'PC Components LLC', phone: '333-4444', address: '101 Component Ln', storeId: defaultStoreId },
 ];
 
 export let initialUnits: Unit[] = [
-  { id: 'unit-1', name: 'Unidad', storeId: defaultStoreId },
-  { id: 'unit-2', name: 'Caja', storeId: defaultStoreId },
-  { id: 'unit-3', name: 'Paquete', storeId: defaultStoreId },
+  { id: 'UNI-1234567890123', name: 'Unidad', storeId: defaultStoreId },
+  { id: 'UNI-2345678901234', name: 'Caja', storeId: defaultStoreId },
+  { id: 'UNI-3456789012345', name: 'Paquete', storeId: defaultStoreId },
 ];
 
 export let initialFamilies: Family[] = [
-  { id: 'fam-1', name: 'Tarjetas Gráficas', storeId: defaultStoreId },
-  { id: 'fam-2', name: 'Procesadores', storeId: defaultStoreId },
-  { id: 'fam-3', name: 'Memoria RAM', storeId: defaultStoreId },
-  { id: 'fam-4', name: 'Almacenamiento', storeId: defaultStoreId },
-  { id: 'fam-5', name: 'Impresoras y Accesorios', storeId: defaultStoreId },
-  { id: 'fam-6', name: 'Proyectores', storeId: defaultStoreId },
-  { id: 'fam-7', name: 'Accesorios de Cómputo', storeId: defaultStoreId },
+  { id: 'FAM-1234567890123', name: 'Tarjetas Gráficas', storeId: defaultStoreId },
+  { id: 'FAM-2345678901234', name: 'Procesadores', storeId: defaultStoreId },
+  { id: 'FAM-3456789012345', name: 'Memoria RAM', storeId: defaultStoreId },
+  { id: 'FAM-4567890123456', name: 'Almacenamiento', storeId: defaultStoreId },
+  { id: 'FAM-5678901234567', name: 'Impresoras y Accesorios', storeId: defaultStoreId },
+  { id: 'FAM-6789012345678', name: 'Proyectores', storeId: defaultStoreId },
+  { id: 'FAM-7890123456789', name: 'Accesorios de Cómputo', storeId: defaultStoreId },
 ];
 
 export let initialWarehouses: Warehouse[] = [
-  { id: 'wh-1', name: 'Almacén Principal', storeId: defaultStoreId },
-  { id: 'wh-2', name: 'Depósito Secundario', storeId: defaultStoreId },
+  { id: 'WAR-1234567890123', name: 'Almacén Principal', storeId: defaultStoreId },
+  { id: 'WAR-2345678901234', name: 'Depósito Secundario', storeId: defaultStoreId },
 ];
 
 export let mockProducts: Product[] = [
   {
-    id: "prod-1", name: "Tarjeta Gráfica RTX 4090", sku: "NV-RTX4090-01", barcode: "123456789012", stock: 15, price: 1799.99, wholesalePrice: 1750.00, cost: 1600.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Tarjetas Gráficas", warehouse: "Almacén Principal",
+    id: "PRO-1234567890123", name: "Tarjeta Gráfica RTX 4090", sku: "NV-RTX4090-01", barcode: "123456789012", stock: 15, price: 1799.99, wholesalePrice: 1750.00, cost: 1600.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Tarjetas Gráficas", warehouse: "Almacén Principal",
     description: "La GPU más potente para gaming y creación de contenido.",
     imageUrl: PlaceHolderImages.find(p => p.id === '1')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '1')?.imageHint, storeId: defaultStoreId, createdAt: subDays(new Date(), 10).toISOString(),
   },
   {
-    id: "prod-2", name: "Procesador Intel Core i9-13900K", sku: "INT-i9-13900K-02", barcode: "234567890123", stock: 25, price: 589.00, wholesalePrice: 570.00, cost: 520.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Procesadores", warehouse: "Almacén Principal",
+    id: "PRO-2345678901234", name: "Procesador Intel Core i9-13900K", sku: "INT-i9-13900K-02", barcode: "234567890123", stock: 25, price: 589.00, wholesalePrice: 570.00, cost: 520.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Procesadores", warehouse: "Almacén Principal",
     description: "Procesador de alto rendimiento para gaming y productividad.",
     imageUrl: PlaceHolderImages.find(p => p.id === '2')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '2')?.imageHint, storeId: defaultStoreId, createdAt: subDays(new Date(), 20).toISOString(),
   },
   {
-    id: "prod-3", name: "Memoria RAM 32GB DDR5", sku: "RAM-DDR5-32G-03", barcode: "345678901234", stock: 50, price: 129.99, wholesalePrice: 120.00, cost: 100.00, status: "promotion", tax1: true, tax2: false, unit: "Paquete", family: "Memoria RAM", warehouse: "Almacén Principal",
+    id: "PRO-3456789012345", name: "Memoria RAM 32GB DDR5", sku: "RAM-DDR5-32G-03", barcode: "345678901234", stock: 50, price: 129.99, wholesalePrice: 120.00, cost: 100.00, status: "promotion", tax1: true, tax2: false, unit: "Paquete", family: "Memoria RAM", warehouse: "Almacén Principal",
     description: "Kit de 2x16GB de memoria RAM DDR5 a 6000MHz.",
     imageUrl: PlaceHolderImages.find(p => p.id === '3')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '3')?.imageHint, storeId: defaultStoreId, createdAt: subDays(new Date(), 5).toISOString(),
   },
   {
-    id: "prod-4", name: "SSD NVMe 2TB", sku: "SSD-NVME-2TB-04", stock: 40, price: 149.99, wholesalePrice: 140.00, cost: 125.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Almacenamiento", warehouse: "Almacén Principal",
+    id: "PRO-4567890123456", name: "SSD NVMe 2TB", sku: "SSD-NVME-2TB-04", stock: 40, price: 149.99, wholesalePrice: 140.00, cost: 125.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Almacenamiento", warehouse: "Almacén Principal",
     description: "Unidad de estado sólido de 2TB con velocidades de lectura/escritura ultrarrápidas.",
     imageUrl: PlaceHolderImages.find(p => p.id === '4')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '4')?.imageHint, storeId: defaultStoreId, createdAt: subDays(new Date(), 15).toISOString(),
   },
   {
-    id: "prod-5", name: "Impresora Multifuncional EcoTank", sku: "EPS-ET4800-05", stock: 30, price: 279.99, wholesalePrice: 265.00, cost: 240.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Impresoras y Accesorios", warehouse: "Almacén Principal",
+    id: "PRO-5678901234567", name: "Impresora Multifuncional EcoTank", sku: "EPS-ET4800-05", stock: 30, price: 279.99, wholesalePrice: 265.00, cost: 240.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Impresoras y Accesorios", warehouse: "Almacén Principal",
     description: "Imprime miles de páginas con los tanques de tinta de súper alta capacidad.",
     imageUrl: PlaceHolderImages.find(p => p.id === '9')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '9')?.imageHint, storeId: defaultStoreId, createdAt: subDays(new Date(), 30).toISOString(),
   },
   {
-    id: "prod-6",
+    id: "PRO-6789012345678",
     name: "Tarjeta Madre Z790",
     sku: "MOBO-Z790-01",
     stock: 20,
@@ -206,7 +208,7 @@ export let mockProducts: Product[] = [
     createdAt: subDays(new Date(), 25).toISOString(),
   },
   {
-    id: "prod-7",
+    id: "PRO-7890123456789",
     name: "Fuente de Poder 1000W Gold",
     sku: "PSU-1000G-01",
     stock: 22,
@@ -226,7 +228,7 @@ export let mockProducts: Product[] = [
     createdAt: subDays(new Date(), 40).toISOString(),
   },
   {
-    id: "prod-8",
+    id: "PRO-8901234567890",
     name: "Proyector LED Full HD",
     sku: "PROJ-FHD-01",
     stock: 18,
@@ -250,40 +252,40 @@ export let mockProducts: Product[] = [
 const today = new Date();
 export let mockSales: Sale[] = [
   {
-    id: "SALE-001", customerId: "cust-1", customerName: "John Doe",
-    items: [{ productId: "prod-1", productName: "Tarjeta Gráfica RTX 4090", quantity: 1, price: 1799.99 }],
+    id: "SAL-1234567890123", customerId: "CUS-1234567890123", customerName: "John Doe",
+    items: [{ productId: "PRO-1234567890123", productName: "Tarjeta Gráfica RTX 4090", quantity: 1, price: 1799.99 }],
     total: 1799.99, date: subDays(startOfMonth(today), 5).toISOString(), transactionType: 'contado', status: 'paid', paidAmount: 1799.99,
-    payments: [{ id: 'pay-sale-001', amount: 1799.99, date: subDays(startOfMonth(today), 5).toISOString(), method: 'tarjeta', reference: '1234', receivedBy: 'Admin' }],
+    payments: [{ id: 'PAY-1234567890123', amount: 1799.99, date: subDays(startOfMonth(today), 5).toISOString(), method: 'tarjeta', reference: '1234', receivedBy: 'Admin' }],
     storeId: defaultStoreId,
   },
   {
-    id: "SALE-002", customerId: "cust-2", customerName: "Jane Smith",
-    items: [{ productId: "prod-2", productName: "Procesador Intel Core i9-13900K", quantity: 1, price: 589.00 }],
+    id: "SAL-2345678901234", customerId: "CUS-2345678901234", customerName: "Jane Smith",
+    items: [{ productId: "PRO-2345678901234", productName: "Procesador Intel Core i9-13900K", quantity: 1, price: 589.00 }],
     total: 589.00, date: subDays(today, 2).toISOString(), transactionType: 'credito', status: 'unpaid', paidAmount: 300,
-    payments: [{ id: 'pay-sale-002', amount: 300, date: subDays(today, 2).toISOString(), method: 'pago-movil', reference: '012345', receivedBy: 'Demo' }],
+    payments: [{ id: 'PAY-2345678901234', amount: 300, date: subDays(today, 2).toISOString(), method: 'pago-movil', reference: '012345', receivedBy: 'Demo' }],
     storeId: defaultStoreId,
   },
   // Ventas a crédito adicionales para demo de cuentas por cobrar
   {
-    id: "SALE-003", customerId: "cust-1", customerName: "John Doe", customerPhone: "04125551234",
-    items: [{ productId: "prod-3", productName: "Memoria RAM 32GB DDR5", quantity: 2, price: 129.99 }],
+    id: "SAL-3456789012345", customerId: "CUS-1234567890123", customerName: "John Doe", customerPhone: "04125551234",
+    items: [{ productId: "PRO-3456789012345", productName: "Memoria RAM 32GB DDR5", quantity: 2, price: 129.99 }],
     total: 259.98, date: subDays(today, 15).toISOString(), transactionType: 'credito', status: 'unpaid', paidAmount: 0,
     payments: [], storeId: defaultStoreId,
   },
   {
-    id: "SALE-004", customerId: "cust-2", customerName: "Jane Smith", customerPhone: "04145555678",
-    items: [{ productId: "prod-4", productName: "SSD NVMe 2TB", quantity: 1, price: 149.99 }],
+    id: "SAL-4567890123456", customerId: "CUS-2345678901234", customerName: "Jane Smith", customerPhone: "04145555678",
+    items: [{ productId: "PRO-4567890123456", productName: "SSD NVMe 2TB", quantity: 1, price: 149.99 }],
     total: 149.99, date: subDays(today, 45).toISOString(), transactionType: 'credito', status: 'unpaid', paidAmount: 75,
-    payments: [{ id: 'pay-sale-004', amount: 75, date: subDays(today, 30).toISOString(), method: 'efectivo', reference: '', receivedBy: 'Admin' }],
+    payments: [{ id: 'PAY-4567890123456', amount: 75, date: subDays(today, 30).toISOString(), method: 'efectivo', reference: '', receivedBy: 'Admin' }],
     storeId: defaultStoreId,
   },
   {
-    id: "SALE-005", customerId: "cust-1", customerName: "John Doe", customerPhone: "04125551234",
-    items: [{ productId: "prod-5", productName: "Impresora Multifuncional EcoTank", quantity: 1, price: 279.99 }],
+    id: "SAL-5678901234567", customerId: "CUS-1234567890123", customerName: "John Doe", customerPhone: "04125551234",
+    items: [{ productId: "PRO-5678901234567", productName: "Impresora Multifuncional EcoTank", quantity: 1, price: 279.99 }],
     total: 279.99, date: subDays(today, 60).toISOString(), transactionType: 'credito', status: 'paid', paidAmount: 279.99,
     payments: [
-      { id: 'pay-sale-005-1', amount: 150, date: subDays(today, 45).toISOString(), method: 'transferencia', reference: 'TRF-001', receivedBy: 'Admin' },
-      { id: 'pay-sale-005-2', amount: 129.99, date: subDays(today, 30).toISOString(), method: 'pago-movil', reference: '098765', receivedBy: 'Demo' }
+      { id: 'PAY-5678901234567', amount: 150, date: subDays(today, 45).toISOString(), method: 'transferencia', reference: 'TRF-001', receivedBy: 'Admin' },
+      { id: 'PAY-6789012345678', amount: 129.99, date: subDays(today, 30).toISOString(), method: 'pago-movil', reference: '098765', receivedBy: 'Demo' }
     ],
     storeId: defaultStoreId,
   },
@@ -291,14 +293,14 @@ export let mockSales: Sale[] = [
 
 export let mockPurchases: Purchase[] = [
   {
-    id: "PUR-001", supplierId: "sup-1", supplierName: "TechData Corp",
-    items: [{ productId: "prod-1", productName: "Tarjeta Gráfica RTX 4090", quantity: 10, cost: 1600.00 }],
+    id: "PUR-1234567890123", supplierId: "SUP-1234567890123", supplierName: "TechData Corp",
+    items: [{ productId: "PRO-1234567890123", productName: "Tarjeta Gráfica RTX 4090", quantity: 10, cost: 1600.00 }],
     total: 16000, date: subDays(startOfMonth(today), 10).toISOString(), documentNumber: "INV-TD-8899", responsible: "Admin",
     storeId: defaultStoreId,
   },
   {
-    id: "PUR-002", supplierId: "sup-2", supplierName: "PC Components LLC",
-    items: [{ productId: "prod-4", productName: "SSD NVMe 2TB", quantity: 20, cost: 125.00 }],
+    id: "PUR-2345678901234", supplierId: "SUP-2345678901234", supplierName: "PC Components LLC",
+    items: [{ productId: "PRO-4567890123456", productName: "SSD NVMe 2TB", quantity: 20, cost: 125.00 }],
     total: 2500, date: startOfWeek(today).toISOString(), documentNumber: "INV-PC-1122", responsible: "Admin",
     storeId: defaultStoreId,
   },
@@ -306,31 +308,31 @@ export let mockPurchases: Purchase[] = [
 
 export let mockAds: Ad[] = [
   {
-    id: "ad-1", sku: "PROMO-001", name: "Descuento en Laptops", description: "Aprovecha el 20% de descuento en todas las laptops seleccionadas.", price: 999.99,
+    id: "ADS-1234567890123", sku: "PROMO-001", name: "Descuento en Laptops", description: "Aprovecha el 20% de descuento en todas las laptops seleccionadas.", price: 999.99,
     imageUrl: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?q=80&w=600&auto=format&fit=crop", imageHint: "laptop computer",
     views: 1250, status: 'active', targetBusinessTypes: ['Tecnologia', 'Servicios Profesionales'],
     expiryDate: addDays(new Date(), 30).toISOString(), createdAt: new Date().toISOString(),
   },
   {
-    id: "ad-2", sku: "PUB-REST-001", name: "El Sabor de la Casa", description: "Prueba nuestras nuevas hamburguesas gourmet.", price: 15.50,
+    id: "ADS-2345678901234", sku: "PUB-REST-001", name: "El Sabor de la Casa", description: "Prueba nuestras nuevas hamburguesas gourmet.", price: 15.50,
     imageUrl: "https://images.unsplash.com/photo-1571091718767-18b5b1457add?q=80&w=600&auto=format&fit=crop", imageHint: "gourmet burger",
     views: 850, status: 'active', targetBusinessTypes: ['Restaurante'],
     expiryDate: addDays(new Date(), 15).toISOString(), createdAt: new Date().toISOString(),
   },
   {
-    id: "ad-3", sku: "PAUSE-001", name: "Oferta Temporalmente Suspendida", description: "Promoción pausada por el administrador.", price: 299.99,
+    id: "ADS-3456789012345", sku: "PAUSE-001", name: "Oferta Temporalmente Suspendida", description: "Promoción pausada por el administrador.", price: 299.99,
     imageUrl: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?q=80&w=600&auto=format&fit=crop", imageHint: "sale promotion",
     views: 420, status: 'paused', targetBusinessTypes: ['Tienda de Ropa', 'Otro'],
     expiryDate: addDays(new Date(), 45).toISOString(), createdAt: subDays(new Date(), 5).toISOString(),
   },
   {
-    id: "ad-4", sku: "EXPIRED-001", name: "Promoción Vencida", description: "Esta promoción ya expiró automáticamente.", price: 199.99,
+    id: "ADS-4567890123456", sku: "EXPIRED-001", name: "Promoción Vencida", description: "Esta promoción ya expiró automáticamente.", price: 199.99,
     imageUrl: "https://images.unsplash.com/photo-1607083206869-4c7672e72a8a?q=80&w=600&auto=format&fit=crop", imageHint: "expired offer",
     views: 2100, status: 'active', targetBusinessTypes: ['Supermercado'],
     expiryDate: subDays(new Date(), 2).toISOString(), createdAt: subDays(new Date(), 30).toISOString(),
   },
   {
-    id: "ad-5", sku: "INACTIVE-001", name: "Anuncio Inactivo", description: "Anuncio marcado como inactivo manualmente.", price: 89.99,
+    id: "ADS-5678901234567", sku: "INACTIVE-001", name: "Anuncio Inactivo", description: "Anuncio marcado como inactivo manualmente.", price: 89.99,
     imageUrl: "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?q=80&w=600&auto=format&fit=crop", imageHint: "inactive ad",
     views: 150, status: 'inactive', targetBusinessTypes: ['Ferretería'],
     expiryDate: addDays(new Date(), 60).toISOString(), createdAt: subDays(new Date(), 10).toISOString(),
@@ -339,7 +341,7 @@ export let mockAds: Ad[] = [
 
 export let mockCashSessions: CashSession[] = [
   {
-    id: 'SES-001',
+    id: 'SES-1234567890123',
     storeId: defaultStoreId,
     openingDate: subDays(startOfMonth(today), 5).toISOString(),
     closingDate: subDays(startOfMonth(today), 5).toISOString(),
@@ -350,11 +352,11 @@ export let mockCashSessions: CashSession[] = [
     status: 'closed',
     openedBy: 'Admin',
     closedBy: 'Admin',
-    salesIds: ['SALE-001'],
+    salesIds: ['SAL-1234567890123'],
     transactions: { 'tarjeta': 1799.99 }
   },
   {
-    id: 'SES-002',
+    id: 'SES-2345678901234',
     storeId: defaultStoreId,
     openingDate: subDays(today, 2).toISOString(),
     closingDate: subDays(today, 2).toISOString(),
@@ -365,18 +367,18 @@ export let mockCashSessions: CashSession[] = [
     status: 'closed',
     openedBy: 'Demo',
     closedBy: 'Demo',
-    salesIds: ['SALE-002'],
+    salesIds: ['SAL-2345678901234'],
     transactions: { 'pago-movil': 300 }
   },
 ];
 
 export const paymentMethods = [
-  { id: 'efectivo', name: 'Efectivo', requiresRef: false },
-  { id: 'transferencia', name: 'Transferencia', requiresRef: true },
-  { id: 'pago-movil', name: 'Pago Móvil', requiresRef: true },
-  { id: 'tarjeta', name: 'Tarjeta', requiresRef: true },
-  { id: 'zelle', name: 'Zelle', requiresRef: true },
-  { id: 'otro', name: 'Otro', requiresRef: false },
+  { id: 'PME-1234567890123', name: 'Efectivo', requiresRef: false },
+  { id: 'PME-2345678901234', name: 'Transferencia', requiresRef: true },
+  { id: 'PME-3456789012345', name: 'Pago Móvil', requiresRef: true },
+  { id: 'PME-4567890123456', name: 'Tarjeta', requiresRef: true },
+  { id: 'PME-5678901234567', name: 'Zelle', requiresRef: true },
+  { id: 'PME-6789012345678', name: 'Otro', requiresRef: false },
 ];
 
 export const businessCategories: string[] = [
@@ -396,17 +398,17 @@ export const businessCategories: string[] = [
 // Datos de ejemplo para movimientos de inventario
 // Movimientos consistentes con productos, compras y ventas existentes
 export let mockInventoryMovements = [
-  // Movimientos iniciales para todos los productos (prod-1 a prod-8)
+  // Movimientos iniciales para todos los productos
   {
-    id: 'mov_001',
-    productId: 'prod-1',
-    warehouseId: 'wh-1',
+    id: 'MOV-1234567890123',
+    productId: 'PRO-1234567890123',
+    warehouseId: 'WAR-1234567890123',
     movementType: 'initial_stock',
     quantity: 5, // Stock inicial antes de compras
     unitCost: 1600.00,
     totalValue: 8000.00,
     referenceType: 'product_creation',
-    referenceId: 'prod-1',
+    referenceId: 'PRO-1234567890123',
     previousStock: 0,
     newStock: 5,
     userId: 'user_demo_001',
@@ -415,15 +417,15 @@ export let mockInventoryMovements = [
     createdAt: subDays(new Date(), 30).toISOString()
   },
   {
-    id: 'mov_002',
-    productId: 'prod-2',
-    warehouseId: 'wh-1',
+    id: 'MOV-2345678901234',
+    productId: 'PRO-2345678901234',
+    warehouseId: 'WAR-1234567890123',
     movementType: 'initial_stock',
     quantity: 15, // Stock inicial antes de ventas
     unitCost: 520.00,
     totalValue: 7800.00,
     referenceType: 'product_creation',
-    referenceId: 'prod-2',
+    referenceId: 'PRO-2345678901234',
     previousStock: 0,
     newStock: 15,
     userId: 'user_demo_001',
@@ -432,15 +434,15 @@ export let mockInventoryMovements = [
     createdAt: subDays(new Date(), 25).toISOString()
   },
   {
-    id: 'mov_003',
-    productId: 'prod-3',
-    warehouseId: 'wh-1',
+    id: 'MOV-3456789012345',
+    productId: 'PRO-3456789012345',
+    warehouseId: 'WAR-1234567890123',
     movementType: 'initial_stock',
     quantity: 50,
     unitCost: 100.00,
     totalValue: 5000.00,
     referenceType: 'product_creation',
-    referenceId: 'prod-3',
+    referenceId: 'PRO-3456789012345',
     previousStock: 0,
     newStock: 50,
     userId: 'user_demo_001',
@@ -449,15 +451,15 @@ export let mockInventoryMovements = [
     createdAt: subDays(new Date(), 20).toISOString()
   },
   {
-    id: 'mov_004',
-    productId: 'prod-4',
-    warehouseId: 'wh-1',
+    id: 'MOV-4567890123456',
+    productId: 'PRO-4567890123456',
+    warehouseId: 'WAR-1234567890123',
     movementType: 'initial_stock',
     quantity: 20, // Stock inicial antes de compras
     unitCost: 125.00,
     totalValue: 2500.00,
     referenceType: 'product_creation',
-    referenceId: 'prod-4',
+    referenceId: 'PRO-4567890123456',
     previousStock: 0,
     newStock: 20,
     userId: 'user_demo_001',
@@ -466,15 +468,15 @@ export let mockInventoryMovements = [
     createdAt: subDays(new Date(), 18).toISOString()
   },
   {
-    id: 'mov_005',
-    productId: 'prod-5',
-    warehouseId: 'wh-1',
+    id: 'MOV-5678901234567',
+    productId: 'PRO-5678901234567',
+    warehouseId: 'WAR-1234567890123',
     movementType: 'initial_stock',
     quantity: 30,
     unitCost: 240.00,
     totalValue: 7200.00,
     referenceType: 'product_creation',
-    referenceId: 'prod-5',
+    referenceId: 'PRO-5678901234567',
     previousStock: 0,
     newStock: 30,
     userId: 'user_demo_001',
@@ -485,15 +487,15 @@ export let mockInventoryMovements = [
 
   // Movimientos de compras (basados en mockPurchases)
   {
-    id: 'mov_006',
-    productId: 'prod-1',
-    warehouseId: 'wh-1',
+    id: 'MOV-6789012345678',
+    productId: 'PRO-1234567890123',
+    warehouseId: 'WAR-1234567890123',
     movementType: 'purchase',
     quantity: 10,
     unitCost: 1600.00,
     totalValue: 16000.00,
     referenceType: 'purchase_order',
-    referenceId: 'PUR-001',
+    referenceId: 'PUR-1234567890123',
     previousStock: 5,
     newStock: 15,
     userId: 'user_demo_001',
@@ -502,15 +504,15 @@ export let mockInventoryMovements = [
     createdAt: subDays(startOfMonth(new Date()), 10).toISOString()
   },
   {
-    id: 'mov_007',
-    productId: 'prod-4',
-    warehouseId: 'wh-1',
+    id: 'MOV-7890123456789',
+    productId: 'PRO-4567890123456',
+    warehouseId: 'WAR-1234567890123',
     movementType: 'purchase',
     quantity: 20,
     unitCost: 125.00,
     totalValue: 2500.00,
     referenceType: 'purchase_order',
-    referenceId: 'PUR-002',
+    referenceId: 'PUR-2345678901234',
     previousStock: 20,
     newStock: 40,
     userId: 'user_demo_001',
@@ -521,15 +523,15 @@ export let mockInventoryMovements = [
 
   // Movimientos de ventas (basados en mockSales)
   {
-    id: 'mov_008',
-    productId: 'prod-1',
-    warehouseId: 'wh-1',
+    id: 'MOV-8901234567890',
+    productId: 'PRO-1234567890123',
+    warehouseId: 'WAR-1234567890123',
     movementType: 'sale',
     quantity: -1,
     unitCost: 1600.00,
     totalValue: 1600.00,
     referenceType: 'sale_transaction',
-    referenceId: 'SALE-001',
+    referenceId: 'SAL-1234567890123',
     previousStock: 15,
     newStock: 14,
     userId: 'user_demo_001',
@@ -538,15 +540,15 @@ export let mockInventoryMovements = [
     createdAt: subDays(startOfMonth(new Date()), 5).toISOString()
   },
   {
-    id: 'mov_009',
-    productId: 'prod-2',
-    warehouseId: 'wh-1',
+    id: 'MOV-9012345678901',
+    productId: 'PRO-2345678901234',
+    warehouseId: 'WAR-1234567890123',
     movementType: 'sale',
     quantity: -1,
     unitCost: 520.00,
     totalValue: 520.00,
     referenceType: 'sale_transaction',
-    referenceId: 'SALE-002',
+    referenceId: 'SAL-2345678901234',
     previousStock: 15,
     newStock: 14,
     userId: 'user_demo_001',
@@ -557,15 +559,15 @@ export let mockInventoryMovements = [
 
   // Movimiento de ajuste de ejemplo
   {
-    id: 'mov_010',
-    productId: 'prod-3',
-    warehouseId: 'wh-1',
+    id: 'MOV-0123456789012',
+    productId: 'PRO-3456789012345',
+    warehouseId: 'WAR-1234567890123',
     movementType: 'adjustment',
     quantity: -2,
     unitCost: 100.00,
     totalValue: 200.00,
     referenceType: 'manual_adjustment',
-    referenceId: 'ADJ-001',
+    referenceId: 'ADJ-1234567890123',
     previousStock: 50,
     newStock: 48,
     userId: 'user_demo_001',
