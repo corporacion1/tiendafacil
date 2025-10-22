@@ -265,34 +265,19 @@ export default function CatalogPage() {
   // Función centralizada para incrementar vistas de anuncios
   const incrementAdViews = async (adId: string) => {
     try {
-      console.log('🔥 Incrementando vistas para anuncio:', adId);
       const response = await fetch(`/api/ads/${adId}/views`, { method: 'POST' });
       const result = await response.json();
-      console.log('✅ Respuesta del servidor:', result);
       
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${result.error || 'Error desconocido'}`);
+      if (response.ok) {
+        // Actualizar el anuncio seleccionado con las nuevas vistas silenciosamente
+        setSelectedAd(prev => prev && prev.id === adId ? { ...prev, views: result.views } : prev);
+        return result.views;
       }
-      
-      // Actualizar el anuncio seleccionado con las nuevas vistas
-      setSelectedAd(prev => prev && prev.id === adId ? { ...prev, views: result.views } : prev);
-      
-      // Mostrar notificación de éxito
-      toast({
-        title: "Vista registrada",
-        description: `Anuncio visto ${result.views} veces`,
-      });
-      
-      return result.views;
     } catch (error) {
-      console.error('❌ Error incrementing ad views:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo registrar la vista del anuncio",
-      });
-      return null;
+      // Error silencioso - solo log en consola
+      console.error('Error incrementing ad views:', error);
     }
+    return null;
   };
 
   // Función para manejar click en anuncios
