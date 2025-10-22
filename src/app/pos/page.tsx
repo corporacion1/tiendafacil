@@ -532,13 +532,99 @@ export default function POSPage() {
     setIsClient(true);
   }, []);
 
-  // Función para manejar el escaneo de códigos de barras
-  const handleScan = (result: string) => {
+  // Función para manejar el escaneo de códigos de barras y QR
+  const handleScan = async (result: string) => {
     if (result && result !== lastScannedCode) {
       setLastScannedCode(result);
       setScannerError(null);
       
-      // Buscar producto por SKU o código de barras
+      console.log('🔍 [Scanner] Código escaneado:', result);
+      
+      // 1. Verificar si es un código QR de orden (formato: ORD-XXX o similar)
+      if (result.match(/^(ORD|ORDER)-/i)) {
+        console.log('📋 [Scanner] Detectado código QR de orden:', result);
+        
+        // Llenar el campo de ID de orden si está visible
+        setScannedOrderId(result);
+        
+        try {
+          // Buscar la orden en pedidos pendientes
+          const order = pendingOrdersFromDB.find(o => o.orderId.toLowerCase() === result.toLowerCase());
+          
+          if (order) {
+            setShowScanner(false);
+            toast({
+              title: "¡Orden encontrada!",
+              description: `Orden ${order.orderId} de ${order.customerName} - ${activeSymbol}${(order.total * activeRate).toFixed(2)}`
+            });
+            
+            // Cargar automáticamente la orden
+            await loadPendingOrder(order);
+            return;
+          } else {
+            // Buscar en la base de datos si no está en pendientes locales
+            console.log('🔍 [Scanner] Buscando orden en BD...');
+            const response = await fetch(`/api/orders?id=${encodeURIComponent(result)}&storeId=${activeStoreId}`);
+            
+            if (response.ok) {
+              const orderData = await response.json();
+              if (orderData && orderData.orderId) {
+                setShowScanner(false);
+                setScannedOrderId(orderData.orderId); // Llenar el campo también
+                toast({
+                  title: "¡Orden encontrada!",
+                  description: `Orden ${orderData.orderId} - Estado: ${orderData.status}`
+                });
+                
+                if (orderData.status === 'pending') {
+                  // Convertir formato y cargar
+                  const formattedOrder = {
+                    orderId: orderData.orderId,
+                    createdAt: orderData.createdAt || orderData.date,
+                    updatedAt: orderData.updatedAt,
+                    customerName: orderData.customerName,
+                    customerPhone: orderData.customerPhone,
+                    customerEmail: orderData.customerEmail,
+                    items: orderData.items,
+                    total: orderData.total,
+                    storeId: orderData.storeId,
+                    status: orderData.status
+                  };
+                  await loadPendingOrder(formattedOrder);
+                } else {
+                  toast({
+                    variant: "destructive",
+                    title: "Orden no disponible",
+                    description: `La orden ${orderData.orderId} ya fue ${orderData.status === 'processed' ? 'procesada' : 'cancelada'}.`
+                  });
+                }
+                return;
+              }
+            }
+          }
+          
+          // Si no se encuentra la orden
+          setScannerError(`No se encontró la orden: ${result}`);
+          toast({
+            variant: "destructive",
+            title: "Orden no encontrada",
+            description: `No se encontró ninguna orden con el código: ${result}`
+          });
+          return;
+          
+        } catch (error) {
+          console.error('❌ [Scanner] Error buscando orden:', error);
+          setScannerError(`Error al buscar la orden: ${result}`);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Error al buscar la orden. Intenta nuevamente."
+          });
+          return;
+        }
+      }
+      
+      // 2. Buscar producto por SKU o código de barras
       const foundProduct = products?.find(
         product => 
           product.sku?.toLowerCase() === result.toLowerCase() ||
@@ -559,8 +645,8 @@ export default function POSPage() {
         setScannerError(`No se encontró ningún producto con el código: ${result}`);
         toast({
           variant: "destructive",
-          title: "Producto no encontrado",
-          description: `No se encontró ningún producto con el código: ${result}`
+          title: "Código no reconocido",
+          description: `No se encontró ningún producto u orden con el código: ${result}`
         });
       }
     }
@@ -1653,16 +1739,31 @@ export default function POSPage() {
                                 <DialogHeader>
                                     <DialogTitle>Cargar Pedido por ID</DialogTitle>
                                     <DialogDescription>
-                                        Ingresa el ID del pedido para cargarlo en el carrito.
+                                        Ingresa el ID del pedido manualmente o usa el scanner para escanear el código QR.
                                     </DialogDescription>
                                 </DialogHeader>
-                                <div className="flex gap-2 py-4">
-                                    <Input 
-                                        placeholder="ORD-..." 
-                                        value={scannedOrderId} 
-                                        onChange={(e) => setScannedOrderId(e.target.value)} 
-                                    />
-                                    <Button onClick={loadOrderById} disabled={!scannedOrderId}>Cargar</Button>
+                                <div className="space-y-4 py-4">
+                                    <div className="flex gap-2">
+                                        <Input 
+                                            placeholder="ORD-..." 
+                                            value={scannedOrderId} 
+                                            onChange={(e) => setScannedOrderId(e.target.value)} 
+                                            className="flex-1"
+                                        />
+                                        <Button 
+                                            variant="outline" 
+                                            size="icon"
+                                            onClick={() => setShowScanner(true)}
+                                            disabled={!isSessionReady}
+                                            title="Escanear QR de orden"
+                                        >
+                                            <ScanLine className="h-4 w-4" />
+                                        </Button>
+                                        <Button onClick={loadOrderById} disabled={!scannedOrderId}>Cargar</Button>
+                                    </div>
+                                    <div className="text-xs text-muted-foreground text-center">
+                                        💡 Tip: Usa el scanner para escanear el código QR de la orden o escribe el ID manualmente
+                                    </div>
                                 </div>
                                 <DialogFooter>
                                     <DialogClose asChild id="scan-order-close-button">
@@ -2225,14 +2326,26 @@ export default function POSPage() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ScanLine className="w-5 h-5 text-green-600" />
-            Scanner de Productos
+            Scanner Universal
           </DialogTitle>
           <DialogDescription>
-            Apunta la cámara hacia el código de barras del producto para agregarlo al carrito
+            Escanea códigos de barras de productos o códigos QR de órdenes para agregarlos automáticamente
           </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4">
+          {/* Información de tipos de códigos */}
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg">
+              <Package className="w-4 h-4 text-blue-600" />
+              <span className="text-blue-700">Productos (SKU/Barcode)</span>
+            </div>
+            <div className="flex items-center gap-2 p-2 bg-green-50 rounded-lg">
+              <QrCode className="w-4 h-4 text-green-600" />
+              <span className="text-green-700">Órdenes (QR Code)</span>
+            </div>
+          </div>
+          
           {isClient && showScanner && (
             <div className="relative">
               <div className="aspect-square w-full max-w-sm mx-auto bg-black rounded-lg overflow-hidden">
