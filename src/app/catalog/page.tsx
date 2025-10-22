@@ -46,15 +46,7 @@ const AdCard = ({ ad, onAdClick }: { ad: Ad; onAdClick: (ad: Ad) => void }) => {
   return (
     <Card
       className="overflow-hidden group flex flex-col border border-green-100 shadow-sm hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-green-50 to-blue-50 backdrop-blur-sm rounded-2xl cursor-pointer"
-      onClick={async () => {
-        onAdClick(ad);
-        // Incrementar vistas
-        try {
-          await fetch(`/api/ads/${ad.id}/views`, { method: 'POST' });
-        } catch (error) {
-          console.error('Error incrementing ad views:', error);
-        }
-      }}
+      onClick={() => onAdClick(ad)}
     >
       <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative">
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent z-10 rounded-t-2xl" />
@@ -269,6 +261,46 @@ export default function CatalogPage() {
     phone: ''
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+
+  // Función centralizada para incrementar vistas de anuncios
+  const incrementAdViews = async (adId: string) => {
+    try {
+      console.log('🔥 Incrementando vistas para anuncio:', adId);
+      const response = await fetch(`/api/ads/${adId}/views`, { method: 'POST' });
+      const result = await response.json();
+      console.log('✅ Respuesta del servidor:', result);
+      
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${result.error || 'Error desconocido'}`);
+      }
+      
+      // Actualizar el anuncio seleccionado con las nuevas vistas
+      setSelectedAd(prev => prev && prev.id === adId ? { ...prev, views: result.views } : prev);
+      
+      // Mostrar notificación de éxito
+      toast({
+        title: "Vista registrada",
+        description: `Anuncio visto ${result.views} veces`,
+      });
+      
+      return result.views;
+    } catch (error) {
+      console.error('❌ Error incrementing ad views:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo registrar la vista del anuncio",
+      });
+      return null;
+    }
+  };
+
+  // Función para manejar click en anuncios
+  const handleAdClick = async (ad: Ad) => {
+    console.log('👆 Click en anuncio:', ad.name, 'ID:', ad.id);
+    setSelectedAd(ad);
+    await incrementAdViews(ad.id);
+  };
 
   // Auto-scroll states
   const [currentAdIndex, setCurrentAdIndex] = useState(0);
@@ -1326,14 +1358,7 @@ export default function CatalogPage() {
                         key={ad.id}
                         className={`absolute inset-0 transition-opacity duration-1000 ${index === currentAdIndex ? 'opacity-100' : 'opacity-0'
                           }`}
-                        onClick={async () => {
-                          setSelectedAd(ad);
-                          try {
-                            await fetch(`/api/ads/${ad.id}/views`, { method: 'POST' });
-                          } catch (error) {
-                            console.error('Error incrementing ad views:', error);
-                          }
-                        }}
+                        onClick={() => handleAdClick(ad)}
                       >
                         <div className="relative h-full w-full cursor-pointer group">
                           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent z-10" />
@@ -1480,7 +1505,7 @@ export default function CatalogPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 p-1">
                 {itemsForGrid.map((item, index) => {
                   if ('views' in item) {
-                    return <AdCard key={`ad-${item.id}-${index}`} ad={item} onAdClick={setSelectedAd} />;
+                    return <AdCard key={`ad-${item.id}-${index}`} ad={item} onAdClick={handleAdClick} />;
                   }
                   return <CatalogProductCard key={item.id} product={item} onAddToCart={handleOpenAddToCartDialog} onImageClick={handleImageClick} />;
                 })}
