@@ -109,6 +109,12 @@ export default function LoginModal({ children }: { children: React.ReactNode }) 
               placeholder="••••••••"
               required
               inputClassName="rounded-xl border-0 bg-gradient-to-r from-muted/30 to-muted/50 focus-visible:ring-2 focus-visible:ring-primary/20 shadow-inner h-12"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }
+              }}
               {...getFieldProps('password')}
             />
           </form>

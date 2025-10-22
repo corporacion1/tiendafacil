@@ -275,11 +275,14 @@ export default function CatalogPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const productsContainerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const confirmOrderButtonRef = useRef<HTMLButtonElement>(null);
 
   // Scanner states
   const [showScanner, setShowScanner] = useState(false);
   const [scannerError, setScannerError] = useState<string | null>(null);
   const [lastScannedCode, setLastScannedCode] = useState<string | null>(null);
+
+
 
   useEffect(() => {
     setIsClient(true)
@@ -643,6 +646,17 @@ export default function CatalogPage() {
     return customerName.trim() !== '' && customerPhone.trim() !== '' && !validatePhoneNumber(customerPhone);
   }, [customerName, customerPhone]);
 
+  // Enfocar el botón de confirmar cuando se abre la modal y los datos están pre-cargados
+  useEffect(() => {
+    if (isOrderDialogOpen && authUser && isOrderFormValid) {
+      // Pequeño delay para asegurar que la modal esté completamente renderizada
+      const timer = setTimeout(() => {
+        confirmOrderButtonRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOrderDialogOpen, authUser, isOrderFormValid]);
+
   const handleOpenAddToCartDialog = (product: Product) => {
     // Permitir agregar productos sin autenticación
     setProductToAdd(product);
@@ -712,6 +726,19 @@ export default function CatalogPage() {
       toast({ variant: 'destructive', title: 'Tu pedido está vacío' });
       return;
     }
+    
+    // Pre-cargar datos del usuario autenticado si están disponibles
+    if (authUser && !isEditingOrder) {
+      // Solo pre-cargar si no estamos editando un pedido existente
+      if (authUser.displayName) {
+        setCustomerName(authUser.displayName || '');
+      }
+      // Si el usuario tiene teléfono guardado, pre-cargarlo también
+      if (authUser.phone) {
+        setCustomerPhone(authUser.phone);
+      }
+    }
+    
     setIsOrderDialogOpen(true);
   };
 
@@ -1447,10 +1474,19 @@ export default function CatalogPage() {
                 {isEditingOrder ? 'Actualizar Pedido' : 'Confirmar Pedido'}
               </DialogTitle>
               <DialogDescription className="text-muted-foreground">
-                Completa tus datos para generar el pedido
+                {authUser && customerName ? 
+                  'Verifica tus datos y confirma el pedido' : 
+                  'Completa tus datos para generar el pedido'
+                }
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-2">
+              {authUser && customerName && !isEditingOrder && (
+                <div className="flex items-center gap-2 p-3 bg-green-50 rounded-xl border border-green-200">
+                  <Check className="h-4 w-4 text-green-600" />
+                  <p className="text-sm text-green-700">Datos cargados automáticamente desde tu perfil</p>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="customer-name" className="text-sm font-medium">Nombre y Apellido*</Label>
                 <Input
@@ -1478,6 +1514,16 @@ export default function CatalogPage() {
                   </div>
                 )}
               </div>
+              
+              {/* Input hidden para el email del usuario autenticado */}
+              {authUser?.email && (
+                <input type="hidden" name="customerEmail" value={authUser.email} />
+              )}
+              
+              {/* Nota informativa sobre el email */}
+              <div className="text-xs text-muted-foreground text-center p-2 bg-muted/30 rounded-lg">
+                📧 Se usará el email de tu cuenta: {authUser?.email}
+              </div>
 
             </div>
             <DialogFooter className="gap-2 pt-4">
@@ -1485,6 +1531,7 @@ export default function CatalogPage() {
                 <Button variant="outline" className="rounded-xl">Cancelar</Button>
               </DialogClose>
               <Button
+                ref={confirmOrderButtonRef}
                 onClick={handleGenerateOrder}
                 disabled={!isOrderFormValid}
                 className="rounded-xl bg-primary hover:bg-primary/90"
@@ -1578,19 +1625,9 @@ export default function CatalogPage() {
                     </div>
 
                     <div className="space-y-3">
-                      <div className="flex justify-between items-center p-3 bg-muted/30 rounded-xl">
-                        <span className="text-sm font-medium">Disponibilidad</span>
-                        <span className="font-semibold text-green-600">{productDetails.stock} unidades</span>
-                      </div>
-
-                      <div className="flex justify-between items-center p-3 bg-primary/5 rounded-xl">
-                        <span className="text-sm font-medium">Precio Detal</span>
-                        <span className="font-bold text-lg text-primary">{activeSymbol}{(productDetails.price * activeRate).toFixed(2)}</span>
-                      </div>
-
-                      <div className="flex justify-between items-center p-3 bg-muted/30 rounded-xl">
-                        <span className="text-sm font-medium">Precio Mayor</span>
-                        <span className="font-semibold">{activeSymbol}{(productDetails.wholesalePrice * activeRate).toFixed(2)}</span>
+                      <div className="flex justify-between items-center p-4 bg-primary/5 rounded-xl border border-primary/10">
+                        <span className="text-base font-medium">Precio Oferta</span>
+                        <span className="font-bold text-2xl text-primary">{activeSymbol}{(productDetails.price * activeRate).toFixed(2)}</span>
                       </div>
                     </div>
 
