@@ -1,8 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { uploadImage } from '@/lib/supabase';
+
+// Importación dinámica para evitar errores durante el build
+async function getUploadImage() {
+  try {
+    const { uploadImage } = await import('@/lib/supabase');
+    return uploadImage;
+  } catch (error) {
+    console.error('Error importing Supabase:', error);
+    return null;
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
+    // Verificar si Supabase está disponible
+    const uploadImage = await getUploadImage();
+    if (!uploadImage) {
+      return NextResponse.json(
+        { error: 'Servicio de subida de imágenes no disponible' },
+        { status: 503 }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get('file') as File;
 
