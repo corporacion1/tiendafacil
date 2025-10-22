@@ -6,7 +6,7 @@ const SettingsSchema = new Schema({
     required: true,
     unique: true
   },
-  name: String,
+  name: { type: String, maxlength: 100 },
   phone: String,
   businessType: String,
   address: String,

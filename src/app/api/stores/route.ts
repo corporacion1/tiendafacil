@@ -73,6 +73,7 @@ export async function PUT(request: NextRequest) {
     }
     
     console.log('📝 [Stores API] Actualizando tienda:', storeId);
+    console.log('🏷️ [Stores API] Nombre recibido:', data.name, 'Longitud:', data.name?.length);
     
     // Try to update by storeId first, then by id
     let updated = await Store.findOneAndUpdate(
@@ -94,7 +95,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Tienda no encontrada" }, { status: 404 });
     }
     
-    console.log('✅ [Stores API] Tienda actualizada:', updated.name);
+    console.log('✅ [Stores API] Tienda actualizada:', updated.name, 'Longitud final:', updated.name?.length);
     return NextResponse.json(updated);
   } catch (error: any) {
     console.error('❌ [Stores API] Error actualizando tienda:', error);

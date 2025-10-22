@@ -56,6 +56,9 @@ interface SettingsContextType {
   fetchCurrencyRates: () => Promise<CurrencyRate | null>;
   saveCurrencyRate: (rate: number, userName: string) => Promise<boolean>;
   reloadProducts: () => Promise<void>;
+  // Funciones de sincronización automática
+  syncAfterSave: (storeId: string) => Promise<void>;
+  syncProducts: () => Promise<void>;
 }
 
 
@@ -434,6 +437,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
       const finalSettings = settingsToSave || settings;
       console.log('📤 [Context] Datos a enviar:', { storeId: activeStoreId, ...finalSettings });
+      console.log('🏷️ [Context] Nombre específico a guardar:', finalSettings?.name, 'Longitud:', finalSettings?.name?.length);
 
       const res = await fetch('/api/stores', {
         method: 'PUT',
@@ -453,7 +457,18 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         throw new Error(responseData.error || "Error al guardar");
       }
 
-      console.log('✅ [Context] Configuración guardada exitosamente');
+      // Actualizar el estado local con los datos guardados desde el servidor
+      console.log('🔄 [Context] Actualizando estado local con datos del servidor...');
+      updateSettingsState(responseData);
+      
+      // Opcional: Recargar datos completos para asegurar sincronización
+      // Esto es útil si hay campos calculados o transformados en el servidor
+      setTimeout(() => {
+        console.log('🔄 [Context] Recargando datos completos para sincronización...');
+        loadDataFromMongoDB(activeStoreId);
+      }, 100);
+      
+      console.log('✅ [Context] Configuración guardada y estado actualizado exitosamente');
       return true;
 
     } catch (error: unknown) {
@@ -672,7 +687,10 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     seedDatabase,
     fetchCurrencyRates,
     saveCurrencyRate,
-    reloadProducts
+    reloadProducts,
+    // Funciones de sincronización automática
+    syncAfterSave: loadDataFromMongoDB,
+    syncProducts: reloadProducts
   }}, [
     settings,
     updateSettingsState,

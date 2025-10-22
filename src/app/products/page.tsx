@@ -8,11 +8,13 @@ import { ProductForm } from "@/components/product-form";
 import type { Product } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAutoSync } from "@/hooks/use-auto-sync";
 
 export default function ProductsPage() {
   const { toast } = useToast();
   const { activeStoreId, setProducts } = useSettings();
   const { user } = useAuth();
+  const { createWithSync } = useAutoSync();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function onSubmit(data: Omit<Product, 'id' | 'storeId' | 'createdAt'>) {
@@ -29,37 +31,20 @@ export default function ProductsPage() {
         userId: (user as any)?.id || 'system' // Para rastrear quién creó el producto
       } as any;
 
-      // Guardar en la base de datos (esto automáticamente registrará movimientos si hay stock inicial)
-      const response = await fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newProduct)
-      });
-
-      if (!response.ok) {
-        throw new Error('Error al crear el producto');
-      }
-
-      const savedProduct = await response.json();
-      console.log('✅ Producto creado con movimientos automáticos:', savedProduct.id);
-
-      // Actualizar estado local
-      setProducts(prev => [savedProduct, ...prev]);
-      
-      toast({
-        title: "Producto Creado",
-        description: `El producto "${data.name}" ha sido agregado al inventario${data.stock > 0 ? ' con movimiento inicial registrado' : ''}.`,
+      const result = await createWithSync<Product>('/api/products', newProduct, {
+        successMessage: `El producto "${data.name}" ha sido agregado al inventario${data.stock > 0 ? ' con movimiento inicial registrado' : ''}.`,
+        errorMessage: "No se pudo crear el producto. Intenta nuevamente.",
+        syncType: 'products',
+        updateState: (savedProduct) => {
+          // Agregar el producto al inicio de la lista
+          setProducts(prev => [savedProduct, ...prev]);
+        }
       });
       
-      return true; // Indicates the form should be reset
+      return !!result; // Indicates the form should be reset if successful
       
     } catch (error) {
       console.error('❌ Error creando producto:', error);
-      toast({
-        variant: "destructive",
-        title: "Error al crear producto",
-        description: "No se pudo crear el producto. Intenta nuevamente."
-      });
       return false;
     } finally {
       setIsSubmitting(false);

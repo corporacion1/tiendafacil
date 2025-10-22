@@ -36,6 +36,7 @@ import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { ProductForm } from "@/components/product-form";
 import { useSettings } from "@/contexts/settings-context";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAutoSync } from "@/hooks/use-auto-sync";
 import { format, parseISO } from "date-fns";
 import { Pagination } from "@/components/ui/pagination";
 
@@ -141,6 +142,7 @@ export default function InventoryPage() {
   const { toast } = useToast();
   const { activeSymbol, activeRate, activeStoreId, products, setProducts, sales, reloadProducts } = useSettings();
   const { user } = useAuth();
+  const { updateWithSync, deleteWithSync } = useAutoSync();
 
   const [inventoryMovements, setInventoryMovements] = useState<InventoryMovement[]>([]);
 
@@ -180,55 +182,21 @@ export default function InventoryPage() {
   async function handleUpdateProduct(data: Omit<Product, 'id' | 'createdAt' | 'storeId'> & { id?: string }) {
     if (!data.id) return false;
 
-    console.log('🔄 [Inventory] Iniciando actualización de producto:', data.id);
-    console.log('📦 [Inventory] Datos a enviar:', data);
-
-    try {
-      // Guardar en la base de datos
-      const payload = {
-        ...data,
-        storeId: activeStoreId
-      };
-
-      console.log('📤 [Inventory] Enviando PUT a /api/products:', payload);
-
-      const response = await fetch('/api/products', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      console.log('📥 [Inventory] Respuesta del servidor:', response.status, response.statusText);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('❌ [Inventory] Error del servidor:', errorData);
-        throw new Error(errorData.error || 'Error al actualizar el producto');
+    const result = await updateWithSync<Product>('/api/products', data, {
+      successMessage: `El producto "${data.name}" ha sido actualizado exitosamente.`,
+      errorMessage: "No se pudo actualizar el producto. Intenta nuevamente.",
+      syncType: 'products',
+      updateState: (updatedProduct) => {
+        // Actualizar el producto específico en el estado local
+        setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
       }
+    });
 
-      const updatedProduct = await response.json();
-      console.log('✅ [Inventory] Producto actualizado en DB:', updatedProduct);
-
-      // Recargar productos desde la base de datos
-      console.log('🔄 [Inventory] Recargando productos desde DB...');
-      await reloadProducts();
-      console.log('✅ [Inventory] Productos recargados');
-
-      toast({
-        title: "Producto Actualizado",
-        description: `El producto "${data.name}" ha sido actualizado en la base de datos.`,
-      });
+    if (result) {
       setProductToEdit(null);
       return true;
-    } catch (error) {
-      console.error('❌ [Inventory] Error actualizando producto:', error);
-      toast({
-        variant: "destructive",
-        title: "Error al actualizar",
-        description: error instanceof Error ? error.message : "No se pudo actualizar el producto. Intenta nuevamente.",
-      });
-      return false;
     }
+    return false;
   }
 
   const handleDelete = async (productId: string) => {
@@ -243,31 +211,17 @@ export default function InventoryPage() {
       return;
     }
 
-    try {
-      // Eliminar de la base de datos
-      const response = await fetch(`/api/products?id=${productId}&storeId=${activeStoreId}`, {
-        method: 'DELETE'
-      });
-
-      if (!response.ok) {
-        throw new Error('Error al eliminar el producto');
+    const success = await deleteWithSync('/api/products', productId, {
+      successMessage: "El producto ha sido eliminado exitosamente.",
+      errorMessage: "No se pudo eliminar el producto. Intenta nuevamente.",
+      syncType: 'products',
+      updateState: (deletedId) => {
+        // Remover el producto del estado local
+        setProducts(prev => prev.filter(p => p.id !== deletedId));
       }
+    });
 
-      // Recargar productos desde la base de datos
-      await reloadProducts();
-
-      toast({
-        title: "Producto Eliminado",
-        description: "El producto ha sido eliminado de la base de datos.",
-      });
-    } catch (error) {
-      console.error('Error eliminando producto:', error);
-      toast({
-        variant: "destructive",
-        title: "Error al eliminar",
-        description: "No se pudo eliminar el producto. Intenta nuevamente.",
-      });
-    } finally {
+    if (success) {
       setProductToDelete(null);
     }
   };

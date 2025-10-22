@@ -31,7 +31,7 @@ function ChangePinDialog() {
     const [confirmPin, setConfirmPin] = useState('');
     const [isOpen, setIsOpen] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
-    
+
     // Función de manejo de cambio de estado del diálogo
     const handleOpenChange = (open: boolean) => {
         if (!open) {
@@ -46,7 +46,7 @@ function ChangePinDialog() {
     // Función para validar y cambiar el PIN
     const handleChangePin = async () => {
         setIsProcessing(true);
-        
+
         try {
             if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
                 throw new Error("El PIN debe contener exactamente 4 dígitos numéricos");
@@ -82,14 +82,14 @@ function ChangePinDialog() {
         const [editingProduct, setEditingProduct] = useState<any | null>(null);
         const [searchTerm, setSearchTerm] = useState('');
 
-        const filteredProducts = products.filter(product => 
+        const filteredProducts = products.filter(product =>
             product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             product.sku.toLowerCase().includes(searchTerm.toLowerCase())
         );
 
         const handleSaveProduct = async () => {
             if (!editingProduct) return;
-            
+
             try {
                 const response = await fetch('/api/products', {
                     method: 'PUT',
@@ -127,18 +127,17 @@ function ChangePinDialog() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="max-w-sm"
                         />
-                        
+
                         <div className="space-y-2 max-h-60 overflow-y-auto">
                             {filteredProducts.slice(0, 20).map(product => (
                                 <div key={product.id} className="flex items-center gap-2 p-2 border rounded-md">
                                     <div className="flex-grow">
                                         <div className="flex items-center gap-2">
                                             <span className="text-sm font-medium truncate">{product.name}</span>
-                                            <span className={`text-xs px-2 py-1 rounded-full ${
-                                                product.type === 'service' 
-                                                    ? 'bg-blue-100 text-blue-700' 
-                                                    : 'bg-green-100 text-green-700'
-                                            }`}>
+                                            <span className={`text-xs px-2 py-1 rounded-full ${product.type === 'service'
+                                                ? 'bg-blue-100 text-blue-700'
+                                                : 'bg-green-100 text-green-700'
+                                                }`}>
                                                 {product.type === 'service' ? '🔧 Servicio' : '🛍️ Producto'}
                                             </span>
                                         </div>
@@ -146,10 +145,10 @@ function ChangePinDialog() {
                                             SKU: {product.sku} | Stock: {product.stock || 0}
                                         </div>
                                     </div>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="h-7 w-7" 
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7"
                                         onClick={() => setEditingProduct(product)}
                                     >
                                         <Pencil className="h-4 w-4" />
@@ -157,7 +156,7 @@ function ChangePinDialog() {
                                 </div>
                             ))}
                         </div>
-                        
+
                         {filteredProducts.length > 20 && (
                             <p className="text-xs text-muted-foreground">
                                 Mostrando 20 de {filteredProducts.length} productos. Usa la búsqueda para filtrar.
@@ -175,7 +174,7 @@ function ChangePinDialog() {
                                 Modifica la información del producto. El stock es de solo lectura.
                             </DialogDescription>
                         </DialogHeader>
-                        
+
                         {editingProduct && (
                             <div className="grid grid-cols-2 gap-4 py-4">
                                 <div className="space-y-2">
@@ -183,19 +182,19 @@ function ChangePinDialog() {
                                     <Input
                                         id="edit-name"
                                         value={editingProduct.name}
-                                        onChange={(e) => setEditingProduct({...editingProduct, name: e.target.value})}
+                                        onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
                                     />
                                 </div>
-                                
+
                                 <div className="space-y-2">
                                     <Label htmlFor="edit-sku">SKU</Label>
                                     <Input
                                         id="edit-sku"
                                         value={editingProduct.sku}
-                                        onChange={(e) => setEditingProduct({...editingProduct, sku: e.target.value})}
+                                        onChange={(e) => setEditingProduct({ ...editingProduct, sku: e.target.value })}
                                     />
                                 </div>
-                                
+
                                 <div className="space-y-2">
                                     <Label htmlFor="edit-price">Precio</Label>
                                     <Input
@@ -203,10 +202,10 @@ function ChangePinDialog() {
                                         type="number"
                                         step="0.01"
                                         value={editingProduct.price}
-                                        onChange={(e) => setEditingProduct({...editingProduct, price: parseFloat(e.target.value)})}
+                                        onChange={(e) => setEditingProduct({ ...editingProduct, price: parseFloat(e.target.value) })}
                                     />
                                 </div>
-                                
+
                                 <div className="space-y-2">
                                     <Label htmlFor="edit-cost">Costo</Label>
                                     <Input
@@ -214,10 +213,10 @@ function ChangePinDialog() {
                                         type="number"
                                         step="0.01"
                                         value={editingProduct.cost}
-                                        onChange={(e) => setEditingProduct({...editingProduct, cost: parseFloat(e.target.value)})}
+                                        onChange={(e) => setEditingProduct({ ...editingProduct, cost: parseFloat(e.target.value) })}
                                     />
                                 </div>
-                                
+
                                 <div className="space-y-2">
                                     <Label htmlFor="edit-stock">Stock (Solo lectura)</Label>
                                     <Input
@@ -231,16 +230,16 @@ function ChangePinDialog() {
                                         El stock se modifica automáticamente con las ventas y compras
                                     </p>
                                 </div>
-                                
+
                                 <div className="space-y-2">
                                     <Label htmlFor="edit-type">Tipo de Producto</Label>
                                     <div className="flex items-center space-x-2">
                                         <Switch
                                             id="edit-type"
                                             checked={editingProduct.type === 'service'}
-                                            onCheckedChange={(checked) => 
+                                            onCheckedChange={(checked) =>
                                                 setEditingProduct({
-                                                    ...editingProduct, 
+                                                    ...editingProduct,
                                                     type: checked ? 'service' : 'product',
                                                     affectsInventory: !checked
                                                 })
@@ -251,25 +250,25 @@ function ChangePinDialog() {
                                         </Label>
                                     </div>
                                     <p className="text-xs text-muted-foreground">
-                                        {editingProduct.type === 'service' 
-                                            ? 'Los servicios y fabricación no afectan el inventario' 
+                                        {editingProduct.type === 'service'
+                                            ? 'Los servicios y fabricación no afectan el inventario'
                                             : 'Los productos simples afectan el inventario'
                                         }
                                     </p>
                                 </div>
-                                
+
                                 <div className="col-span-2 space-y-2">
                                     <Label htmlFor="edit-description">Descripción</Label>
                                     <Input
                                         id="edit-description"
                                         value={editingProduct.description || ''}
-                                        onChange={(e) => setEditingProduct({...editingProduct, description: e.target.value})}
+                                        onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
                                         placeholder="Descripción del producto..."
                                     />
                                 </div>
                             </div>
                         )}
-                        
+
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setEditingProduct(null)}>
                                 Cancelar
@@ -299,49 +298,49 @@ function ChangePinDialog() {
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
                         <Label htmlFor="old-pin">PIN Actual</Label>
-                        <Input 
-                            id="old-pin" 
-                            type="password" 
+                        <Input
+                            id="old-pin"
+                            type="password"
                             inputMode="numeric"
-                            value={oldPin} 
+                            value={oldPin}
                             onChange={(e) => setOldPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
                             maxLength={4}
-                            placeholder="****" 
+                            placeholder="****"
                         />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="new-pin">Nuevo PIN (4 dígitos)</Label>
-                        <Input 
-                            id="new-pin" 
+                        <Input
+                            id="new-pin"
                             type="password"
                             inputMode="numeric"
-                            value={newPin} 
+                            value={newPin}
                             onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
                             maxLength={4}
-                            placeholder="****" 
+                            placeholder="****"
                         />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="confirm-pin">Confirmar Nuevo PIN</Label>
-                        <Input 
-                            id="confirm-pin" 
+                        <Input
+                            id="confirm-pin"
                             type="password"
                             inputMode="numeric"
-                            value={confirmPin} 
+                            value={confirmPin}
                             onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
                             maxLength={4}
-                            placeholder="****" 
+                            placeholder="****"
                         />
                     </div>
                 </div>
                 <DialogFooter>
-                    <Button 
-                        variant="outline" 
+                    <Button
+                        variant="outline"
                         onClick={() => handleOpenChange(false)}
                     >
                         Cancelar
                     </Button>
-                    <Button 
+                    <Button
                         onClick={handleChangePin}
                         disabled={isProcessing || oldPin.length !== 4 || newPin.length !== 4 || confirmPin.length !== 4}
                     >
@@ -357,13 +356,13 @@ function ChangePinDialog() {
 export default function SettingsPage() {
     const { hasPin, setPin, removePin, checkPin } = useSecurity();
     const { userRole } = usePermissions();
-    const { 
-        settings, updateSettings, saveSettings, currencyRates, setCurrencyRates, 
+    const {
+        settings, updateSettings, saveSettings, currencyRates, setCurrencyRates,
         activeStoreId, sales, products, units, setUnits,
         families, setFamilies, warehouses, setWarehouses, seedDatabase,
         fetchCurrencyRates, saveCurrencyRate, userProfile
     } = useSettings();
-    
+
     const [imageError, setImageError] = useState(false);
     const [isClient, setIsClient] = useState(false);
     const [newPin, setNewPin] = useState('');
@@ -376,13 +375,13 @@ export default function SettingsPage() {
     const [resetPin, setResetPin] = useState('');
     const [resetConfirmationText, setResetConfirmationText] = useState('');
     const [isRemovePinConfirmOpen, setIsRemovePinConfirmOpen] = useState(false);
-    
+
     // Estados para pasar a producción
     const [isProductionConfirmOpen, setIsProductionConfirmOpen] = useState(false);
     const [productionPin, setProductionPin] = useState('');
     const [productionConfirmationText, setProductionConfirmationText] = useState('');
     const [isProcessingProduction, setIsProcessingProduction] = useState(false);
-    
+
 
 
 
@@ -393,10 +392,13 @@ export default function SettingsPage() {
     const displayUrl = useMemo(() => getDisplayImageUrl(settings?.logoUrl), [settings?.logoUrl]);
 
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-    
+
     // ✅ FUNCIONES DE MANEJO DE CAMBIOS - SOLO ACTUALIZA ESTADO LOCAL
     const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
+        if (id === 'name') {
+            console.log('🏷️ [Settings] Nombre capturado:', value, 'Longitud:', value.length);
+        }
         updateSettings({ [id]: value });
         setHasUnsavedChanges(true);
     };
@@ -414,57 +416,67 @@ export default function SettingsPage() {
 
     // ✅ FUNCIÓN HANDLESAVENEWRATE CORREGIDA Y DEFINITIVA
     const handleSaveNewRate = async () => {
-    const rateValue = parseFloat(newRate);
-    if (isNaN(rateValue) || rateValue <= 0) {
-        toast({
-            variant: 'destructive',
-            title: 'Tasa inválida',
-            description: 'Por favor ingrese un valor numérico mayor a 0'
-        });
-        return;
-    }
-
-    setIsSavingRate(true);
-    
-    try {
-        const success = await saveCurrencyRate(rateValue, userProfile?.displayName || 'Sistema');
-        if (success) {
-            toast({ 
-                title: "✅ Tasa guardada",
-                description: `La tasa de ${rateValue.toFixed(2)} se registró correctamente` 
+        const rateValue = parseFloat(newRate);
+        if (isNaN(rateValue) || rateValue <= 0) {
+            toast({
+                variant: 'destructive',
+                title: 'Tasa inválida',
+                description: 'Por favor ingrese un valor numérico mayor a 0'
             });
-            setNewRate("");
-            await fetchCurrencyRates();
-        } else {
-            throw new Error('No se pudo guardar la tasa');
+            return;
         }
-    } catch (error) {
-        toast({
-            variant: "destructive",
-            title: "❌ Error",
-            description: error instanceof Error ? error.message : "No se pudo guardar la tasa"
-        });
-    } finally {
-        setIsSavingRate(false);
-    }
+
+        setIsSavingRate(true);
+
+        try {
+            const success = await saveCurrencyRate(rateValue, userProfile?.displayName || 'Sistema');
+            if (success) {
+                toast({
+                    title: "✅ Tasa guardada",
+                    description: `La tasa de ${rateValue.toFixed(2)} se registró correctamente`
+                });
+                setNewRate("");
+                await fetchCurrencyRates();
+            } else {
+                throw new Error('No se pudo guardar la tasa');
+            }
+        } catch (error) {
+            toast({
+                variant: "destructive",
+                title: "❌ Error",
+                description: error instanceof Error ? error.message : "No se pudo guardar la tasa"
+            });
+        } finally {
+            setIsSavingRate(false);
+        }
     };
 
     // Cargar tasas al inicio
-// En src/app/settings/page.tsx - modifica el useEffect
-useEffect(() => {
-  const loadRates = async () => {
-    if (activeStoreId && activeStoreId !== '') {
-      await fetchCurrencyRates();
-    }
-  };
-  loadRates();
-}, [activeStoreId]);
-    
+    // En src/app/settings/page.tsx - modifica el useEffect
+    useEffect(() => {
+        const loadRates = async () => {
+            if (activeStoreId && activeStoreId !== '') {
+                await fetchCurrencyRates();
+            }
+        };
+        loadRates();
+    }, [activeStoreId]);
+
 
     const isItemInUse = (type: 'unit' | 'family' | 'warehouse', name: string) => {
         return products.some(p => p[type] === name);
     };
-    
+
+    // Función helper para obtener el endpoint correcto según el tipo
+    const getApiEndpoint = (type: 'unit' | 'family' | 'warehouse') => {
+        const endpoints = {
+            'unit': 'units',
+            'family': 'families',
+            'warehouse': 'warehouses'
+        };
+        return endpoints[type];
+    };
+
     const handleDelete = async (type: 'unit' | 'family' | 'warehouse', id: string, name: string) => {
         if (isItemInUse(type, name)) {
             toast({
@@ -474,26 +486,38 @@ useEffect(() => {
             });
             return;
         }
-        
+
         try {
-            const response = await fetch(`/api/${type}s?id=${id}&storeId=${activeStoreId}`, {
+            console.log(`🔄 [Settings] Deleting ${type}:`, { id, name, storeId: activeStoreId });
+
+            const endpoint = getApiEndpoint(type);
+            const response = await fetch(`/api/${endpoint}?id=${id}&storeId=${activeStoreId}`, {
                 method: 'DELETE',
             });
 
             if (!response.ok) {
-                throw new Error(`Error al eliminar ${type}`);
+                const errorData = await response.json().catch(() => ({}));
+                const errorMessage = errorData.error || `Error al eliminar ${type}`;
+                console.error(`❌ [Settings] Error deleting ${type}:`, { status: response.status, error: errorMessage });
+                throw new Error(errorMessage);
             }
+
+            console.log(`✅ [Settings] Successfully deleted ${type}:`, { id, name });
 
             if (type === 'unit') setUnits(units.filter(item => item.id !== id));
             if (type === 'family') setFamilies(families.filter(item => item.id !== id));
             if (type === 'warehouse') setWarehouses(warehouses.filter(item => item.id !== id));
-            
-            toast({ title: 'Elemento Eliminado' });
-        } catch (error) {
+
+            toast({
+                title: 'Elemento Eliminado',
+                description: `${type === 'family' ? 'Familia' : type === 'unit' ? 'Unidad' : 'Almacén'} "${name}" eliminada exitosamente`
+            });
+        } catch (error: any) {
+            console.error(`❌ [Settings] Error in handleDelete:`, error);
             toast({
                 variant: 'destructive',
                 title: 'Error',
-                description: `No se pudo eliminar el elemento.`,
+                description: error.message || `No se pudo eliminar el elemento.`,
             });
         }
     };
@@ -559,35 +583,52 @@ useEffect(() => {
             if (success) {
                 setSaveStatus('success');
                 setHasUnsavedChanges(false);
+
+                // Mostrar toast de éxito
+                toast({
+                    title: "Configuración guardada",
+                    description: "Los cambios se han guardado exitosamente y están sincronizados.",
+                });
+
                 setTimeout(() => setSaveStatus('idle'), 3000);
             } else {
                 setSaveStatus('error');
+                toast({
+                    variant: "destructive",
+                    title: "Error al guardar",
+                    description: "No se pudieron guardar los cambios. Inténtalo de nuevo.",
+                });
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error al guardar:", error);
             setSaveStatus('error');
+            toast({
+                variant: "destructive",
+                title: "Error inesperado",
+                description: error.message || "Ocurrió un error inesperado al guardar los cambios.",
+            });
         }
     };
 
     // Efecto para mostrar toasts basados en el estado de guardado
     useEffect(() => {
-    if (saveStatus === 'success') {
-        toast({
-        title: "Configuración guardada",
-        description: "Los cambios se han guardado correctamente",
-        duration: 3000
-        });
-    } else if (saveStatus === 'error') {
-        toast({
-        variant: "destructive",
-        title: "Error al guardar",
-        description: "No se pudieron guardar los cambios",
-        duration: 5000
-        });
-    }
+        if (saveStatus === 'success') {
+            toast({
+                title: "Configuración guardada",
+                description: "Los cambios se han guardado correctamente",
+                duration: 3000
+            });
+        } else if (saveStatus === 'error') {
+            toast({
+                variant: "destructive",
+                title: "Error al guardar",
+                description: "No se pudieron guardar los cambios",
+                duration: 5000
+            });
+        }
     }, [saveStatus]);
 
-     const ManagementCard = ({
+    const ManagementCard = ({
         title,
         description,
         items,
@@ -599,74 +640,104 @@ useEffect(() => {
         type: 'unit' | 'family' | 'warehouse';
     }) => {
         const [newItemName, setNewItemName] = useState('');
-        const [editingItem, setEditingItem] = useState<{id: string, name: string} | null>(null);
+        const [editingItem, setEditingItem] = useState<{ id: string, name: string } | null>(null);
+        const [isAdding, setIsAdding] = useState(false);
+        const [isEditing, setIsEditing] = useState(false);
 
         const handleAddNewItem = async () => {
-            if (newItemName.trim() === '') return;
-            
+            if (newItemName.trim() === '' || isAdding) return;
+
+            setIsAdding(true);
             try {
-                const response = await fetch(`/api/${type}s`, {
+                console.log(`🔄 [ManagementCard] Adding new ${type}:`, { name: newItemName.trim(), storeId: activeStoreId });
+
+                const endpoint = getApiEndpoint(type);
+                const response = await fetch(`/api/${endpoint}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        name: newItemName.trim(), 
-                        storeId: activeStoreId 
+                    body: JSON.stringify({
+                        name: newItemName.trim(),
+                        storeId: activeStoreId
                     }),
                 });
 
                 if (!response.ok) {
-                    throw new Error(`Error al crear ${type}`);
+                    const errorData = await response.json().catch(() => ({}));
+                    const errorMessage = errorData.error || `Error al crear ${type}`;
+                    console.error(`❌ [ManagementCard] Error creating ${type}:`, { status: response.status, error: errorMessage });
+                    throw new Error(errorMessage);
                 }
 
                 const newEntry = await response.json();
-                
+                console.log(`✅ [ManagementCard] Successfully created ${type}:`, newEntry);
+
                 if (type === 'unit') setUnits([...units, newEntry]);
                 if (type === 'family') setFamilies([...families, newEntry]);
                 if (type === 'warehouse') setWarehouses([...warehouses, newEntry]);
 
                 setNewItemName('');
-                toast({ title: 'Elemento Agregado' });
-            } catch (error) {
+                toast({
+                    title: 'Elemento Agregado',
+                    description: `${type === 'family' ? 'Familia' : type === 'unit' ? 'Unidad' : 'Almacén'} "${newEntry.name}" creada exitosamente`
+                });
+            } catch (error: any) {
+                console.error(`❌ [ManagementCard] Error in handleAddNewItem:`, error);
                 toast({
                     variant: 'destructive',
                     title: 'Error',
-                    description: `No se pudo agregar el elemento.`,
+                    description: error.message || `No se pudo agregar el elemento.`,
                 });
+            } finally {
+                setIsAdding(false);
             }
         };
-        
+
         const handleEditItem = async () => {
-            if (!editingItem || editingItem.name.trim() === '') return;
-            
+            if (!editingItem || editingItem.name.trim() === '' || isEditing) return;
+
+            setIsEditing(true);
             try {
-                const response = await fetch(`/api/${type}s`, {
+                console.log(`🔄 [ManagementCard] Editing ${type}:`, { id: editingItem.id, name: editingItem.name.trim(), storeId: activeStoreId });
+
+                const endpoint = getApiEndpoint(type);
+                const response = await fetch(`/api/${endpoint}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
+                    body: JSON.stringify({
                         id: editingItem.id,
                         name: editingItem.name.trim(),
-                        storeId: activeStoreId 
+                        storeId: activeStoreId
                     }),
                 });
 
                 if (!response.ok) {
-                    throw new Error(`Error al editar ${type}`);
+                    const errorData = await response.json().catch(() => ({}));
+                    const errorMessage = errorData.error || `Error al editar ${type}`;
+                    console.error(`❌ [ManagementCard] Error editing ${type}:`, { status: response.status, error: errorMessage });
+                    throw new Error(errorMessage);
                 }
 
                 const updatedItem = await response.json();
-                
+                console.log(`✅ [ManagementCard] Successfully edited ${type}:`, updatedItem);
+
                 if (type === 'unit') setUnits(units.map(item => item.id === editingItem.id ? updatedItem : item));
                 if (type === 'family') setFamilies(families.map(item => item.id === editingItem.id ? updatedItem : item));
                 if (type === 'warehouse') setWarehouses(warehouses.map(item => item.id === editingItem.id ? updatedItem : item));
-                
+
                 setEditingItem(null);
-                toast({ title: 'Elemento Editado' });
-            } catch (error) {
+                toast({
+                    title: 'Elemento Editado',
+                    description: `${type === 'family' ? 'Familia' : type === 'unit' ? 'Unidad' : 'Almacén'} "${updatedItem.name}" actualizada exitosamente`
+                });
+            } catch (error: any) {
+                console.error(`❌ [ManagementCard] Error in handleEditItem:`, error);
                 toast({
                     variant: 'destructive',
                     title: 'Error',
-                    description: `No se pudo editar el elemento.`,
+                    description: error.message || `No se pudo editar el elemento.`,
                 });
+            } finally {
+                setIsEditing(false);
             }
         };
 
@@ -680,8 +751,8 @@ useEffect(() => {
                     <div className="space-y-2">
                         {(items || []).map(item => (
                             <div key={item.id} className="flex items-center gap-2 p-2 border rounded-md">
-                               <span className="flex-grow text-sm truncate">{item.name}</span>
-                               <div className="flex-shrink-0 flex gap-1">
+                                <span className="flex-grow text-sm truncate">{item.name}</span>
+                                <div className="flex-shrink-0 flex gap-1">
                                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingItem(item)}>
                                         <Pencil className="h-4 w-4" />
                                     </Button>
@@ -695,7 +766,7 @@ useEffect(() => {
                                             <AlertDialogHeader>
                                                 <AlertDialogTitle>¿Eliminar "{item.name}"?</AlertDialogTitle>
                                                 <AlertDialogDescription>
-                                                   Esta acción es irreversible. {isItemInUse(type, item.name) && 'Este elemento está en uso y no se puede eliminar.'}
+                                                    Esta acción es irreversible. {isItemInUse(type, item.name) && 'Este elemento está en uso y no se puede eliminar.'}
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
@@ -706,10 +777,10 @@ useEffect(() => {
                                             </AlertDialogFooter>
                                         </AlertDialogContent>
                                     </AlertDialog>
-                               </div>
+                                </div>
                             </div>
                         ))}
-                         {(items || []).length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No hay elementos.</p>}
+                        {(items || []).length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No hay elementos.</p>}
                     </div>
                 </CardContent>
                 <CardFooter className="border-t pt-4">
@@ -725,33 +796,49 @@ useEffect(() => {
                             </DialogHeader>
                             <div className="py-4">
                                 <Label htmlFor={`new-${type}-name`}>Nombre</Label>
-                                <Input id={`new-${type}-name`} value={newItemName} onChange={(e) => setNewItemName(e.target.value)} />
+                                <Input
+                                    id={`new-${type}-name`}
+                                    value={newItemName}
+                                    onChange={(e) => setNewItemName(e.target.value)}
+                                    disabled={isAdding}
+                                    placeholder={`Nombre de la ${type === 'family' ? 'familia' : type === 'unit' ? 'unidad' : 'almacén'}`}
+                                />
                             </div>
                             <DialogFooter>
                                 <DialogClose asChild>
                                     <Button variant="outline">Cancelar</Button>
                                 </DialogClose>
-                                 <DialogClose asChild>
-                                    <Button onClick={handleAddNewItem} disabled={!newItemName.trim()}>Guardar</Button>
-                                 </DialogClose>
+                                <DialogClose asChild>
+                                    <Button onClick={handleAddNewItem} disabled={!newItemName.trim() || isAdding}>
+                                        {isAdding ? 'Guardando...' : 'Guardar'}
+                                    </Button>
+                                </DialogClose>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
-                    
+
                     <Dialog open={!!editingItem} onOpenChange={(isOpen) => !isOpen && setEditingItem(null)}>
                         <DialogContent>
-                             <DialogHeader>
+                            <DialogHeader>
                                 <DialogTitle>Editar {title.slice(0, -1)}</DialogTitle>
                             </DialogHeader>
-                             <div className="py-4">
+                            <div className="py-4">
                                 <Label htmlFor={`edit-${type}-name`}>Nombre</Label>
-                                <Input id={`edit-${type}-name`} value={editingItem?.name || ''} onChange={(e) => editingItem && setEditingItem({...editingItem, name: e.target.value})} autoFocus />
+                                <Input
+                                    id={`edit-${type}-name`}
+                                    value={editingItem?.name || ''}
+                                    onChange={(e) => editingItem && setEditingItem({ ...editingItem, name: e.target.value })}
+                                    disabled={isEditing}
+                                    autoFocus
+                                />
                             </div>
                             <DialogFooter>
                                 <DialogClose asChild>
                                     <Button variant="outline">Cancelar</Button>
                                 </DialogClose>
-                                <Button onClick={handleEditItem} disabled={!editingItem?.name.trim()}>Guardar Cambios</Button>
+                                <Button onClick={handleEditItem} disabled={!editingItem?.name.trim() || isEditing}>
+                                    {isEditing ? 'Guardando...' : 'Guardar Cambios'}
+                                </Button>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
@@ -759,7 +846,7 @@ useEffect(() => {
             </Card>
         );
     }
-    
+
     const handleSetPin = async () => {
         if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
             toast({ variant: "destructive", title: "PIN inválido", description: "El PIN debe tener exactamente 4 dígitos" });
@@ -769,7 +856,7 @@ useEffect(() => {
             toast({ variant: "destructive", title: "Los PINs no coinciden", description: "Verifica que ambos PINs sean iguales" });
             return;
         }
-        
+
         try {
             const success = await setPin('', newPin); // Para nuevo PIN, currentPin es vacío
             if (success) {
@@ -793,133 +880,133 @@ useEffect(() => {
         const currentCount = sales?.length || 0;
         return (currentCount + 1).toString().padStart(3, '0');
     }, [sales]);
-    
+
     const handleSeed = async () => {
-  console.log('🌱 [Settings] Iniciando proceso de siembra...');
-  console.log('🔐 [Settings] Verificando PIN...');
-  
-  const isPinValid = await checkPin(resetPin);
-  console.log('🔐 [Settings] Resultado de verificación de PIN:', isPinValid);
-  
-  if (!isPinValid) {
-    console.error('❌ [Settings] PIN inválido, abortando siembra');
-    toast({
-      variant: "destructive",
-      title: "PIN incorrecto",
-      description: "Debes ingresar tu PIN de seguridad para continuar.",
-    });
-    return;
-  }
-  if (resetConfirmationText !== "BORRAR DATOS") {
-    toast({
-      variant: "destructive",
-      title: "Texto de confirmación incorrecto",
-      description: "Debes escribir exactamente BORRAR DATOS para confirmar.",
-    });
-    return;
-  }
-  setIsProcessing(true);
-  try {
-    const success = await seedDatabase(activeStoreId);
-    if (success) {
-      toast({
-        title: "Datos sembrados exitosamente",
-        description: "La base de datos ha sido reiniciada con datos de demostración.",
-        duration: 5000,
-      });
-      setIsResetConfirmOpen(false);
-      setResetConfirmationText("");
-      setResetPin("");
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Error al sembrar datos",
-        description: "Hubo un problema al reiniciar la base de datos.",
-      });
-    }
-  } catch (error) {
-    console.error("Error:", error);
-    toast({
-      variant: "destructive",
-      title: "Error inesperado",
-      description: "No se pudo completar la operación.",
-    });
-  } finally {
-    setIsProcessing(false);
-  }
-};
+        console.log('🌱 [Settings] Iniciando proceso de siembra...');
+        console.log('🔐 [Settings] Verificando PIN...');
+
+        const isPinValid = await checkPin(resetPin);
+        console.log('🔐 [Settings] Resultado de verificación de PIN:', isPinValid);
+
+        if (!isPinValid) {
+            console.error('❌ [Settings] PIN inválido, abortando siembra');
+            toast({
+                variant: "destructive",
+                title: "PIN incorrecto",
+                description: "Debes ingresar tu PIN de seguridad para continuar.",
+            });
+            return;
+        }
+        if (resetConfirmationText !== "BORRAR DATOS") {
+            toast({
+                variant: "destructive",
+                title: "Texto de confirmación incorrecto",
+                description: "Debes escribir exactamente BORRAR DATOS para confirmar.",
+            });
+            return;
+        }
+        setIsProcessing(true);
+        try {
+            const success = await seedDatabase(activeStoreId);
+            if (success) {
+                toast({
+                    title: "Datos sembrados exitosamente",
+                    description: "La base de datos ha sido reiniciada con datos de demostración.",
+                    duration: 5000,
+                });
+                setIsResetConfirmOpen(false);
+                setResetConfirmationText("");
+                setResetPin("");
+            } else {
+                toast({
+                    variant: "destructive",
+                    title: "Error al sembrar datos",
+                    description: "Hubo un problema al reiniciar la base de datos.",
+                });
+            }
+        } catch (error) {
+            console.error("Error:", error);
+            toast({
+                variant: "destructive",
+                title: "Error inesperado",
+                description: "No se pudo completar la operación.",
+            });
+        } finally {
+            setIsProcessing(false);
+        }
+    };
 
 
 
     const handleGoToProduction = async () => {
-  console.log('🚀 [Settings] Iniciando proceso de pasar a producción...');
-  console.log('🔐 [Settings] Verificando PIN...');
-  
-  const isPinValid = await checkPin(productionPin);
-  console.log('🔐 [Settings] Resultado de verificación de PIN:', isPinValid);
-  
-  if (!isPinValid) {
-    console.error('❌ [Settings] PIN inválido, abortando proceso');
-    toast({
-      variant: "destructive",
-      title: "PIN incorrecto",
-      description: "Debes ingresar tu PIN de seguridad para continuar.",
-    });
-    return;
-  }
-  
-  if (productionConfirmationText !== "PASAR A PRODUCCION") {
-    toast({
-      variant: "destructive",
-      title: "Texto de confirmación incorrecto",
-      description: "Debes escribir exactamente PASAR A PRODUCCION para confirmar.",
-    });
-    return;
-  }
-  
-  setIsProcessingProduction(true);
-  try {
-    console.log('🏭 [Settings] Pasando tienda a producción...');
-    
-    const response = await fetch('/api/stores/production', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ storeId: activeStoreId })
-    });
+        console.log('🚀 [Settings] Iniciando proceso de pasar a producción...');
+        console.log('🔐 [Settings] Verificando PIN...');
 
-    const result = await response.json();
-    
-    if (response.ok && result.success) {
-      toast({
-        title: "¡Tienda en Producción!",
-        description: "La tienda ha sido limpiada y está lista para uso en producción.",
-        duration: 5000,
-      });
-      setIsProductionConfirmOpen(false);
-      setProductionConfirmationText("");
-      setProductionPin("");
-      
-      // Recargar datos para reflejar el nuevo estado
-      window.location.reload();
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Error al pasar a producción",
-        description: result.error || "Hubo un problema al procesar la solicitud.",
-      });
-    }
-  } catch (error) {
-    console.error("Error:", error);
-    toast({
-      variant: "destructive",
-      title: "Error inesperado",
-      description: "No se pudo completar la operación.",
-    });
-  } finally {
-    setIsProcessingProduction(false);
-  }
-};
-    
+        const isPinValid = await checkPin(productionPin);
+        console.log('🔐 [Settings] Resultado de verificación de PIN:', isPinValid);
+
+        if (!isPinValid) {
+            console.error('❌ [Settings] PIN inválido, abortando proceso');
+            toast({
+                variant: "destructive",
+                title: "PIN incorrecto",
+                description: "Debes ingresar tu PIN de seguridad para continuar.",
+            });
+            return;
+        }
+
+        if (productionConfirmationText !== "PASAR A PRODUCCION") {
+            toast({
+                variant: "destructive",
+                title: "Texto de confirmación incorrecto",
+                description: "Debes escribir exactamente PASAR A PRODUCCION para confirmar.",
+            });
+            return;
+        }
+
+        setIsProcessingProduction(true);
+        try {
+            console.log('🏭 [Settings] Pasando tienda a producción...');
+
+            const response = await fetch('/api/stores/production', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storeId: activeStoreId })
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+                toast({
+                    title: "¡Tienda en Producción!",
+                    description: "La tienda ha sido limpiada y está lista para uso en producción.",
+                    duration: 5000,
+                });
+                setIsProductionConfirmOpen(false);
+                setProductionConfirmationText("");
+                setProductionPin("");
+
+                // Recargar datos para reflejar el nuevo estado
+                window.location.reload();
+            } else {
+                toast({
+                    variant: "destructive",
+                    title: "Error al pasar a producción",
+                    description: result.error || "Hubo un problema al procesar la solicitud.",
+                });
+            }
+        } catch (error) {
+            console.error("Error:", error);
+            toast({
+                variant: "destructive",
+                title: "Error inesperado",
+                description: "No se pudo completar la operación.",
+            });
+        } finally {
+            setIsProcessingProduction(false);
+        }
+    };
+
     return (
         <div className="grid gap-6">
             <Card>
@@ -932,12 +1019,12 @@ useEffect(() => {
                         <div className="md:col-span-1 space-y-4">
                             <div className="space-y-2">
                                 <Label htmlFor="name">Nombre de la Tienda</Label>
-                                <Input 
-                                    id="name" 
-                                    value={settings?.name || ''} 
-                                    onChange={handleSettingsChange} 
-                                    placeholder="Mi Tienda Increíble" 
-                                    maxLength={45} 
+                                <Input
+                                    id="name"
+                                    value={settings?.name || ''}
+                                    onChange={handleSettingsChange}
+                                    placeholder="Mi Tienda Increíble"
+                                    maxLength={100}
                                     required
                                     className={!settings?.name?.trim() && hasUnsavedChanges ? "border-destructive" : ""}
                                 />
@@ -987,7 +1074,7 @@ useEffect(() => {
                             </div>
                         </div>
                     </div>
-                    
+
                     <Separator />
                     <h3 className="text-lg font-medium">Redes Sociales (para el Catálogo)</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1000,7 +1087,7 @@ useEffect(() => {
                             <Input id="meta" value={settings?.meta || ''} onChange={handleSettingsChange} placeholder="@tu_usuario" />
                         </div>
                     </div>
-                    
+
                     <Separator />
                     <h3 className="text-lg font-medium">Correlativos de Venta</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1037,158 +1124,158 @@ useEffect(() => {
                         <ManagementCard title="Familias de Productos" description="Organiza tus productos en familias." items={families} type='family' />
                         <ManagementCard title="Almacenes" description="Gestiona los almacenes de destino." items={warehouses} type='warehouse' />
                     </div>
-                    
+
                     <Separator />
                     <h3 className="text-lg font-medium">Configuración de Monedas</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="primaryCurrencyName">Nombre Moneda Principal</Label>
-                        <Input 
-                        id="primaryCurrencyName" 
-                        value={settings?.primaryCurrencyName || ''} 
-                        onChange={handleSettingsChange}
-                        placeholder="Dólar"
-                        required
-                        className={!settings?.primaryCurrencyName?.trim() && hasUnsavedChanges ? "border-destructive" : ""}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="primaryCurrencySymbol">Símbolo</Label>
-                        <Input 
-                        id="primaryCurrencySymbol" 
-                        value={settings?.primaryCurrencySymbol || ''} 
-                        onChange={handleSettingsChange}
-                        placeholder="$"
-                        maxLength={3}
-                        required
-                        className={!settings?.primaryCurrencySymbol?.trim() && hasUnsavedChanges ? "border-destructive" : ""}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="secondaryCurrencyName">Nombre Moneda Secundaria</Label>
-                        <Input 
-                        id="secondaryCurrencyName" 
-                        value={settings?.secondaryCurrencyName || ''} 
-                        onChange={handleSettingsChange}
-                        placeholder="Bolívares"
-                        required
-                        className={!settings?.secondaryCurrencyName?.trim() && hasUnsavedChanges ? "border-destructive" : ""}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="secondaryCurrencySymbol">Símbolo</Label>
-                        <Input 
-                        id="secondaryCurrencySymbol" 
-                        value={settings?.secondaryCurrencySymbol || ''} 
-                        onChange={handleSettingsChange}
-                        placeholder="Bs."
-                        maxLength={3}
-                        required
-                        className={!settings?.secondaryCurrencySymbol?.trim() && hasUnsavedChanges ? "border-destructive" : ""}
-                        />
-                    </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="primaryCurrencyName">Nombre Moneda Principal</Label>
+                            <Input
+                                id="primaryCurrencyName"
+                                value={settings?.primaryCurrencyName || ''}
+                                onChange={handleSettingsChange}
+                                placeholder="Dólar"
+                                required
+                                className={!settings?.primaryCurrencyName?.trim() && hasUnsavedChanges ? "border-destructive" : ""}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="primaryCurrencySymbol">Símbolo</Label>
+                            <Input
+                                id="primaryCurrencySymbol"
+                                value={settings?.primaryCurrencySymbol || ''}
+                                onChange={handleSettingsChange}
+                                placeholder="$"
+                                maxLength={3}
+                                required
+                                className={!settings?.primaryCurrencySymbol?.trim() && hasUnsavedChanges ? "border-destructive" : ""}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="secondaryCurrencyName">Nombre Moneda Secundaria</Label>
+                            <Input
+                                id="secondaryCurrencyName"
+                                value={settings?.secondaryCurrencyName || ''}
+                                onChange={handleSettingsChange}
+                                placeholder="Bolívares"
+                                required
+                                className={!settings?.secondaryCurrencyName?.trim() && hasUnsavedChanges ? "border-destructive" : ""}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="secondaryCurrencySymbol">Símbolo</Label>
+                            <Input
+                                id="secondaryCurrencySymbol"
+                                value={settings?.secondaryCurrencySymbol || ''}
+                                onChange={handleSettingsChange}
+                                placeholder="Bs."
+                                maxLength={3}
+                                required
+                                className={!settings?.secondaryCurrencySymbol?.trim() && hasUnsavedChanges ? "border-destructive" : ""}
+                            />
+                        </div>
                     </div>
                     <div className="flex justify-end mt-4">
-                        <Button 
-                        onClick={handleSaveSettings}
-                        disabled={!hasUnsavedChanges || saveStatus === 'saving'}
-                        className="bg-primary hover:bg-primary/90"
+                        <Button
+                            onClick={handleSaveSettings}
+                            disabled={!hasUnsavedChanges || saveStatus === 'saving'}
+                            className="bg-primary hover:bg-primary/90"
                         >
-                        {saveStatus === 'saving' ? (
-                            <div className="flex items-center gap-2">
-                            <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            Guardando...
-                            </div>
-                        ) : saveStatus === 'success' ? (
-                            "✓ Guardado"
-                        ) : (
-                            "Guardar Configuración"
-                        )}
+                            {saveStatus === 'saving' ? (
+                                <div className="flex items-center gap-2">
+                                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    Guardando...
+                                </div>
+                            ) : saveStatus === 'success' ? (
+                                "✓ Guardado"
+                            ) : (
+                                "Guardar Configuración"
+                            )}
                         </Button>
                     </div>
                 </CardContent>
             </Card>
 
             <Card>
-            <CardHeader>
-                <CardTitle>Gestión de Tasas de Cambio</CardTitle>
-                <CardDescription>
-                Registro histórico de tasas {settings?.secondaryCurrencySymbol && `(${settings.secondaryCurrencySymbol})`}
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Panel de registro de nueva tasa */}
-                <div className="space-y-4">
-                    <h4 className="font-medium">Registrar Nueva Tasa</h4>
-                    <div className="flex items-center gap-2">
-                    <Input
-                        type="number"
-                        step="0.0001"
-                        value={newRate}
-                        onChange={(e) => setNewRate(e.target.value)}
-                        placeholder="Ej: 36.50"
-                        className="flex-grow"
-                    />
-                    <Button 
-                        onClick={handleSaveNewRate}
-                        disabled={!newRate || isSavingRate}
-                        className="flex items-center gap-2 min-w-[160px]"
-                    >
-                        {isSavingRate ? (
-                            <>
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                <span>Guardando...</span>
-                            </>
-                        ) : (
-                            <>
-                                <PlusCircle className="h-4 w-4" />
-                                <span>Guardar Tasa</span>
-                            </>
-                        )}
-                    </Button>
+                <CardHeader>
+                    <CardTitle>Gestión de Tasas de Cambio</CardTitle>
+                    <CardDescription>
+                        Registro histórico de tasas {settings?.secondaryCurrencySymbol && `(${settings.secondaryCurrencySymbol})`}
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Panel de registro de nueva tasa */}
+                        <div className="space-y-4">
+                            <h4 className="font-medium">Registrar Nueva Tasa</h4>
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    type="number"
+                                    step="0.0001"
+                                    value={newRate}
+                                    onChange={(e) => setNewRate(e.target.value)}
+                                    placeholder="Ej: 36.50"
+                                    className="flex-grow"
+                                />
+                                <Button
+                                    onClick={handleSaveNewRate}
+                                    disabled={!newRate || isSavingRate}
+                                    className="flex items-center gap-2 min-w-[160px]"
+                                >
+                                    {isSavingRate ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            <span>Guardando...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <PlusCircle className="h-4 w-4" />
+                                            <span>Guardar Tasa</span>
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Historial de tasas (se mantiene igual) */}
+                        <div className="space-y-4">
+                            <h4 className="font-medium">Historial de Tasas</h4>
+                            <div className="border rounded-md max-h-60 overflow-y-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Fecha</TableHead>
+                                            <TableHead>Tasa</TableHead>
+                                            <TableHead>Registrada por</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {Array.isArray(currencyRates) && currencyRates.map(rate => (
+                                            <TableRow key={(rate as any)._id || rate.id || `rate-${rate.date}`}>
+                                                <TableCell>
+                                                    {new Date((rate as any).createdAt || rate.date).toLocaleDateString()}
+                                                </TableCell>
+                                                <TableCell className="font-mono">
+                                                    {rate.rate.toFixed(4)}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {(rate as any).createdBy || 'Sistema'}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                        {(!Array.isArray(currencyRates) || currencyRates.length === 0) && (
+                                            <TableRow>
+                                                <TableCell colSpan={3} className="text-center text-muted-foreground py-4">
+                                                    No hay tasas registradas
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                
-                {/* Historial de tasas (se mantiene igual) */}
-                                    <div className="space-y-4">
-                    <h4 className="font-medium">Historial de Tasas</h4>
-                    <div className="border rounded-md max-h-60 overflow-y-auto">
-                        <Table>
-                        <TableHeader>
-                            <TableRow>
-                            <TableHead>Fecha</TableHead>
-                            <TableHead>Tasa</TableHead>
-                            <TableHead>Registrada por</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                        {Array.isArray(currencyRates) && currencyRates.map(rate => (
-                            <TableRow key={(rate as any)._id || rate.id || `rate-${rate.date}`}>
-                            <TableCell>
-                                {new Date((rate as any).createdAt || rate.date).toLocaleDateString()}
-                            </TableCell>
-                            <TableCell className="font-mono">
-                                {rate.rate.toFixed(4)}
-                            </TableCell>
-                            <TableCell>
-                                {(rate as any).createdBy || 'Sistema'}
-                            </TableCell>
-                            </TableRow>
-                        ))}
-                        {(!Array.isArray(currencyRates) || currencyRates.length === 0) && (
-                            <TableRow>
-                            <TableCell colSpan={3} className="text-center text-muted-foreground py-4">
-                                No hay tasas registradas
-                            </TableCell>
-                            </TableRow>
-                        )}
-                        </TableBody>
-                        </Table>
-                    </div>
-                    </div>
-                </div>
-            </CardContent>
+                </CardContent>
             </Card>
 
             <Card>
@@ -1221,9 +1308,9 @@ useEffect(() => {
                                     </AlertDialogFooter>
                                 </AlertDialogContent>
                             </AlertDialog>
-                            <Switch 
-                                checked={hasPin} 
-                                onCheckedChange={async (checked) => { 
+                            <Switch
+                                checked={hasPin}
+                                onCheckedChange={async (checked) => {
                                     if (!checked) {
                                         setIsRemovePinConfirmOpen(true);
                                     } else {
@@ -1247,7 +1334,7 @@ useEffect(() => {
                                 <div className="space-y-4 py-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="new-pin">Nuevo PIN (4 dígitos)</Label>
-                                        <Input id="new-pin" type="password" value={newPin} onChange={(e) => setNewPin(e.target.value)} maxLength={4} placeholder="****" autoFocus/>
+                                        <Input id="new-pin" type="password" value={newPin} onChange={(e) => setNewPin(e.target.value)} maxLength={4} placeholder="****" autoFocus />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="confirm-pin">Confirmar Nuevo PIN</Label>
@@ -1284,7 +1371,7 @@ useEffect(() => {
                         <div className="space-y-2">
                             <AlertDialog open={isResetConfirmOpen} onOpenChange={setIsResetConfirmOpen}>
                                 <AlertDialogTrigger asChild>
-                                    <Button 
+                                    <Button
                                         variant="destructive"
                                         disabled={(settings as any)?.status === 'inProduction'}
                                         className="w-full"
@@ -1292,52 +1379,52 @@ useEffect(() => {
                                         <Database className="mr-2" /> Reiniciar y Sembrar Datos
                                     </Button>
                                 </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    Esta acción eliminará <span className="font-bold">TODOS</span> los datos de la tienda actual
-                                    y los reemplazará con los datos de demostración. No se puede deshacer.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <div className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="reset-confirmation">Para confirmar, escribe <code className="bg-muted px-2 py-1 rounded-md">BORRAR DATOS</code> abajo:</Label>
-                                    <Input
-                                        id="reset-confirmation"
-                                        value={resetConfirmationText}
-                                        onChange={(e) => setResetConfirmationText(e.target.value)}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="reset-pin">Ingresa tu PIN de seguridad:</Label>
-                                    <Input
-                                        id="reset-pin"
-                                        type="password"
-                                        maxLength={4}
-                                        value={resetPin}
-                                        onChange={(e) => setResetPin(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel onClick={() => { setResetConfirmationText(''); setResetPin(''); }}>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction
-                                onClick={handleSeed}
-                                disabled={resetConfirmationText !== "BORRAR DATOS" || resetPin.length !== 4 || isProcessing}
-                                >
-                                {isProcessing ? (
-                                    <span className="flex items-center gap-2">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Procesando...
-                                    </span>
-                                ) : (
-                                    "SÍ, borrar y sembrar datos"
-                                )}
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Esta acción eliminará <span className="font-bold">TODOS</span> los datos de la tienda actual
+                                            y los reemplazará con los datos de demostración. No se puede deshacer.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <div className="space-y-4 py-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="reset-confirmation">Para confirmar, escribe <code className="bg-muted px-2 py-1 rounded-md">BORRAR DATOS</code> abajo:</Label>
+                                            <Input
+                                                id="reset-confirmation"
+                                                value={resetConfirmationText}
+                                                onChange={(e) => setResetConfirmationText(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="reset-pin">Ingresa tu PIN de seguridad:</Label>
+                                            <Input
+                                                id="reset-pin"
+                                                type="password"
+                                                maxLength={4}
+                                                value={resetPin}
+                                                onChange={(e) => setResetPin(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel onClick={() => { setResetConfirmationText(''); setResetPin(''); }}>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction
+                                            onClick={handleSeed}
+                                            disabled={resetConfirmationText !== "BORRAR DATOS" || resetPin.length !== 4 || isProcessing}
+                                        >
+                                            {isProcessing ? (
+                                                <span className="flex items-center gap-2">
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                    Procesando...
+                                                </span>
+                                            ) : (
+                                                "SÍ, borrar y sembrar datos"
+                                            )}
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
 
                         </div>
 
@@ -1345,63 +1432,63 @@ useEffect(() => {
                         <div className="space-y-2">
                             <AlertDialog open={isProductionConfirmOpen} onOpenChange={setIsProductionConfirmOpen}>
                                 <AlertDialogTrigger asChild>
-                                    <Button 
-                                        variant="destructive" 
+                                    <Button
+                                        variant="destructive"
                                         className="bg-orange-600 hover:bg-orange-700 w-full"
                                         disabled={(settings as any)?.status === 'inProduction' || userRole !== 'su'}
                                     >
                                         <Package className="mr-2" /> Reiniciar y Pasar a Producción
                                     </Button>
                                 </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>¿Pasar a Producción?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    Esta acción eliminará <span className="font-bold">TODOS</span> los datos demo 
-                                    (productos, ventas, compras, etc.) pero mantendrá la configuración de la tienda 
-                                    y usuarios. La tienda se marcará como "En Producción" y no podrás usar los botones 
-                                    de reinicio nuevamente.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <div className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="production-confirmation">Para confirmar, escribe <code className="bg-muted px-2 py-1 rounded-md">PASAR A PRODUCCION</code> abajo:</Label>
-                                    <Input
-                                        id="production-confirmation"
-                                        value={productionConfirmationText}
-                                        onChange={(e) => setProductionConfirmationText(e.target.value)}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="production-pin">Ingresa tu PIN de seguridad:</Label>
-                                    <Input
-                                        id="production-pin"
-                                        type="password"
-                                        maxLength={4}
-                                        value={productionPin}
-                                        onChange={(e) => setProductionPin(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel onClick={() => { setProductionConfirmationText(''); setProductionPin(''); }}>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction
-                                    onClick={handleGoToProduction}
-                                    disabled={productionConfirmationText !== "PASAR A PRODUCCION" || productionPin.length !== 4 || isProcessingProduction}
-                                    className="bg-orange-600 hover:bg-orange-700"
-                                >
-                                    {isProcessingProduction ? (
-                                        <span className="flex items-center gap-2">
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                            Procesando...
-                                        </span>
-                                    ) : (
-                                        "SÍ, pasar a producción"
-                                    )}
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>¿Pasar a Producción?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Esta acción eliminará <span className="font-bold">TODOS</span> los datos demo
+                                            (productos, ventas, compras, etc.) pero mantendrá la configuración de la tienda
+                                            y usuarios. La tienda se marcará como "En Producción" y no podrás usar los botones
+                                            de reinicio nuevamente.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <div className="space-y-4 py-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="production-confirmation">Para confirmar, escribe <code className="bg-muted px-2 py-1 rounded-md">PASAR A PRODUCCION</code> abajo:</Label>
+                                            <Input
+                                                id="production-confirmation"
+                                                value={productionConfirmationText}
+                                                onChange={(e) => setProductionConfirmationText(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="production-pin">Ingresa tu PIN de seguridad:</Label>
+                                            <Input
+                                                id="production-pin"
+                                                type="password"
+                                                maxLength={4}
+                                                value={productionPin}
+                                                onChange={(e) => setProductionPin(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel onClick={() => { setProductionConfirmationText(''); setProductionPin(''); }}>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction
+                                            onClick={handleGoToProduction}
+                                            disabled={productionConfirmationText !== "PASAR A PRODUCCION" || productionPin.length !== 4 || isProcessingProduction}
+                                            className="bg-orange-600 hover:bg-orange-700"
+                                        >
+                                            {isProcessingProduction ? (
+                                                <span className="flex items-center gap-2">
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                    Procesando...
+                                                </span>
+                                            ) : (
+                                                "SÍ, pasar a producción"
+                                            )}
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                             {userRole !== 'su' && (
                                 <p className="text-xs text-muted-foreground text-center">
                                     ⚠️ Solo disponible para Super Usuarios
@@ -1427,4 +1514,3 @@ useEffect(() => {
     );
 }
 
-    

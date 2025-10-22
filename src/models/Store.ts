@@ -8,7 +8,7 @@ const UserRoleSchema = new Schema({
 const StoreSchema = new Schema({
   id: { type: String },
   storeId: { type: String, required: true },
-  name: { type: String, required: true },
+  name: { type: String, required: true, maxlength: 100 },
   ownerIds: { type: [String], default: [] },
   userRoles: { type: [UserRoleSchema], default: [] },
   address: String,
