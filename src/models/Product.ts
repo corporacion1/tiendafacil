@@ -18,7 +18,10 @@ const ProductSchema = new Schema({
   description: String,
   imageUrl: String,
   imageHint: String,
-  createdAt: String
+  createdAt: String,
+  // Nuevos campos para tipo de producto
+  type: { type: String, enum: ['product', 'service'], default: 'product' },
+  affectsInventory: { type: Boolean, default: true }
 }, { timestamps: true });
 
 // Índice único compuesto para prevenir duplicados

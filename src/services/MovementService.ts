@@ -84,9 +84,38 @@ export class MovementService {
         return null; // No fallar, solo no registrar
       }
 
-      // Calcular stock anterior y nuevo
+      // Determinar si este producto afecta inventario
+      const affectsInventory = product.type === 'product' && product.affectsInventory !== false;
+      
+      // Los servicios se registran para contabilidad pero no afectan stock físico
+      if (!affectsInventory) {
+        console.log('🔧 [MovementService] Servicio detectado, registrando solo para contabilidad:', request.productId);
+        
+        // Crear movimiento contable sin afectar stock
+        const movement = await InventoryMovement.create({
+          productId: request.productId,
+          warehouseId: request.warehouseId,
+          movementType: request.movementType,
+          quantity: request.quantity,
+          unitCost: request.unitCost || product.cost || 0,
+          totalValue: Math.abs(request.quantity) * (request.unitCost || product.cost || 0),
+          referenceType: request.referenceType,
+          referenceId: request.referenceId,
+          batchId: request.batchId,
+          previousStock: 0, // Servicios no tienen stock
+          newStock: 0, // Servicios no tienen stock
+          userId: request.userId,
+          notes: `${request.notes} (Solo contabilidad - Servicio)`,
+          storeId: request.storeId
+        });
+
+        console.log('✅ [MovementService] Movimiento contable registrado para servicio:', movement._id);
+        return movement;
+      }
+
+      // Para productos físicos: calcular y actualizar stock real
       const previousStock = product.stock || 0;
-      const newStock = previousStock + request.quantity;
+      const newStock = Math.max(0, previousStock + request.quantity); // No permitir stock negativo
 
       // Calcular valor total
       const unitCost = request.unitCost || product.cost || 0;
@@ -110,7 +139,19 @@ export class MovementService {
         storeId: request.storeId
       });
 
-      console.log('✅ [MovementService] Movimiento registrado:', movement._id);
+      // ACTUALIZAR EL STOCK REAL DEL PRODUCTO
+      await Product.findOneAndUpdate(
+        { id: request.productId, storeId: request.storeId },
+        { $set: { stock: newStock } }
+      );
+
+      console.log('✅ [MovementService] Movimiento registrado y stock actualizado:', {
+        movementId: movement._id,
+        previousStock,
+        newStock,
+        change: request.quantity
+      });
+      
       return movement;
 
     } catch (error) {

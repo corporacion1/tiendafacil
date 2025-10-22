@@ -4,7 +4,7 @@ import { subDays, addDays, startOfWeek, startOfMonth, startOfYear } from 'date-f
 
 
 // --- IDs ÚNICOS Y CONSTANTES ---
-export const defaultStoreId = 'store_clifp94l0000008l3b1z9f8j7';
+export const defaultStoreId = 'ST-1234567890123';
 
 // --- DATOS MUTABLES (ESTADO LOCAL DE LA APLICACIÓN) ---
 // Estos `let` permiten que los datos sean modificados en tiempo de ejecución.
@@ -154,6 +154,10 @@ export let initialFamilies: Family[] = [
   { id: 'FAM-5678901234567', name: 'Impresoras y Accesorios', storeId: defaultStoreId },
   { id: 'FAM-6789012345678', name: 'Proyectores', storeId: defaultStoreId },
   { id: 'FAM-7890123456789', name: 'Accesorios de Cómputo', storeId: defaultStoreId },
+  // Familias de servicios y fabricación
+  { id: 'FAM-8901234567890', name: 'Servicios Técnicos', storeId: defaultStoreId },
+  { id: 'FAM-9012345678901', name: 'Servicios de Red', storeId: defaultStoreId },
+  { id: 'FAM-0123456789012', name: 'Fabricación y Ensamblaje', storeId: defaultStoreId },
 ];
 
 export let initialWarehouses: Warehouse[] = [
@@ -166,26 +170,31 @@ export let mockProducts: Product[] = [
     id: "PRO-1234567890123", name: "Tarjeta Gráfica RTX 4090", sku: "NV-RTX4090-01", barcode: "123456789012", stock: 15, price: 1799.99, wholesalePrice: 1750.00, cost: 1600.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Tarjetas Gráficas", warehouse: "Almacén Principal",
     description: "La GPU más potente para gaming y creación de contenido.",
     imageUrl: PlaceHolderImages.find(p => p.id === '1')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '1')?.imageHint, storeId: defaultStoreId, createdAt: subDays(new Date(), 10).toISOString(),
+    type: "product", affectsInventory: true,
   },
   {
     id: "PRO-2345678901234", name: "Procesador Intel Core i9-13900K", sku: "INT-i9-13900K-02", barcode: "234567890123", stock: 25, price: 589.00, wholesalePrice: 570.00, cost: 520.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Procesadores", warehouse: "Almacén Principal",
     description: "Procesador de alto rendimiento para gaming y productividad.",
     imageUrl: PlaceHolderImages.find(p => p.id === '2')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '2')?.imageHint, storeId: defaultStoreId, createdAt: subDays(new Date(), 20).toISOString(),
+    type: "product", affectsInventory: true,
   },
   {
     id: "PRO-3456789012345", name: "Memoria RAM 32GB DDR5", sku: "RAM-DDR5-32G-03", barcode: "345678901234", stock: 50, price: 129.99, wholesalePrice: 120.00, cost: 100.00, status: "promotion", tax1: true, tax2: false, unit: "Paquete", family: "Memoria RAM", warehouse: "Almacén Principal",
     description: "Kit de 2x16GB de memoria RAM DDR5 a 6000MHz.",
     imageUrl: PlaceHolderImages.find(p => p.id === '3')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '3')?.imageHint, storeId: defaultStoreId, createdAt: subDays(new Date(), 5).toISOString(),
+    type: "product", affectsInventory: true,
   },
   {
     id: "PRO-4567890123456", name: "SSD NVMe 2TB", sku: "SSD-NVME-2TB-04", stock: 40, price: 149.99, wholesalePrice: 140.00, cost: 125.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Almacenamiento", warehouse: "Almacén Principal",
     description: "Unidad de estado sólido de 2TB con velocidades de lectura/escritura ultrarrápidas.",
     imageUrl: PlaceHolderImages.find(p => p.id === '4')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '4')?.imageHint, storeId: defaultStoreId, createdAt: subDays(new Date(), 15).toISOString(),
+    type: "product", affectsInventory: true,
   },
   {
     id: "PRO-5678901234567", name: "Impresora Multifuncional EcoTank", sku: "EPS-ET4800-05", stock: 30, price: 279.99, wholesalePrice: 265.00, cost: 240.00, status: "active", tax1: true, tax2: false, unit: "Unidad", family: "Impresoras y Accesorios", warehouse: "Almacén Principal",
     description: "Imprime miles de páginas con los tanques de tinta de súper alta capacidad.",
     imageUrl: PlaceHolderImages.find(p => p.id === '9')?.imageUrl, imageHint: PlaceHolderImages.find(p => p.id === '9')?.imageHint, storeId: defaultStoreId, createdAt: subDays(new Date(), 30).toISOString(),
+    type: "product", affectsInventory: true,
   },
   {
     id: "PRO-6789012345678",
@@ -206,6 +215,7 @@ export let mockProducts: Product[] = [
     imageHint: PlaceHolderImages.find(p => p.id === '5')?.imageHint,
     storeId: defaultStoreId,
     createdAt: subDays(new Date(), 25).toISOString(),
+    type: "product", affectsInventory: true,
   },
   {
     id: "PRO-7890123456789",
@@ -226,6 +236,7 @@ export let mockProducts: Product[] = [
     imageHint: PlaceHolderImages.find(p => p.id === '6')?.imageHint,
     storeId: defaultStoreId,
     createdAt: subDays(new Date(), 40).toISOString(),
+    type: "product", affectsInventory: true,
   },
   {
     id: "PRO-8901234567890",
@@ -246,6 +257,119 @@ export let mockProducts: Product[] = [
     imageHint: PlaceHolderImages.find(p => p.id === '10')?.imageHint,
     storeId: defaultStoreId,
     createdAt: subDays(new Date(), 50).toISOString(),
+    type: "product", affectsInventory: true,
+  },
+
+  // SERVICIOS - No afectan inventario
+  {
+    id: "SRV-1001234567890",
+    name: "Instalación de Sistema Operativo",
+    sku: "SRV-OS-INSTALL",
+    barcode: undefined,
+    stock: 0, // Los servicios no tienen stock
+    price: 25.00,
+    wholesalePrice: 20.00,
+    cost: 5.00, // Costo de tiempo/materiales
+    status: "active",
+    tax1: true,
+    tax2: false,
+    unit: "Servicio",
+    family: "Servicios Técnicos",
+    warehouse: undefined, // Los servicios no están en almacén
+    description: "Instalación completa de Windows 11 o Linux, incluyendo drivers básicos y actualizaciones.",
+    imageUrl: PlaceHolderImages.find(p => p.id === '10')?.imageUrl,
+    imageHint: PlaceHolderImages.find(p => p.id === '10')?.imageHint,
+    storeId: defaultStoreId,
+    createdAt: subDays(new Date(), 3).toISOString(),
+    type: "service", affectsInventory: false,
+  },
+  {
+    id: "FAB-1002345678901",
+    name: "Ensamblaje de PC Completo",
+    sku: "FAB-PC-BUILD",
+    barcode: undefined,
+    stock: 0,
+    price: 75.00,
+    wholesalePrice: 60.00,
+    cost: 15.00,
+    status: "active",
+    tax1: true,
+    tax2: false,
+    unit: "Servicio",
+    family: "Servicios Técnicos",
+    warehouse: undefined,
+    description: "Ensamblaje profesional de PC gaming o workstation, incluyendo cable management y pruebas.",
+    imageUrl: PlaceHolderImages.find(p => p.id === '11')?.imageUrl,
+    imageHint: PlaceHolderImages.find(p => p.id === '11')?.imageHint,
+    storeId: defaultStoreId,
+    createdAt: subDays(new Date(), 7).toISOString(),
+    type: "service", affectsInventory: false,
+  },
+  {
+    id: "SRV-1003456789012",
+    name: "Diagnóstico y Reparación",
+    sku: "SRV-REPAIR",
+    barcode: undefined,
+    stock: 0,
+    price: 35.00,
+    wholesalePrice: 30.00,
+    cost: 8.00,
+    status: "active",
+    tax1: true,
+    tax2: false,
+    unit: "Servicio",
+    family: "Servicios Técnicos",
+    warehouse: undefined,
+    description: "Diagnóstico completo de hardware y software, con reparación básica incluida.",
+    imageUrl: PlaceHolderImages.find(p => p.id === '12')?.imageUrl,
+    imageHint: PlaceHolderImages.find(p => p.id === '12')?.imageHint,
+    storeId: defaultStoreId,
+    createdAt: subDays(new Date(), 12).toISOString(),
+    type: "service", affectsInventory: false,
+  },
+  {
+    id: "SRV-1004567890123",
+    name: "Configuración de Red Doméstica",
+    sku: "SRV-NET-SETUP",
+    barcode: undefined,
+    stock: 0,
+    price: 45.00,
+    wholesalePrice: 35.00,
+    cost: 10.00,
+    status: "promotion",
+    tax1: true,
+    tax2: false,
+    unit: "Servicio",
+    family: "Servicios de Red",
+    warehouse: undefined,
+    description: "Configuración de router, WiFi, y red doméstica para hasta 10 dispositivos.",
+    imageUrl: PlaceHolderImages.find(p => p.id === '13')?.imageUrl,
+    imageHint: PlaceHolderImages.find(p => p.id === '13')?.imageHint,
+    storeId: defaultStoreId,
+    createdAt: subDays(new Date(), 18).toISOString(),
+    type: "service", affectsInventory: false,
+  },
+  {
+    id: "FAB-1005678901234",
+    name: "Fabricación de Cable de Red Personalizado",
+    sku: "FAB-CABLE-CUSTOM",
+    barcode: undefined,
+    stock: 0,
+    price: 15.00,
+    wholesalePrice: 12.00,
+    cost: 3.00,
+    status: "active",
+    tax1: true,
+    tax2: false,
+    unit: "Servicio",
+    family: "Servicios Técnicos",
+    warehouse: undefined,
+    description: "Fabricación de cables de red Cat6 a medida con conectores RJ45 y pruebas de conectividad.",
+    imageUrl: PlaceHolderImages.find(p => p.id === '14')?.imageUrl,
+    imageHint: PlaceHolderImages.find(p => p.id === '14')?.imageHint,
+    storeId: defaultStoreId,
+    createdAt: subDays(new Date(), 22).toISOString(),
+    type: "service", affectsInventory: false,
   },
 ];
 

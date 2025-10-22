@@ -36,6 +36,8 @@ import { useSecurity } from "@/contexts/security-context";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { usePendingOrders } from "@/hooks/usePendingOrders";
 import { useProducts } from "@/hooks/useProducts";
+import { RouteGuard } from "@/components/route-guard";
+import { usePermissions } from "@/hooks/use-permissions";
 
 
 const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
@@ -77,6 +79,7 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
 }
 
 export default function POSPage() {
+  const { hasPermission } = usePermissions();
   const { toast } = useToast();
   const { 
     settings, activeSymbol, activeRate, activeStoreId, userProfile, isLoadingSettings,
@@ -1570,6 +1573,15 @@ export default function POSPage() {
           <p className="text-xs text-muted-foreground">Store ID: {activeStoreId || 'No disponible'}</p>
         </div>
       </div>
+    );
+  }
+
+  // Verificar permisos de acceso al POS
+  if (!hasPermission('canViewPOS')) {
+    return (
+      <RouteGuard>
+        <div></div>
+      </RouteGuard>
     );
   }
 

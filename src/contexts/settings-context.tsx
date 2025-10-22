@@ -380,7 +380,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       setIsClient(true);
 
       // Solo localStorage para preferencias de usuario (tienda activa y moneda display)
-      const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY) || 'store_clifp94l0000008l3b1z9f8j7';
+      const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY) || 'ST-1234567890123';
       setActiveStoreId(storedStoreId);
 
       const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY);

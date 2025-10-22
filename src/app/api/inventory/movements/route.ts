@@ -169,11 +169,13 @@ export async function PUT(request: Request) {
       warehouseId
     );
 
-    // Actualizar stock del producto
-    await Product.findOneAndUpdate(
-      { id: productId, storeId },
-      { $set: { stock: newStockValue } }
-    );
+    // Actualizar stock del producto (solo si no es servicio)
+    if (product.type === 'product' && product.affectsInventory !== false) {
+      await Product.findOneAndUpdate(
+        { id: productId, storeId },
+        { $set: { stock: newStockValue } }
+      );
+    }
 
     return NextResponse.json({
       success: true,

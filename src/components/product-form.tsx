@@ -46,6 +46,9 @@ const productSchema = z.object({
   description: z.string().optional(),
   imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
   imageHint: z.string().optional(),
+  // Tipo: Producto Simple o Servicio/Fabricación
+  type: z.enum(["product", "service"]),
+  affectsInventory: z.boolean(),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -73,6 +76,9 @@ const getInitialValues = (product?: Product): ProductFormValues => {
         unit: '',
         family: '',
         warehouse: '',
+        // Valores por defecto para nuevos campos
+        type: "product",
+        affectsInventory: true,
     };
 };
 
@@ -338,28 +344,30 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="warehouse"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Almacén</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecciona un almacén" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {(warehouses || []).map(wh => (
-                              <SelectItem key={wh.id} value={wh.name}>{wh.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {form.watch('type') === 'product' && (
+                      <FormField
+                        control={form.control}
+                        name="warehouse"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Almacén</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Selecciona un almacén" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {(warehouses || []).map(wh => (
+                                  <SelectItem key={wh.id} value={wh.name}>{wh.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                  )}
               </div>
 
               <div className="space-y-4">
@@ -479,19 +487,75 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                 <CardTitle>Inventario y Estado</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                    control={form.control}
-                    name="stock"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>{product ? 'Stock Actual' : 'Stock Inicial'}</FormLabel>
-                        <FormControl>
-                            <Input type="number" {...field} readOnly={!!product} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Switch de Tipo */}
+                    <FormField
+                        control={form.control}
+                        name="type"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-col justify-center">
+                                <div className="flex items-center justify-between">
+                                    <FormLabel className="text-base">
+                                        {field.value === 'service' ? '🔧 Servicio o Fabricación' : '🛍️ Producto Simple'}
+                                    </FormLabel>
+                                    <FormControl>
+                                        <Switch
+                                            checked={field.value === 'service'}
+                                            onCheckedChange={(checked) => {
+                                                const newType = checked ? 'service' : 'product';
+                                                field.onChange(newType);
+                                                // Cuando cambia a servicio, automáticamente no afecta inventario
+                                                if (newType === 'service') {
+                                                    form.setValue('affectsInventory', false);
+                                                    form.setValue('stock', 0);
+                                                } else {
+                                                    form.setValue('affectsInventory', true);
+                                                }
+                                            }}
+                                        />
+                                    </FormControl>
+                                </div>
+                                <FormDescription className="text-xs">
+                                    {field.value === 'service' 
+                                        ? 'Servicios y fabricación no afectan el inventario' 
+                                        : 'Los productos simples afectan el inventario'
+                                    }
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    {/* Campo de Stock (solo para productos) */}
+                    {form.watch('type') === 'product' && (
+                        <FormField
+                            control={form.control}
+                            name="stock"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>{product ? 'Stock Actual' : 'Stock Inicial'}</FormLabel>
+                                <FormControl>
+                                    <Input type="number" {...field} readOnly={!!product} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                     )}
-                />
+                    
+                    {/* Indicador para servicios */}
+                    {form.watch('type') === 'service' && (
+                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                            <div className="flex items-center gap-2 text-blue-700">
+                                <Package className="w-4 h-4" />
+                                <span className="text-sm font-medium">Servicio o Fabricación - Sin inventario físico</span>
+                            </div>
+                            <p className="text-xs text-blue-600 mt-1">
+                                Los servicios y fabricación no requieren control de stock
+                            </p>
+                        </div>
+                    )}
+                </div>
                 <FormField
                     control={form.control}
                     name="status"
@@ -514,6 +578,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                         </FormItem>
                     )}
                 />
+
             </CardContent>
           </Card>
           

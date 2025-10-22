@@ -45,9 +45,14 @@ export async function GET(request: Request) {
       { $limit: 5 }
     ]);
 
-    // Estadísticas de inventario
+    // Estadísticas de inventario (solo productos físicos, no servicios)
     const inventoryStats = await Product.aggregate([
-      { $match: { storeId } },
+      { 
+        $match: { 
+          storeId,
+          type: 'product' // Solo productos físicos
+        } 
+      },
       {
         $group: {
           _id: null,

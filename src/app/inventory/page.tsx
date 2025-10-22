@@ -16,6 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { RouteGuard } from "@/components/route-guard";
+import { usePermissions } from "@/hooks/use-permissions";
 import type { Product, InventoryMovement, Sale } from "@/lib/types";
 import {
   Command,
@@ -84,7 +86,14 @@ const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewM
           )}
         </div>
       </TableCell>
-      <TableCell className="font-medium">{product.name}</TableCell>
+      <TableCell className="font-medium">
+        <div className="flex items-center gap-2">
+          <span>{product.name}</span>
+          <Badge variant={product.type === 'service' ? 'secondary' : 'outline'} className="text-xs">
+            {product.type === 'service' ? '🔧 Servicio' : '🛍️ Producto'}
+          </Badge>
+        </div>
+      </TableCell>
       <TableCell>
         <Badge variant={getStatusVariant(product.status)}>
           {getStatusLabel(product.status)}
@@ -97,7 +106,11 @@ const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewM
         {activeSymbol}{(product.wholesalePrice * activeRate).toFixed(2)}
       </TableCell>
       <TableCell className="hidden md:table-cell">
-        {product.stock}
+        {product.type === 'service' ? (
+          <span className="text-muted-foreground">N/A</span>
+        ) : (
+          product.stock
+        )}
       </TableCell>
       <TableCell>
         <DropdownMenu>
@@ -123,6 +136,7 @@ const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewM
 }
 
 export default function InventoryPage() {
+  const { hasPermission } = usePermissions();
   const { toast } = useToast();
   const { activeSymbol, activeRate, activeStoreId, products, setProducts, sales, reloadProducts } = useSettings();
   const { user } = useAuth();
@@ -582,6 +596,15 @@ export default function InventoryPage() {
       </CardFooter>
     </Card>
   );
+
+  // Verificar permisos de acceso al inventario
+  if (!hasPermission('canViewInventory')) {
+    return (
+      <RouteGuard>
+        <div></div>
+      </RouteGuard>
+    );
+  }
 
   return (
     <>

@@ -142,7 +142,7 @@ export default function LoginModal({ children }: { children: React.ReactNode }) 
           <div className="text-center mt-6 pt-4 border-t border-border/50">
             <p className="text-sm text-muted-foreground">
               ¿No tienes cuenta?{' '}
-              <RegisterModal storeId="store_clifp94l0000008l3b1z9f8j7">
+              <RegisterModal storeId="ST-1234567890123">
                 <button type="button" className="text-primary hover:text-accent font-medium transition-colors duration-200 hover:underline">
                   Regístrate aquí
                 </button>

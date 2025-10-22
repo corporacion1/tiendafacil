@@ -134,7 +134,7 @@ export default function Dashboard() {
 
   const totalRevenue = useMemo(() => filteredSales.reduce((acc, s) => acc + s.total, 0), [filteredSales])
   const totalPurchasesValue = useMemo(() => filteredPurchases.reduce((acc, p) => acc + p.total, 0), [filteredPurchases])
-  const activeProducts = useMemo(() => (products || []).filter(p => p.status === 'active' || p.status === 'promotion').length, [products])
+  const activeProducts = useMemo(() => (products || []).filter(p => (p.status === 'active' || p.status === 'promotion') && p.type === 'product').length, [products])
   
   return (
     <div className="flex min-h-screen w-full flex-col">

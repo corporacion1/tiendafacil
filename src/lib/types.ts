@@ -72,6 +72,9 @@ export type Product = {
   imageHint?: string;
   createdAt: string;
   storeId: string;
+  // Tipo: Producto Simple o Servicio/Fabricación
+  type: 'product' | 'service';
+  affectsInventory: boolean;
 };
 
 export type CartItem = {

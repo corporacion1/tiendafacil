@@ -176,7 +176,7 @@ export default function CatalogPage() {
   // CORREGIDO: Usar un nombre diferente para searchParams
   const urlSearchParams = useSearchParams();
   const urlStoreId = urlSearchParams.get('storeId');
-  const DEMO_STORE_ID = 'store_clifp94l0000008l3b1z9f8j7';
+  const DEMO_STORE_ID = 'ST-1234567890123';
 
   useEffect(() => {
     // Para evitar bucles infinitos, ejecuta solo si cambia el valor realmente
@@ -588,7 +588,8 @@ export default function CatalogPage() {
       .filter(
         (product) =>
           (product.status === 'active' || product.status === 'promotion') &&
-          product.stock > 0 &&
+          // Los servicios siempre están disponibles, los productos necesitan stock
+          (product.type === 'service' || product.stock > 0) &&
           (selectedFamily === 'all' || product.family === selectedFamily) &&
           (product.name.toLowerCase().includes(trimmedSearchTerm) ||
             (product.sku && product.sku.toLowerCase().includes(trimmedSearchTerm)))

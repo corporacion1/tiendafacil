@@ -83,7 +83,10 @@ export const useProducts = (storeId?: string): UseProductsReturn => {
         imageUrl: product.imageUrl,
         imageHint: product.imageHint,
         createdAt: product.createdAt,
-        storeId: product.storeId
+        storeId: product.storeId,
+        // Nuevos campos con valores por defecto para compatibilidad
+        type: product.type || 'product',
+        affectsInventory: product.affectsInventory !== undefined ? product.affectsInventory : true
       })) : [];
 
       // Solo actualizar si hay cambios reales
