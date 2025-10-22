@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Package, ShoppingBag, Plus, Minus, Trash2, Send, LayoutGrid, Instagram, Star, Search, UserCircle, LogOut, MoreHorizontal, Copy, AlertCircle, QrCode, Pencil, ArrowRight, Check, User, Phone, Mail, Eye, ScanLine, X } from "lucide-react";
+import { Package, ShoppingBag, Plus, Minus, Trash2, Send, LayoutGrid, Instagram, Star, Search, UserCircle, LogOut, MoreHorizontal, Copy, AlertCircle, QrCode, Pencil, ArrowRight, Check, User, Phone, Mail, Eye, ScanLine, X, Store as StoreIcon } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
@@ -117,25 +117,28 @@ const CatalogProductCard = ({ product, onAddToCart, onImageClick }: { product: P
             <Package className="w-16 h-16 text-blue-400" />
           </div>
         )}
-        {product.status === 'promotion' && (
-          <Badge className="absolute top-3 left-3 z-20 shadow-lg bg-gradient-to-r from-orange-500 to-red-500 border-0 text-white">
-            <Star className="mr-1 h-3 w-3" />
-            OFERTA
-          </Badge>
-        )}
-        <div className="absolute bottom-0 left-0 right-0 p-4 z-20">
-          <div className="space-y-2">
-            <div className="flex justify-between items-start">
-              <div className="flex-1 min-w-0">
-                <h3 className="text-base font-bold text-white drop-shadow-lg truncate">{product.name}</h3>
-                <p className="text-xs text-white/80 drop-shadow-md">{product.family}</p>
-              </div>
-              <div className="ml-2 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-lg border border-blue-100">
-                <p className="text-sm font-black text-blue-600">
-                  {activeSymbol}{(product.price * activeRate).toFixed(2)}
-                </p>
-              </div>
-            </div>
+        {/* Nombre del producto - Superior izquierda */}
+        <div className="absolute top-3 left-3 z-20 max-w-[70%]">
+          <div className="bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-lg">
+            <h3 className="text-sm font-bold text-white drop-shadow-lg truncate">{product.name}</h3>
+            {product.family && (
+              <p className="text-xs text-white/80 drop-shadow-md truncate">{product.family}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Precio del producto - Inferior derecha */}
+        <div className="absolute bottom-3 right-3 z-20 flex flex-col items-end gap-1">
+          {product.status === 'promotion' && (
+            <Badge className="shadow-lg bg-gradient-to-r from-orange-500 to-red-500 border-0 text-white text-xs">
+              <Star className="mr-1 h-3 w-3" />
+              OFERTA
+            </Badge>
+          )}
+          <div className="bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-lg border border-blue-100">
+            <p className="text-sm font-black text-blue-600">
+              {activeSymbol}{(product.price * activeRate).toFixed(2)}
+            </p>
           </div>
         </div>
       </CardContent>
@@ -1231,6 +1234,14 @@ export default function CatalogPage() {
                         <Link href="/dashboard">
                           <LayoutGrid className="mr-2 h-4 w-4" />
                           Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    {userRole === 'su' && (
+                      <DropdownMenuItem asChild>
+                        <Link href="/stores-admin">
+                          <StoreIcon className="mr-2 h-4 w-4" />
+                          Administrar Tiendas
                         </Link>
                       </DropdownMenuItem>
                     )}

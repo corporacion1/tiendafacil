@@ -21,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { businessCategories } from "@/lib/data";
 import Image from "next/image";
 import { getDisplayImageUrl } from "@/lib/utils";
+import { ImageUpload } from "@/components/image-upload";
 
 function ChangePinDialog() {
     const { changePin } = useSecurity();
@@ -971,22 +972,18 @@ useEffect(() => {
                         </div>
                         <div className="md:col-span-1 space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="logoUrl">URL del Logo</Label>
-                                <Input id="logoUrl" value={settings?.logoUrl || ''} onChange={handleSettingsChange} placeholder="https://ejemplo.com/logo.png" />
-                            </div>
-                            <div className="aspect-square relative bg-muted rounded-md flex items-center justify-center mt-2 overflow-hidden">
-                                {displayUrl && !imageError ? (
-                                    <Image
-                                        src={displayUrl}
-                                        alt="Vista previa del logo"
-                                        fill
-                                        sizes="300px"
-                                        className="object-contain"
-                                        onError={() => setImageError(true)}
-                                    />
-                                ) : (
-                                    <Package className="h-16 w-16 text-muted-foreground" />
-                                )}
+                                <Label htmlFor="logoUrl">Logo de la Tienda</Label>
+                                <ImageUpload
+                                    currentImage={settings?.logoUrl || ''}
+                                    onImageUploaded={(url) => {
+                                        handleSettingsChange({
+                                            target: { id: 'logoUrl', value: url }
+                                        } as React.ChangeEvent<HTMLInputElement>);
+                                    }}
+                                />
+                                <p className="text-sm text-muted-foreground">
+                                    Sube el logo de tu tienda. Se mostrará en el catálogo y reportes.
+                                </p>
                             </div>
                         </div>
                     </div>

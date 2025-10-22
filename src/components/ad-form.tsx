@@ -22,6 +22,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { getDisplayImageUrl } from "@/lib/utils";
 import { DatePicker } from "./ui/date-picker";
 import { MultiSelect } from "./ui/multi-select";
+import { ImageUpload } from "@/components/image-upload";
 
 
 const adSchema = z.object({
@@ -215,24 +216,18 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
                     name="imageUrl"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>URL de la Imagen</FormLabel>
+                        <FormLabel>Imagen del Anuncio</FormLabel>
                         <FormControl>
-                          <Input placeholder="https://..." {...field} onBlur={handleImageUrlBlur} />
+                          <ImageUpload
+                            currentImage={field.value}
+                            onImageUploaded={(url) => {
+                              field.onChange(url);
+                            }}
+                          />
                         </FormControl>
-                        <div className="aspect-square relative bg-muted rounded-md flex items-center justify-center mt-2 overflow-hidden">
-                          {displayUrl && !imageError ? (
-                            <Image 
-                              src={displayUrl} 
-                              alt="Vista previa del anuncio" 
-                              fill 
-                              sizes="300px" 
-                              className="object-cover"
-                              onError={() => setImageError(true)}
-                            />
-                          ) : (
-                            <Package className="h-16 w-16 text-muted-foreground" />
-                          )}
-                        </div>
+                        <FormDescription>
+                          Sube una imagen para tu anuncio publicitario. Se optimizará automáticamente.
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
