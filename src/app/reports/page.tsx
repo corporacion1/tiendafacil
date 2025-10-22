@@ -47,6 +47,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/settings-context";
 import { SessionReportPreview } from "@/components/session-report-preview";
+import { Pagination } from "@/components/ui/pagination";
 
 type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
 
@@ -106,6 +107,10 @@ export default function ReportsPage() {
     const [activeTab, setActiveTab] = useState("sales");
     const [timeRange, setTimeRange] = useState<TimeRange>(null);
     const { toast } = useToast();
+
+    // Estados para paginación
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(20);
 
     const dateFilterQuery = useMemo(() => {
         if (!timeRange) return null;
@@ -330,6 +335,68 @@ export default function ReportsPage() {
         ) as CashSession[];
     }, [sortedCashSessions, searchTerm, dateFilterQuery]);
 
+    // Paginación para cada pestaña
+    const paginatedSales = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return filteredSales.slice(startIndex, startIndex + itemsPerPage);
+    }, [filteredSales, currentPage, itemsPerPage]);
+
+    const paginatedPurchases = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return filteredPurchases.slice(startIndex, startIndex + itemsPerPage);
+    }, [filteredPurchases, currentPage, itemsPerPage]);
+
+    const paginatedMovements = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return filteredMovements.slice(startIndex, startIndex + itemsPerPage);
+    }, [filteredMovements, currentPage, itemsPerPage]);
+
+    const paginatedProducts = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return filteredProducts.slice(startIndex, startIndex + itemsPerPage);
+    }, [filteredProducts, currentPage, itemsPerPage]);
+
+    const paginatedPayments = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return filteredPayments.slice(startIndex, startIndex + itemsPerPage);
+    }, [filteredPayments, currentPage, itemsPerPage]);
+
+    const paginatedCashSessions = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return filteredCashSessions.slice(startIndex, startIndex + itemsPerPage);
+    }, [filteredCashSessions, currentPage, itemsPerPage]);
+
+    // Función para obtener el total de páginas según la pestaña activa
+    const getTotalPages = () => {
+        let totalItems = 0;
+        switch (activeTab) {
+            case 'sales': totalItems = filteredSales.length; break;
+            case 'purchases': totalItems = filteredPurchases.length; break;
+            case 'movements': totalItems = filteredMovements.length; break;
+            case 'inventory': totalItems = filteredProducts.length; break;
+            case 'payments': totalItems = filteredPayments.length; break;
+            case 'sessions': totalItems = filteredCashSessions.length; break;
+        }
+        return Math.ceil(totalItems / itemsPerPage);
+    };
+
+    const getTotalItems = () => {
+        switch (activeTab) {
+            case 'sales': return filteredSales.length;
+            case 'purchases': return filteredPurchases.length;
+            case 'movements': return filteredMovements.length;
+            case 'inventory': return filteredProducts.length;
+            case 'payments': return filteredPayments.length;
+            case 'sessions': return filteredCashSessions.length;
+            default: return 0;
+        }
+    };
+
+    // Reset página cuando cambian los filtros o pestaña
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, activeTab, timeRange]);
+
 
     const salesTotal = useMemo(() => {
         return filteredSales.reduce((acc, sale) => acc + sale.total, 0);
@@ -458,7 +525,7 @@ export default function ReportsPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredSales.map((sale) => (
+                                    {paginatedSales.map((sale) => (
                                         <TableRow key={sale.id}>
                                             <TableCell>
                                                 {isClient && sale.date && isValid(getDate(sale.date)) 
@@ -495,6 +562,16 @@ export default function ReportsPage() {
                                 </TableFooter>
                             </Table>}
                         </CardContent>
+                        <div className="px-6 pb-6">
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={getTotalPages()}
+                                totalItems={getTotalItems()}
+                                itemsPerPage={itemsPerPage}
+                                onPageChange={setCurrentPage}
+                                onItemsPerPageChange={setItemsPerPage}
+                            />
+                        </div>
                     </Card>
                 </TabsContent>
 
@@ -516,7 +593,7 @@ export default function ReportsPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredPurchases.map((purchase) => (
+                                    {paginatedPurchases.map((purchase) => (
                                         <TableRow key={purchase.id}>
                                             <TableCell>
                                                 {isClient && purchase.date && isValid(getDate(purchase.date)) 
@@ -537,6 +614,16 @@ export default function ReportsPage() {
                                 </TableFooter>
                             </Table>}
                         </CardContent>
+                        <div className="px-6 pb-6">
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={getTotalPages()}
+                                totalItems={getTotalItems()}
+                                itemsPerPage={itemsPerPage}
+                                onPageChange={setCurrentPage}
+                                onItemsPerPageChange={setItemsPerPage}
+                            />
+                        </div>
                     </Card>
                 </TabsContent>
 
@@ -560,7 +647,7 @@ export default function ReportsPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredPayments.map((payment, index) => (
+                                    {paginatedPayments.map((payment, index) => (
                                         <TableRow key={payment.id || `payment-${index}`}>
                                             <TableCell>
                                                 {isClient && payment.date && isValid(getDate(payment.date)) 
@@ -583,6 +670,16 @@ export default function ReportsPage() {
                                 </TableFooter>
                             </Table>}
                         </CardContent>
+                        <div className="px-6 pb-6">
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={getTotalPages()}
+                                totalItems={getTotalItems()}
+                                itemsPerPage={itemsPerPage}
+                                onPageChange={setCurrentPage}
+                                onItemsPerPageChange={setItemsPerPage}
+                            />
+                        </div>
                     </Card>
                 </TabsContent>
 
@@ -608,7 +705,7 @@ export default function ReportsPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {filteredCashSessions.map((session) => (
+                                        {paginatedCashSessions.map((session) => (
                                             <TableRow key={session.id}>
                                                 <TableCell className="font-medium">{session.id}</TableCell>
                                                 <TableCell>
@@ -657,6 +754,16 @@ export default function ReportsPage() {
                                 </Table>
                             )}
                         </CardContent>
+                        <div className="px-6 pb-6">
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={getTotalPages()}
+                                totalItems={getTotalItems()}
+                                itemsPerPage={itemsPerPage}
+                                onPageChange={setCurrentPage}
+                                onItemsPerPageChange={setItemsPerPage}
+                            />
+                        </div>
                     </Card>
                 </TabsContent>
 
@@ -678,7 +785,7 @@ export default function ReportsPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredMovements.map((movement) => (
+                                    {paginatedMovements.map((movement) => (
                                         <TableRow key={movement.id}>
                                             <TableCell>{movement.productName}</TableCell>
                                             <TableCell>
@@ -697,6 +804,16 @@ export default function ReportsPage() {
                                 </TableBody>
                             </Table>}
                         </CardContent>
+                        <div className="px-6 pb-6">
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={getTotalPages()}
+                                totalItems={getTotalItems()}
+                                itemsPerPage={itemsPerPage}
+                                onPageChange={setCurrentPage}
+                                onItemsPerPageChange={setItemsPerPage}
+                            />
+                        </div>
                     </Card>
                 </TabsContent>
 
@@ -720,7 +837,7 @@ export default function ReportsPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredProducts && filteredProducts.map((product) => (
+                                    {paginatedProducts && paginatedProducts.map((product) => (
                                         <TableRow key={product.id}>
                                             <TableCell className="font-mono">{product.sku}</TableCell>
                                             <TableCell>{product.name}</TableCell>
@@ -741,6 +858,16 @@ export default function ReportsPage() {
                                 </TableFooter>
                             </Table>}
                         </CardContent>
+                        <div className="px-6 pb-6">
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={getTotalPages()}
+                                totalItems={getTotalItems()}
+                                itemsPerPage={itemsPerPage}
+                                onPageChange={setCurrentPage}
+                                onItemsPerPageChange={setItemsPerPage}
+                            />
+                        </div>
                     </Card>
                 </TabsContent>
             </Tabs>

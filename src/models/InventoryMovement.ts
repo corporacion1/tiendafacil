@@ -64,8 +64,7 @@ const InventoryMovementSchema = new Schema({
     index: true 
   },
   batchId: { 
-    type: String,
-    index: true 
+    type: String
   },
   previousStock: { 
     type: Number, 

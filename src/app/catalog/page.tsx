@@ -29,6 +29,7 @@ import { useSettings } from "@/contexts/settings-context";
 import { useAuth } from "@/contexts/AuthContext";
 import { AddOrderGuard } from "@/components/permission-guard";
 import { IDGenerator } from "@/lib/id-generator";
+import { usePermissions } from "@/hooks/use-permissions";
 import { StoreRequestButton } from "@/components/store-request-button";
 import { useUserOrders } from "@/hooks/useUserOrders";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
@@ -172,6 +173,7 @@ export default function CatalogPage() {
   } = useSettings();
 
   const { user: authUser, logout } = useAuth();
+  const { userRole } = usePermissions();
 
   // CORREGIDO: Usar un nombre diferente para searchParams
   const urlSearchParams = useSearchParams();
@@ -1208,12 +1210,30 @@ export default function CatalogPage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard">
-                        <LayoutGrid className="mr-2 h-4 w-4" />
-                        Dashboard
-                      </Link>
-                    </DropdownMenuItem>
+                    {userRole === 'seller' && (
+                      <DropdownMenuItem asChild>
+                        <Link href="/pos">
+                          <ShoppingBag className="mr-2 h-4 w-4" />
+                          Punto de Venta
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    {userRole === 'depositary' && (
+                      <DropdownMenuItem asChild>
+                        <Link href="/inventory">
+                          <Package className="mr-2 h-4 w-4" />
+                          Inventario
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+                    {userRole === 'admin' && (
+                      <DropdownMenuItem asChild>
+                        <Link href="/dashboard">
+                          <LayoutGrid className="mr-2 h-4 w-4" />
+                          Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={logout}>
                       <LogOut className="mr-2 h-4 w-4" />

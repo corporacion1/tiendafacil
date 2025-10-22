@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
-import { File, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X, Package, Check, ImageOff, FileText, FileSpreadsheet, FileJson } from "lucide-react";
+import { File, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X, Package, Check, ImageOff, FileText, FileSpreadsheet, FileJson, Filter } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +37,7 @@ import { ProductForm } from "@/components/product-form";
 import { useSettings } from "@/contexts/settings-context";
 import { useAuth } from "@/contexts/AuthContext";
 import { format, parseISO } from "date-fns";
+import { Pagination } from "@/components/ui/pagination";
 
 const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewMovements, setProductToDelete }: {
   product: Product;
@@ -149,6 +150,11 @@ export default function InventoryPage() {
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [productTypeFilter, setProductTypeFilter] = useState<'all' | 'product' | 'service'>('all');
+  
+  // Estados para paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
 
   const [isProductComboboxOpen, setIsProductComboboxOpen] = useState(false)
 
@@ -467,11 +473,18 @@ export default function InventoryPage() {
   };
 
   const filteredProducts = useMemo(() => {
-    return products.filter(product =>
+    let filtered = products.filter(product =>
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase()))
     );
-  }, [products, searchTerm]);
+
+    // Filtrar por tipo de producto
+    if (productTypeFilter !== 'all') {
+      filtered = filtered.filter(product => product.type === productTypeFilter);
+    }
+
+    return filtered;
+  }, [products, searchTerm, productTypeFilter]);
 
   const getVisibleProducts = () => {
     let baseFilter = filteredProducts;
@@ -480,6 +493,21 @@ export default function InventoryPage() {
     if (activeTab === 'promotion') baseFilter = baseFilter.filter(p => p.status === 'promotion');
     return baseFilter;
   }
+
+  // Paginación
+  const paginatedProducts = useMemo(() => {
+    const visibleProducts = getVisibleProducts();
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return visibleProducts.slice(startIndex, endIndex);
+  }, [filteredProducts, activeTab, currentPage, itemsPerPage, productTypeFilter]);
+
+  const totalPages = Math.ceil(getVisibleProducts().length / itemsPerPage);
+
+  // Reset página cuando cambian los filtros
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, activeTab, productTypeFilter]);
 
   const exportData = (format: 'csv' | 'json' | 'txt') => {
     const data = getVisibleProducts();
@@ -540,20 +568,40 @@ export default function InventoryPage() {
   const renderProductsTable = (productsToRender: Product[]) => (
     <Card>
       <CardHeader>
-        <div className="flex justify-between items-center">
-          <div>
-            <CardTitle>Inventario de Productos</CardTitle>
-            <CardDescription>Administra y consulta tu inventario.</CardDescription>
+        <div className="flex flex-col gap-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle>Inventario de Productos</CardTitle>
+              <CardDescription>Administra y consulta tu inventario.</CardDescription>
+            </div>
           </div>
-          <div className="relative w-full max-w-sm">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Buscar por nombre o SKU..."
-              className="pl-8 sm:w-full"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          
+          {/* Filtros */}
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Buscar por nombre o SKU..."
+                className="pl-8"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Select value={productTypeFilter} onValueChange={(value: 'all' | 'product' | 'service') => setProductTypeFilter(value)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Tipo de producto" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los tipos</SelectItem>
+                  <SelectItem value="product">🛍️ Solo Productos</SelectItem>
+                  <SelectItem value="service">🔧 Solo Servicios</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -590,9 +638,14 @@ export default function InventoryPage() {
         </Table>
       </CardContent>
       <CardFooter>
-        <div className="text-xs text-muted-foreground">
-          Mostrando <strong>1-{productsToRender.length}</strong> de <strong>{products.length}</strong> productos
-        </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={getVisibleProducts().length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={setItemsPerPage}
+        />
       </CardFooter>
     </Card>
   );
@@ -741,16 +794,16 @@ export default function InventoryPage() {
           </div>
         </div>
         <TabsContent value="all">
-          {renderProductsTable(getVisibleProducts())}
+          {renderProductsTable(paginatedProducts)}
         </TabsContent>
         <TabsContent value="active">
-          {renderProductsTable(getVisibleProducts())}
+          {renderProductsTable(paginatedProducts)}
         </TabsContent>
         <TabsContent value="inactive">
-          {renderProductsTable(getVisibleProducts())}
+          {renderProductsTable(paginatedProducts)}
         </TabsContent>
         <TabsContent value="promotion">
-          {renderProductsTable(getVisibleProducts())}
+          {renderProductsTable(paginatedProducts)}
         </TabsContent>
       </Tabs>
 
