@@ -142,11 +142,6 @@ const CatalogProductCard = ({
           <div className="bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-lg border border-blue-100">
             <p className="text-sm font-black text-blue-600">
               {activeSymbol}{(product.price * activeRate).toFixed(2)}
-              {displayCurrency === 'secondary' && isCurrencyRateRecent && (
-                <span className="inline-flex items-center justify-center w-3 h-3 bg-blue-500 text-white text-xs rounded-full font-bold ml-1" title="Precio en moneda secundaria">
-                  2
-                </span>
-              )}
             </p>
           </div>
         </div>
@@ -267,10 +262,10 @@ export default function CatalogPage() {
 
   // Función para verificar si la tasa de cambio es reciente (menos de 8 horas)
   const isCurrencyRateRecent = useMemo(() => {
-    if (!currencyRates || currencyRates.length === 0) return false;
+    if (!currencyRates || !Array.isArray(currencyRates) || currencyRates.length === 0) return false;
     
     // Obtener la tasa más reciente
-    const latestRate = currencyRates.sort((a, b) => 
+    const latestRate = [...currencyRates].sort((a, b) => 
       new Date((b as any).createdAt || b.date).getTime() - new Date((a as any).createdAt || a.date).getTime()
     )[0];
     
@@ -283,15 +278,10 @@ export default function CatalogPage() {
     return hoursDifference <= 8;
   }, [currencyRates]);
 
-  // Componente para mostrar precio con indicador de moneda
-  const PriceDisplay = ({ price, className = "", showIndicator = true }: { price: number; className?: string; showIndicator?: boolean }) => (
-    <span className={`inline-flex items-center gap-1 ${className}`}>
-      <span>{activeSymbol}{(price * activeRate).toFixed(2)}</span>
-      {showIndicator && displayCurrency === 'secondary' && isCurrencyRateRecent && (
-        <span className="inline-flex items-center justify-center w-4 h-4 bg-blue-500 text-white text-xs rounded-full font-bold" title="Precio en moneda secundaria">
-          2
-        </span>
-      )}
+  // Componente para mostrar precio
+  const PriceDisplay = ({ price, className = "" }: { price: number; className?: string }) => (
+    <span className={className}>
+      {activeSymbol}{(price * activeRate).toFixed(2)}
     </span>
   );
 
@@ -1460,13 +1450,8 @@ export default function CatalogPage() {
                               )}
                               <div className="flex items-center justify-between">
                                 <div className="bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg">
-                                  <p className="text-lg font-bold text-green-600 flex items-center gap-1">
-                                    <span>{activeSymbol}{(ad.price * activeRate).toFixed(2)}</span>
-                                    {displayCurrency === 'secondary' && isCurrencyRateRecent && (
-                                      <span className="inline-flex items-center justify-center w-4 h-4 bg-blue-500 text-white text-xs rounded-full font-bold" title="Precio en moneda secundaria">
-                                        2
-                                      </span>
-                                    )}
+                                  <p className="text-lg font-bold text-green-600">
+                                    {activeSymbol}{(ad.price * activeRate).toFixed(2)}
                                   </p>
                                 </div>
                                 <div className="flex items-center gap-2 text-white/80 text-sm">
@@ -1756,13 +1741,8 @@ export default function CatalogPage() {
                     <div className="space-y-3">
                       <div className="flex justify-between items-center p-4 bg-primary/5 rounded-xl border border-primary/10">
                         <span className="text-base font-medium">Precio Oferta</span>
-                        <span className="font-bold text-2xl text-primary flex items-center gap-2">
-                          <span>{activeSymbol}{(productDetails.price * activeRate).toFixed(2)}</span>
-                          {displayCurrency === 'secondary' && isCurrencyRateRecent && (
-                            <span className="inline-flex items-center justify-center w-5 h-5 bg-blue-500 text-white text-xs rounded-full font-bold" title="Precio en moneda secundaria">
-                              2
-                            </span>
-                          )}
+                        <span className="font-bold text-2xl text-primary">
+                          {activeSymbol}{(productDetails.price * activeRate).toFixed(2)}
                         </span>
                       </div>
                     </div>
@@ -1844,13 +1824,8 @@ export default function CatalogPage() {
                 <div className="bg-primary/5 p-3 rounded-xl text-center">
                   <p className="text-sm text-muted-foreground">Total</p>
                   <p className="text-lg font-bold text-primary">
-                    <span className="flex items-center gap-1">
-                      <span>{activeSymbol}{(productToAdd.price * addQuantity * activeRate).toFixed(2)}</span>
-                      {displayCurrency === 'secondary' && isCurrencyRateRecent && (
-                        <span className="inline-flex items-center justify-center w-4 h-4 bg-blue-500 text-white text-xs rounded-full font-bold" title="Precio en moneda secundaria">
-                          2
-                        </span>
-                      )}
+                    <span>
+                      {activeSymbol}{(productToAdd.price * addQuantity * activeRate).toFixed(2)}
                     </span>
                   </p>
                 </div>
@@ -2019,13 +1994,8 @@ export default function CatalogPage() {
                 <div className="flex justify-between items-center">
                   <div>
                     <p className="text-2xl font-bold text-primary">
-                      <span className="flex items-center gap-2">
-                        <span>{activeSymbol}{(selectedAd.price * activeRate).toFixed(2)}</span>
-                        {displayCurrency === 'secondary' && isCurrencyRateRecent && (
-                          <span className="inline-flex items-center justify-center w-4 h-4 bg-blue-500 text-white text-xs rounded-full font-bold" title="Precio en moneda secundaria">
-                            2
-                          </span>
-                        )}
+                      <span>
+                        {activeSymbol}{(selectedAd.price * activeRate).toFixed(2)}
                       </span>
                     </p>
                     <p className="text-sm text-muted-foreground">

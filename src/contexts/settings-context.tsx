@@ -153,21 +153,30 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         };
 
         try {
+          console.log('📤 Enviando datos para crear tienda:', JSON.stringify(defaultStoreData, null, 2));
+          
           const createResponse = await fetch('/api/stores', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(defaultStoreData)
           });
 
+          console.log('📥 Respuesta del servidor:', createResponse.status, createResponse.statusText);
+
           if (createResponse.ok) {
             storeSettings = await createResponse.json();
             console.log(`✅ Tienda creada exitosamente: ${storeSettings.name}`);
           } else {
-            console.error('❌ Error creando tienda por defecto');
+            const errorText = await createResponse.text();
+            console.error('❌ Error creando tienda por defecto:', {
+              status: createResponse.status,
+              statusText: createResponse.statusText,
+              error: errorText
+            });
             storeSettings = defaultStoreData; // Usar datos locales como fallback
           }
         } catch (error) {
-          console.error('❌ Error creando tienda:', error);
+          console.error('❌ Error de red/fetch creando tienda:', error);
           storeSettings = defaultStoreData; // Usar datos locales como fallback
         }
       }

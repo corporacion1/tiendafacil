@@ -42,20 +42,32 @@ export async function POST(request: NextRequest) {
     await connectToDatabase();
     const data = await request.json();
     
+    console.log('📥 [Stores API] Datos recibidos para crear tienda:', JSON.stringify(data, null, 2));
+    
     // Ensure we use storeId consistently
     if (!data.storeId && data.id) {
       data.storeId = data.id;
     }
     
     if (!data.storeId || !data.name) {
+      console.error('❌ [Stores API] Faltan campos obligatorios:', { storeId: data.storeId, name: data.name });
       return NextResponse.json({ error: "Faltan campos obligatorios (storeId, name)" }, { status: 400 });
     }
     
-    console.log('🏪 [Stores API] Creando tienda:', data.storeId);
+    // Verificar si ya existe una tienda con este storeId
+    const existingStore = await Store.findOne({ storeId: data.storeId });
+    if (existingStore) {
+      console.log('⚠️ [Stores API] Tienda ya existe, devolviendo existente:', data.storeId);
+      return NextResponse.json(existingStore);
+    }
+    
+    console.log('🏪 [Stores API] Creando nueva tienda:', data.storeId);
     const created = await Store.create(data);
+    console.log('✅ [Stores API] Tienda creada exitosamente:', created.storeId);
     return NextResponse.json(created);
   } catch (error: any) {
     console.error('❌ [Stores API] Error creando tienda:', error);
+    console.error('❌ [Stores API] Stack trace:', error.stack);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
