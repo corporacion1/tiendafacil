@@ -51,6 +51,12 @@ const nextConfig: NextConfig = {
         hostname: 'www.dropbox.com',
         port: '',
         pathname: '/**'
+      },
+      {
+        protocol: 'https',
+        hostname: 'ozqqhqffoopwkrcivoun.supabase.co',
+        port: '',
+        pathname: '/storage/v1/object/public/**'
       }
     ],
   },

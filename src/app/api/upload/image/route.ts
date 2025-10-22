@@ -1,12 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { v2 as cloudinary } from 'cloudinary';
-
-// Configurar Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+import { uploadImage } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,40 +13,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Convertir el archivo a buffer
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
+    // Validar tipo de archivo
+    if (!file.type.startsWith('image/')) {
+      return NextResponse.json(
+        { error: 'El archivo debe ser una imagen' },
+        { status: 400 }
+      );
+    }
 
-    // Subir a Cloudinary
-    const result = await new Promise((resolve, reject) => {
-      cloudinary.uploader.upload_stream(
-        {
-          resource_type: 'image',
-          folder: 'tiendafacil', // Carpeta en Cloudinary
-          transformation: [
-            { width: 800, height: 600, crop: 'limit' }, // Redimensionar automáticamente
-            { quality: 'auto' }, // Optimización automática de calidad
-            { fetch_format: 'auto' } // Formato automático (WebP cuando sea posible)
-          ]
-        },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
-      ).end(buffer);
-    });
+    // Validar tamaño (máximo 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: 'La imagen debe ser menor a 5MB' },
+        { status: 400 }
+      );
+    }
 
-    const uploadResult = result as any;
+    // Subir a Supabase Storage
+    const result = await uploadImage(file);
 
     return NextResponse.json({
-      url: uploadResult.secure_url,
-      public_id: uploadResult.public_id,
-      width: uploadResult.width,
-      height: uploadResult.height,
+      url: result.url,
+      path: result.path,
     });
 
   } catch (error) {
-    console.error('Error uploading to Cloudinary:', error);
+    console.error('Error uploading to Supabase:', error);
     return NextResponse.json(
       { error: 'Error al subir la imagen' },
       { status: 500 }
