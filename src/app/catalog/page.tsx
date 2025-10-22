@@ -262,20 +262,46 @@ export default function CatalogPage() {
 
   // Función para verificar si la tasa de cambio es reciente (menos de 8 horas)
   const isCurrencyRateRecent = useMemo(() => {
-    if (!currencyRates || !Array.isArray(currencyRates) || currencyRates.length === 0) return false;
+    // Si no hay datos de currency rates, NO mostrar el botón
+    if (!currencyRates || !Array.isArray(currencyRates) || currencyRates.length === 0) {
+      console.log('🔄 No hay currency rates disponibles - ocultando botón de cambio');
+      return false;
+    }
     
-    // Obtener la tasa más reciente
-    const latestRate = [...currencyRates].sort((a, b) => 
-      new Date((b as any).createdAt || b.date).getTime() - new Date((a as any).createdAt || a.date).getTime()
-    )[0];
+    // Obtener la tasa más reciente de la base de datos
+    const latestRate = [...currencyRates].sort((a, b) => {
+      const dateB = new Date((b as any).createdAt || b.date);
+      const dateA = new Date((a as any).createdAt || a.date);
+      return dateB.getTime() - dateA.getTime();
+    })[0];
     
-    if (!latestRate) return false;
+    if (!latestRate) {
+      console.log('🔄 No se encontró tasa más reciente - ocultando botón de cambio');
+      return false;
+    }
     
     const now = new Date();
     const rateDate = new Date((latestRate as any).createdAt || latestRate.date);
-    const hoursDifference = (now.getTime() - rateDate.getTime()) / (1000 * 60 * 60);
     
-    return hoursDifference <= 8;
+    // Validar que la fecha sea válida
+    if (isNaN(rateDate.getTime())) {
+      console.log('🔄 Fecha inválida en tasa - ocultando botón de cambio');
+      return false;
+    }
+    
+    const hoursDifference = (now.getTime() - rateDate.getTime()) / (1000 * 60 * 60);
+    const isRecent = hoursDifference <= 8;
+    
+    console.log(`🔄 Tasa de cambio: ${isRecent ? 'RECIENTE' : 'ANTIGUA'} (${hoursDifference.toFixed(1)} horas)`, {
+      rateDate: rateDate.toISOString(),
+      now: now.toISOString(),
+      hoursDifference: hoursDifference.toFixed(2) + ' horas',
+      isRecent: isRecent,
+      showButton: isRecent
+    });
+    
+    // Solo mostrar el botón si la tasa es de menos de 8 horas
+    return isRecent;
   }, [currencyRates]);
 
   // Componente para mostrar precio
