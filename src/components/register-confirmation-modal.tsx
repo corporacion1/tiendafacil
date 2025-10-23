@@ -74,7 +74,7 @@ export function RegisterConfirmationModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="w-[95vw] max-w-[450px] mobile-modal-height overflow-y-auto modal-scroll touch-modal rounded-2xl border-0 shadow-2xl bg-gradient-to-br from-background via-background to-accent/5 mx-auto my-4">
+      <DialogContent className="w-[95vw] max-w-[450px] mobile-modal-height overflow-y-auto invisible-scroll modal-scroll touch-modal rounded-2xl border-0 shadow-2xl bg-gradient-to-br from-background via-background to-accent/5 mx-auto my-4">
         <DialogHeader className="text-center pb-2">
           <div className="mx-auto mb-4 p-3 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-full">
             <AlertCircle className="h-8 w-8 text-blue-600" />

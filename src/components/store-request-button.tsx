@@ -210,7 +210,7 @@ export function StoreRequestButton() {
 
       {/* Modal de registro/login */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto mx-auto my-4">
+        <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto invisible-scroll mx-auto my-4">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Store className="h-5 w-5 text-orange-500" />

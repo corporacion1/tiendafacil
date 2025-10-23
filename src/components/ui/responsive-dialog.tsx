@@ -38,7 +38,7 @@ export function ResponsiveDialog({
           'w-[95vw]',
           maxWidthClasses[maxWidth],
           fullHeight ? 'h-[90vh]' : 'max-h-[90vh]',
-          'overflow-y-auto',
+          'overflow-y-auto invisible-scroll',
           'mx-auto my-4',
           // Default styling
           'rounded-2xl border-0 shadow-2xl',
@@ -83,9 +83,8 @@ export function ScrollableModalContent({
 }) {
   return (
     <div className={cn(
-      'overflow-y-auto',
-      'scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100',
-      'dark:scrollbar-thumb-gray-600 dark:scrollbar-track-gray-800',
+      'overflow-y-auto invisible-scroll',
+      'modal-scroll touch-modal',
       className
     )}>
       {children}

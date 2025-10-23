@@ -125,7 +125,7 @@ export const SessionReportPreview = ({ isOpen, onOpenChange, session, type, onCo
     if (isLoading) {
         return (
             <Dialog open={isOpen} onOpenChange={onOpenChange}>
-                <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto mx-auto my-4">
+                <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto invisible-scroll mx-auto my-4">
                     <DialogHeader>
                         <DialogTitle>Generando Reporte {type}...</DialogTitle>
                     </DialogHeader>
@@ -143,7 +143,7 @@ export const SessionReportPreview = ({ isOpen, onOpenChange, session, type, onCo
     if (error) {
         return (
             <Dialog open={isOpen} onOpenChange={onOpenChange}>
-                <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto mx-auto my-4">
+                <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto invisible-scroll mx-auto my-4">
                     <DialogHeader>
                         <DialogTitle>Error al Generar Reporte</DialogTitle>
                     </DialogHeader>
@@ -165,7 +165,7 @@ export const SessionReportPreview = ({ isOpen, onOpenChange, session, type, onCo
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto mx-auto my-4">
+            <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto invisible-scroll mx-auto my-4">
                 <DialogHeader>
                     <DialogTitle>Reporte de Caja - Corte {type}</DialogTitle>
                 </DialogHeader>

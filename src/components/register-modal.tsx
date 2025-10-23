@@ -149,7 +149,7 @@ export function RegisterModal({
         <DialogTrigger asChild>
           {children}
         </DialogTrigger>
-      <DialogContent className="w-[95vw] max-w-[450px] mobile-modal-height overflow-y-auto modal-scroll touch-modal rounded-2xl border-0 shadow-2xl bg-gradient-to-br from-background via-background to-accent/5 mx-auto my-4">
+      <DialogContent className="w-[95vw] max-w-[450px] mobile-modal-height overflow-y-auto invisible-scroll modal-scroll touch-modal rounded-2xl border-0 shadow-2xl bg-gradient-to-br from-background via-background to-accent/5 mx-auto my-4">
         <DialogHeader className="text-center pb-2">
           <div className="mx-auto mb-6 p-4 bg-gradient-to-br from-accent/10 to-primary/10 rounded-full shadow-lg ring-4 ring-accent/5">
             <Logo className="h-20 w-20" />

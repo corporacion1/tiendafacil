@@ -165,7 +165,7 @@ export function TicketPreview({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto mx-auto my-4">
+      <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto invisible-scroll mx-auto my-4">
         <DialogHeader>
           <DialogTitle>Vista Previa del Documento</DialogTitle>
           <DialogDescription>

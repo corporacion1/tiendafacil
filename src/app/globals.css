@@ -190,6 +190,16 @@ os mejorados para el scrollbar del sidebar */
     background-color: rgba(156, 163, 175, 0.8);
   }
   
+  /* Ocultar scrollbar completamente pero mantener funcionalidad */
+  .invisible-scroll {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .invisible-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  
   /* Ocultar scrollbar en dispositivos móviles pero mantener funcionalidad */
   @media (max-width: 768px) {
     .mobile-scroll-hidden {

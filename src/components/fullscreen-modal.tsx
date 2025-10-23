@@ -60,7 +60,7 @@ export function FullscreenModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] max-w-[400px] max-h-[90vh] overflow-y-auto rounded-2xl border-0 shadow-2xl bg-gradient-to-br from-background via-background to-blue-50/30 mx-auto my-4">
+      <DialogContent className="w-[95vw] max-w-[400px] max-h-[90vh] overflow-y-auto invisible-scroll rounded-2xl border-0 shadow-2xl bg-gradient-to-br from-background via-background to-blue-50/30 mx-auto my-4">
         <DialogHeader className="text-center pb-4">
           <div className="mx-auto mb-4 p-3 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-full">
             <Monitor className="h-8 w-8 text-blue-600" />

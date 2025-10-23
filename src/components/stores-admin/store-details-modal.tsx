@@ -81,7 +81,7 @@ export function StoreDetailsModal({ store, open, onOpenChange }: StoreDetailsMod
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto mx-auto my-4">
+      <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto invisible-scroll mx-auto my-4">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5" />

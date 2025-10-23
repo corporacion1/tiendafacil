@@ -89,7 +89,7 @@ export function CreateStoreModal({ onStoreCreated }: CreateStoreModalProps) {
         </Button>
       </DialogTrigger>
       
-      <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto mx-auto my-4">
+      <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto invisible-scroll mx-auto my-4">
         <DialogHeader>
           <DialogTitle>Crear Nueva Tienda</DialogTitle>
           <DialogDescription>
