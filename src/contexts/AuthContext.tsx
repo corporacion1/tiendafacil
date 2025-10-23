@@ -31,8 +31,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Store management functions
   const setActiveStoreId = (storeId: string) => {
+    console.log(`🏪 [setActiveStoreId] Setting activeStoreId to: ${storeId}`);
+    console.log(`🏪 [setActiveStoreId] Previous activeStoreId: ${activeStoreId}`);
+    
     setActiveStoreIdState(storeId);
     localStorage.setItem('activeStoreId', storeId);
+    
+    console.log(`🏪 [setActiveStoreId] localStorage updated with: ${localStorage.getItem('activeStoreId')}`);
   };
 
   const clearActiveStoreId = () => {
@@ -106,7 +111,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setActiveStoreId(user.storeId);
       
       // Wait a moment to ensure the state update is processed
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Verify the store was actually set
+      const currentActiveStore = localStorage.getItem('activeStoreId');
+      console.log(`🔍 [setActiveStoreForUser] Verification - localStorage activeStoreId: ${currentActiveStore}`);
+      console.log(`🔍 [setActiveStoreForUser] Verification - state activeStoreId: ${activeStoreId}`);
+      
+      if (currentActiveStore !== user.storeId) {
+        console.error(`❌ [setActiveStoreForUser] Store setting failed! Expected: ${user.storeId}, Got: ${currentActiveStore}`);
+        throw new Error('Error al configurar la tienda activa. Inténtalo de nuevo.');
+      }
       
       console.log(`✅ [setActiveStoreForUser] Active store set for ${user.role}: ${user.storeId}`);
     } else {
@@ -180,6 +195,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         
+        // Force a small delay to ensure state updates are processed
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
         // Check if we need to switch stores before redirecting
         const needsStoreSwitch = shouldSetActiveStore(data.user.role) && 
                                 data.user.storeId && 
@@ -192,6 +210,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Automatic store assignment for administrative users
         try {
           console.log('🔍 [AuthContext] Attempting store assignment for user:', data.user.email);
+          console.log('🔍 [AuthContext] User data received from API:', JSON.stringify(data.user, null, 2));
           await setActiveStoreForUser(data.user);
         } catch (storeError: any) {
           console.error('❌ [AuthContext] Store assignment failed:', storeError.message);

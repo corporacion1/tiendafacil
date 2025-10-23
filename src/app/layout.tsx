@@ -8,6 +8,7 @@ import { SettingsProvider } from '@/contexts/settings-context';
 import { SecurityProvider } from '@/contexts/security-context';
 import { ErrorBoundary, PageErrorFallback } from '@/components/error-boundary';
 import StoreAccessGuard from '@/components/StoreAccessGuard';
+import { FullscreenProvider } from '@/components/fullscreen-provider';
 
 
 export const metadata: Metadata = {
@@ -46,9 +47,11 @@ export default function RootLayout({
                   <ErrorBoundary context="Sistema de Seguridad">
                     <SecurityProvider>
                       <ErrorBoundary context="Interfaz Principal">
-                        <AppShell>
-                          {children}
-                        </AppShell>
+                        <FullscreenProvider>
+                          <AppShell>
+                            {children}
+                          </AppShell>
+                        </FullscreenProvider>
                       </ErrorBoundary>
                     </SecurityProvider>
                   </ErrorBoundary>

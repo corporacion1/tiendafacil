@@ -76,7 +76,7 @@ export default function LoginModal({ children }: { children: React.ReactNode }) 
       if (!open) reset(); // Limpiar formulario al cerrar
     }}>
       <div onClick={() => setIsOpen(true)}>{children}</div>
-      <DialogContent className="sm:max-w-[450px] rounded-2xl border-0 shadow-2xl bg-gradient-to-br from-background via-background to-primary/5">
+      <DialogContent className="w-[95vw] max-w-[450px] mobile-modal-height overflow-y-auto modal-scroll touch-modal rounded-2xl border-0 shadow-2xl bg-gradient-to-br from-background via-background to-primary/5 mx-auto my-4">
         <ErrorBoundary 
           fallback={MinimalErrorFallback}
           context="Formulario de Login"

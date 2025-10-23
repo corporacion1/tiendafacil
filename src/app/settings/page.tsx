@@ -22,6 +22,7 @@ import { businessCategories } from "@/lib/data";
 import Image from "next/image";
 import { getDisplayImageUrl } from "@/lib/utils";
 import { ImageUpload } from "@/components/image-upload";
+import { FullscreenToggleButton } from "@/components/fullscreen-toggle-button";
 
 function ChangePinDialog() {
     const { changePin } = useSecurity();
@@ -1414,6 +1415,53 @@ export default function SettingsPage() {
                             </DialogContent>
                         </Dialog>
                     )}
+                </CardContent>
+            </Card>
+
+            {/* Sección de Configuración de Pantalla */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Configuración de Pantalla</CardTitle>
+                    <CardDescription>Optimiza la experiencia visual para diferentes dispositivos.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-1">
+                            <p className="font-medium">Modo Escritorio</p>
+                            <p className="text-sm text-muted-foreground">
+                                Activa la pantalla completa para una experiencia más inmersiva, especialmente útil en dispositivos móviles y tablets.
+                            </p>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                                    📱 Móviles
+                                </span>
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-purple-100 text-purple-800">
+                                    💻 Tablets
+                                </span>
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                                    🖥️ Escritorio
+                                </span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <FullscreenToggleButton
+                                variant="outline"
+                                size="default"
+                                showText={false}
+                                className="whitespace-nowrap"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="bg-blue-50/50 rounded-lg p-4 border border-blue-200/50">
+                        <h4 className="text-sm font-semibold text-blue-800 mb-2">💡 Consejos para el Modo Escritorio:</h4>
+                        <ul className="text-sm text-blue-700 space-y-1">
+                            <li>• <strong>En móviles:</strong> Gira el dispositivo horizontalmente para mejor experiencia</li>
+                            <li>• <strong>Navegación:</strong> Usa gestos de deslizar para navegar entre secciones</li>
+                            <li>• <strong>Salir:</strong> Presiona la tecla <kbd className="px-1 py-0.5 bg-white rounded text-xs border">Esc</kbd> o usa el botón de salir</li>
+                            <li>• <strong>Automático:</strong> En dispositivos móviles se sugiere automáticamente al cargar</li>
+                        </ul>
+                    </div>
                 </CardContent>
             </Card>
 

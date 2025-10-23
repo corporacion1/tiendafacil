@@ -604,7 +604,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
 
     {/* Modal del Scanner */}
     <Dialog open={showScanner} onOpenChange={setShowScanner}>
-      <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-hidden rounded-2xl border-0 shadow-2xl">
+      <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border-0 shadow-2xl mx-auto my-4">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ScanLine className="w-5 h-5 text-green-600" />

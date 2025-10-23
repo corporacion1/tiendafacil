@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { Logo } from './logo';
+import { RegisterConfirmationModal } from './register-confirmation-modal';
 
 const validateEmail = (email: string): boolean => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -37,6 +38,8 @@ export function RegisterModal({
   const [loading, setLoading] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
   const [emailError, setEmailError] = useState('');
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [isMainModalOpen, setIsMainModalOpen] = useState(false);
   const { registerUser, login } = useAuth();
 
   const checkEmailAvailability = async (email: string) => {
@@ -89,6 +92,11 @@ export function RegisterModal({
     e.preventDefault();
     if (!isFormValid || loading) return;
 
+    // Mostrar modal de confirmación en lugar de registrar directamente
+    setShowConfirmation(true);
+  };
+
+  const handleConfirmRegistration = async () => {
     setLoading(true);
     try {
       const result = await registerUser(email, password, phone, storeId);
@@ -98,30 +106,50 @@ export function RegisterModal({
         
         toast({ title: "¡Bienvenido!", description: "Registro e inicio de sesión exitosos." });
         
-        const closeBtn = document.getElementById('register-close-btn');
-        closeBtn?.click();
+        // Cerrar ambos modales
+        setShowConfirmation(false);
+        setIsMainModalOpen(false);
         
+        // Limpiar formulario
         setEmail('');
         setPassword('');
         setPhone('');
+        setEmailError('');
       }
     } catch (err: any) {
       toast({
         variant: 'destructive',
-        title: "Error en login automático",
-        description: err.message || 'Registro exitoso pero no se pudo iniciar sesión automáticamente.',
+        title: "Error en registro",
+        description: err.message || 'Error durante el proceso de registro.',
       });
     } finally {
       setLoading(false);
     }
   };
 
+  const handleCloseConfirmation = () => {
+    setShowConfirmation(false);
+  };
+
+  const handleMainModalChange = (open: boolean) => {
+    setIsMainModalOpen(open);
+    if (!open) {
+      // Limpiar formulario cuando se cierra el modal principal
+      setEmail('');
+      setPassword('');
+      setPhone('');
+      setEmailError('');
+      setShowConfirmation(false);
+    }
+  };
+
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[450px] rounded-2xl border-0 shadow-2xl bg-gradient-to-br from-background via-background to-accent/5">
+    <>
+      <Dialog open={isMainModalOpen} onOpenChange={handleMainModalChange}>
+        <DialogTrigger asChild>
+          {children}
+        </DialogTrigger>
+      <DialogContent className="w-[95vw] max-w-[450px] mobile-modal-height overflow-y-auto modal-scroll touch-modal rounded-2xl border-0 shadow-2xl bg-gradient-to-br from-background via-background to-accent/5 mx-auto my-4">
         <DialogHeader className="text-center pb-2">
           <div className="mx-auto mb-6 p-4 bg-gradient-to-br from-accent/10 to-primary/10 rounded-full shadow-lg ring-4 ring-accent/5">
             <Logo className="h-20 w-20" />
@@ -177,15 +205,20 @@ export function RegisterModal({
           </div>
 
           <DialogFooter className="pt-4">
-            <DialogClose asChild>
-              <Button variant="outline" type="button" id="register-close-btn">Cancelar</Button>
-            </DialogClose>
+            <Button 
+              variant="outline" 
+              type="button" 
+              onClick={() => setIsMainModalOpen(false)}
+              disabled={loading}
+            >
+              Cancelar
+            </Button>
             <Button 
               type="submit" 
               disabled={!isFormValid || loading}
               className="transition-opacity duration-200"
             >
-              {loading ? 'Registrando...' : 'Registrar'}
+              {loading ? 'Procesando...' : 'Continuar'}
             </Button>
           </DialogFooter>
         </form>
@@ -196,9 +229,7 @@ export function RegisterModal({
             <button
               type="button"
               className="text-primary hover:underline font-medium"
-              onClick={() => {
-                document.getElementById('register-close-btn')?.click();
-              }}
+              onClick={() => setIsMainModalOpen(false)}
             >
               Inicia sesión
             </button>
@@ -206,5 +237,16 @@ export function RegisterModal({
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Modal de Confirmación */}
+    <RegisterConfirmationModal
+      isOpen={showConfirmation}
+      onClose={handleCloseConfirmation}
+      onConfirm={handleConfirmRegistration}
+      originalEmail={email}
+      originalPassword={password}
+      loading={loading}
+    />
+    </>
   );
 }
