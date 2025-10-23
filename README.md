@@ -4,7 +4,7 @@
 
 ![TiendaFácil Logo](public/tienda_facil_logo.svg)
 
-**Versión 1.1.10.2** | **Octubre 2025**
+**Versión 1.10.23.1** | **Octubre 2025**
 
 *Sistema completo de Punto de Venta, Inventario y Comercio Electrónico*
 
@@ -57,20 +57,37 @@ Democratizar el acceso a tecnología comercial avanzada, permitiendo que cualqui
 - **Análisis de Tendencias**: Insights automáticos de ventas
 
 ### 🔐 **Seguridad y Control de Acceso**
-- **Sistema de Roles**: 6 niveles de acceso (Guest, User, Depositary, Seller, Admin, SuperUser)
-- **Autenticación Robusta**: Sistema de login seguro
+- **Sistema de Roles**: 6 niveles de acceso (Guest, User, Depositary, POS, Admin, SuperUser)
+- **Autenticación Robusta**: Sistema de login seguro con cambio automático de contexto
 - **PIN de Seguridad**: Protección adicional para operaciones críticas
 - **Auditoría Completa**: Logs de todas las operaciones
+- **Validación de Contexto**: Verificación automática de permisos por tienda
 
 ### 🏢 **Administración Multi-Tienda**
 - **Panel de Super Administrador**: Gestión centralizada de múltiples tiendas
 - **Estadísticas Globales**: Métricas consolidadas de todas las tiendas
 - **Control de Estados**: Activación/desactivación de tiendas
 - **Modo Producción**: Transición automática de demo a producción
+- **Promoción de Usuarios**: Conversión automática de usuarios a administradores
+- **Creación Automática**: Seeding completo de nuevas tiendas
 
-## 🚀 **Nuevas Características - Versión 1.1.10.2**
+### 💰 **Sistema de Monedas Dual**
+- **Moneda Principal y Secundaria**: Soporte completo para dos monedas
+- **Cambio Dinámico**: Intercambio instantáneo entre monedas
+- **Tasas de Cambio**: Actualización manual de tasas con validación temporal
+- **Interfaz Intuitiva**: Botón de intercambio que muestra la moneda opuesta
+- **Actualización Automática**: Todos los precios se actualizan al cambiar moneda
+
+## 🚀 **Nuevas Características - Versión 1.10.23.1**
 
 ### ✨ **Funcionalidades Recién Agregadas**
+
+#### 👥 **Sistema Avanzado de Gestión de Usuarios**
+- **Promoción Automática de Usuarios**: Conversión de usuarios regulares a administradores con creación automática de tienda
+- **Modal de Promoción Inteligente**: Interfaz intuitiva con datos pre-llenados y validación automática
+- **Creación y Seeding Automático**: Generación completa de tienda con datos iniciales y cambio de contexto automático
+- **Gestión de Roles Mejorada**: Sistema refinado de permisos y accesos por rol
+- **Edición de Usuarios**: Modal completo para modificar información de usuarios existentes
 
 #### 🏪 **Módulo de Administración de Tiendas**
 - **Dashboard Ejecutivo**: Tarjetas con estadísticas de todas las tiendas
@@ -79,11 +96,23 @@ Democratizar el acceso a tecnología comercial avanzada, permitiendo que cualqui
 - **Vista Detallada**: Modal con información completa de cada tienda
 - **Control de Estados**: Activar/desactivar tiendas con confirmación
 
-#### 🎯 **Sistema de Solicitud de Tiendas**
-- **Botón Flotante**: Interfaz estilo WhatsApp para solicitar tienda
-- **Registro Obligatorio**: Proceso de autenticación integrado
-- **Formulario Inteligente**: Validación completa de datos
-- **Gestión de Solicitudes**: Panel para administrar peticiones
+#### 🎯 **Sistema de Solicitud de Tiendas Mejorado**
+- **Botón Flotante Inteligente**: Interfaz estilo WhatsApp con visibilidad basada en roles
+- **Estilo Visual Mejorado**: Gradiente naranja distintivo y animaciones suaves
+- **Control de Visibilidad**: Solo visible para usuarios con rol "user" que no han solicitado tienda
+- **Integración con API**: Sincronización automática del estado de solicitud
+
+#### 🔐 **Autenticación y Contexto Mejorados**
+- **Login Inteligente**: Cambio automático de tienda al hacer login con usuario de diferente tienda
+- **Validación de Contexto**: Verificación automática del `activeStoreId` vs `storeId` del usuario
+- **Redirección Optimizada**: Navegación automática al contexto correcto según el rol del usuario
+- **Sincronización de Estado**: Actualización automática del contexto de tienda tras login
+
+#### 💰 **Sistema de Monedas Mejorado**
+- **Botón de Cambio Intuitivo**: Icono de intercambio (ArrowLeftRight) que muestra la moneda opuesta
+- **Símbolo Dinámico**: Muestra el símbolo de la moneda inactiva para indicar hacia dónde cambiar
+- **Actualización Automática**: Todos los precios en carrito y pedidos se actualizan instantáneamente
+- **Tooltip Informativo**: Información clara sobre el cambio de moneda disponible
 
 #### 🖥️ **Modo Visor Mejorado**
 - **Scroll Automático**: Navegación automática del catálogo
@@ -91,8 +120,9 @@ Democratizar el acceso a tecnología comercial avanzada, permitiendo que cualqui
 - **Indicadores Visuales**: Feedback claro del estado del modo visor
 - **Optimización de Rendimiento**: Sin bucles infinitos ni memory leaks
 
-#### 🔧 **Mejoras Técnicas**
-- **Corrección de Bucles Infinitos**: Optimización completa de contextos
+#### 🔧 **Mejoras Técnicas Críticas**
+- **Corrección de Tipos**: Solucionados todos los errores de TypeScript para compilación exitosa
+- **Roles de Usuario**: Corregido tipo de rol de 'seller' a 'pos' para consistencia
 - **Sistema de Toasts Mejorado**: Notificaciones elegantes sin romper el diseño
 - **Navegación Optimizada**: Redirecciones inteligentes sin bucles
 - **Manejo de Errores**: Sistema robusto de recuperación de errores
@@ -164,6 +194,33 @@ npm run dev
 ### **5. Acceder a la Aplicación**
 Abrir [http://localhost:3000](http://localhost:3000) en tu navegador
 
+## 🎯 **Características Destacadas v1.10.23.1**
+
+### 🚀 **Promoción Automática de Usuarios**
+La nueva funcionalidad permite a los super usuarios convertir usuarios regulares en administradores de tienda de manera automática:
+
+1. **Selección de Usuario**: Desde el panel de usuarios, seleccionar "Promover a Admin"
+2. **Modal Inteligente**: Se abre un formulario con datos pre-llenados del usuario
+3. **Creación Automática**: Se crea la tienda con seeding completo de datos iniciales
+4. **Cambio de Contexto**: El sistema cambia automáticamente al contexto de la nueva tienda
+5. **Notificación**: Confirmación visual del proceso completado
+
+### 💱 **Sistema de Monedas Mejorado**
+El botón de cambio de moneda ahora es más intuitivo y funcional:
+
+- **Icono Intuitivo**: ArrowLeftRight en lugar del símbolo de dólar
+- **Símbolo Opuesto**: Muestra hacia qué moneda se va a cambiar
+- **Actualización Instantánea**: Todos los precios se actualizan automáticamente
+- **Tooltip Informativo**: Información clara sobre la acción disponible
+
+### 🔐 **Login Inteligente**
+El sistema de autenticación ahora maneja automáticamente el cambio de contexto:
+
+- **Detección Automática**: Identifica si el usuario pertenece a una tienda diferente
+- **Cambio de Contexto**: Actualiza automáticamente el `activeStoreId`
+- **Redirección Inteligente**: Navega al dashboard apropiado según el rol
+- **Sincronización**: Mantiene consistencia entre contextos de auth y settings
+
 ## 🌐 **Despliegue en Producción**
 
 ### **Vercel (Recomendado)**
@@ -207,37 +264,52 @@ docker run -p 3000:3000 tienda-facil
 
 ## 👥 **Roles y Permisos**
 
-| Rol | Catálogo | Productos | Inventario | POS | Compras | Créditos | Dashboard | Admin |
-|-----|----------|-----------|------------|-----|---------|----------|-----------|-------|
-| **Guest** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **User** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Depositary** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Seller** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **Admin** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| **SuperUser** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Rol | Catálogo | Productos | Inventario | POS | Compras | Créditos | Dashboard | Admin | Promoción |
+|-----|----------|-----------|------------|-----|---------|----------|-----------|-------|-----------|
+| **Guest** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **User** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Depositary** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **POS** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Admin** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **SuperUser** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
-## 🔄 **Changelog - Versión 1.1.10.2**
+## 🔄 **Changelog - Versión 1.10.23.1**
 
 ### ✨ **Nuevas Características**
+- **Sistema de Promoción de Usuarios**: Conversión automática de usuarios a administradores con creación de tienda
+- **Modal de Promoción Inteligente**: Interfaz completa con validación y datos pre-llenados
+- **Creación Automática de Tiendas**: Seeding completo con datos iniciales y cambio de contexto
+- **Gestión Avanzada de Usuarios**: Edición completa de perfiles y roles de usuario
+- **Login Inteligente**: Cambio automático de contexto de tienda según el usuario
+- **Botón de Moneda Mejorado**: Icono de intercambio que muestra la moneda opuesta
+- **Actualización Dinámica de Precios**: Cambio automático de símbolos en carrito y pedidos
 - **Módulo de Administración de Tiendas**: Panel completo para super usuarios
-- **Botón Flotante de Solicitud**: Sistema de registro integrado
+- **Botón Flotante de Solicitud**: Sistema de registro integrado con estilo mejorado
 - **Modo Visor Automático**: Scroll automático del catálogo
-- **Sistema de Toasts Mejorado**: Notificaciones elegantes
 
-### 🐛 **Correcciones**
-- **Errores de TypeScript**: Corregidos todos los errores de compilación para Vercel
-- **Tipos de Ad**: Solucionado problema de compatibilidad en `imageUrl` opcional
-- **Rutas API**: Agregados tipos correctos `NextRequest` en todas las rutas
-- **Manejo de Errores**: Tipado correcto en bloques `catch` de APIs
-- **Conexión MongoDB**: Verificación de conexión de base de datos
-- **Build para Producción**: Aplicación lista para despliegue en Vercel
+### 🐛 **Correcciones Críticas**
+- **Errores de Compilación**: Corregidos todos los errores de TypeScript para build exitoso
+- **Tipos de Usuario**: Solucionado rol 'seller' → 'pos' para consistencia de tipos
+- **Contexto de Autenticación**: Mejorado flujo de login y cambio de tienda automático
+- **Símbolos de Moneda**: Corregidos precios hardcodeados en carrito y pedidos
+- **Validación de Contexto**: Verificación automática de tienda activa vs usuario
+- **API de Login**: Incluido campo `storeRequest` en respuesta para sincronización
+- **Visibilidad de Botones**: Control basado en roles y estado de solicitud
 
-### ⚡ **Optimizaciones**
-- **Compilación**: Build exitoso sin errores de TypeScript
-- **Tipos de Datos**: Consistencia mejorada en tipos de formularios
-- **Validación**: Esquemas Zod alineados con tipos TypeScript
-- **Despliegue**: Preparado para producción en Vercel
-- **Estabilidad**: Sistema más robusto y confiable
+### ⚡ **Optimizaciones Técnicas**
+- **Compilación Exitosa**: Build completo sin errores de TypeScript
+- **Flujo de Autenticación**: Login optimizado con cambio automático de contexto
+- **Gestión de Estado**: Sincronización mejorada entre contextos de auth y settings
+- **UX de Monedas**: Interfaz más intuitiva para cambio de moneda activa
+- **Rendimiento**: Eliminación de bucles infinitos y memory leaks
+- **Estabilidad**: Sistema más robusto y confiable para producción
+
+### 🎨 **Mejoras de Interfaz**
+- **Botón de Solicitud**: Gradiente naranja distintivo y mejor visibilidad
+- **Icono de Moneda**: ArrowLeftRight más intuitivo que DollarSign
+- **Tooltip Informativo**: Información clara sobre cambio de moneda disponible
+- **Modal de Promoción**: Diseño elegante con validación en tiempo real
+- **Feedback Visual**: Indicadores claros de estado y acciones disponibles
 
 ## 🤝 **Contribución**
 

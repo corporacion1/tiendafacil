@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Package, ShoppingBag, Plus, Minus, Trash2, Send, LayoutGrid, Instagram, Star, Search, UserCircle, LogOut, MoreHorizontal, Copy, AlertCircle, QrCode, Pencil, ArrowRight, Check, User, Phone, Mail, Eye, ScanLine, X, Store as StoreIcon, DollarSign } from "lucide-react";
+import { Package, ShoppingBag, Plus, Minus, Trash2, Send, LayoutGrid, Instagram, Star, Search, UserCircle, LogOut, MoreHorizontal, Copy, AlertCircle, QrCode, Pencil, ArrowRight, Check, User, Phone, Mail, Eye, ScanLine, X, Store as StoreIcon, ArrowLeftRight } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
@@ -264,6 +264,11 @@ export default function CatalogPage() {
   }, [storeIdForCatalog, loggedInUserSettings?.storeId]); // Solo incluir storeId, no todo el objeto
 
   const currentStoreSettings = catalogStoreSettings || defaultStore;
+
+  // Símbolo de la moneda inactiva (opuesta a la activa)
+  const inactiveSymbol = displayCurrency === 'primary' 
+    ? (currentStoreSettings?.secondaryCurrencySymbol || 'Bs.') 
+    : (currentStoreSettings?.primaryCurrencySymbol || '$');
 
   const [productDetails, setProductDetails] = useState<Product | null>(null);
   const [productImageError, setProductImageError] = useState(false);
@@ -1076,16 +1081,16 @@ export default function CatalogPage() {
                     className="sm:h-auto sm:w-auto sm:px-3 sm:py-2 rounded-xl bg-gradient-to-r from-green-50 to-blue-50 hover:from-green-100 hover:to-blue-100 border-green-200 text-green-700 hover:text-green-800 transition-all duration-200 shadow-sm" 
                     onClick={toggleDisplayCurrency}
                   >
-                    <DollarSign className="h-4 w-4 sm:mr-2" />
-                    <span className="sr-only sm:not-sr-only font-medium">{activeSymbol}</span>
+                    <ArrowLeftRight className="h-4 w-4 sm:mr-2" />
+                    <span className="sr-only sm:not-sr-only font-medium">{inactiveSymbol}</span>
                   </Button>
                   
                   {/* Tooltip con información de la moneda */}
                   <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
                     <div className="text-center">
-                      <div className="font-medium">Moneda: {displayCurrency === 'primary' ? 'Principal' : 'Secundaria'}</div>
+                      <div className="font-medium">Cambiar a: {displayCurrency === 'primary' ? 'Secundaria' : 'Principal'}</div>
+                      <div className="text-gray-300">Símbolo: {inactiveSymbol}</div>
                       <div className="text-gray-300">Tasa actualizada hoy</div>
-                      <div className="text-gray-300">Click para cambiar</div>
                     </div>
                     <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
                   </div>
@@ -1266,7 +1271,7 @@ export default function CatalogPage() {
                                           </Badge>
                                         </div>
                                         <p className="text-sm text-muted-foreground">{isClient ? format(new Date(order.createdAt), 'dd/MM/yyyy HH:mm') : '...'}</p>
-                                        <p className="text-sm font-medium text-primary">${(order.total * activeRate).toFixed(2)}</p>
+                                        <p className="text-sm font-medium text-primary">{activeSymbol}{(order.total * activeRate).toFixed(2)}</p>
                                       </div>
                                       <div className="flex items-center gap-2">
                                         <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-0 bg-primary/10 hover:bg-primary/20 text-primary shadow-sm" onClick={() => handleReShowQR(order.orderId)}>
@@ -1305,7 +1310,7 @@ export default function CatalogPage() {
                                 </div>
                                 <div className="flex-1">
                                   <h4 className="font-semibold">{item.product.name}</h4>
-                                  <p className="text-sm text-muted-foreground">${(item.price * activeRate).toFixed(2)}</p>
+                                  <p className="text-sm text-muted-foreground">{activeSymbol}{(item.price * activeRate).toFixed(2)}</p>
                                   <div className="flex items-center gap-2 mt-2">
                                     <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(item.product.id, item.quantity - 1)}><Minus className="h-4 w-4" /></Button>
                                     <span>{item.quantity}</span>
@@ -1313,7 +1318,7 @@ export default function CatalogPage() {
                                   </div>
                                 </div>
                                 <div className="text-right">
-                                  <p className="font-bold">${(item.price * item.quantity * activeRate).toFixed(2)}</p>
+                                  <p className="font-bold">{activeSymbol}{(item.price * item.quantity * activeRate).toFixed(2)}</p>
                                   <Button variant="ghost" size="icon" className="h-8 w-8 mt-2 text-muted-foreground hover:text-destructive" onClick={() => removeFromCart(item.product.id)}>
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
@@ -1329,7 +1334,7 @@ export default function CatalogPage() {
                         <div className="w-full space-y-4">
                           <div className="flex justify-between font-bold text-lg">
                             <span>Subtotal</span>
-                            <span>${(subtotal * activeRate).toFixed(2)}</span>
+                            <span>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</span>
                           </div>
                           <Button size="lg" className="w-full" onClick={handleOpenOrderDialog}>
                             <Send className="mr-2" />
