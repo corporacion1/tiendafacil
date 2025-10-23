@@ -486,8 +486,8 @@ export default function POSPage() {
     const currentCartQuantity = existingItem ? existingItem.quantity : 0;
     const newQuantity = currentCartQuantity + 1;
 
-    // Validar stock disponible
-    if (newQuantity > currentProduct.stock) {
+    // Validar stock disponible solo para productos que afectan inventario
+    if (currentProduct.affectsInventory && currentProduct.type === 'product' && newQuantity > currentProduct.stock) {
         toast({ 
             variant: "destructive", 
             title: "Stock insuficiente", 
@@ -930,7 +930,8 @@ export default function POSPage() {
         continue;
       }
       
-      if (currentProduct.stock < item.quantity) {
+      // Solo validar stock para productos que afectan inventario
+      if (currentProduct.affectsInventory && currentProduct.type === 'product' && currentProduct.stock < item.quantity) {
         errors.push(`Stock insuficiente para "${item.product.name}". Disponible: ${currentProduct.stock}, Requerido: ${item.quantity}`);
       }
       
@@ -1309,8 +1310,8 @@ export default function POSPage() {
             continue;
         }
 
-        // Verificar stock disponible
-        if (product.stock < item.quantity) {
+        // Verificar stock disponible solo para productos que afectan inventario
+        if (product.affectsInventory && product.type === 'product' && product.stock < item.quantity) {
             console.warn('⚠️ Stock insuficiente:', product.name, 'disponible:', product.stock, 'requerido:', item.quantity);
             insufficientStock.push(`${product.name} (disponible: ${product.stock}, requerido: ${item.quantity})`);
             
@@ -1323,7 +1324,7 @@ export default function POSPage() {
                 });
             }
         } else {
-            // Producto disponible con stock suficiente
+            // Producto disponible (sin restricción de stock para servicios)
             orderCartItems.push({ 
                 product, 
                 quantity: item.quantity, 
