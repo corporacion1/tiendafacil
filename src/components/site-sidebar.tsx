@@ -86,7 +86,10 @@ export function SiteSidebar({ isExpanded }: SiteSidebarProps) {
                 isExpanded ? "px-6" : "justify-center"
             )}>
                 <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-                    <Logo className="h-28 w-28" />
+                    <Logo className={cn(
+                        "transition-all duration-300",
+                        isExpanded ? "h-10 w-10 max-w-[40px] max-h-[40px]" : "h-8 w-8 max-w-[32px] max-h-[32px]"
+                    )} />
                 </Link>
             </div>
             
