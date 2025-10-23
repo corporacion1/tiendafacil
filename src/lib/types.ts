@@ -2,7 +2,7 @@
 
 import { FieldValue } from 'firebase/firestore';
 
-export type UserRole = 'su' | 'admin' | 'user' | 'seller' | 'depositary';
+export type UserRole = 'su' | 'admin' | 'user' | 'pos' | 'depositary';
 export type UserStatus = 'active' | 'disabled';
 
 export type UserProfile = {

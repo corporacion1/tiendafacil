@@ -3,16 +3,20 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/hooks/use-toast';
-import { UserProfile } from '@/lib/types';
+import { UserProfile, UserRole } from '@/lib/types';
 
 // VERCEL CACHE FIX 2025-10-21 - register returns Promise with success boolean
 type AuthContextType = {
   user: UserProfile | null;
   token: string | null;
   loading: boolean;
+  activeStoreId: string | null;
   login: (email: string, password: string) => Promise<void>;
   registerUser: (email: string, password: string, phone: string, storeId: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
+  setActiveStoreId: (storeId: string) => void;
+  clearActiveStoreId: () => void;
+  getActiveStoreId: () => string | null;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,9 +24,87 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [activeStoreId, setActiveStoreIdState] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sessionRestored, setSessionRestored] = useState(false);
   const router = useRouter();
+
+  // Store management functions
+  const setActiveStoreId = (storeId: string) => {
+    setActiveStoreIdState(storeId);
+    localStorage.setItem('activeStoreId', storeId);
+  };
+
+  const clearActiveStoreId = () => {
+    setActiveStoreIdState(null);
+    localStorage.removeItem('activeStoreId');
+  };
+
+  const getActiveStoreId = () => {
+    return activeStoreId;
+  };
+
+  // Helper function to check if user should have automatic store assignment
+  const shouldSetActiveStore = (userRole: UserRole): boolean => {
+    const shouldSet = userRole !== 'su' && userRole !== 'user';
+    console.log(`🔍 [shouldSetActiveStore] Role: ${userRole}, Should set: ${shouldSet}`);
+    return shouldSet;
+  };
+
+  // Helper function to get redirect URL based on user role
+  const getStoreRedirectUrl = (userRole: UserRole): string => {
+    switch (userRole) {
+      case 'admin':
+        return '/dashboard';
+      case 'pos':
+        return '/pos';
+      case 'depositary':
+        return '/inventory';
+      default:
+        return '/dashboard';
+    }
+  };
+
+  // Helper function to redirect administrative users to their store context
+  const redirectToStoreContext = (user: UserProfile): void => {
+    if (!shouldSetActiveStore(user.role)) {
+      return; // No redirect for 'su' and 'user' roles
+    }
+
+    const redirectUrl = getStoreRedirectUrl(user.role);
+    console.log(`🔄 Redirecting ${user.role} to: ${redirectUrl}`);
+    
+    // Use setTimeout to ensure state updates are complete before redirect
+    setTimeout(() => {
+      router.push(redirectUrl);
+    }, 100);
+  };
+
+  // Helper function to set active store for administrative users
+  const setActiveStoreForUser = async (user: UserProfile): Promise<void> => {
+    console.log(`🔍 [setActiveStoreForUser] Checking user role: ${user.role}`);
+    console.log(`🔍 [setActiveStoreForUser] Should set active store: ${shouldSetActiveStore(user.role)}`);
+    
+    if (!shouldSetActiveStore(user.role)) {
+      console.log(`⏭️ [setActiveStoreForUser] Skipping store assignment for role: ${user.role}`);
+      return; // No store assignment for 'su' and 'user' roles
+    }
+
+    console.log(`🔍 [setActiveStoreForUser] User storeId: ${user.storeId}`);
+    if (!user.storeId) {
+      console.error(`❌ [setActiveStoreForUser] No storeId for administrative user: ${user.email}`);
+      throw new Error('Usuario administrativo sin tienda asignada. Contacte al administrador.');
+    }
+
+    // Set the active store ID
+    console.log(`🏪 [setActiveStoreForUser] Setting activeStoreId: ${user.storeId}`);
+    setActiveStoreId(user.storeId);
+    
+    console.log(`✅ [setActiveStoreForUser] Active store set for ${user.role}: ${user.storeId}`);
+    
+    // Redirect user to appropriate page for their role
+    redirectToStoreContext(user);
+  };
 
   // Restore session on mount
   useEffect(() => {
@@ -30,16 +112,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         const storedToken = localStorage.getItem('token');
         const storedUser = localStorage.getItem('user');
+        const storedActiveStoreId = localStorage.getItem('activeStoreId');
 
         if (storedToken && storedUser) {
           const userData = JSON.parse(storedUser);
           setToken(storedToken);
           setUser(userData);
+          
+          // Restore active store ID if it exists
+          if (storedActiveStoreId) {
+            setActiveStoreIdState(storedActiveStoreId);
+          }
         }
       } catch (error) {
         console.error('Error restoring session:', error);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        localStorage.removeItem('activeStoreId');
       } finally {
         setIsLoading(false);
         setSessionRestored(true);
@@ -69,10 +158,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (res.ok) {
+        console.log('🔍 [AuthContext] Login successful, user data:', data.user);
+        console.log('🔍 [AuthContext] User role:', data.user.role);
+        console.log('🔍 [AuthContext] User storeId:', data.user.storeId);
+        
         setToken(data.token);
         setUser(data.user);
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
+        
+        // Automatic store assignment for administrative users
+        try {
+          console.log('🔍 [AuthContext] Attempting store assignment for user:', data.user.email);
+          await setActiveStoreForUser(data.user);
+        } catch (storeError: any) {
+          console.error('❌ [AuthContext] Store assignment failed:', storeError.message);
+          // If store assignment fails, logout and show error
+          setUser(null);
+          setToken(null);
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          throw new Error(storeError.message);
+        }
         
         toast({
           title: "Inicio de sesión exitoso",
@@ -145,6 +252,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = (): void => {
     setUser(null);
     setToken(null);
+    clearActiveStoreId(); // Clear active store ID on logout
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     
@@ -171,9 +279,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         user,
         token,
         loading: isLoading,
+        activeStoreId,
         login,
         registerUser,
         logout,
+        setActiveStoreId,
+        clearActiveStoreId,
+        getActiveStoreId,
       }}
     >
       {children}

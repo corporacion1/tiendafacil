@@ -55,8 +55,8 @@ const ROLE_PERMISSIONS = {
     canViewStoresAdmin: false,
   },
   
-  // Role: seller - acceso a Catálogo y POS
-  seller: {
+  // Role: pos - acceso a Catálogo y POS
+  pos: {
     canViewCatalog: true,
     canAddOrder: true,
     canViewProducts: false,
@@ -115,53 +115,83 @@ export function usePermissions() {
   const permissions = useMemo(() => {
     // Si no hay usuario, es un guest
     if (!user) {
+      console.log('🔍 [usePermissions] No user, using guest permissions');
       return ROLE_PERMISSIONS.guest;
     }
     
     // Obtener permisos basados en el rol del usuario
     const userRole = user.role as UserRole;
-    return ROLE_PERMISSIONS[userRole] || ROLE_PERMISSIONS.user;
+    const userPermissions = ROLE_PERMISSIONS[userRole] || ROLE_PERMISSIONS.user;
+    
+    console.log('🔍 [usePermissions] User role:', userRole);
+    console.log('🔍 [usePermissions] User permissions:', userPermissions);
+    console.log('🔍 [usePermissions] Can view POS:', userPermissions.canViewPOS);
+    
+    return userPermissions;
   }, [user]);
   
   const hasPermission = (permission: Permission): boolean => {
-    return permissions[permission] || false;
+    const hasAccess = permissions[permission] || false;
+    console.log(`🔍 [hasPermission] Checking ${permission}: ${hasAccess}`);
+    return hasAccess;
   };
   
   const canAccess = (route: string): boolean => {
+    console.log(`🔍 [canAccess] Checking access to route: ${route}`);
+    
     // Rutas públicas que no requieren permisos
     const publicRoutes = ['/', '/catalog', '/login', '/register'];
     if (publicRoutes.includes(route)) {
+      console.log(`✅ [canAccess] Public route allowed: ${route}`);
       return true;
     }
     
+    let result = false;
     switch (route) {
       case '/products':
-        return hasPermission('canViewProducts');
+        result = hasPermission('canViewProducts');
+        break;
       case '/inventory':
-        return hasPermission('canViewInventory');
+        result = hasPermission('canViewInventory');
+        break;
       case '/purchases':
-        return hasPermission('canViewPurchases');
+        result = hasPermission('canViewPurchases');
+        break;
       case '/pos':
-        return hasPermission('canViewPOS');
+        result = hasPermission('canViewPOS');
+        console.log(`🔍 [canAccess] POS access check result: ${result}`);
+        break;
       case '/credits':
-        return hasPermission('canViewCredits');
+        result = hasPermission('canViewCredits');
+        break;
       case '/dashboard':
-        return hasPermission('canViewDashboard');
+        result = hasPermission('canViewDashboard');
+        break;
       case '/settings':
-        return hasPermission('canViewSettings');
+        result = hasPermission('canViewSettings');
+        break;
       case '/users':
-        return hasPermission('canViewUsers');
+        result = hasPermission('canViewUsers');
+        break;
       case '/ads':
-        return hasPermission('canViewAds');
+        result = hasPermission('canViewAds');
+        break;
       case '/reports':
-        return hasPermission('canViewReports');
+        result = hasPermission('canViewReports');
+        break;
       case '/stores-admin':
-        return hasPermission('canViewStoresAdmin');
+        result = hasPermission('canViewStoresAdmin');
+        break;
       default:
         // Si no coincide con ninguna ruta específica, permitir acceso
         // (para rutas dinámicas o no definidas)
-        return true;
+        result = true;
+        console.log(`✅ [canAccess] Default route allowed: ${route}`);
+        break;
     }
+    
+    console.log(`🔍 [canAccess] Final result for ${route}: ${result}`);
+    return result;
   };
   
   return {

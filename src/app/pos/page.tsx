@@ -1577,12 +1577,25 @@ export default function POSPage() {
     );
   }
 
-  // Verificar permisos de acceso al POS
-  if (!hasPermission('canViewPOS')) {
+  // Verificar permisos de acceso al POS - solo después de que termine la carga
+  if (!isLoadingSettings && !isLoadingSession && !hasPermission('canViewPOS')) {
+    console.log('🚫 [POS] Access denied - no canViewPOS permission');
     return (
       <RouteGuard>
         <div></div>
       </RouteGuard>
+    );
+  }
+
+  // Mostrar loading mientras se cargan los datos necesarios
+  if (isLoadingSettings) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-muted border-t-primary" />
+          <p className="text-muted-foreground">Cargando configuración...</p>
+        </div>
+      </div>
     );
   }
 

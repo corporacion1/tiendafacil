@@ -7,6 +7,7 @@ import { Toaster } from "@/components/safe-toaster";
 import { SettingsProvider } from '@/contexts/settings-context';
 import { SecurityProvider } from '@/contexts/security-context';
 import { ErrorBoundary, PageErrorFallback } from '@/components/error-boundary';
+import StoreAccessGuard from '@/components/StoreAccessGuard';
 
 
 export const metadata: Metadata = {
@@ -39,19 +40,21 @@ export default function RootLayout({
           context="Aplicación Principal"
         >
           <AuthProvider>
-            <ErrorBoundary context="Configuración de Usuario">
-              <SettingsProvider>
-                <ErrorBoundary context="Sistema de Seguridad">
-                  <SecurityProvider>
-                    <ErrorBoundary context="Interfaz Principal">
-                      <AppShell>
-                        {children}
-                      </AppShell>
-                    </ErrorBoundary>
-                  </SecurityProvider>
-                </ErrorBoundary>
-              </SettingsProvider>
-            </ErrorBoundary>
+            <StoreAccessGuard>
+              <ErrorBoundary context="Configuración de Usuario">
+                <SettingsProvider>
+                  <ErrorBoundary context="Sistema de Seguridad">
+                    <SecurityProvider>
+                      <ErrorBoundary context="Interfaz Principal">
+                        <AppShell>
+                          {children}
+                        </AppShell>
+                      </ErrorBoundary>
+                    </SecurityProvider>
+                  </ErrorBoundary>
+                </SettingsProvider>
+              </ErrorBoundary>
+            </StoreAccessGuard>
           </AuthProvider>
         </ErrorBoundary>
         <ErrorBoundary context="Sistema de Notificaciones">

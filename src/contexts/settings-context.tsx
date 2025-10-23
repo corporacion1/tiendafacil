@@ -84,12 +84,14 @@ function AppLoadingScreen() {
 export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
   const pathname = usePathname();
-  const { user: authUser, logout: authSignOut } = useAuth();
+  const { user: authUser, logout: authSignOut, activeStoreId: authActiveStoreId, setActiveStoreId: setAuthActiveStoreId } = useAuth();
 
   // Main settings state
   const [settings, setLocalSettings] = useState<Settings | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [activeStoreId, setActiveStoreId] = useState<string>('');
+  
+  // Use activeStoreId from AuthContext, with fallback to default
+  const activeStoreId = authActiveStoreId || process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'ST-1234567890123';
 
   // Data states - TODOS VACÍOS
   const [products, setProducts] = useState<Product[]>([]);
@@ -423,9 +425,18 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     const initializeSettings = async () => {
       setIsClient(true);
 
-      // Solo localStorage para preferencias de usuario (tienda activa y moneda display)
-      const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY) || process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'ST-1234567890123';
-      setActiveStoreId(storedStoreId);
+      // Get activeStoreId from AuthContext or fallback to localStorage/default
+      let storeIdToUse = authActiveStoreId;
+      
+      if (!storeIdToUse) {
+        // Fallback to localStorage for backward compatibility
+        storeIdToUse = localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY) || process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'ST-1234567890123';
+        
+        // If we have a storeId from localStorage but not in AuthContext, sync it
+        if (storeIdToUse && setAuthActiveStoreId) {
+          setAuthActiveStoreId(storeIdToUse);
+        }
+      }
 
       const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY);
       if (storedCurrencyPref === 'secondary') {
@@ -433,11 +444,19 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       }
 
       // Cargar datos de configuración SOLO desde MongoDB
-      await loadDataFromMongoDB(storedStoreId);
+      await loadDataFromMongoDB(storeIdToUse);
     };
 
     initializeSettings();
-  }, [loadDataFromMongoDB]); // Incluir dependencia estabilizada
+  }, [loadDataFromMongoDB, authActiveStoreId, setAuthActiveStoreId]); // Incluir dependencias del AuthContext
+
+  // Sincronizar datos cuando cambie el activeStoreId del AuthContext
+  useEffect(() => {
+    if (authActiveStoreId && isClient) {
+      console.log('🔄 [SettingsContext] ActiveStoreId changed, reloading data:', authActiveStoreId);
+      loadDataFromMongoDB(authActiveStoreId);
+    }
+  }, [authActiveStoreId, isClient, loadDataFromMongoDB]);
 
   // Sincroniza userProfile con authUser
   useEffect(() => {
@@ -643,16 +662,20 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const switchStore = useCallback(async (storeId: string) => {
     console.log('🏪 Cambiando a tienda:', storeId);
-    setActiveStoreId(storeId);
+    
+    // Use AuthContext to set activeStoreId
+    if (setAuthActiveStoreId) {
+      setAuthActiveStoreId(storeId);
+    }
 
-    // Guardar preferencia de tienda activa en localStorage
+    // Also save to old localStorage key for backward compatibility
     localStorage.setItem(ACTIVE_STORE_ID_STORAGE_KEY, storeId);
 
     // Recargar datos de configuración desde MongoDB
     await loadDataFromMongoDB(storeId);
 
     // Removido toast para evitar loops infinitos
-  }, [loadDataFromMongoDB]); // Removido toast de dependencias
+  }, [loadDataFromMongoDB, setAuthActiveStoreId]); // Removido toast de dependencias
 
   const toggleDisplayCurrency = useCallback(() => {
     const newPreference = displayCurrency === 'primary' ? 'secondary' : 'primary';
