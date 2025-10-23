@@ -1201,6 +1201,10 @@ export default function SettingsPage() {
                     <CardTitle>Gestión de Tasas de Cambio</CardTitle>
                     <CardDescription>
                         Registro histórico de tasas {settings?.secondaryCurrencySymbol && `(${settings.secondaryCurrencySymbol})`}
+                        <br />
+                        <span className="text-sm text-blue-600">
+                            💡 El icono de cambio de moneda (💱) aparece en el catálogo cuando hay tasas disponibles.
+                        </span>
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -1253,7 +1257,7 @@ export default function SettingsPage() {
                                         {Array.isArray(currencyRates) && currencyRates.map(rate => (
                                             <TableRow key={(rate as any)._id || rate.id || `rate-${rate.date}`}>
                                                 <TableCell>
-                                                    {new Date((rate as any).createdAt || rate.date).toLocaleDateString()}
+                                                    {new Date(rate.date).toLocaleDateString()}
                                                 </TableCell>
                                                 <TableCell className="font-mono">
                                                     {rate.rate.toFixed(4)}

@@ -104,7 +104,17 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [cashSessions, setCashSessions] = useState<CashSession[]>([]);
   const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
-  const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>([]);
+  // Inicializar con datos locales por defecto para el switch rápido
+  const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>([
+    {
+      id: 'local-rate-1',
+      rate: 36.50,
+      date: new Date().toISOString(),
+      storeId: 'ST-1234567890123',
+      createdBy: 'Sistema Local',
+      active: true
+    }
+  ]);
 
   // UI states
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
@@ -332,7 +342,33 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       }
 
       if (currencyRatesResult.status === 'fulfilled' && currencyRatesResult.value) {
-        setCurrencyRates(currencyRatesResult.value);
+        console.log('💰 [LoadData] Currency rates raw response:', currencyRatesResult.value);
+        
+        // Procesar la respuesta de currency rates igual que en fetchCurrencyRates
+        let rates = [];
+        const rawData = currencyRatesResult.value;
+        
+        if (Array.isArray(rawData)) {
+          rates = rawData;
+        } else if (rawData.data && Array.isArray(rawData.data)) {
+          rates = rawData.data;
+        } else if (rawData.history && Array.isArray(rawData.history)) {
+          rates = rawData.history;
+        } else if (rawData.data?.history && Array.isArray(rawData.data.history)) {
+          rates = rawData.data.history;
+        }
+        
+        // Procesar las tasas igual que en fetchCurrencyRates
+        const processedRates = rates.map((rate: Record<string, unknown>) => ({
+          ...rate,
+          id: (rate._id as string) || (rate.id as string) || `rate-${(rate.date as string) || Date.now()}`,
+          rate: rate.rate || rate.value || 1,
+          date: (rate.date as string) || new Date().toISOString(),
+          createdBy: rate.createdBy || rate.userId || 'Sistema'
+        }));
+        
+        console.log('💰 [LoadData] Processed currency rates:', processedRates);
+        setCurrencyRates(processedRates);
         loadedCount++;
       }
 
@@ -415,6 +451,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       setUserProfile(null);
     }
   }, [authUser]);
+
+
 
   // ✅ FUNCIÓN PARA ACTUALIZAR SOLO EL ESTADO (SIN GUARDAR EN BD)
   const updateSettingsState = useCallback((newSettings: Partial<Settings>) => {
@@ -532,10 +570,14 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   }, [activeStoreId]);
 
   const fetchCurrencyRates = useCallback(async () => {
+    console.log('🔄 [fetchCurrencyRates] Iniciando carga de tasas de cambio...');
+    
     if (!activeStoreId || activeStoreId === '') {
-      console.warn('activeStoreId no está disponible, omitiendo carga de tasas');
+      console.warn('🔄 [fetchCurrencyRates] activeStoreId no está disponible, omitiendo carga de tasas');
       return null;
     }
+
+    console.log('🔄 [fetchCurrencyRates] Cargando tasas para storeId:', activeStoreId);
 
     try {
       const res = await fetch(`/api/currency-rates?storeId=${activeStoreId}`);
@@ -547,6 +589,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       }
 
       const data = await res.json();
+      console.log('🔄 [fetchCurrencyRates] Respuesta de API:', data);
+      
       if (!res.ok) throw new Error(data.error);
 
       // Manejar diferentes estructuras de respuesta
@@ -569,12 +613,13 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       // Asegurar que cada tasa tenga un ID único
       const processedRates = rates.map((rate: Record<string, unknown>) => ({
         ...rate,
-        id: (rate._id as string) || (rate.id as string) || `rate-${(rate.createdAt as string) || (rate.date as string) || Date.now()}`,
+        id: (rate._id as string) || (rate.id as string) || `rate-${(rate.date as string) || Date.now()}`,
         rate: rate.rate || rate.value || 1,
-        createdAt: rate.createdAt || rate.date || new Date().toISOString(),
+        date: (rate.date as string) || new Date().toISOString(),
         createdBy: rate.createdBy || rate.userId || 'Sistema'
       }));
 
+      console.log('🔄 [fetchCurrencyRates] Tasas procesadas:', processedRates);
       setCurrencyRates(processedRates);
       return data.current || data.data?.current || null;
 
@@ -584,6 +629,30 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       return null;
     }
   }, [activeStoreId]);
+
+  // Cargar tasas de cambio al inicializar y configurar actualización automática
+  useEffect(() => {
+    console.log('🔄 [useEffect Currency] Ejecutando useEffect de currency rates, activeStoreId:', activeStoreId);
+    
+    if (!activeStoreId) {
+      console.log('🔄 [useEffect Currency] No hay activeStoreId, saliendo...');
+      return;
+    }
+    
+    console.log('🔄 [useEffect Currency] Llamando fetchCurrencyRates...');
+    fetchCurrencyRates();
+    
+    // Actualizar currency rates cada 4 horas (14400000 ms)
+    const interval = setInterval(() => {
+      console.log('🔄 [Currency] Actualizando tasas de cambio automáticamente...');
+      fetchCurrencyRates();
+    }, 4 * 60 * 60 * 1000); // 4 horas
+    
+    return () => {
+      console.log('🔄 [useEffect Currency] Limpiando interval...');
+      clearInterval(interval);
+    };
+  }, [fetchCurrencyRates, activeStoreId]);
 
   const switchStore = useCallback(async (storeId: string) => {
     console.log('🏪 Cambiando a tienda:', storeId);
@@ -640,18 +709,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const isPublicPath = pathname.startsWith('/catalog') || pathname === '/' || pathname.startsWith('/login');
 
   const contextValue: SettingsContextType = useMemo(() => {
-    // Log context changes para debugging
-    toastLogger.log({
-      type: 'CONTEXT_CHANGE',
-      contextData: {
-        context: 'SettingsContext',
-        activeStoreId,
-        isLoading,
-        productsCount: products.length,
-        settingsExists: !!settings
-      }
-    });
-
     return {
     settings,
     updateSettings: updateSettingsState,

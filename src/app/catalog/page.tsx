@@ -191,14 +191,11 @@ export default function CatalogPage() {
   const DEMO_STORE_ID = 'ST-1234567890123';
 
   useEffect(() => {
-    // Para evitar bucles infinitos, ejecuta solo si cambia el valor realmente
+    // Solo ejecutar una vez al montar el componente
     if (urlStoreId && urlStoreId !== activeStoreId) {
       switchStore(urlStoreId);
-    } else if (!urlStoreId && activeStoreId !== DEMO_STORE_ID) {
-      router.replace(`catalog?storeId=${DEMO_STORE_ID}`);
     }
-    // No incluyas funciones switchStore ni router en dependencias, solo estados
-  }, [urlStoreId, activeStoreId]);
+  }, []); // Array vacío para ejecutar solo una vez
 
   // Usar activeStoreId del contexto en lugar de calcularlo
   const storeIdForCatalog = activeStoreId || DEMO_STORE_ID;
@@ -260,47 +257,52 @@ export default function CatalogPage() {
     isPolling: isPollingOrders
   } = useUserOrders(authUser?.email || undefined, storeIdForCatalog);
 
-  // Función para verificar si la tasa de cambio es reciente (menos de 8 horas)
+  // Función para verificar si la tasa de cambio está actualizada (últimas 8 horas)
   const isCurrencyRateRecent = useMemo(() => {
-    // Si no hay datos de currency rates, NO mostrar el botón
+    console.log('🔄 [Catalog] Evaluando currency rates disponibles:', currencyRates?.length || 0);
+    
     if (!currencyRates || !Array.isArray(currencyRates) || currencyRates.length === 0) {
-      console.log('🔄 No hay currency rates disponibles - ocultando botón de cambio');
+      console.log('❌ [Catalog] No hay currency rates - ocultando icono de cambio');
       return false;
     }
+
+    // Obtener la tasa más reciente (primera en el array ya que viene ordenada por fecha desc)
+    const latestRate = currencyRates[0];
     
-    // Obtener la tasa más reciente de la base de datos
-    const latestRate = [...currencyRates].sort((a, b) => {
-      const dateB = new Date((b as any).createdAt || b.date);
-      const dateA = new Date((a as any).createdAt || a.date);
-      return dateB.getTime() - dateA.getTime();
-    })[0];
-    
-    if (!latestRate) {
-      console.log('🔄 No se encontró tasa más reciente - ocultando botón de cambio');
+    if (!latestRate || !latestRate.date) {
+      console.log('❌ [Catalog] Tasa más reciente no tiene fecha - ocultando icono de cambio');
       return false;
     }
-    
+
+    // Calcular si la tasa está dentro de las últimas 8 horas (usando hora local)
+    const rateDate = new Date(latestRate.date);
     const now = new Date();
-    const rateDate = new Date((latestRate as any).createdAt || latestRate.date);
     
-    // Validar que la fecha sea válida
-    if (isNaN(rateDate.getTime())) {
-      console.log('🔄 Fecha inválida en tasa - ocultando botón de cambio');
-      return false;
-    }
+    // Convertir ambas fechas a timestamps UTC para comparación precisa
+    const rateTimestamp = rateDate.getTime();
+    const nowTimestamp = now.getTime();
+    const eightHoursInMs = 8 * 60 * 60 * 1000; // 8 horas en milisegundos
     
-    const hoursDifference = (now.getTime() - rateDate.getTime()) / (1000 * 60 * 60);
-    const isRecent = hoursDifference <= 8;
+    const timeDifference = nowTimestamp - rateTimestamp;
+    const isRecent = timeDifference <= eightHoursInMs && timeDifference >= 0;
     
-    console.log(`🔄 Tasa de cambio: ${isRecent ? 'RECIENTE' : 'ANTIGUA'} (${hoursDifference.toFixed(1)} horas)`, {
-      rateDate: rateDate.toISOString(),
-      now: now.toISOString(),
-      hoursDifference: hoursDifference.toFixed(2) + ' horas',
-      isRecent: isRecent,
-      showButton: isRecent
+    console.log('📊 [Catalog] Validación de tasa de cambio (hora local):', {
+      rateDate: rateDate.toLocaleString(),
+      rateDateUTC: rateDate.toISOString(),
+      now: now.toLocaleString(),
+      nowUTC: now.toISOString(),
+      timeDifferenceMs: timeDifference,
+      hoursDifference: Math.round(timeDifference / (1000 * 60 * 60)),
+      isRecent,
+      eightHourLimitMs: eightHoursInMs
     });
     
-    // Solo mostrar el botón si la tasa es de menos de 8 horas
+    if (isRecent) {
+      console.log('✅ [Catalog] Tasa de cambio reciente (< 8 horas) - mostrando icono de cambio');
+    } else {
+      console.log('❌ [Catalog] Tasa de cambio antigua (> 8 horas) - ocultando icono de cambio');
+    }
+    
     return isRecent;
   }, [currencyRates]);
 

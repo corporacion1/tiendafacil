@@ -90,12 +90,12 @@ export async function GET(request: Request) {
     const currentRate = await CurrencyRate.findOne({ 
       storeId, 
       active: true 
-    }).sort({ createdAt: -1 });
+    }).sort({ date: -1 });
 
     // Obtener historial (últimas 10)
     const history = await CurrencyRate.find({ 
       storeId 
-    }).sort({ createdAt: -1 }).limit(10);
+    }).sort({ date: -1 }).limit(10);
 
     return NextResponse.json({ 
       success: true,

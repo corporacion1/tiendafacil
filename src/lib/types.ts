@@ -205,6 +205,8 @@ export type CurrencyRate = {
     rate: number;
     date: string;
     storeId: string;
+    createdBy?: string;
+    active?: boolean;
 };
 
 export type Ad = {
