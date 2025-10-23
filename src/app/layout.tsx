@@ -11,7 +11,12 @@ import { ErrorBoundary, PageErrorFallback } from '@/components/error-boundary';
 
 export const metadata: Metadata = {
   title: 'TIENDA FACIL - Tu Comercio',
-  description: 'Sistema de inventario y punto de venta',
+  description: 'Sistema completo de inventario, punto de venta y gestión comercial en español',
+  keywords: 'inventario, punto de venta, comercio, tienda, facturación, español',
+  authors: [{ name: 'TIENDA FACIL' }],
+  creator: 'TIENDA FACIL',
+  publisher: 'TIENDA FACIL',
+  robots: 'index, follow',
 };
 
 export default function RootLayout({
@@ -20,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="es" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/tienda_facil_logo.svg" type="image/svg+xml" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
