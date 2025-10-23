@@ -188,17 +188,18 @@ export default function CatalogPage() {
   // CORREGIDO: Usar un nombre diferente para searchParams
   const urlSearchParams = useSearchParams();
   const urlStoreId = urlSearchParams.get('storeId');
-  const DEMO_STORE_ID = 'ST-1234567890123';
+  const DEMO_STORE_ID = process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'ST-1234567890123';
 
+  // CORREGIDO: useEffect estabilizado para evitar loops infinitos
   useEffect(() => {
     // Solo ejecutar una vez al montar el componente
     if (urlStoreId && urlStoreId !== activeStoreId) {
       switchStore(urlStoreId);
     }
-  }, []); // Array vacío para ejecutar solo una vez
+  }, [urlStoreId, activeStoreId, switchStore]); // Incluir dependencias necesarias
 
-  // Usar activeStoreId del contexto en lugar de calcularlo
-  const storeIdForCatalog = activeStoreId || DEMO_STORE_ID;
+  // Usar el storeId de la URL, no el activeStoreId del contexto
+  const storeIdForCatalog = urlStoreId || DEMO_STORE_ID;
 
   // Hook para productos con sincronización automática
   const { 
@@ -211,22 +212,58 @@ export default function CatalogPage() {
   // Usar productos sincronizados si están disponibles, sino usar del contexto
   const products = syncedProducts.length > 0 ? syncedProducts : contextProducts;
 
-  // Debug
+  // CORREGIDO: Debug con throttling para evitar spam
+  const debugCountRef = useRef(0);
   useEffect(() => {
-    console.log('📊 Products en Catalog:', products.length);
-    console.log('📊 Families en Catalog:', families.length);
-    console.log('📊 Active Store en Catalog:', storeIdForCatalog);
-  }, [products, families, storeIdForCatalog]);
-
-  const [allStores] = useState<Store[]>([defaultStore]);
-  const isLoading = isLoadingSettings;
-
-  const currentStoreSettings = useMemo(() => {
-    if (loggedInUserSettings && loggedInUserSettings.id === storeIdForCatalog) {
-      return loggedInUserSettings;
+    debugCountRef.current += 1;
+    // Solo log cada 5 cambios para evitar spam
+    if (debugCountRef.current % 5 === 0) {
+      console.log('📊 Products en Catalog:', products.length);
+      console.log('📊 Families en Catalog:', families.length);
+      console.log('📊 Active Store en Catalog:', storeIdForCatalog);
     }
-    return allStores.find(s => s.id === storeIdForCatalog) || defaultStore;
-  }, [storeIdForCatalog, allStores, loggedInUserSettings]);
+  }, [products.length, families.length, storeIdForCatalog]); // Solo longitudes, no arrays completos
+
+  const [catalogStoreSettings, setCatalogStoreSettings] = useState<Store | null>(null);
+  const [loadingCatalogStore, setLoadingCatalogStore] = useState(false);
+  const isLoading = isLoadingSettings || loadingCatalogStore;
+
+  // CORREGIDO: useEffect estabilizado para cargar settings de tienda
+  useEffect(() => {
+    const loadCatalogStoreSettings = async () => {
+      if (!storeIdForCatalog) return;
+      
+      // Si es la misma tienda del usuario logueado, usar esos settings
+      if (loggedInUserSettings && loggedInUserSettings.storeId === storeIdForCatalog) {
+        setCatalogStoreSettings(loggedInUserSettings);
+        return;
+      }
+      
+      try {
+        setLoadingCatalogStore(true);
+        console.log('🏪 [Catalog] Loading store settings for:', storeIdForCatalog);
+        
+        const response = await fetch(`/api/stores?id=${storeIdForCatalog}`);
+        if (response.ok) {
+          const storeData = await response.json();
+          console.log('✅ [Catalog] Store settings loaded:', storeData.name);
+          setCatalogStoreSettings(storeData);
+        } else {
+          console.warn('⚠️ [Catalog] Store not found, using default');
+          setCatalogStoreSettings(defaultStore);
+        }
+      } catch (error) {
+        console.error('❌ [Catalog] Error loading store settings:', error);
+        setCatalogStoreSettings(defaultStore);
+      } finally {
+        setLoadingCatalogStore(false);
+      }
+    };
+
+    loadCatalogStoreSettings();
+  }, [storeIdForCatalog, loggedInUserSettings?.storeId]); // Solo incluir storeId, no todo el objeto
+
+  const currentStoreSettings = catalogStoreSettings || defaultStore;
 
   const [productDetails, setProductDetails] = useState<Product | null>(null);
   const [productImageError, setProductImageError] = useState(false);
@@ -374,6 +411,7 @@ export default function CatalogPage() {
 
 
 
+  // CORREGIDO: useEffect estabilizado para inicialización
   useEffect(() => {
     setIsClient(true)
 
@@ -556,11 +594,11 @@ export default function CatalogPage() {
     };
   }, [lastMouseMove]);
 
-  // Auto-scroll ads
+  // CORREGIDO: Auto-scroll ads estabilizado
   useEffect(() => {
     const relevantAds = (allAds || []).filter(ad => {
       const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
-      return !isExpired && ad.status === 'active' && ad.targetBusinessTypes.includes(currentStoreSettings.businessType);
+      return !isExpired && ad.status === 'active' && ad.targetBusinessTypes?.includes(currentStoreSettings?.businessType || '');
     });
 
     if (isAutoScrolling && relevantAds.length > 1) {
@@ -578,19 +616,19 @@ export default function CatalogPage() {
         clearInterval(autoScrollRef.current);
       }
     };
-  }, [isAutoScrolling, allAds, currentStoreSettings?.businessType]);
+  }, [isAutoScrolling, allAds?.length, currentStoreSettings?.businessType]); // Solo longitud de ads, no array completo
 
-  // Reset ad index when ads change
+  // CORREGIDO: Reset ad index estabilizado
   useEffect(() => {
     const relevantAds = (allAds || []).filter(ad => {
       const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
-      return !isExpired && ad.status === 'active' && ad.targetBusinessTypes.includes(currentStoreSettings.businessType);
+      return !isExpired && ad.status === 'active' && ad.targetBusinessTypes?.includes(currentStoreSettings?.businessType || '');
     });
 
-    if (currentAdIndex >= relevantAds.length) {
+    if (currentAdIndex >= relevantAds.length && relevantAds.length > 0) {
       setCurrentAdIndex(0);
     }
-  }, [allAds, currentStoreSettings?.businessType, currentAdIndex]);
+  }, [allAds?.length, currentStoreSettings?.businessType]); // Removido currentAdIndex para evitar loop
 
   // Auto-scroll del contenedor de productos
   useEffect(() => {
@@ -694,6 +732,7 @@ export default function CatalogPage() {
     return filtered;
   }, [products, searchTerm, selectedFamily, storeIdForCatalog]);
 
+  // CORREGIDO: Auto-open product estabilizado
   useEffect(() => {
     const trimmedSearchTerm = searchTerm.trim().toLowerCase();
     if (sortedAndFilteredProducts.length === 1 && trimmedSearchTerm) {
@@ -703,10 +742,10 @@ export default function CatalogPage() {
 
       if (isExactMatch && product.sku !== lastAutoOpenedSku) {
         setProductDetails(product);
-        setLastAutoOpenedSku(product.sku);
+        setLastAutoOpenedSku(product.sku || '');
       }
     }
-  }, [sortedAndFilteredProducts, searchTerm, lastAutoOpenedSku]);
+  }, [sortedAndFilteredProducts.length, searchTerm, lastAutoOpenedSku]); // Solo longitud, no array completo
 
   useEffect(() => {
     setLastAutoOpenedSku(null);

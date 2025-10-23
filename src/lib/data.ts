@@ -4,7 +4,7 @@ import { subDays, addDays, startOfWeek, startOfMonth, startOfYear } from 'date-f
 
 
 // --- IDs ÚNICOS Y CONSTANTES ---
-export const defaultStoreId = 'ST-1234567890123';
+export const defaultStoreId = process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'ST-1234567890123';
 
 // --- DATOS MUTABLES (ESTADO LOCAL DE LA APLICACIÓN) ---
 // Estos `let` permiten que los datos sean modificados en tiempo de ejecución.

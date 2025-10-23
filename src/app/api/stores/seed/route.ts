@@ -8,7 +8,7 @@ export async function POST() {
     await connectToDatabase();
     console.log('🌱 [Store Seed] Iniciando seed de tienda por defecto...');
 
-    const defaultStoreId = 'ST-1234567890123';
+    const defaultStoreId = process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'ST-1234567890123';
     
     // Check if store already exists
     const existingStore = await Store.findOne({ storeId: defaultStoreId });

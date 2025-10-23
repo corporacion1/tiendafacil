@@ -15,6 +15,19 @@ import {
 } from 'lucide-react';
 import { defaultStoreId } from './data';
 
+// Función para generar elementos de navegación con storeId dinámico
+export const getNavItems = (activeStoreId: string) => [
+  { href: '/dashboard', label: 'Dashboard', icon: Home },
+  { href: `/catalog?storeId=${activeStoreId}`, label: 'Catálogo', icon: LayoutGrid },
+  { href: "/products", label: "Productos", icon: PackagePlus },
+  { href: "/inventory", label: "Inventario", icon: Boxes },
+  { href: "/purchases", label: "Compras", icon: Store },
+  { href: '/pos', label: 'Punto de Venta', icon: ShoppingCart },
+  { href: "/credits", label: "Créditos", icon: CreditCard },
+  { href: "/reports", label: "Reportes", icon: FileText },
+];
+
+// Elementos de navegación por defecto (para compatibilidad)
 export const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: `/catalog?storeId=${defaultStoreId}`, label: 'Catálogo', icon: LayoutGrid },

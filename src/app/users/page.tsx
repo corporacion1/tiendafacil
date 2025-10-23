@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import type { UserProfile, UserRole } from "@/lib/types";
-import { MoreHorizontal, Search, UserPlus, Shield, Check, Mail, Phone, ExternalLink, UserX, Armchair, AlertTriangle, Database, Users, Crown, Store } from "lucide-react";
+import { MoreHorizontal, Search, UserPlus, Shield, Check, Mail, Phone, ExternalLink, UserX, Armchair, AlertTriangle, Database, Users, Crown, Store, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,6 +18,8 @@ import Image from "next/image";
 import { useSettings } from "@/contexts/settings-context";
 import { ErrorBoundary, MinimalErrorFallback } from "@/components/error-boundary";
 import { useErrorHandler } from "@/hooks/use-error-handler";
+import { EditUserModal } from "@/components/edit-user-modal";
+import { CreateStoreModal } from "@/components/create-store-modal";
 
 // Interface para el resumen de usuarios
 interface UsersSummary {
@@ -40,6 +42,7 @@ const getRoleVariant = (role: UserProfile['role']) => {
     case 'su': return 'destructive';
     case 'admin': return 'default';
     case 'pos' as any: return 'secondary';
+    case 'depositary' as any: return 'secondary';
     case 'user':
     default: return 'outline';
   }
@@ -50,6 +53,7 @@ const getRoleIcon = (role: UserProfile['role']) => {
     case 'su': return <Shield className="h-4 w-4 mr-2" />;
     case 'admin': return <UserPlus className="h-4 w-4 mr-2" />;
     case 'pos' as any: return <Armchair className="h-4 w-4 mr-2" />;
+    case 'depositary' as any: return <Database className="h-4 w-4 mr-2" />;
     case 'user':
     default: return <UserPlus className="h-4 w-4 mr-2" />;
   }
@@ -73,10 +77,20 @@ export default function UsersPage() {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [userToAction, setUserToAction] = useState<UserProfile | null>(null);
-  const [actionType, setActionType] = useState<'promote' | 'disable' | 'changeRole' | null>(null);
-  const [newRole, setNewRole] = useState<UserRole>('user');
+  const [actionType, setActionType] = useState<'promote' | 'disable' | null>(null);
+
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
   const [summary, setSummary] = useState<UsersSummary | null>(null);
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showPromoteModal, setShowPromoteModal] = useState(false);
+  const [promotingUser, setPromotingUser] = useState<UserProfile | null>(null);
+  const [newStoreData, setNewStoreData] = useState({
+    name: '',
+    generatedStoreId: ''
+  });
+  const [confirmationText, setConfirmationText] = useState('');
+  const [switchingContext, setSwitchingContext] = useState(false);
 
   // Cargar todos los usuarios para administración (solo superadmin)
   useEffect(() => {
@@ -145,81 +159,154 @@ export default function UsersPage() {
   }, [users]); // Cambiar dependencia a users en lugar de calculateSummary
 
 
-  const handleAction = (user: UserProfile, type: 'promote' | 'disable' | 'changeRole', role?: UserRole) => {
+  const handleAction = (user: UserProfile, type: 'promote' | 'disable') => {
     if (currentUserProfile?.role !== 'su') {
       toast({ variant: 'destructive', title: 'Permiso denegado' });
       return;
     }
+    
+    if (type === 'promote') {
+      // Generar storeID automáticamente
+      const randomDigits = Math.random().toString().slice(2, 15);
+      const generatedStoreId = `ST-${randomDigits}`;
+      
+      setPromotingUser(user);
+      setNewStoreData({
+        name: `Tienda de ${user.displayName || user.email}`,
+        generatedStoreId
+      });
+      setShowPromoteModal(true);
+      return;
+    }
+    
     setUserToAction(user);
     setActionType(type);
-    if (role) {
-      setNewRole(role);
-    }
   };
   
-  const confirmRoleChange = async () => {
-      if (!userToAction) return;
 
-      try {
-        const response = await fetch('/api/users', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ uid: userToAction.uid, role: newRole }),
-        });
 
-        if (!response.ok) {
-          throw new Error('Error al actualizar rol');
-        }
+  // Función para confirmar promoción con creación de tienda
+  const confirmPromoteWithStore = async () => {
+    if (!promotingUser) return;
 
-        const updatedUser = await response.json();
-        setUsers(prevUsers => prevUsers.map(u => u.uid === userToAction.uid ? updatedUser : u));
-        
-        toast({
-            title: 'Rol Actualizado',
-            description: `${userToAction.displayName} ahora es ${newRole}.`,
-        });
+    try {
+      // 1. Crear la tienda con siembra
+      const createStoreResponse = await fetch('/api/stores/create-and-seed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newStoreData.name,
+          ownerEmail: promotingUser.email,
+          businessType: 'General',
+          address: '',
+          phone: ''
+        })
+      });
 
-        setUserToAction(null);
-        setActionType(null);
-      } catch (error) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "No se pudo actualizar el rol del usuario.",
-        });
+      if (!createStoreResponse.ok) {
+        const errorData = await createStoreResponse.json();
+        throw new Error(errorData.error || 'Error al crear tienda');
       }
-  }
+
+      const storeData = await createStoreResponse.json();
+      const actualStoreId = storeData.store.storeId;
+
+      // 2. Actualizar el usuario con el nuevo rol y storeId
+      const updateUserResponse = await fetch('/api/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          uid: promotingUser.uid, 
+          role: 'admin', 
+          storeId: actualStoreId,
+          storeRequest: false 
+        }),
+      });
+
+      if (!updateUserResponse.ok) {
+        throw new Error('Error al actualizar usuario');
+      }
+
+      const updatedUser = await updateUserResponse.json();
+      setUsers(prevUsers => prevUsers.map(u => u.uid === promotingUser.uid ? updatedUser.user : u));
+
+      // 3. Cambiar el contexto activo a la nueva tienda
+      await switchStore(actualStoreId);
+
+      toast({
+        title: "¡Usuario Promovido Exitosamente!",
+        description: `${promotingUser.displayName} ahora es administrador de la tienda ${actualStoreId}. El contexto ha cambiado a su nueva tienda.`,
+      });
+
+      // Cerrar modal y limpiar estados
+      setShowPromoteModal(false);
+      setPromotingUser(null);
+      setNewStoreData({
+        name: '',
+        generatedStoreId: ''
+      });
+      setConfirmationText('');
+
+    } catch (error: any) {
+      handleError.api(error, {
+        action: 'promote_user_with_store',
+        component: 'UsersPage'
+      });
+    }
+  };
+
+  const handleViewAsUser = async (user: UserProfile) => {
+    if (!user.storeId) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "El usuario no tiene una tienda asignada"
+      });
+      return;
+    }
+
+    try {
+      setSwitchingContext(true);
+      
+      console.log('🔄 [Users Page] Cambiando contexto a tienda:', user.storeId);
+      console.log('👤 [Users Page] Usuario objetivo:', user.displayName || user.email);
+      
+      // Mostrar toast de inicio
+      toast({
+        title: "Cambiando contexto...",
+        description: `Cambiando a la tienda de ${user.displayName || user.email}`,
+        duration: 2000
+      });
+      
+      // Cambiar el contexto usando la función del contexto de settings
+      await switchStore(user.storeId);
+      
+      // Toast de confirmación (el switchStore ya muestra uno, pero este es más específico)
+      setTimeout(() => {
+        toast({
+          title: "✅ Contexto cambiado exitosamente",
+          description: `Ahora estás viendo como ${user.displayName || user.email} en la tienda ${user.storeId}`,
+          duration: 5000
+        });
+      }, 1000);
+      
+    } catch (error) {
+      console.error('❌ [Users Page] Error cambiando contexto:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo cambiar el contexto de usuario"
+      });
+    } finally {
+      setSwitchingContext(false);
+    }
+  };
 
   const confirmAction = async () => {
     if (!userToAction) return;
 
     try {
-      if (actionType === 'promote') {
-        const newStoreId = `store-${userToAction.uid.slice(0, 8)}`;
-        const response = await fetch('/api/users', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            uid: userToAction.uid, 
-            role: 'admin', 
-            storeId: newStoreId, 
-            storeRequest: false 
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Error al promover usuario');
-        }
-
-        const updatedUser = await response.json();
-        setUsers(prevUsers => prevUsers.map(u => u.uid === userToAction.uid ? updatedUser : u));
-        
-        toast({
-            title: "Usuario Promovido",
-            description: `${userToAction.displayName} ahora es un administrador con la tienda ${newStoreId}.`,
-        });
-
-      } else if (actionType === 'disable') {
+      if (actionType === 'disable') {
         const newStatus = userToAction.status === 'disabled' ? 'active' : 'disabled';
         const response = await fetch('/api/users', {
           method: 'PUT',
@@ -382,37 +469,29 @@ export default function UsersPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                          <DropdownMenuItem onSelect={() => { setEditingUser(user); setShowEditModal(true); }}>
+                              <UserPlus className="mr-2 h-4 w-4" /> Editar Usuario
+                          </DropdownMenuItem>
                           {user.role === 'user' && user.storeRequest && (
                               <DropdownMenuItem onSelect={() => handleAction(user, 'promote')}>
                                   <Shield className="mr-2 h-4 w-4" /> Promover a Admin
                               </DropdownMenuItem>
                           )}
-                          <DropdownMenuSub>
-                              <DropdownMenuSubTrigger>Cambiar Rol</DropdownMenuSubTrigger>
-                              <DropdownMenuPortal>
-                                  <DropdownMenuSubContent>
-                                      <DropdownMenuItem onSelect={() => handleAction(user, 'changeRole', 'user')}>
-                                          <Check className={`mr-2 h-4 w-4 ${user.role === 'user' ? 'opacity-100' : 'opacity-0'}`} />
-                                          User
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onSelect={() => handleAction(user, 'changeRole', 'pos' as any)}>
-                                          <Check className={`mr-2 h-4 w-4 ${(user as any).role === 'pos' ? 'opacity-100' : 'opacity-0'}`} />
-                                          Pos
-                                      </DropdownMenuItem>
-                                       <DropdownMenuItem onSelect={() => handleAction(user, 'changeRole', 'admin')}>
-                                          <Check className={`mr-2 h-4 w-4 ${user.role === 'admin' ? 'opacity-100' : 'opacity-0'}`} />
-                                          Admin
-                                      </DropdownMenuItem>
-                                       <DropdownMenuItem onSelect={() => handleAction(user, 'changeRole', 'su')}>
-                                          <Check className={`mr-2 h-4 w-4 ${user.role === 'su' ? 'opacity-100' : 'opacity-0'}`} />
-                                          SuperAdmin
-                                      </DropdownMenuItem>
-                                  </DropdownMenuSubContent>
-                              </DropdownMenuPortal>
-                          </DropdownMenuSub>
+
                           {user.storeId && 
-                              <DropdownMenuItem onSelect={() => switchStore(user.storeId!)}>
-                                  <ExternalLink className="mr-2 h-4 w-4" /> Ver como este usuario
+                              <DropdownMenuItem 
+                                onSelect={() => handleViewAsUser(user)}
+                                disabled={switchingContext}
+                              >
+                                  {switchingContext ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Cambiando...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <ExternalLink className="mr-2 h-4 w-4" /> Ver como este usuario
+                                    </>
+                                  )}
                               </DropdownMenuItem>
                           }
                           <DropdownMenuSeparator />
@@ -557,19 +636,128 @@ export default function UsersPage() {
             <AlertDialogHeader>
                 <AlertDialogTitle>¿Confirmar Acción?</AlertDialogTitle>
                 <AlertDialogDescription>
-                    {actionType === 'promote' && `Estás a punto de promover a "${userToAction?.displayName}" a administrador. Se le asignará una nueva tienda. ¿Estás seguro?`}
                     {actionType === 'disable' && `Estás a punto de ${userToAction?.status === 'disabled' ? 'habilitar' : 'deshabilitar'} la cuenta de "${userToAction?.displayName}".`}
-                    {actionType === 'changeRole' && `¿Estás seguro de que quieres cambiar el rol de "${userToAction?.displayName}" a ${newRole}?`}
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogCancel onClick={() => setUserToAction(null)}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={actionType === 'changeRole' ? confirmRoleChange : confirmAction}>
+                <AlertDialogAction onClick={confirmAction}>
                     Sí, confirmar
                 </AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal para promoción con creación de tienda */}
+      <AlertDialog open={showPromoteModal} onOpenChange={setShowPromoteModal}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Crown className="h-5 w-5 text-yellow-500" />
+              Promover a Administrador
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Se creará una nueva tienda para {promotingUser?.displayName} y será promovido a administrador.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div>
+              <Label htmlFor="storeName">Nombre de la Tienda</Label>
+              <Input
+                id="storeName"
+                value={newStoreData.name}
+                onChange={(e) => setNewStoreData({...newStoreData, name: e.target.value})}
+                placeholder="Nombre de la nueva tienda"
+              />
+            </div>
+            
+            <div>
+              <Label>StoreID (Generado automáticamente)</Label>
+              <Input
+                value={newStoreData.generatedStoreId}
+                disabled
+                className="bg-gray-100 font-mono text-sm"
+              />
+            </div>
+            
+            <div className="bg-amber-50 p-4 rounded-md border border-amber-200">
+              <p className="text-sm text-amber-800 font-medium mb-2">
+                ⚠️ Confirmación requerida
+              </p>
+              <p className="text-xs text-amber-700 mb-3">
+                Para continuar, escriba "CONFIRMAR" en el campo de abajo:
+              </p>
+              <Input
+                value={confirmationText}
+                onChange={(e) => setConfirmationText(e.target.value)}
+                placeholder="Escriba CONFIRMAR para activar el botón"
+                className="bg-white"
+              />
+            </div>
+            
+            <div className="bg-blue-50 p-3 rounded-md">
+              <p className="text-sm text-blue-700">
+                <strong>Proceso automático:</strong>
+              </p>
+              <ul className="text-xs text-blue-600 mt-1 space-y-1">
+                <li>• Se creará la tienda con datos de muestra</li>
+                <li>• El usuario será promovido a administrador</li>
+                <li>• El contexto cambiará a la nueva tienda</li>
+              </ul>
+            </div>
+          </div>
+          
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowPromoteModal(false);
+              setPromotingUser(null);
+              setNewStoreData({
+                name: '',
+                generatedStoreId: ''
+              });
+              setConfirmationText('');
+            }}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmPromoteWithStore}
+              disabled={!newStoreData.name || confirmationText !== 'CONFIRMAR'}
+              className="bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              <Crown className="h-4 w-4 mr-2" />
+              Crear Tienda y Promover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal de edición de usuario */}
+      <EditUserModal
+        user={editingUser}
+        open={showEditModal}
+        onOpenChange={setShowEditModal}
+        onUserUpdated={() => {
+          // Recargar la lista de usuarios después de la actualización
+          const loadAllUsers = async () => {
+            if (currentUserProfile?.role !== 'su') return;
+            
+            try {
+              const response = await fetch('/api/users');
+              if (response.ok) {
+                const allUsers = await response.json();
+                setUsers(allUsers);
+              }
+            } catch (error) {
+              handleError.api(error, {
+                action: 'reload_users',
+                component: 'UsersPage'
+              });
+            }
+          };
+          loadAllUsers();
+        }}
+      />
     </ErrorBoundary>
   );
 }

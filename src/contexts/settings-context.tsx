@@ -110,7 +110,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       id: 'local-rate-1',
       rate: 36.50,
       date: new Date().toISOString(),
-      storeId: 'ST-1234567890123',
+      storeId: process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'ST-1234567890123',
       createdBy: 'Sistema Local',
       active: true
     }
@@ -121,7 +121,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const [isLoading, setIsLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
 
-  // Función para cargar datos desde MongoDB
+  // Función para cargar datos desde MongoDB - ESTABILIZADA
   const loadDataFromMongoDB = useCallback(async (storeId: string) => {
     try {
       setIsLoading(true);
@@ -376,17 +376,13 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
     } catch (error) {
       console.error('❌ Error cargando datos desde MongoDB:', error);
-      toast({
-        variant: "destructive",
-        title: "Error de conexión",
-        description: "No se pudieron cargar los datos desde la base de datos"
-      });
+      // Removido toast para evitar loops infinitos
     } finally {
       setIsLoading(false);
     }
-  }, [toast]); // Solo incluir toast como dependencia
+  }, []); // Removidas TODAS las dependencias para estabilizar
 
-  // ✅ FUNCIÓN SEEDDATABASE CORREGIDA Y DEFINITIVA
+  // ✅ FUNCIÓN SEEDDATABASE ESTABILIZADA
   const seedDatabase = useCallback(async (storeId: string) => {
     try {
       console.log('🌱 Iniciando SEED COMPLETO en MongoDB para store:', storeId);
@@ -420,15 +416,15 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       console.error('❌ Error en seedDatabase:', error);
       return false;
     }
-  }, [loadDataFromMongoDB]); // Incluir la dependencia correctamente
+  }, [loadDataFromMongoDB]); // Mantener dependencia pero loadDataFromMongoDB ya está estabilizado
 
-  // Cargar configuración inicial al montar el componente
+  // Cargar configuración inicial al montar el componente - ESTABILIZADO
   useEffect(() => {
     const initializeSettings = async () => {
       setIsClient(true);
 
       // Solo localStorage para preferencias de usuario (tienda activa y moneda display)
-      const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY) || 'ST-1234567890123';
+      const storedStoreId = localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY) || process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'ST-1234567890123';
       setActiveStoreId(storedStoreId);
 
       const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY);
@@ -441,7 +437,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     };
 
     initializeSettings();
-  }, []); // Array vacío para ejecutar solo una vez
+  }, [loadDataFromMongoDB]); // Incluir dependencia estabilizada
 
   // Sincroniza userProfile con authUser
   useEffect(() => {
@@ -454,7 +450,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
 
 
-  // ✅ FUNCIÓN PARA ACTUALIZAR SOLO EL ESTADO (SIN GUARDAR EN BD)
+  // ✅ FUNCIÓN PARA ACTUALIZAR SOLO EL ESTADO (SIN GUARDAR EN BD) - ESTABILIZADA
   const updateSettingsState = useCallback((newSettings: Partial<Settings>) => {
     setLocalSettings(prev => {
       if (!prev) {
@@ -471,27 +467,25 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       }
       return { ...prev, ...newSettings };
     });
-  }, []); // Removido settings de las dependencias
+  }, []); // Sin dependencias para máxima estabilidad
 
-  // ✅ FUNCIÓN PARA GUARDAR EN BASE DE DATOS SOLAMENTE
+  // ✅ FUNCIÓN PARA GUARDAR EN BASE DE DATOS SOLAMENTE - ESTABILIZADA
   const saveSettingsToDatabase = useCallback(async (settingsToSave?: Partial<Settings>) => {
     try {
       console.log('💾 [Context] Guardando configuración en BD...');
 
-      if (!settingsToSave && !settings) {
+      if (!settingsToSave) {
         throw new Error("No hay configuración para guardar");
       }
 
-      const finalSettings = settingsToSave || settings;
-      console.log('📤 [Context] Datos a enviar:', { storeId: activeStoreId, ...finalSettings });
-      console.log('🏷️ [Context] Nombre específico a guardar:', finalSettings?.name, 'Longitud:', finalSettings?.name?.length);
+      console.log('📤 [Context] Datos a enviar:', { storeId: activeStoreId, ...settingsToSave });
 
       const res = await fetch('/api/stores', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           storeId: activeStoreId,
-          ...finalSettings
+          ...settingsToSave
         })
       });
 
@@ -508,13 +502,6 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       console.log('🔄 [Context] Actualizando estado local con datos del servidor...');
       updateSettingsState(responseData);
       
-      // Opcional: Recargar datos completos para asegurar sincronización
-      // Esto es útil si hay campos calculados o transformados en el servidor
-      setTimeout(() => {
-        console.log('🔄 [Context] Recargando datos completos para sincronización...');
-        loadDataFromMongoDB(activeStoreId);
-      }, 100);
-      
       console.log('✅ [Context] Configuración guardada y estado actualizado exitosamente');
       return true;
 
@@ -522,7 +509,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       console.error('❌ [Context] Error saving settings:', error);
       throw error;
     }
-  }, [activeStoreId]); // Removido settings de las dependencias
+  }, [activeStoreId, updateSettingsState, loadDataFromMongoDB]); // Dependencias estabilizadas
 
   // ✅ FUNCIÓN GUARDARCURRENCYRATE CORREGIDA Y DEFINITIVA
   const saveCurrencyRate = useCallback(async (rate: number, userName: string) => {
@@ -664,8 +651,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     // Recargar datos de configuración desde MongoDB
     await loadDataFromMongoDB(storeId);
 
-    toast({ title: `Cambiado a la tienda ${storeId}` });
-  }, [loadDataFromMongoDB, toast]);
+    // Removido toast para evitar loops infinitos
+  }, [loadDataFromMongoDB]); // Removido toast de dependencias
 
   const toggleDisplayCurrency = useCallback(() => {
     const newPreference = displayCurrency === 'primary' ? 'secondary' : 'primary';
@@ -698,9 +685,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const handleSignOut = useCallback(async () => {
     if (authSignOut) {
       authSignOut();
-      toast({ title: "Sesión cerrada" });
+      // Removido toast para evitar loops infinitos
     }
-  }, [authSignOut, toast]);
+  }, [authSignOut]); // Removido toast de dependencias
 
   const activeSymbol = displayCurrency === 'primary' ? (settings?.primaryCurrencySymbol || '$') : (settings?.secondaryCurrencySymbol || 'Bs.');
   const latestRate = currencyRates.length > 0 ? currencyRates[0].rate : 1;
@@ -708,6 +695,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const isPublicPath = pathname.startsWith('/catalog') || pathname === '/' || pathname.startsWith('/login');
 
+  // CONTEXT VALUE ESTABILIZADO - Solo dependencias esenciales
   const contextValue: SettingsContextType = useMemo(() => {
     return {
     settings,
@@ -758,49 +746,39 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     syncAfterSave: loadDataFromMongoDB,
     syncProducts: reloadProducts
   }}, [
+    // Solo incluir dependencias que realmente cambian y son necesarias
     settings,
-    updateSettingsState,
-    saveSettingsToDatabase,
     displayCurrency,
-    toggleDisplayCurrency,
     activeSymbol,
     activeRate,
     currencyRates,
-    setCurrencyRates,
     products,
-    setProducts,
     sales,
-    setSales,
     purchases,
-    setPurchases,
     customers,
-    setCustomers,
     suppliers,
-    setSuppliers,
     units,
-    setUnits,
     families,
-    setFamilies,
     warehouses,
-    setWarehouses,
     ads,
-    setAds,
     cashSessions,
-    setCashSessions,
     pendingOrders,
-    setPendingOrders,
     users,
-    setUsers,
     activeStoreId,
-    switchStore,
     isLoading,
     userProfile,
+    // Funciones estabilizadas
+    updateSettingsState,
+    saveSettingsToDatabase,
+    toggleDisplayCurrency,
+    switchStore,
     handleSetUserProfile,
     handleSignOut,
     seedDatabase,
     fetchCurrencyRates,
     saveCurrencyRate,
-    reloadProducts
+    reloadProducts,
+    loadDataFromMongoDB
   ]);
 
   if (isLoading && !isPublicPath && isClient) {

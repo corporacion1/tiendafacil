@@ -131,11 +131,14 @@ export async function POST(request: Request) {
       token: 'fake-jwt-token-123',
       user: {
         id: user._id.toString(),
+        uid: user.uid,
         email: user.email,
         phone: user.phone,
         storeId: user.storeId,
         role: user.role,
-        displayName: user.email.split('@')[0],
+        displayName: user.displayName || user.email.split('@')[0],
+        storeRequest: user.storeRequest || false,
+        status: user.status || 'active'
       }
     });
 

@@ -209,11 +209,13 @@ export function StoresDashboard({ onStatsUpdate }: StoresDashboardProps) {
                   </div>
                   <div className="text-right">
                     <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      activity.status === 'active' 
+                      activity.status === 'production' 
+                        ? 'bg-purple-100 text-purple-800' 
+                        : activity.status === 'active' 
                         ? 'bg-green-100 text-green-800' 
                         : 'bg-red-100 text-red-800'
                     }`}>
-                      {activity.status === 'active' ? 'Activa' : 'Inactiva'}
+                      {activity.status === 'production' ? 'Producción' : activity.status === 'active' ? 'Activa' : 'Inactiva'}
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
                       {new Date(activity.createdAt).toLocaleDateString('es-ES')}

@@ -162,7 +162,28 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">
 
+// Throttle para prevenir spam de toasts
+const toastThrottle = new Map<string, number>();
+const THROTTLE_DELAY = 1000; // 1 segundo
+
 function toast({ ...props }: Toast) {
+  // Crear una clave única para el toast basada en título y descripción
+  const toastKey = `${props.title || ''}-${props.description || ''}`;
+  const now = Date.now();
+  
+  // Verificar throttle
+  if (toastThrottle.has(toastKey)) {
+    const lastTime = toastThrottle.get(toastKey)!;
+    if (now - lastTime < THROTTLE_DELAY) {
+      console.warn('🚫 Toast throttled:', props.title);
+      return {
+        id: '',
+        dismiss: () => {},
+        update: () => {},
+      };
+    }
+  }
+  
   // Evitar toasts duplicados con el mismo título y descripción
   const isDuplicate = memoryState.toasts.some(existingToast => 
     existingToast.title === props.title && 
@@ -178,6 +199,9 @@ function toast({ ...props }: Toast) {
       update: () => {},
     }
   }
+
+  // Actualizar throttle
+  toastThrottle.set(toastKey, now);
 
   const id = genId()
 
@@ -212,7 +236,15 @@ function useToast() {
 
   React.useEffect(() => {
     // Usar una función estable para evitar re-registros
-    const stableSetState = (newState: State) => setState(newState)
+    const stableSetState = (newState: State) => {
+      // Prevenir actualizaciones innecesarias si el estado es idéntico
+      setState(prevState => {
+        if (JSON.stringify(prevState.toasts) === JSON.stringify(newState.toasts)) {
+          return prevState;
+        }
+        return newState;
+      });
+    }
     
     listeners.push(stableSetState)
     return () => {

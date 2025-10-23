@@ -9,10 +9,12 @@ import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/AuthContext"
 import { useSettings } from "@/contexts/settings-context"
+import { usePermissions } from "@/hooks/use-permissions"
 
 export function StoreRequestButton() {
   const { user, login, registerUser } = useAuth()
   const { userProfile, setUserProfile } = useSettings()
+  const { userRole } = usePermissions()
   const { toast } = useToast()
   
   const [isOpen, setIsOpen] = useState(false)
@@ -112,11 +114,22 @@ export function StoreRequestButton() {
       })
 
       if (!response.ok) {
-        throw new Error('Error al solicitar tienda')
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al solicitar tienda')
       }
 
       const updatedUser = await response.json()
+      
+      // Actualizar el contexto
       setUserProfile(updatedUser)
+      
+      // También actualizar localStorage si existe
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const userData = JSON.parse(storedUser);
+        userData.storeRequest = true;
+        localStorage.setItem('user', JSON.stringify(userData));
+      }
 
       toast({
         title: "¡Solicitud enviada!",
@@ -168,8 +181,8 @@ export function StoreRequestButton() {
     }
   }
 
-  // Si el usuario ya tiene una solicitud pendiente, no mostrar el botón
-  if (userProfile?.storeRequest) {
+  // Solo mostrar para usuarios con role "user" y que no tengan solicitud pendiente
+  if (userRole !== 'user' || userProfile?.storeRequest) {
     return null
   }
 
@@ -181,7 +194,7 @@ export function StoreRequestButton() {
           <Button
             onClick={handleDirectRequest}
             disabled={isLoading}
-            className={`rounded-full h-16 w-16 shadow-2xl transition-all duration-300 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0 hover:scale-110 ${isLoading ? 'animate-pulse' : 'hover:animate-bounce'}`}
+            className={`rounded-full h-16 w-16 shadow-2xl transition-all duration-300 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white border-0 hover:scale-110 ${isLoading ? 'animate-pulse' : 'hover:animate-bounce'}`}
             title="¡Quiero una tienda!"
           >
             <Store className="h-8 w-8" />
@@ -200,7 +213,7 @@ export function StoreRequestButton() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Store className="h-5 w-5 text-purple-500" />
+              <Store className="h-5 w-5 text-orange-500" />
               ¡Solicita tu tienda!
             </DialogTitle>
             <DialogDescription>
@@ -319,7 +332,7 @@ export function StoreRequestButton() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600"
               >
                 {isLoading ? (
                   <div className="flex items-center gap-2">

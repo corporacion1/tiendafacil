@@ -26,7 +26,7 @@ import { ThemeToggle } from "./theme-toggle";
 import { useSettings } from "@/contexts/settings-context";
 import { usePermissions } from "@/hooks/use-permissions";
 import { Logo } from "./logo";
-import { navItems, adminNavItems, settingsNav } from "@/lib/navigation";
+import { getNavItems, adminNavItems, settingsNav } from "@/lib/navigation";
 import { Badge } from "./ui/badge";
 import { defaultStoreId } from "@/lib/data";
 import { signOut } from "firebase/auth";
@@ -96,7 +96,7 @@ export function SiteHeader({ toggleSidebar, isSidebarExpanded }: SiteHeaderProps
               {/* Navegación con scroll */}
               <nav className="flex-1 overflow-y-auto sidebar-scroll">
                 <div className="grid gap-6 text-lg font-medium pb-4">
-                  {navItems.filter(item => {
+                  {getNavItems(activeStoreId || 'ST-1234567890123').filter(item => {
                     const route = item.href.split('?')[0];
                     return canAccess(route);
                   }).map((item) => (

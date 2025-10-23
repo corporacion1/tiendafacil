@@ -13,45 +13,59 @@ import {
 } from "@/components/ui/toast"
 import { ErrorBoundary, MinimalErrorFallback } from '@/components/error-boundary';
 
-// Componente Toaster con safeguards adicionales
+// Componente Toaster con safeguards adicionales - ESTABILIZADO
 function SafeToaster() {
   const { toasts } = useToast()
 
-  // Log renders para debugging
+  // Log renders para debugging - THROTTLED para evitar spam
+  const renderCountRef = React.useRef(0);
   React.useEffect(() => {
-    toastLogger.log({
-      type: 'RENDER',
-      contextData: { toastCount: toasts.length }
-    });
+    renderCountRef.current += 1;
+    
+    // Solo log cada 5 renders para evitar spam
+    if (renderCountRef.current % 5 === 0) {
+      toastLogger.log({
+        type: 'RENDER',
+        contextData: { 
+          toastCount: toasts.length,
+          renderCount: renderCountRef.current
+        }
+      });
+    }
   }, [toasts.length]);
 
-  // Limitar el número de toasts para prevenir overflow
+  // Limitar el número de toasts para prevenir overflow - MEMOIZADO ESTABLE
   const limitedToasts = React.useMemo(() => {
     return toasts.slice(0, 5); // Máximo 5 toasts
   }, [toasts]);
 
+  // Prevenir re-renders innecesarios
+  const memoizedToasts = React.useMemo(() => {
+    return limitedToasts.map(function ({ id, title, description, action, ...props }) {
+      return (
+        <ErrorBoundary 
+          key={id} 
+          context="Toast Individual"
+          fallback={MinimalErrorFallback}
+        >
+          <Toast key={id} {...props}>
+            <div className="grid gap-1">
+              {title && <ToastTitle>{title}</ToastTitle>}
+              {description && (
+                <ToastDescription>{description}</ToastDescription>
+              )}
+            </div>
+            {action}
+            <ToastClose />
+          </Toast>
+        </ErrorBoundary>
+      );
+    });
+  }, [limitedToasts]);
+
   return (
     <ToastProvider>
-      {limitedToasts.map(function ({ id, title, description, action, ...props }) {
-        return (
-          <ErrorBoundary 
-            key={id} 
-            context="Toast Individual"
-            fallback={MinimalErrorFallback}
-          >
-            <Toast key={id} {...props}>
-              <div className="grid gap-1">
-                {title && <ToastTitle>{title}</ToastTitle>}
-                {description && (
-                  <ToastDescription>{description}</ToastDescription>
-                )}
-              </div>
-              {action}
-              <ToastClose />
-            </Toast>
-          </ErrorBoundary>
-        )
-      })}
+      {memoizedToasts}
       <ToastViewport />
     </ToastProvider>
   )

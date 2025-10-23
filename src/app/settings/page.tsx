@@ -464,7 +464,24 @@ export default function SettingsPage() {
 
 
     const isItemInUse = (type: 'unit' | 'family' | 'warehouse', name: string) => {
-        return products.some(p => p[type] === name);
+        if (process.env.NODE_ENV === 'development') {
+            console.log(`🔍 [Settings] Checking if ${type} "${name}" is in use...`);
+            console.log(`📦 [Settings] Total products to check:`, products.length);
+        }
+
+        const productsUsingItem = products.filter(p => p[type] === name);
+
+        if (productsUsingItem.length > 0) {
+            if (process.env.NODE_ENV === 'development') {
+                console.log(`⚠️ [Settings] ${type} "${name}" is in use by:`, productsUsingItem.map(p => p.name));
+            }
+            return true;
+        }
+
+        if (process.env.NODE_ENV === 'development') {
+            console.log(`✅ [Settings] ${type} "${name}" is not in use, can be deleted`);
+        }
+        return false;
     };
 
     // Función helper para obtener el endpoint correcto según el tipo
@@ -478,35 +495,64 @@ export default function SettingsPage() {
     };
 
     const handleDelete = async (type: 'unit' | 'family' | 'warehouse', id: string, name: string) => {
+        console.log(`🗑️ [Settings] Attempting to delete ${type}:`, { id, name, storeId: activeStoreId });
+
+        // Verificar si el elemento está en uso
         if (isItemInUse(type, name)) {
+            console.log(`❌ [Settings] Cannot delete ${type} "${name}" - it's in use`);
             toast({
                 variant: 'destructive',
                 title: 'Error al eliminar',
-                description: `"${name}" no se puede eliminar porque está en uso.`,
+                description: `"${name}" no se puede eliminar porque está en uso por uno o más productos.`,
             });
             return;
         }
 
         try {
-            console.log(`🔄 [Settings] Deleting ${type}:`, { id, name, storeId: activeStoreId });
-
             const endpoint = getApiEndpoint(type);
-            const response = await fetch(`/api/${endpoint}?id=${id}&storeId=${activeStoreId}`, {
+            const url = `/api/${endpoint}?id=${encodeURIComponent(id)}&storeId=${encodeURIComponent(activeStoreId)}`;
+
+            console.log(`🔄 [Settings] Making DELETE request to:`, url);
+
+            const response = await fetch(url, {
                 method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
             });
+
+            console.log(`📡 [Settings] DELETE response status:`, response.status);
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
                 const errorMessage = errorData.error || `Error al eliminar ${type}`;
-                console.error(`❌ [Settings] Error deleting ${type}:`, { status: response.status, error: errorMessage });
+                console.error(`❌ [Settings] Error deleting ${type}:`, {
+                    status: response.status,
+                    statusText: response.statusText,
+                    error: errorMessage
+                });
                 throw new Error(errorMessage);
             }
 
-            console.log(`✅ [Settings] Successfully deleted ${type}:`, { id, name });
+            const result = await response.json();
+            console.log(`✅ [Settings] Successfully deleted ${type}:`, result);
 
-            if (type === 'unit') setUnits(units.filter(item => item.id !== id));
-            if (type === 'family') setFamilies(families.filter(item => item.id !== id));
-            if (type === 'warehouse') setWarehouses(warehouses.filter(item => item.id !== id));
+            // Actualizar el estado local
+            if (type === 'unit') {
+                const newUnits = units.filter(item => item.id !== id);
+                console.log(`🔄 [Settings] Updating units state:`, { before: units.length, after: newUnits.length });
+                setUnits(newUnits);
+            }
+            if (type === 'family') {
+                const newFamilies = families.filter(item => item.id !== id);
+                console.log(`🔄 [Settings] Updating families state:`, { before: families.length, after: newFamilies.length });
+                setFamilies(newFamilies);
+            }
+            if (type === 'warehouse') {
+                const newWarehouses = warehouses.filter(item => item.id !== id);
+                console.log(`🔄 [Settings] Updating warehouses state:`, { before: warehouses.length, after: newWarehouses.length });
+                setWarehouses(newWarehouses);
+            }
 
             toast({
                 title: 'Elemento Eliminado',
@@ -516,8 +562,8 @@ export default function SettingsPage() {
             console.error(`❌ [Settings] Error in handleDelete:`, error);
             toast({
                 variant: 'destructive',
-                title: 'Error',
-                description: error.message || `No se pudo eliminar el elemento.`,
+                title: 'Error al eliminar',
+                description: error.message || `No se pudo eliminar el elemento. Inténtalo de nuevo.`,
             });
         }
     };
@@ -766,13 +812,25 @@ export default function SettingsPage() {
                                             <AlertDialogHeader>
                                                 <AlertDialogTitle>¿Eliminar "{item.name}"?</AlertDialogTitle>
                                                 <AlertDialogDescription>
-                                                    Esta acción es irreversible. {isItemInUse(type, item.name) && 'Este elemento está en uso y no se puede eliminar.'}
+                                                    {isItemInUse(type, item.name) ? (
+                                                        <span className="text-destructive">
+                                                            ⚠️ Este elemento está siendo usado por uno o más productos y no se puede eliminar.
+                                                        </span>
+                                                    ) : (
+                                                        <span>
+                                                            Esta acción es irreversible. El elemento será eliminado permanentemente.
+                                                        </span>
+                                                    )}
                                                 </AlertDialogDescription>
                                             </AlertDialogHeader>
                                             <AlertDialogFooter>
                                                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                                <AlertDialogAction onClick={() => handleDelete(type, item.id, item.name)} disabled={isItemInUse(type, item.name)}>
-                                                    Sí, eliminar
+                                                <AlertDialogAction
+                                                    onClick={() => handleDelete(type, item.id, item.name)}
+                                                    disabled={isItemInUse(type, item.name)}
+                                                    className={isItemInUse(type, item.name) ? "bg-gray-300 cursor-not-allowed" : "bg-destructive hover:bg-destructive/90"}
+                                                >
+                                                    {isItemInUse(type, item.name) ? "No se puede eliminar" : "Sí, eliminar"}
                                                 </AlertDialogAction>
                                             </AlertDialogFooter>
                                         </AlertDialogContent>

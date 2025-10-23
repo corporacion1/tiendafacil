@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { UserProfile, UserRole } from "@/lib/types";
 
-import { navItems, adminNavItems, settingsNav } from "@/lib/navigation";
+import { getNavItems, adminNavItems, settingsNav } from "@/lib/navigation";
 import { Logo } from "./logo";
 import {
   Tooltip,
@@ -25,21 +25,25 @@ interface SiteSidebarProps {
 
 export function SiteSidebar({ isExpanded }: SiteSidebarProps) {
     const pathname = usePathname();
-    const { userProfile } = useSettings();
+    const { userProfile, activeStoreId } = useSettings();
     const { canAccess, hasPermission } = usePermissions();
 
     const userRole = userProfile?.role;
 
     const filteredNavItems = useMemo(() => {
+        // Generar elementos de navegación con activeStoreId dinámico
+        const currentStoreId = activeStoreId || 'ST-1234567890123';
+        const dynamicNavItems = getNavItems(currentStoreId);
+        
         // Filtrar elementos de navegación basado en permisos
-        return navItems.filter(item => {
+        return dynamicNavItems.filter(item => {
             // Extraer la ruta base sin parámetros de query
             const route = item.href.split('?')[0];
             return canAccess(route);
         });
-    }, [canAccess]);
+    }, [canAccess, activeStoreId]);
 
-    const renderLink = (item: typeof navItems[0]) => (
+    const renderLink = (item: typeof filteredNavItems[0]) => (
       <TooltipProvider delayDuration={100}>
         <Tooltip>
           <TooltipTrigger asChild>

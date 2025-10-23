@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
+import { CreateStoreModal } from "@/components/create-store-modal"
 import type { StoreWithStats, StoreFilters, StoresAdminResponse } from "@/lib/types"
 
 interface StoresManagementProps {

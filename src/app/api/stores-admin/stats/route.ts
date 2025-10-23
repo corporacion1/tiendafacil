@@ -27,7 +27,7 @@ export async function GET() {
     
     const recentStores = await Store.find({
       createdAt: { $gte: thirtyDaysAgo }
-    }).sort({ createdAt: -1 }).limit(5).lean();
+    }).sort({ createdAt: -1 }).limit(3).lean();
 
     // Enrich recent stores with admin info
     const recentActivity = await Promise.all(
@@ -42,12 +42,20 @@ export async function GET() {
           }
         }
 
+        // Determinar el status correcto basado en useDemoData y status
+        let displayStatus = 'active';
+        if (store.status === 'inactive') {
+          displayStatus = 'inactive';
+        } else if (!store.useDemoData) {
+          displayStatus = 'production';
+        }
+
         return {
           storeId: store.storeId,
           storeName: store.name,
           adminName,
           createdAt: store.createdAt,
-          status: store.status,
+          status: displayStatus,
           isProduction: !store.useDemoData,
         };
       })
