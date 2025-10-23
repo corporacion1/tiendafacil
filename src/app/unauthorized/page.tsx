@@ -49,7 +49,7 @@ export default function UnauthorizedPage() {
         case 'admin':
           router.push('/dashboard');
           break;
-        case 'seller':
+        case 'pos':
           router.push('/pos');
           break;
         case 'depositary':

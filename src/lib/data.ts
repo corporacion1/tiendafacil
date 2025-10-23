@@ -18,7 +18,7 @@ export let defaultStore: Store = {
   userRoles: [
     { uid: "5QLaiiIr4mcGsjRXVGeGx50nrpk1", role: "su" },
     { uid: "admin_demo_001", role: "admin" },
-    { uid: "seller_demo_001", role: "seller" },
+    { uid: "pos_demo_001", role: "pos" },
     { uid: "depositary_demo_001", role: "depositary" }
   ],
   businessType: "Tecnologia",
@@ -75,7 +75,7 @@ export let defaultUsers: UserProfile[] = [
     photoURL: '/tienda_facil_logo.svg',
     phone: null,
     password: '$2b$10$Etj/Ge9Uwi1Nxb3B7Jw6muxiWagP8NaEfm/Zz9U9owX2IKaR1E89K', // seller1234
-    role: 'seller',
+    role: 'pos',
     status: 'active',
     storeId: defaultStoreId,
     createdAt: new Date().toISOString(),

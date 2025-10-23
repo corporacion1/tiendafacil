@@ -64,7 +64,9 @@ export default function StoreAccessGuard({ children }: { children: React.ReactNo
       }
 
       // For administrative users, validate store access
-      if (user.role !== 'user' && user.role !== 'su') {
+      const administrativeRoles = ['admin', 'pos', 'depositary'];
+      const isAdministrativeUser = administrativeRoles.includes(user.role);
+      if (isAdministrativeUser) {
         console.log(`🔍 [StoreAccessGuard] Validating administrative user: ${user.email} (${user.role}) on ${pathname}`);
         
         // Check if user has a store assigned
