@@ -13,7 +13,10 @@
 
 
 - [ ] 2. Implement automatic store assignment in login flow
-  - [ ] 2.1 Create store assignment logic in AuthContext login function
+  - [x] 2.1 Create store assignment logic in AuthContext login function
+
+
+
     - Add role checking after successful authentication
     - Implement automatic activeStoreId setting for administrative users (not "su" or "user")
 

@@ -108,15 +108,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       console.log(`🏪 [setActiveStoreForUser] Setting activeStoreId: ${user.storeId}`);
-      setActiveStoreId(user.storeId);
+      
+      // Set the store ID directly in localStorage and state
+      setActiveStoreIdState(user.storeId);
+      localStorage.setItem('activeStoreId', user.storeId);
       
       // Wait a moment to ensure the state update is processed
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      // Verify the store was actually set
+      // Verify the store was actually set using localStorage (more reliable than state)
       const currentActiveStore = localStorage.getItem('activeStoreId');
       console.log(`🔍 [setActiveStoreForUser] Verification - localStorage activeStoreId: ${currentActiveStore}`);
-      console.log(`🔍 [setActiveStoreForUser] Verification - state activeStoreId: ${activeStoreId}`);
+      console.log(`🔍 [setActiveStoreForUser] Verification - expected storeId: ${user.storeId}`);
       
       if (currentActiveStore !== user.storeId) {
         console.error(`❌ [setActiveStoreForUser] Store setting failed! Expected: ${user.storeId}, Got: ${currentActiveStore}`);
@@ -195,22 +198,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         
-        // Force a small delay to ensure state updates are processed
-        await new Promise(resolve => setTimeout(resolve, 50));
-        
         // Check if we need to switch stores before redirecting
+        const currentActiveStore = localStorage.getItem('activeStoreId');
         const needsStoreSwitch = shouldSetActiveStore(data.user.role) && 
                                 data.user.storeId && 
-                                activeStoreId !== data.user.storeId;
+                                currentActiveStore !== data.user.storeId;
         
         if (needsStoreSwitch) {
-          console.log(`🔄 [AuthContext] Store switch needed: ${activeStoreId} → ${data.user.storeId}`);
+          console.log(`🔄 [AuthContext] Store switch needed: ${currentActiveStore} → ${data.user.storeId}`);
         }
         
         // Automatic store assignment for administrative users
         try {
           console.log('🔍 [AuthContext] Attempting store assignment for user:', data.user.email);
-          console.log('🔍 [AuthContext] User data received from API:', JSON.stringify(data.user, null, 2));
+          console.log('🔍 [AuthContext] User data received from API:', JSON.stringify(data.user));
           await setActiveStoreForUser(data.user);
         } catch (storeError: any) {
           console.error('❌ [AuthContext] Store assignment failed:', storeError.message);
