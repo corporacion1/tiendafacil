@@ -1215,7 +1215,7 @@ export default function CatalogPage() {
                         </div>
                       </div>
                     </SheetHeader>
-                    <div className="flex-1 overflow-y-auto">
+                    <div className="flex-1 overflow-y-auto invisible-scroll">
                       <div className="py-6">
                         {/* Loading state */}
                         {cart.length === 0 && isLoadingOrders && (
@@ -1615,7 +1615,7 @@ export default function CatalogPage() {
           {/* Contenedor con scroll para productos */}
           <div
             ref={productsContainerRef}
-            className="max-h-[calc(100vh-200px)] overflow-y-auto scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-transparent"
+            className="max-h-[calc(100vh-200px)] overflow-y-auto invisible-scroll"
           >
             {isLoading ? (
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 p-1">
@@ -1779,7 +1779,7 @@ export default function CatalogPage() {
         </Dialog>
 
         <Dialog open={!!productDetails} onOpenChange={(open) => { if (!open) setProductDetails(null); }}>
-          <DialogContent onOpenAutoFocus={(e) => e.preventDefault()} className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border-0 shadow-2xl">
+          <DialogContent onOpenAutoFocus={(e) => e.preventDefault()} className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto invisible-scroll rounded-2xl border-0 shadow-2xl">
             <DialogHeader className="pb-4">
               <DialogTitle className="text-xl font-semibold">Detalles del Producto</DialogTitle>
               <DialogDescription className="text-muted-foreground">
@@ -1924,7 +1924,7 @@ export default function CatalogPage() {
 
         {/* Modal del Scanner */}
         <Dialog open={showScanner} onOpenChange={setShowScanner}>
-          <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-hidden rounded-2xl border-0 shadow-2xl">
+          <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-hidden invisible-scroll rounded-2xl border-0 shadow-2xl">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <ScanLine className="w-5 h-5 text-green-600" />

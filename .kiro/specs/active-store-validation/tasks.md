@@ -17,6 +17,8 @@
 
 
 
+
+
     - Add role checking after successful authentication
     - Implement automatic activeStoreId setting for administrative users (not "su" or "user")
 

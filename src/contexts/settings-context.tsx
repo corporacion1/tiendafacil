@@ -90,7 +90,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const [settings, setLocalSettings] = useState<Settings | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   
-  // Use activeStoreId from AuthContext, with fallback to default
+  // Use activeStoreId from AuthContext ONLY - no fallback to override login logic
   const activeStoreId = authActiveStoreId || process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'ST-1234567890123';
 
   // Data states - TODOS VACÍOS
@@ -425,17 +425,23 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     const initializeSettings = async () => {
       setIsClient(true);
 
-      // Get activeStoreId from AuthContext or fallback to localStorage/default
+      // Get activeStoreId from AuthContext - RESPECT login logic, don't override
       let storeIdToUse = authActiveStoreId;
       
-      if (!storeIdToUse) {
-        // Fallback to localStorage for backward compatibility
+      // Only use localStorage fallback if AuthContext has no activeStoreId AND user is not logged in
+      if (!storeIdToUse && !authUser) {
+        // Only for anonymous users - fallback to localStorage/default
         storeIdToUse = localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY) || process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'ST-1234567890123';
+        console.log('👤 [Settings] Anonymous user - using fallback store:', storeIdToUse);
         
-        // If we have a storeId from localStorage but not in AuthContext, sync it
+        // Set in AuthContext for consistency, but only for anonymous users
         if (storeIdToUse && setAuthActiveStoreId) {
           setAuthActiveStoreId(storeIdToUse);
         }
+      } else if (authUser && !storeIdToUse) {
+        // Logged in user but no activeStoreId - this should not happen after login fix
+        console.warn('⚠️ [Settings] Logged user without activeStoreId - using default');
+        storeIdToUse = process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'ST-1234567890123';
       }
 
       const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY);
@@ -448,7 +454,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     };
 
     initializeSettings();
-  }, [loadDataFromMongoDB, authActiveStoreId, setAuthActiveStoreId]); // Incluir dependencias del AuthContext
+  }, [loadDataFromMongoDB, authActiveStoreId, setAuthActiveStoreId, authUser]); // Incluir authUser para detectar login/logout
 
   // Sincronizar datos cuando cambie el activeStoreId del AuthContext
   useEffect(() => {

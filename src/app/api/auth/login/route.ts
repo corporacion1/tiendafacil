@@ -123,12 +123,25 @@ export async function POST(request: Request) {
       );
     }
 
+    // Generate JWT token
+    const jwt = await import('jsonwebtoken');
+    const token = jwt.default.sign(
+      { 
+        userId: user._id.toString(),
+        email: user.email,
+        role: user.role,
+        storeId: user.storeId
+      },
+      process.env.JWT_SECRET || 'fallback-secret-key',
+      { expiresIn: '7d' }
+    );
+
     // Successful login
     console.log('✅ [Login API] Login exitoso para usuario:', email);
     return NextResponse.json({
       success: true,
       msg: 'Login exitoso',
-      token: 'fake-jwt-token-123',
+      token: token,
       user: {
         id: user._id.toString(),
         uid: user.uid,

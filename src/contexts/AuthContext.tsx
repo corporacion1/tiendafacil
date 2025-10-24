@@ -67,24 +67,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Restore session on mount
+  // Restore session on mount - ONLY activeStoreId, no user session persistence
   useEffect(() => {
     const restoreSession = async () => {
       try {
-        const storedToken = localStorage.getItem('token');
-        const storedUser = localStorage.getItem('user');
+        // Only restore activeStoreId, not user session
         const storedActiveStoreId = localStorage.getItem('activeStoreId');
-
-        if (storedToken && storedUser) {
-          const userData = JSON.parse(storedUser);
-          setToken(storedToken);
-          setUser(userData);
-          
-          // Restore active store ID if it exists
-          if (storedActiveStoreId) {
-            setActiveStoreIdState(storedActiveStoreId);
-          }
+        if (storedActiveStoreId) {
+          setActiveStoreIdState(storedActiveStoreId);
         }
+        
+        // Clear any old user session data to force fresh login
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        
+        console.log('🔄 [AuthContext] Session cleared - fresh login required');
       } catch (error) {
         console.error('Error restoring session:', error);
         localStorage.removeItem('token');
@@ -123,13 +120,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log('🔍 [Login] User role:', data.user.role);
         console.log('🔍 [Login] User storeId:', data.user.storeId);
         
-        // STEP 1: Set user data and token (login successful)
+        // STEP 1: Set user data and token (login successful) - NO PERSISTENCE
         setToken(data.token);
         setUser(data.user);
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('user', JSON.stringify(data.user));
+        // NO guardar en localStorage para forzar login fresco cada vez
+        console.log('✅ [Login] User session set (memory only - no persistence)');
         
-        // STEP 2: If role is NOT "user", update activeStoreId with user's storeId
+        // STEP 2: If role is NOT "user", update activeStoreId with user's storeId IMMEDIATELY
         if (data.user.role !== 'user') {
           console.log('🏪 [Login] Administrative user - setting active store to:', data.user.storeId);
           
@@ -137,9 +134,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             throw new Error('Usuario administrativo sin tienda asignada. Contacte al administrador.');
           }
           
-          // Update active store ID
+          // Update active store ID IMMEDIATELY and SYNCHRONOUSLY
+          console.log('🔄 [Login] BEFORE - activeStoreId:', activeStoreId);
           setActiveStoreIdState(data.user.storeId);
           localStorage.setItem('activeStoreId', data.user.storeId);
+          console.log('🔄 [Login] AFTER - localStorage activeStoreId:', localStorage.getItem('activeStoreId'));
           console.log('✅ [Login] Active store updated to:', data.user.storeId);
         } else {
           console.log('👤 [Login] Regular user - no store assignment needed');
@@ -154,10 +153,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           description: `¡Bienvenido, ${data.user.email}!`,
         });
         
-        // Redirect after a short delay to ensure state updates
+        // Redirect after a longer delay to ensure state propagation to SettingsContext
         setTimeout(() => {
+          console.log('🚀 [Login] Executing redirect to:', redirectUrl);
+          console.log('🔍 [Login] Final activeStoreId check:', localStorage.getItem('activeStoreId'));
           router.push(redirectUrl);
-        }, 100);
+        }, 300); // Increased delay to ensure state propagation
         
       } else {
         throw new Error(data.msg || 'Error en el inicio de sesión');
@@ -226,9 +227,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = (): void => {
     setUser(null);
     setToken(null);
-    clearActiveStoreId(); // Clear active store ID on logout
+    // NO limpiar activeStoreId en logout para mantener la tienda seleccionada
+    // clearActiveStoreId(); 
+    
+    // Limpiar cualquier dato de sesión que pueda existir
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    
+    console.log('🚪 [Logout] User session cleared (activeStoreId preserved)');
     
     toast({
       title: "Sesión cerrada",
