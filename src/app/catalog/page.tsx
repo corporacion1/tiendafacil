@@ -1018,19 +1018,47 @@ export default function CatalogPage() {
 
       // Verificar si Web Share API está disponible
       if (navigator.share) {
-        await navigator.share({
+        const shareData: any = {
           title: product.name,
           text: shareText,
           url: `${window.location.origin}/catalog?storeId=${storeIdForCatalog}`
-        });
+        };
+
+        // Intentar incluir la imagen si está disponible
+        if (product.imageUrl) {
+          try {
+            // Convertir la imagen a blob para compartir
+            const response = await fetch(product.imageUrl);
+            if (response.ok) {
+              const blob = await response.blob();
+              const file = new File([blob], `${product.name}.jpg`, { type: blob.type });
+
+              // Verificar si el navegador soporta compartir archivos
+              if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                shareData.files = [file];
+              }
+            }
+          } catch (imageError) {
+            console.log('No se pudo cargar la imagen para compartir:', imageError);
+            // Continuar sin la imagen
+          }
+        }
+
+        await navigator.share(shareData);
 
         toast({
           title: "¡Compartido!",
-          description: "Producto compartido exitosamente"
+          description: product.imageUrl && shareData.files ?
+            "Producto e imagen compartidos exitosamente" :
+            "Producto compartido exitosamente"
         });
       } else {
         // Fallback: copiar al portapapeles
-        await navigator.clipboard.writeText(shareText);
+        const fallbackText = product.imageUrl ?
+          `${shareText}\n\n📷 Imagen: ${product.imageUrl}` :
+          shareText;
+
+        await navigator.clipboard.writeText(fallbackText);
 
         toast({
           title: "¡Copiado!",
