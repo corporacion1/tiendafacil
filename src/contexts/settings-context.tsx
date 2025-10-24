@@ -450,7 +450,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       }
 
       // Cargar datos de configuración SOLO desde MongoDB
-      await loadDataFromMongoDB(storeIdToUse);
+      if (storeIdToUse) {
+        await loadDataFromMongoDB(storeIdToUse);
+      }
     };
 
     initializeSettings();
