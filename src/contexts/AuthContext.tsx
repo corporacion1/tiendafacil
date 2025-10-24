@@ -49,13 +49,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return activeStoreId;
   };
 
-  // Helper function to check if user should have automatic store assignment
-  const shouldSetActiveStore = (userRole: UserRole): boolean => {
-    const shouldSet = userRole !== 'user'; // Solo excluir usuarios regulares
-    console.log(`🔍 [shouldSetActiveStore] Role: ${userRole}, Should set: ${shouldSet}`);
-    return shouldSet;
-  };
-
   // Helper function to get redirect URL based on user role
   const getStoreRedirectUrl = (userRole: UserRole): string => {
     switch (userRole) {
@@ -72,67 +65,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       default:
         return '/dashboard';
     }
-  };
-
-  // Helper function to redirect users to their appropriate page after login
-  const redirectToStoreContext = (user: UserProfile): void => {
-    const redirectUrl = getStoreRedirectUrl(user.role);
-    console.log(`🔄 Redirecting ${user.role} to: ${redirectUrl}`);
-    
-    // Use setTimeout to ensure state updates and store switch are complete before redirect
-    setTimeout(() => {
-      console.log(`🚀 [redirectToStoreContext] Executing redirect to: ${redirectUrl}`);
-      router.push(redirectUrl);
-    }, 200); // Increased timeout to ensure store switch completes
-  };
-
-  // Helper function to set active store for users and redirect after login
-  const setActiveStoreForUser = async (user: UserProfile): Promise<void> => {
-    console.log(`🔍 [setActiveStoreForUser] Checking user role: ${user.role}`);
-    console.log(`🔍 [setActiveStoreForUser] Should set active store: ${shouldSetActiveStore(user.role)}`);
-    
-    // Handle users that need store assignment (all except 'user')
-    if (shouldSetActiveStore(user.role)) {
-      console.log(`🔍 [setActiveStoreForUser] User storeId: ${user.storeId}`);
-      console.log(`🔍 [setActiveStoreForUser] Current activeStoreId: ${activeStoreId}`);
-      
-      if (!user.storeId) {
-        console.error(`❌ [setActiveStoreForUser] No storeId for administrative user: ${user.email}`);
-        throw new Error('Usuario administrativo sin tienda asignada. Contacte al administrador.');
-      }
-
-      // Always set the user's store as active, regardless of current activeStoreId
-      // This ensures the user logs into their own store context
-      if (activeStoreId !== user.storeId) {
-        console.log(`🔄 [setActiveStoreForUser] Switching from store ${activeStoreId} to ${user.storeId}`);
-      }
-      
-      console.log(`🏪 [setActiveStoreForUser] Setting activeStoreId: ${user.storeId}`);
-      
-      // Set the store ID directly in localStorage and state
-      setActiveStoreIdState(user.storeId);
-      localStorage.setItem('activeStoreId', user.storeId);
-      
-      // Wait a moment to ensure the state update is processed
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Verify the store was actually set using localStorage (more reliable than state)
-      const currentActiveStore = localStorage.getItem('activeStoreId');
-      console.log(`🔍 [setActiveStoreForUser] Verification - localStorage activeStoreId: ${currentActiveStore}`);
-      console.log(`🔍 [setActiveStoreForUser] Verification - expected storeId: ${user.storeId}`);
-      
-      if (currentActiveStore !== user.storeId) {
-        console.error(`❌ [setActiveStoreForUser] Store setting failed! Expected: ${user.storeId}, Got: ${currentActiveStore}`);
-        throw new Error('Error al configurar la tienda activa. Inténtalo de nuevo.');
-      }
-      
-      console.log(`✅ [setActiveStoreForUser] Active store set for ${user.role}: ${user.storeId}`);
-    } else {
-      console.log(`⏭️ [setActiveStoreForUser] Skipping store assignment for role: ${user.role}`);
-    }
-    
-    // Redirect user to appropriate page for their role (all users get redirected)
-    redirectToStoreContext(user);
   };
 
   // Restore session on mount
@@ -187,51 +119,51 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (res.ok) {
-        console.log('🔍 [AuthContext] Login successful, user data:', data.user);
-        console.log('🔍 [AuthContext] User role:', data.user.role);
-        console.log('🔍 [AuthContext] User storeId:', data.user.storeId);
-        console.log('🔍 [AuthContext] Current activeStoreId before login:', activeStoreId);
+        console.log('✅ [Login] Authentication successful for:', data.user.email);
+        console.log('🔍 [Login] User role:', data.user.role);
+        console.log('🔍 [Login] User storeId:', data.user.storeId);
         
-        // Set user data first
+        // STEP 1: Set user data and token (login successful)
         setToken(data.token);
         setUser(data.user);
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         
-        // Check if we need to switch stores before redirecting
-        const currentActiveStore = localStorage.getItem('activeStoreId');
-        const needsStoreSwitch = shouldSetActiveStore(data.user.role) && 
-                                data.user.storeId && 
-                                currentActiveStore !== data.user.storeId;
-        
-        if (needsStoreSwitch) {
-          console.log(`🔄 [AuthContext] Store switch needed: ${currentActiveStore} → ${data.user.storeId}`);
+        // STEP 2: If role is NOT "user", update activeStoreId with user's storeId
+        if (data.user.role !== 'user') {
+          console.log('🏪 [Login] Administrative user - setting active store to:', data.user.storeId);
+          
+          if (!data.user.storeId) {
+            throw new Error('Usuario administrativo sin tienda asignada. Contacte al administrador.');
+          }
+          
+          // Update active store ID
+          setActiveStoreIdState(data.user.storeId);
+          localStorage.setItem('activeStoreId', data.user.storeId);
+          console.log('✅ [Login] Active store updated to:', data.user.storeId);
+        } else {
+          console.log('👤 [Login] Regular user - no store assignment needed');
         }
         
-        // Automatic store assignment for administrative users
-        try {
-          console.log('🔍 [AuthContext] Attempting store assignment for user:', data.user.email);
-          console.log('🔍 [AuthContext] User data received from API:', JSON.stringify(data.user));
-          await setActiveStoreForUser(data.user);
-        } catch (storeError: any) {
-          console.error('❌ [AuthContext] Store assignment failed:', storeError.message);
-          // If store assignment fails, logout and show error
-          setUser(null);
-          setToken(null);
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          throw new Error(storeError.message);
-        }
+        // STEP 3: Redirect to appropriate page based on role
+        const redirectUrl = getStoreRedirectUrl(data.user.role);
+        console.log('🚀 [Login] Redirecting to:', redirectUrl);
         
         toast({
           title: "Inicio de sesión exitoso",
-          description: `¡Bienvenido, ${data.user.email}!${needsStoreSwitch ? ' Cambiando a tu tienda...' : ''}`,
+          description: `¡Bienvenido, ${data.user.email}!`,
         });
+        
+        // Redirect after a short delay to ensure state updates
+        setTimeout(() => {
+          router.push(redirectUrl);
+        }, 100);
+        
       } else {
         throw new Error(data.msg || 'Error en el inicio de sesión');
       }
     } catch (error: any) {
-      console.error('Error en login:', error);
+      console.error('❌ [Login] Error:', error);
       toast({
         variant: 'destructive',
         title: 'Error de inicio de sesión',
