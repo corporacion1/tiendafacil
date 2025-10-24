@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Package, ShoppingBag, Plus, Minus, Trash2, Send, LayoutGrid, Instagram, Star, Search, UserCircle, LogOut, MoreHorizontal, Copy, AlertCircle, QrCode, Pencil, ArrowRight, Check, User, Phone, Mail, Eye, ScanLine, X, Store as StoreIcon, ArrowLeftRight } from "lucide-react";
+import { Package, ShoppingBag, Plus, Minus, Trash2, Send, LayoutGrid, Instagram, Star, Search, UserCircle, LogOut, MoreHorizontal, Copy, AlertCircle, QrCode, Pencil, ArrowRight, Check, User, Phone, Mail, Eye, ScanLine, X, Store as StoreIcon, ArrowLeftRight, Share } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
@@ -1002,6 +1002,47 @@ export default function CatalogPage() {
     setProductDetails(product);
   };
 
+  const handleShareProduct = async (product: Product) => {
+    try {
+      // Crear el mensaje de compartir
+      const shareText = `🛍️ *${product.name}*
+
+💰 Precio: ${activeSymbol}${(product.price * activeRate).toFixed(2)}
+
+📝 ${product.description || 'Producto disponible en nuestra tienda'}
+
+🏪 Disponible en ${currentStoreSettings?.name || 'Tienda Fácil'}
+👆 Ver catálogo completo: ${window.location.origin}/catalog?storeId=${storeIdForCatalog}
+
+¡Haz tu pedido ahora! 🚀`;
+
+      // Verificar si Web Share API está disponible
+      if (navigator.share) {
+        await navigator.share({
+          title: product.name,
+          text: shareText,
+          url: `${window.location.origin}/catalog?storeId=${storeIdForCatalog}`
+        });
+        
+        toast({
+          title: "¡Compartido!",
+          description: "Producto compartido exitosamente"
+        });
+      } else {
+        // Fallback: copiar al portapapeles
+        await navigator.clipboard.writeText(shareText);
+        
+        toast({
+          title: "¡Copiado!",
+          description: "Información del producto copiada al portapapeles"
+        });
+      }
+    } catch (error) {
+      // Si el usuario cancela o hay error, no mostrar mensaje de error
+      console.log('Share cancelled or failed:', error);
+    }
+  };
+
   const handleReShowQR = async (orderId: string) => {
     await generateQrCode(orderId);
   };
@@ -1830,6 +1871,17 @@ export default function CatalogPage() {
                   <DialogClose asChild>
                     <Button variant="outline" className="rounded-xl">Cerrar</Button>
                   </DialogClose>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (productDetails) {
+                        handleShareProduct(productDetails);
+                      }
+                    }}
+                    className="rounded-xl border-green-200 text-green-600 hover:bg-green-50"
+                  >
+                    <Share className="mr-2 h-4 w-4" /> Compartir
+                  </Button>
                   <Button
                     onClick={() => {
                       if (productDetails) {
