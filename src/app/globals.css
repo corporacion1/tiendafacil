@@ -192,11 +192,22 @@ os mejorados para el scrollbar del sidebar */
   
   /* Ocultar scrollbar completamente pero mantener funcionalidad */
   .invisible-scroll {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+    -ms-overflow-style: none; /* Internet Explorer 10+ */
+    scrollbar-width: none; /* Firefox */
+    -webkit-overflow-scrolling: touch; /* iOS smooth scrolling */
   }
   
   .invisible-scroll::-webkit-scrollbar {
+    display: none; /* Safari and Chrome */
+    width: 0;
+    height: 0;
+  }
+  
+  .invisible-scroll::-webkit-scrollbar-track {
+    display: none;
+  }
+  
+  .invisible-scroll::-webkit-scrollbar-thumb {
     display: none;
   }
   

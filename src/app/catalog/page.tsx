@@ -1924,7 +1924,7 @@ export default function CatalogPage() {
 
         {/* Modal del Scanner */}
         <Dialog open={showScanner} onOpenChange={setShowScanner}>
-          <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-hidden invisible-scroll rounded-2xl border-0 shadow-2xl">
+          <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-hidden catalog-scroll invisible-scroll rounded-2xl border-0 shadow-2xl">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <ScanLine className="w-5 h-5 text-green-600" />
