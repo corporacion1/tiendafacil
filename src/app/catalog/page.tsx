@@ -85,15 +85,15 @@ const AdCard = ({ ad, onAdClick }: { ad: Ad; onAdClick: (ad: Ad) => void }) => {
   );
 };
 
-const CatalogProductCard = ({ 
-  product, 
-  onAddToCart, 
-  onImageClick, 
-  displayCurrency, 
-  isCurrencyRateRecent 
-}: { 
-  product: Product; 
-  onAddToCart: (p: Product) => void; 
+const CatalogProductCard = ({
+  product,
+  onAddToCart,
+  onImageClick,
+  displayCurrency,
+  isCurrencyRateRecent
+}: {
+  product: Product;
+  onAddToCart: (p: Product) => void;
   onImageClick: (p: Product) => void;
   displayCurrency: string;
   isCurrencyRateRecent: boolean;
@@ -202,8 +202,8 @@ export default function CatalogPage() {
   const storeIdForCatalog = urlStoreId || DEMO_STORE_ID;
 
   // Hook para productos con sincronización automática
-  const { 
-    products: syncedProducts, 
+  const {
+    products: syncedProducts,
     isLoading: isLoadingProducts,
     isPolling: isPollingProducts,
     lastUpdated: productsLastUpdated
@@ -232,17 +232,17 @@ export default function CatalogPage() {
   useEffect(() => {
     const loadCatalogStoreSettings = async () => {
       if (!storeIdForCatalog) return;
-      
+
       // Si es la misma tienda del usuario logueado, usar esos settings
       if (loggedInUserSettings && loggedInUserSettings.storeId === storeIdForCatalog) {
         setCatalogStoreSettings(loggedInUserSettings);
         return;
       }
-      
+
       try {
         setLoadingCatalogStore(true);
         console.log('🏪 [Catalog] Loading store settings for:', storeIdForCatalog);
-        
+
         const response = await fetch(`/api/stores?id=${storeIdForCatalog}`);
         if (response.ok) {
           const storeData = await response.json();
@@ -266,8 +266,8 @@ export default function CatalogPage() {
   const currentStoreSettings = catalogStoreSettings || defaultStore;
 
   // Símbolo de la moneda inactiva (opuesta a la activa)
-  const inactiveSymbol = displayCurrency === 'primary' 
-    ? (currentStoreSettings?.secondaryCurrencySymbol || 'Bs.') 
+  const inactiveSymbol = displayCurrency === 'primary'
+    ? (currentStoreSettings?.secondaryCurrencySymbol || 'Bs.')
     : (currentStoreSettings?.primaryCurrencySymbol || '$');
 
   const [productDetails, setProductDetails] = useState<Product | null>(null);
@@ -291,10 +291,10 @@ export default function CatalogPage() {
   const [isEditingOrder, setIsEditingOrder] = useState(false);
 
   // Hook para manejar pedidos del usuario desde la base de datos
-  const { 
-    orders: userOrders, 
-    isLoading: isLoadingOrders, 
-    error: ordersError, 
+  const {
+    orders: userOrders,
+    isLoading: isLoadingOrders,
+    error: ordersError,
     refetch: refetchOrders,
     isPolling: isPollingOrders
   } = useUserOrders(authUser?.email || undefined, storeIdForCatalog);
@@ -302,7 +302,7 @@ export default function CatalogPage() {
   // Función para verificar si la tasa de cambio está actualizada (últimas 8 horas)
   const isCurrencyRateRecent = useMemo(() => {
     console.log('🔄 [Catalog] Evaluando currency rates disponibles:', currencyRates?.length || 0);
-    
+
     if (!currencyRates || !Array.isArray(currencyRates) || currencyRates.length === 0) {
       console.log('❌ [Catalog] No hay currency rates - ocultando icono de cambio');
       return false;
@@ -310,7 +310,7 @@ export default function CatalogPage() {
 
     // Obtener la tasa más reciente (primera en el array ya que viene ordenada por fecha desc)
     const latestRate = currencyRates[0];
-    
+
     if (!latestRate || !latestRate.date) {
       console.log('❌ [Catalog] Tasa más reciente no tiene fecha - ocultando icono de cambio');
       return false;
@@ -319,15 +319,15 @@ export default function CatalogPage() {
     // Calcular si la tasa está dentro de las últimas 8 horas (usando hora local)
     const rateDate = new Date(latestRate.date);
     const now = new Date();
-    
+
     // Convertir ambas fechas a timestamps UTC para comparación precisa
     const rateTimestamp = rateDate.getTime();
     const nowTimestamp = now.getTime();
     const eightHoursInMs = 8 * 60 * 60 * 1000; // 8 horas en milisegundos
-    
+
     const timeDifference = nowTimestamp - rateTimestamp;
     const isRecent = timeDifference <= eightHoursInMs && timeDifference >= 0;
-    
+
     console.log('📊 [Catalog] Validación de tasa de cambio (hora local):', {
       rateDate: rateDate.toLocaleString(),
       rateDateUTC: rateDate.toISOString(),
@@ -338,13 +338,13 @@ export default function CatalogPage() {
       isRecent,
       eightHourLimitMs: eightHoursInMs
     });
-    
+
     if (isRecent) {
       console.log('✅ [Catalog] Tasa de cambio reciente (< 8 horas) - mostrando icono de cambio');
     } else {
       console.log('❌ [Catalog] Tasa de cambio antigua (> 8 horas) - ocultando icono de cambio');
     }
-    
+
     return isRecent;
   }, [currencyRates]);
 
@@ -377,7 +377,7 @@ export default function CatalogPage() {
     try {
       const response = await fetch(`/api/ads/${adId}/views`, { method: 'POST' });
       const result = await response.json();
-      
+
       if (response.ok) {
         // Actualizar el anuncio seleccionado con las nuevas vistas silenciosamente
         setSelectedAd(prev => prev && prev.id === adId ? { ...prev, views: result.views } : prev);
@@ -609,7 +609,7 @@ export default function CatalogPage() {
     if (isAutoScrolling && relevantAds.length > 1) {
       autoScrollRef.current = setInterval(() => {
         setCurrentAdIndex(prev => (prev + 1) % relevantAds.length);
-      }, 4000);
+      }, 3000);
     } else {
       if (autoScrollRef.current) {
         clearInterval(autoScrollRef.current);
@@ -861,7 +861,7 @@ export default function CatalogPage() {
       toast({ variant: 'destructive', title: 'Tu pedido está vacío' });
       return;
     }
-    
+
     // Pre-cargar datos del usuario autenticado si están disponibles
     if (authUser && !isEditingOrder) {
       // Solo pre-cargar si no estamos editando un pedido existente
@@ -873,7 +873,7 @@ export default function CatalogPage() {
         setCustomerPhone(authUser.phone);
       }
     }
-    
+
     setIsOrderDialogOpen(true);
   };
 
@@ -1023,7 +1023,7 @@ export default function CatalogPage() {
           text: shareText,
           url: `${window.location.origin}/catalog?storeId=${storeIdForCatalog}`
         });
-        
+
         toast({
           title: "¡Compartido!",
           description: "Producto compartido exitosamente"
@@ -1031,7 +1031,7 @@ export default function CatalogPage() {
       } else {
         // Fallback: copiar al portapapeles
         await navigator.clipboard.writeText(shareText);
-        
+
         toast({
           title: "¡Copiado!",
           description: "Información del producto copiada al portapapeles"
@@ -1065,8 +1065,8 @@ export default function CatalogPage() {
 
       // Refrescar la lista de pedidos
       await refetchOrders();
-      
-      toast({ 
+
+      toast({
         title: "Pedido cancelado",
         description: "El pedido ha sido marcado como cancelado."
       });
@@ -1082,20 +1082,20 @@ export default function CatalogPage() {
 
   const handleEditOrder = (order: PendingOrder) => {
     if (!products) return;
-    
+
     // Cargar items del pedido al carrito
     setCart(order.items.map(item => {
       const product = products.find(p => p.id === item.productId);
       return product ? { product, quantity: item.quantity, price: item.price } : null;
     }).filter((i): i is CartItem => i !== null));
-    
+
     // Cargar datos del cliente
     setCustomerName(order.customerName);
     setCustomerPhone(order.customerPhone);
-    
+
     // Marcar como editando (el pedido original se mantendrá hasta que se genere uno nuevo)
     setIsEditingOrder(true);
-    
+
     // Abrir el carrito
     const trigger = document.getElementById('cart-sheet-trigger');
     if (trigger) trigger.click();
@@ -1116,16 +1116,16 @@ export default function CatalogPage() {
               {/* Botón de cambio de moneda - solo visible si la tasa es reciente */}
               {isCurrencyRateRecent && (
                 <div className="relative group">
-                  <Button 
-                    variant="outline" 
-                    size="icon" 
-                    className="sm:h-auto sm:w-auto sm:px-3 sm:py-2 rounded-xl bg-gradient-to-r from-green-50 to-blue-50 hover:from-green-100 hover:to-blue-100 border-green-200 text-green-700 hover:text-green-800 transition-all duration-200 shadow-sm" 
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="sm:h-auto sm:w-auto sm:px-3 sm:py-2 rounded-xl bg-gradient-to-r from-green-50 to-blue-50 hover:from-green-100 hover:to-blue-100 border-green-200 text-green-700 hover:text-green-800 transition-all duration-200 shadow-sm"
                     onClick={toggleDisplayCurrency}
                   >
                     <ArrowLeftRight className="h-4 w-4 sm:mr-2" />
                     <span className="sr-only sm:not-sr-only font-medium">{inactiveSymbol}</span>
                   </Button>
-                  
+
                   {/* Tooltip con información de la moneda */}
                   <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
                     <div className="text-center">
@@ -1137,7 +1137,7 @@ export default function CatalogPage() {
                   </div>
                 </div>
               )}
-              
+
               <Dialog>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="icon" className="sm:h-auto sm:w-auto sm:px-3 sm:py-2 rounded-xl" onClick={generateShareQrCode}>
@@ -1237,7 +1237,7 @@ export default function CatalogPage() {
                               <span>Conectado</span>
                             </div>
                           )}
-                          
+
                           {/* Estado de sincronización de pedidos (solo si está autenticado) */}
                           {authUser && isPollingOrders && (
                             <div className="flex items-center gap-1">
@@ -1245,7 +1245,7 @@ export default function CatalogPage() {
                               <span>Pedidos</span>
                             </div>
                           )}
-                          
+
                           {/* Estado de sincronización de productos */}
                           {isPollingProducts && (
                             <div className="flex items-center gap-1">
@@ -1268,7 +1268,7 @@ export default function CatalogPage() {
                             <p className="text-sm text-muted-foreground">Obteniendo tu historial de pedidos</p>
                           </div>
                         )}
-                        
+
                         {/* Empty state */}
                         {cart.length === 0 && userOrders.length === 0 && !isLoadingOrders && (
                           <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
@@ -1279,8 +1279,8 @@ export default function CatalogPage() {
                               {authUser ? "No tienes pedidos aún" : "Inicia sesión para ver tus pedidos"}
                             </h3>
                             <p className="text-sm text-muted-foreground">
-                              {authUser 
-                                ? "Agrega productos del catálogo para crear tu primer pedido" 
+                              {authUser
+                                ? "Agrega productos del catálogo para crear tu primer pedido"
                                 : "Puedes agregar productos al carrito, pero necesitas iniciar sesión para generar pedidos"
                               }
                             </p>
@@ -1299,16 +1299,16 @@ export default function CatalogPage() {
                                       <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
                                           <p className="font-semibold">{order.orderId}</p>
-                                          <Badge 
-                                            variant={order.status === 'pending' ? 'secondary' : 
-                                                    order.status === 'processing' ? 'default' : 
-                                                    order.status === 'processed' ? 'default' : 'destructive'}
+                                          <Badge
+                                            variant={order.status === 'pending' ? 'secondary' :
+                                              order.status === 'processing' ? 'default' :
+                                                order.status === 'processed' ? 'default' : 'destructive'}
                                             className="text-xs"
                                           >
                                             {order.status === 'pending' ? 'Pendiente' :
-                                             order.status === 'processing' ? 'Procesando' :
-                                             order.status === 'processed' ? 'Procesado' :
-                                             order.status === 'cancelled' ? 'Cancelado' : order.status}
+                                              order.status === 'processing' ? 'Procesando' :
+                                                order.status === 'processed' ? 'Procesado' :
+                                                  order.status === 'cancelled' ? 'Cancelado' : order.status}
                                           </Badge>
                                         </div>
                                         <p className="text-sm text-muted-foreground">{isClient ? format(new Date(order.createdAt), 'dd/MM/yyyy HH:mm') : '...'}</p>
@@ -1670,10 +1670,10 @@ export default function CatalogPage() {
                   if ('views' in item) {
                     return <AdCard key={`ad-${item.id}-${index}`} ad={item} onAdClick={handleAdClick} />;
                   }
-                  return <CatalogProductCard 
-                    key={item.id} 
-                    product={item} 
-                    onAddToCart={handleOpenAddToCartDialog} 
+                  return <CatalogProductCard
+                    key={item.id}
+                    product={item}
+                    onAddToCart={handleOpenAddToCartDialog}
                     onImageClick={handleImageClick}
                     displayCurrency={displayCurrency}
                     isCurrencyRateRecent={isCurrencyRateRecent}
@@ -1701,8 +1701,8 @@ export default function CatalogPage() {
                 {isEditingOrder ? 'Actualizar Pedido' : 'Confirmar Pedido'}
               </DialogTitle>
               <DialogDescription className="text-muted-foreground">
-                {authUser && customerName ? 
-                  'Verifica tus datos y confirma el pedido' : 
+                {authUser && customerName ?
+                  'Verifica tus datos y confirma el pedido' :
                   'Completa tus datos para generar el pedido'
                 }
               </DialogDescription>
@@ -1741,12 +1741,12 @@ export default function CatalogPage() {
                   </div>
                 )}
               </div>
-              
+
               {/* Input hidden para el email del usuario autenticado */}
               {authUser?.email && (
                 <input type="hidden" name="customerEmail" value={authUser.email} />
               )}
-              
+
               {/* Nota informativa sobre el email */}
               <div className="text-xs text-muted-foreground text-center p-2 bg-muted/30 rounded-lg">
                 📧 Se usará el email de tu cuenta: {authUser?.email}

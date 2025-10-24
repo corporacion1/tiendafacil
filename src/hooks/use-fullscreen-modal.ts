@@ -9,14 +9,15 @@ export function useFullscreenModal() {
   const [hasShownModal, setHasShownModal] = useState(false);
   const [hasTriedSilentActivation, setHasTriedSilentActivation] = useState(false);
 
-  // Detectar si es dispositivo móvil
+  // Detectar si es dispositivo móvil o tablet
   useEffect(() => {
     const checkIfMobile = () => {
       const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
       const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
-      const isSmallScreen = window.innerWidth <= 768;
+      const isTablet = /tablet|ipad|playbook|silk/i.test(userAgent.toLowerCase());
+      const isSmallScreen = window.innerWidth <= 1024; // Aumentado para incluir tablets
       
-      return isMobileDevice || isSmallScreen;
+      return isMobileDevice || isTablet || isSmallScreen;
     };
 
     const handleResize = () => {
@@ -168,12 +169,12 @@ export function useFullscreenModal() {
     if (isFullscreen()) {
       await exitFullscreen();
     } else {
-      // Solo mostrar modal si ya se intentó la activación silenciosa
-      if (hasTriedSilentActivation) {
+      // Intentar activar pantalla completa directamente
+      const success = await activateFullscreenSilently();
+      
+      // Si no funciona, mostrar el modal
+      if (!success) {
         setShowModal(true);
-      } else {
-        // Si no se ha intentado, activar silenciosamente
-        await activateFullscreenSilently();
       }
     }
   };
