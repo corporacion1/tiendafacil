@@ -1821,40 +1821,43 @@ export default function POSPage() {
           </DialogContent>
       </Dialog>
       {/* Barra de estado de sincronización */}
-      <div className="mb-4 p-3 bg-muted/50 rounded-lg border">
-        <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center gap-4">
-            <span className="font-medium">Estado de Sincronización:</span>
+      <div className="mb-4 p-2 sm:p-3 bg-muted/50 rounded-lg border">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 text-xs sm:text-sm">
+          {/* Primera fila: Estados de sincronización */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+            <span className="font-medium text-xs sm:text-sm hidden sm:inline">Estado:</span>
             
-            {/* Estado de conexión */}
-            <div className="flex items-center gap-1">
-              <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`} />
-              <span className={isOnline ? 'text-green-700' : 'text-red-700'}>
-                {isOnline ? 'Conectado' : 'Sin conexión'}
-              </span>
-            </div>
-            
-            {/* Estado de pedidos */}
-            <div className="flex items-center gap-1">
-              <div className={`w-2 h-2 rounded-full ${isPollingOrders ? 'bg-blue-500 animate-pulse' : 'bg-gray-400'}`} />
-              <span className="text-blue-700">
-                Pedidos: {isPollingOrders ? 'Sincronizando' : 'Pausado'}
-              </span>
-            </div>
-            
-            {/* Estado de productos */}
-            <div className="flex items-center gap-1">
-              <div className={`w-2 h-2 rounded-full ${isPollingProducts ? 'bg-purple-500 animate-pulse' : 'bg-gray-400'}`} />
-              <span className="text-purple-700">
-                Productos: {isPollingProducts ? 'Sincronizando' : 'Pausado'}
-              </span>
+            <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
+              {/* Estado de conexión */}
+              <div className="flex items-center gap-1">
+                <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`} />
+                <span className={`text-xs ${isOnline ? 'text-green-700' : 'text-red-700'}`}>
+                  {isOnline ? 'Online' : 'Offline'}
+                </span>
+              </div>
+              
+              {/* Estado de pedidos */}
+              <div className="flex items-center gap-1">
+                <div className={`w-2 h-2 rounded-full ${isPollingOrders ? 'bg-blue-500 animate-pulse' : 'bg-gray-400'}`} />
+                <span className="text-blue-700 text-xs">
+                  Pedidos: {isPollingOrders ? 'Sync' : 'Pausa'}
+                </span>
+              </div>
+              
+              {/* Estado de productos */}
+              <div className="flex items-center gap-1">
+                <div className={`w-2 h-2 rounded-full ${isPollingProducts ? 'bg-purple-500 animate-pulse' : 'bg-gray-400'}`} />
+                <span className="text-purple-700 text-xs">
+                  Productos: {isPollingProducts ? 'Sync' : 'Pausa'}
+                </span>
+              </div>
             </div>
           </div>
           
-          {/* Contadores */}
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span>Pedidos pendientes: {pendingOrdersFromDB.length}</span>
-            <span>Productos activos: {products.filter(p => p.status === 'active' || p.status === 'promotion').length}</span>
+          {/* Segunda fila: Contadores */}
+          <div className="flex items-center gap-2 sm:gap-4 text-xs text-muted-foreground flex-wrap">
+            <span className="whitespace-nowrap">Pendientes: {pendingOrdersFromDB.length}</span>
+            <span className="whitespace-nowrap">Activos: {products.filter(p => p.status === 'active' || p.status === 'promotion').length}</span>
           </div>
         </div>
       </div>
