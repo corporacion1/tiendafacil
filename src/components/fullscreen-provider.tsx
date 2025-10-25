@@ -1,6 +1,7 @@
 // src/components/fullscreen-provider.tsx
 'use client';
 
+import { usePathname } from 'next/navigation';
 import { useFullscreenModal } from '@/hooks/use-fullscreen-modal';
 import { FullscreenModal } from './fullscreen-modal';
 import { Button } from './ui/button';
@@ -15,6 +16,7 @@ export function FullscreenProvider({
   children, 
   showToggleButton = true 
 }: FullscreenProviderProps) {
+  const pathname = usePathname();
   const {
     showModal,
     isMobile,
@@ -25,13 +27,19 @@ export function FullscreenProvider({
     hasTriedSilentActivation
   } = useFullscreenModal();
 
+  // Determinar posición del botón según la página
+  const isCatalogPage = pathname === '/catalog';
+  const buttonPositionClass = isCatalogPage 
+    ? "fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50" 
+    : "fixed bottom-4 right-4 z-50";
+
   return (
     <>
       {children}
       
       {/* Botón flotante para alternar pantalla completa (siempre visible en dispositivos móviles) */}
       {showToggleButton && isMobile && (
-        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
+        <div className={buttonPositionClass}>
           <Button
             onClick={toggleFullscreen}
             size="sm"
