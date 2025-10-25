@@ -1962,7 +1962,7 @@ export default function CatalogPage() {
         </Dialog>
 
         <Dialog open={!!orderIdForQr} onOpenChange={(isOpen) => !isOpen && setOrderIdForQr(null)}>
-          <DialogContent className="sm:max-w-md rounded-2xl border-0 shadow-2xl">
+          <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto invisible-scroll rounded-2xl border-0 shadow-2xl">
             <DialogHeader className="text-center pb-2">
               <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
                 <Check className="w-8 h-8 text-green-600" />
@@ -2003,9 +2003,26 @@ export default function CatalogPage() {
               </div>
             </div>
 
-            <DialogFooter className="pt-4">
+            <DialogFooter className="pt-4 space-y-3">
+              {currentStoreSettings?.whatsapp && (
+                <Button 
+                  asChild 
+                  variant="outline" 
+                  className="w-full rounded-xl border-[#25D366] text-[#25D366] hover:bg-[#25D366] hover:text-white"
+                >
+                  <a 
+                    href={`https://wa.me/${currentStoreSettings.whatsapp.replace(/\D/g, '')}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 py-3"
+                  >
+                    <FaWhatsapp className="h-4 w-4" />
+                    Contactar por WhatsApp
+                  </a>
+                </Button>
+              )}
               <DialogClose asChild>
-                <Button className="w-full rounded-xl">Entendido</Button>
+                <Button className="w-full rounded-xl">Cerrar & Continuar</Button>
               </DialogClose>
             </DialogFooter>
           </DialogContent>
