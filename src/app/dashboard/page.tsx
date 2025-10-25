@@ -137,8 +137,8 @@ export default function Dashboard() {
   const activeProducts = useMemo(() => (products || []).filter(p => (p.status === 'active' || p.status === 'promotion') && p.type === 'product').length, [products])
   
   return (
-    <div className="flex min-h-screen w-full flex-col">
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+    <div className="flex min-h-screen w-full flex-col overflow-x-hidden">
+      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8 max-w-full">
         <Card className="xl:col-span-3">
           <CardHeader>
             <div className="flex justify-between items-center">
@@ -158,7 +158,7 @@ export default function Dashboard() {
                    <p className="text-muted-foreground">Cargando datos del gráfico...</p>
                </div>
            ) : (
-            <Carousel className="w-full" opts={{ loop: true }}>
+            <Carousel className="w-full max-w-full overflow-hidden" opts={{ loop: true }}>
               <CarouselContent>
                 <CarouselItem>
                   <div className="p-1">
@@ -193,8 +193,8 @@ export default function Dashboard() {
                   </div>
                 </CarouselItem>
               </CarouselContent>
-              <CarouselPrevious className="absolute left-[-50px] top-1/2 -translate-y-1/2" />
-              <CarouselNext className="absolute right-[-50px] top-1/2 -translate-y-1/2" />
+              <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 md:left-[-50px]" />
+              <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 md:right-[-50px]" />
             </Carousel>
            )}
           </CardContent>

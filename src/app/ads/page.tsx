@@ -438,6 +438,7 @@ export default function AdsPage() {
   };
 
   return (
+    <div className="w-full max-w-full overflow-x-hidden">
     <ErrorBoundary fallback={MinimalErrorFallback}>
       {/* Dashboard de métricas */}
       {summary && (
@@ -644,6 +645,7 @@ export default function AdsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </ErrorBoundary>
+    </div>
   );
 }
 

@@ -521,6 +521,7 @@ export default function UsersPage() {
   }
 
   return (
+    <div className="w-full max-w-full overflow-x-hidden">
     <ErrorBoundary fallback={MinimalErrorFallback}>
       {/* Dashboard de métricas */}
       {summary && (
@@ -759,6 +760,7 @@ export default function UsersPage() {
         }}
       />
     </ErrorBoundary>
+    </div>
   );
 }
 

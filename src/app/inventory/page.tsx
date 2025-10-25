@@ -614,9 +614,9 @@ export default function InventoryPage() {
   }
 
   return (
-    <>
+    <div className="w-full max-w-full overflow-x-hidden">
       <Tabs defaultValue="all" onValueChange={setActiveTab}>
-        <div className="flex items-center">
+        <div className="flex items-center flex-wrap gap-2">
           <TabsList>
             <TabsTrigger value="all">Todo</TabsTrigger>
             <TabsTrigger value="active">Activo</TabsTrigger>
@@ -902,6 +902,6 @@ export default function InventoryPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }

@@ -450,7 +450,7 @@ export default function ReportsPage() {
     };
 
     return (
-        <>
+        <div className="w-full max-w-full overflow-x-hidden">
             <Tabs defaultValue="sales" onValueChange={setActiveTab}>
                 <div className="flex items-center mb-4 flex-wrap gap-2">
                     <TabsList>
@@ -1009,6 +1009,6 @@ export default function ReportsPage() {
                     type="Z"
                 />
             )}
-        </>
+        </div>
     );
 }

@@ -1600,7 +1600,7 @@ export default function POSPage() {
   }
 
   return (
-    <>
+    <div className="w-full max-w-full overflow-x-hidden">
       <Dialog open={!!productDetails} onOpenChange={(open) => { if (!open) setProductDetails(null); }}>
           <DialogContent className="sm:max-w-md">
               <DialogHeader>
@@ -2442,6 +2442,6 @@ export default function POSPage() {
         </DialogFooter>
       </DialogContent>
     </Dialog>
-    </>
+    </div>
   );
 }

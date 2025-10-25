@@ -398,6 +398,7 @@ export default function CreditsPage() {
     );
 
     return (
+        <div className="w-full max-w-full overflow-x-hidden">
         <ErrorBoundary fallback={MinimalErrorFallback}>
             {/* Dashboard de métricas */}
             {summary && (
@@ -733,5 +734,6 @@ export default function CreditsPage() {
                 </DialogContent>
             </Dialog>
         </ErrorBoundary>
+        </div>
     );
 }
