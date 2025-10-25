@@ -1,6 +1,6 @@
 "use client"
 import { useState, useMemo } from "react"
-import { ArrowUpRight, DollarSign, Users, Package, ShoppingBag, ArrowLeft, ArrowRight, AlertTriangle, Database } from "lucide-react"
+import { ArrowUpRight, DollarSign, Users, Package, ShoppingBag, ArrowLeft, ArrowRight, AlertTriangle, Database, Calendar, CalendarDays, CalendarRange } from "lucide-react"
 import Link from "next/link"
 import { Bar, BarChart, Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from "recharts"
 import { subDays, parseISO, format } from "date-fns"
@@ -145,9 +145,18 @@ export default function Dashboard() {
               <CardTitle>Visión General</CardTitle>
               <div className="flex items-center gap-4">
                 <div className="flex gap-2">
-                  <Button variant={timeFilter === 'day' ? 'default' : 'outline'} size="sm" onClick={() => setTimeFilter('day')}>Diario</Button>
-                  <Button variant={timeFilter === 'week' ? 'default' : 'outline'} size="sm" onClick={() => setTimeFilter('week')}>Semanal</Button>
-                  <Button variant={timeFilter === 'month' ? 'default' : 'outline'} size="sm" onClick={() => setTimeFilter('month')}>Mensual</Button>
+                  <Button variant={timeFilter === 'day' ? 'default' : 'outline'} size="sm" onClick={() => setTimeFilter('day')}>
+                    <Calendar className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Diario</span>
+                  </Button>
+                  <Button variant={timeFilter === 'week' ? 'default' : 'outline'} size="sm" onClick={() => setTimeFilter('week')}>
+                    <CalendarDays className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Semanal</span>
+                  </Button>
+                  <Button variant={timeFilter === 'month' ? 'default' : 'outline'} size="sm" onClick={() => setTimeFilter('month')}>
+                    <CalendarRange className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Mensual</span>
+                  </Button>
                 </div>
               </div>
             </div>
