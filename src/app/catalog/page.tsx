@@ -1071,12 +1071,65 @@ export default function CatalogPage() {
             product.name;
           ctx.fillText(titleText, 20, 25);
 
-          // Precio (más grande, debajo del título)
+          // Precio con fondo destacado
           const priceFontSize = Math.min(32, width / 14);
           ctx.font = `bold ${priceFontSize}px Arial, sans-serif`;
-          ctx.fillStyle = '#4ade80'; // Verde claro
           const priceText = `${activeSymbol}${(product.price * activeRate).toFixed(2)}`;
-          ctx.fillText(priceText, 20, 25 + titleFontSize + 10);
+          
+          // Medir el texto del precio para crear el fondo
+          const priceMetrics = ctx.measureText(priceText);
+          const priceWidth = priceMetrics.width + 24; // Padding horizontal
+          const priceHeight = priceFontSize + 16; // Padding vertical
+          const priceX = 20;
+          const priceY = 25 + titleFontSize + 15;
+          
+          // Crear fondo con gradiente llamativo - variaciones de colores
+          const priceGradient = ctx.createLinearGradient(priceX, priceY, priceX + priceWidth, priceY + priceHeight);
+          
+          // Alternar entre diferentes colores llamativos basado en el ID del producto
+          const colorVariant = (product.id.charCodeAt(0) + product.id.charCodeAt(product.id.length - 1)) % 3;
+          
+          if (colorVariant === 0) {
+            // Naranja vibrante
+            priceGradient.addColorStop(0, '#ff6b35');
+            priceGradient.addColorStop(1, '#f7931e');
+          } else if (colorVariant === 1) {
+            // Azul claro a azul intenso
+            priceGradient.addColorStop(0, '#3b82f6');
+            priceGradient.addColorStop(1, '#1d4ed8');
+          } else {
+            // Verde esmeralda
+            priceGradient.addColorStop(0, '#10b981');
+            priceGradient.addColorStop(1, '#059669');
+          }
+          
+          // Dibujar fondo redondeado para el precio
+          ctx.fillStyle = priceGradient;
+          ctx.beginPath();
+          ctx.roundRect(priceX, priceY, priceWidth, priceHeight, 12);
+          ctx.fill();
+          
+          // Agregar sombra al fondo del precio
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+          ctx.shadowBlur = 8;
+          ctx.shadowOffsetX = 2;
+          ctx.shadowOffsetY = 2;
+          ctx.fillStyle = priceGradient;
+          ctx.beginPath();
+          ctx.roundRect(priceX, priceY, priceWidth, priceHeight, 12);
+          ctx.fill();
+          
+          // Resetear sombra
+          ctx.shadowColor = 'transparent';
+          ctx.shadowBlur = 0;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 0;
+          
+          // Dibujar texto del precio en blanco para contraste
+          ctx.fillStyle = 'white';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(priceText, priceX + 12, priceY + priceHeight / 2);
 
           // Nombre de la tienda (parte inferior)
           ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';

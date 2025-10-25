@@ -9,6 +9,7 @@ import { SecurityProvider } from '@/contexts/security-context';
 import { ErrorBoundary, PageErrorFallback } from '@/components/error-boundary';
 import StoreAccessGuard from '@/components/StoreAccessGuard';
 import { FullscreenProvider } from '@/components/fullscreen-provider';
+import { ThemeProvider } from '@/components/theme-provider';
 
 
 export const metadata: Metadata = {
@@ -40,25 +41,27 @@ export default function RootLayout({
           fallback={PageErrorFallback}
           context="Aplicación Principal"
         >
-          <AuthProvider>
-            <StoreAccessGuard>
-              <ErrorBoundary context="Configuración de Usuario">
-                <SettingsProvider>
-                  <ErrorBoundary context="Sistema de Seguridad">
-                    <SecurityProvider>
-                      <ErrorBoundary context="Interfaz Principal">
-                        <FullscreenProvider>
-                          <AppShell>
-                            {children}
-                          </AppShell>
-                        </FullscreenProvider>
-                      </ErrorBoundary>
-                    </SecurityProvider>
-                  </ErrorBoundary>
-                </SettingsProvider>
-              </ErrorBoundary>
-            </StoreAccessGuard>
-          </AuthProvider>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <AuthProvider>
+              <StoreAccessGuard>
+                <ErrorBoundary context="Configuración de Usuario">
+                  <SettingsProvider>
+                    <ErrorBoundary context="Sistema de Seguridad">
+                      <SecurityProvider>
+                        <ErrorBoundary context="Interfaz Principal">
+                          <FullscreenProvider>
+                            <AppShell>
+                              {children}
+                            </AppShell>
+                          </FullscreenProvider>
+                        </ErrorBoundary>
+                      </SecurityProvider>
+                    </ErrorBoundary>
+                  </SettingsProvider>
+                </ErrorBoundary>
+              </StoreAccessGuard>
+            </AuthProvider>
+          </ThemeProvider>
         </ErrorBoundary>
         <ErrorBoundary context="Sistema de Notificaciones">
           <Toaster />
