@@ -2003,7 +2003,7 @@ export default function CatalogPage() {
               </div>
             </div>
 
-            <DialogFooter className="pt-4 space-y-3">
+            <DialogFooter className="pt-4 flex flex-col gap-4">
               {currentStoreSettings?.whatsapp && (
                 <Button 
                   asChild 
