@@ -1182,9 +1182,39 @@ export default function POSPage() {
         text += `   Subtotal: ${activeSymbol}${(item.price * item.quantity * activeRate).toFixed(2)}\n\n`;
       });
       
+      // Calcular subtotal e impuestos para la cotización
+      const quoteSubtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+      let quoteTax1Amount = 0;
+      let quoteTax2Amount = 0;
+      
+      cartItems.forEach(item => {
+        if(item.product.tax1 && settings && settings.tax1 && settings.tax1 > 0) {
+          quoteTax1Amount += item.price * item.quantity * (settings.tax1 / 100);
+        }
+        if(item.product.tax2 && settings && settings.tax2 && settings.tax2 > 0) {
+          quoteTax2Amount += item.price * item.quantity * (settings.tax2 / 100);
+        }
+      });
+      
+      text += `💵 *RESUMEN:*\n`;
+      text += `Subtotal: ${activeSymbol}${(quoteSubtotal * activeRate).toFixed(2)}\n`;
+      
+      if (settings?.tax1 && settings.tax1 > 0 && quoteTax1Amount > 0) {
+        text += `Impuesto ${settings.tax1}%: ${activeSymbol}${(quoteTax1Amount * activeRate).toFixed(2)}\n`;
+      }
+      if (settings?.tax2 && settings.tax2 > 0 && quoteTax2Amount > 0) {
+        text += `Impuesto ${settings.tax2}%: ${activeSymbol}${(quoteTax2Amount * activeRate).toFixed(2)}\n`;
+      }
+      
       text += `💰 *TOTAL: ${activeSymbol}${(total * activeRate).toFixed(2)}*\n\n`;
       text += `✨ Esta cotización es válida por 7 días\n`;
-      text += `📞 Para confirmar tu pedido, contáctanos`;
+      text += `📞 Para confirmar tu pedido, contáctanos\n\n`;
+      
+      // Agregar link de WhatsApp de la tienda
+      if (settings?.whatsapp) {
+        const cleanWhatsApp = settings.whatsapp.replace(/\D/g, '');
+        text += `💬 WhatsApp: https://wa.me/${cleanWhatsApp}`;
+      }
       
     } else if (type === 'sale' && saleData) {
       text = `🧾 *COMPROBANTE DE VENTA*\n\n`;
@@ -1211,7 +1241,13 @@ export default function POSPage() {
       }
       
       text += `✅ ¡Gracias por tu compra!\n`;
-      text += `📞 Para cualquier consulta, contáctanos`;
+      text += `📞 Para cualquier consulta, contáctanos\n\n`;
+      
+      // Agregar link de WhatsApp de la tienda
+      if (settings?.whatsapp) {
+        const cleanWhatsApp = settings.whatsapp.replace(/\D/g, '');
+        text += `💬 WhatsApp: https://wa.me/${cleanWhatsApp}`;
+      }
     }
     
     return text;
