@@ -2109,7 +2109,7 @@ export default function CatalogPage() {
         </Dialog>
 
         <Dialog open={!!productToAdd} onOpenChange={(isOpen) => !isOpen && setProductToAdd(null)}>
-          <DialogContent className="sm:max-w-md rounded-2xl border-0 shadow-2xl">
+          <DialogContent onOpenAutoFocus={(e) => e.preventDefault()} className="sm:max-w-md rounded-2xl border-0 shadow-2xl">
             <DialogHeader className="text-center pb-2">
               <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
                 <Plus className="w-6 h-6 text-primary" />
@@ -2140,7 +2140,6 @@ export default function CatalogPage() {
                     onChange={(e) => setAddQuantity(Math.max(1, parseInt(e.target.value) || 1))}
                     min="1"
                     className="w-20 text-center rounded-xl border-0 bg-muted/50 text-lg font-semibold"
-                    autoFocus
                   />
                   <Button
                     variant="outline"
@@ -2176,6 +2175,7 @@ export default function CatalogPage() {
                   }
                 }}
                 className="rounded-xl bg-primary hover:bg-primary/90"
+                autoFocus
               >
                 Confirmar
               </Button>
