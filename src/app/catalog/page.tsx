@@ -1042,40 +1042,49 @@ export default function CatalogPage() {
           // Dibujar imagen de fondo
           ctx.drawImage(img, 0, 0, width, height);
 
-          // Crear overlay con gradiente
-          const gradient = ctx.createLinearGradient(0, height - 120, 0, height);
-          gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-          gradient.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
+          // Crear overlay superior con gradiente para título y precio
+          const topGradient = ctx.createLinearGradient(0, 0, 0, 140);
+          topGradient.addColorStop(0, 'rgba(0, 0, 0, 0.8)');
+          topGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
           
-          ctx.fillStyle = gradient;
-          ctx.fillRect(0, height - 120, width, 120);
+          ctx.fillStyle = topGradient;
+          ctx.fillRect(0, 0, width, 140);
 
-          // Configurar texto
+          // Crear overlay inferior para nombre de tienda
+          const bottomGradient = ctx.createLinearGradient(0, height - 60, 0, height);
+          bottomGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+          bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 0.7)');
+          
+          ctx.fillStyle = bottomGradient;
+          ctx.fillRect(0, height - 60, width, 60);
+
+          // Configurar texto para título (parte superior)
           ctx.fillStyle = 'white';
           ctx.textAlign = 'left';
-          ctx.textBaseline = 'bottom';
+          ctx.textBaseline = 'top';
 
-          // Título del producto
-          const titleFontSize = Math.min(28, width / 15);
+          // Título del producto (más grande, parte superior)
+          const titleFontSize = Math.min(36, width / 12);
           ctx.font = `bold ${titleFontSize}px Arial, sans-serif`;
-          const titleText = product.name.length > 30 ? 
-            product.name.substring(0, 30) + '...' : 
+          const titleText = product.name.length > 25 ? 
+            product.name.substring(0, 25) + '...' : 
             product.name;
-          ctx.fillText(titleText, 20, height - 60);
+          ctx.fillText(titleText, 20, 25);
 
-          // Precio
-          const priceFontSize = Math.min(24, width / 18);
+          // Precio (más grande, debajo del título)
+          const priceFontSize = Math.min(32, width / 14);
           ctx.font = `bold ${priceFontSize}px Arial, sans-serif`;
           ctx.fillStyle = '#4ade80'; // Verde claro
           const priceText = `${activeSymbol}${(product.price * activeRate).toFixed(2)}`;
-          ctx.fillText(priceText, 20, height - 25);
+          ctx.fillText(priceText, 20, 25 + titleFontSize + 10);
 
-          // Agregar logo/marca de agua de la tienda (opcional)
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-          ctx.font = `${Math.min(16, width / 25)}px Arial, sans-serif`;
+          // Nombre de la tienda (parte inferior)
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+          ctx.font = `${Math.min(20, width / 20)}px Arial, sans-serif`;
           ctx.textAlign = 'right';
+          ctx.textBaseline = 'bottom';
           const storeName = currentStoreSettings?.name || 'Tienda Fácil';
-          ctx.fillText(storeName, width - 20, height - 10);
+          ctx.fillText(storeName, width - 20, height - 15);
 
           // Convertir canvas a blob
           canvas.toBlob((blob) => {
