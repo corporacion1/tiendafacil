@@ -53,8 +53,8 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
     try {
       console.log('🔍 [POS] Fetching pending orders for store:', storeId);
       
-      // Obtener solo pedidos pendientes (no procesados)
-      const url = `/api/orders?storeId=${encodeURIComponent(storeId)}&status=pending`;
+      // Obtener pedidos pendientes y en procesamiento (no completamente procesados)
+      const url = `/api/orders?storeId=${encodeURIComponent(storeId)}&status=pending,processing`;
       console.log('🔗 [POS] API URL:', url);
       
       const response = await fetch(url);

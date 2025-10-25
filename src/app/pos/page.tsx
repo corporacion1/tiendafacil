@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff, Archive, QrCode, Lock, Unlock, Library, FilePieChart, LogOut, ArrowLeft, Armchair, ScanLine, Search, Share } from "lucide-react"
+import { FaWhatsapp } from "react-icons/fa";
 import dynamic from 'next/dynamic';
 
 // Importar el scanner dinámicamente para evitar problemas de SSR
@@ -82,6 +83,27 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
         </Card>
     );
 }
+
+// Función para formatear número de teléfono venezolano para WhatsApp
+const formatPhoneForWhatsApp = (phone: string): string => {
+  if (!phone) return '';
+  
+  // Limpiar el número de espacios y caracteres especiales
+  const cleanPhone = phone.replace(/\D/g, '');
+  
+  // Si empieza con 0, reemplazar por 58 (código de Venezuela)
+  if (cleanPhone.startsWith('0')) {
+    return '58' + cleanPhone.substring(1);
+  }
+  
+  // Si ya tiene código de país, devolverlo tal como está
+  if (cleanPhone.startsWith('58')) {
+    return cleanPhone;
+  }
+  
+  // Si no tiene código de país, agregar 58
+  return '58' + cleanPhone;
+};
 
 export default function POSPage() {
   const { hasPermission } = usePermissions();
@@ -1559,8 +1581,8 @@ export default function POSPage() {
     // Cargar productos al carrito
     setCartItems(orderCartItems);
 
-    // Buscar y seleccionar cliente
-    const customer = (customers || []).find(c => 
+    // Buscar y seleccionar cliente, o crearlo automáticamente si no existe
+    let customer = (customers || []).find(c => 
         c.phone === order.customerPhone || 
         c.name === order.customerName ||
         c.id === (order as any).customerId
@@ -1568,10 +1590,55 @@ export default function POSPage() {
     
     if (customer) {
         setSelectedCustomerId(customer.id);
-        console.log('👤 Cliente seleccionado:', customer.name);
+        console.log('👤 Cliente encontrado y seleccionado:', customer.name);
     } else if (order.customerName && order.customerName !== 'Cliente Eventual') {
-        // Si no se encuentra el cliente pero hay información, sugerir crearlo
-        console.log('👤 Cliente no encontrado, datos disponibles:', order.customerName, order.customerPhone);
+        // Cliente no existe, crearlo automáticamente
+        console.log('👤 Cliente no encontrado, creando automáticamente:', order.customerName, order.customerPhone);
+        
+        try {
+            const newCustomerData = {
+                name: order.customerName,
+                phone: order.customerPhone || '',
+                email: order.customerEmail || '',
+                address: '',
+                storeId: activeStoreId
+            };
+
+            const response = await fetch('/api/costumers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newCustomerData)
+            });
+
+            if (response.ok) {
+                const createdCustomer = await response.json();
+                
+                // Actualizar la lista de clientes
+                setCustomers(prev => [...(prev || []), createdCustomer]);
+                
+                // Seleccionar el cliente recién creado
+                setSelectedCustomerId(createdCustomer.id);
+                
+                console.log('✅ Cliente creado automáticamente:', createdCustomer.name);
+                
+                toast({
+                    title: "Cliente creado",
+                    description: `Cliente ${createdCustomer.name} creado automáticamente.`
+                });
+            } else {
+                console.warn('⚠️ Error creando cliente automáticamente');
+                toast({
+                    title: "Advertencia",
+                    description: "No se pudo crear el cliente automáticamente, pero el pedido se cargó correctamente."
+                });
+            }
+        } catch (error) {
+            console.error('❌ Error creando cliente:', error);
+            toast({
+                title: "Advertencia", 
+                description: "Error al crear cliente automáticamente, pero el pedido se cargó correctamente."
+            });
+        }
     }
     
     // Marcar pedido como "en procesamiento" usando el nuevo hook
@@ -2075,7 +2142,33 @@ export default function POSPage() {
                                                         </div>
                                                         <p className="text-sm font-medium text-primary mt-2">{activeSymbol}{(order.total * activeRate).toFixed(2)}</p>
                                                     </div>
-                                                    <Button size="sm" onClick={() => loadPendingOrder(order)}>Cargar</Button>
+                                                    <div className="flex flex-col gap-2">
+                                                        <Button 
+                                                            size="sm" 
+                                                            onClick={() => loadPendingOrder(order)}
+                                                            className="w-full sm:w-auto"
+                                                            title="Cargar pedido"
+                                                        >
+                                                            <ShoppingCart className="h-4 w-4 sm:mr-2" />
+                                                            <span className="hidden sm:inline">Cargar</span>
+                                                        </Button>
+                                                        {order.customerPhone && (
+                                                            <Button 
+                                                                size="sm" 
+                                                                variant="outline"
+                                                                className="border-[#25D366] text-[#25D366] hover:bg-[#25D366] hover:text-white w-full sm:w-auto"
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    e.stopPropagation();
+                                                                    window.open(`https://wa.me/${formatPhoneForWhatsApp(order.customerPhone)}`, '_blank', 'noopener,noreferrer');
+                                                                }}
+                                                                title="Contactar por WhatsApp"
+                                                            >
+                                                                <FaWhatsapp className="h-4 w-4 sm:mr-2" />
+                                                                <span className="hidden sm:inline">WhatsApp</span>
+                                                            </Button>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <Separator className="my-2" />
                                                 <p className="text-right font-bold">Total: ${order.total.toFixed(2)}</p>
