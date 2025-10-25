@@ -1002,6 +1002,103 @@ export default function CatalogPage() {
     setProductDetails(product);
   };
 
+  // Función para crear imagen compuesta con título y precio
+  const createProductImageWithOverlay = async (product: Product): Promise<File | null> => {
+    if (!product.imageUrl) return null;
+
+    try {
+      // Crear canvas
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+
+      // Cargar imagen del producto
+      const img = new window.Image();
+      img.crossOrigin = 'anonymous';
+      
+      return new Promise<File | null>((resolve) => {
+        img.onload = () => {
+          // Configurar tamaño del canvas
+          const maxWidth = 800;
+          const maxHeight = 800;
+          let { width, height } = img;
+
+          // Redimensionar manteniendo proporción
+          if (width > height) {
+            if (width > maxWidth) {
+              height = (height * maxWidth) / width;
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = (width * maxHeight) / height;
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          // Dibujar imagen de fondo
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Crear overlay con gradiente
+          const gradient = ctx.createLinearGradient(0, height - 120, 0, height);
+          gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+          gradient.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
+          
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, height - 120, width, 120);
+
+          // Configurar texto
+          ctx.fillStyle = 'white';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'bottom';
+
+          // Título del producto
+          const titleFontSize = Math.min(28, width / 15);
+          ctx.font = `bold ${titleFontSize}px Arial, sans-serif`;
+          const titleText = product.name.length > 30 ? 
+            product.name.substring(0, 30) + '...' : 
+            product.name;
+          ctx.fillText(titleText, 20, height - 60);
+
+          // Precio
+          const priceFontSize = Math.min(24, width / 18);
+          ctx.font = `bold ${priceFontSize}px Arial, sans-serif`;
+          ctx.fillStyle = '#4ade80'; // Verde claro
+          const priceText = `${activeSymbol}${(product.price * activeRate).toFixed(2)}`;
+          ctx.fillText(priceText, 20, height - 25);
+
+          // Agregar logo/marca de agua de la tienda (opcional)
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+          ctx.font = `${Math.min(16, width / 25)}px Arial, sans-serif`;
+          ctx.textAlign = 'right';
+          const storeName = currentStoreSettings?.name || 'Tienda Fácil';
+          ctx.fillText(storeName, width - 20, height - 10);
+
+          // Convertir canvas a blob
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const file = new File([blob], `${product.name}-oferta.jpg`, { 
+                type: 'image/jpeg' 
+              });
+              resolve(file);
+            } else {
+              resolve(null);
+            }
+          }, 'image/jpeg', 0.9);
+        };
+
+        img.onerror = () => resolve(null);
+        img.src = product.imageUrl || '';
+      });
+    } catch (error) {
+      console.log('Error creando imagen compuesta:', error);
+      return null;
+    }
+  };
+
   const handleShareProduct = async (product: Product) => {
     try {
       // Crear el mensaje de compartir
@@ -1024,18 +1121,23 @@ export default function CatalogPage() {
           url: `${window.location.origin}/catalog?storeId=${storeIdForCatalog}`
         };
 
-        // Intentar incluir la imagen si está disponible
+        // Intentar crear imagen compuesta con título y precio
         if (product.imageUrl) {
           try {
-            // Convertir la imagen a blob para compartir
-            const response = await fetch(product.imageUrl);
-            if (response.ok) {
-              const blob = await response.blob();
-              const file = new File([blob], `${product.name}.jpg`, { type: blob.type });
-
-              // Verificar si el navegador soporta compartir archivos
-              if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                shareData.files = [file];
+            const compositeImage = await createProductImageWithOverlay(product);
+            
+            if (compositeImage && navigator.canShare && navigator.canShare({ files: [compositeImage] })) {
+              shareData.files = [compositeImage];
+            } else {
+              // Fallback a imagen original si no se pudo crear la compuesta
+              const response = await fetch(product.imageUrl);
+              if (response.ok) {
+                const blob = await response.blob();
+                const file = new File([blob], `${product.name}.jpg`, { type: blob.type });
+                
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                  shareData.files = [file];
+                }
               }
             }
           } catch (imageError) {
@@ -1049,7 +1151,7 @@ export default function CatalogPage() {
         toast({
           title: "¡Compartido!",
           description: product.imageUrl && shareData.files ?
-            "Producto e imagen compartidos exitosamente" :
+            "Producto con imagen promocional compartido exitosamente" :
             "Producto compartido exitosamente"
         });
       } else {
