@@ -2083,14 +2083,14 @@ export default function POSPage() {
                                     {isPollingOrders && <Badge variant="secondary" className="ml-2 text-xs">Sincronizando</Badge>}
                                 </Button>
                             </DialogTrigger>
-                            <DialogContent>
-                                <DialogHeader>
+                            <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col w-full mx-2 sm:mx-auto">
+                                <DialogHeader className="flex-shrink-0">
                                     <DialogTitle>Pedidos Pendientes - Todos los Clientes</DialogTitle>
                                     <p className="text-sm text-muted-foreground">
                                         Pedidos generados por clientes desde sus dispositivos, listos para procesar
                                     </p>
                                 </DialogHeader>
-                                <div className="py-4 max-h-96 overflow-y-auto">
+                                <div className="py-4 flex-1 overflow-y-auto">
                                     {isLoadingPendingOrders && <p>Cargando pedidos...</p>}
                                     {!isLoadingPendingOrders && pendingOrdersFromDB.length === 0 ? (
                                         <div className="text-center text-muted-foreground py-8">
