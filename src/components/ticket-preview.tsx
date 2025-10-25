@@ -5,6 +5,7 @@ import { useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Share } from "lucide-react";
 import type { CartItem, Customer, Product, Payment } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
 
@@ -16,6 +17,7 @@ interface TicketPreviewProps {
   saleId?: string | null;
   ticketType?: 'sale' | 'quote';
   payments?: Payment[];
+  onShare?: () => void;
 }
 
 export function TicketPreview({
@@ -26,6 +28,7 @@ export function TicketPreview({
   saleId,
   ticketType = 'sale',
   payments,
+  onShare,
 }: TicketPreviewProps) {
   const ticketRef = useRef<HTMLDivElement>(null);
   const { settings, activeSymbol, activeRate } = useSettings();
@@ -276,10 +279,16 @@ export function TicketPreview({
                 No hay información para mostrar.
             </div>
         )}
-        <DialogFooter className="sm:justify-end">
+        <DialogFooter className="sm:justify-end gap-2">
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
+          {ticketType === 'quote' && onShare && (
+            <Button type="button" variant="outline" onClick={onShare} disabled={!displayInfo}>
+              <Share className="h-4 w-4 mr-2" />
+              Compartir Cotización
+            </Button>
+          )}
           <Button type="button" onClick={handlePrint} disabled={!displayInfo}>
             Confirmar e Imprimir
           </Button>

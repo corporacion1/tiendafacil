@@ -2,7 +2,7 @@
 "use client"
 import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
-import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff, Archive, QrCode, Lock, Unlock, Library, FilePieChart, LogOut, ArrowLeft, Armchair, ScanLine, Search } from "lucide-react"
+import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff, Archive, QrCode, Lock, Unlock, Library, FilePieChart, LogOut, ArrowLeft, Armchair, ScanLine, Search, Share } from "lucide-react"
 import dynamic from 'next/dynamic';
 
 // Importar el scanner dinámicamente para evitar problemas de SSR
@@ -46,33 +46,38 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
     const imageUrl = getDisplayImageUrl(product.imageUrl);
 
     return (
-        <Card className="overflow-hidden group cursor-pointer" onClick={() => onAddToCart(product)}>
-            <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative isolate">
+        <Card className="overflow-hidden group cursor-pointer w-full max-w-full" onClick={() => onAddToCart(product)}>
+            <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative isolate w-full max-w-full">
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                    <Button size="sm">Agregar</Button>
+                    <Button size="sm" className="text-xs px-2 py-1">Agregar</Button>
                 </div>
-                <Button size="icon" variant="ghost" className="absolute top-1 right-1 h-7 w-7 text-white opacity-0 group-hover:opacity-100 transition-opacity z-20" onClick={(e) => { e.stopPropagation(); onShowDetails(product); }}>
-                    <ZoomIn className="h-5 w-5" />
+                <Button size="icon" variant="ghost" className="absolute top-0.5 right-0.5 h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity z-20" onClick={(e) => { e.stopPropagation(); onShowDetails(product); }}>
+                    <ZoomIn className="h-3 w-3 sm:h-4 sm:w-4" />
                 </Button>
-                {imageUrl && !imageError ? (
-                    <Image
-                        src={imageUrl}
-                        alt={product.name}
-                        fill
-                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
-                        className="object-cover transition-transform group-hover:scale-105"
-                        data-ai-hint={product.imageHint}
-                        onError={() => setImageError(true)}
-                    />
-                ) : (
-                    <Package className="w-12 h-12 text-muted-foreground" />
-                )}
-                <div className="absolute top-2 left-2 bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded">
+                <div className="relative w-full h-full max-w-full overflow-hidden rounded-t-lg">
+                    {imageUrl && !imageError ? (
+                        <Image
+                            src={imageUrl}
+                            alt={product.name}
+                            fill
+                            sizes="(max-width: 480px) 50vw, (max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1024px) 20vw, 16vw"
+                            className="object-cover transition-transform group-hover:scale-105 w-full h-full"
+                            data-ai-hint={product.imageHint}
+                            onError={() => setImageError(true)}
+                            priority={false}
+                        />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-muted">
+                            <Package className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground" />
+                        </div>
+                    )}
+                </div>
+                <div className="absolute top-1 left-1 bg-primary text-primary-foreground text-xs font-bold px-1.5 py-0.5 rounded text-[10px] sm:text-xs">
                     {activeSymbol}{(product.price * activeRate).toFixed(2)}
                 </div>
             </CardContent>
-            <CardFooter className="p-2 bg-background/80 backdrop-blur-sm">
-                <h3 className="text-sm font-medium truncate">{product.name}</h3>
+            <CardFooter className="p-1 sm:p-2 bg-background/80 backdrop-blur-sm w-full max-w-full">
+                <h3 className="text-xs sm:text-sm font-medium truncate w-full">{product.name}</h3>
             </CardFooter>
         </Card>
     );
@@ -946,7 +951,7 @@ export default function POSPage() {
     };
   };
 
-  const handleProcessSale = async (andPrint: boolean) => {
+  const handleProcessSale = async (andPrint: boolean, andShare: boolean = false) => {
      if (cartItems.length === 0) {
       toast({ variant: "destructive", title: "Carrito vacío"});
       return;
@@ -1135,6 +1140,12 @@ export default function POSPage() {
             setIsPrintPreviewOpen(true);
         }, 100);
     }
+
+    if (andShare) {
+        setTimeout(() => {
+            handleShareSale(newSale);
+        }, 200);
+    }
   }
 
   const handlePrintQuote = () => {
@@ -1149,6 +1160,157 @@ export default function POSPage() {
     setTicketType('quote');
     setLastSale(null);
     setIsPrintPreviewOpen(true);
+  };
+
+  const generateShareText = (type: 'quote' | 'sale', saleData?: any) => {
+    const customer = selectedCustomer?.name || 'Cliente Eventual';
+    const date = new Date().toLocaleDateString('es-ES');
+    const time = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    
+    let text = '';
+    
+    if (type === 'quote') {
+      text = `🧾 *COTIZACIÓN*\n\n`;
+      text += `📅 Fecha: ${date} ${time}\n`;
+      text += `👤 Cliente: ${customer}\n`;
+      text += `🏪 ${settings?.name || 'Mi Tienda'}\n\n`;
+      text += `📋 *PRODUCTOS:*\n`;
+      
+      cartItems.forEach((item, index) => {
+        text += `${index + 1}. ${item.product.name}\n`;
+        text += `   Cant: ${item.quantity} x ${activeSymbol}${(item.price * activeRate).toFixed(2)}\n`;
+        text += `   Subtotal: ${activeSymbol}${(item.price * item.quantity * activeRate).toFixed(2)}\n\n`;
+      });
+      
+      text += `💰 *TOTAL: ${activeSymbol}${(total * activeRate).toFixed(2)}*\n\n`;
+      text += `✨ Esta cotización es válida por 7 días\n`;
+      text += `📞 Para confirmar tu pedido, contáctanos`;
+      
+    } else if (type === 'sale' && saleData) {
+      text = `🧾 *COMPROBANTE DE VENTA*\n\n`;
+      text += `📅 Fecha: ${date} ${time}\n`;
+      text += `🔢 Venta #${saleData.id}\n`;
+      text += `👤 Cliente: ${customer}\n`;
+      text += `🏪 ${settings?.name || 'Mi Tienda'}\n\n`;
+      text += `📋 *PRODUCTOS:*\n`;
+      
+      saleData.items.forEach((item: any, index: number) => {
+        text += `${index + 1}. ${item.productName}\n`;
+        text += `   Cant: ${item.quantity} x ${activeSymbol}${(item.price * activeRate).toFixed(2)}\n`;
+        text += `   Subtotal: ${activeSymbol}${(item.price * item.quantity * activeRate).toFixed(2)}\n\n`;
+      });
+      
+      text += `💰 *TOTAL: ${activeSymbol}${(saleData.total * activeRate).toFixed(2)}*\n\n`;
+      
+      if (saleData.payments && saleData.payments.length > 0) {
+        text += `💳 *PAGOS:*\n`;
+        saleData.payments.forEach((payment: any) => {
+          text += `• ${payment.method}: ${activeSymbol}${(payment.amount * activeRate).toFixed(2)}\n`;
+        });
+        text += `\n`;
+      }
+      
+      text += `✅ ¡Gracias por tu compra!\n`;
+      text += `📞 Para cualquier consulta, contáctanos`;
+    }
+    
+    return text;
+  };
+
+  const handleShareQuote = async () => {
+    if (cartItems.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Carrito vacío",
+        description: "Agrega productos para generar una cotización.",
+      });
+      return;
+    }
+
+    const shareText = generateShareText('quote');
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Cotización',
+          text: shareText,
+        });
+        toast({
+          title: "Cotización compartida",
+          description: "La cotización se ha compartido exitosamente.",
+        });
+      } catch (error) {
+        if ((error as Error).name !== 'AbortError') {
+          console.error('Error sharing:', error);
+          fallbackShare(shareText);
+        }
+      }
+    } else {
+      fallbackShare(shareText);
+    }
+  };
+
+  const handleShareSale = async (saleData: any) => {
+    const shareText = generateShareText('sale', saleData);
+    
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Comprobante de Venta',
+          text: shareText,
+        });
+        toast({
+          title: "Comprobante compartido",
+          description: "El comprobante se ha compartido exitosamente.",
+        });
+      } catch (error) {
+        if ((error as Error).name !== 'AbortError') {
+          console.error('Error sharing:', error);
+          fallbackShare(shareText);
+        }
+      }
+    } else {
+      fallbackShare(shareText);
+    }
+  };
+
+  const fallbackShare = (text: string) => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => {
+        toast({
+          title: "Copiado al portapapeles",
+          description: "El texto se ha copiado. Puedes pegarlo en WhatsApp u otra aplicación.",
+        });
+      }).catch(() => {
+        openWhatsAppShare(text);
+      });
+    } else {
+      openWhatsAppShare(text);
+    }
+  };
+
+  const openWhatsAppShare = (text: string) => {
+    const customerPhone = selectedCustomer?.phone;
+    let whatsappUrl = 'https://wa.me/';
+    
+    if (customerPhone && customerPhone !== '') {
+      // Limpiar el número de teléfono (remover espacios, guiones, etc.)
+      const cleanPhone = customerPhone.replace(/\D/g, '');
+      // Si el número no empieza con código de país, agregar 58 (Venezuela)
+      const phoneWithCountry = cleanPhone.startsWith('58') ? cleanPhone : '58' + cleanPhone;
+      whatsappUrl += phoneWithCountry;
+    }
+    
+    whatsappUrl += '?text=' + encodeURIComponent(text);
+    
+    window.open(whatsappUrl, '_blank');
+    
+    toast({
+      title: "Abriendo WhatsApp",
+      description: customerPhone ? 
+        `Enviando a ${selectedCustomer?.name}` : 
+        "Selecciona el contacto para enviar",
+    });
   };
 
   const handleAddNewCustomer = async () => {
@@ -1600,7 +1762,8 @@ export default function POSPage() {
   }
 
   return (
-    <div className="w-full max-w-full overflow-x-hidden">
+    <div className="w-full max-w-full overflow-x-hidden min-h-screen">
+      <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-4 max-w-full">
       <Dialog open={!!productDetails} onOpenChange={(open) => { if (!open) setProductDetails(null); }}>
           <DialogContent className="sm:max-w-md">
               <DialogHeader>
@@ -1696,11 +1859,11 @@ export default function POSPage() {
         </div>
       </div>
       
-      <div className="grid flex-1 auto-rows-max items-start gap-4 lg:grid-cols-5 lg:gap-8">
-        <div className="grid auto-rows-max items-start gap-4 lg:col-span-3 lg:gap-8">
-            <Card>
-                <CardHeader>
-                    <div className="flex justify-between items-start flex-wrap">
+      <div className="grid flex-1 auto-rows-max items-start gap-2 sm:gap-4 lg:grid-cols-5 lg:gap-8 w-full max-w-full overflow-hidden">
+        <div className="grid auto-rows-max items-start gap-2 sm:gap-4 lg:col-span-3 lg:gap-8 w-full max-w-full overflow-hidden">
+            <Card className="w-full max-w-full overflow-hidden">
+                <CardHeader className="p-2 sm:p-4">
+                    <div className="flex justify-between items-start flex-wrap gap-2">
                         <div className="flex items-center gap-2">
                             <CardTitle>Productos</CardTitle>
                             {/* Indicadores de sincronización */}
@@ -1715,10 +1878,16 @@ export default function POSPage() {
                                         <Unlock className="h-4 w-4 text-green-500"/>
                                         <span>Caja Abierta por: {activeSession.openedBy}</span>
                                     </Badge>
-                                    <Button size="sm" variant="outline" onClick={handleShowReportX}><FilePieChart className="mr-2 h-4 w-4"/> Corte X</Button>
+                                    <Button size="sm" variant="outline" onClick={handleShowReportX}>
+                                        <FilePieChart className="h-4 w-4 sm:mr-2" />
+                                        <span className="hidden sm:inline">Corte X</span>
+                                    </Button>
                                     <Dialog open={isClosingModalOpen} onOpenChange={setIsClosingModalOpen}>
                                         <DialogTrigger asChild>
-                                            <Button size="sm" variant="destructive"><LogOut className="mr-2 h-4 w-4"/> Cerrar Caja</Button>
+                                            <Button size="sm" variant="destructive">
+                                                <LogOut className="h-4 w-4 sm:mr-2" />
+                                                <span className="hidden sm:inline">Cerrar Caja</span>
+                                            </Button>
                                         </DialogTrigger>
                                         <DialogContent>
                                             <DialogHeader>
@@ -1983,7 +2152,7 @@ export default function POSPage() {
                         </Select>
                     </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-1 sm:p-4 w-full max-w-full overflow-hidden">
                 {isLoading && <p>Cargando productos...</p>}
                  {!isSessionReady && (
                     <div className="h-96 flex flex-col items-center justify-center text-muted-foreground bg-muted/50 rounded-lg">
@@ -1993,7 +2162,7 @@ export default function POSPage() {
                     </div>
                 )}
                 {isSessionReady && (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-1 xs:gap-2 sm:gap-3 md:gap-4 p-1 sm:p-2 w-full max-w-full overflow-hidden">
                         {filteredProducts.map((product) => (
                         <ProductCard 
                             key={product.id} 
@@ -2009,17 +2178,18 @@ export default function POSPage() {
         </div>
 
         {/* Cart Section (Right Column) */}
-        <div className="grid auto-rows-max items-start gap-4 lg:col-span-2">
+        <div className="grid auto-rows-max items-start gap-2 sm:gap-4 lg:col-span-2 w-full max-w-full overflow-hidden">
             <Card 
-                className={cn("sticky top-6 flex flex-col h-full", !isSessionReady && "opacity-50 pointer-events-none")}
+                className={cn("sticky top-6 flex flex-col h-full w-full max-w-full overflow-hidden", !isSessionReady && "opacity-50 pointer-events-none")}
             >
-                <CardHeader className="flex flex-row justify-between items-center">
-                    <CardTitle>Carrito de Compra</CardTitle>
+                <CardHeader className="flex flex-row justify-between items-center p-2 sm:p-4 w-full max-w-full">
+                    <CardTitle className="text-sm sm:text-base truncate">Carrito de Compra</CardTitle>
                     {cartItems.length > 0 && (
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
-                                <Button variant="destructive" size="sm">
-                                    <Trash2 className="mr-2 h-4 w-4" /> Vaciar
+                                <Button variant="destructive" size="sm" className="flex-shrink-0">
+                                    <Trash2 className="h-4 w-4 sm:mr-2" />
+                                    <span className="hidden sm:inline">Vaciar</span>
                                 </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
@@ -2037,15 +2207,17 @@ export default function POSPage() {
                         </AlertDialog>
                     )}
                 </CardHeader>
-                <CardContent className="flex-1 flex flex-col gap-4 overflow-y-auto p-6 pt-0">
+                <CardContent className="flex-1 flex flex-col gap-2 sm:gap-4 overflow-y-auto p-2 sm:p-6 pt-0 w-full max-w-full overflow-x-hidden">
                     <div className="space-y-2">
                         <Label htmlFor="customer">Cliente *</Label>
-                        <div className="flex gap-2">
+                        <div className="flex gap-1 sm:gap-2">
                             <Popover open={isCustomerSearchOpen} onOpenChange={setIsCustomerSearchOpen}>
                                 <PopoverTrigger asChild>
-                                    <Button variant="outline" role="combobox" className="w-full justify-between">
-                                        { isLoading ? "Cargando..." : (selectedCustomer ? selectedCustomer.name : "Seleccionar cliente...") }
-                                        <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    <Button variant="outline" role="combobox" className="w-full justify-between text-xs sm:text-sm min-w-0">
+                                        <span className="truncate">
+                                            { isLoading ? "Cargando..." : (selectedCustomer ? selectedCustomer.name : "Seleccionar cliente...") }
+                                        </span>
+                                        <ArrowUpDown className="ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4 shrink-0 opacity-50" />
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
@@ -2072,8 +2244,8 @@ export default function POSPage() {
 
                             <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
                                 <DialogTrigger asChild>
-                                    <Button variant="outline" size="icon">
-                                        <PlusCircle className="h-4 w-4" />
+                                    <Button variant="outline" size="icon" className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
+                                        <PlusCircle className="h-3 w-3 sm:h-4 sm:w-4" />
                                     </Button>
                                 </DialogTrigger>
                                 <DialogContent>
@@ -2117,54 +2289,56 @@ export default function POSPage() {
                             <p className="text-sm">Agrega productos para comenzar.</p>
                         </div>
                     ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Producto</TableHead>
-                                    <TableHead className="w-[60px]">Cant.</TableHead>
-                                    <TableHead className="w-[90px] text-right">Subtotal</TableHead>
-                                    <TableHead className="w-[40px]"></TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {cartItems.map((item) => (
-                                <TableRow key={`${item.product.id}-${item.price}`}>
-                                    <TableCell className="font-medium text-xs">
-                                        <div className="flex-grow">
-                                            <p className="font-medium text-sm">{item.product.name}</p>
-                                            <p className={cn("text-xs", item.price === item.product.wholesalePrice ? "text-accent-foreground font-semibold" : "text-muted-foreground")}>
-                                                {activeSymbol}{(item.price * activeRate).toFixed(2)}
-                                            </p>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Input
-                                            type="number"
-                                            value={item.quantity}
-                                            onChange={(e) => updateQuantity(item.product.id, item.price, parseInt(e.target.value))}
-                                            className="h-8 w-14"
-                                            min="1"
-                                        />
-                                    </TableCell>
-                                    <TableCell className="text-right font-mono text-xs">{activeSymbol}{(item.price * item.quantity * activeRate).toFixed(2)}</TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center">
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-accent-foreground" onClick={() => toggleWholesalePrice(item.product.id, item.price)}>
-                                                <Tags className={cn("h-4 w-4", item.price === item.product.wholesalePrice && "text-accent-foreground")} />
-                                            </Button>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeFromCart(item.product.id, item.price)}>
-                                                <Trash2 className="h-4 w-4 text-destructive"/>
-                                            </Button>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                        <div className="w-full max-w-full overflow-x-auto">
+                            <Table className="w-full min-w-full">
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="text-xs sm:text-sm">Producto</TableHead>
+                                        <TableHead className="w-12 sm:w-[60px] text-xs sm:text-sm">Cant.</TableHead>
+                                        <TableHead className="w-16 sm:w-[90px] text-right text-xs sm:text-sm">Subtotal</TableHead>
+                                        <TableHead className="w-12 sm:w-[40px]"></TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {cartItems.map((item) => (
+                                    <TableRow key={`${item.product.id}-${item.price}`}>
+                                        <TableCell className="font-medium text-xs p-1 sm:p-2">
+                                            <div className="flex-grow min-w-0">
+                                                <p className="font-medium text-xs sm:text-sm truncate">{item.product.name}</p>
+                                                <p className={cn("text-[10px] sm:text-xs truncate", item.price === item.product.wholesalePrice ? "text-accent-foreground font-semibold" : "text-muted-foreground")}>
+                                                    {activeSymbol}{(item.price * activeRate).toFixed(2)}
+                                                </p>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="p-1 sm:p-2">
+                                            <Input
+                                                type="number"
+                                                value={item.quantity}
+                                                onChange={(e) => updateQuantity(item.product.id, item.price, parseInt(e.target.value))}
+                                                className="h-6 sm:h-8 w-10 sm:w-14 text-xs"
+                                                min="1"
+                                            />
+                                        </TableCell>
+                                        <TableCell className="text-right font-mono text-[10px] sm:text-xs p-1 sm:p-2">{activeSymbol}{(item.price * item.quantity * activeRate).toFixed(2)}</TableCell>
+                                        <TableCell className="p-1 sm:p-2">
+                                            <div className="flex flex-col sm:flex-row items-center gap-0 sm:gap-1">
+                                                <Button variant="ghost" size="icon" className="h-5 w-5 sm:h-8 sm:w-8 text-muted-foreground hover:text-accent-foreground" onClick={() => toggleWholesalePrice(item.product.id, item.price)}>
+                                                    <Tags className={cn("h-3 w-3 sm:h-4 sm:w-4", item.price === item.product.wholesalePrice && "text-accent-foreground")} />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" className="h-5 w-5 sm:h-8 sm:w-8" onClick={() => removeFromCart(item.product.id, item.price)}>
+                                                    <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 text-destructive"/>
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
                     )}
                     </div>
                 </CardContent>
-                <CardFooter className="flex flex-col gap-2 mt-auto border-t pt-4">
+                <CardFooter className="flex flex-col gap-2 mt-auto border-t pt-2 sm:pt-4 p-2 sm:p-4 w-full max-w-full">
                     {cartItems.length > 0 && (
                         <div className="w-full space-y-2 text-sm">
                             <div className="flex justify-between">
@@ -2192,89 +2366,145 @@ export default function POSPage() {
                     )}
                     <Dialog open={isProcessSaleDialogOpen} onOpenChange={(isOpen) => { setIsProcessSaleDialogOpen(isOpen); if (!isOpen) resetPaymentModal(); }}>
                         <DialogTrigger asChild>
-                            <Button className="w-full bg-primary hover:bg-primary/90" size="lg" disabled={cartItems.length === 0}>
-                                Procesar Venta
+                            <Button className="w-full bg-primary hover:bg-primary/90 text-sm sm:text-base" size="lg" disabled={cartItems.length === 0}>
+                                <ShoppingCart className="h-4 w-4 sm:mr-2" />
+                                <span className="hidden sm:inline">Procesar Venta</span>
+                                <span className="sm:hidden">Venta</span>
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                            <DialogHeader>
-                                <DialogTitle>Finalizar Venta</DialogTitle>
-                                <DialogDescription>
+                        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col w-full mx-2 sm:mx-auto">
+                            <DialogHeader className="flex-shrink-0">
+                                <DialogTitle className="text-lg sm:text-xl">Finalizar Venta</DialogTitle>
+                                <DialogDescription className="text-sm sm:text-base">
                                     Total a Pagar: <span className="font-bold text-primary">{activeSymbol}{(total * activeRate).toFixed(2)}</span>
                                 </DialogDescription>
                             </DialogHeader>
-                            <div className="grid md:grid-cols-2 gap-6 items-start">
-                                <div className="space-y-4">
-                                    <h4 className="font-medium text-center md:text-left">Registrar Pagos</h4>
-                                    <div className="space-y-2">
-                                        <Label>Método de Pago</Label>
-                                        <Select value={currentPaymentMethod} onValueChange={setCurrentPaymentMethod}>
-                                            <SelectTrigger><SelectValue/></SelectTrigger>
-                                            <SelectContent>
-                                                {paymentMethods.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Monto a Pagar ({activeSymbol})</Label>
-                                        <Input type="number" placeholder="0.00" value={currentPaymentAmount} onChange={e => setCurrentPaymentAmount(e.target.value)} />
-                                    </div>
-                                    {paymentMethods.find(m => m.id === currentPaymentMethod)?.requiresRef && (
+                            <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide">
+                                <div className="grid md:grid-cols-2 gap-4 sm:gap-6 items-start p-1">
+                                    <div className="space-y-3 sm:space-y-4">
+                                        <h4 className="font-medium text-center md:text-left text-sm sm:text-base">Registrar Pagos</h4>
                                         <div className="space-y-2">
-                                            <Label>Referencia</Label>
-                                            <Input placeholder="Nro. de referencia" value={currentPaymentRef} onChange={e => setCurrentPaymentRef(e.target.value)} />
+                                            <Label className="text-xs sm:text-sm">Método de Pago</Label>
+                                            <Select value={currentPaymentMethod} onValueChange={setCurrentPaymentMethod}>
+                                                <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm"><SelectValue/></SelectTrigger>
+                                                <SelectContent>
+                                                    {paymentMethods.map(m => <SelectItem key={m.id} value={m.id} className="text-xs sm:text-sm">{m.name}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
-                                    )}
-                                    <Button className="w-full" onClick={handleAddPayment} disabled={!currentPaymentAmount || Number(currentPaymentAmount) <= 0}>
-                                        <Plus className="mr-2 h-4 w-4" /> Agregar Pago
-                                    </Button>
-                                </div>
-                                <div className="space-y-4">
-                                    <h4 className="font-medium text-center md:text-left">Pagos Realizados</h4>
-                                    <div className="space-y-2 p-3 bg-muted/50 rounded-lg min-h-[150px]">
-                                        {payments.length === 0 ? <p className="text-sm text-muted-foreground text-center pt-8">Aún no hay pagos registrados.</p> : (
-                                            payments.map((p, i) => (
-                                                <div key={i} className="flex justify-between items-center text-sm">
-                                                    <span>{p.method} {p.reference && `(${p.reference})`}</span>
-                                                    <span className="font-medium">{activeSymbol}{(p.amount * activeRate).toFixed(2)}</span>
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removePayment(i)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-                                                </div>
-                                            ))
+                                        <div className="space-y-2">
+                                            <Label className="text-xs sm:text-sm">Monto a Pagar ({activeSymbol})</Label>
+                                            <Input 
+                                                type="number" 
+                                                placeholder="0.00" 
+                                                value={currentPaymentAmount} 
+                                                onChange={e => setCurrentPaymentAmount(e.target.value)}
+                                                className="h-8 sm:h-10 text-xs sm:text-sm"
+                                            />
+                                        </div>
+                                        {paymentMethods.find(m => m.id === currentPaymentMethod)?.requiresRef && (
+                                            <div className="space-y-2">
+                                                <Label className="text-xs sm:text-sm">Referencia</Label>
+                                                <Input 
+                                                    placeholder="Nro. de referencia" 
+                                                    value={currentPaymentRef} 
+                                                    onChange={e => setCurrentPaymentRef(e.target.value)}
+                                                    className="h-8 sm:h-10 text-xs sm:text-sm"
+                                                />
+                                            </div>
                                         )}
+                                        <Button 
+                                            className="w-full h-8 sm:h-10 text-xs sm:text-sm" 
+                                            onClick={handleAddPayment} 
+                                            disabled={!currentPaymentAmount || Number(currentPaymentAmount) <= 0}
+                                        >
+                                            <Plus className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Agregar Pago
+                                        </Button>
                                     </div>
-                                    <Separator />
-                                    <div className="space-y-2 text-lg font-bold">
-                                        <div className="flex justify-between">
-                                            <span>Total Pagado:</span>
-                                            <span>{activeSymbol}{(totalPaid * activeRate).toFixed(2)}</span>
+                                    <div className="space-y-3 sm:space-y-4">
+                                        <h4 className="font-medium text-center md:text-left text-sm sm:text-base">Pagos Realizados</h4>
+                                        <div className="space-y-2 p-2 sm:p-3 bg-muted/50 rounded-lg min-h-[120px] sm:min-h-[150px] max-h-[200px] overflow-y-auto scrollbar-hide">
+                                            {payments.length === 0 ? (
+                                                <p className="text-xs sm:text-sm text-muted-foreground text-center pt-6 sm:pt-8">Aún no hay pagos registrados.</p>
+                                            ) : (
+                                                payments.map((p, i) => (
+                                                    <div key={i} className="flex justify-between items-center text-xs sm:text-sm gap-2">
+                                                        <span className="truncate flex-1 min-w-0">
+                                                            {p.method} {p.reference && `(${p.reference})`}
+                                                        </span>
+                                                        <span className="font-medium flex-shrink-0">{activeSymbol}{(p.amount * activeRate).toFixed(2)}</span>
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            className="h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0" 
+                                                            onClick={() => removePayment(i)}
+                                                        >
+                                                            <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 text-destructive"/>
+                                                        </Button>
+                                                    </div>
+                                                ))
+                                            )}
                                         </div>
-                                        <div className={cn("flex justify-between", remainingBalance > 0 ? "text-destructive" : "text-green-600")}>
-                                            <span>{remainingBalance > 0 ? 'Faltante:' : 'Cambio:'}</span>
-                                            <span>{activeSymbol}{(Math.abs(remainingBalance) * activeRate).toFixed(2)}</span>
+                                        <Separator />
+                                        <div className="space-y-1 sm:space-y-2 text-sm sm:text-lg font-bold">
+                                            <div className="flex justify-between">
+                                                <span>Total Pagado:</span>
+                                                <span>{activeSymbol}{(totalPaid * activeRate).toFixed(2)}</span>
+                                            </div>
+                                            <div className={cn("flex justify-between", remainingBalance > 0 ? "text-destructive" : "text-green-600")}>
+                                                <span>{remainingBalance > 0 ? 'Faltante:' : 'Cambio:'}</span>
+                                                <span>{activeSymbol}{(Math.abs(remainingBalance) * activeRate).toFixed(2)}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
+                                {remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone) && (
+                                    <div className="text-destructive text-xs sm:text-sm font-medium flex items-center gap-2 mt-3 p-2 bg-destructive/10 rounded-md">
+                                        <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                                        <span className="text-xs sm:text-sm">Para guardar como crédito, debe seleccionar un cliente debidamente registrado</span>
+                                    </div>
+                                )}
                             </div>
-                            {remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone) && (
-                                <div className="text-destructive text-sm font-medium flex items-center gap-2 mt-2 p-2 bg-destructive/10 rounded-md">
-                                    <AlertCircle className="h-4 w-4" />
-                                    <span>Para guardar como crédito, debe seleccionar un cliente debidamente registrado</span>
-                                </div>
-                            )}
-                            <DialogFooter className="gap-2 sm:gap-0 mt-4">
-                                <Button variant="outline" onClick={() => handleProcessSale(false)} disabled={remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone)}>
-                                    {remainingBalance > 0 ? 'Guardar como Crédito' : 'Solo Guardar'}
+                            <DialogFooter className="gap-2 sm:gap-1 mt-3 sm:mt-4 flex-shrink-0 flex-col sm:flex-row">
+                                <Button 
+                                    variant="outline" 
+                                    onClick={() => handleProcessSale(false)} 
+                                    disabled={remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone)}
+                                    className="flex-1 h-8 sm:h-10 text-xs sm:text-sm"
+                                >
+                                    <Check className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                                    <span className="hidden sm:inline">{remainingBalance > 0 ? 'Guardar como Crédito' : 'Guardar'}</span>
+                                    <span className="sm:hidden">Guardar</span>
                                 </Button>
-                                <Button onClick={() => handleProcessSale(true)} disabled={remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone)}>
-                                    {remainingBalance > 0 ? 'Guardar Crédito e Imprimir' : 'Guardar e Imprimir'}
+                                <Button 
+                                    variant="secondary"
+                                    onClick={() => handleProcessSale(false, true)} 
+                                    disabled={remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone)}
+                                    className="flex-1 h-8 sm:h-10 text-xs sm:text-sm"
+                                >
+                                    <Share className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                                    <span className="hidden sm:inline">Guardar & Compartir</span>
+                                    <span className="sm:hidden">Compartir</span>
+                                </Button>
+                                <Button 
+                                    onClick={() => handleProcessSale(true)} 
+                                    disabled={remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone)}
+                                    className="flex-1 h-8 sm:h-10 text-xs sm:text-sm"
+                                >
+                                    <Printer className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                                    <span className="hidden sm:inline">Guardar & Imprimir</span>
+                                    <span className="sm:hidden">Imprimir</span>
                                 </Button>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
-                    <Button className="w-full" variant="secondary" size="lg" onClick={handlePrintQuote} disabled={cartItems.length === 0}>
-                        <FileText className="mr-2 h-4 w-4" />
-                        Imprimir Cotización
-                    </Button>
+                    <div className="flex flex-col sm:flex-row gap-2 w-full">
+                        <Button className="w-full text-sm sm:text-base" variant="secondary" size="lg" onClick={handlePrintQuote} disabled={cartItems.length === 0}>
+                            <FileText className="h-4 w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">Vista Previa de Cotización</span>
+                            <span className="sm:hidden">Cotización</span>
+                        </Button>
+                    </div>
                 </CardFooter>
             </Card>
         </div>
@@ -2290,6 +2520,7 @@ export default function POSPage() {
         saleId={ticketType === 'sale' ? lastSale?.id : undefined}
         customer={selectedCustomer}
         payments={ticketType === 'sale' ? lastSale?.payments : undefined}
+        onShare={ticketType === 'quote' ? handleShareQuote : undefined}
       />
     )}
     
@@ -2442,6 +2673,7 @@ export default function POSPage() {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+      </div>
     </div>
   );
 }

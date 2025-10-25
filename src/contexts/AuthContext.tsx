@@ -67,25 +67,48 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Restore session on mount - ONLY activeStoreId, no user session persistence
+  // Restore session on mount - restore token and activeStoreId
   useEffect(() => {
     const restoreSession = async () => {
       try {
-        // Only restore activeStoreId, not user session
+        // Restore activeStoreId
         const storedActiveStoreId = localStorage.getItem('activeStoreId');
         if (storedActiveStoreId) {
           setActiveStoreIdState(storedActiveStoreId);
         }
         
-        // Clear any old user session data to force fresh login
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        // Restore token and validate session
+        const storedToken = localStorage.getItem('authToken');
+        if (storedToken) {
+          try {
+            // Verify token with backend
+            const res = await fetch('/api/auth/verify', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${storedToken}`
+              }
+            });
+            
+            if (res.ok) {
+              const data = await res.json();
+              setToken(storedToken);
+              setUser(data.user);
+              console.log('✅ [AuthContext] Session restored for:', data.user.email);
+            } else {
+              // Token invalid, clear it
+              localStorage.removeItem('authToken');
+              console.log('🔄 [AuthContext] Invalid token cleared');
+            }
+          } catch (error) {
+            localStorage.removeItem('authToken');
+            console.log('🔄 [AuthContext] Token verification failed, cleared');
+          }
+        }
         
-        console.log('🔄 [AuthContext] Session cleared - fresh login required');
       } catch (error) {
         console.error('Error restoring session:', error);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        localStorage.removeItem('authToken');
         localStorage.removeItem('activeStoreId');
       } finally {
         setIsLoading(false);
@@ -120,11 +143,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log('🔍 [Login] User role:', data.user.role);
         console.log('🔍 [Login] User storeId:', data.user.storeId);
         
-        // STEP 1: Set user data and token (login successful) - NO PERSISTENCE
+        // STEP 1: Set user data and token (login successful) - WITH PERSISTENCE
         setToken(data.token);
         setUser(data.user);
-        // NO guardar en localStorage para forzar login fresco cada vez
-        console.log('✅ [Login] User session set (memory only - no persistence)');
+        // Guardar solo el token en localStorage para mantener sesión
+        localStorage.setItem('authToken', data.token);
+        console.log('✅ [Login] User session set with token persistence');
         
         // STEP 2: If role is NOT "user", update activeStoreId with user's storeId IMMEDIATELY
         if (data.user.role !== 'user') {
@@ -230,9 +254,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // NO limpiar activeStoreId en logout para mantener la tienda seleccionada
     // clearActiveStoreId(); 
     
-    // Limpiar cualquier dato de sesión que pueda existir
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    // Limpiar solo el token de autenticación
+    localStorage.removeItem('authToken');
     
     console.log('🚪 [Logout] User session cleared (activeStoreId preserved)');
     
