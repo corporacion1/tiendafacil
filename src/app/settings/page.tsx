@@ -400,7 +400,14 @@ export default function SettingsPage() {
         if (id === 'name') {
             console.log('🏷️ [Settings] Nombre capturado:', value, 'Longitud:', value.length);
         }
-        updateSettings({ [id]: value });
+
+        // Si se cambia taxId, también actualizar el campo id para mantener sincronización
+        if (id === 'taxId') {
+            updateSettings({ [id]: value, id: value });
+        } else {
+            updateSettings({ [id]: value });
+        }
+
         setHasUnsavedChanges(true);
     };
 
@@ -1076,6 +1083,17 @@ export default function SettingsPage() {
                 <CardContent className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="md:col-span-1 space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="taxId">Identificación Fiscal</Label>
+                                <Input
+                                    id="taxId"
+                                    value={settings?.id || settings?.taxId || ''}
+                                    onChange={handleSettingsChange}
+                                    placeholder="J-12345678-9 o RIF/NIT"
+                                    maxLength={20}
+                                />
+                                <CardDescription>RIF, NIT o número de identificación fiscal de la empresa.</CardDescription>
+                            </div>
                             <div className="space-y-2">
                                 <Label htmlFor="name">Nombre de la Tienda</Label>
                                 <Input

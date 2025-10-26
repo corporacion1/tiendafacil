@@ -92,7 +92,7 @@ export default function StoresAdminPage() {
         <StoresDashboard onStatsUpdate={handleStatsUpdate} />
 
         {/* Stores Management Table */}
-        <StoresManagement 
+        <StoresManagement
           onStoreSelect={handleStoreSelect}
           onStatusChange={handleStoreStatusChange}
         />
@@ -104,16 +104,6 @@ export default function StoresAdminPage() {
           onOpenChange={setShowDetailsModal}
         />
 
-        {/* Footer */}
-        <footer className="flex justify-between items-center mt-8 pt-4 border-t">
-          <div className="text-sm text-muted-foreground">
-            TiendaFácil © 2025 - Módulo de Administración
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Building2 className="h-4 w-4 text-blue-500" />
-            Panel de Super Usuario
-          </div>
-        </footer>
       </main>
     </div>
   )

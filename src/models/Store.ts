@@ -14,6 +14,7 @@ const StoreSchema = new Schema({
   address: String,
   businessType: String,
   phone: String,
+  taxId: String, // Identificación fiscal (RIF, NIT, etc.)
   slogan: String,
   logoUrl: String,
   meta: String,

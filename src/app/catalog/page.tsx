@@ -188,6 +188,7 @@ export default function CatalogPage() {
   // CORREGIDO: Usar un nombre diferente para searchParams
   const urlSearchParams = useSearchParams();
   const urlStoreId = urlSearchParams.get('storeId');
+  const urlSku = urlSearchParams.get('sku'); // Capturar SKU de la URL
   const DEMO_STORE_ID = process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'ST-1234567890123';
 
   // CORREGIDO: useEffect estabilizado para evitar loops infinitos
@@ -289,6 +290,15 @@ export default function CatalogPage() {
   const [selectedFamily, setSelectedFamily] = useState<string>("all");
 
   const [isEditingOrder, setIsEditingOrder] = useState(false);
+
+  // Búsqueda automática por SKU desde URL
+  useEffect(() => {
+    if (urlSku && urlSku.trim() !== '' && searchTerm !== urlSku) {
+      console.log('🔍 [Catalog] Aplicando búsqueda automática por SKU:', urlSku);
+      setSearchTerm(urlSku);
+      setSelectedFamily('all'); // Resetear filtro de familia para mostrar todos los productos
+    }
+  }, [urlSku, searchTerm]);
 
   // Hook para manejar pedidos del usuario desde la base de datos
   const {
@@ -420,12 +430,12 @@ export default function CatalogPage() {
   useEffect(() => {
     setIsClient(true)
 
-    // Enfocar el input de búsqueda al cargar
-    setTimeout(() => {
-      if (searchInputRef.current) {
-        searchInputRef.current.focus();
-      }
-    }, 500);
+    // COMENTADO: Enfocar el input de búsqueda al cargar (evita abrir teclado automáticamente)
+    // setTimeout(() => {
+    //   if (searchInputRef.current) {
+    //     searchInputRef.current.focus();
+    //   }
+    // }, 500);
   }, [])
 
   // Funciones de validación
@@ -1015,7 +1025,7 @@ export default function CatalogPage() {
       // Cargar imagen del producto
       const img = new window.Image();
       img.crossOrigin = 'anonymous';
-      
+
       return new Promise<File | null>((resolve) => {
         img.onload = () => {
           // Configurar tamaño del canvas
@@ -1046,7 +1056,7 @@ export default function CatalogPage() {
           const topGradient = ctx.createLinearGradient(0, 0, 0, 140);
           topGradient.addColorStop(0, 'rgba(0, 0, 0, 0.8)');
           topGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-          
+
           ctx.fillStyle = topGradient;
           ctx.fillRect(0, 0, width, 140);
 
@@ -1054,7 +1064,7 @@ export default function CatalogPage() {
           const bottomGradient = ctx.createLinearGradient(0, height - 60, 0, height);
           bottomGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
           bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 0.7)');
-          
+
           ctx.fillStyle = bottomGradient;
           ctx.fillRect(0, height - 60, width, 60);
 
@@ -1066,8 +1076,8 @@ export default function CatalogPage() {
           // Título del producto (más grande, parte superior)
           const titleFontSize = Math.min(36, width / 12);
           ctx.font = `bold ${titleFontSize}px Arial, sans-serif`;
-          const titleText = product.name.length > 25 ? 
-            product.name.substring(0, 25) + '...' : 
+          const titleText = product.name.length > 25 ?
+            product.name.substring(0, 25) + '...' :
             product.name;
           ctx.fillText(titleText, 20, 25);
 
@@ -1075,20 +1085,20 @@ export default function CatalogPage() {
           const priceFontSize = Math.min(32, width / 14);
           ctx.font = `bold ${priceFontSize}px Arial, sans-serif`;
           const priceText = `${activeSymbol}${(product.price * activeRate).toFixed(2)}`;
-          
+
           // Medir el texto del precio para crear el fondo
           const priceMetrics = ctx.measureText(priceText);
           const priceWidth = priceMetrics.width + 24; // Padding horizontal
           const priceHeight = priceFontSize + 16; // Padding vertical
           const priceX = 20;
           const priceY = 25 + titleFontSize + 15;
-          
+
           // Crear fondo con gradiente llamativo - variaciones de colores
           const priceGradient = ctx.createLinearGradient(priceX, priceY, priceX + priceWidth, priceY + priceHeight);
-          
+
           // Alternar entre diferentes colores llamativos basado en el ID del producto
           const colorVariant = (product.id.charCodeAt(0) + product.id.charCodeAt(product.id.length - 1)) % 3;
-          
+
           if (colorVariant === 0) {
             // Naranja vibrante
             priceGradient.addColorStop(0, '#ff6b35');
@@ -1102,13 +1112,13 @@ export default function CatalogPage() {
             priceGradient.addColorStop(0, '#10b981');
             priceGradient.addColorStop(1, '#059669');
           }
-          
+
           // Dibujar fondo redondeado para el precio
           ctx.fillStyle = priceGradient;
           ctx.beginPath();
           ctx.roundRect(priceX, priceY, priceWidth, priceHeight, 12);
           ctx.fill();
-          
+
           // Agregar sombra al fondo del precio
           ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
           ctx.shadowBlur = 8;
@@ -1118,13 +1128,13 @@ export default function CatalogPage() {
           ctx.beginPath();
           ctx.roundRect(priceX, priceY, priceWidth, priceHeight, 12);
           ctx.fill();
-          
+
           // Resetear sombra
           ctx.shadowColor = 'transparent';
           ctx.shadowBlur = 0;
           ctx.shadowOffsetX = 0;
           ctx.shadowOffsetY = 0;
-          
+
           // Dibujar texto del precio en blanco para contraste
           ctx.fillStyle = 'white';
           ctx.textAlign = 'left';
@@ -1142,8 +1152,8 @@ export default function CatalogPage() {
           // Convertir canvas a blob
           canvas.toBlob((blob) => {
             if (blob) {
-              const file = new File([blob], `${product.name}-oferta.jpg`, { 
-                type: 'image/jpeg' 
+              const file = new File([blob], `${product.name}-oferta.jpg`, {
+                type: 'image/jpeg'
               });
               resolve(file);
             } else {
@@ -1171,7 +1181,7 @@ export default function CatalogPage() {
 📝 ${product.description || 'Producto disponible en nuestra tienda'}
 
 🏪 Disponible en ${currentStoreSettings?.name || 'Tienda Fácil'}
-👆 Ver catálogo completo: ${window.location.origin}/catalog?storeId=${storeIdForCatalog}
+👆 Ver producto: ${window.location.origin}/catalog?storeId=${storeIdForCatalog}&sku=${product.sku}
 
 ¡Haz tu pedido ahora! 🚀`;
 
@@ -1180,14 +1190,14 @@ export default function CatalogPage() {
         const shareData: any = {
           title: product.name,
           text: shareText,
-          url: `${window.location.origin}/catalog?storeId=${storeIdForCatalog}`
+          url: `${window.location.origin}/catalog?storeId=${storeIdForCatalog}&sku=${product.sku}`
         };
 
         // Intentar crear imagen compuesta con título y precio
         if (product.imageUrl) {
           try {
             const compositeImage = await createProductImageWithOverlay(product);
-            
+
             if (compositeImage && navigator.canShare && navigator.canShare({ files: [compositeImage] })) {
               shareData.files = [compositeImage];
             } else {
@@ -1196,7 +1206,7 @@ export default function CatalogPage() {
               if (response.ok) {
                 const blob = await response.blob();
                 const file = new File([blob], `${product.name}.jpg`, { type: blob.type });
-                
+
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
                   shareData.files = [file];
                 }
@@ -2005,14 +2015,14 @@ export default function CatalogPage() {
 
             <DialogFooter className="pt-4 flex flex-col gap-4">
               {currentStoreSettings?.whatsapp && (
-                <Button 
-                  asChild 
-                  variant="outline" 
+                <Button
+                  asChild
+                  variant="outline"
                   className="w-full rounded-xl border-[#25D366] text-[#25D366] hover:bg-[#25D366] hover:text-white"
                 >
-                  <a 
-                    href={`https://wa.me/${currentStoreSettings.whatsapp.replace(/\D/g, '')}`} 
-                    target="_blank" 
+                  <a
+                    href={`https://wa.me/${currentStoreSettings.whatsapp.replace(/\D/g, '')}`}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-center gap-2 py-3"
                   >
@@ -2476,6 +2486,37 @@ export default function CatalogPage() {
           </div>
         </div>
       </div>
+
+      {/* Footer con información de la tienda */}
+      <footer className="bg-gray-50 border-t border-gray-200 py-6 px-4 mt-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center space-y-2">
+            <h3 className="text-lg font-semibold text-gray-800">
+              {currentStoreSettings?.name || 'Tienda'}
+            </h3>
+            <div className="flex flex-col sm:flex-row sm:justify-center sm:gap-6 gap-2 text-sm text-gray-600">
+              {currentStoreSettings?.id && (
+                <div className="flex items-center justify-center gap-1">
+                  <span className="font-medium">RIF:</span>
+                  <span>{currentStoreSettings.id}</span>
+                </div>
+              )}
+              {currentStoreSettings?.address && (
+                <div className="flex items-center justify-center gap-1">
+                  <span className="font-medium">Dirección:</span>
+                  <span>{currentStoreSettings.address}</span>
+                </div>
+              )}
+              {currentStoreSettings?.phone && (
+                <div className="flex items-center justify-center gap-1">
+                  <span className="font-medium">Teléfono:</span>
+                  <span>{currentStoreSettings.phone}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </footer>
 
       {/* Botón flotante para solicitar tienda */}
       <StoreRequestButton />
