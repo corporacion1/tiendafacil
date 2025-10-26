@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+
 import { ProductForm } from "@/components/product-form";
 import type { Product } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
@@ -11,7 +11,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAutoSync } from "@/hooks/use-auto-sync";
 
 export default function ProductsPage() {
-  const { toast } = useToast();
   const { activeStoreId, setProducts } = useSettings();
   const { user } = useAuth();
   const { createWithSync } = useAutoSync();
@@ -19,9 +18,9 @@ export default function ProductsPage() {
 
   async function onSubmit(data: Omit<Product, 'id' | 'storeId' | 'createdAt'>) {
     if (isSubmitting) return false;
-    
+
     setIsSubmitting(true);
-    
+
     try {
       const newProduct: Product = {
         ...data,
@@ -32,7 +31,7 @@ export default function ProductsPage() {
       } as any;
 
       const result = await createWithSync<Product>('/api/products', newProduct, {
-        successMessage: `El producto "${data.name}" ha sido agregado al inventario${data.stock > 0 ? ' con movimiento inicial registrado' : ''}.`,
+        successMessage: `El producto "${data.name}" ha sido agregado al inventario con stock inicial: ${data.stock || 0} unidades.`,
         errorMessage: "No se pudo crear el producto. Intenta nuevamente.",
         syncType: 'products',
         updateState: (savedProduct) => {
@@ -40,9 +39,9 @@ export default function ProductsPage() {
           setProducts(prev => [savedProduct, ...prev]);
         }
       });
-      
+
       return !!result; // Indicates the form should be reset if successful
-      
+
     } catch (error) {
       console.error('❌ Error creando producto:', error);
       return false;
@@ -50,7 +49,7 @@ export default function ProductsPage() {
       setIsSubmitting(false);
     }
   }
-  
+
   return (
     <Card>
       <CardHeader>

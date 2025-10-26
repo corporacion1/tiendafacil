@@ -41,13 +41,16 @@ import { RouteGuard } from "@/components/route-guard";
 import { usePermissions } from "@/hooks/use-permissions";
 
 
-const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void }) => {
+const ProductCard = ({ product, onAddToCart, onShowDetails, isClicked }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void, isClicked?: boolean }) => {
     const { activeSymbol, activeRate } = useSettings();
     const [imageError, setImageError] = useState(false);
     const imageUrl = getDisplayImageUrl(product.imageUrl);
 
     return (
-        <Card className="overflow-hidden group cursor-pointer w-full max-w-full" onClick={() => onAddToCart(product)}>
+        <Card className={cn(
+          "overflow-hidden group cursor-pointer w-full max-w-full transition-all duration-300",
+          isClicked && "ring-2 ring-green-500 ring-offset-2 scale-95"
+        )} onClick={() => onAddToCart(product)}>
             <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative isolate w-full max-w-full">
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
                     <Button size="sm" className="text-xs px-2 py-1">Agregar</Button>
@@ -55,6 +58,14 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
                 <Button size="icon" variant="ghost" className="absolute top-0.5 right-0.5 h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity z-20" onClick={(e) => { e.stopPropagation(); onShowDetails(product); }}>
                     <ZoomIn className="h-3 w-3 sm:h-4 sm:w-4" />
                 </Button>
+                {/* Efecto de éxito al agregar */}
+                {isClicked && (
+                  <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center z-30 animate-pulse">
+                    <div className="bg-green-500 text-white rounded-full p-2">
+                      <Check className="w-6 h-6" />
+                    </div>
+                  </div>
+                )}
                 <div className="relative w-full h-full max-w-full overflow-hidden rounded-t-lg">
                     {imageUrl && !imageError ? (
                         <Image
@@ -62,14 +73,20 @@ const ProductCard = ({ product, onAddToCart, onShowDetails }: { product: Product
                             alt={product.name}
                             fill
                             sizes="(max-width: 480px) 50vw, (max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1024px) 20vw, 16vw"
-                            className="object-cover transition-transform group-hover:scale-105 w-full h-full"
+                            className={cn(
+                              "object-cover transition-all duration-300 group-hover:scale-105 w-full h-full",
+                              isClicked && "scale-110 brightness-110"
+                            )}
                             data-ai-hint={product.imageHint}
                             onError={() => setImageError(true)}
                             priority={false}
                         />
                     ) : (
                         <div className="w-full h-full flex items-center justify-center bg-muted">
-                            <Package className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground" />
+                            <Package className={cn(
+                              "w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground transition-all duration-300",
+                              isClicked && "scale-110 text-green-500"
+                            )} />
                         </div>
                     )}
                 </div>
@@ -210,6 +227,9 @@ export default function POSPage() {
   
   const [reportType, setReportType] = useState<'X' | 'Z' | null>(null);
   const [sessionForReport, setSessionForReport] = useState<CashSession | null>(null);
+  
+  // Estado para el efecto de click en imágenes
+  const [clickedProductId, setClickedProductId] = useState<string | null>(null);
 
   // Load existing cash session on component mount
   useEffect(() => {
@@ -486,6 +506,9 @@ export default function POSPage() {
         toast({ variant: "destructive", title: "Caja Cerrada", description: "Debes abrir una nueva sesión de caja para vender." });
         return;
     }
+    
+    // Activar efecto visual
+    setClickedProductId(product.id);
 
     // Validar estado del producto
     if (product.status !== 'active' && product.status !== 'promotion') {
@@ -539,6 +562,11 @@ export default function POSPage() {
         title: "Producto agregado",
         description: `"${product.name}" agregado al carrito (${newQuantity}/${currentProduct.stock} disponibles).`
     });
+    
+    // Remover efecto después de 300ms
+    setTimeout(() => {
+      setClickedProductId(null);
+    }, 300);
   };
 
   const removeFromCart = (productId: string, price: number) => {
@@ -2301,6 +2329,7 @@ export default function POSPage() {
                             product={product} 
                             onAddToCart={addToCart}
                             onShowDetails={handleShowDetails}
+                            isClicked={clickedProductId === product.id}
                         />
                         ))}
                     </div>
@@ -2528,9 +2557,24 @@ export default function POSPage() {
                                             <Label className="text-xs sm:text-sm">Monto a Pagar ({activeSymbol})</Label>
                                             <Input 
                                                 type="number" 
+                                                step="0.01"
+                                                min="0"
                                                 placeholder="0.00" 
                                                 value={currentPaymentAmount} 
-                                                onChange={e => setCurrentPaymentAmount(e.target.value)}
+                                                onChange={e => {
+                                                    const value = e.target.value;
+                                                    // Permitir valores vacíos o con hasta 2 decimales
+                                                    if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
+                                                        setCurrentPaymentAmount(value);
+                                                    }
+                                                }}
+                                                onBlur={e => {
+                                                    // Formatear a 2 decimales al perder el foco
+                                                    const value = parseFloat(e.target.value);
+                                                    if (!isNaN(value)) {
+                                                        setCurrentPaymentAmount(value.toFixed(2));
+                                                    }
+                                                }}
                                                 className="h-8 sm:h-10 text-xs sm:text-sm"
                                             />
                                         </div>

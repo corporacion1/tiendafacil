@@ -48,6 +48,9 @@ export default function PurchasesPage() {
   const [newSupplier, setNewSupplier] = useState({ id: '', name: '', phone: '', address: '' });
   
   const [documentNumber, setDocumentNumber] = useState('');
+  
+  // Estado para el efecto de click en imágenes
+  const [clickedProductId, setClickedProductId] = useState<string | null>(null);
   const [documentNumberError, setDocumentNumberError] = useState<string | null>(null);
   const [responsible, setResponsible] = useState('');
 
@@ -133,6 +136,9 @@ export default function PurchasesPage() {
   }, [products, searchTerm, selectedFamily]);
 
   const addProductToPurchase = (product: Product) => {
+    // Activar efecto visual
+    setClickedProductId(product.id);
+    
     setPurchaseItems((prevItems) => {
       const existingItem = prevItems.find((item) => item.productId === product.id);
       if (existingItem) {
@@ -142,6 +148,11 @@ export default function PurchasesPage() {
       }
       return [...prevItems, { productId: product.id, productName: product.name, quantity: 1, cost: product.cost }];
     });
+    
+    // Remover efecto después de 300ms
+    setTimeout(() => {
+      setClickedProductId(null);
+    }, 300);
   };
   
   const updateItem = (productId: string, field: 'quantity' | 'cost', value: number) => {
@@ -334,22 +345,39 @@ export default function PurchasesPage() {
             <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-1 xs:gap-2 sm:gap-3 md:gap-4">
               {(filteredProducts || []).map((product) => {
                     return (
-                    <Card key={product.id} className="overflow-hidden group cursor-pointer" onClick={() => addProductToPurchase(product)}>
+                    <Card key={product.id} className={cn(
+                      "overflow-hidden group cursor-pointer transition-all duration-300",
+                      clickedProductId === product.id && "ring-2 ring-green-500 ring-offset-2 scale-95"
+                    )} onClick={() => addProductToPurchase(product)}>
                     <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative isolate">
                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
                             <Button size="sm">Agregar</Button>
                         </div>
+                        {/* Efecto de éxito al agregar */}
+                        {clickedProductId === product.id && (
+                          <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center z-20 animate-pulse">
+                            <div className="bg-green-500 text-white rounded-full p-2">
+                              <Check className="w-6 h-6" />
+                            </div>
+                          </div>
+                        )}
                         {getDisplayImageUrl(product.imageUrl) ? (
                             <Image 
                               src={getDisplayImageUrl(product.imageUrl)}
                               alt={product.name} 
                               fill 
                               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw" 
-                              className="object-cover transition-transform group-hover:scale-105" 
+                              className={cn(
+                                "object-cover transition-all duration-300 group-hover:scale-105",
+                                clickedProductId === product.id && "scale-110 brightness-110"
+                              )} 
                               data-ai-hint={product.imageHint}
                             />
                             ) : (
-                            <Package className="w-12 h-12 text-muted-foreground" />
+                            <Package className={cn(
+                              "w-12 h-12 text-muted-foreground transition-all duration-300",
+                              clickedProductId === product.id && "scale-110 text-green-500"
+                            )} />
                         )}
                         <div className="absolute top-2 left-2 bg-secondary text-secondary-foreground text-xs font-bold px-2 py-1 rounded">
                         Costo: {activeSymbol}{(product.cost * activeRate).toFixed(2)}
