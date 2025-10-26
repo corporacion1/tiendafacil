@@ -295,16 +295,6 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Footer con indicador de base de datos */}
-        <footer className="flex justify-between items-center mt-8 pt-4 border-t">
-          <div className="text-sm text-muted-foreground">
-            TiendaFácil © 2025
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Database className="h-4 w-4 text-green-500" />
-            Conectado a MongoDB
-          </div>
-        </footer>
       </main>
     </div>
   )
