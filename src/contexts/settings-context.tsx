@@ -462,9 +462,25 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   useEffect(() => {
     if (authActiveStoreId && isClient) {
       console.log('🔄 [SettingsContext] ActiveStoreId changed, reloading data:', authActiveStoreId);
-      loadDataFromMongoDB(authActiveStoreId);
+      
+      // CRITICAL FIX: Immediate sync for administrative users after login
+      // This ensures data is available quickly after store switch
+      const isAdministrativeUser = authUser && ['admin', 'pos', 'depositary'].includes(authUser.role);
+      
+      if (isAdministrativeUser) {
+        console.log('⚡ [SettingsContext] Administrative user detected - immediate data sync');
+        // Load data immediately for administrative users
+        loadDataFromMongoDB(authActiveStoreId);
+      } else {
+        // Small delay for regular users to avoid unnecessary API calls
+        const timeoutId = setTimeout(() => {
+          loadDataFromMongoDB(authActiveStoreId);
+        }, 100);
+        
+        return () => clearTimeout(timeoutId);
+      }
     }
-  }, [authActiveStoreId, isClient, loadDataFromMongoDB]);
+  }, [authActiveStoreId, isClient, loadDataFromMongoDB, authUser?.role]);
 
   // Sincroniza userProfile con authUser
   useEffect(() => {

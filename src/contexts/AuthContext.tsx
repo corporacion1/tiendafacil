@@ -177,12 +177,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           description: `¡Bienvenido, ${data.user.email}!`,
         });
         
-        // Redirect after a longer delay to ensure state propagation to SettingsContext
+        // CRITICAL FIX: Ensure activeStoreId is properly set before redirect
+        // For administrative users, wait longer to ensure state propagation
+        const redirectDelay = data.user.role !== 'user' ? 500 : 300;
+        
         setTimeout(() => {
           console.log('🚀 [Login] Executing redirect to:', redirectUrl);
           console.log('🔍 [Login] Final activeStoreId check:', localStorage.getItem('activeStoreId'));
+          console.log('🔍 [Login] Final state activeStoreId:', activeStoreId);
           router.push(redirectUrl);
-        }, 300); // Increased delay to ensure state propagation
+        }, redirectDelay); // Longer delay for administrative users
         
       } else {
         throw new Error(data.msg || 'Error en el inicio de sesión');

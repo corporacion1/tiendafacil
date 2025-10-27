@@ -82,6 +82,33 @@ export default function StoreAccessGuard({ children }: { children: React.ReactNo
         if (!activeStoreId || activeStoreId !== user.storeId) {
           console.warn(`🚫 Store access denied for ${user.email}: activeStoreId(${activeStoreId}) !== userStoreId(${user.storeId}) on ${pathname}`);
           
+          // CRITICAL FIX: Give a brief grace period for activeStoreId to sync after login
+          // This prevents false positives during the login process
+          const isLikelyLoginSync = !activeStoreId || activeStoreId === process.env.NEXT_PUBLIC_DEFAULT_STORE_ID;
+          
+          if (isLikelyLoginSync) {
+            console.log('⏳ [StoreAccessGuard] Possible login sync in progress, giving grace period...');
+            
+            // Wait a moment for activeStoreId to sync, then check again
+            setTimeout(() => {
+              // Re-check after a brief delay
+              const currentActiveStoreId = localStorage.getItem('activeStoreId');
+              console.log('🔍 [StoreAccessGuard] Grace period check - localStorage activeStoreId:', currentActiveStoreId);
+              
+              if (currentActiveStoreId && currentActiveStoreId === user.storeId) {
+                console.log('✅ [StoreAccessGuard] Store sync completed during grace period');
+                // Force a re-render by triggering a state change
+                window.location.reload();
+                return;
+              } else {
+                console.warn('🚫 [StoreAccessGuard] Store mismatch persists after grace period');
+                router.push('/unauthorized?reason=store_mismatch');
+              }
+            }, 1000); // 1 second grace period
+            
+            return; // Don't redirect immediately
+          }
+          
           // Log unauthorized access attempt
           const logData = {
             timestamp: new Date().toISOString(),
