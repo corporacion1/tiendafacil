@@ -40,33 +40,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: validationError }, { status: 400 });
     }
     
-    logDatabaseOperation('POST', 'products', data);
-    const created = await Product.create(data);
+    // 📦 CORREGIDO: Separar stock inicial para manejo correcto de inventario
+    const initialStock = Number(data.stock) || 0;
+    const productDataWithoutStock = { ...data };
+    delete productDataWithoutStock.stock; // Remover stock de los datos iniciales
     
-    // 📦 CORREGIDO: Registrar movimiento inicial de inventario SIEMPRE (incluso con stock 0)
-    if (created && data.hasOwnProperty('stock')) {
-      const initialStock = Number(data.stock) || 0; // Asegurar que sea número, 0 si no se especifica
+    logDatabaseOperation('POST', 'products', productDataWithoutStock);
+    
+    // Crear producto SIN stock inicial (será 0 por defecto)
+    const created = await Product.create({
+      ...productDataWithoutStock,
+      stock: 0 // Siempre iniciar con stock 0
+    });
+    
+    // 📦 Registrar movimiento inicial SOLO si hay stock inicial > 0
+    if (created && initialStock > 0) {
       console.log('📦 [Products API] Registrando movimiento inicial para producto:', created.id, 'Stock:', initialStock);
       
       try {
         await MovementService.recordMovement({
           productId: created.id,
-          warehouseId: data.warehouse || 'wh-1', // Usar almacén especificado o por defecto
+          warehouseId: data.warehouse || 'wh-1',
           movementType: MovementType.INITIAL_STOCK,
           quantity: initialStock,
           unitCost: data.cost ? Number(data.cost) : 0,
           referenceType: ReferenceType.PRODUCT_CREATION,
           referenceId: created.id,
-          userId: data.userId || 'system', // Usar userId si está disponible
+          userId: data.userId || 'system',
           notes: `Stock inicial del producto: ${created.name} (Cantidad: ${initialStock})`,
           storeId: data.storeId
         });
         
-        console.log('✅ [Products API] Movimiento inicial registrado exitosamente con stock:', initialStock);
+        console.log('✅ [Products API] Movimiento inicial registrado exitosamente. Stock final:', initialStock);
       } catch (movementError) {
         console.warn('⚠️ [Products API] Error registrando movimiento inicial:', movementError);
         // No fallar la creación del producto por error en movimiento
       }
+    } else if (created) {
+      console.log('📦 [Products API] Producto creado sin stock inicial (stock = 0)');
     }
     
     return NextResponse.json(created);
