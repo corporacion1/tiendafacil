@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { Logo } from './logo';
@@ -34,6 +35,7 @@ export function RegisterModal({
 }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
@@ -113,6 +115,7 @@ export function RegisterModal({
         // Limpiar formulario
         setEmail('');
         setPassword('');
+        setShowPassword(false);
         setPhone('');
         setEmailError('');
       }
@@ -137,6 +140,7 @@ export function RegisterModal({
       // Limpiar formulario cuando se cierra el modal principal
       setEmail('');
       setPassword('');
+      setShowPassword(false);
       setPhone('');
       setEmailError('');
       setShowConfirmation(false);
@@ -180,15 +184,31 @@ export function RegisterModal({
           </div>
           <div className="space-y-2">
             <Label htmlFor="password" className="text-sm font-medium text-foreground">Contraseña (mínimo 6 caracteres)</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="••••••"
-              className="rounded-xl border-0 bg-gradient-to-r from-muted/30 to-muted/50 focus-visible:ring-2 focus-visible:ring-accent/20 shadow-inner h-12"
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                placeholder="••••••"
+                className="rounded-xl border-0 bg-gradient-to-r from-muted/30 to-muted/50 focus-visible:ring-2 focus-visible:ring-accent/20 shadow-inner h-12 pr-12"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-12 px-3 py-2 hover:bg-transparent"
+                onClick={() => setShowPassword(!showPassword)}
+                disabled={loading}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                )}
+              </Button>
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="phone" className="text-sm font-medium text-foreground">Teléfono (Ej: 04121234567)</Label>
