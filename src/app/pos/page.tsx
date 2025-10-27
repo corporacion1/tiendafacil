@@ -2649,7 +2649,7 @@ export default function POSPage() {
                                     className="flex-1 h-8 sm:h-10 text-xs sm:text-sm"
                                 >
                                     <Check className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
-                                    <span className="hidden sm:inline">{remainingBalance > 0 ? 'Guardar como Crédito' : 'Guardar'}</span>
+                                    <span className="hidden sm:inline">{remainingBalance > 0 ? 'Guardar a Crédito' : 'Guardar'}</span>
                                     <span className="sm:hidden">Guardar</span>
                                 </Button>
                                 <Button 
