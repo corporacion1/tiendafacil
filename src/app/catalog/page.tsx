@@ -2133,7 +2133,6 @@ export default function CatalogPage() {
               const url = new URL(window.location.href);
               url.searchParams.delete('sku');
               window.history.replaceState({}, '', url.toString());
-              }
             }
           }
         }}>
