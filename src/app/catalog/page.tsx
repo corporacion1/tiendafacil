@@ -2594,19 +2594,19 @@ export default function CatalogPage() {
             <div className="flex flex-col sm:flex-row sm:justify-center sm:gap-6 gap-2 text-sm text-gray-600">
               {currentStoreSettings?.id && (
                 <div className="flex items-center justify-center gap-1">
-                  <span className="font-medium">RIF:</span>
-                  <span>{currentStoreSettings.id}</span>
+                  <span className="font-medium font-semibold">RIF:</span>
+                  <span >{currentStoreSettings.id}</span>
                 </div>
               )}
               {currentStoreSettings?.address && (
                 <div className="flex items-center justify-center gap-1">
-                  <span className="font-medium">Dirección:</span>
+                  <span  className="font-medium font-semibold">Dirección:</span>
                   <span>{currentStoreSettings.address}</span>
                 </div>
               )}
               {currentStoreSettings?.phone && (
                 <div className="flex items-center justify-center gap-1">
-                  <span className="font-medium">Teléfono:</span>
+                  <span  className="font-medium font-semibold">Teléfono:</span>
                   <span>{currentStoreSettings.phone}</span>
                 </div>
               )}
