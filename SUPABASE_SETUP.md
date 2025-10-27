@@ -1,4 +1,4 @@
-# 🚀 Configuración de Supabase para Upload de Imágenes
+ñarñarññ# 🚀 Configuración de Supabase para Upload de Imágenes
 
 Supabase es una alternativa gratuita y global a Cloudinary que funciona en cualquier país.
 
