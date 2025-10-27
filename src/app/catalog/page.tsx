@@ -475,6 +475,8 @@ export default function CatalogPage() {
   const [scannerError, setScannerError] = useState<string | null>(null);
   const [lastScannedCode, setLastScannedCode] = useState<string | null>(null);
 
+
+
   // DEBUG: Logging del estado de URL params (DESPUÉS de definir todas las variables)
   useEffect(() => {
     if (urlStoreId || urlSku) {
@@ -487,6 +489,8 @@ export default function CatalogPage() {
       });
     }
   }, [urlStoreId, urlSku, activeStoreId, products.length, searchTerm]);
+
+
 
 
 
@@ -832,6 +836,13 @@ export default function CatalogPage() {
         console.log('🎯 [Catalog] Auto-abriendo producto por SKU desde URL:', product.name, 'en tienda:', activeStoreId);
         setProductDetails(product);
         setLastAutoOpenedSku(product.sku || '');
+
+        // LIMPIAR INPUT DE BÚSQUEDA inmediatamente después de abrir la modal
+        // Esto evita conflictos y permite que el usuario navegue libremente al cerrar
+        setTimeout(() => {
+          console.log('🧹 [Catalog] Limpiando input de búsqueda después de auto-apertura');
+          setSearchTerm('');
+        }, 100); // Pequeño delay para asegurar que la modal se abra primero
       }
     }
   }, [urlSku, urlStoreId, activeStoreId, sortedAndFilteredProducts.length, searchTerm, lastAutoOpenedSku]); // Incluir activeStoreId
@@ -2116,18 +2127,12 @@ export default function CatalogPage() {
           if (!open) {
             setProductDetails(null);
 
-            // LIMPIAR BÚSQUEDA AUTOMÁTICAMENTE al cerrar modal
-            // Esto evita que el usuario quede "atrapado" con un filtro específico
-            if (searchTerm) {
-              console.log('🧹 [Catalog] Limpiando búsqueda al cerrar modal del producto');
-              setSearchTerm('');
-              setLastAutoOpenedSku(null);
-
-              // Si había un SKU en la URL, también limpiarlo
-              if (urlSku) {
-                const url = new URL(window.location.href);
-                url.searchParams.delete('sku');
-                window.history.replaceState({}, '', url.toString());
+            // LIMPIAR URL si había un SKU para evitar re-apertura
+            if (urlSku) {
+              console.log('🧹 [Catalog] Limpiando SKU de la URL al cerrar modal');
+              const url = new URL(window.location.href);
+              url.searchParams.delete('sku');
+              window.history.replaceState({}, '', url.toString());
               }
             }
           }
@@ -2286,183 +2291,183 @@ export default function CatalogPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Modal del Scanner */}
-        <Dialog open={showScanner} onOpenChange={setShowScanner}>
-          <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-hidden catalog-scroll invisible-scroll rounded-2xl border-0 shadow-2xl">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <ScanLine className="w-5 h-5 text-green-600" />
-                Scanner de Códigos
-              </DialogTitle>
-              <DialogDescription>
-                Apunta la cámara hacia el código de barras del producto
-              </DialogDescription>
-            </DialogHeader>
+        {/* Modal del Scanner */ }
+  <Dialog open={showScanner} onOpenChange={setShowScanner}>
+    <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-hidden catalog-scroll invisible-scroll rounded-2xl border-0 shadow-2xl">
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          <ScanLine className="w-5 h-5 text-green-600" />
+          Scanner de Códigos
+        </DialogTitle>
+        <DialogDescription>
+          Apunta la cámara hacia el código de barras del producto
+        </DialogDescription>
+      </DialogHeader>
 
-            <div className="space-y-4">
-              {isClient && showScanner && (
-                <div className="relative">
-                  <div className="aspect-square w-full max-w-sm mx-auto bg-black rounded-lg overflow-hidden">
-                    <BarcodeScannerComponent
-                      width="100%"
-                      height="100%"
-                      facingMode="environment"
-                      torch={false}
-                      delay={300}
-                      onUpdate={(err: any, result: any) => {
-                        if (result) {
-                          console.log('Código detectado:', result.text);
-                          handleScan(result.text);
-                        }
-                        if (err && err.name !== 'NotFoundException') {
-                          console.error('Scanner error:', err);
-                          handleScanError(err);
-                        }
-                      }}
-                    />
-                  </div>
-
-                  {/* Overlay con marco de escaneo */}
-                  <div className="absolute inset-0 pointer-events-none">
-                    <div className="absolute inset-4 border-2 border-green-400 rounded-lg">
-                      <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-green-400 rounded-tl-lg"></div>
-                      <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-green-400 rounded-tr-lg"></div>
-                      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-green-400 rounded-bl-lg"></div>
-                      <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-green-400 rounded-br-lg"></div>
-                    </div>
-
-                    {/* Línea de escaneo animada */}
-                    <div className="absolute inset-4 flex items-center justify-center">
-                      <div className="w-full h-0.5 bg-green-400 animate-pulse"></div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {scannerError && (
-                <div className="flex items-center gap-2 p-3 bg-destructive/10 rounded-xl">
-                  <AlertCircle className="h-4 w-4 text-destructive" />
-                  <p className="text-sm text-destructive">{scannerError}</p>
-                </div>
-              )}
-
-              <div className="text-center space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  También puedes buscar manualmente usando la barra de búsqueda
-                </p>
-                {lastScannedCode && (
-                  <p className="text-xs text-green-600 font-mono bg-green-50 p-2 rounded">
-                    Último código: {lastScannedCode}
-                  </p>
-                )}
-
-                {/* Códigos de ejemplo para probar */}
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                  <p className="text-xs font-medium text-blue-800 mb-2">Códigos de prueba:</p>
-                  <div className="grid grid-cols-1 gap-1 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-blue-600">RTX 4090:</span>
-                      <code className="font-mono bg-white px-1 rounded">123456789012</code>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-blue-600">Intel i9:</span>
-                      <code className="font-mono bg-white px-1 rounded">234567890123</code>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-blue-600">RAM DDR5:</span>
-                      <code className="font-mono bg-white px-1 rounded">345678901234</code>
-                    </div>
-                  </div>
-                </div>
-              </div>
+      <div className="space-y-4">
+        {isClient && showScanner && (
+          <div className="relative">
+            <div className="aspect-square w-full max-w-sm mx-auto bg-black rounded-lg overflow-hidden">
+              <BarcodeScannerComponent
+                width="100%"
+                height="100%"
+                facingMode="environment"
+                torch={false}
+                delay={300}
+                onUpdate={(err: any, result: any) => {
+                  if (result) {
+                    console.log('Código detectado:', result.text);
+                    handleScan(result.text);
+                  }
+                  if (err && err.name !== 'NotFoundException') {
+                    console.error('Scanner error:', err);
+                    handleScanError(err);
+                  }
+                }}
+              />
             </div>
 
-            <DialogFooter className="gap-2 pt-4">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowScanner(false);
-                  setScannerError(null);
-                  setLastScannedCode(null);
-                }}
-                className="flex-1"
-              >
-                <X className="w-4 h-4 mr-2" />
-                Cerrar
-              </Button>
-
-              {scannerError && (
-                <Button
-                  variant="default"
-                  onClick={() => {
-                    setScannerError(null);
-                  }}
-                  className="flex-1"
-                >
-                  <ScanLine className="w-4 h-4 mr-2" />
-                  Reintentar
-                </Button>
-              )}
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Modal de publicidad */}
-        <Dialog open={!!selectedAd} onOpenChange={(open) => !open && setSelectedAd(null)}>
-          <DialogContent className="sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>{selectedAd?.name}</DialogTitle>
-              <DialogDescription>
-                {selectedAd?.description}
-              </DialogDescription>
-            </DialogHeader>
-            {selectedAd && (
-              <div className="space-y-4">
-                <div className="relative h-64 w-full">
-                  <Image
-                    src={selectedAd.imageUrl || '/placeholder.png'}
-                    alt={selectedAd.name}
-                    fill
-                    className="object-cover rounded-lg"
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                  />
-                </div>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-2xl font-bold text-primary">
-                      <span>
-                        {activeSymbol}{(selectedAd.price * activeRate).toFixed(2)}
-                      </span>
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      SKU: {selectedAd.sku}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Badge variant="outline">
-                      <Eye className="w-3 h-3 mr-1" />
-                      {selectedAd.views} vistas
-                    </Badge>
-                  </div>
-                </div>
-                {selectedAd.targetBusinessTypes && (
-                  <div>
-                    <p className="text-sm font-medium mb-2">Dirigido a:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {selectedAd.targetBusinessTypes.map((type, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
-                          {type}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
+            {/* Overlay con marco de escaneo */}
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute inset-4 border-2 border-green-400 rounded-lg">
+                <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-green-400 rounded-tl-lg"></div>
+                <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-green-400 rounded-tr-lg"></div>
+                <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-green-400 rounded-bl-lg"></div>
+                <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-green-400 rounded-br-lg"></div>
               </div>
-            )}
-          </DialogContent>
-        </Dialog>
 
-        {/* Modal de registro */}
+              {/* Línea de escaneo animada */}
+              <div className="absolute inset-4 flex items-center justify-center">
+                <div className="w-full h-0.5 bg-green-400 animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {scannerError && (
+          <div className="flex items-center gap-2 p-3 bg-destructive/10 rounded-xl">
+            <AlertCircle className="h-4 w-4 text-destructive" />
+            <p className="text-sm text-destructive">{scannerError}</p>
+          </div>
+        )}
+
+        <div className="text-center space-y-2">
+          <p className="text-sm text-muted-foreground">
+            También puedes buscar manualmente usando la barra de búsqueda
+          </p>
+          {lastScannedCode && (
+            <p className="text-xs text-green-600 font-mono bg-green-50 p-2 rounded">
+              Último código: {lastScannedCode}
+            </p>
+          )}
+
+          {/* Códigos de ejemplo para probar */}
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+            <p className="text-xs font-medium text-blue-800 mb-2">Códigos de prueba:</p>
+            <div className="grid grid-cols-1 gap-1 text-xs">
+              <div className="flex justify-between">
+                <span className="text-blue-600">RTX 4090:</span>
+                <code className="font-mono bg-white px-1 rounded">123456789012</code>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-blue-600">Intel i9:</span>
+                <code className="font-mono bg-white px-1 rounded">234567890123</code>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-blue-600">RAM DDR5:</span>
+                <code className="font-mono bg-white px-1 rounded">345678901234</code>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <DialogFooter className="gap-2 pt-4">
+        <Button
+          variant="outline"
+          onClick={() => {
+            setShowScanner(false);
+            setScannerError(null);
+            setLastScannedCode(null);
+          }}
+          className="flex-1"
+        >
+          <X className="w-4 h-4 mr-2" />
+          Cerrar
+        </Button>
+
+        {scannerError && (
+          <Button
+            variant="default"
+            onClick={() => {
+              setScannerError(null);
+            }}
+            className="flex-1"
+          >
+            <ScanLine className="w-4 h-4 mr-2" />
+            Reintentar
+          </Button>
+        )}
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+
+  {/* Modal de publicidad */ }
+  <Dialog open={!!selectedAd} onOpenChange={(open) => !open && setSelectedAd(null)}>
+    <DialogContent className="sm:max-w-2xl">
+      <DialogHeader>
+        <DialogTitle>{selectedAd?.name}</DialogTitle>
+        <DialogDescription>
+          {selectedAd?.description}
+        </DialogDescription>
+      </DialogHeader>
+      {selectedAd && (
+        <div className="space-y-4">
+          <div className="relative h-64 w-full">
+            <Image
+              src={selectedAd.imageUrl || '/placeholder.png'}
+              alt={selectedAd.name}
+              fill
+              className="object-cover rounded-lg"
+              sizes="(max-width: 768px) 100vw, 50vw"
+            />
+          </div>
+          <div className="flex justify-between items-center">
+            <div>
+              <p className="text-2xl font-bold text-primary">
+                <span>
+                  {activeSymbol}{(selectedAd.price * activeRate).toFixed(2)}
+                </span>
+              </p>
+              <p className="text-sm text-muted-foreground">
+                SKU: {selectedAd.sku}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Badge variant="outline">
+                <Eye className="w-3 h-3 mr-1" />
+                {selectedAd.views} vistas
+              </Badge>
+            </div>
+          </div>
+          {selectedAd.targetBusinessTypes && (
+            <div>
+              <p className="text-sm font-medium mb-2">Dirigido a:</p>
+              <div className="flex flex-wrap gap-1">
+                {selectedAd.targetBusinessTypes.map((type, index) => (
+                  <Badge key={index} variant="secondary" className="text-xs">
+                    {type}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </DialogContent>
+  </Dialog>
+
+  {/* Modal de registro */ }
         <Dialog open={showRegisterModal} onOpenChange={setShowRegisterModal}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
@@ -2578,41 +2583,41 @@ export default function CatalogPage() {
             </div>
           </div>
         </div>
-      </div>
+      </div >
 
-      {/* Footer con información de la tienda */}
-      <footer className="bg-gray-50 border-t border-gray-200 py-6 px-4 mt-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center space-y-2">
-            <h3 className="text-lg font-semibold text-gray-800">
-              {currentStoreSettings?.name || 'Tienda'}
-            </h3>
-            <div className="flex flex-col sm:flex-row sm:justify-center sm:gap-6 gap-2 text-sm text-gray-600">
-              {currentStoreSettings?.id && (
-                <div className="flex items-center justify-center gap-1">
-                  <span className="font-medium">RIF:</span>
-                  <span>{currentStoreSettings.id}</span>
-                </div>
-              )}
-              {currentStoreSettings?.address && (
-                <div className="flex items-center justify-center gap-1">
-                  <span className="font-medium">Dirección:</span>
-                  <span>{currentStoreSettings.address}</span>
-                </div>
-              )}
-              {currentStoreSettings?.phone && (
-                <div className="flex items-center justify-center gap-1">
-                  <span className="font-medium">Teléfono:</span>
-                  <span>{currentStoreSettings.phone}</span>
-                </div>
-              )}
-            </div>
+    {/* Footer con información de la tienda */ }
+    < footer className = "bg-gray-50 border-t border-gray-200 py-6 px-4 mt-8" >
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center space-y-2">
+          <h3 className="text-lg font-semibold text-gray-800">
+            {currentStoreSettings?.name || 'Tienda'}
+          </h3>
+          <div className="flex flex-col sm:flex-row sm:justify-center sm:gap-6 gap-2 text-sm text-gray-600">
+            {currentStoreSettings?.id && (
+              <div className="flex items-center justify-center gap-1">
+                <span className="font-medium">RIF:</span>
+                <span>{currentStoreSettings.id}</span>
+              </div>
+            )}
+            {currentStoreSettings?.address && (
+              <div className="flex items-center justify-center gap-1">
+                <span className="font-medium">Dirección:</span>
+                <span>{currentStoreSettings.address}</span>
+              </div>
+            )}
+            {currentStoreSettings?.phone && (
+              <div className="flex items-center justify-center gap-1">
+                <span className="font-medium">Teléfono:</span>
+                <span>{currentStoreSettings.phone}</span>
+              </div>
+            )}
           </div>
         </div>
-      </footer>
+      </div>
+      </footer >
 
-      {/* Botón flotante para solicitar tienda */}
-      <StoreRequestButton />
-    </Dialog>
+    {/* Botón flotante para solicitar tienda */ }
+    < StoreRequestButton />
+    </Dialog >
   );
 }
