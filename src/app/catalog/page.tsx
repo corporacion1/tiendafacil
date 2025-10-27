@@ -191,16 +191,53 @@ export default function CatalogPage() {
   const urlSku = urlSearchParams.get('sku'); // Capturar SKU de la URL
   const DEMO_STORE_ID = process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'ST-1234567890123';
 
-  // CORREGIDO: useEffect estabilizado para evitar loops infinitos
-  useEffect(() => {
-    // Solo ejecutar una vez al montar el componente
-    if (urlStoreId && urlStoreId !== activeStoreId) {
-      switchStore(urlStoreId);
-    }
-  }, [urlStoreId, activeStoreId, switchStore]); // Incluir dependencias necesarias
 
-  // Usar el storeId de la URL, no el activeStoreId del contexto
-  const storeIdForCatalog = urlStoreId || DEMO_STORE_ID;
+
+  // PASO 0: Manejar cambio de tienda por LOGIN (usuario administrativo)
+  useEffect(() => {
+    // Cuando un usuario administrativo hace login, debe cambiar a su tienda
+    if (authUser && authUser.storeId && authUser.role !== 'user') {
+      // Solo cambiar si no hay storeId en URL (para no interferir con links compartidos)
+      if (!urlStoreId && authUser.storeId !== activeStoreId) {
+        console.log('👤 [Catalog] Usuario administrativo logueado - cambiando a su tienda:', {
+          userStoreId: authUser.storeId,
+          currentActiveStoreId: activeStoreId,
+          userRole: authUser.role
+        });
+        switchStore(authUser.storeId);
+      }
+    }
+  }, [authUser?.storeId, authUser?.role, activeStoreId, urlStoreId, switchStore]);
+
+  // PASO 1: Cambiar tienda PRIMERO si es necesario (CRÍTICO para multitienda)
+  useEffect(() => {
+    // IMPORTANTE: El storeId de la URL SIEMPRE debe cambiar el activeStoreId
+    // Esto es fundamental para el correcto funcionamiento de la multitienda
+    if (urlStoreId && urlStoreId !== activeStoreId) {
+      console.log('🏪 [Catalog] CAMBIO DE TIENDA REQUERIDO desde URL:', {
+        urlStoreId,
+        currentActiveStoreId: activeStoreId,
+        action: 'switchStore'
+      });
+      switchStore(urlStoreId);
+    } else if (urlStoreId) {
+      console.log('✅ [Catalog] Ya estamos en la tienda correcta:', urlStoreId);
+    }
+  }, [urlStoreId, activeStoreId, switchStore]);
+
+  // IMPORTANTE: Usar activeStoreId (que ya fue actualizado por switchStore) para consistencia
+  const storeIdForCatalog = activeStoreId;
+
+  // VALIDACIÓN: Asegurar consistencia entre URL y activeStoreId
+  useEffect(() => {
+    if (urlStoreId && activeStoreId && urlStoreId !== activeStoreId) {
+      console.warn('⚠️ [Catalog] INCONSISTENCIA DETECTADA:', {
+        urlStoreId,
+        activeStoreId,
+        message: 'URL y activeStoreId no coinciden - esto puede causar problemas'
+      });
+    }
+  }, [urlStoreId, activeStoreId]);
 
   // Hook para productos con sincronización automática
   const {
@@ -212,6 +249,8 @@ export default function CatalogPage() {
 
   // Usar productos sincronizados si están disponibles, sino usar del contexto
   const products = syncedProducts.length > 0 ? syncedProducts : contextProducts;
+
+
 
   // CORREGIDO: Debug con throttling para evitar spam
   const debugCountRef = useRef(0);
@@ -291,14 +330,26 @@ export default function CatalogPage() {
 
   const [isEditingOrder, setIsEditingOrder] = useState(false);
 
-  // Búsqueda automática por SKU desde URL
+  // PASO 2: Búsqueda automática por SKU - DESPUÉS de cambiar tienda
   useEffect(() => {
-    if (urlSku && urlSku.trim() !== '' && searchTerm !== urlSku) {
-      console.log('🔍 [Catalog] Aplicando búsqueda automática por SKU:', urlSku);
+    // Esperar a que:
+    // 1. Haya un SKU en la URL
+    // 2. El activeStoreId coincida con urlStoreId (tienda ya cambiada)
+    // 3. Los productos estén cargados
+    // 4. No hayamos aplicado ya esta búsqueda
+    const shouldApplySearch = urlSku &&
+      urlSku.trim() !== '' &&
+      searchTerm !== urlSku &&
+      products.length > 0 &&
+      (!urlStoreId || activeStoreId === urlStoreId); // Tienda correcta
+
+    if (shouldApplySearch) {
+      console.log('🔍 [Catalog] Aplicando búsqueda automática por SKU:', urlSku, 'en tienda:', activeStoreId);
       setSearchTerm(urlSku);
       setSelectedFamily('all'); // Resetear filtro de familia para mostrar todos los productos
+      setLastAutoOpenedSku(null); // Reset para permitir auto-apertura
     }
-  }, [urlSku, searchTerm]);
+  }, [urlSku, urlStoreId, activeStoreId, searchTerm, products.length]); // Incluir activeStoreId como dependencia clave
 
   // Hook para manejar pedidos del usuario desde la base de datos
   const {
@@ -423,6 +474,19 @@ export default function CatalogPage() {
   const [showScanner, setShowScanner] = useState(false);
   const [scannerError, setScannerError] = useState<string | null>(null);
   const [lastScannedCode, setLastScannedCode] = useState<string | null>(null);
+
+  // DEBUG: Logging del estado de URL params (DESPUÉS de definir todas las variables)
+  useEffect(() => {
+    if (urlStoreId || urlSku) {
+      console.log('📋 [Catalog] URL Params detectados:', {
+        urlStoreId,
+        urlSku,
+        activeStoreId,
+        productsCount: products.length,
+        searchTerm
+      });
+    }
+  }, [urlStoreId, urlSku, activeStoreId, products.length, searchTerm]);
 
 
 
@@ -747,20 +811,30 @@ export default function CatalogPage() {
     return filtered;
   }, [products, searchTerm, selectedFamily, storeIdForCatalog]);
 
-  // CORREGIDO: Auto-open product estabilizado
+  // PASO 3: Auto-open product - DESPUÉS de búsqueda y en tienda correcta
   useEffect(() => {
     const trimmedSearchTerm = searchTerm.trim().toLowerCase();
-    if (sortedAndFilteredProducts.length === 1 && trimmedSearchTerm) {
-      const product = sortedAndFilteredProducts[0];
-      const isExactMatch = product.sku?.toLowerCase() === trimmedSearchTerm ||
-        product.name.toLowerCase() === trimmedSearchTerm;
+    // Solo auto-abrir si:
+    // 1. El término coincide con el SKU de la URL
+    // 2. Estamos en la tienda correcta
+    // 3. Solo hay un producto filtrado
+    // 4. No lo hemos abierto ya
+    const shouldAutoOpen = urlSku &&
+      trimmedSearchTerm === urlSku.toLowerCase() &&
+      sortedAndFilteredProducts.length === 1 &&
+      (!urlStoreId || activeStoreId === urlStoreId); // Tienda correcta
 
-      if (isExactMatch && product.sku !== lastAutoOpenedSku) {
+    if (shouldAutoOpen) {
+      const product = sortedAndFilteredProducts[0];
+      const isExactSkuMatch = product.sku?.toLowerCase() === trimmedSearchTerm;
+
+      if (isExactSkuMatch && product.sku !== lastAutoOpenedSku) {
+        console.log('🎯 [Catalog] Auto-abriendo producto por SKU desde URL:', product.name, 'en tienda:', activeStoreId);
         setProductDetails(product);
         setLastAutoOpenedSku(product.sku || '');
       }
     }
-  }, [sortedAndFilteredProducts.length, searchTerm, lastAutoOpenedSku]); // Solo longitud, no array completo
+  }, [urlSku, urlStoreId, activeStoreId, sortedAndFilteredProducts.length, searchTerm, lastAutoOpenedSku]); // Incluir activeStoreId
 
   useEffect(() => {
     setLastAutoOpenedSku(null);
@@ -2038,7 +2112,26 @@ export default function CatalogPage() {
           </DialogContent>
         </Dialog>
 
-        <Dialog open={!!productDetails} onOpenChange={(open) => { if (!open) setProductDetails(null); }}>
+        <Dialog open={!!productDetails} onOpenChange={(open) => {
+          if (!open) {
+            setProductDetails(null);
+
+            // LIMPIAR BÚSQUEDA AUTOMÁTICAMENTE al cerrar modal
+            // Esto evita que el usuario quede "atrapado" con un filtro específico
+            if (searchTerm) {
+              console.log('🧹 [Catalog] Limpiando búsqueda al cerrar modal del producto');
+              setSearchTerm('');
+              setLastAutoOpenedSku(null);
+
+              // Si había un SKU en la URL, también limpiarlo
+              if (urlSku) {
+                const url = new URL(window.location.href);
+                url.searchParams.delete('sku');
+                window.history.replaceState({}, '', url.toString());
+              }
+            }
+          }
+        }}>
           <DialogContent onOpenAutoFocus={(e) => e.preventDefault()} className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto invisible-scroll rounded-2xl border-0 shadow-2xl">
             <DialogHeader className="pb-4">
               <DialogTitle className="text-xl font-semibold">Detalles del Producto</DialogTitle>
