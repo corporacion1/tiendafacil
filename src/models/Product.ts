@@ -1,5 +1,21 @@
 import mongoose, { Schema, model, models } from 'mongoose';
 
+// Esquema para imágenes individuales
+const ProductImageSchema = new Schema({
+  id: { type: String, required: true },
+  url: { type: String, required: true },
+  thumbnailUrl: String,
+  alt: String,
+  order: { type: Number, required: true },
+  uploadedAt: { type: String, required: true },
+  size: Number,
+  dimensions: {
+    width: Number,
+    height: Number
+  },
+  supabasePath: String // Path en Supabase para poder eliminar la imagen
+}, { _id: false });
+
 const ProductSchema = new Schema({
   id: { type: String, required: true },
   storeId: { type: String, required: true, index: true },
@@ -16,10 +32,15 @@ const ProductSchema = new Schema({
   family: String,
   warehouse: String,
   description: String,
-  imageUrl: String,
-  imageHint: String,
+  imageUrl: String, // Mantener para compatibilidad
+  imageHint: String, // Mantener para compatibilidad
   createdAt: String,
-  // Nuevos campos para tipo de producto
+  
+  // Nuevos campos para múltiples imágenes
+  images: [ProductImageSchema],
+  primaryImageIndex: { type: Number, default: 0 },
+  
+  // Campos para tipo de producto
   type: { type: String, enum: ['product', 'service'], default: 'product' },
   affectsInventory: { type: Boolean, default: true }
 }, { timestamps: true });

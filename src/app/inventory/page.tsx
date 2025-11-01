@@ -182,11 +182,24 @@ export default function InventoryPage() {
   async function handleUpdateProduct(data: Omit<Product, 'id' | 'createdAt' | 'storeId'> & { id?: string }) {
     if (!data.id) return false;
 
-    const result = await updateWithSync<Product>('/api/products', data, {
+    console.log('🔄 [Inventory] Actualizando producto:', {
+      id: data.id,
+      name: data.name,
+      hasImages: !!data.images,
+      imagesCount: data.images?.length || 0,
+      imageUrl: data.imageUrl
+    });
+
+    // Usar el endpoint específico por ID para mejor manejo
+    const result = await updateWithSync<Product>(`/api/products/${data.id}`, data, {
       successMessage: `El producto "${data.name}" ha sido actualizado exitosamente.`,
       errorMessage: "No se pudo actualizar el producto. Intenta nuevamente.",
       syncType: 'products',
       updateState: (updatedProduct) => {
+        console.log('✅ [Inventory] Producto actualizado en estado local:', {
+          id: updatedProduct.id,
+          imagesCount: updatedProduct.images?.length || 0
+        });
         // Actualizar el producto específico en el estado local
         setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
       }

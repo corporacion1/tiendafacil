@@ -53,6 +53,21 @@ export type Store = {
 export type Settings = Store;
 
 
+export type ProductImage = {
+  id: string; // ID único de la imagen
+  url: string; // URL de la imagen original
+  thumbnailUrl?: string; // URL del thumbnail generado
+  alt?: string; // Texto alternativo
+  order: number; // Orden de la imagen (0 = principal)
+  uploadedAt: string; // Fecha de subida
+  size?: number; // Tamaño del archivo en bytes
+  dimensions?: {
+    width: number;
+    height: number;
+  };
+  supabasePath?: string; // Path en Supabase para poder eliminar la imagen
+};
+
 export type Product = {
   id: string;
   name: string;
@@ -69,8 +84,13 @@ export type Product = {
   family?: string;
   warehouse?: string;
   description?: string;
-  imageUrl?: string;
-  imageHint?: string;
+  imageUrl?: string; // Mantener para compatibilidad (será la imagen principal)
+  imageHint?: string; // Mantener para compatibilidad
+  
+  // Nuevos campos para múltiples imágenes
+  images?: ProductImage[]; // Array de imágenes del producto
+  primaryImageIndex?: number; // Índice de la imagen principal (default: 0)
+  
   createdAt: string;
   storeId: string;
   // Tipo: Producto Simple o Servicio/Fabricación

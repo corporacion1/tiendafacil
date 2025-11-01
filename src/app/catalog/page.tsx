@@ -20,6 +20,8 @@ import { Label } from "@/components/ui/label";
 import type { Product, CartItem, PendingOrder, Order, Ad, Family, Store } from "@/lib/types";
 import { defaultStore } from "@/lib/data";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
+import { getAllProductImages, hasMultipleImages, getImageCount, getPrimaryImageUrl } from "@/lib/product-image-utils";
+import { ProductImageGallery } from "@/components/product-image-gallery";
 import { Logo } from "@/components/logo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { isPast, format } from "date-fns";
@@ -100,26 +102,66 @@ const CatalogProductCard = ({
 }) => {
   const { activeSymbol, activeRate } = useSettings();
   const [imageError, setImageError] = useState(false);
-  const imageUrl = getDisplayImageUrl(product.imageUrl);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isHovering, setIsHovering] = useState(false);
+
+  // Usar las nuevas utilidades para múltiples imágenes
+  const images = getAllProductImages(product);
+  const hasMultiple = hasMultipleImages(product);
+  const imageCount = getImageCount(product);
+  const primaryImageUrl = getPrimaryImageUrl(product);
+  const imageUrl = getDisplayImageUrl(primaryImageUrl);
+
+  // Auto-cambio de imagen en hover (solo desktop)
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+
+    if (isHovering && hasMultiple && window.innerWidth >= 768) {
+      interval = setInterval(() => {
+        setCurrentImageIndex(prev => (prev + 1) % images.length);
+      }, 1000); // Cambiar cada segundo
+    } else {
+      setCurrentImageIndex(0); // Volver a la primera imagen
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isHovering, hasMultiple, images.length]);
+
+  const currentImage = images[currentImageIndex] || images[0];
+  const displayImageUrl = getDisplayImageUrl(currentImage?.url);
 
   return (
     <Card className="overflow-hidden group flex flex-col border border-blue-100 shadow-sm hover:shadow-xl hover:border-blue-200 transition-all duration-300 bg-white rounded-2xl">
-      <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative cursor-pointer" onClick={() => onImageClick(product)}>
+      <CardContent
+        className="p-0 flex flex-col items-center justify-center aspect-square relative cursor-pointer"
+        onClick={() => onImageClick(product)}
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
+      >
         <div className="absolute inset-0 bg-gradient-to-t from-blue-900/70 via-blue-900/10 to-transparent z-10 rounded-t-2xl" />
-        {imageUrl && !imageError ? (
+        {displayImageUrl && !imageError ? (
           <Image
-            src={imageUrl}
-            alt={product.name}
+            src={displayImageUrl}
+            alt={currentImage?.alt || product.name}
             fill
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
             className="object-cover transition-transform duration-500 group-hover:scale-110 rounded-t-2xl"
-            data-ai-hint={product.imageHint}
+            data-ai-hint={currentImage?.alt || product.imageHint}
             onError={() => setImageError(true)}
           />
         ) : (
           <div className="flex items-center justify-center h-full w-full bg-gradient-to-br from-blue-50 to-green-50 rounded-t-2xl">
             <Package className="w-16 h-16 text-blue-400" />
           </div>
+        )}
+
+        {/* Indicador de múltiples imágenes */}
+        {hasMultiple && (
+          <Badge className="absolute top-3 right-3 z-20 shadow-lg bg-gradient-to-r from-blue-500 to-purple-500 border-0 text-white text-xs">
+            {currentImageIndex + 1}/{imageCount}
+          </Badge>
         )}
         {/* Nombre del producto - Superior izquierda */}
         <div className="absolute top-3 left-3 z-20 max-w-[70%]">
@@ -1099,7 +1141,8 @@ export default function CatalogPage() {
 
   // Función para crear imagen compuesta con título y precio
   const createProductImageWithOverlay = async (product: Product): Promise<File | null> => {
-    if (!product.imageUrl) return null;
+    const primaryImageUrl = getPrimaryImageUrl(product);
+    if (!primaryImageUrl) return null;
 
     try {
       // Crear canvas
@@ -1248,7 +1291,7 @@ export default function CatalogPage() {
         };
 
         img.onerror = () => resolve(null);
-        img.src = product.imageUrl || '';
+        img.src = primaryImageUrl;
       });
     } catch (error) {
       console.log('Error creando imagen compuesta:', error);
@@ -1258,12 +1301,19 @@ export default function CatalogPage() {
 
   const handleShareProduct = async (product: Product) => {
     try {
+      // Obtener información de imágenes del producto
+      const primaryImageUrl = getPrimaryImageUrl(product);
+      const hasImages = getImageCount(product) > 0;
+      const imageCount = getImageCount(product);
+
       // Crear el mensaje de compartir
       const shareText = `🛍️ *${product.name}*
 
-💰 Precio: ${activeSymbol}${(product.price * activeRate).toFixed(2)}
+�  Precio: ${activeSymbol}${(product.price * activeRate).toFixed(2)}
 
 📝 ${product.description || 'Producto disponible en nuestra tienda'}
+
+${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
 
 🏪 Disponible en ${currentStoreSettings?.name || 'Tienda Fácil'}
 👆 Ver producto: ${window.location.origin}/catalog?storeId=${storeIdForCatalog}&sku=${product.sku}
@@ -1279,7 +1329,7 @@ export default function CatalogPage() {
         };
 
         // Intentar crear imagen compuesta con título y precio
-        if (product.imageUrl) {
+        if (primaryImageUrl) {
           try {
             const compositeImage = await createProductImageWithOverlay(product);
 
@@ -1287,7 +1337,7 @@ export default function CatalogPage() {
               shareData.files = [compositeImage];
             } else {
               // Fallback a imagen original si no se pudo crear la compuesta
-              const response = await fetch(product.imageUrl);
+              const response = await fetch(primaryImageUrl);
               if (response.ok) {
                 const blob = await response.blob();
                 const file = new File([blob], `${product.name}.jpg`, { type: blob.type });
@@ -1313,8 +1363,8 @@ export default function CatalogPage() {
         });
       } else {
         // Fallback: copiar al portapapeles
-        const fallbackText = product.imageUrl ?
-          `${shareText}\n\n📷 Imagen: ${product.imageUrl}` :
+        const fallbackText = primaryImageUrl ?
+          `${shareText}\n\n📷 Imagen: ${primaryImageUrl}` :
           shareText;
 
         await navigator.clipboard.writeText(fallbackText);
@@ -2146,20 +2196,21 @@ export default function CatalogPage() {
             {productDetails && (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 items-start">
-                  <div className="relative aspect-square w-full max-h-[40vh] md:max-h-none flex items-center justify-center bg-gradient-to-br from-muted/50 to-muted rounded-2xl overflow-hidden border">
-                    {getDisplayImageUrl(productDetails.imageUrl) && !productImageError ? (
-                      <Image
-                        src={getDisplayImageUrl(productDetails.imageUrl)}
-                        alt={productDetails.name}
-                        fill
-                        sizes="300px"
-                        className="object-cover"
-                        data-ai-hint={productDetails.imageHint}
-                        onError={() => setProductImageError(true)}
-                      />
-                    ) : (
-                      <Package className="w-16 h-16 text-muted-foreground" />
-                    )}
+                  <div className="w-full max-h-[40vh] md:max-h-none">
+                    <ProductImageGallery
+                      product={productDetails}
+                      showThumbnails={true}
+                      onImageShare={(imageUrl, imageName) => {
+                        // Crear un producto temporal para compartir imagen específica
+                        const tempProduct = {
+                          ...productDetails,
+                          imageUrl: imageUrl,
+                          name: imageName
+                        };
+                        handleShareProduct(tempProduct);
+                      }}
+                      className="w-full"
+                    />
                   </div>
                   <div className="space-y-4">
                     <div>
@@ -2600,13 +2651,13 @@ export default function CatalogPage() {
               )}
               {currentStoreSettings?.address && (
                 <div className="flex items-center justify-center gap-1">
-                  <span  className="font-medium font-semibold">Dirección:</span>
+                  <span className="font-medium font-semibold">Dirección:</span>
                   <span>{currentStoreSettings.address}</span>
                 </div>
               )}
               {currentStoreSettings?.phone && (
                 <div className="flex items-center justify-center gap-1">
-                  <span  className="font-medium font-semibold">Teléfono:</span>
+                  <span className="font-medium font-semibold">Teléfono:</span>
                   <span>{currentStoreSettings.phone}</span>
                 </div>
               )}

@@ -28,7 +28,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "./ui/dialog";
 import { useSettings } from "@/contexts/settings-context";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { ImageUpload } from "@/components/image-upload";
+import { MultiImageUpload } from "@/components/multi-image-upload";
+import { getAllProductImages, migrateProductToMultipleImages } from "@/lib/product-image-utils";
 
 const productSchema = z.object({
   id: z.string().optional(),
@@ -47,6 +48,21 @@ const productSchema = z.object({
   description: z.string().optional(),
   imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
   imageHint: z.string().optional(),
+  // Nuevos campos para múltiples imágenes
+  images: z.array(z.object({
+    id: z.string(),
+    url: z.string(),
+    thumbnailUrl: z.string().optional(),
+    alt: z.string().optional(),
+    order: z.number(),
+    uploadedAt: z.string(),
+    size: z.number().optional(),
+    dimensions: z.object({
+      width: z.number(),
+      height: z.number()
+    }).optional()
+  })).optional(),
+  primaryImageIndex: z.number().optional(),
   // Tipo: Producto Simple o Servicio/Fabricación
   type: z.enum(["product", "service"]),
   affectsInventory: z.boolean(),
@@ -61,7 +77,13 @@ interface ProductFormProps {
 }
 
 const getInitialValues = (product?: Product): ProductFormValues => {
-    return product ? { ...product } : {
+    if (product) {
+        // Migrar automáticamente el producto al nuevo formato si es necesario
+        const migratedProduct = migrateProductToMultipleImages(product);
+        return { ...migratedProduct };
+    }
+    
+    return {
         name: "",
         sku: "",
         price: 0,
@@ -80,6 +102,8 @@ const getInitialValues = (product?: Product): ProductFormValues => {
         // Valores por defecto para nuevos campos
         type: "product",
         affectsInventory: true,
+        images: [],
+        primaryImageIndex: 0,
     };
 };
 
@@ -374,20 +398,39 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
               <div className="space-y-4">
                  <FormField
                     control={form.control}
-                    name="imageUrl"
+                    name="images"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Imagen del Producto</FormLabel>
+                        <FormLabel>Imágenes del Producto</FormLabel>
                         <FormControl>
-                          <ImageUpload
-                            currentImage={field.value}
-                            onImageUploaded={(url) => {
-                              field.onChange(url);
+                          <MultiImageUpload
+                            productId={form.watch('id')}
+                            existingImages={field.value || []}
+                            maxImages={4}
+                            onImagesChange={(newImages) => {
+                              field.onChange(newImages);
+                              // Actualizar campos de compatibilidad
+                              if (newImages.length > 0) {
+                                setValue('imageUrl', newImages[0].url);
+                                setValue('imageHint', newImages[0].alt);
+                                setValue('primaryImageIndex', 0);
+                              } else {
+                                setValue('imageUrl', '');
+                                setValue('imageHint', '');
+                                setValue('primaryImageIndex', 0);
+                              }
+                            }}
+                            onError={(error) => {
+                              toast({
+                                variant: "destructive",
+                                title: "Error con las imágenes",
+                                description: error
+                              });
                             }}
                           />
                         </FormControl>
                         <FormDescription>
-                          Sube una imagen del producto. Se optimizará automáticamente.
+                          Sube hasta 4 imágenes del producto. Se optimizarán automáticamente.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
