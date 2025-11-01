@@ -19,9 +19,14 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import type { Product, CartItem, PendingOrder, Order, Ad, Family, Store } from "@/lib/types";
 import { defaultStore } from "@/lib/data";
-import { cn, getDisplayImageUrl } from "@/lib/utils";
+import { cn, getDisplayImageUrl, validateAndFixImageUrl } from "@/lib/utils";
 import { getAllProductImages, hasMultipleImages, getImageCount, getPrimaryImageUrl } from "@/lib/product-image-utils";
 import { ProductImageGallery } from "@/components/product-image-gallery";
+import { logProductImageDebug, detectEnvironment } from "@/lib/image-debug-utils";
+import { imageValidationService } from "@/lib/image-validation-service";
+import { validateImageUtilityConsistency } from "@/lib/image-consistency-validator";
+import { compareDbWithFrontend } from "@/lib/database-image-debug";
+import { verifyImagesInDatabase } from "@/lib/db-image-verification";
 import { Logo } from "@/components/logo";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { isPast, format } from "date-fns";
@@ -100,37 +105,197 @@ const CatalogProductCard = ({
   displayCurrency: string;
   isCurrencyRateRecent: boolean;
 }) => {
-  const { activeSymbol, activeRate } = useSettings();
+  const { activeSymbol, activeRate, activeStoreId } = useSettings();
   const [imageError, setImageError] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [imageLoadStates, setImageLoadStates] = useState<Record<string, 'loading' | 'loaded' | 'error'>>({});
+  const [retryCount, setRetryCount] = useState<Record<string, number>>({});
+  const [fallbackToSingle, setFallbackToSingle] = useState(false);
 
-  // Usar las nuevas utilidades para múltiples imágenes
+  // Usar las nuevas utilidades para múltiples imágenes con debugging
   const images = getAllProductImages(product);
   const hasMultiple = hasMultipleImages(product);
   const imageCount = getImageCount(product);
   const primaryImageUrl = getPrimaryImageUrl(product);
   const imageUrl = getDisplayImageUrl(primaryImageUrl);
 
-  // Auto-cambio de imagen en hover (solo desktop)
+  // Debug inicial del producto (solo una vez)
+  useEffect(() => {
+    const debug = logProductImageDebug(product, 'CatalogProductCard');
+    setDebugInfo(debug);
+    
+    // Validación de consistencia
+    const consistencyResult = validateImageUtilityConsistency(product);
+    
+    // CRÍTICO: Verificar almacenamiento en DB y comparar con Frontend
+    const checkDatabaseConsistency = async () => {
+      try {
+        // Verificar que las imágenes estén correctamente guardadas en la DB
+        const dbVerification = await verifyImagesInDatabase(product.id, activeStoreId);
+        const dbComparison = await compareDbWithFrontend(product, activeStoreId);
+        
+        console.group(`🔍 [CatalogCard] CRITICAL DB CHECK - ${product.name}`);
+        console.log('🌍 Environment:', detectEnvironment());
+        console.log('📊 Frontend Images array:', images);
+        console.log('📊 Frontend Has multiple:', hasMultiple);
+        console.log('📊 Frontend Image count:', imageCount);
+        console.log('📊 Frontend Primary URL:', primaryImageUrl?.substring(0, 50) + '...');
+        console.log('📊 Frontend Display URL:', imageUrl?.substring(0, 50) + '...');
+        console.log('🗄️ DB Verification:', dbVerification);
+        console.log('🔄 DB vs Frontend Comparison:', dbComparison);
+        console.log('🔧 Consistency Result:', consistencyResult);
+        console.log('📦 Raw Product Data:', {
+          id: product.id,
+          imageUrl: product.imageUrl?.substring(0, 50) + '...',
+          imagesCount: product.images?.length || 0,
+          primaryImageIndex: product.primaryImageIndex
+        });
+        
+        // ALERTAS CRÍTICAS
+        if (dbVerification.issues.length > 0) {
+          console.error(`🚨 [CatalogCard] CRITICAL: Database storage issues for ${product.name}:`);
+          console.error('🚨 DB Issues:', dbVerification.issues);
+          console.error('🚨 This explains why images are not showing correctly!');
+        }
+        
+        if (dbComparison.discrepancies.length > 0) {
+          console.error(`🚨 [CatalogCard] CRITICAL: Database/Frontend mismatch for ${product.name}:`);
+          console.error('🚨 Discrepancies:', dbComparison.discrepancies);
+        }
+        
+        if (!consistencyResult.isConsistent) {
+          console.error(`🚨 [CatalogCard] Consistency issues for ${product.name}:`, consistencyResult.issues);
+        }
+        
+        // Resumen del problema
+        if (hasMultiple && !dbVerification.verification.hasImagesInDb) {
+          console.error(`🚨 [CatalogCard] ROOT CAUSE: Frontend thinks product has ${imageCount} images but DB has none!`);
+        } else if (hasMultiple && dbVerification.verification.imageCount !== imageCount) {
+          console.error(`🚨 [CatalogCard] ROOT CAUSE: Image count mismatch - Frontend: ${imageCount}, DB: ${dbVerification.verification.imageCount}`);
+        }
+        
+        console.groupEnd();
+      } catch (error) {
+        console.error(`❌ [CatalogCard] Error checking database consistency for ${product.name}:`, error);
+      }
+    };
+    
+    // Solo hacer la verificación de DB en desarrollo o con debug activado
+    if (process.env.NODE_ENV === 'development' || 
+        (typeof window !== 'undefined' && window.location.search.includes('debug=db'))) {
+      checkDatabaseConsistency();
+    }
+  }, [product.id, activeStoreId]); // Solo cuando cambia el producto o la tienda
+
+  // Auto-cambio de imagen en hover (solo desktop) con debugging mejorado y fallback handling
   useEffect(() => {
     let interval: NodeJS.Timeout;
 
-    if (isHovering && hasMultiple && window.innerWidth >= 768) {
+    // Don't cycle if we've fallen back to single image mode
+    if (isHovering && hasMultiple && !fallbackToSingle && window.innerWidth >= 768) {
+      console.log(`🔄 [CatalogCard] Starting image cycling for ${product.name} (${images.length} images)`);
+      
       interval = setInterval(() => {
-        setCurrentImageIndex(prev => (prev + 1) % images.length);
+        setCurrentImageIndex(prev => {
+          const nextIndex = (prev + 1) % images.length;
+          console.log(`🖼️ [CatalogCard] Cycling image: ${prev} → ${nextIndex} for ${product.name}`);
+          
+          // Check if the next image has failed to load
+          const nextImage = images[nextIndex];
+          const nextDisplayUrl = validateAndFixImageUrl(nextImage?.url || '');
+          
+          if (nextDisplayUrl && imageLoadStates[nextDisplayUrl] === 'error') {
+            console.warn(`⚠️ [CatalogCard] Skipping failed image ${nextIndex} for ${product.name}`);
+            // Skip to the next image or fallback to single image
+            const workingImageIndex = images.findIndex((img, idx) => {
+              const url = validateAndFixImageUrl(img.url || '');
+              return url && imageLoadStates[url] !== 'error';
+            });
+            
+            if (workingImageIndex >= 0) {
+              return workingImageIndex;
+            } else {
+              // No working images found, fallback to single image
+              setFallbackToSingle(true);
+              return 0;
+            }
+          }
+          
+          return nextIndex;
+        });
       }, 1000); // Cambiar cada segundo
     } else {
-      setCurrentImageIndex(0); // Volver a la primera imagen
+      if (currentImageIndex !== 0) {
+        console.log(`🔄 [CatalogCard] Resetting to first image for ${product.name}`);
+        setCurrentImageIndex(0); // Volver a la primera imagen
+      }
     }
 
     return () => {
-      if (interval) clearInterval(interval);
+      if (interval) {
+        console.log(`⏹️ [CatalogCard] Stopping image cycling for ${product.name}`);
+        clearInterval(interval);
+      }
     };
-  }, [isHovering, hasMultiple, images.length]);
+  }, [isHovering, hasMultiple, images.length, product.name, currentImageIndex, fallbackToSingle, imageLoadStates]);
+
+  // Tracking de estados de carga de imágenes con retry logic
+  const handleImageLoad = (url: string) => {
+    console.log(`✅ [CatalogCard] Image loaded successfully: ${url}`);
+    setImageLoadStates(prev => ({ ...prev, [url]: 'loaded' }));
+    // Reset retry count on successful load
+    setRetryCount(prev => ({ ...prev, [url]: 0 }));
+  };
+
+  const handleImageError = (url: string, error?: any) => {
+    const currentRetries = retryCount[url] || 0;
+    const maxRetries = 2;
+    
+    console.error(`❌ [CatalogCard] Image failed to load (attempt ${currentRetries + 1}/${maxRetries + 1}): ${url}`, error);
+    
+    if (currentRetries < maxRetries) {
+      // Retry loading the image
+      setRetryCount(prev => ({ ...prev, [url]: currentRetries + 1 }));
+      console.log(`🔄 [CatalogCard] Retrying image load for ${product.name} (${currentRetries + 1}/${maxRetries})`);
+      
+      // Force re-render by updating a timestamp in the URL
+      setTimeout(() => {
+        const img = new window.Image();
+        img.onload = () => handleImageLoad(url);
+        img.onerror = () => handleImageError(url, error);
+        img.src = url + (url.includes('?') ? '&' : '?') + 't=' + Date.now();
+      }, 1000 * (currentRetries + 1)); // Exponential backoff
+    } else {
+      // Max retries reached, mark as error
+      setImageLoadStates(prev => ({ ...prev, [url]: 'error' }));
+      
+      // If this is a multiple image product and cycling is failing, fallback to single image
+      if (hasMultiple && currentImageIndex > 0) {
+        console.warn(`⚠️ [CatalogCard] Multiple image cycling failed for ${product.name}, falling back to single image`);
+        setFallbackToSingle(true);
+        setCurrentImageIndex(0);
+      } else {
+        setImageError(true);
+      }
+    }
+  };
 
   const currentImage = images[currentImageIndex] || images[0];
-  const displayImageUrl = getDisplayImageUrl(currentImage?.url);
+  const displayImageUrl = validateAndFixImageUrl(currentImage?.url || '');
+
+  // Log cuando cambia la imagen actual
+  useEffect(() => {
+    if (currentImage) {
+      console.log(`🖼️ [CatalogCard] Current image for ${product.name}:`, {
+        index: currentImageIndex,
+        imageId: currentImage.id,
+        url: currentImage.url,
+        displayUrl: displayImageUrl
+      });
+    }
+  }, [currentImageIndex, currentImage, displayImageUrl, product.name]);
 
   return (
     <Card className="overflow-hidden group flex flex-col border border-blue-100 shadow-sm hover:shadow-xl hover:border-blue-200 transition-all duration-300 bg-white rounded-2xl">
@@ -149,18 +314,50 @@ const CatalogProductCard = ({
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
             className="object-cover transition-transform duration-500 group-hover:scale-110 rounded-t-2xl"
             data-ai-hint={currentImage?.alt || product.imageHint}
-            onError={() => setImageError(true)}
+            onLoad={() => handleImageLoad(displayImageUrl)}
+            onError={(e) => {
+              console.error(`❌ [CatalogCard] Image load error for ${product.name}:`, {
+                src: displayImageUrl,
+                currentImage,
+                error: e,
+                imageIndex: currentImageIndex
+              });
+              handleImageError(displayImageUrl, e);
+            }}
           />
         ) : (
           <div className="flex items-center justify-center h-full w-full bg-gradient-to-br from-blue-50 to-green-50 rounded-t-2xl">
             <Package className="w-16 h-16 text-blue-400" />
+            {/* Debug info en desarrollo */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="absolute bottom-2 left-2 text-xs text-gray-500 bg-white/80 px-1 rounded">
+                No img: {imageError ? 'Error' : 'Missing'}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Indicador de múltiples imágenes */}
-        {hasMultiple && (
-          <Badge className="absolute top-3 right-3 z-20 shadow-lg bg-gradient-to-r from-blue-500 to-purple-500 border-0 text-white text-xs">
+        {/* Indicador de múltiples imágenes con debug info */}
+        {hasMultiple && !fallbackToSingle && (
+          <Badge 
+            className="absolute top-3 right-3 z-20 shadow-lg bg-gradient-to-r from-blue-500 to-purple-500 border-0 text-white text-xs"
+            title={`Environment: ${detectEnvironment()}, Images: ${images.length}, Current: ${currentImageIndex + 1}`}
+          >
             {currentImageIndex + 1}/{imageCount}
+          </Badge>
+        )}
+        
+        {/* Fallback indicator */}
+        {fallbackToSingle && hasMultiple && (
+          <Badge className="absolute top-3 right-3 z-20 shadow-lg bg-orange-500 border-0 text-white text-xs">
+            Single Mode
+          </Badge>
+        )}
+        
+        {/* Debug badge en desarrollo */}
+        {process.env.NODE_ENV === 'development' && (
+          <Badge className="absolute top-3 left-3 z-20 bg-yellow-500 text-black text-xs">
+            {detectEnvironment()} | {images.length}img {fallbackToSingle ? '(FB)' : ''}
           </Badge>
         )}
         {/* Nombre del producto - Superior izquierda */}

@@ -1,18 +1,35 @@
 import { Product, ProductImage } from './types';
 
+// Flag para habilitar/deshabilitar logging de debug
+const DEBUG_IMAGES = process.env.NODE_ENV === 'development' || 
+                     (typeof window !== 'undefined' && window.location.search.includes('debug=images'));
+
+/**
+ * Log de debug para utilidades de imágenes
+ */
+function debugLog(message: string, data?: any) {
+  if (DEBUG_IMAGES) {
+    console.log(`🖼️ [ImageUtils] ${message}`, data || '');
+  }
+}
+
 /**
  * Obtiene la URL de la imagen principal de un producto
  * Mantiene compatibilidad con productos que solo tienen imageUrl
  */
 export function getPrimaryImageUrl(product: Product): string | undefined {
+  debugLog(`Getting primary image URL for product: ${product.name} (${product.id})`);
+  
   // Si tiene array de imágenes, usar la imagen principal
   if (product.images && product.images.length > 0) {
     const primaryIndex = product.primaryImageIndex || 0;
     const primaryImage = product.images[primaryIndex] || product.images[0];
+    debugLog(`Using images array - Primary index: ${primaryIndex}, URL: ${primaryImage.url}`);
     return primaryImage.url;
   }
   
   // Fallback a imageUrl para compatibilidad
+  debugLog(`Using legacy imageUrl: ${product.imageUrl}`);
   return product.imageUrl;
 }
 
@@ -34,13 +51,17 @@ export function getPrimaryThumbnailUrl(product: Product): string | undefined {
  * Convierte imageUrl a formato de array si es necesario
  */
 export function getAllProductImages(product: Product): ProductImage[] {
+  debugLog(`Getting all images for product: ${product.name} (${product.id})`);
+  
   // Si ya tiene array de imágenes, devolverlo
   if (product.images && product.images.length > 0) {
+    debugLog(`Found ${product.images.length} images in images array`);
     return product.images;
   }
   
   // Si solo tiene imageUrl, convertirlo a formato de array
   if (product.imageUrl) {
+    debugLog(`Converting legacy imageUrl to array format: ${product.imageUrl}`);
     return [{
       id: `legacy-${product.id}`,
       url: product.imageUrl,
@@ -50,6 +71,7 @@ export function getAllProductImages(product: Product): ProductImage[] {
     }];
   }
   
+  debugLog(`No images found for product`);
   return [];
 }
 
@@ -58,14 +80,18 @@ export function getAllProductImages(product: Product): ProductImage[] {
  */
 export function hasMultipleImages(product: Product): boolean {
   const images = getAllProductImages(product);
-  return images.length > 1;
+  const hasMultiple = images.length > 1;
+  debugLog(`Product ${product.name} has multiple images: ${hasMultiple} (${images.length} total)`);
+  return hasMultiple;
 }
 
 /**
  * Obtiene el número total de imágenes de un producto
  */
 export function getImageCount(product: Product): number {
-  return getAllProductImages(product).length;
+  const count = getAllProductImages(product).length;
+  debugLog(`Product ${product.name} image count: ${count}`);
+  return count;
 }
 
 /**

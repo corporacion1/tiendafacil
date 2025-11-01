@@ -2,48 +2,49 @@
 
 ## Introduction
 
-This specification addresses the critical issue where multiple product images display correctly in the local development environment but fail to render properly in the production deployment environment. This deployment-specific image rendering problem affects user experience and product catalog functionality.
+This specification addresses the critical issue where multiple product images display correctly in the local development environment but fail to render properly in the production deployment environment. Specifically, the catalog page shows only single images in production while the inventory page correctly displays multiple images in both environments. This inconsistency affects the customer catalog experience and product presentation.
 
 ## Glossary
 
+- **Catalog_Page**: The customer-facing product catalog where images are not displaying correctly in production
+- **Inventory_Page**: The admin inventory management page where images display correctly in all environments
+- **Local_Environment**: The development environment where all images display correctly
+- **Production_Environment**: The deployed environment where catalog images fail to display multiple images
 - **Image_Display_System**: The complete system responsible for storing, retrieving, and displaying product images
-- **Local_Environment**: The development environment where images display correctly
-- **Production_Environment**: The deployed environment where images fail to display
-- **Image_Storage_Service**: The service (likely Supabase) used to store and serve product images
-- **Image_URL_Generator**: The component that generates URLs for accessing stored images
-- **Image_Component**: React components responsible for rendering product images in the UI
+- **ProductImageGallery**: The React component responsible for displaying multiple product images
+- **CatalogProductCard**: The component that displays products in the catalog with image cycling functionality
 
 ## Requirements
 
 ### Requirement 1
 
-**User Story:** As a customer browsing the catalog, I want to see all product images correctly in the deployed application, so that I can make informed purchasing decisions.
+**User Story:** As a customer browsing the catalog, I want to see all product images with the same cycling functionality in production as I see in local development, so that I can view all available product images.
 
 #### Acceptance Criteria
 
-1. WHEN a user accesses the catalog in production, THE Image_Display_System SHALL render all product images with the same quality and completeness as in the local environment
-2. WHEN multiple images exist for a product, THE Image_Display_System SHALL display all images without missing or broken image placeholders
-3. IF an image fails to load, THEN THE Image_Display_System SHALL provide appropriate fallback handling and error messaging
-4. THE Image_Display_System SHALL maintain consistent image loading performance between local and production environments
+1. WHEN a customer hovers over a product in the catalog in production, THE CatalogProductCard SHALL cycle through all available product images as it does in local environment
+2. WHEN multiple images exist for a product, THE CatalogProductCard SHALL display the image counter badge showing "X/Y" format in production
+3. THE CatalogProductCard SHALL maintain the same auto-cycling behavior on hover in production as in local development
+4. WHEN a customer clicks on a product image, THE ProductImageGallery SHALL display all available images in the modal in production
 
 ### Requirement 2
 
-**User Story:** As a store administrator, I want the image upload and display functionality to work reliably across all environments, so that I can manage product catalogs effectively.
+**User Story:** As a developer, I want to identify why the catalog image cycling works locally but not in production, so that I can fix the deployment-specific issue.
 
 #### Acceptance Criteria
 
-1. WHEN an administrator uploads multiple images in production, THE Image_Storage_Service SHALL store and serve all images correctly
-2. THE Image_URL_Generator SHALL produce valid, accessible URLs for all stored images in production
-3. WHEN images are uploaded through the admin interface, THE Image_Display_System SHALL immediately reflect the changes in both admin and customer views
-4. THE Image_Storage_Service SHALL maintain data consistency between local and production image storage
+1. THE Image_Display_System SHALL provide consistent image data structure between local and production environments
+2. WHEN debugging image issues, THE CatalogProductCard SHALL log image loading errors and data inconsistencies
+3. THE getAllProductImages function SHALL return the same image array structure in both environments
+4. THE hasMultipleImages function SHALL return consistent boolean values for the same products across environments
 
 ### Requirement 3
 
-**User Story:** As a developer, I want to identify and resolve the root cause of the deployment image issue, so that the system works reliably in all environments.
+**User Story:** As a store administrator, I want the catalog to display product images consistently with the inventory page, so that customers see the same image quality and functionality as administrators.
 
 #### Acceptance Criteria
 
-1. THE Image_Display_System SHALL implement proper environment-specific configuration for image storage and retrieval
-2. WHEN debugging image issues, THE Image_Display_System SHALL provide clear error logging and diagnostic information
-3. THE Image_URL_Generator SHALL handle environment-specific base URLs and authentication correctly
-4. THE Image_Component SHALL implement proper error boundaries and loading states for production resilience
+1. WHEN comparing catalog and inventory pages in production, THE Image_Display_System SHALL show the same number of images for each product
+2. THE image URL generation SHALL work consistently between CatalogProductCard and inventory ProductRow components
+3. THE getDisplayImageUrl function SHALL return valid URLs for all product images in production
+4. WHEN products have multiple images, THE catalog SHALL display them with the same reliability as the inventory page
