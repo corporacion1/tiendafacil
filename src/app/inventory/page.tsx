@@ -72,19 +72,19 @@ const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewM
   return (
     <TableRow>
       <TableCell className="hidden sm:table-cell">
-        <div className="relative flex items-center justify-center w-10 h-10 bg-muted rounded-md overflow-hidden isolate">
+        <div className="relative flex items-center justify-center w-16 h-16 bg-muted rounded-lg overflow-hidden isolate shadow-sm">
           {imageUrl && !imageError ? (
             <Image
               src={imageUrl}
               alt={product.name}
               fill
-              sizes="40px"
-              className="object-cover"
+              sizes="64px"
+              className="object-cover hover:scale-105 transition-transform duration-200"
               data-ai-hint={product.imageHint}
               onError={() => setImageError(true)}
             />
           ) : (
-            <Package className="h-5 w-5 text-muted-foreground" />
+            <Package className="h-6 w-6 text-muted-foreground" />
           )}
         </div>
       </TableCell>
@@ -153,7 +153,7 @@ export default function InventoryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [productTypeFilter, setProductTypeFilter] = useState<'all' | 'product' | 'service'>('all');
-  
+
   // Estados para paginación
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
@@ -542,7 +542,7 @@ export default function InventoryPage() {
               <CardDescription>Administra y consulta tu inventario.</CardDescription>
             </div>
           </div>
-          
+
           {/* Filtros */}
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
             <div className="relative flex-1 max-w-sm">
@@ -555,7 +555,7 @@ export default function InventoryPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            
+
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <Select value={productTypeFilter} onValueChange={(value: 'all' | 'product' | 'service') => setProductTypeFilter(value)}>
@@ -576,7 +576,7 @@ export default function InventoryPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="hidden w-[64px] sm:table-cell">
+              <TableHead className="hidden w-[80px] sm:table-cell">
                 <span className="sr-only">Imagen</span>
               </TableHead>
               <TableHead>Nombre</TableHead>

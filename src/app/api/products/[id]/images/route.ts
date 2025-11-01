@@ -1,30 +1,24 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Product } from '@/models/Product';
-import { handleDatabaseError, validateRequiredFields, logDatabaseOperation } from '@/lib/db-error-handler';
-import { uploadMultipleImages, deleteImage } from '@/lib/supabase';
+import { handleDatabaseError, logDatabaseOperation } from '@/lib/db-error-handler';
 
-// Configuración para subida de archivos
-const UPLOAD_CONFIG = {
-  MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB
+// Configuración para MongoDB (base64)
+const MONGODB_CONFIG = {
+  MAX_FILE_SIZE: 2 * 1024 * 1024, // 2MB para base64
   ALLOWED_TYPES: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
-  THUMBNAIL_SIZE: 150,
-  COMPRESSED_MAX_WIDTH: 1200,
-  COMPRESSED_MAX_HEIGHT: 1200,
-  QUALITY: 85
+  MAX_IMAGES: 4
 };
 
-// Ya no necesitamos esta función, usaremos Supabase directamente
-
 /**
- * POST - Subir múltiples imágenes a un producto
+ * POST - Subir múltiples imágenes (versión MongoDB con base64)
  */
 export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    console.log('🚀 [API] POST /api/products/[id]/images iniciado');
+    console.log('🚀 [API] POST /api/products/[id]/images iniciado (MongoDB)');
     
     await connectToDatabase();
     
@@ -51,7 +45,7 @@ export async function POST(
     
     console.log('✅ [API] Producto encontrado:', product.name);
     
-    // MIGRACIÓN AUTOMÁTICA: Convertir producto de imagen única a múltiples imágenes
+    // Obtener imágenes actuales
     let currentImages = product.images || [];
     
     // Si no tiene array de imágenes pero sí tiene imageUrl, migrar automáticamente
@@ -65,117 +59,78 @@ export async function POST(
         alt: product.imageHint || product.name,
         order: 0,
         uploadedAt: new Date().toISOString(),
-        size: 0, // Tamaño desconocido para imágenes migradas
-        dimensions: {
-          width: 800,
-          height: 600
-        }
-        // No tiene supabasePath porque es una imagen legacy
+        size: 0,
+        dimensions: { width: 800, height: 600 }
       };
       
       currentImages = [migratedImage];
-      
-      // Actualizar el producto con la migración
-      await Product.findOneAndUpdate(
-        { id: productId, storeId },
-        { 
-          $set: { 
-            images: currentImages,
-            primaryImageIndex: 0
-          }
-        }
-      );
-      
       console.log('✅ [API] Producto migrado exitosamente');
     }
     
-    console.log('📊 [API] Imágenes actuales después de migración:', {
-      count: currentImages.length,
-      images: currentImages.map(img => ({ id: img.id, url: img.url }))
-    });
+    console.log('📊 [API] Imágenes actuales:', currentImages.length);
     
     // Obtener archivos del FormData
     const files = formData.getAll('images') as File[];
-    
-    console.log('📁 [API] Archivos recibidos:', {
-      count: files.length,
-      names: files.map(f => f.name),
-      sizes: files.map(f => f.size)
-    });
+    console.log('📁 [API] Archivos recibidos:', files.length);
     
     if (files.length === 0) {
       console.error('❌ [API] No se enviaron archivos');
       return NextResponse.json({ error: 'No se enviaron archivos' }, { status: 400 });
     }
     
-    // Validar archivos
-    for (const file of files) {
-      if (file.size > UPLOAD_CONFIG.MAX_FILE_SIZE) {
+    // Procesar archivos y convertir a base64
+    const processedImages = [];
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      console.log(`📷 [API] Procesando archivo ${i + 1}: ${file.name} (${file.size} bytes)`);
+      
+      // Validar tamaño (máximo 2MB para base64)
+      if (file.size > 2 * 1024 * 1024) {
+        console.warn(`⚠️ [API] Archivo muy grande: ${file.name}`);
         return NextResponse.json({ 
-          error: `Archivo ${file.name} es demasiado grande (máximo 5MB)` 
+          error: `Archivo ${file.name} es demasiado grande (máximo 2MB)` 
         }, { status: 400 });
       }
       
-      if (!UPLOAD_CONFIG.ALLOWED_TYPES.includes(file.type)) {
+      // Validar formato
+      if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
         return NextResponse.json({ 
           error: `Formato ${file.type} no soportado` 
         }, { status: 400 });
       }
+      
+      // Convertir a base64
+      const arrayBuffer = await file.arrayBuffer();
+      const base64 = Buffer.from(arrayBuffer).toString('base64');
+      const dataUrl = `data:${file.type};base64,${base64}`;
+      
+      const imageData = {
+        id: `img-${Date.now()}-${i}`,
+        url: dataUrl,
+        thumbnailUrl: dataUrl,
+        alt: file.name.replace(/\.[^/.]+$/, ''),
+        order: currentImages.length + i,
+        uploadedAt: new Date().toISOString(),
+        size: file.size,
+        dimensions: { width: 800, height: 600 }
+      };
+      
+      processedImages.push(imageData);
+      console.log(`✅ [API] Imagen procesada: ${file.name}`);
     }
     
-    // Subir archivos a Supabase
-    console.log('🔄 [API] Subiendo archivos a Supabase Storage');
-    
-    console.log('📊 [API] Estado actual:', {
-      currentImagesCount: currentImages.length,
-      newFilesCount: files.length
-    });
-    
-    let uploadedImages;
-    try {
-      uploadedImages = await uploadMultipleImages(files, productId, storeId);
-      console.log('✅ [API] Imágenes subidas a Supabase:', uploadedImages);
-    } catch (error) {
-      console.error('❌ [API] Error subiendo a Supabase:', error);
-      return NextResponse.json({ 
-        error: `Error subiendo imágenes: ${error instanceof Error ? error.message : 'Error desconocido'}` 
-      }, { status: 500 });
-    }
-    
-    // Crear objetos de imagen para la base de datos
-    const processedImages = uploadedImages.map((uploaded, index) => ({
-      id: `img-${Date.now()}-${index}`,
-      url: uploaded.url,
-      thumbnailUrl: uploaded.url, // Usar la misma URL por ahora
-      alt: uploaded.originalName.replace(/\.[^/.]+$/, ''), // Nombre sin extensión
-      order: currentImages.length + index,
-      uploadedAt: new Date().toISOString(),
-      size: files[index].size,
-      dimensions: {
-        width: 800, // Valores por defecto
-        height: 600
-      },
-      supabasePath: uploaded.path // Guardar el path para poder eliminar después
-    }));
-    
-    console.log('📝 [API] Datos de imágenes creados:', processedImages);
+    console.log('📝 [API] Imágenes procesadas:', processedImages.length);
     
     // Actualizar producto con nuevas imágenes
     const updatedImages = [...currentImages, ...processedImages];
-    console.log('🔄 [API] Imágenes combinadas:', {
-      previousCount: currentImages.length,
-      newCount: processedImages.length,
-      totalCount: updatedImages.length,
-      currentImages: currentImages.map(img => ({ id: img.id, url: img.url })),
-      processedImages: processedImages.map(img => ({ id: img.id, url: img.url })),
-      updatedImages: updatedImages.map(img => ({ id: img.id, url: img.url }))
-    });
+    console.log('🔄 [API] Total de imágenes:', updatedImages.length);
     
-    // Actualizar campos de compatibilidad si es la primera imagen
     const updateData: any = {
       images: updatedImages
     };
     
+    // Actualizar campos de compatibilidad si es la primera imagen
     if (currentImages.length === 0 && processedImages.length > 0) {
       updateData.imageUrl = processedImages[0].url;
       updateData.imageHint = processedImages[0].alt;
@@ -183,7 +138,7 @@ export async function POST(
       console.log('🔄 [API] Actualizando campos de compatibilidad');
     }
     
-    console.log('💾 [API] Actualizando producto en BD:', updateData);
+    console.log('💾 [API] Actualizando producto en BD...');
     
     const updatedProduct = await Product.findOneAndUpdate(
       { id: productId, storeId },
@@ -198,7 +153,7 @@ export async function POST(
     
     console.log('✅ [API] Producto actualizado exitosamente');
     
-    logDatabaseOperation('POST', 'product-images', { 
+    logDatabaseOperation('POST', 'product-images-mongodb', { 
       productId, 
       storeId, 
       imagesAdded: processedImages.length 
@@ -211,18 +166,13 @@ export async function POST(
       product: updatedProduct
     };
     
-    console.log('📤 [API] Enviando respuesta:', {
-      success: response.success,
-      imagesAdded: response.imagesAdded,
-      totalImages: response.totalImages,
-      productImages: updatedProduct?.images?.map(img => ({ id: img.id, url: img.url })) || []
-    });
+    console.log('📤 [API] Enviando respuesta exitosa');
     
     return NextResponse.json(response);
     
   } catch (error) {
-    console.error('Error en POST /api/products/[id]/images:', error);
-    return handleDatabaseError(error, 'POST product images');
+    console.error('❌ [API] Error:', error);
+    return handleDatabaseError(error, 'POST product images mongodb');
   }
 }
 
@@ -293,14 +243,14 @@ export async function PUT(
 }
 
 /**
- * DELETE - Eliminar una imagen específica de un producto
+ * DELETE - Eliminar una imagen específica de un producto (MongoDB)
  */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    console.log('🗑️ [API] DELETE imagen iniciado');
+    console.log('🗑️ [API] DELETE imagen iniciado (MongoDB)');
     
     await connectToDatabase();
     
@@ -331,20 +281,9 @@ export async function DELETE(
       return NextResponse.json({ error: 'Imagen no encontrada' }, { status: 404 });
     }
     
-    console.log('🖼️ [API] Imagen a eliminar:', imageToDelete);
+    console.log('🖼️ [API] Imagen a eliminar:', imageToDelete.id);
     
-    // Eliminar de Supabase si tiene supabasePath
-    if (imageToDelete.supabasePath) {
-      try {
-        console.log('🗑️ [API] Eliminando de Supabase:', imageToDelete.supabasePath);
-        await deleteImage(imageToDelete.supabasePath);
-        console.log('✅ [API] Imagen eliminada de Supabase');
-      } catch (supabaseError) {
-        console.error('❌ [API] Error eliminando de Supabase:', supabaseError);
-        // Continuar con la eliminación de la BD aunque falle Supabase
-      }
-    }
-    
+    // Filtrar la imagen eliminada y reordenar
     const filteredImages = currentImages
       .filter(img => img.id !== imageId)
       .map((img, index) => ({ ...img, order: index }));
@@ -370,7 +309,9 @@ export async function DELETE(
       { new: true, runValidators: true }
     );
     
-    logDatabaseOperation('DELETE', 'product-image', { 
+    console.log('✅ [API] Imagen eliminada exitosamente');
+    
+    logDatabaseOperation('DELETE', 'product-image-mongodb', { 
       productId, 
       storeId, 
       imageId 
@@ -382,6 +323,7 @@ export async function DELETE(
     });
     
   } catch (error) {
-    return handleDatabaseError(error, 'DELETE product image');
+    console.error('❌ [API] Error eliminando imagen:', error);
+    return handleDatabaseError(error, 'DELETE product image mongodb');
   }
 }

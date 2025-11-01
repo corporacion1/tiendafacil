@@ -3,6 +3,7 @@
  * Ejecutar con: node scripts/migrate-products-to-multiple-images.js
  */
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { MongoClient } = require('mongodb');
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/tiendafacil';

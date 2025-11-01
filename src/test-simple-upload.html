@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Simple - Múltiples Imágenes</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .form-group { margin: 15px 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, button { padding: 10px; margin: 5px 0; }
+        button { background: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .result { margin: 20px 0; padding: 15px; border: 1px solid #ddd; background: #f9f9f9; }
+        .error { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .success { background: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .log { font-family: monospace; font-size: 12px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Simple - Múltiples Imágenes</h1>
+        <p><strong>Este test NO modifica productos existentes.</strong> Solo prueba la funcionalidad.</p>
+        
+        <div class="form-group">
+            <label>1. Primero, obtengamos un producto existente:</label>
+            <input type="text" id="storeId" value="ST-1234567890123" placeholder="Store ID">
+            <button onclick="getProducts()">Obtener Productos</button>
+        </div>
+
+        <div id="productsList"></div>
+
+        <div class="form-group" id="uploadSection" style="display: none;">
+            <label>2. Selecciona imágenes pequeñas (máx 2MB cada una):</label>
+            <input type="file" id="images" multiple accept="image/*">
+            <button onclick="testUpload()">Probar Subida</button>
+        </div>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        let selectedProduct = null;
+
+        async function getProducts() {
+            const storeId = document.getElementById('storeId').value;
+            
+            try {
+                const response = await fetch(`/api/products?storeId=${storeId}`);
+                const products = await response.json();
+                
+                let html = '<h3>Productos encontrados:</h3>';
+                if (products.length > 0) {
+                    html += '<select id="productSelect" onchange="selectProduct()">';
+                    html += '<option value="">Selecciona un producto...</option>';
+                    products.forEach(product => {
+                        html += `<option value="${product.id}">${product.name} (${product.imageUrl ? 'Con imagen' : 'Sin imagen'})</option>`;
+                    });
+                    html += '</select>';
+                    
+                    document.getElementById('productsList').innerHTML = html;
+                } else {
+                    document.getElementById('productsList').innerHTML = '<p>No se encontraron productos.</p>';
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = `
+                    <div class="result error">
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function selectProduct() {
+            const select = document.getElementById('productSelect');
+            const productId = select.value;
+            
+            if (productId) {
+                selectedProduct = productId;
+                document.getElementById('uploadSection').style.display = 'block';
+                document.getElementById('result').innerHTML = `
+                    <div class="result">
+                        <strong>Producto seleccionado:</strong> ${select.options[select.selectedIndex].text}
+                        <br><strong>ID:</strong> ${productId}
+                    </div>
+                `;
+            }
+        }
+
+        async function testUpload() {
+            if (!selectedProduct) {
+                alert('Selecciona un producto primero');
+                return;
+            }
+
+            const files = document.getElementById('images').files;
+            const storeId = document.getElementById('storeId').value;
+            
+            if (files.length === 0) {
+                alert('Selecciona al menos una imagen');
+                return;
+            }
+
+            // Validar tamaño
+            for (let file of files) {
+                if (file.size > 2 * 1024 * 1024) {
+                    alert(`Archivo ${file.name} es muy grande (máx 2MB)`);
+                    return;
+                }
+            }
+
+            const formData = new FormData();
+            formData.append('storeId', storeId);
+            
+            for (let file of files) {
+                formData.append('images', file);
+            }
+
+            document.getElementById('result').innerHTML = `
+                <div class="result">
+                    <strong>Subiendo ${files.length} imagen(es)...</strong>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(`/api/products/${selectedProduct}/images`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.text();
+                
+                if (response.ok) {
+                    const data = JSON.parse(result);
+                    document.getElementById('result').innerHTML = `
+                        <div class="result success">
+                            <strong>✅ ¡Éxito!</strong><br>
+                            Imágenes agregadas: ${data.imagesAdded}<br>
+                            Total de imágenes: ${data.totalImages}<br>
+                            <div class="log">${JSON.stringify(data, null, 2)}</div>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('result').innerHTML = `
+                        <div class="result error">
+                            <strong>❌ Error (${response.status}):</strong><br>
+                            <div class="log">${result}</div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = `
+                    <div class="result error">
+                        <strong>❌ Error de conexión:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Cargar productos al inicio
+        window.onload = () => {
+            getProducts();
+        };
+    </script>
+</body>
+</html>

@@ -66,10 +66,24 @@ export function useProductImages(product: Product) {
  */
 export function useProductsImages(products: Product[]) {
   const productsWithImages = useMemo(() => {
-    return products.map(product => ({
-      ...product,
-      ...useProductImages(product)
-    }));
+    return products.map(product => {
+      const images = getAllProductImages(product);
+      const primaryImageUrl = getPrimaryImageUrl(product);
+      const primaryThumbnailUrl = getPrimaryThumbnailUrl(product);
+      const hasMultiple = hasMultipleImages(product);
+      const imageCount = getImageCount(product);
+      const isEmpty = images.length === 0;
+      
+      return {
+        ...product,
+        images,
+        primaryImageUrl,
+        primaryThumbnailUrl,
+        hasMultiple,
+        imageCount,
+        isEmpty
+      };
+    });
   }, [products]);
   
   const totalImages = useMemo(() => {

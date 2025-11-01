@@ -33,6 +33,7 @@ export {
  */
 export function getProductDisplayImageUrl(product: any): string {
   // Importar dinámicamente para evitar dependencias circulares
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { getPrimaryImageUrl } = require('./product-image-utils');
   const primaryUrl = getPrimaryImageUrl(product);
   return getDisplayImageUrl(primaryUrl);
@@ -42,6 +43,7 @@ export function getProductDisplayImageUrl(product: any): string {
  * Verifica si un producto tiene imagen para mostrar
  */
 export function hasProductImage(product: any): boolean {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { getImageCount } = require('./product-image-utils');
   return getImageCount(product) > 0;
 }
@@ -50,6 +52,7 @@ export function hasProductImage(product: any): boolean {
  * Obtiene información básica de imagen de un producto (compatibilidad)
  */
 export function getProductImageInfo(product: any) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { getAllProductImages, getPrimaryImageUrl, hasMultipleImages, getImageCount } = require('./product-image-utils');
   
   return {

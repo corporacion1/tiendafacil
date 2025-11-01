@@ -5,6 +5,7 @@ console.log('🔍 [DEBUG] Iniciando diagnóstico de múltiples imágenes...');
 
 // 1. Verificar que las utilidades están disponibles
 try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const utils = require('@/lib/product-image-utils');
   console.log('✅ [DEBUG] Utilidades de imagen disponibles:', Object.keys(utils));
 } catch (error) {

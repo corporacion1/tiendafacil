@@ -186,9 +186,9 @@ export function MultiImageUpload({
         status: 'processing' as const 
       })));
 
-      console.log('📤 [MultiImageUpload] Enviando request a:', `/api/products/${productId}/images-simple`);
+      console.log('📤 [MultiImageUpload] Enviando request a:', `/api/products/${productId}/images`);
 
-      const response = await fetch(`/api/products/${productId}/images-simple`, {
+      const response = await fetch(`/api/products/${productId}/images`, {
         method: 'POST',
         body: formData
       });
@@ -292,27 +292,35 @@ export function MultiImageUpload({
 
   // Eliminar imagen
   const handleRemoveImage = useCallback(async (imageId: string) => {
+    console.log('🗑️ [MultiImageUpload] Eliminando imagen:', imageId);
+    
     if (productId && activeStoreId) {
       // Eliminar del servidor
       try {
+        console.log('📤 [MultiImageUpload] Enviando DELETE a servidor');
         const response = await fetch(`/api/products/${productId}/images?imageId=${imageId}&storeId=${activeStoreId}`, {
           method: 'DELETE'
         });
 
         if (!response.ok) {
+          const errorText = await response.text();
+          console.error('❌ [MultiImageUpload] Error del servidor:', errorText);
           throw new Error('Error al eliminar imagen del servidor');
         }
 
         const result = await response.json();
+        console.log('✅ [MultiImageUpload] Imagen eliminada del servidor');
+        
         if (result.product && result.product.images) {
           onImagesChange(result.product.images);
         }
       } catch (error) {
-        console.error('Error eliminando imagen:', error);
+        console.error('❌ [MultiImageUpload] Error eliminando imagen:', error);
         onError('Error al eliminar la imagen del servidor.');
       }
     } else {
-      // Eliminar localmente
+      // Eliminar localmente (para productos nuevos)
+      console.log('🔄 [MultiImageUpload] Eliminando localmente');
       const updatedImages = existingImages
         .filter(img => img.id !== imageId)
         .map((img, index) => ({ ...img, order: index }));
@@ -491,36 +499,37 @@ export function MultiImageUpload({
             </h4>
           </div>
           
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {existingImages.map((image, index) => (
-              <Card key={image.id} className="relative group">
-                <CardContent className="p-2">
-                  <div className="aspect-square relative rounded-lg overflow-hidden bg-muted">
+              <Card key={image.id} className="relative group hover:shadow-lg transition-shadow">
+                <CardContent className="p-3">
+                  <div className="aspect-square relative rounded-xl overflow-hidden bg-muted shadow-sm">
                     <img
                       src={image.thumbnailUrl || image.url}
                       alt={image.alt || `Imagen ${index + 1}`}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
                     />
                     
                     {/* Indicador de imagen principal */}
                     {index === 0 && (
-                      <Badge className="absolute top-2 left-2 text-xs">
-                        Principal
+                      <Badge className="absolute top-3 left-3 text-xs bg-green-500 hover:bg-green-600 shadow-lg">
+                        ⭐ Principal
                       </Badge>
                     )}
                     
-                    {/* Controles de imagen */}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <div className="flex space-x-1">
+                    {/* Controles de imagen - Siempre visibles en móvil, hover en desktop */}
+                    <div className="absolute inset-0 bg-black/60 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <div className="flex flex-wrap gap-2 justify-center">
                         {/* Mover hacia arriba */}
                         {index > 0 && (
                           <Button
                             size="sm"
                             variant="secondary"
                             onClick={() => handleMoveImage(image.id, 'up')}
-                            className="h-8 w-8 p-0"
+                            className="h-10 w-10 p-0 shadow-lg"
+                            title="Mover arriba"
                           >
-                            <GripVertical className="w-3 h-3" />
+                            <GripVertical className="w-4 h-4" />
                           </Button>
                         )}
                         
@@ -530,9 +539,10 @@ export function MultiImageUpload({
                             size="sm"
                             variant="secondary"
                             onClick={() => handleMoveImage(image.id, 'down')}
-                            className="h-8 w-8 p-0"
+                            className="h-10 w-10 p-0 shadow-lg"
+                            title="Mover abajo"
                           >
-                            <GripVertical className="w-3 h-3" />
+                            <GripVertical className="w-4 h-4" />
                           </Button>
                         )}
                         
@@ -541,24 +551,26 @@ export function MultiImageUpload({
                           size="sm"
                           variant="destructive"
                           onClick={() => handleRemoveImage(image.id)}
-                          className="h-8 w-8 p-0"
+                          className="h-10 w-10 p-0 shadow-lg"
+                          title="Eliminar imagen"
                         >
-                          <X className="w-3 h-3" />
+                          <X className="w-4 h-4" />
                         </Button>
                       </div>
                     </div>
                   </div>
                   
                   {/* Información de la imagen */}
-                  <div className="mt-2 space-y-1">
-                    <p className="text-xs text-muted-foreground truncate">
+                  <div className="mt-3 space-y-2">
+                    <p className="text-sm font-medium text-gray-700 truncate">
                       {image.alt || `Imagen ${index + 1}`}
                     </p>
-                    {image.size && (
-                      <p className="text-xs text-muted-foreground">
-                        {formatFileSize(image.size)}
-                      </p>
-                    )}
+                    <div className="flex justify-between items-center text-xs text-muted-foreground">
+                      {image.size && (
+                        <span>{formatFileSize(image.size)}</span>
+                      )}
+                      <span>#{index + 1}</span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
