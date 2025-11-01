@@ -19,7 +19,29 @@ export async function GET(request: NextRequest) {
     logDatabaseOperation('GET', 'products', { storeId });
     const products = await Product.find({ storeId }).lean();
     
-    return NextResponse.json(products);
+    // CRÍTICO: Verificar que las imágenes base64 estén presentes en producción
+    const productsWithImages = products.map((product: any) => {
+      // Debug: Log si las imágenes están presentes o truncadas
+      if (product.images && product.images.length > 0) {
+        const firstImage = product.images[0];
+        if (firstImage && firstImage.url) {
+          const isBase64 = firstImage.url.startsWith('data:image');
+          const urlLength = firstImage.url.length;
+          if (isBase64 && urlLength < 100) {
+            console.warn(`⚠️ [Products API] Product ${product.name} has suspiciously short base64 (${urlLength} chars)`);
+          } else if (isBase64) {
+            console.log(`✅ [Products API] Product ${product.name} has valid base64 image (${urlLength} chars)`);
+          }
+        }
+      }
+      return product;
+    });
+    
+    // Log resumen
+    const productsWithImagesArray = productsWithImages.filter((p: any) => p.images && p.images.length > 0).length;
+    console.log(`📊 [Products API] Returning ${products.length} products, ${productsWithImagesArray} with images array`);
+    
+    return NextResponse.json(productsWithImages);
   } catch (error) {
     return handleDatabaseError(error, 'GET products');
   }

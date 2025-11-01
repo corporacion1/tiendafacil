@@ -58,14 +58,24 @@ const AdCard = ({ ad, onAdClick }: { ad: Ad; onAdClick: (ad: Ad) => void }) => {
       <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative">
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent z-10 rounded-t-2xl" />
         {ad.imageUrl ? (
-          <Image
-            src={ad.imageUrl}
-            alt={ad.name}
-            fill
-            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-            className="object-cover transition-transform duration-500 group-hover:scale-110 rounded-t-2xl"
-            data-ai-hint={ad.imageHint}
-          />
+          // Para imágenes base64, usar <img> nativo
+          ad.imageUrl.startsWith('data:image') ? (
+            <img
+              src={ad.imageUrl}
+              alt={ad.name}
+              className="object-cover transition-transform duration-500 group-hover:scale-110 rounded-t-2xl w-full h-full"
+              data-ai-hint={ad.imageHint}
+            />
+          ) : (
+            <Image
+              src={ad.imageUrl}
+              alt={ad.name}
+              fill
+              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+              className="object-cover transition-transform duration-500 group-hover:scale-110 rounded-t-2xl"
+              data-ai-hint={ad.imageHint}
+            />
+          )
         ) : (
           <div className="flex items-center justify-center h-full w-full bg-gradient-to-br from-muted/50 to-muted rounded-t-2xl">
             <Package className="w-16 h-16 text-muted-foreground" />
@@ -246,24 +256,44 @@ const CatalogProductCard = ({
       >
         <div className="absolute inset-0 bg-gradient-to-t from-blue-900/70 via-blue-900/10 to-transparent z-10 rounded-t-2xl" />
         {displayImageUrl && !imageError ? (
-          <Image
-            src={displayImageUrl}
-            alt={currentImage?.alt || product.name}
-            fill
-            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-            className="object-cover transition-transform duration-500 group-hover:scale-110 rounded-t-2xl"
-            data-ai-hint={currentImage?.alt || product.imageHint}
-            onLoad={() => handleImageLoad(displayImageUrl)}
-            onError={(e) => {
-              console.error(`❌ [CatalogCard] Image load error for ${product.name}:`, {
-                src: displayImageUrl,
-                currentImage,
-                error: e,
-                imageIndex: currentImageIndex
-              });
-              handleImageError(displayImageUrl, e);
-            }}
-          />
+          // Para imágenes base64, usar <img> nativo ya que Next.js Image no las optimiza correctamente
+          displayImageUrl.startsWith('data:image') ? (
+            <img
+              src={displayImageUrl}
+              alt={currentImage?.alt || product.name}
+              className="object-cover transition-transform duration-500 group-hover:scale-110 rounded-t-2xl w-full h-full"
+              data-ai-hint={currentImage?.alt || product.imageHint}
+              onLoad={() => handleImageLoad(displayImageUrl)}
+              onError={(e) => {
+                console.error(`❌ [CatalogCard] Base64 image load error for ${product.name}:`, {
+                  src: displayImageUrl.substring(0, 50) + '...',
+                  currentImage,
+                  error: e,
+                  imageIndex: currentImageIndex
+                });
+                handleImageError(displayImageUrl, e);
+              }}
+            />
+          ) : (
+            <Image
+              src={displayImageUrl}
+              alt={currentImage?.alt || product.name}
+              fill
+              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+              className="object-cover transition-transform duration-500 group-hover:scale-110 rounded-t-2xl"
+              data-ai-hint={currentImage?.alt || product.imageHint}
+              onLoad={() => handleImageLoad(displayImageUrl)}
+              onError={(e) => {
+                console.error(`❌ [CatalogCard] Image load error for ${product.name}:`, {
+                  src: displayImageUrl,
+                  currentImage,
+                  error: e,
+                  imageIndex: currentImageIndex
+                });
+                handleImageError(displayImageUrl, e);
+              }}
+            />
+          )
         ) : (
           <div className="flex items-center justify-center h-full w-full bg-gradient-to-br from-blue-50 to-green-50 rounded-t-2xl">
             <Package className="w-16 h-16 text-blue-400" />
@@ -2000,14 +2030,24 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
                         <div className="relative h-full w-full cursor-pointer group">
                           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent z-10" />
                           {ad.imageUrl ? (
-                            <Image
-                              src={ad.imageUrl}
-                              alt={ad.name}
-                              fill
-                              className="object-cover transition-transform duration-500 group-hover:scale-105"
-                              sizes="100vw"
-                              data-ai-hint={ad.imageHint}
-                            />
+                            // Para imágenes base64, usar <img> nativo
+                            ad.imageUrl.startsWith('data:image') ? (
+                              <img
+                                src={ad.imageUrl}
+                                alt={ad.name}
+                                className="object-cover transition-transform duration-500 group-hover:scale-105 w-full h-full"
+                                data-ai-hint={ad.imageHint}
+                              />
+                            ) : (
+                              <Image
+                                src={ad.imageUrl}
+                                alt={ad.name}
+                                fill
+                                className="object-cover transition-transform duration-500 group-hover:scale-105"
+                                sizes="100vw"
+                                data-ai-hint={ad.imageHint}
+                              />
+                            )
                           ) : (
                             <div className="flex items-center justify-center h-full w-full bg-gradient-to-br from-green-100 to-blue-100">
                               <Package className="w-20 h-20 text-green-500" />
@@ -2611,13 +2651,21 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
             {selectedAd && (
               <div className="space-y-4">
                 <div className="relative h-64 w-full">
-                  <Image
-                    src={selectedAd.imageUrl || '/placeholder.png'}
-                    alt={selectedAd.name}
-                    fill
-                    className="object-cover rounded-lg"
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                  />
+                  {selectedAd.imageUrl && selectedAd.imageUrl.startsWith('data:image') ? (
+                    <img
+                      src={selectedAd.imageUrl}
+                      alt={selectedAd.name}
+                      className="object-cover rounded-lg w-full h-full"
+                    />
+                  ) : (
+                    <Image
+                      src={selectedAd.imageUrl || '/placeholder.png'}
+                      alt={selectedAd.name}
+                      fill
+                      className="object-cover rounded-lg"
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                    />
+                  )}
                 </div>
                 <div className="flex justify-between items-center">
                   <div>

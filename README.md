@@ -4,7 +4,7 @@
 
 ![TiendaFácil Logo](public/tienda_facil_logo.svg)
 
-**Versión 1.10.23.1** | **Octubre 2025**
+**Versión 1.1.10.3** | **Noviembre 2025**
 
 *Sistema completo de Punto de Venta, Inventario y Comercio Electrónico*
 
@@ -42,6 +42,8 @@ Democratizar el acceso a tecnología comercial avanzada, permitiendo que cualqui
 - **Códigos de Barras**: Soporte completo para lectura y generación
 - **Alertas de Stock**: Notificaciones automáticas de productos bajos
 - **Movimientos Detallados**: Historial completo de entradas y salidas
+- **Galería Multi-Imágenes**: Sistema completo de gestión de múltiples imágenes por producto
+- **Stock Inicial Preciso**: Corrección automática de inventario al crear productos nuevos
 
 ### 🌐 **Catálogo Público Digital**
 - **Vitrina Online**: Catálogo público accesible 24/7
@@ -59,6 +61,7 @@ Democratizar el acceso a tecnología comercial avanzada, permitiendo que cualqui
 ### 🔐 **Seguridad y Control de Acceso**
 - **Sistema de Roles**: 6 niveles de acceso (Guest, User, Depositary, POS, Admin, SuperUser)
 - **Autenticación Robusta**: Sistema de login seguro con cambio automático de contexto
+- **Visibilidad de Contraseña**: Toggle para mostrar/ocultar contraseña en login y registro
 - **PIN de Seguridad**: Protección adicional para operaciones críticas
 - **Auditoría Completa**: Logs de todas las operaciones
 - **Validación de Contexto**: Verificación automática de permisos por tienda
@@ -78,9 +81,33 @@ Democratizar el acceso a tecnología comercial avanzada, permitiendo que cualqui
 - **Interfaz Intuitiva**: Botón de intercambio que muestra la moneda opuesta
 - **Actualización Automática**: Todos los precios se actualizan al cambiar moneda
 
-## 🚀 **Nuevas Características - Versión 1.10.23.1**
+## 🚀 **Nuevas Características - Versión 1.1.10.3**
 
 ### ✨ **Funcionalidades Recién Agregadas**
+
+#### 🖼️ **Sistema Multi-Imágenes para Productos**
+- **Galería de Imágenes**: Soporte completo para múltiples imágenes por producto
+- **Gestión Visual**: Interfaz intuitiva para agregar, reordenar y eliminar imágenes
+- **Vista Previa Avanzada**: Carrusel de imágenes con navegación fluida
+- **Imagen Principal**: Selección automática de la primera imagen como principal
+- **Optimización de Carga**: Lazy loading y compresión automática de imágenes
+- **Responsive Design**: Galería adaptativa para todos los dispositivos
+
+#### 🔐 **Funcionalidad de Mostrar/Ocultar Contraseña**
+- **Toggle Visual**: Botón con iconos Eye/EyeOff para alternar visibilidad
+- **Modal de Login**: Funcionalidad integrada en el formulario de inicio de sesión
+- **Modal de Registro**: Disponible también en el formulario de registro
+- **UX Mejorada**: Reducción de errores de entrada de contraseña
+- **Accesibilidad**: Navegación por teclado y estados de focus mejorados
+
+#### 📦 **Corrección de Inventario Inicial**
+- **Stock Inicial Preciso**: Corrección del cálculo de inventario al crear productos nuevos
+- **Movimientos Correctos**: Registro preciso de movimientos de inventario inicial
+- **Flujo Optimizado**: Creación de productos con stock 0 inicial y posterior ajuste
+- **Consistencia de Datos**: Eliminación de duplicación de stock en productos nuevos
+- **Historial Preciso**: Movimientos de inventario que reflejan correctamente los cambios
+
+### ✨ **Funcionalidades Anteriores**
 
 #### 👥 **Sistema Avanzado de Gestión de Usuarios**
 - **Promoción Automática de Usuarios**: Conversión de usuarios regulares a administradores con creación automática de tienda
@@ -194,7 +221,36 @@ npm run dev
 ### **5. Acceder a la Aplicación**
 Abrir [http://localhost:3000](http://localhost:3000) en tu navegador
 
-## 🎯 **Características Destacadas v1.10.23.1**
+## 🎯 **Características Destacadas v1.1.10.3**
+
+### 🖼️ **Sistema Multi-Imágenes Avanzado**
+La nueva funcionalidad de galería de imágenes revoluciona la presentación de productos:
+
+1. **Gestión Visual**: Interfaz drag-and-drop para reordenar imágenes
+2. **Vista Previa**: Carrusel interactivo con navegación por flechas y dots
+3. **Optimización**: Compresión automática y lazy loading para mejor rendimiento
+4. **Responsive**: Adaptación automática a diferentes tamaños de pantalla
+5. **Accesibilidad**: Navegación por teclado y lectores de pantalla
+
+### 🔐 **Mejora en Experiencia de Usuario**
+El sistema de contraseñas ahora es más amigable y seguro:
+
+- **Toggle Intuitivo**: Iconos Eye/EyeOff universalmente reconocidos
+- **Doble Implementación**: Disponible en login y registro
+- **Estado Persistente**: Mantiene la preferencia durante la sesión del modal
+- **Accesibilidad**: Compatible con navegación por teclado y lectores de pantalla
+- **Feedback Visual**: Hover effects y estados de focus mejorados
+
+### 📦 **Inventario Más Preciso**
+Corrección crítica en el manejo de stock inicial:
+
+- **Flujo Corregido**: Creación de productos con stock 0 inicial
+- **Movimientos Precisos**: Registro correcto del inventario inicial
+- **Eliminación de Duplicación**: No más stock duplicado en productos nuevos
+- **Consistencia**: Historial de movimientos que refleja la realidad
+- **Confiabilidad**: Sistema más robusto para el control de inventario
+
+## 🎯 **Características Destacadas Anteriores**
 
 ### 🚀 **Promoción Automática de Usuarios**
 La nueva funcionalidad permite a los super usuarios convertir usuarios regulares en administradores de tienda de manera automática:
@@ -273,9 +329,40 @@ docker run -p 3000:3000 tienda-facil
 | **Admin** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
 | **SuperUser** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
-## 🔄 **Changelog - Versión 1.10.23.1**
+## 🔄 **Changelog - Versión 1.1.10.3**
 
 ### ✨ **Nuevas Características**
+- **Sistema Multi-Imágenes**: Galería completa de imágenes para productos con gestión visual
+- **Carrusel de Imágenes**: Vista previa interactiva con navegación fluida
+- **Gestión de Galería**: Interfaz drag-and-drop para reordenar y eliminar imágenes
+- **Toggle de Contraseña**: Funcionalidad mostrar/ocultar en modales de login y registro
+- **Iconos Intuitivos**: Eye/EyeOff de Lucide React para mejor UX
+- **Optimización de Imágenes**: Lazy loading y compresión automática
+
+### 🐛 **Correcciones Críticas**
+- **Stock Inicial Duplicado**: Corregido problema de inventario duplicado al crear productos
+- **Flujo de Inventario**: Optimizado proceso de creación con stock inicial preciso
+- **Movimientos de Inventario**: Registro correcto de previousStock y newStock
+- **Consistencia de Datos**: Eliminación de discrepancias en historial de movimientos
+- **Cálculo de Stock**: Corrección en la lógica de MovementService para productos nuevos
+
+### ⚡ **Optimizaciones Técnicas**
+- **Rendimiento de Imágenes**: Carga optimizada con lazy loading
+- **Gestión de Estado**: Mejor manejo del estado de visibilidad de contraseña
+- **Flujo de Creación**: Proceso optimizado para productos con inventario inicial
+- **Validación de Datos**: Verificación mejorada de stock y movimientos
+- **Experiencia de Usuario**: Interfaces más fluidas y responsivas
+
+### 🎨 **Mejoras de Interfaz**
+- **Galería Visual**: Diseño elegante para múltiples imágenes de productos
+- **Navegación Intuitiva**: Controles claros para carrusel de imágenes
+- **Botones de Contraseña**: Posicionamiento y estilo mejorados
+- **Feedback Visual**: Indicadores claros de estado y acciones disponibles
+- **Responsive Design**: Adaptación perfecta a todos los dispositivos
+
+### 📋 **Changelog Anterior - Versión 1.10.23.1**
+
+#### ✨ **Características Anteriores**
 - **Sistema de Promoción de Usuarios**: Conversión automática de usuarios a administradores con creación de tienda
 - **Modal de Promoción Inteligente**: Interfaz completa con validación y datos pre-llenados
 - **Creación Automática de Tiendas**: Seeding completo con datos iniciales y cambio de contexto
@@ -286,30 +373,6 @@ docker run -p 3000:3000 tienda-facil
 - **Módulo de Administración de Tiendas**: Panel completo para super usuarios
 - **Botón Flotante de Solicitud**: Sistema de registro integrado con estilo mejorado
 - **Modo Visor Automático**: Scroll automático del catálogo
-
-### 🐛 **Correcciones Críticas**
-- **Errores de Compilación**: Corregidos todos los errores de TypeScript para build exitoso
-- **Tipos de Usuario**: Solucionado rol 'seller' → 'pos' para consistencia de tipos
-- **Contexto de Autenticación**: Mejorado flujo de login y cambio de tienda automático
-- **Símbolos de Moneda**: Corregidos precios hardcodeados en carrito y pedidos
-- **Validación de Contexto**: Verificación automática de tienda activa vs usuario
-- **API de Login**: Incluido campo `storeRequest` en respuesta para sincronización
-- **Visibilidad de Botones**: Control basado en roles y estado de solicitud
-
-### ⚡ **Optimizaciones Técnicas**
-- **Compilación Exitosa**: Build completo sin errores de TypeScript
-- **Flujo de Autenticación**: Login optimizado con cambio automático de contexto
-- **Gestión de Estado**: Sincronización mejorada entre contextos de auth y settings
-- **UX de Monedas**: Interfaz más intuitiva para cambio de moneda activa
-- **Rendimiento**: Eliminación de bucles infinitos y memory leaks
-- **Estabilidad**: Sistema más robusto y confiable para producción
-
-### 🎨 **Mejoras de Interfaz**
-- **Botón de Solicitud**: Gradiente naranja distintivo y mejor visibilidad
-- **Icono de Moneda**: ArrowLeftRight más intuitivo que DollarSign
-- **Tooltip Informativo**: Información clara sobre cambio de moneda disponible
-- **Modal de Promoción**: Diseño elegante con validación en tiempo real
-- **Feedback Visual**: Indicadores claros de estado y acciones disponibles
 
 ## 🤝 **Contribución**
 
@@ -347,7 +410,7 @@ Este proyecto es propiedad de **Corporación 1 Plus, C.A.** y está protegido po
 
 <div align="center">
 
-**🚀 TiendaFácil v1.1.10.2 - Impulsando el Comercio Digital**
+**🚀 TiendaFácil v1.1.10.3 - Impulsando el Comercio Digital**
 
 *Desarrollado con ❤️ por Corporación 1 Plus, C.A.*
 

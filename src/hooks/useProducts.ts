@@ -64,30 +64,47 @@ export const useProducts = (storeId?: string): UseProductsReturn => {
       console.log('📦 [Products] Products fetched:', data.length);
       
       // Asegurar que los productos tienen la estructura correcta
-      const formattedProducts: Product[] = Array.isArray(data) ? data.map(product => ({
-        id: product.id,
-        name: product.name,
-        sku: product.sku,
-        barcode: product.barcode,
-        stock: product.stock,
-        price: product.price,
-        wholesalePrice: product.wholesalePrice,
-        cost: product.cost,
-        status: product.status,
-        tax1: product.tax1,
-        tax2: product.tax2,
-        unit: product.unit,
-        family: product.family,
-        warehouse: product.warehouse,
-        description: product.description,
-        imageUrl: product.imageUrl,
-        imageHint: product.imageHint,
-        createdAt: product.createdAt,
-        storeId: product.storeId,
-        // Nuevos campos con valores por defecto para compatibilidad
-        type: product.type || 'product',
-        affectsInventory: product.affectsInventory !== undefined ? product.affectsInventory : true
-      })) : [];
+      const formattedProducts: Product[] = Array.isArray(data) ? data.map(product => {
+        // CRÍTICO: Incluir todas las propiedades del producto, especialmente images
+        const formatted: Product = {
+          id: product.id,
+          name: product.name,
+          sku: product.sku,
+          barcode: product.barcode,
+          stock: product.stock || 0,
+          price: product.price || 0,
+          wholesalePrice: product.wholesalePrice,
+          cost: product.cost,
+          status: product.status || 'active',
+          tax1: product.tax1 || false,
+          tax2: product.tax2 || false,
+          unit: product.unit,
+          family: product.family,
+          warehouse: product.warehouse,
+          description: product.description,
+          imageUrl: product.imageUrl,
+          imageHint: product.imageHint,
+          createdAt: product.createdAt || new Date().toISOString(),
+          storeId: product.storeId,
+          // CRÍTICO: Incluir images array y primaryImageIndex - estos campos son esenciales
+          images: product.images || [],
+          primaryImageIndex: product.primaryImageIndex !== undefined ? product.primaryImageIndex : 0,
+          // Nuevos campos con valores por defecto para compatibilidad
+          type: product.type || 'product',
+          affectsInventory: product.affectsInventory !== undefined ? product.affectsInventory : true
+        };
+
+        // Debug: Verificar si las imágenes están presentes
+        if (formatted.images && formatted.images.length > 0) {
+          console.log(`✅ [Products] Product ${formatted.name} has ${formatted.images.length} images`);
+        } else if (formatted.imageUrl) {
+          console.log(`⚠️ [Products] Product ${formatted.name} has legacy imageUrl but no images array`);
+        } else {
+          console.log(`❌ [Products] Product ${formatted.name} has NO images`);
+        }
+
+        return formatted;
+      }) : [];
 
       // Solo actualizar si hay cambios reales
       setProducts(prevProducts => {
