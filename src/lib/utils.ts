@@ -6,9 +6,8 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const getDisplayImageUrl = (url?: string): string => {
-  // Debug logging para investigar problemas de URL
-  const DEBUG_URLS = process.env.NODE_ENV === 'development' || 
-                     (typeof window !== 'undefined' && window.location.search.includes('debug=urls'));
+  // Debug logging para investigar problemas de URL - REDUCIDO para evitar spam
+  const DEBUG_URLS = typeof window !== 'undefined' && window.location.search.includes('debug=urls');
   
   if (DEBUG_URLS) {
     console.log(`🔗 [getDisplayImageUrl] Input URL: ${url}`);
@@ -114,8 +113,7 @@ export function hasProductImage(product: any): boolean {
 export function validateAndFixImageUrl(url: string): string {
   if (!url) return '';
   
-  const DEBUG_URLS = process.env.NODE_ENV === 'development' || 
-                     (typeof window !== 'undefined' && window.location.search.includes('debug=urls'));
+  const DEBUG_URLS = typeof window !== 'undefined' && window.location.search.includes('debug=urls');
   
   // Detectar ambiente
   const isProduction = typeof window !== 'undefined' && 

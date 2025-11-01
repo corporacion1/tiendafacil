@@ -1,11 +1,10 @@
 import { Product, ProductImage } from './types';
 
-// Flag para habilitar/deshabilitar logging de debug
-const DEBUG_IMAGES = process.env.NODE_ENV === 'development' || 
-                     (typeof window !== 'undefined' && window.location.search.includes('debug=images'));
+// Flag para habilitar/deshabilitar logging de debug - REDUCIDO para evitar spam
+const DEBUG_IMAGES = typeof window !== 'undefined' && window.location.search.includes('debug=images');
 
 /**
- * Log de debug para utilidades de imágenes
+ * Log de debug para utilidades de imágenes - REDUCIDO
  */
 function debugLog(message: string, data?: any) {
   if (DEBUG_IMAGES) {
