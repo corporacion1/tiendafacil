@@ -329,6 +329,54 @@ export function MultiImageUpload({
     }
   }, [existingImages, onImagesChange, productId, activeStoreId, onError]);
 
+  // Establecer imagen como principal
+  const handleSetAsPrimary = useCallback(async (imageId: string) => {
+    console.log('⭐ [MultiImageUpload] Estableciendo como principal:', imageId);
+    
+    const imageIndex = existingImages.findIndex(img => img.id === imageId);
+    if (imageIndex === -1 || imageIndex === 0) return; // Ya es principal o no existe
+
+    // Mover la imagen al primer lugar
+    const updatedImages = [...existingImages];
+    const [imageToMove] = updatedImages.splice(imageIndex, 1);
+    updatedImages.unshift(imageToMove);
+    
+    // Actualizar orden
+    const reorderedImages = updatedImages.map((img, index) => ({ ...img, order: index }));
+    
+    if (productId && activeStoreId) {
+      // Actualizar en el servidor
+      try {
+        const imageIds = reorderedImages.map(img => img.id);
+        const response = await fetch(`/api/products/${productId}/images`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            imageIds,
+            storeId: activeStoreId
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Error al establecer imagen principal en el servidor');
+        }
+
+        const result = await response.json();
+        if (result.product && result.product.images) {
+          onImagesChange(result.product.images);
+        }
+      } catch (error) {
+        console.error('Error estableciendo imagen principal:', error);
+        onError('Error al establecer la imagen principal en el servidor.');
+      }
+    } else {
+      // Actualizar localmente
+      onImagesChange(reorderedImages);
+    }
+  }, [existingImages, onImagesChange, productId, activeStoreId, onError]);
+
   // Reordenar imágenes (simplificado para MVP)
   const handleMoveImage = useCallback(async (imageId: string, direction: 'up' | 'down') => {
     const currentIndex = existingImages.findIndex(img => img.id === imageId);
@@ -377,7 +425,7 @@ export function MultiImageUpload({
   }, [existingImages, onImagesChange, productId, activeStoreId, onError]);
 
   return (
-    <div className={cn("space-y-4", className)}>
+    <div className={cn("space-y-4 w-full max-w-full overflow-hidden", className)}>
       {/* Área de subida */}
       {canAddMore && (
         <div
@@ -492,18 +540,18 @@ export function MultiImageUpload({
 
       {/* Lista de imágenes existentes */}
       {existingImages.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-2 w-full max-w-full">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-medium">
               Imágenes del producto ({existingImages.length}/{maxImages})
             </h4>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-full">
             {existingImages.map((image, index) => (
-              <Card key={image.id} className="relative group hover:shadow-lg transition-shadow">
+              <Card key={image.id} className="relative group hover:shadow-lg transition-shadow w-full">
                 <CardContent className="p-3">
-                  <div className="aspect-square relative rounded-xl overflow-hidden bg-muted shadow-sm">
+                  <div className="aspect-square relative rounded-lg overflow-hidden bg-muted shadow-sm max-h-[180px] w-full">
                     <img
                       src={image.thumbnailUrl || image.url}
                       alt={image.alt || `Imagen ${index + 1}`}
@@ -518,51 +566,67 @@ export function MultiImageUpload({
                     )}
                     
                     {/* Controles de imagen - Siempre visibles en móvil, hover en desktop */}
-                    <div className="absolute inset-0 bg-black/60 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <div className="flex flex-wrap gap-2 justify-center">
-                        {/* Mover hacia arriba */}
-                        {index > 0 && (
+                    <div className="absolute inset-0 bg-black/50 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2">
+                      <div className="flex flex-col gap-1 items-center w-full">
+                        {/* Fila superior: Establecer como principal */}
+                        {index !== 0 && (
                           <Button
                             size="sm"
-                            variant="secondary"
-                            onClick={() => handleMoveImage(image.id, 'up')}
-                            className="h-10 w-10 p-0 shadow-lg"
-                            title="Mover arriba"
+                            variant="default"
+                            onClick={() => handleSetAsPrimary(image.id)}
+                            className="h-8 px-2 text-xs shadow-lg bg-green-600 hover:bg-green-700 text-white w-full max-w-[120px]"
+                            title="Establecer como principal"
                           >
-                            <GripVertical className="w-4 h-4" />
+                            ⭐ Principal
                           </Button>
                         )}
                         
-                        {/* Mover hacia abajo */}
-                        {index < existingImages.length - 1 && (
+                        {/* Fila inferior: Controles de orden y eliminar */}
+                        <div className="flex gap-1 justify-center">
+                          {/* Mover hacia arriba */}
+                          {index > 0 && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => handleMoveImage(image.id, 'up')}
+                              className="h-8 w-8 p-0 shadow-lg text-xs"
+                              title="Mover arriba"
+                            >
+                              ↑
+                            </Button>
+                          )}
+                          
+                          {/* Mover hacia abajo */}
+                          {index < existingImages.length - 1 && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => handleMoveImage(image.id, 'down')}
+                              className="h-8 w-8 p-0 shadow-lg text-xs"
+                              title="Mover abajo"
+                            >
+                              ↓
+                            </Button>
+                          )}
+                          
+                          {/* Eliminar */}
                           <Button
                             size="sm"
-                            variant="secondary"
-                            onClick={() => handleMoveImage(image.id, 'down')}
-                            className="h-10 w-10 p-0 shadow-lg"
-                            title="Mover abajo"
+                            variant="destructive"
+                            onClick={() => handleRemoveImage(image.id)}
+                            className="h-8 w-8 p-0 shadow-lg"
+                            title="Eliminar imagen"
                           >
-                            <GripVertical className="w-4 h-4" />
+                            <X className="w-3 h-3" />
                           </Button>
-                        )}
-                        
-                        {/* Eliminar */}
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleRemoveImage(image.id)}
-                          className="h-10 w-10 p-0 shadow-lg"
-                          title="Eliminar imagen"
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
                   
                   {/* Información de la imagen */}
-                  <div className="mt-3 space-y-2">
-                    <p className="text-sm font-medium text-gray-700 truncate">
+                  <div className="mt-2 space-y-1">
+                    <p className="text-xs font-medium text-gray-700 truncate">
                       {image.alt || `Imagen ${index + 1}`}
                     </p>
                     <div className="flex justify-between items-center text-xs text-muted-foreground">
