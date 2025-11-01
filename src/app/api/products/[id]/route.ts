@@ -8,12 +8,13 @@ import { handleDatabaseError, validateRequiredFields, logDatabaseOperation } fro
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectToDatabase();
     
-    const productId = params.id;
+    const resolvedParams = await params;
+    const productId = resolvedParams.id;
     const { searchParams } = new URL(request.url);
     const storeId = searchParams.get('storeId');
     
@@ -43,12 +44,13 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectToDatabase();
     
-    const productId = params.id;
+    const resolvedParams = await params;
+    const productId = resolvedParams.id;
     const data = await request.json();
     
     console.log('📥 [API] PUT producto:', { id: productId, storeId: data.storeId });
@@ -103,12 +105,13 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectToDatabase();
     
-    const productId = params.id;
+    const resolvedParams = await params;
+    const productId = resolvedParams.id;
     const { searchParams } = new URL(request.url);
     const storeId = searchParams.get('storeId');
     

@@ -161,7 +161,7 @@ export function DebugMultipleImagesTest() {
           
           // Mostrar detalles de las imágenes
           if (updatedProduct.images && updatedProduct.images.length > 0) {
-            updatedProduct.images.forEach((img, index) => {
+            updatedProduct.images.forEach((img: any, index: number) => {
               addTestResult(`   ${index + 1}. ${img.id} - ${img.alt || 'Sin alt'}`);
             });
           }

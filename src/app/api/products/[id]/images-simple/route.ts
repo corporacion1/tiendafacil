@@ -8,14 +8,15 @@ import { handleDatabaseError, logDatabaseOperation } from '@/lib/db-error-handle
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     console.log('🚀 [API-SIMPLE] POST /api/products/[id]/images-simple iniciado');
     
     await connectToDatabase();
     
-    const productId = params.id;
+    const resolvedParams = await params;
+    const productId = resolvedParams.id;
     console.log('📦 [API-SIMPLE] ProductId:', productId);
     
     const formData = await request.formData();

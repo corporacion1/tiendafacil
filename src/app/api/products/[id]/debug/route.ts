@@ -7,12 +7,13 @@ import { Product } from '@/models/Product';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectToDatabase();
     
-    const productId = params.id;
+    const resolvedParams = await params;
+    const productId = resolvedParams.id;
     const { searchParams } = new URL(request.url);
     const storeId = searchParams.get('storeId');
     
@@ -44,7 +45,7 @@ export async function GET(
       primaryImageIndex: product.primaryImageIndex,
       
       // Detalles de cada imagen
-      images: product.images?.map((img, index) => ({
+      images: product.images?.map((img: any, index: number) => ({
         index,
         id: img.id,
         url: img.url,

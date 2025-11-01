@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     });
     
     // Actualizar producto
-    const updateData = {
+    const updateData: any = {
       images: allImages,
       primaryImageIndex: 0
     };

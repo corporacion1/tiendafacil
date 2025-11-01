@@ -15,14 +15,15 @@ const MONGODB_CONFIG = {
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     console.log('🚀 [API] POST /api/products/[id]/images iniciado (MongoDB)');
     
     await connectToDatabase();
     
-    const productId = params.id;
+    const resolvedParams = await params;
+    const productId = resolvedParams.id;
     console.log('📦 [API] ProductId:', productId);
     
     const formData = await request.formData();
@@ -181,12 +182,13 @@ export async function POST(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectToDatabase();
     
-    const productId = params.id;
+    const resolvedParams = await params;
+    const productId = resolvedParams.id;
     const { imageIds, storeId } = await request.json();
     
     if (!storeId || !Array.isArray(imageIds)) {
@@ -205,7 +207,7 @@ export async function PUT(
     
     // Reordenar imágenes según el nuevo orden
     const reorderedImages = imageIds
-      .map(id => currentImages.find(img => img.id === id))
+      .map(id => currentImages.find((img: any) => img.id === id))
       .filter(img => img !== undefined)
       .map((img, index) => ({ ...img, order: index }));
     
@@ -247,14 +249,15 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     console.log('🗑️ [API] DELETE imagen iniciado (MongoDB)');
     
     await connectToDatabase();
     
-    const productId = params.id;
+    const resolvedParams = await params;
+    const productId = resolvedParams.id;
     const { searchParams } = new URL(request.url);
     const imageId = searchParams.get('imageId');
     const storeId = searchParams.get('storeId');
@@ -276,7 +279,7 @@ export async function DELETE(
     const currentImages = product.images || [];
     
     // Encontrar la imagen a eliminar
-    const imageToDelete = currentImages.find(img => img.id === imageId);
+    const imageToDelete = currentImages.find((img: any) => img.id === imageId);
     if (!imageToDelete) {
       return NextResponse.json({ error: 'Imagen no encontrada' }, { status: 404 });
     }
@@ -285,8 +288,8 @@ export async function DELETE(
     
     // Filtrar la imagen eliminada y reordenar
     const filteredImages = currentImages
-      .filter(img => img.id !== imageId)
-      .map((img, index) => ({ ...img, order: index }));
+      .filter((img: any) => img.id !== imageId)
+      .map((img: any, index: number) => ({ ...img, order: index }));
     
     // Actualizar campos de compatibilidad
     const updateData: any = {

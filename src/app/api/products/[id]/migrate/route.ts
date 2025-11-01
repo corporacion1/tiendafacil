@@ -7,12 +7,13 @@ import { Product } from '@/models/Product';
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectToDatabase();
     
-    const productId = params.id;
+    const resolvedParams = await params;
+    const productId = resolvedParams.id;
     const { storeId } = await request.json();
     
     console.log('🔄 [Migrate] Iniciando migración del producto:', { productId, storeId });

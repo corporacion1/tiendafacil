@@ -147,14 +147,20 @@ export async function GET(request: NextRequest) {
     // Contar productos sin imágenes
     const withoutImages = await Product.countDocuments({
       storeId,
-      $or: [
-        { imageUrl: { $exists: false } },
-        { imageUrl: '' },
-        { imageUrl: null }
-      ],
-      $or: [
-        { images: { $exists: false } },
-        { images: { $size: 0 } }
+      $and: [
+        {
+          $or: [
+            { imageUrl: { $exists: false } },
+            { imageUrl: '' },
+            { imageUrl: null }
+          ]
+        },
+        {
+          $or: [
+            { images: { $exists: false } },
+            { images: { $size: 0 } }
+          ]
+        }
       ]
     });
     
