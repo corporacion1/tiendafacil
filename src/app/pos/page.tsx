@@ -715,7 +715,36 @@ export default function POSPage() {
 
   const handleScanError = (error: any) => {
     console.error('Scanner error:', error);
-    setScannerError('Error al acceder a la cámara. Verifica los permisos.');
+    let errorMessage = 'Error al acceder a la cámara. Verifica los permisos.';
+
+    if (error && error.name) {
+      switch (error.name) {
+        case 'NotAllowedError':
+        case 'PermissionDeniedError':
+          errorMessage = 'Permiso de cámara denegado. Por favor, concede acceso a la cámara en la configuración de tu navegador o dispositivo.';
+          break;
+        case 'NotFoundError':
+          errorMessage = 'No se encontró ninguna cámara. Asegúrate de que tu dispositivo tenga una cámara disponible y conectada.';
+          break;
+        case 'NotReadableError':
+        case 'TrackStartError':
+          errorMessage = 'La cámara está en uso o no se puede acceder a ella. Cierra otras aplicaciones que puedan estar usando la cámara.';
+          break;
+        case 'OverconstrainedError':
+          errorMessage = 'La cámara no cumple con los requisitos solicitados (resolución, etc.).';
+          break;
+        case 'SecurityError':
+          errorMessage = 'El acceso a la cámara está bloqueado por razones de seguridad (por ejemplo, la página no se sirve a través de HTTPS).';
+          break;
+        case 'AbortError':
+          errorMessage = 'El acceso a la cámara fue abortado.';
+          break;
+        default:
+          errorMessage = `Error desconocido de la cámara: ${error.message || error.name}.`;
+          break;
+      }
+    }
+    setScannerError(errorMessage);
   };
 
   const updateQuantity = (productId: string, price: number, newQuantity: number) => {
