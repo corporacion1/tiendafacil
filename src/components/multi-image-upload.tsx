@@ -571,6 +571,7 @@ export function MultiImageUpload({
                         {/* Fila superior: Establecer como principal */}
                         {index !== 0 && (
                           <Button
+                            type="button"
                             size="sm"
                             variant="default"
                             onClick={() => handleSetAsPrimary(image.id)}
@@ -586,6 +587,7 @@ export function MultiImageUpload({
                           {/* Mover hacia arriba */}
                           {index > 0 && (
                             <Button
+                              type="button"
                               size="sm"
                               variant="secondary"
                               onClick={() => handleMoveImage(image.id, 'up')}
@@ -599,6 +601,7 @@ export function MultiImageUpload({
                           {/* Mover hacia abajo */}
                           {index < existingImages.length - 1 && (
                             <Button
+                              type="button"
                               size="sm"
                               variant="secondary"
                               onClick={() => handleMoveImage(image.id, 'down')}
@@ -611,6 +614,7 @@ export function MultiImageUpload({
                           
                           {/* Eliminar */}
                           <Button
+                            type="button"
                             size="sm"
                             variant="destructive"
                             onClick={() => handleRemoveImage(image.id)}

@@ -166,6 +166,8 @@ export type Sale = {
   paidAmount: number;
   payments: Payment[];
   storeId: string;
+  creditDays?: number;
+  creditDueDate?: string;
 };
 
 export type PurchaseItem = {

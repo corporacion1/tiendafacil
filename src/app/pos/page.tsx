@@ -18,6 +18,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
@@ -204,6 +205,8 @@ export default function POSPage() {
 
   const [lastSale, setLastSale] = useState<Sale | null>(null);
   const [ticketType, setTicketType] = useState<'sale' | 'quote'>('sale');
+  const [isCreditSale, setIsCreditSale] = useState(false);
+  const [creditDays, setCreditDays] = useState(7);
 
   // Estados del scanner
   const [showScanner, setShowScanner] = useState(false);
@@ -1022,9 +1025,9 @@ export default function POSPage() {
       return;
     }
 
-    const isCreditSale = remainingBalance > 0;
+    const isCredit = remainingBalance > 0 && isCreditSale;
 
-    if (isCreditSale && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone)) {
+    if (isCredit && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone)) {
       toast({ variant: "destructive", title: "Cliente no válido para crédito", description: "Para guardar como crédito, debe seleccionar un cliente debidamente registrado" });
       return;
     }
@@ -1048,12 +1051,16 @@ export default function POSPage() {
       })),
       total: total,
       date: new Date().toISOString(),
-      transactionType: isCreditSale ? 'credito' : 'contado',
-      status: isCreditSale ? 'unpaid' : 'paid',
+      transactionType: isCredit ? 'credito' : 'contado',
+      status: isCredit ? 'unpaid' : 'paid',
       paidAmount: totalPaid,
       payments: finalPayments,
       storeId: activeStoreId,
-      userId: (userProfile as any)?.id || 'system' // Agregar userId para movimientos
+      userId: (userProfile as any)?.id || 'system',
+      ...(isCredit && {
+        creditDays: creditDays,
+        creditDueDate: new Date(new Date().setDate(new Date().getDate() + creditDays)).toISOString(),
+      })
     } as any
 
     // --- SAVE TO DATABASE WITH AUTOMATIC MOVEMENT TRACKING ---
@@ -1511,6 +1518,20 @@ export default function POSPage() {
           (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase())))
       );
   }, [products, searchTerm, selectedFamily]);
+
+  useEffect(() => {
+    if (isProcessSaleDialogOpen) {
+      const lastCreditSale = sales
+        .filter(sale => sale.transactionType === 'credito' && sale.creditDays)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+
+      if (lastCreditSale && lastCreditSale.creditDays) {
+        setCreditDays(lastCreditSale.creditDays);
+      } else {
+        setCreditDays(7); // Fallback to 7 if no credit sales are found
+      }
+    }
+  }, [isProcessSaleDialogOpen, sales]);
 
   const isNewCustomerFormDirty = newCustomer.name.trim() !== '' || newCustomer.id.trim() !== '' || newCustomer.phone.trim() !== '' || newCustomer.address.trim() !== '';
 
@@ -2596,6 +2617,39 @@ export default function POSPage() {
                           >
                             <Plus className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" /> Agregar Pago
                           </Button>
+
+                          {remainingBalance > 0 && (
+                            <div className="space-y-2 pt-4">
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  id="credit-sale-switch"
+                                  checked={isCreditSale}
+                                  onCheckedChange={setIsCreditSale}
+                                  disabled={remainingBalance <= 0}
+                                />
+                                <Label htmlFor="credit-sale-switch">Cambiar Días de Crédito</Label>
+                              </div>
+
+                              {isCreditSale && (
+                                <div className="space-y-2 pl-8 pt-2">
+                                  <Label htmlFor="credit-days">Días de Crédito</Label>
+                                  <Input
+                                    id="credit-days"
+                                    type="number"
+                                    value={creditDays}
+                                    onChange={(e) => {
+                                      const days = Math.max(1, Math.min(30, Number(e.target.value)));
+                                      setCreditDays(days);
+                                    }}
+                                    min="1"
+                                    max="30"
+                                    className="h-8 sm:h-10 text-xs sm:text-sm"
+                                  />
+                                  <p className="text-xs text-muted-foreground">La venta se marcará como no pagada y se registrará el crédito.</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <div className="space-y-3 sm:space-y-4">
                           <h4 className="font-medium text-center md:text-left text-sm sm:text-base">Pagos Realizados</h4>
@@ -2637,7 +2691,7 @@ export default function POSPage() {
                       {remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone) && (
                         <div className="text-destructive text-xs sm:text-sm font-medium flex items-center gap-2 mt-3 p-2 bg-destructive/10 rounded-md">
                           <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                          <span className="text-xs sm:text-sm">Para guardar como crédito, debe seleccionar un cliente debidamente registrado</span>
+                          <span className="text-xs sm:text-sm">Para guardar como crédito a ({creditDays}) días, debe seleccionar un cliente debidamente registrado</span>
                         </div>
                       )}
                     </div>
@@ -2645,17 +2699,17 @@ export default function POSPage() {
                       <Button
                         variant="outline"
                         onClick={() => handleProcessSale(false)}
-                        disabled={remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone)}
+                        disabled={(remainingBalance > 0 && !isCreditSale) || (isCreditSale && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone))}
                         className="flex-1 h-8 sm:h-10 text-xs sm:text-sm"
                       >
                         <Check className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
-                        <span className="hidden sm:inline">{remainingBalance > 0 ? 'Guardar a Crédito' : 'Guardar'}</span>
+                        <span className="hidden sm:inline">{isCreditSale && remainingBalance > 0 ? 'Guardar a Crédito' : 'Guardar'}</span>
                         <span className="sm:hidden">Guardar</span>
                       </Button>
                       <Button
                         variant="secondary"
                         onClick={() => handleProcessSale(false, true)}
-                        disabled={remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone)}
+                        disabled={(remainingBalance > 0 && !isCreditSale) || (isCreditSale && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone))}
                         className="flex-1 h-8 sm:h-10 text-xs sm:text-sm"
                       >
                         <Share className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
@@ -2664,7 +2718,7 @@ export default function POSPage() {
                       </Button>
                       <Button
                         onClick={() => handleProcessSale(true)}
-                        disabled={remainingBalance > 0 && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone)}
+                        disabled={(remainingBalance > 0 && !isCreditSale) || (isCreditSale && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone))}
                         className="flex-1 h-8 sm:h-10 text-xs sm:text-sm"
                       >
                         <Printer className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />

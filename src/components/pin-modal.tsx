@@ -29,11 +29,13 @@ export function PinModal() {
           description: "El PIN que ingresaste es incorrecto. Inténtalo de nuevo.",
         });
       }
-    } catch (error) {
+    } catch (error) { // Especificar que error puede ser de tipo Error
+      const errorMessage = error instanceof Error ? error.message : "Ocurrió un error al verificar el PIN.";
+      console.error("PIN verification error:", error);
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Ocurrió un error al verificar el PIN.",
+        title: "Error de Verificación",
+        description: errorMessage,
       });
     }
     setPin('');

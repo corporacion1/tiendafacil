@@ -206,7 +206,12 @@ export default function InventoryPage() {
     });
 
     if (result) {
-      setProductToEdit(null);
+      // No cerrar el modal, en su lugar, actualizar los datos del producto en el modal
+      setProductToEdit(result);
+      toast({
+        title: "Producto Actualizado",
+        description: `El producto "${result.name}" ha sido actualizado.`,
+      });
       return true;
     }
     return false;

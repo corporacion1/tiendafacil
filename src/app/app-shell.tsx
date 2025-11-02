@@ -11,9 +11,11 @@ import { Footer } from '@/components/footer';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PinModal } from '@/components/pin-modal';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSecurity } from '@/contexts/security-context';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const { isPinLocked } = useSecurity();
   const pathname = usePathname();
   const router = useRouter();
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
@@ -69,6 +71,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // Renderiza layout completo para usuarios logueados
   return (
     <div className="flex min-h-screen w-full bg-muted/40">
+      {isPinLocked && !isPublicPage && <PinModal />} 
       <SiteSidebar isExpanded={isSidebarExpanded} />
       <div className={cn(
         "flex flex-1 flex-col transition-all duration-300",
