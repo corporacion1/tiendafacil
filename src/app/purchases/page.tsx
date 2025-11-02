@@ -380,7 +380,7 @@ export default function PurchasesPage() {
                             )} />
                         )}
                         <div className="absolute top-2 left-2 bg-secondary text-secondary-foreground text-xs font-bold px-2 py-1 rounded">
-                        Costo: {activeSymbol}{(product.cost * activeRate).toFixed(2)}
+                          {activeSymbol}{(product.cost * activeRate).toFixed(2)}
                         </div>
                     </CardContent>
                     <CardFooter className="p-2 bg-background/80 backdrop-blur-sm">
