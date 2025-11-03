@@ -18,8 +18,11 @@ export function ProductEditForm({ product, onSave }: ProductEditFormProps) {
 
   // Migrar automáticamente el producto al formato de múltiples imágenes si es necesario
   useEffect(() => {
-    const migratedProduct = migrateProductToMultipleImages(product);
-    setFormData(migratedProduct);
+    const migrate = async () => {
+        const migratedProduct = await migrateProductToMultipleImages(product);
+        setFormData(migratedProduct);
+    };
+    migrate();
   }, [product]);
 
   // Manejar cambios en las imágenes

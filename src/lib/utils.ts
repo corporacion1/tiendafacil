@@ -6,7 +6,6 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const getDisplayImageUrl = (url?: string): string => {
-  // Debug logging para investigar problemas de URL - REDUCIDO para evitar spam
   const DEBUG_URLS = typeof window !== 'undefined' && window.location.search.includes('debug=urls');
   
   if (DEBUG_URLS) {
@@ -17,52 +16,30 @@ export const getDisplayImageUrl = (url?: string): string => {
     if (DEBUG_URLS) {
       console.warn(`🔗 [getDisplayImageUrl] Empty URL provided`);
     }
-    return '';
-  }
-  
-  // Handle base64 images (our current storage method)
-  if (url.startsWith('data:image')) {
-    if (DEBUG_URLS) {
-      console.log(`🔗 [getDisplayImageUrl] Base64 image detected, returning as-is`);
-    }
-    // Base64 images can be used directly
-    return url;
+    return '/placeholder-image.jpg'; // Fallback to placeholder
   }
   
   let processedUrl = url;
   
-  // Handle legacy Dropbox URLs (if any still exist)
-  if (url.includes('dropbox.com')) {
-    processedUrl = url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '');
+  // Handle Supabase URLs (add token if missing)
+  if (processedUrl.includes(process.env.NEXT_PUBLIC_SUPABASE_URL as string) && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    if (!processedUrl.includes('token=')) {
+      processedUrl = `${processedUrl}?token=${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`;
+      if (DEBUG_URLS) {
+        console.log(`🔗 [getDisplayImageUrl] Supabase URL: added token`);
+      }
+    }
+  }
+  
+  // Validate format for external URLs
+  try {
+    new URL(processedUrl);
     if (DEBUG_URLS) {
-      console.log(`🔗 [getDisplayImageUrl] Legacy Dropbox URL transformed: ${url} → ${processedUrl}`);
+      console.log(`🔗 [getDisplayImageUrl] External URL validated: ${processedUrl}`);
     }
-  }
-  
-  // Handle legacy Supabase URLs (if any still exist)
-  if (url.includes('supabase')) {
-    try {
-      const urlObj = new URL(processedUrl);
-      if (DEBUG_URLS) {
-        console.log(`🔗 [getDisplayImageUrl] Legacy Supabase URL validated: ${processedUrl}`);
-      }
-    } catch (error) {
-      console.error(`🔗 [getDisplayImageUrl] Invalid legacy Supabase URL: ${processedUrl}`, error);
-      return '';
-    }
-  }
-  
-  // For non-base64 URLs, validate format
-  if (!url.startsWith('data:image')) {
-    try {
-      new URL(processedUrl);
-      if (DEBUG_URLS) {
-        console.log(`🔗 [getDisplayImageUrl] External URL validated: ${processedUrl}`);
-      }
-    } catch (error) {
-      console.error(`🔗 [getDisplayImageUrl] Invalid URL format: ${processedUrl}`, error);
-      return '';
-    }
+  } catch (error) {
+    console.error(`🔗 [getDisplayImageUrl] Invalid URL format: ${processedUrl}`, error);
+    return '/placeholder-image.jpg'; // Fallback to placeholder for invalid format
   }
   
   if (DEBUG_URLS) {
@@ -106,74 +83,44 @@ export function hasProductImage(product: any): boolean {
   return getImageCount(product) > 0;
 }
 
-/**
- * Valida y corrige URLs de imagen para diferentes entornos
- * Actualizado para el sistema de almacenamiento en DB (base64)
- */
-export function validateAndFixImageUrl(url: string): string {
-  if (!url) return '';
-  
+export function validateAndFixImageUrl(url: string | undefined): string {
   const DEBUG_URLS = typeof window !== 'undefined' && window.location.search.includes('debug=urls');
   
-  // Detectar ambiente
-  const isProduction = typeof window !== 'undefined' && 
-                      !['localhost', '127.0.0.1'].includes(window.location.hostname) &&
-                      !window.location.hostname.startsWith('192.168.');
-  
-  if (DEBUG_URLS) {
-    const urlPreview = url.startsWith('data:image') ? 
-      `data:image/... (${url.length} chars)` : url;
-    console.log(`🌍 [validateAndFixImageUrl] Environment: ${isProduction ? 'production' : 'local'}, URL: ${urlPreview}`);
-  }
-  
-  // Para imágenes base64, no necesitamos correcciones específicas del ambiente
-  if (url.startsWith('data:image')) {
-    // Validar que el base64 sea válido
-    try {
-      const parts = url.split(',');
-      if (parts.length !== 2) {
-        console.error(`🔗 [validateAndFixImageUrl] Invalid base64 format: missing comma separator`);
-        return '';
-      }
-      
-      const base64Data = parts[1];
-      if (!base64Data || base64Data.length < 100) {
-        console.error(`🔗 [validateAndFixImageUrl] Invalid base64 data: too short or empty`);
-        return '';
-      }
-      
-      if (DEBUG_URLS) {
-        console.log(`🔗 [validateAndFixImageUrl] Valid base64 image (${base64Data.length} chars)`);
-      }
-      
-      return url; // Base64 images are used as-is
-    } catch (error) {
-      console.error(`🔗 [validateAndFixImageUrl] Error validating base64 image:`, error);
-      return '';
+  if (!url) {
+    if (DEBUG_URLS) {
+      console.warn(`🔗 [validateAndFixImageUrl] Empty URL provided`);
     }
+    return '/placeholder-image.jpg'; // Fallback to placeholder
   }
   
-  // Para URLs legacy (si existen), aplicar correcciones
   let fixedUrl = url;
   
-  if (isProduction) {
-    // En producción, asegurar que las URLs legacy usen HTTPS
-    if ((url.includes('supabase') || url.includes('dropbox')) && url.startsWith('http:')) {
-      fixedUrl = url.replace('http:', 'https:');
+  // Handle Supabase URLs (add token if missing)
+  if (fixedUrl.includes(process.env.NEXT_PUBLIC_SUPABASE_URL as string) && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    if (!fixedUrl.includes('token=')) {
+      fixedUrl = `${fixedUrl}?token=${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`;
       if (DEBUG_URLS) {
-        console.log(`🔒 [validateAndFixImageUrl] Fixed HTTP to HTTPS: ${fixedUrl}`);
+        console.log(`🔗 [validateAndFixImageUrl] Supabase URL: added token`);
       }
     }
   }
   
-  // Aplicar transformaciones estándar
-  const displayUrl = getDisplayImageUrl(fixedUrl);
-  
-  if (DEBUG_URLS && displayUrl !== fixedUrl) {
-    console.log(`🔧 [validateAndFixImageUrl] Applied transformations: ${fixedUrl} → ${displayUrl}`);
+  // Validate format for external URLs
+  try {
+    new URL(fixedUrl);
+    if (DEBUG_URLS) {
+      console.log(`🔗 [validateAndFixImageUrl] External URL validated: ${fixedUrl}`);
+    }
+  } catch (error) {
+    console.error(`🔗 [validateAndFixImageUrl] Invalid URL format: ${fixedUrl}`, error);
+    return '/placeholder-image.jpg'; // Fallback to placeholder for invalid format
   }
   
-  return displayUrl;
+  if (DEBUG_URLS) {
+    console.log(`🔗 [validateAndFixImageUrl] Final URL: ${fixedUrl.substring(0, 50)}${fixedUrl.length > 50 ? '...' : ''}`);
+  }
+  
+  return fixedUrl;
 }
 
 /**

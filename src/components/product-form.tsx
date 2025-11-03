@@ -78,9 +78,7 @@ interface ProductFormProps {
 
 const getInitialValues = (product?: Product): ProductFormValues => {
     if (product) {
-        // Migrar automáticamente el producto al nuevo formato si es necesario
-        const migratedProduct = migrateProductToMultipleImages(product);
-        return { ...migratedProduct };
+        return { ...product, affectsInventory: product.type === 'product' };
     }
     
     return {
@@ -146,7 +144,15 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
   const displayUrl = useMemo(() => getDisplayImageUrl(watchedImageUrl), [watchedImageUrl]);
 
   useEffect(() => {
-    form.reset(getInitialValues(product));
+    if (product) {
+        const migrate = async () => {
+            const migratedProduct = await migrateProductToMultipleImages(product);
+            form.reset(migratedProduct);
+        };
+        migrate();
+    } else {
+        form.reset(getInitialValues());
+    }
   }, [product, form]);
 
   const handleSkuBlur = async (e: React.FocusEvent<HTMLInputElement>) => {

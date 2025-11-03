@@ -29,6 +29,16 @@ export default function Dashboard() {
   const { activeSymbol, activeRate, isLoadingSettings, activeStoreId, userProfile, sales, purchases, products } = useSettings()
   const { stats, loading: statsLoading } = useDashboardStats()
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week')
+
+  const productMap = useMemo(() => {
+    const map = new Map<string, Product>();
+    if (products) {
+        for (const product of products) {
+            map.set(product.id, product);
+        }
+    }
+    return map;
+  }, [products]);
   
   const isLoading = statsLoading || isLoadingSettings
 
@@ -82,19 +92,18 @@ export default function Dashboard() {
             dataByDate[dateKey] = { date: format(saleDate, dateFormat), sales: 0, profit: 0, unitsSold: 0, unitsPurchased: 0 }
         }
       
-        let costOfGoods = 0
-        let totalUnitsSold = 0
-        sale.items.forEach(item => {
-            const product = products?.find(p => p.id === item.productId)
+        const { costOfGoods, totalUnitsSold } = sale.items.reduce((acc, item) => {
+            const product = productMap.get(item.productId)
             if (product) {
-                costOfGoods += product.cost * item.quantity
+                acc.costOfGoods += product.cost * item.quantity
             }
-            totalUnitsSold += item.quantity
-        })
-      
-        dataByDate[dateKey].sales += sale.total
-        dataByDate[dateKey].profit += (sale.total - costOfGoods)
-        dataByDate[dateKey].unitsSold += totalUnitsSold
+            acc.totalUnitsSold += item.quantity
+            return acc;
+        }, { costOfGoods: 0, totalUnitsSold: 0 });
+
+        dataByDate[dateKey].sales += sale.total;
+        dataByDate[dateKey].profit += (sale.total - costOfGoods);
+        dataByDate[dateKey].unitsSold += totalUnitsSold;
     })
 
     filteredPurchases.forEach(purchase => {
@@ -105,12 +114,8 @@ export default function Dashboard() {
             dataByDate[dateKey] = { date: format(purchaseDate, dateFormat), sales: 0, profit: 0, unitsSold: 0, unitsPurchased: 0 }
         }
         
-        let totalUnitsPurchased = 0
-        purchase.items.forEach(item => {
-            totalUnitsPurchased += item.quantity
-        })
-        
-        dataByDate[dateKey].unitsPurchased += totalUnitsPurchased
+        const totalUnitsPurchased = purchase.items.reduce((acc, item) => acc + item.quantity, 0);
+        dataByDate[dateKey].unitsPurchased += totalUnitsPurchased;;
     })
     
     const sortedKeys = Object.keys(dataByDate).sort()
@@ -121,7 +126,7 @@ export default function Dashboard() {
         sales: parseFloat((d.sales * activeRate).toFixed(2)),
         profit: parseFloat((d.profit * activeRate).toFixed(2)),
     }))
-  }, [filteredSales, filteredPurchases, products, activeRate, timeFilter])
+  }, [filteredSales, filteredPurchases, productMap, activeRate, timeFilter])
 
   const getMovementLabel = (type: 'sale' | 'purchase' | 'adjustment') => {
     switch (type) {

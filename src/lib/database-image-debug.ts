@@ -7,8 +7,8 @@ export interface DatabaseImageDebugResult {
   productName: string;
   storeId: string;
   databaseData: {
-    hasLegacyImageUrl: boolean;
-    legacyImageUrl: string | undefined;
+    hasLegacyExternalUrl: boolean;
+    legacyExternalUrl: string | undefined;
     hasImagesArray: boolean;
     imagesArrayLength: number;
     primaryImageIndex: number | undefined;
@@ -41,8 +41,8 @@ export async function debugProductImagesInDatabase(productId: string, storeId: s
         productName: 'Unknown',
         storeId,
         databaseData: {
-          hasLegacyImageUrl: false,
-          legacyImageUrl: undefined,
+          hasLegacyExternalUrl: false,
+          legacyExternalUrl: undefined,
           hasImagesArray: false,
           imagesArrayLength: 0,
           primaryImageIndex: undefined,
@@ -57,8 +57,8 @@ export async function debugProductImagesInDatabase(productId: string, storeId: s
     console.log('📊 Database debug data:', debugData);
     
     const databaseData = {
-      hasLegacyImageUrl: !!debugData.imageUrl,
-      legacyImageUrl: debugData.imageUrl,
+      hasLegacyExternalUrl: !!debugData.imageUrl,
+      legacyExternalUrl: debugData.imageUrl,
       hasImagesArray: debugData.hasImagesArray,
       imagesArrayLength: debugData.imagesCount,
       primaryImageIndex: debugData.primaryImageIndex,
@@ -66,13 +66,13 @@ export async function debugProductImagesInDatabase(productId: string, storeId: s
     };
     
     // Análisis de problemas
-    if (!databaseData.hasImagesArray && !databaseData.hasLegacyImageUrl) {
-      issues.push('Product has no images in database (neither legacy imageUrl nor images array)');
+    if (!databaseData.hasImagesArray && !databaseData.hasLegacyExternalUrl) {
+      issues.push('Product has no images in database (neither legacy external URL nor images array)');
       recommendations.push('Add images to this product');
     }
     
-    if (databaseData.hasLegacyImageUrl && !databaseData.hasImagesArray) {
-      issues.push('Product still uses legacy imageUrl format');
+    if (databaseData.hasLegacyExternalUrl && !databaseData.hasImagesArray) {
+      issues.push('Product still uses legacy external URL format');
       recommendations.push('Migrate this product to use images array format');
     }
     
@@ -86,23 +86,20 @@ export async function debugProductImagesInDatabase(productId: string, storeId: s
       recommendations.push('Set primaryImageIndex for this product');
     }
     
-    // Validar URLs de imágenes (ahora esperamos base64)
+    // Validar URLs de imágenes (ahora esperamos URLs externas)
     for (let i = 0; i < databaseData.rawImagesData.length; i++) {
       const image = databaseData.rawImagesData[i];
       if (!image.url) {
         issues.push(`Image ${i} has no URL`);
-      } else if (!image.url.startsWith('data:image')) {
-        issues.push(`Image ${i} is not base64 encoded (expected format for DB storage)`);
-        recommendations.push('Images should be stored as base64 in database');
+      } else if (!(image.url.startsWith('http://') || image.url.startsWith('https://'))) {
+        issues.push(`Image ${i} is not an external URL (expected format for DB storage)`);
+        recommendations.push('Images should be stored as external URLs (e.g., Supabase) in database');
       } else {
-        // Validar que el base64 sea válido
+        // Basic URL validation
         try {
-          const base64Data = image.url.split(',')[1];
-          if (!base64Data || base64Data.length < 100) {
-            issues.push(`Image ${i} has invalid or too short base64 data`);
-          }
+          new URL(image.url);
         } catch (error) {
-          issues.push(`Image ${i} has malformed base64 data`);
+          issues.push(`Image ${i} has a malformed URL`);
         }
       }
     }
@@ -130,8 +127,8 @@ export async function debugProductImagesInDatabase(productId: string, storeId: s
       productName: 'Unknown',
       storeId,
       databaseData: {
-        hasLegacyImageUrl: false,
-        legacyImageUrl: undefined,
+        hasLegacyExternalUrl: false,
+        legacyExternalUrl: undefined,
         hasImagesArray: false,
         imagesArrayLength: 0,
         primaryImageIndex: undefined,
@@ -166,8 +163,8 @@ export async function compareDbWithFrontend(product: any, storeId: string): Prom
   const discrepancies: string[] = [];
   
   // Comparar datos
-  if (databaseResult.databaseData.hasLegacyImageUrl !== !!frontendData.imageUrl) {
-    discrepancies.push(`Legacy imageUrl mismatch: DB=${databaseResult.databaseData.hasLegacyImageUrl}, Frontend=${!!frontendData.imageUrl}`);
+  if (databaseResult.databaseData.hasLegacyExternalUrl !== !!frontendData.imageUrl) {
+    discrepancies.push(`Legacy imageUrl mismatch: DB=${databaseResult.databaseData.hasLegacyExternalUrl}, Frontend=${!!frontendData.imageUrl}`);
   }
   
   if (databaseResult.databaseData.imagesArrayLength !== frontendData.images.length) {
@@ -217,9 +214,9 @@ export async function debugMultipleProductsInDatabase(products: any[], storeId: 
   const summary = {
     totalProducts: results.length,
     productsWithIssues: results.filter(r => r.issues.length > 0).length,
-    productsWithLegacyImages: results.filter(r => r.databaseData.hasLegacyImageUrl && !r.databaseData.hasImagesArray).length,
+    productsWithLegacyImages: results.filter(r => r.databaseData.hasLegacyExternalUrl && !r.databaseData.hasImagesArray).length,
     productsWithMultipleImages: results.filter(r => r.databaseData.imagesArrayLength > 1).length,
-    productsWithoutImages: results.filter(r => !r.databaseData.hasLegacyImageUrl && !r.databaseData.hasImagesArray).length,
+    productsWithoutImages: results.filter(r => !r.databaseData.hasLegacyExternalUrl && !r.databaseData.hasImagesArray).length,
     commonIssues: [] as string[]
   };
   

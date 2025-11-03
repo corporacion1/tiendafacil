@@ -59,12 +59,12 @@ export function needsMigration(product: Product): boolean {
 /**
  * Migra un producto individual al nuevo formato
  */
-export function migrateProduct(product: Product): Product {
+export async function migrateProduct(product: Product): Promise<Product> {
   if (!needsMigration(product)) {
     return product;
   }
   
-  return migrateProductToMultipleImages(product);
+  return await migrateProductToMultipleImages(product);
 }
 
 /**
@@ -136,7 +136,7 @@ export async function migrateProducts(
             });
           }
           
-          const migratedProduct = migrateProduct(product);
+          const migratedProduct = await migrateProduct(product);
           
           // Guardar producto migrado si se proporciona callback
           if (onProductMigrated) {

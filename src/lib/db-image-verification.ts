@@ -9,14 +9,14 @@ export interface DbImageVerificationResult {
   verification: {
     hasImagesInDb: boolean;
     imageCount: number;
-    allImagesAreBase64: boolean;
+    allImagesAreExternal: boolean;
     imagesHaveValidFormat: boolean;
     primaryImageIndexValid: boolean;
   };
   imageDetails: Array<{
     index: number;
     id: string;
-    isBase64: boolean;
+    isExternalUrl: boolean;
     isValid: boolean;
     size: number;
     format: string;
@@ -35,7 +35,7 @@ export async function verifyImagesInDatabase(productId: string, storeId: string)
   const imageDetails: Array<{
     index: number;
     id: string;
-    isBase64: boolean;
+    isExternalUrl: boolean;
     isValid: boolean;
     size: number;
     format: string;
@@ -60,7 +60,7 @@ export async function verifyImagesInDatabase(productId: string, storeId: string)
         verification: {
           hasImagesInDb: false,
           imageCount: 0,
-          allImagesAreBase64: false,
+          allImagesAreExternal: false,
           imagesHaveValidFormat: false,
           primaryImageIndexValid: false
         },
@@ -83,9 +83,9 @@ export async function verifyImagesInDatabase(productId: string, storeId: string)
       recommendations.push('Add images to this product using the image upload functionality');
     }
     
-    let allImagesAreBase64 = true;
+    let allImagesAreExternal = true;
     let imagesHaveValidFormat = true;
-    
+
     // Verificar cada imagen
     if (productData.images) {
       for (let i = 0; i < productData.images.length; i++) {
@@ -93,7 +93,7 @@ export async function verifyImagesInDatabase(productId: string, storeId: string)
         const imageDetail = {
           index: i,
           id: image.id || `unknown-${i}`,
-          isBase64: false,
+          isExternalUrl: false,
           isValid: false,
           size: 0,
           format: 'unknown',
@@ -103,29 +103,16 @@ export async function verifyImagesInDatabase(productId: string, storeId: string)
         try {
           if (!image.url) {
             imageDetail.error = 'No URL provided';
-            allImagesAreBase64 = false;
+            allImagesAreExternal = false;
             imagesHaveValidFormat = false;
-          } else if (image.url.startsWith('data:image')) {
-            imageDetail.isBase64 = true;
-            imageDetail.size = image.url.length;
-            
-            // Extraer formato
-            const formatMatch = image.url.match(/data:image\/([^;]+)/);
-            if (formatMatch) {
-              imageDetail.format = formatMatch[1];
-            }
-            
-            // Validar base64
-            const parts = image.url.split(',');
-            if (parts.length === 2 && parts[1].length > 100) {
-              imageDetail.isValid = true;
-            } else {
-              imageDetail.error = 'Invalid base64 format or too short';
-              imagesHaveValidFormat = false;
-            }
+          } else if (image.url.startsWith('http://') || image.url.startsWith('https://')) {
+            imageDetail.isExternalUrl = true;
+            imageDetail.isValid = true; // Basic validation, more robust checks can be added
+            imageDetail.format = 'external';
+            imageDetail.size = image.url.length; // Use length as a proxy for size
           } else {
-            imageDetail.error = 'Not a base64 image (unexpected for DB storage)';
-            allImagesAreBase64 = false;
+            imageDetail.error = 'Not an external URL (expected format for DB storage)';
+            allImagesAreExternal = false;
             imagesHaveValidFormat = false;
           }
         } catch (error) {
@@ -149,9 +136,9 @@ export async function verifyImagesInDatabase(productId: string, storeId: string)
     }
     
     // Generar issues y recomendaciones
-    if (!allImagesAreBase64) {
-      issues.push('Not all images are stored as base64 in database');
-      recommendations.push('Ensure all images are converted to base64 before saving');
+    if (!allImagesAreExternal) {
+      issues.push('Not all images are stored as external URLs in database');
+      recommendations.push('Ensure all images are stored as external URLs (e.g., Supabase) before saving');
     }
     
     if (!imagesHaveValidFormat) {
@@ -162,7 +149,7 @@ export async function verifyImagesInDatabase(productId: string, storeId: string)
     const verification = {
       hasImagesInDb,
       imageCount,
-      allImagesAreBase64,
+      allImagesAreExternal,
       imagesHaveValidFormat,
       primaryImageIndexValid
     };
@@ -194,7 +181,7 @@ export async function verifyImagesInDatabase(productId: string, storeId: string)
       verification: {
         hasImagesInDb: false,
         imageCount: 0,
-        allImagesAreBase64: false,
+        allImagesAreExternal: false,
         imagesHaveValidFormat: false,
         primaryImageIndexValid: false
       },

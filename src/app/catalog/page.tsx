@@ -165,20 +165,20 @@ const CatalogProductCard = ({
           
           // ALERTAS CRÍTICAS
           if (dbVerification.issues.length > 0) {
-            console.error(`🚨 [CatalogCard] CRITICAL: Database storage issues for ${product.name}:`);
-            console.error('🚨 DB Issues:', dbVerification.issues);
+            console.warn(`⚠️ [CatalogCard] Database storage issues for ${product.name}:`);
+            console.warn('⚠️ DB Issues:', dbVerification.issues);
           }
           
           if (dbComparison.discrepancies.length > 0) {
-            console.error(`🚨 [CatalogCard] CRITICAL: Database/Frontend mismatch for ${product.name}:`);
-            console.error('🚨 Discrepancies:', dbComparison.discrepancies);
+            console.warn(`⚠️ [CatalogCard] Database/Frontend mismatch for ${product.name}:`);
+            console.warn('⚠️ Discrepancies:', dbComparison.discrepancies);
           }
           
           // Resumen del problema
           if (hasMultiple && !dbVerification.verification.hasImagesInDb) {
-            console.error(`🚨 [CatalogCard] ROOT CAUSE: Frontend thinks product has ${imageCount} images but DB has none!`);
+            console.warn(`⚠️ [CatalogCard] ROOT CAUSE: Frontend thinks product has ${imageCount} images but DB has none!`);
           } else if (hasMultiple && dbVerification.verification.imageCount !== imageCount) {
-            console.error(`🚨 [CatalogCard] ROOT CAUSE: Image count mismatch - Frontend: ${imageCount}, DB: ${dbVerification.verification.imageCount}`);
+            console.warn(`⚠️ [CatalogCard] ROOT CAUSE: Image count mismatch - Frontend: ${imageCount}, DB: ${dbVerification.verification.imageCount}`);
           }
           
           console.groupEnd();
