@@ -324,21 +324,25 @@ export function ProductImageGallery({
 
         >
 
-          <Image
+                    <Image
 
-            src={currentImage.url}
+                      src={currentImage.url}
 
-            alt={currentImage.alt || `${product.name} - Imagen ${currentImageIndex + 1}`}
+                      alt={currentImage.alt || `${product.name} - Imagen ${currentImageIndex + 1}`}
 
-            fill
+                      fill
 
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      className="object-cover transition-transform duration-300 group-hover:scale-105"
 
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
 
-            priority={currentImageIndex === 0}
+                      priority={currentImageIndex === 0}
 
-          />
+                      placeholder="blur"
+
+                      blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+
+                    />
 
           
 
@@ -462,19 +466,23 @@ export function ProductImageGallery({
 
             >
 
-              <Image
+                            <Image
 
-                src={image.thumbnailUrl || image.url}
+                              src={image.thumbnailUrl || image.url}
 
-                alt={image.alt || `Thumbnail ${index + 1}`}
+                              alt={image.alt || `Thumbnail ${index + 1}`}
 
-                width={64}
+                              width={64}
 
-                height={64}
+                              height={64}
 
-                className="object-cover"
+                              className="object-cover"
 
-              />
+                              placeholder="blur"
+
+                              blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+
+                            />
 
             </button>
 
@@ -532,19 +540,23 @@ export function ProductImageGallery({
 
             {/* Imagen ampliada */}
 
-            <Image
+                        <Image
 
-              src={currentImage.url}
+                          src={currentImage.url}
 
-              alt={currentImage.alt || `${product.name} - Imagen ${currentImageIndex + 1}`}
+                          alt={currentImage.alt || `${product.name} - Imagen ${currentImageIndex + 1}`}
 
-              fill
+                          fill
 
-              className="object-contain"
+                          className="object-contain"
 
-              sizes="100vw"
+                          sizes="100vw"
 
-            />
+                          placeholder="blur"
+
+                          blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+
+                        />
 
             
 
@@ -686,19 +698,23 @@ export function ProductImageGallery({
 
                   >
 
-                    <Image
+                                        <Image
 
-                      src={image.thumbnailUrl || image.url}
+                                          src={image.thumbnailUrl || image.url}
 
-                      alt={`Thumbnail ${index + 1}`}
+                                          alt={`Thumbnail ${index + 1}`}
 
-                      width={48}
+                                          width={48}
 
-                      height={48}
+                                          height={48}
 
-                      className="object-cover"
+                                          className="object-cover"
 
-                    />
+                                          placeholder="blur"
+
+                                          blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+
+                                        />
 
                   </button>
 
