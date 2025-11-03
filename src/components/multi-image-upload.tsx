@@ -730,7 +730,7 @@ export function MultiImageUpload({
 
         const result = await response.json();
 
-        if (result.product && result.product..images) {
+        if (result.product && result.product.images) {
 
           onImagesChange(result.product.images);
 
