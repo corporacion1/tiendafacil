@@ -2587,25 +2587,7 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
                     Último código: {lastScannedCode}
                   </p>
                 )}
-
-                {/* Códigos de ejemplo para probar */}
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                  <p className="text-xs font-medium text-blue-800 mb-2">Códigos de prueba:</p>
-                  <div className="grid grid-cols-1 gap-1 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-blue-600">RTX 4090:</span>
-                      <code className="font-mono bg-white px-1 rounded">123456789012</code>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-blue-600">Intel i9:</span>
-                      <code className="font-mono bg-white px-1 rounded">234567890123</code>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-blue-600">RAM DDR5:</span>
-                      <code className="font-mono bg-white px-1 rounded">345678901234</code>
-                    </div>
-                  </div>
-                </div>
+                
               </div>
             </div>
 
