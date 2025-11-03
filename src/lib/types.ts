@@ -336,6 +336,21 @@ export type DashboardCard = {
   };
 };
 
+export type ImageDebugInfo = {
+  productId: string;
+  productName: string;
+  environment: 'local' | 'production';
+  issues: string[];
+  details: {
+    imageCount: number;
+    primaryImageUrl: string | undefined;
+    allImageUrls: string[];
+    displayUrls: string[];
+    hasMultipleImages: boolean;
+  };
+  timestamp: string;
+};
+
 export type StoreStatusUpdateRequest = {
   storeId: string;
   newStatus: 'active' | 'inactive';

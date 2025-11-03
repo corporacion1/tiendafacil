@@ -7,7 +7,7 @@ import { SiteSidebar } from "@/components/site-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { cn } from '@/lib/utils';
 import { Footer } from './footer';
-import { useSecurity } from '@/contexts/security-context';
+
 import { useSettings } from '@/contexts/settings-context';
 import { Skeleton } from './ui/skeleton';
 

@@ -1,5 +1,5 @@
-import { Product } from './types';
-import { generateImageDebugInfo, validateImageUrl, type ImageDebugInfo } from './image-debug-utils';
+import { Product, ImageDebugInfo } from './types';
+import { generateImageDebugInfo, validateImageUrl } from './image-debug-utils';
 
 export interface ImageValidationResult {
   isValid: boolean;
@@ -28,15 +28,15 @@ export class ImageValidationService {
     const debugInfo = generateImageDebugInfo(product);
     const validUrls: string[] = [];
     const invalidUrls: string[] = [];
-    const errors: string[] = [...debugInfo.errors];
+    const errors: string[] = [...debugInfo.issues];
     const loadingStates: Record<string, 'loading' | 'loaded' | 'error'> = {};
     
     console.group(`🔍 [ImageValidation] Validating images for ${product.name}`);
     console.log('Environment:', debugInfo.environment);
-    console.log('URLs to validate:', debugInfo.displayUrls);
+    console.log('URLs to validate:', debugInfo.details.displayUrls);
     
     // Validar cada URL
-    for (const url of debugInfo.displayUrls) {
+    for (const url of debugInfo.details.displayUrls) {
       if (!url) {
         invalidUrls.push('(empty URL)');
         loadingStates[url] = 'error';

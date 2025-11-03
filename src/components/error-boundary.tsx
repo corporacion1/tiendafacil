@@ -4,7 +4,7 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react';
-import { errorHandler, ErrorType, ErrorSeverity } from '@/services/ErrorHandler';
+import { errorHandler } from '@/services/ErrorHandler';
 
 interface Props {
   children: ReactNode;
@@ -209,7 +209,6 @@ const DefaultErrorFallback: React.FC<ErrorBoundaryFallbackProps> = ({
 
 // Componente fallback minimalista para errores en componentes pequeños
 export const MinimalErrorFallback: React.FC<ErrorBoundaryFallbackProps> = ({
-  error,
   resetError,
   context
 }) => {
@@ -231,7 +230,6 @@ export const MinimalErrorFallback: React.FC<ErrorBoundaryFallbackProps> = ({
 
 // Componente fallback para páginas completas
 export const PageErrorFallback: React.FC<ErrorBoundaryFallbackProps> = ({
-  error,
   resetError,
   context
 }) => {

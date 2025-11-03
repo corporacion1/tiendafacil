@@ -5,8 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import Image from "next/image";
-import { Package } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -19,7 +17,6 @@ import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
 import { useSettings } from "@/contexts/settings-context";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { getDisplayImageUrl } from "@/lib/utils";
 import { DatePicker } from "./ui/date-picker";
 import { MultiSelect } from "./ui/multi-select";
 import { ImageUpload } from "@/components/image-upload";
@@ -74,14 +71,9 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
 
   const watchedImageUrl = watch("imageUrl");
   
-  // State to manage the image preview and handle errors
-  const [imageError, setImageError] = useState(false);
 
-  useEffect(() => {
-    setImageError(false);
-  }, [watchedImageUrl]);
 
-  const displayUrl = useMemo(() => getDisplayImageUrl(watchedImageUrl), [watchedImageUrl]);
+
 
   useEffect(() => {
     form.reset(getInitialValues(ad));
@@ -98,19 +90,7 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
     }
   };
 
-  const handleImageUrlBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
-    const url = e.target.value;
-    if (url) {
-      const isUrlValid = await trigger("imageUrl");
-      if (!isUrlValid) {
-        toast({
-          variant: "destructive",
-          title: "URL de imagen inválida",
-        });
-        setValue("imageUrl", "", { shouldDirty: true });
-      }
-    }
-  };
+
 
 
   const handleSubmit = async (data: AdFormValues) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -17,12 +17,18 @@ interface MigrationStatus {
   migrationNeeded: boolean;
 }
 
+interface MigrationResult {
+  success: boolean;
+  message: string;
+  errors?: string[];
+}
+
 export default function MigrateImagesPage() {
   const { activeStoreId } = useSettings();
   const [status, setStatus] = useState<MigrationStatus | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isMigrating, setIsMigrating] = useState(false);
-  const [migrationResult, setMigrationResult] = useState<any>(null);
+  const [migrationResult, setMigrationResult] = useState<MigrationResult | null>(null);
 
   // Cargar estado inicial
   useEffect(() => {

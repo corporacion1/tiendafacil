@@ -2,8 +2,8 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import type { UserProfile, UserRole } from "@/lib/types";
-import { MoreHorizontal, Search, UserPlus, Shield, Check, Mail, Phone, ExternalLink, UserX, Armchair, AlertTriangle, Database, Users, Crown, Store, Loader2 } from "lucide-react";
+import type { UserProfile } from "@/lib/types";
+import { MoreHorizontal, Search, UserPlus, Shield, Mail, Phone, ExternalLink, UserX, Armchair, Database, Users, Crown, Store, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
@@ -19,7 +19,6 @@ import { useSettings } from "@/contexts/settings-context";
 import { ErrorBoundary, MinimalErrorFallback } from "@/components/error-boundary";
 import { useErrorHandler } from "@/hooks/use-error-handler";
 import { EditUserModal } from "@/components/edit-user-modal";
-import { CreateStoreModal } from "@/components/create-store-modal";
 
 // Interface para el resumen de usuarios
 interface UsersSummary {
@@ -103,11 +102,11 @@ export default function UsersPage() {
           const allUsers = await response.json();
           setUsers(allUsers);
         }
-      } catch (error) {
-        handleError.api(error, {
-          action: 'load_users',
-          component: 'UsersPage'
-        });
+      } catch (e) {
+      handleError.api(e, {
+        action: 'load_users',
+        component: 'UsersPage'
+      });
       }
     };
 
@@ -247,8 +246,8 @@ export default function UsersPage() {
       });
       setConfirmationText('');
 
-    } catch (error: any) {
-      handleError.api(error, {
+    } catch (e: any) {
+      handleError.api(e, {
         action: 'promote_user_with_store',
         component: 'UsersPage'
       });
@@ -290,8 +289,8 @@ export default function UsersPage() {
         });
       }, 1000);
       
-    } catch (error) {
-      console.error('❌ [Users Page] Error cambiando contexto:', error);
+    } catch (e) {
+      console.error('❌ [Users Page] Error cambiando contexto:', e);
       toast({
         variant: "destructive",
         title: "Error",
@@ -329,7 +328,7 @@ export default function UsersPage() {
 
       setUserToAction(null);
       setActionType(null);
-    } catch (error) {
+    } catch (e) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -375,17 +374,7 @@ export default function UsersPage() {
     return filtered;
   }, [users, searchTerm, selectedFilter]);
   
-  const allStores = useMemo(() => {
-      const stores: { id: string; name: string; }[] = [];
-      if (users) {
-        users.forEach(u => {
-            if (u.role === 'admin' && u.storeId && u.displayName) {
-                stores.push({ id: u.storeId, name: `${u.displayName}'s Store` });
-            }
-        });
-      }
-      return stores;
-  }, [users]);
+
 
   const renderUsersTable = (usersToRender: UserProfile[]) => {
     if (isLoading) {

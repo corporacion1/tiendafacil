@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import type { Product, CartItem, PendingOrder, Order, Ad, Family, Store } from "@/lib/types";
+import type { Product, CartItem, PendingOrder, Order, Ad, Family, Store, UserProfile, ImageDebugInfo } from "@/lib/types";
 import { defaultStore } from "@/lib/data";
 import { cn, getDisplayImageUrl, validateAndFixImageUrl } from "@/lib/utils";
 import { getAllProductImages, hasMultipleImages, getImageCount, getPrimaryImageUrl } from "@/lib/product-image-utils";
@@ -119,7 +119,7 @@ const CatalogProductCard = ({
   const [imageError, setImageError] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<any>(null);
+  const [debugInfo, setDebugInfo] = useState<ImageDebugInfo | null>(null);
   const [imageLoadStates, setImageLoadStates] = useState<Record<string, 'loading' | 'loaded' | 'error'>>({});
   const [retryCount, setRetryCount] = useState<Record<string, number>>({});
   const [fallbackToSingle, setFallbackToSingle] = useState(false);
@@ -634,7 +634,7 @@ export default function CatalogPage() {
   const [selectedAd, setSelectedAd] = useState<Ad | null>(null);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [registerForm, setRegisterForm] = useState({
     name: '',
     email: '',
@@ -1890,7 +1890,7 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
                           </Button>
                           {isLoggedIn && currentUser && (
                             <p className="text-xs text-muted-foreground text-center mt-2">
-                              Conectado como: {currentUser.name}
+                              Conectado como: {currentUser.displayName}
                             </p>
                           )}
                           <SheetClose id="cart-close-button" className="hidden" />

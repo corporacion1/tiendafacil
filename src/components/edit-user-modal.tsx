@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -42,43 +42,12 @@ export function EditUserModal({ user, open, onOpenChange, onUserUpdated }: EditU
 
   const [storeSearchOpen, setStoreSearchOpen] = useState(false)
   
-  // Filtrar tiendas para búsqueda
-  const filteredStores = useMemo(() => {
-    return stores.filter(store => 
-      store.name.toLowerCase().includes('') || 
-      store.storeId.toLowerCase().includes('')
-    )
-  }, [stores])
+
   
   // Encontrar la tienda seleccionada
   const selectedStore = stores.find(store => store.storeId === formData.storeId)
 
-  // Cargar tiendas disponibles
-  useEffect(() => {
-    if (open) {
-      loadStores()
-    }
-  }, [open])
-
-  // Inicializar formulario con datos del usuario
-  useEffect(() => {
-    if (user) {
-      // Asegurar que el rol siempre tenga un valor válido
-      const validRole = user.role && ['user', 'admin', 'pos', 'su', 'depositary'].includes(user.role) 
-        ? (user.role as 'user' | 'su' | 'admin' | 'pos' | 'depositary') 
-        : 'user';
-        
-      setFormData({
-        displayName: user.displayName || '',
-        email: user.email || '',
-        phone: user.phone || '',
-        role: validRole,
-        storeId: user.storeId || ''
-      })
-    }
-  }, [user])
-
-  const loadStores = async () => {
+  const loadStores = useCallback(async () => {
     try {
       setLoadingStores(true)
       const response = await fetch('/api/stores-admin?limit=100')
@@ -99,7 +68,32 @@ export function EditUserModal({ user, open, onOpenChange, onUserUpdated }: EditU
     } finally {
       setLoadingStores(false)
     }
-  }
+  }, [toast])
+
+  // Cargar tiendas disponibles
+  useEffect(() => {
+    if (open) {
+      loadStores()
+    }
+  }, [open, loadStores])
+
+  // Inicializar formulario con datos del usuario
+  useEffect(() => {
+    if (user) {
+      // Asegurar que el rol siempre tenga un valor válido
+      const validRole = user.role && ['user', 'admin', 'pos', 'su', 'depositary'].includes(user.role) 
+        ? (user.role as 'user' | 'su' | 'admin' | 'pos' | 'depositary') 
+        : 'user';
+        
+      setFormData({
+        displayName: user.displayName || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        role: validRole,
+        storeId: user.storeId || ''
+      })
+    }
+  }, [user])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

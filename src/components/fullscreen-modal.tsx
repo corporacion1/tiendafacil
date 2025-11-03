@@ -12,6 +12,12 @@ interface FullscreenModalProps {
   onActivateDesktopMode: () => void;
 }
 
+interface DocumentElementWithFullscreen extends HTMLElement {
+  webkitRequestFullscreen?: () => Promise<void>;
+  mozRequestFullScreen?: () => Promise<void>;
+  msRequestFullscreen?: () => Promise<void>;
+}
+
 export function FullscreenModal({
   isOpen,
   onClose,
@@ -21,11 +27,12 @@ export function FullscreenModal({
 
   useEffect(() => {
     // Verificar si el navegador soporta fullscreen
+    const docEl = document.documentElement as DocumentElementWithFullscreen;
     const supportsFullscreen = !!(
-      document.documentElement.requestFullscreen ||
-      (document.documentElement as any).webkitRequestFullscreen ||
-      (document.documentElement as any).mozRequestFullScreen ||
-      (document.documentElement as any).msRequestFullscreen
+      docEl.requestFullscreen ||
+      docEl.webkitRequestFullscreen ||
+      docEl.mozRequestFullScreen ||
+      docEl.msRequestFullscreen
     );
     setIsFullscreenSupported(supportsFullscreen);
   }, []);
@@ -33,16 +40,16 @@ export function FullscreenModal({
   const handleActivateDesktopMode = async () => {
     try {
       // Intentar activar pantalla completa
-      const docElement = document.documentElement;
+      const docElement = document.documentElement as DocumentElementWithFullscreen;
       
       if (docElement.requestFullscreen) {
         await docElement.requestFullscreen();
-      } else if ((docElement as any).webkitRequestFullscreen) {
-        await (docElement as any).webkitRequestFullscreen();
-      } else if ((docElement as any).mozRequestFullScreen) {
-        await (docElement as any).mozRequestFullScreen();
-      } else if ((docElement as any).msRequestFullscreen) {
-        await (docElement as any).msRequestFullscreen();
+      } else if (docElement.webkitRequestFullscreen) {
+        await docElement.webkitRequestFullscreen();
+      } else if (docElement.mozRequestFullScreen) {
+        await docElement.mozRequestFullScreen();
+      } else if (docElement.msRequestFullscreen) {
+        await docElement.msRequestFullscreen();
       }
       
       // Llamar al callback para cualquier lógica adicional

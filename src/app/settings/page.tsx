@@ -364,6 +364,8 @@ export default function SettingsPage() {
         fetchCurrencyRates, saveCurrencyRate, userProfile
     } = useSettings();
 
+    console.log('⚙️ [SettingsPage Render] - Start. activeStoreId:', activeStoreId, 'settings:', settings, 'userRole:', userRole);
+
     const [imageError, setImageError] = useState(false);
     const [isClient, setIsClient] = useState(false);
     const [newPin, setNewPin] = useState('');

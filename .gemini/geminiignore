@@ -1,0 +1,5 @@
+# .gemini/geminiignore
+node_modules/
+.next/
+*.log
+dist/

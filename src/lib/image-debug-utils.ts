@@ -1,19 +1,6 @@
-import { Product, ProductImage } from './types';
+import { Product, ProductImage, ImageDebugInfo } from './types';
 import { getAllProductImages, hasMultipleImages, getImageCount, getPrimaryImageUrl } from './product-image-utils';
 import { getDisplayImageUrl } from './utils';
-
-export interface ImageDebugInfo {
-  productId: string;
-  productName: string;
-  environment: 'local' | 'production';
-  imageCount: number;
-  primaryImageUrl: string | undefined;
-  allImageUrls: string[];
-  displayUrls: string[];
-  hasMultipleImages: boolean;
-  errors: string[];
-  timestamp: string;
-}
 
 /**
  * Detecta si estamos en ambiente local o producción
@@ -69,12 +56,14 @@ export function generateImageDebugInfo(product: Product): ImageDebugInfo {
       productId: product.id,
       productName: product.name,
       environment: detectEnvironment(),
-      imageCount: getImageCount(product),
-      primaryImageUrl,
-      allImageUrls,
-      displayUrls,
-      hasMultipleImages: hasMultipleImages(product),
-      errors,
+      issues: errors,
+      details: {
+        imageCount: getImageCount(product),
+        primaryImageUrl,
+        allImageUrls,
+        displayUrls,
+        hasMultipleImages: hasMultipleImages(product),
+      },
       timestamp: new Date().toISOString()
     };
   } catch (error) {
@@ -84,12 +73,14 @@ export function generateImageDebugInfo(product: Product): ImageDebugInfo {
       productId: product.id,
       productName: product.name,
       environment: detectEnvironment(),
-      imageCount: 0,
-      primaryImageUrl: undefined,
-      allImageUrls: [],
-      displayUrls: [],
-      hasMultipleImages: false,
-      errors,
+      issues: errors,
+      details: {
+        imageCount: 0,
+        primaryImageUrl: undefined,
+        allImageUrls: [],
+        displayUrls: [],
+        hasMultipleImages: false,
+      },
       timestamp: new Date().toISOString()
     };
   }
@@ -104,14 +95,14 @@ export function logProductImageDebug(product: Product, context: string = 'Unknow
   console.group(`🖼️ [${context}] Image Debug - ${product.name} (${debugInfo.environment})`);
   console.log('Product ID:', debugInfo.productId);
   console.log('Environment:', debugInfo.environment);
-  console.log('Image Count:', debugInfo.imageCount);
-  console.log('Has Multiple:', debugInfo.hasMultipleImages);
-  console.log('Primary URL:', debugInfo.primaryImageUrl);
-  console.log('All URLs:', debugInfo.allImageUrls);
-  console.log('Display URLs:', debugInfo.displayUrls);
+  console.log('Image Count:', debugInfo.details.imageCount);
+  console.log('Has Multiple:', debugInfo.details.hasMultipleImages);
+  console.log('Primary URL:', debugInfo.details.primaryImageUrl);
+  console.log('All URLs:', debugInfo.details.allImageUrls);
+  console.log('Display URLs:', debugInfo.details.displayUrls);
   
-  if (debugInfo.errors.length > 0) {
-    console.warn('Errors:', debugInfo.errors);
+  if (debugInfo.issues.length > 0) {
+    console.warn('Errors:', debugInfo.issues);
   }
   
   // Log del producto completo para debugging
@@ -179,9 +170,9 @@ export async function validateProductImages(product: Product): Promise<{
   const debugInfo = generateImageDebugInfo(product);
   const valid: string[] = [];
   const invalid: string[] = [];
-  const errors: string[] = [...debugInfo.errors];
+  const errors: string[] = [...debugInfo.issues];
   
-  for (const url of debugInfo.displayUrls) {
+  for (const url of debugInfo.details.displayUrls) {
     if (!url) {
       invalid.push('(empty URL)');
       continue;
@@ -216,20 +207,20 @@ export function compareProductImages(product1: Product, product2: Product): {
   const differences: string[] = [];
   const similarities: string[] = [];
   
-  if (debug1.imageCount !== debug2.imageCount) {
-    differences.push(`Image count: ${debug1.productName}(${debug1.imageCount}) vs ${debug2.productName}(${debug2.imageCount})`);
+  if (debug1.details.imageCount !== debug2.details.imageCount) {
+    differences.push(`Image count: ${debug1.productName}(${debug1.details.imageCount}) vs ${debug2.productName}(${debug2.details.imageCount})`);
   } else {
-    similarities.push(`Both have ${debug1.imageCount} images`);
+    similarities.push(`Both have ${debug1.details.imageCount} images`);
   }
   
-  if (debug1.hasMultipleImages !== debug2.hasMultipleImages) {
-    differences.push(`Multiple images: ${debug1.productName}(${debug1.hasMultipleImages}) vs ${debug2.productName}(${debug2.hasMultipleImages})`);
+  if (debug1.details.hasMultipleImages !== debug2.details.hasMultipleImages) {
+    differences.push(`Multiple images: ${debug1.productName}(${debug1.details.hasMultipleImages}) vs ${debug2.productName}(${debug2.details.hasMultipleImages})`);
   } else {
-    similarities.push(`Both have multiple images: ${debug1.hasMultipleImages}`);
+    similarities.push(`Both have multiple images: ${debug1.details.hasMultipleImages}`);
   }
   
-  if (debug1.errors.length !== debug2.errors.length) {
-    differences.push(`Error count: ${debug1.productName}(${debug1.errors.length}) vs ${debug2.productName}(${debug2.errors.length})`);
+  if (debug1.issues.length !== debug2.issues.length) {
+    differences.push(`Error count: ${debug1.productName}(${debug1.issues.length}) vs ${debug2.productName}(${debug2.issues.length})`);
   }
   
   return { differences, similarities };

@@ -10,8 +10,10 @@ import { useToast } from "@/hooks/use-toast"
 import { Loader2, Plus } from "lucide-react"
 import { businessCategories } from "@/lib/data"
 
+import type { Store } from "@/lib/types";
+
 interface CreateStoreModalProps {
-  onStoreCreated?: (store: any) => void
+  onStoreCreated?: (store: Store) => void
 }
 
 export function CreateStoreModal({ onStoreCreated }: CreateStoreModalProps) {
