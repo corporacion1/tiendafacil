@@ -135,62 +135,14 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         .then(res => res.ok ? res.json() : null)
         .catch(() => null);
 
-      // Si no existe la tienda, crear una con datos por defecto
+      // Si no existe la tienda, NO crear datos demo automáticamente.
+      // Mostrar datos demo en UI causa confusión (muestra mock data).
+      // En su lugar dejamos storeSettings como null y dependencias que lean
+      // de storeSettings usarán el fallback seguro (arrays vacíos) para evitar
+      // mostrar datos mock en la UI.
       if (!storeSettings) {
-        console.log(`⚠️ Tienda ${storeId} no encontrada, creando con datos por defecto...`);
-
-        const defaultStoreData = {
-          id: storeId,
-          storeId: storeId,
-          name: "Tienda Facil DEMO",
-          ownerIds: ["5QLaiiIr4mcGsjRXVGeGx50nrpk1"],
-          businessType: "Tecnologia",
-          address: "Av. Principal, Local 1, Ciudad",
-          phone: "+58 212-555-1234",
-          slogan: "¡Gracias por tu compra!",
-          logoUrl: "/tienda_facil_logo.svg",
-          status: 'active',
-          primaryCurrencyName: "Dólar Americano",
-          primaryCurrencySymbol: "$",
-          secondaryCurrencyName: "Bolívar Digital",
-          secondaryCurrencySymbol: "Bs.",
-          saleSeries: "SALE",
-          saleCorrelative: 1,
-          tax1: 16,
-          tax2: 0,
-          whatsapp: "+584126915593",
-          tiktok: "@tiendafacil",
-          meta: "@tiendafacil",
-          useDemoData: true,
-        };
-
-        try {
-          console.log('📤 Enviando datos para crear tienda:', JSON.stringify(defaultStoreData, null, 2));
-          
-          const createResponse = await fetch('/api/stores', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(defaultStoreData)
-          });
-
-          console.log('📥 Respuesta del servidor:', createResponse.status, createResponse.statusText);
-
-          if (createResponse.ok) {
-            storeSettings = await createResponse.json();
-            console.log(`✅ Tienda creada exitosamente: ${storeSettings.name}`);
-          } else {
-            const errorText = await createResponse.text();
-            console.error('❌ Error creando tienda por defecto:', {
-              status: createResponse.status,
-              statusText: createResponse.statusText,
-              error: errorText
-            });
-            storeSettings = defaultStoreData; // Usar datos locales como fallback
-          }
-        } catch (error) {
-          console.error('❌ Error de red/fetch creando tienda:', error);
-          storeSettings = defaultStoreData; // Usar datos locales como fallback
-        }
+        console.log(`⚠️ Tienda ${storeId} no encontrada en la base de datos. No se cargará demo automáticamente.`);
+        storeSettings = null as any;
       }
 
       // Array de promesas para cargar todos los datos en paralelo

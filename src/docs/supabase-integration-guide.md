@@ -1,8 +1,10 @@
 # 🚀 Guía de Integración con Supabase - Múltiples Imágenes
 
+> NOTA (DEPRECADO): Este proyecto ha dejado de usar Supabase Storage como backend de imágenes. La integración histórica se documenta aquí para referencia y recuperación, pero las cargas activas ahora van a MongoDB GridFS y a endpoints locales (`/api/upload/image`, `/api/images/:id`).
+
 ## ✅ **Sistema Actualizado para Supabase**
 
-He actualizado completamente el sistema de múltiples imágenes para usar **Supabase Storage** en lugar del sistema de archivos local.
+Histórico: en versiones previas el sistema usaba **Supabase Storage** en lugar del sistema de archivos local. Actualmente esto está en desuso.
 
 ### **🔧 Cambios Realizados:**
 

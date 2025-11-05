@@ -65,7 +65,10 @@ export type ProductImage = {
     width: number;
     height: number;
   };
-  supabasePath?: string; // Path en Supabase para poder eliminar la imagen
+  // DEPRECATED: supabasePath is a legacy field referencing Supabase storage.
+  // Kept for backward compatibility only. New images use GridFS and local API
+  // endpoints (`/api/images/:id`).
+  supabasePath?: string;
 };
 
 export type Product = {

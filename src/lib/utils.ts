@@ -16,21 +16,25 @@ export const getDisplayImageUrl = (url?: string): string => {
     if (DEBUG_URLS) {
       console.warn(`🔗 [getDisplayImageUrl] Empty URL provided`);
     }
-    return '/placeholder-image.jpg'; // Fallback to placeholder
+    return '/api/images/placeholder'; // Fallback to placeholder
   }
   
   let processedUrl = url;
   
-  // Handle Supabase URLs (add token if missing)
-  if (processedUrl.includes(process.env.NEXT_PUBLIC_SUPABASE_URL as string) && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    if (!processedUrl.includes('token=')) {
-      processedUrl = `${processedUrl}?token=${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`;
-      if (DEBUG_URLS) {
-        console.log(`🔗 [getDisplayImageUrl] Supabase URL: added token`);
-      }
-    }
-  }
+  // Do not rely on Supabase tokens anymore; assume images are served from local API or valid external URLs.
   
+  // Si es un data URI o una ruta local absoluta (interna), devolver tal cual
+  if (processedUrl.startsWith('data:')) {
+    if (DEBUG_URLS) console.log(`🔗 [getDisplayImageUrl] Data URI detected, returning as-is`);
+    return processedUrl;
+  }
+
+  // Aceptar rutas locales que comiencen con / (assets públicos) incluidas nuestras rutas /api/images/
+  if (processedUrl.startsWith('/')) {
+    if (DEBUG_URLS) console.log(`🔗 [getDisplayImageUrl] Local path detected: ${processedUrl}`);
+    return processedUrl;
+  }
+
   // Validate format for external URLs
   try {
     new URL(processedUrl);
@@ -90,20 +94,12 @@ export function validateAndFixImageUrl(url: string | undefined): string {
     if (DEBUG_URLS) {
       console.warn(`🔗 [validateAndFixImageUrl] Empty URL provided`);
     }
-    return '/placeholder-image.jpg'; // Fallback to placeholder
+    return '/api/images/placeholder'; // Fallback to placeholder
   }
   
   let fixedUrl = url;
   
-  // Handle Supabase URLs (add token if missing)
-  if (fixedUrl.includes(process.env.NEXT_PUBLIC_SUPABASE_URL as string) && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    if (!fixedUrl.includes('token=')) {
-      fixedUrl = `${fixedUrl}?token=${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`;
-      if (DEBUG_URLS) {
-        console.log(`🔗 [validateAndFixImageUrl] Supabase URL: added token`);
-      }
-    }
-  }
+  // No longer append Supabase tokens; prefer local API images or valid external URLs.
   
   // Validate format for external URLs
   try {

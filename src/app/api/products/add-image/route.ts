@@ -1,7 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Product } from '@/models/Product';
-import { uploadImage } from '@/lib/supabase';
+import mongoose from 'mongoose';
 
 /**
  * POST - Agregar UNA imagen adicional a un producto (SIMPLE)
@@ -33,10 +33,22 @@ export async function POST(request: NextRequest) {
     
     console.log('✅ [Add Image] Producto encontrado:', product.name);
     
-    // Subir imagen a Supabase
-    console.log('📤 [Add Image] Subiendo a Supabase...');
-    const uploadResult = await uploadImage(file);
-    console.log('✅ [Add Image] Subida exitosa:', uploadResult.url);
+  // Subir imagen a GridFS
+  console.log('📤 [Add Image] Subiendo a GridFS...');
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
+  const conn = await connectToDatabase();
+  const nativeDb = conn.db!;
+  const bucket = new mongoose.mongo.GridFSBucket(nativeDb, { bucketName: 'images' });
+  const filename = (file as any).name || `upload-${Date.now()}`;
+  const uploadStream = bucket.openUploadStream(filename, { contentType: file.type });
+  uploadStream.write(buffer);
+  uploadStream.end();
+  await new Promise((resolve, reject) => { uploadStream.on('finish', resolve); uploadStream.on('error', reject); });
+  const uploadedId = uploadStream.id;
+  const uploadResult = { url: `/api/images/${uploadedId.toString()}`, path: uploadedId.toString() };
+  console.log('✅ [Add Image] Subida exitosa:', uploadResult.url);
     
     // Obtener imágenes actuales
     let currentImages = product.images || [];
@@ -62,7 +74,8 @@ export async function POST(request: NextRequest) {
       alt: file.name.replace(/\.[^/.]+$/, ''),
       order: currentImages.length,
       uploadedAt: new Date().toISOString(),
-      supabasePath: uploadResult.path
+      // supabasePath removed (we no longer use Supabase)
+      uploadedId: uploadResult.path
     };
     
     // Combinar imágenes

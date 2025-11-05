@@ -13,7 +13,10 @@ const ProductImageSchema = new Schema({
     width: Number,
     height: Number
   },
-  supabasePath: String // Path en Supabase para poder eliminar la imagen
+  // DEPRECATED: Path en Supabase (legacy). Se mantiene en el modelo por compatibilidad
+  // con datos antiguos. No se utiliza para nuevas cargas; las imágenes ahora se
+  // guardan en MongoDB GridFS y se referencian via `/api/images/:id`.
+  supabasePath: String
 }, { _id: false });
 
 const ProductSchema = new Schema({

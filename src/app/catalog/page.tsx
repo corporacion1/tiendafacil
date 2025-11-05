@@ -50,6 +50,9 @@ const BarcodeScannerComponent = dynamic(
 );
 
 const AdCard = ({ ad, onAdClick }: { ad: Ad; onAdClick: (ad: Ad) => void }) => {
+  const [adImageError, setAdImageError] = useState(false);
+  const displayAdImageUrl = getDisplayImageUrl(ad.imageUrl || '');
+
   return (
     <Card
       className="overflow-hidden group flex flex-col border border-green-100 shadow-sm hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-green-50 to-blue-50 backdrop-blur-sm rounded-2xl cursor-pointer"
@@ -57,23 +60,25 @@ const AdCard = ({ ad, onAdClick }: { ad: Ad; onAdClick: (ad: Ad) => void }) => {
     >
       <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative">
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent z-10 rounded-t-2xl" />
-        {ad.imageUrl ? (
+        {displayAdImageUrl && !adImageError ? (
           // Para imágenes base64, usar <img> nativo
-          ad.imageUrl.startsWith('data:image') ? (
+          displayAdImageUrl.startsWith('data:image') ? (
             <img
-              src={ad.imageUrl}
+              src={displayAdImageUrl}
               alt={ad.name}
               className="object-cover transition-transform duration-500 group-hover:scale-110 rounded-t-2xl w-full h-full"
               data-ai-hint={ad.imageHint}
+              onError={() => setAdImageError(true)}
             />
           ) : (
             <Image
-              src={ad.imageUrl}
+              src={displayAdImageUrl}
               alt={ad.name}
               fill
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
               className="object-cover transition-transform duration-500 group-hover:scale-110 rounded-t-2xl"
               data-ai-hint={ad.imageHint}
+              onError={() => setAdImageError(true)}
             />
           )
         ) : (

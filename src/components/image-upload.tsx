@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
+import { getDisplayImageUrl } from '@/lib/utils';
 
 interface ImageUploadProps {
   onImageUploaded: (imageUrl: string) => void;
@@ -17,6 +18,31 @@ export function ImageUpload({ onImageUploaded, currentImage, className }: ImageU
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentImage || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  // Keep previewUrl in sync when parent passes a different currentImage (e.g. opening edit modal)
+  // Normalize the URL to the app's preferred display form (GridFS /api/images/:id or data: URI).
+  // Hide external Supabase URLs to avoid showing stale/deleted remote storage images in the edit modal.
+  useEffect(() => {
+    if (!currentImage) {
+      setPreviewUrl(null);
+      return;
+    }
+
+    try {
+      const normalized = getDisplayImageUrl(currentImage);
+
+      // If normalized is local (GridFS) or a data URI, show it.
+      if (normalized.startsWith('/api/images/') || normalized.startsWith('data:')) {
+        setPreviewUrl(normalized);
+      } else {
+        // External URL (including Supabase) — do not auto-show it in the edit modal to avoid stale images.
+        setPreviewUrl(null);
+      }
+    } catch (err) {
+      // Fall back to not showing an external image
+      setPreviewUrl(null);
+    }
+  }, [currentImage]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -53,15 +79,28 @@ export function ImageUpload({ onImageUploaded, currentImage, className }: ImageU
         body: formData,
       });
 
+      // If server returned an error, try to extract its message and show it
       if (!response.ok) {
-        throw new Error('Error al subir la imagen');
+        let errorMessage = `Error al subir la imagen (${response.status})`;
+        try {
+          const errData = await response.json();
+          if (errData?.error) errorMessage = errData.error;
+        } catch (e) {
+          // ignore JSON parse errors
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
-      
+
+      // Basic validation of returned payload
+      if (!data || !data.url) {
+        throw new Error('Respuesta inválida del servidor al subir la imagen');
+      }
+
       setPreviewUrl(data.url);
       onImageUploaded(data.url);
-      
+
       toast({
         title: "Imagen subida",
         description: "La imagen se ha subido correctamente"
@@ -69,10 +108,11 @@ export function ImageUpload({ onImageUploaded, currentImage, className }: ImageU
 
     } catch (error) {
       console.error('Error uploading image:', error);
+      const message = error instanceof Error ? error.message : String(error);
       toast({
         variant: "destructive",
         title: "Error al subir imagen",
-        description: "No se pudo subir la imagen. Intenta nuevamente."
+        description: message || "No se pudo subir la imagen. Intenta nuevamente."
       });
     } finally {
       setIsUploading(false);

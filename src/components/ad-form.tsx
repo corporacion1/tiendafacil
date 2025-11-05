@@ -29,7 +29,14 @@ const adSchema = z.object({
   price: z.coerce.number().min(0, "El precio no puede ser negativo."),
   status: z.enum(["active", "inactive", "paused"]),
   description: z.string().optional(),
-  imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
+  imageUrl: z.string().optional().refine((val) => {
+    if (val === undefined || val === '') return true;
+    // allow absolute URLs, local GridFS paths (/api/images/...), or data URIs
+    if (/^https?:\/\//i.test(val)) return true;
+    if (/^\/api\/images\//.test(val)) return true;
+    if (/^data:image\//.test(val)) return true;
+    return false;
+  }, { message: 'La imagen debe ser una URL válida, una ruta local (/api/images/:id) o un data URI.' }),
   imageHint: z.string().optional(),
   targetBusinessTypes: z.array(z.string()).min(1, "Debes seleccionar al menos un tipo de negocio."),
   expiryDate: z.string().optional(),
@@ -94,9 +101,18 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
 
 
   const handleSubmit = async (data: AdFormValues) => {
+    console.log('[AdForm] Submitting data', data);
     const result = await onSubmit(data);
-    if (!ad && result === true) {
-      form.reset(getInitialValues());
+    console.log('[AdForm] onSubmit result', result);
+    if (result === true) {
+      if (!ad) {
+        form.reset(getInitialValues());
+      } else {
+        // Close modal via onCancel if provided (AdsPage also closes on success)
+        if (onCancel) {
+          try { onCancel(); } catch (e) { /* ignore */ }
+        }
+      }
     }
   };
   
@@ -201,7 +217,15 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
                           <ImageUpload
                             currentImage={field.value}
                             onImageUploaded={(url) => {
-                              field.onChange(url);
+                              // Ensure react-hook-form marks the form as dirty when image changes
+                              try {
+                                setValue('imageUrl', url || '', { shouldDirty: true });
+                                // trigger validation for imageUrl
+                                trigger('imageUrl');
+                              } catch (e) {
+                                // fallback to field.onChange
+                                field.onChange(url);
+                              }
                             }}
                           />
                         </FormControl>

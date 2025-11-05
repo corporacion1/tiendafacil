@@ -1,6 +1,8 @@
-ñarñarññ# 🚀 Configuración de Supabase para Upload de Imágenes
+﻿# 🚀 (DEPRECATED) Configuración de Supabase para Upload de Imágenes
 
-Supabase es una alternativa gratuita y global a Cloudinary que funciona en cualquier país.
+Nota: El proyecto ya no usa Supabase Storage para cargas en producción. Este documento se conserva únicamente por referencia histórica y para ayudar a recuperar imágenes en caso de backups. Las cargas y el servicio de imágenes se han migrado a MongoDB GridFS y a endpoints locales como `/api/images/:id`.
+
+Supabase fue una alternativa usada anteriormente para almacenamiento de imágenes. Actualmente está marcada como obsoleta en este repo.
 
 ## 📋 **Paso 1: Crear cuenta en Supabase**
 

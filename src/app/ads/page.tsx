@@ -256,7 +256,17 @@ export default function AdsPage() {
       }
 
       const updatedAd = await response.json();
+      // Update local state optimistically then refresh list from server to ensure consistency
       setAds(prevAds => prevAds.map(ad => ad.id === data.id ? updatedAd : ad));
+      try {
+        const allResp = await fetch('/api/ads');
+        if (allResp.ok) {
+          const allAds = await allResp.json();
+          setAds(allAds);
+        }
+      } catch (e) {
+        // ignore reload errors
+      }
 
       toast({
         title: "Anuncio Actualizado",
@@ -287,7 +297,17 @@ export default function AdsPage() {
       }
 
       const newAd = await response.json();
+      // Optimistically add then refresh the list to ensure any server-side normalization is applied
       setAds(prev => [newAd, ...prev]);
+      try {
+        const allResp = await fetch('/api/ads');
+        if (allResp.ok) {
+          const allAds = await allResp.json();
+          setAds(allAds);
+        }
+      } catch (e) {
+        // ignore reload errors
+      }
       
       toast({
         title: "Anuncio Creado",

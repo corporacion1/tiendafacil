@@ -1,6 +1,5 @@
 import { Product, ProductImage } from './types';
-import { supabase } from './supabase'; // Importar el cliente de Supabase
-import { v4 as uuidv4 } from 'uuid'; // Para generar IDs únicos
+// Supabase dependency removed: images will be stored/served from MongoDB GridFS
 
 // Flag para habilitar/deshabilitar logging de debug - REDUCIDO para evitar spam
 const DEBUG_IMAGES = typeof window !== 'undefined' && window.location.search.includes('debug=images');
@@ -106,42 +105,21 @@ export async function migrateProductToMultipleImages(product: Product): Promise<
   
   // Si tiene imageUrl, convertirlo
   if (product.imageUrl) {
-    let imageUrlToUse = product.imageUrl;
-    let supabasePath: string | undefined;
-
-    // Check if imageUrl is a Base64 string
-    if (product.imageUrl.startsWith('data:image')) {
-      try {
-        // Dynamically import supabase client to avoid circular dependencies
-        const { uploadBase64Image } = await import('./supabase');
-        const uploadResult = await uploadBase64Image(product.imageUrl, `product_images/${product.id}/primary_migrated_${Date.now()}.png`);
-        if (uploadResult.publicUrl) {
-          imageUrlToUse = uploadResult.publicUrl;
-          supabasePath = uploadResult.path;
-          console.log(`🖼️ [Migration] Uploaded Base64 for product ${product.id} to Supabase: ${imageUrlToUse}`);
-        } else {
-          console.error(`❌ [Migration] Failed to upload Base64 image for product ${product.id}. Using original Base64.`);
-        }
-      } catch (uploadError) {
-        console.error(`❌ [Migration] Error uploading Base64 image for product ${product.id}:`, uploadError);
-      }
-    }
-
+    // Convert legacy imageUrl into images array without external uploads.
     const migratedProduct: Product = {
       ...product,
       images: [{
         id: `migrated-${Date.now()}`,
-        url: imageUrlToUse,
+        url: product.imageUrl,
         alt: product.imageHint || product.name,
         order: 0,
         uploadedAt: new Date().toISOString(),
-        supabasePath: supabasePath // Store Supabase path if available
+        size: 0
       }],
       primaryImageIndex: 0,
-      imageUrl: undefined, // Remove legacy imageUrl
-      imageHint: undefined // Remove legacy imageHint
+      imageUrl: undefined,
+      imageHint: undefined
     };
-    
     return migratedProduct;
   }
   
