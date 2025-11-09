@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import mongoose from 'mongoose';
+import { uploadImage } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
+    const folderParam = formData.get('folder') as string;
 
     if (!file) {
       console.warn('[api/upload/image] No file found in formData');
@@ -16,43 +16,50 @@ export async function POST(request: NextRequest) {
     if (!file.type || !file.type.startsWith('image/')) {
       return NextResponse.json({ error: 'El archivo debe ser una imagen' }, { status: 400 });
     }
-    if (file.size > 10 * 1024 * 1024) { // allow up to 10MB for safety
-      return NextResponse.json({ error: 'La imagen debe ser menor a 10MB' }, { status: 400 });
+    if (file.size > 5 * 1024 * 1024) { // 5MB for Supabase Storage
+      return NextResponse.json({ error: 'La imagen debe ser menor a 5MB' }, { status: 400 });
     }
 
-    // Read file buffer
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    // Connect to MongoDB and upload to GridFS
-    await connectToDatabase();
-    const db = mongoose.connection.db;
-    if (!db) {
-      return NextResponse.json({ error: 'DB no disponible' }, { status: 500 });
+    // Determinar carpeta según parámetro o referer
+    let folder: 'products' | 'ads' | 'stores' | 'users' = 'products';
+    
+    if (folderParam && ['products', 'ads', 'stores', 'users'].includes(folderParam)) {
+      folder = folderParam as any;
+    } else {
+      // Intentar detectar por referer
+      const referer = request.headers.get('referer') || '';
+      if (referer.includes('/ads')) {
+        folder = 'ads';
+      } else if (referer.includes('/settings') || referer.includes('/store')) {
+        folder = 'stores';
+      } else if (referer.includes('/profile') || referer.includes('/user')) {
+        folder = 'users';
+      }
     }
 
-    const bucket = new mongoose.mongo.GridFSBucket(db, { bucketName: 'images' });
-    const filename = (file as any).name || `upload-${Date.now()}`;
-    const uploadStream = bucket.openUploadStream(filename, { contentType: file.type });
-
-    // Write buffer and wait for finish
-    uploadStream.write(buffer);
-    uploadStream.end();
-
-    await new Promise<void>((resolve, reject) => {
-      uploadStream.on('finish', () => resolve());
-      uploadStream.on('error', (err) => reject(err));
+    console.log('[api/upload/image] Uploading to Supabase Storage:', { 
+      filename: file.name, 
+      size: file.size, 
+      type: file.type,
+      folder 
     });
 
-    const uploadedId = uploadStream.id;
-    const publicUrl = `/api/images/${uploadedId.toString()}`;
+    // Subir a Supabase Storage
+    const { url, path } = await uploadImage(file, folder);
 
-    console.log('[api/upload/image] Uploaded to GridFS:', { id: uploadedId.toString(), url: publicUrl });
+    console.log('[api/upload/image] Uploaded successfully:', { url, path, folder });
 
-    return NextResponse.json({ url: publicUrl, id: uploadedId.toString() });
+    return NextResponse.json({ 
+      url, 
+      path,
+      folder,
+      success: true 
+    });
 
   } catch (error: any) {
-    console.error('[api/upload/image] Unexpected error in route:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Error al subir la imagen' }, { status: 500 });
+    console.error('[api/upload/image] Unexpected error:', error);
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : 'Error al subir la imagen' 
+    }, { status: 500 });
   }
 }

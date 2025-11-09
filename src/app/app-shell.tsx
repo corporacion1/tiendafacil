@@ -8,7 +8,6 @@ import { SiteHeader } from "@/components/site-header";
 import { RouteGuard } from "@/components/route-guard";
 import { cn } from '@/lib/utils';
 import { Footer } from '@/components/footer';
-import { Skeleton } from '@/components/ui/skeleton';
 import { PinModal } from '@/components/pin-modal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSecurity } from '@/contexts/security-context';
@@ -20,25 +19,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
-  const toggleSidebar = () => {
-    setIsSidebarExpanded(prev => !prev);
-  };
-
   const isPublicPage = pathname === '/' || pathname.startsWith('/catalog') || pathname.startsWith('/register');
+  const isAuthRequired = !isPublicPage;
 
-  // Redirige si usuario logueado intenta entrar a página pública (opcional)
+  // Redirige usuarios no autenticados
   useEffect(() => {
-    // Solo redirigir si no está cargando y hay un cambio real de estado
-    if (!loading) {
-      if (!user && !isPublicPage && pathname !== '/catalog' && pathname !== '/') {
-        console.log('🔄 Redirecting to catalog from:', pathname);
-        router.replace('/catalog');
-      }
+    if (!loading && !user && isAuthRequired) {
+      console.log('🔄 Redirecting to catalog from:', pathname);
+      router.replace('/catalog');
     }
-  }, [loading, user, pathname]); // Removido isPublicPage y router de dependencias
+  }, [loading, user, pathname, router, isAuthRequired]);
 
-
-  // Mientras carga, muestra loader
+  // Renderizado único de loading
   if (loading) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-background">
@@ -47,7 +39,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Si es página pública → renderiza sin sidebar
+  // Usuario no autenticado intenta acceder a ruta privada
+  if (!user && isAuthRequired) {
+    return null; // useEffect ya redirige
+  }
+
+  // Layout para páginas públicas
   if (isPublicPage) {
     return (
       <div className="flex min-h-screen w-full flex-col">
@@ -59,19 +56,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Si NO hay usuario y no es página pública → no renderices nada (useEffect ya redirigió)
-  if (!user && !isPublicPage) {
-    return (
-      <div className="flex min-h-screen w-full items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
-      </div>
-    );
-  }
-
-  // Renderiza layout completo para usuarios logueados
+  // Layout para usuarios autenticados
   return (
     <div className="flex min-h-screen w-full bg-muted/40">
-      {isPinLocked && !isPublicPage && <PinModal />} 
+      {isPinLocked && <PinModal />} 
       <SiteSidebar isExpanded={isSidebarExpanded} />
       <div className={cn(
         "flex flex-1 flex-col transition-all duration-300",

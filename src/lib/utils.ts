@@ -7,6 +7,19 @@ export function cn(...inputs: ClassValue[]) {
 
 export const getDisplayImageUrl = (url?: string): string => {
   const DEBUG_URLS = typeof window !== 'undefined' && window.location.search.includes('debug=urls');
+
+  // Simple in-memory cache to avoid re-processing the same URLs repeatedly
+  // and optional persistence to localStorage to speed up subsequent page loads.
+  // Keep at module-level to survive multiple calls during a single session.
+  try {
+    // `__urlCache` is attached to global/window for single shared instance in dev HMR
+    if (typeof globalThis !== 'undefined' && !(globalThis as any).__tf_url_cache) {
+      (globalThis as any).__tf_url_cache = new Map<string, string>();
+    }
+  } catch (e) {
+    // ignore
+  }
+  const urlCache: Map<string, string> | undefined = (typeof globalThis !== 'undefined') ? (globalThis as any).__tf_url_cache : undefined;
   
   if (DEBUG_URLS) {
     console.log(`🔗 [getDisplayImageUrl] Input URL: ${url}`);
@@ -20,6 +33,17 @@ export const getDisplayImageUrl = (url?: string): string => {
   }
   
   let processedUrl = url;
+
+  // Return from cache if available
+  try {
+    if (urlCache && urlCache.has(url)) {
+      const cached = urlCache.get(url)!;
+      if (DEBUG_URLS) console.log(`🔗 [getDisplayImageUrl] Cache HIT for URL: ${url}`);
+      return cached;
+    }
+  } catch (e) {
+    // ignore cache errors
+  }
   
   // Do not rely on Supabase tokens anymore; assume images are served from local API or valid external URLs.
   
@@ -49,7 +73,25 @@ export const getDisplayImageUrl = (url?: string): string => {
   if (DEBUG_URLS) {
     console.log(`🔗 [getDisplayImageUrl] Final URL: ${processedUrl.substring(0, 50)}${processedUrl.length > 50 ? '...' : ''}`);
   }
-  
+
+  // Store in cache (best-effort)
+  try {
+    if (urlCache) {
+      urlCache.set(url, processedUrl);
+
+      // Persist a small cache snapshot to localStorage to improve reloads
+      try {
+        const maxEntries = 200;
+        const arr: [string, string][] = Array.from(urlCache.entries()).slice(-maxEntries);
+        localStorage.setItem('tf_image_url_cache', JSON.stringify(arr));
+      } catch (e) {
+        // ignore storage errors
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+
   return processedUrl;
 };
 

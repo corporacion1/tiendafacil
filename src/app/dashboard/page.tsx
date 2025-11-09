@@ -15,6 +15,9 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 
 import { useDashboardStats } from "@/hooks/useDashboardStats"
 
+// Cliente Supabase
+import { supabase } from '@/lib/supabase'
+
 type TimeFilter = 'day' | 'week' | 'month'
 
 const getDate = (d: any): Date => {

@@ -1,17 +1,19 @@
 import { NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import { CurrencyRate } from '@/models/CurrencyRate';
-import { IDGenerator } from '@/lib/id-generator';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(request: Request) {
   try {
-    await connectToDatabase();
     const body = await request.json();
     console.log('📊 [Currency API] Datos recibidos:', body);
     
     const { storeId, rate, userId } = body;
 
-    // Validación mejorada
+    // Validación
     if (!storeId) {
       console.error('❌ [Currency API] StoreId faltante');
       return NextResponse.json(
@@ -31,28 +33,40 @@ export async function POST(request: Request) {
     console.log('🔄 [Currency API] Desactivando tasas anteriores para storeId:', storeId);
     
     // 1. Desactivar todas las tasas anteriores
-    const updateResult = await CurrencyRate.updateMany(
-      { storeId },
-      { $set: { active: false } }
-    );
-    
-    console.log('✅ [Currency API] Tasas desactivadas:', updateResult.modifiedCount);
+    const { error: updateError } = await supabase
+      .from('currency_rates')
+      .update({ active: false })
+      .eq('store_id', storeId);
+
+    if (updateError) {
+      console.error('❌ [Currency API] Error desactivando tasas:', updateError);
+      throw new Error('Error al desactivar tasas anteriores');
+    }
 
     // 2. Crear nueva tasa activa
     const rateData = {
-      id: IDGenerator.generate('rate'),
-      storeId,
+      id: 'RAT-' + Date.now(),
+      store_id: storeId,
       rate: Number(rate),
       date: new Date().toISOString(),
-      createdBy: userId || 'system',
+      created_by: userId || 'system',
       active: true
     };
     
     console.log('💾 [Currency API] Creando nueva tasa:', rateData);
     
-    const newRate = await CurrencyRate.create(rateData);
+    const { data: newRate, error: insertError } = await supabase
+      .from('currency_rates')
+      .insert(rateData)
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('❌ [Currency API] Error creando tasa:', insertError);
+      throw new Error('Error al crear nueva tasa');
+    }
     
-    console.log('✅ [Currency API] Tasa creada exitosamente:', newRate._id);
+    console.log('✅ [Currency API] Tasa creada exitosamente:', newRate.id);
 
     return NextResponse.json({ 
       success: true,
@@ -61,7 +75,6 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error('❌ [Currency API] Error completo:', error);
-    console.error('❌ [Currency API] Stack trace:', error.stack);
     
     return NextResponse.json(
       { 
@@ -75,7 +88,6 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   try {
-    await connectToDatabase();
     const { searchParams } = new URL(request.url);
     const storeId = searchParams.get('storeId');
 
@@ -87,25 +99,41 @@ export async function GET(request: Request) {
     }
 
     // Obtener tasa activa actual
-    const currentRate = await CurrencyRate.findOne({ 
-      storeId, 
-      active: true 
-    }).sort({ date: -1 });
+    const { data: currentRate, error: currentError } = await supabase
+      .from('currency_rates')
+      .select('*')
+      .eq('store_id', storeId)
+      .eq('active', true)
+      .order('date', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (currentError && currentError.code !== 'PGRST116') {
+      console.error('❌ [Currency API] Error obteniendo tasa actual:', currentError);
+    }
 
     // Obtener historial (últimas 10)
-    const history = await CurrencyRate.find({ 
-      storeId 
-    }).sort({ date: -1 }).limit(10);
+    const { data: history, error: historyError } = await supabase
+      .from('currency_rates')
+      .select('*')
+      .eq('store_id', storeId)
+      .order('date', { ascending: false })
+      .limit(10);
+
+    if (historyError) {
+      console.error('❌ [Currency API] Error obteniendo historial:', historyError);
+    }
 
     return NextResponse.json({ 
       success: true,
       data: {
         current: currentRate,
-        history
+        history: history || []
       }
     });
 
   } catch (error: any) {
+    console.error('❌ [Currency API] Error:', error);
     return NextResponse.json(
       { error: error.message },
       { status: 500 }

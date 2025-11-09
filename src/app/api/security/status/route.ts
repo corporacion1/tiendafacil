@@ -1,51 +1,58 @@
 import { NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import Security from '@/models/Security';
-import { getSession } from '@/lib/auth';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function GET(request: Request) {
   try {
-    await connectToDatabase();
-    const session = await getSession(request);
-    
-    console.log('📊 [Status API] GET recibido');
-    console.log('👤 [Status API] Session:', session?.user?.id);
-    
-    if (!session?.user?.id) {
-      console.log('⚠️ [Status API] Sin sesión - retornando hasPin: false');
-      return NextResponse.json({
-        hasPin: false,
-        isLocked: false,
-        remainingAttempts: 5
-      });
+    const { searchParams } = new URL(request.url);
+    const storeId = searchParams.get('storeId');
+
+    if (!storeId) {
+      return NextResponse.json(
+        { error: 'storeId es requerido' },
+        { status: 400 }
+      );
     }
-    
-    const securityRecord = await Security.findOne({ userId: session.user.id });
-    console.log('🔍 [Status API] Registro encontrado:', !!securityRecord);
-    
-    if (!securityRecord) {
-      console.log('⚠️ [Status API] No hay registro - retornando hasPin: false');
-      return NextResponse.json({
-        hasPin: false,
-        isLocked: false,
-        remainingAttempts: 5
-      });
+
+    console.log('🔐 [Security Status] Verificando estado para store:', storeId);
+
+    // Buscar configuración de seguridad en Supabase
+    const { data: securityConfig, error } = await supabase
+      .from('store_security')
+      .select('*')
+      .eq('store_id', storeId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error('❌ [Security Status] Error de Supabase:', error);
+      return NextResponse.json(
+        { error: 'Error consultando configuración de seguridad' },
+        { status: 500 }
+      );
     }
-    
-    const isLocked = securityRecord.lockedUntil && new Date() < securityRecord.lockedUntil;
-    const maxAttempts = 5;
-    const remainingAttempts = Math.max(0, maxAttempts - securityRecord.attempts);
-    
-    console.log('✅ [Status API] Retornando hasPin: true, isLocked:', !!isLocked);
-    
-    return NextResponse.json({
-      hasPin: true,
-      isLocked: !!isLocked,
-      remainingAttempts: isLocked ? 0 : remainingAttempts
+
+    const hasPin = !!securityConfig?.pin_hash;
+    const isLocked = securityConfig?.is_locked || false;
+    const remainingAttempts = securityConfig?.remaining_attempts || 5;
+
+    console.log('✅ [Security Status] Estado obtenido:', {
+      hasPin,
+      isLocked,
+      remainingAttempts
     });
 
-  } catch (error) {
-    console.error('❌ [Status API] Error:', error);
+    return NextResponse.json({
+      hasPin,
+      isLocked,
+      remainingAttempts
+    });
+
+  } catch (error: any) {
+    console.error('❌ [Security Status] Error inesperado:', error);
     return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }

@@ -45,6 +45,28 @@ export async function verifyImagesInDatabase(productId: string, storeId: string)
   try {
     console.group(`🔍 [DB Verification] Checking images for product ${productId}`);
     
+    // Guard: si no hay storeId, no intentamos consultar la API
+    if (!storeId) {
+      issues.push('Missing storeId for DB verification');
+      console.warn('⚠️ [DB Verification] storeId is missing, skipping fetch');
+      console.groupEnd();
+      return {
+        productId,
+        productName: 'Unknown',
+        storeId,
+        verification: {
+          hasImagesInDb: false,
+          imageCount: 0,
+          allImagesAreExternal: false,
+          imagesHaveValidFormat: false,
+          primaryImageIndexValid: false
+        },
+        imageDetails: [],
+        issues,
+        recommendations
+      };
+    }
+    
     // Obtener datos directamente de la API de debug
     const response = await fetch(`/api/products/${productId}/debug?storeId=${storeId}`);
     
@@ -107,11 +129,18 @@ export async function verifyImagesInDatabase(productId: string, storeId: string)
             imagesHaveValidFormat = false;
           } else if (image.url.startsWith('http://') || image.url.startsWith('https://')) {
             imageDetail.isExternalUrl = true;
-            imageDetail.isValid = true; // Basic validation, more robust checks can be added
+            imageDetail.isValid = true; // URL externa válida
             imageDetail.format = 'external';
-            imageDetail.size = image.url.length; // Use length as a proxy for size
+            imageDetail.size = image.url.length; // proxy de tamaño
+          } else if (image.url.startsWith('data:image/')) {
+            // Aceptar Data URL (base64) como formato válido almacenado en MongoDB
+            imageDetail.isExternalUrl = false;
+            imageDetail.isValid = true;
+            imageDetail.format = 'data-url';
+            imageDetail.size = image.url.length; // longitud del string base64
+            allImagesAreExternal = false; // sigue siendo false por definición
           } else {
-            imageDetail.error = 'Not an external URL (expected format for DB storage)';
+            imageDetail.error = 'Unsupported image URL format';
             allImagesAreExternal = false;
             imagesHaveValidFormat = false;
           }
@@ -136,11 +165,7 @@ export async function verifyImagesInDatabase(productId: string, storeId: string)
     }
     
     // Generar issues y recomendaciones
-    if (!allImagesAreExternal) {
-      issues.push('Not all images are stored as external URLs in database');
-      recommendations.push('Ensure all images are stored as external URLs (e.g., Supabase) before saving');
-    }
-    
+    // Ya no exigimos URLs externas: aceptamos data URLs como válidas.
     if (!imagesHaveValidFormat) {
       issues.push('Some images have invalid format or data');
       recommendations.push('Validate image data before saving to database');

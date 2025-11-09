@@ -1,14 +1,9 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import { Product } from '@/models/Product';
-import { handleDatabaseError, validateRequiredFields, logDatabaseOperation } from '@/lib/db-error-handler';
-import { MovementService } from '@/services/MovementService';
-import { MovementType, ReferenceType } from '@/models/InventoryMovement';
+import { supabaseAdmin } from '@/lib/supabase';
 import { IDGenerator } from '@/lib/id-generator';
 
 export async function GET(request: NextRequest) {
   try {
-    await connectToDatabase();
     const { searchParams } = new URL(request.url);
     const storeId = searchParams.get('storeId');
     
@@ -16,18 +11,53 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
     }
     
-    logDatabaseOperation('GET', 'products', { storeId });
-    const products = await Product.find({ storeId }).lean();
+    console.log('📦 [Products API] GET products for store:', storeId);
     
-    return NextResponse.json(products);
-  } catch (error) {
-    return handleDatabaseError(error, 'GET products');
+    const { data: products, error } = await supabaseAdmin
+      .from('products')
+      .select('*')
+      .eq('store_id', storeId)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('❌ [Products API] Error fetching products:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    
+    // Transformar snake_case a camelCase para compatibilidad
+    const transformedProducts = products.map((p: any) => ({
+      id: p.id,
+      storeId: p.store_id,
+      sku: p.sku,
+      name: p.name,
+      description: p.description,
+      family: p.family,
+      price: parseFloat(p.price) || 0,
+      wholesalePrice: parseFloat(p.wholesale_price) || 0,
+      cost: parseFloat(p.cost) || 0,
+      stock: p.stock || 0,
+      minStock: p.min_stock || 0,
+      unit: p.unit,
+      type: p.type,
+      status: p.status,
+      imageUrl: p.image_url,
+      imageHint: p.image_hint,
+      images: typeof p.images === 'string' ? JSON.parse(p.images) : (p.images || []),
+      primaryImageIndex: p.primary_image_index || 0,
+      createdAt: p.created_at,
+      updatedAt: p.updated_at
+    }));
+    
+    console.log(`✅ [Products API] Returned ${transformedProducts.length} products`);
+    return NextResponse.json(transformedProducts);
+  } catch (error: any) {
+    console.error('❌ [Products API] Unexpected error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    await connectToDatabase();
     const data = await request.json();
     
     // Generar ID único si no se proporciona
@@ -35,98 +65,164 @@ export async function POST(request: NextRequest) {
       data.id = IDGenerator.generate('product');
     }
     
-    const validationError = validateRequiredFields(data, ['name', 'storeId']);
-    if (validationError) {
-      return NextResponse.json({ error: validationError }, { status: 400 });
+    if (!data.name || !data.storeId) {
+      return NextResponse.json({ error: 'name y storeId son requeridos' }, { status: 400 });
     }
     
-    // 📦 CORREGIDO: Separar stock inicial para manejo correcto de inventario
+    console.log('📦 [Products API] POST product:', data.name);
+    
     const initialStock = Number(data.stock) || 0;
-    const productDataWithoutStock = { ...data };
-    delete productDataWithoutStock.stock; // Remover stock de los datos iniciales
     
-    logDatabaseOperation('POST', 'products', productDataWithoutStock);
+    // Transformar camelCase a snake_case para Supabase
+    const productData = {
+      id: data.id,
+      store_id: data.storeId,
+      sku: data.sku || null,
+      name: data.name,
+      description: data.description || null,
+      family: data.family || null,
+      price: parseFloat(data.price) || 0,
+      wholesale_price: parseFloat(data.wholesalePrice) || 0,
+      cost: parseFloat(data.cost) || 0,
+      stock: initialStock,
+      min_stock: parseInt(data.minStock) || 0,
+      unit: data.unit || 'unidad',
+      type: data.type || 'product',
+      status: data.status || 'active',
+      image_url: data.imageUrl || null,
+      image_hint: data.imageHint || null,
+      images: JSON.stringify(data.images || []),
+      primary_image_index: data.primaryImageIndex || 0
+    };
     
-    // Crear producto SIN stock inicial (será 0 por defecto)
-    const created = await Product.create({
-      ...productDataWithoutStock,
-      stock: 0 // Siempre iniciar con stock 0
-    });
+    const { data: created, error } = await supabaseAdmin
+      .from('products')
+      .insert(productData)
+      .select()
+      .single();
     
-    // 📦 Registrar movimiento inicial SOLO si hay stock inicial > 0
-    if (created && initialStock > 0) {
-      console.log('📦 [Products API] Registrando movimiento inicial para producto:', created.id, 'Stock:', initialStock);
-      
-      try {
-        await MovementService.recordMovement({
-          productId: created.id,
-          warehouseId: data.warehouse || 'wh-1',
-          movementType: MovementType.INITIAL_STOCK,
-          quantity: initialStock,
-          unitCost: data.cost ? Number(data.cost) : 0,
-          referenceType: ReferenceType.PRODUCT_CREATION,
-          referenceId: created.id,
-          userId: data.userId || 'system',
-          notes: `Stock inicial del producto: ${created.name} (Cantidad: ${initialStock})`,
-          storeId: data.storeId
-        });
-        
-        console.log('✅ [Products API] Movimiento inicial registrado exitosamente. Stock final:', initialStock);
-      } catch (movementError) {
-        console.warn('⚠️ [Products API] Error registrando movimiento inicial:', movementError);
-        // No fallar la creación del producto por error en movimiento
-      }
-    } else if (created) {
-      console.log('📦 [Products API] Producto creado sin stock inicial (stock = 0)');
+    if (error) {
+      console.error('❌ [Products API] Error creating product:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
     
-    return NextResponse.json(created);
-  } catch (error) {
-    return handleDatabaseError(error, 'POST products');
+    console.log('✅ [Products API] Product created:', created.id);
+    
+    // Transformar respuesta a camelCase
+    const response = {
+      id: created.id,
+      storeId: created.store_id,
+      sku: created.sku,
+      name: created.name,
+      description: created.description,
+      family: created.family,
+      price: parseFloat(created.price),
+      wholesalePrice: parseFloat(created.wholesale_price),
+      cost: parseFloat(created.cost),
+      stock: created.stock,
+      minStock: created.min_stock,
+      unit: created.unit,
+      type: created.type,
+      status: created.status,
+      imageUrl: created.image_url,
+      imageHint: created.image_hint,
+      images: typeof created.images === 'string' ? JSON.parse(created.images) : created.images,
+      primaryImageIndex: created.primary_image_index,
+      createdAt: created.created_at,
+      updatedAt: created.updated_at
+    };
+    
+    return NextResponse.json(response);
+  } catch (error: any) {
+    console.error('❌ [Products API] Unexpected error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
 export async function PUT(request: NextRequest) {
   try {
-    await connectToDatabase();
     const data = await request.json();
     
-    console.log('📥 [Products API] PUT recibido:', { id: data.id, storeId: data.storeId });
-    console.log('📦 [Products API] Datos completos:', data);
+    console.log('📥 [Products API] PUT received:', { id: data.id, storeId: data.storeId });
     
-    const validationError = validateRequiredFields(data, ['id', 'storeId']);
-    if (validationError) {
-      console.error('❌ [Products API] Error de validación:', validationError);
-      return NextResponse.json({ error: validationError }, { status: 400 });
+    if (!data.id || !data.storeId) {
+      return NextResponse.json({ error: 'id y storeId son requeridos' }, { status: 400 });
     }
     
-    logDatabaseOperation('PUT', 'products', data);
+    // Transformar camelCase a snake_case
+    const updateData: any = {
+      store_id: data.storeId,
+      updated_at: new Date().toISOString()
+    };
     
-    console.log('🔍 [Products API] Buscando producto:', { id: data.id, storeId: data.storeId });
+    if (data.sku !== undefined) updateData.sku = data.sku;
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.family !== undefined) updateData.family = data.family;
+    if (data.price !== undefined) updateData.price = parseFloat(data.price);
+    if (data.wholesalePrice !== undefined) updateData.wholesale_price = parseFloat(data.wholesalePrice);
+    if (data.cost !== undefined) updateData.cost = parseFloat(data.cost);
+    if (data.stock !== undefined) updateData.stock = parseInt(data.stock);
+    if (data.minStock !== undefined) updateData.min_stock = parseInt(data.minStock);
+    if (data.unit !== undefined) updateData.unit = data.unit;
+    if (data.type !== undefined) updateData.type = data.type;
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.imageUrl !== undefined) updateData.image_url = data.imageUrl;
+    if (data.imageHint !== undefined) updateData.image_hint = data.imageHint;
+    if (data.images !== undefined) updateData.images = JSON.stringify(data.images);
+    if (data.primaryImageIndex !== undefined) updateData.primary_image_index = data.primaryImageIndex;
     
-    const updated = await Product.findOneAndUpdate(
-      { id: data.id, storeId: data.storeId },
-      { $set: data },
-      { new: true, runValidators: true }
-    );
+    const { data: updated, error } = await supabaseAdmin
+      .from('products')
+      .update(updateData)
+      .eq('id', data.id)
+      .eq('store_id', data.storeId)
+      .select()
+      .single();
     
-    if (!updated) {
-      console.error('❌ [Products API] Producto no encontrado en DB');
-      return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 });
+    if (error) {
+      console.error('❌ [Products API] Error updating product:', error);
+      if (error.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 });
+      }
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
     
-    console.log('✅ [Products API] Producto actualizado exitosamente:', updated.id);
+    console.log('✅ [Products API] Product updated:', updated.id);
     
-    return NextResponse.json(updated);
-  } catch (error) {
-    console.error('❌ [Products API] Error en PUT:', error);
-    return handleDatabaseError(error, 'PUT products');
+    // Transformar respuesta a camelCase
+    const response = {
+      id: updated.id,
+      storeId: updated.store_id,
+      sku: updated.sku,
+      name: updated.name,
+      description: updated.description,
+      family: updated.family,
+      price: parseFloat(updated.price),
+      wholesalePrice: parseFloat(updated.wholesale_price),
+      cost: parseFloat(updated.cost),
+      stock: updated.stock,
+      minStock: updated.min_stock,
+      unit: updated.unit,
+      type: updated.type,
+      status: updated.status,
+      imageUrl: updated.image_url,
+      imageHint: updated.image_hint,
+      images: typeof updated.images === 'string' ? JSON.parse(updated.images) : updated.images,
+      primaryImageIndex: updated.primary_image_index,
+      createdAt: updated.created_at,
+      updatedAt: updated.updated_at
+    };
+    
+    return NextResponse.json(response);
+  } catch (error: any) {
+    console.error('❌ [Products API] Unexpected error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
-    await connectToDatabase();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const storeId = searchParams.get('storeId');
@@ -135,15 +231,28 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Faltan parámetros 'id' y/o 'storeId'" }, { status: 400 });
     }
     
-    logDatabaseOperation('DELETE', 'products', { id, storeId });
-    const deleted = await Product.findOneAndDelete({ id, storeId });
+    console.log('🗑️ [Products API] DELETE product:', { id, storeId });
     
-    if (!deleted) {
-      return NextResponse.json({ error: "Producto no existe" }, { status: 404 });
+    const { data, error } = await supabaseAdmin
+      .from('products')
+      .delete()
+      .eq('id', id)
+      .eq('store_id', storeId)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('❌ [Products API] Error deleting product:', error);
+      if (error.code === 'PGRST116') {
+        return NextResponse.json({ error: 'Producto no existe' }, { status: 404 });
+      }
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
     
-    return NextResponse.json({ message: "Producto eliminado exitosamente" });
-  } catch (error) {
-    return handleDatabaseError(error, 'DELETE products');
+    console.log('✅ [Products API] Product deleted:', id);
+    return NextResponse.json({ message: 'Producto eliminado exitosamente' });
+  } catch (error: any) {
+    console.error('❌ [Products API] Unexpected error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

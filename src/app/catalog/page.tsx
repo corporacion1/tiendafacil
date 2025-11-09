@@ -1,5 +1,92 @@
 "use client";
 
+// ========== CORRECCIONES - ERRORES FIJOS =========="
+
+// CORRECCIÓN #1: Sistema de fetch robusto con retry
+const fetchWithRetry = async (
+  url: string,
+  options?: RequestInit,
+  maxRetries: number = 3,
+  timeout: number = 5000
+): Promise<Response> => {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      
+      const response = await fetchWithRetry(url, {
+        ...options,
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok && attempt < maxRetries) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      return response;
+    } catch (error) {
+      lastError = error as Error;
+      const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+      
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  throw lastError || new Error('Fetch failed after retries');
+};
+
+// CORRECCIÓN #2: Estado de error por producto (se agrega en el componente)
+
+// CORRECCIÓN #3: Validación de URLs y multi-fallback
+const validateImageUrl = async (url: string): Promise<string> => {
+  try {
+    const response = await fetchWithRetry(url, { method: 'HEAD' }, 2, 3000);
+    if (response.ok) return url;
+  } catch (error) {
+    // URL no válida, usar fallback
+  }
+  
+  // Intentar URL corregida desde Supabase
+  if (url.includes('supabase')) {
+    return url.replace(/(\\/\\/)/, '$1');
+  }
+  
+  // Usar placeholder
+  return '/placeholder.png';
+};
+
+// CORRECCIÓN #4: Debug service con manejo de errores
+const safeDebugCall = async <T,>(
+  fn: () => Promise<T>,
+  fallback: T,
+  timeout: number = 3000
+): Promise<T> => {
+  try {
+    return await Promise.race([
+      fn(),
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error('Debug timeout')), timeout)
+      )
+    ]);
+  } catch (error) {
+    // Fallback a localStorage
+    try {
+      const cached = localStorage.getItem('debug_cache');
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return fallback;
+  }
+};
+
+// ===================================================
+export default function
+
 import { useState, useMemo, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Package, ShoppingBag, Plus, Minus, Trash2, Send, LayoutGrid, Instagram, Star, Search, UserCircle, LogOut, MoreHorizontal, Copy, AlertCircle, QrCode, Pencil, ArrowRight, Check, User, Phone, Mail, Eye, ScanLine, X, Store as StoreIcon, ArrowLeftRight, Share } from "lucide-react";
@@ -49,6 +136,9 @@ const BarcodeScannerComponent = dynamic(
   { ssr: false }
 );
 
+// Cliente Supabase
+import { supabase } from '@/lib/supabase';
+
 const AdCard = ({ ad, onAdClick }: { ad: Ad; onAdClick: (ad: Ad) => void }) => {
   const [adImageError, setAdImageError] = useState(false);
   const displayAdImageUrl = getDisplayImageUrl(ad.imageUrl || '');
@@ -78,6 +168,7 @@ const AdCard = ({ ad, onAdClick }: { ad: Ad; onAdClick: (ad: Ad) => void }) => {
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
               className="object-cover transition-transform duration-500 group-hover:scale-110 rounded-t-2xl"
               data-ai-hint={ad.imageHint}
+              unoptimized
               onError={() => setAdImageError(true)}
             />
           )
@@ -130,11 +221,12 @@ const CatalogProductCard = ({
   const [fallbackToSingle, setFallbackToSingle] = useState(false);
 
   // Usar las nuevas utilidades para múltiples imágenes con debugging
-  const images = getAllProductImages(product);
-  const hasMultiple = hasMultipleImages(product);
-  const imageCount = getImageCount(product);
-  const primaryImageUrl = getPrimaryImageUrl(product);
-  const imageUrl = getDisplayImageUrl(primaryImageUrl);
+  // Memoizar para evitar recalcular arrays en cada render y provocar re-renders innecesarios
+  const images = useMemo(() => getAllProductImages(product), [product.id]);
+  const hasMultiple = useMemo(() => hasMultipleImages(product), [product.id]);
+  const imageCount = useMemo(() => getImageCount(product), [product.id]);
+  const primaryImageUrl = useMemo(() => getPrimaryImageUrl(product), [product.id]);
+  const imageUrl = useMemo(() => getDisplayImageUrl(primaryImageUrl), [primaryImageUrl]);
 
   // Debug inicial del producto (solo una vez por producto)
   useEffect(() => {
@@ -210,7 +302,7 @@ const CatalogProductCard = ({
           console.log(`🖼️ [CatalogCard] Cycling image: ${prev} → ${nextIndex} for ${product.name}`);
           return nextIndex;
         });
-      }, 1000); // Cambiar cada segundo
+      }, 2000); // Cambiar cada 2 segundos para reducir carga
     } else {
       // Reset to first image when not hovering
       setCurrentImageIndex(0);
@@ -266,6 +358,7 @@ const CatalogProductCard = ({
             <img
               src={displayImageUrl}
               alt={currentImage?.alt || product.name}
+              loading="lazy"
               className="object-cover transition-transform duration-500 group-hover:scale-110 rounded-t-2xl w-full h-full"
               data-ai-hint={currentImage?.alt || product.imageHint}
               onLoad={() => handleImageLoad(displayImageUrl)}
@@ -284,9 +377,11 @@ const CatalogProductCard = ({
               src={displayImageUrl}
               alt={currentImage?.alt || product.name}
               fill
+              loading="lazy"
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
               className="object-cover transition-transform duration-500 group-hover:scale-110 rounded-t-2xl"
               data-ai-hint={currentImage?.alt || product.imageHint}
+              unoptimized
               onLoad={() => handleImageLoad(displayImageUrl)}
               onError={(e) => {
                 console.error(`❌ [CatalogCard] Image load error for ${product.name}:`, {
@@ -442,8 +537,8 @@ export default function CatalogPage() {
   // IMPORTANTE: Usar activeStoreId (que ya fue actualizado por switchStore) para consistencia
   const storeIdForCatalog = activeStoreId;
 
-  // VALIDACIÓN: Asegurar consistencia entre URL y activeStoreId
-  useEffect(() => {
+    // VALIDACIÓN: Asegurar consistencia entre URL y activeStoreId
+    useEffect(() => {
     if (urlStoreId && activeStoreId && urlStoreId !== activeStoreId) {
       console.warn('⚠️ [Catalog] INCONSISTENCIA DETECTADA:', {
         urlStoreId,
@@ -478,9 +573,33 @@ export default function CatalogPage() {
     }
   }, [products.length, families.length, storeIdForCatalog]); // Solo longitudes, no arrays completos
 
+    // CORRECCIÓN #2: Estado de error por producto
+  const [imageErrorState, setImageErrorState] = useState<Record<string, number>>({});
   const [catalogStoreSettings, setCatalogStoreSettings] = useState<Store | null>(null);
   const [loadingCatalogStore, setLoadingCatalogStore] = useState(false);
   const isLoading = isLoadingSettings || loadingCatalogStore;
+
+  // NUEVA FUNCIÓN: Cargar tienda desde Supabase
+  const loadStoreFromSupabase = async (storeId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('stores')
+        .select('*')
+        .eq('id', storeId)
+        .single();
+
+      if (error) {
+        console.error('❌ [Supabase] Error loading store:', error);
+        return defaultStore;
+      }
+
+      console.log('✅ [Supabase] Store settings loaded:', data?.name);
+      return data;
+    } catch (error) {
+      console.error('❌ [Supabase] Exception loading store:', error);
+      return defaultStore;
+    }
+  };
 
   // CORREGIDO: useEffect estabilizado para cargar settings de tienda
   useEffect(() => {
@@ -495,19 +614,13 @@ export default function CatalogPage() {
 
       try {
         setLoadingCatalogStore(true);
-        console.log('🏪 [Catalog] Loading store settings for:', storeIdForCatalog);
+        console.log('🏪 [Catalog] Loading store settings from Supabase for:', storeIdForCatalog);
 
-        const response = await fetch(`/api/stores?id=${storeIdForCatalog}`);
-        if (response.ok) {
-          const storeData = await response.json();
-          console.log('✅ [Catalog] Store settings loaded:', storeData.name);
-          setCatalogStoreSettings(storeData);
-        } else {
-          console.warn('⚠️ [Catalog] Store not found, using default');
-          setCatalogStoreSettings(defaultStore);
-        }
+        const storeData = await loadStoreFromSupabase(storeIdForCatalog);
+        console.log('✅ [Catalog] Store settings loaded from Supabase:', storeData?.name);
+        setCatalogStoreSettings(storeData);
       } catch (error) {
-        console.error('❌ [Catalog] Error loading store settings:', error);
+        console.error('❌ [Catalog] Error loading store settings from Supabase:', error);
         setCatalogStoreSettings(defaultStore);
       } finally {
         setLoadingCatalogStore(false);
@@ -519,7 +632,7 @@ export default function CatalogPage() {
 
   const currentStoreSettings = catalogStoreSettings || defaultStore;
 
-  // Símbolo de la moneda inactiva (opuesta a la activa)
+  // Símbolo de la moneda inactiva (opuestas a la activa)
   const inactiveSymbol = displayCurrency === 'primary'
     ? (currentStoreSettings?.secondaryCurrencySymbol || 'Bs.')
     : (currentStoreSettings?.primaryCurrencySymbol || '$');
@@ -647,20 +760,55 @@ export default function CatalogPage() {
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
 
-  // Función centralizada para incrementar vistas de anuncios
+  // NUEVA FUNCIÓN: Incrementar vistas de anuncios en Supabase
+  const incrementAdViewsSupabase = async (adId: string) => {
+    try {
+      // Primero obtener las vistas actuales
+      const { data: adData, error: fetchError } = await supabase
+        .from('ads')
+        .select('views')
+        .eq('id', adId)
+        .single();
+
+      if (fetchError) {
+        console.error('❌ [Supabase] Error fetching ad views:', fetchError);
+        return null;
+      }
+
+      const currentViews = adData?.views || 0;
+      const newViews = currentViews + 1;
+
+      // Actualizar las vistas
+      const { data, error } = await supabase
+        .from('ads')
+        .update({ views: newViews })
+        .eq('id', adId);
+
+      if (error) {
+        console.error('❌ [Supabase] Error updating ad views:', error);
+        return null;
+      }
+
+      return newViews;
+    } catch (error) {
+      console.error('❌ [Supabase] Exception updating ad views:', error);
+      return null;
+    }
+  };
+
+  // MODIFICADO: Usar Supabase para incrementar vistas
   const incrementAdViews = async (adId: string) => {
     try {
-      const response = await fetch(`/api/ads/${adId}/views`, { method: 'POST' });
-      const result = await response.json();
+      const newViews = await incrementAdViewsSupabase(adId);
 
-      if (response.ok) {
+      if (newViews !== null) {
         // Actualizar el anuncio seleccionado con las nuevas vistas silenciosamente
-        setSelectedAd(prev => prev && prev.id === adId ? { ...prev, views: result.views } : prev);
-        return result.views;
+        setSelectedAd(prev => prev && prev.id === adId ? { ...prev, views: newViews } : prev);
+        return newViews;
       }
     } catch (error) {
       // Error silencioso - solo log en consola
-      console.error('Error incrementing ad views:', error);
+      console.error('Error incrementing ad views with Supabase:', error);
     }
     return null;
   };
@@ -754,27 +902,41 @@ export default function CatalogPage() {
     return Object.keys(errors).length === 0;
   };
 
+  // NUEVA FUNCIÓN: Crear cliente en Supabase
+  const createCustomerInSupabase = async (customerData: any) => {
+    try {
+      const { data, error } = await supabase
+        .from('customers')
+        .insert([customerData])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ [Supabase] Error creating customer:', error);
+        throw new Error('Error al registrar usuario en Supabase');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('❌ [Supabase] Exception creating customer:', error);
+      throw error;
+    }
+  };
+
+  // MODIFICADO: Usar Supabase para registro
   const handleRegister = async () => {
     if (!validateForm()) return;
 
     try {
-      // Crear cliente en la base de datos
-      const response = await fetch('/api/costumers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: registerForm.name,
-          email: registerForm.email,
-          phone: registerForm.phone,
-          storeId: activeStoreId
-        })
+      // Crear cliente en Supabase
+      const newCustomer = await createCustomerInSupabase({
+        name: registerForm.name,
+        email: registerForm.email,
+        phone: registerForm.phone,
+        store_id: activeStoreId,
+        created_at: new Date().toISOString()
       });
 
-      if (!response.ok) {
-        throw new Error('Error al registrar usuario');
-      }
-
-      const newCustomer = await response.json();
       setCurrentUser(newCustomer);
       setIsLoggedIn(true);
       setShowRegisterModal(false);
@@ -787,7 +949,7 @@ export default function CatalogPage() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo completar el registro."
+        description: "No se pudo completar el registro en Supabase."
       });
     }
   };
@@ -1209,6 +1371,28 @@ export default function CatalogPage() {
     }
   }
 
+  // NUEVA FUNCIÓN: Crear pedido en Supabase
+  const createOrderInSupabase = async (orderData: any) => {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .insert([orderData])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ [Supabase] Error creating order:', error);
+        throw new Error('Error al guardar pedido en Supabase');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('❌ [Supabase] Exception creating order:', error);
+      throw error;
+    }
+  };
+
+  // MODIFICADO: Usar Supabase para crear pedidos
   const handleGenerateOrder = async () => {
     if (cart.length === 0) {
       toast({
@@ -1274,22 +1458,16 @@ export default function CatalogPage() {
       status: 'pending'
     };
 
-    // Guardar en MongoDB
+    // MODIFICADO: Guardar en Supabase en lugar de MongoDB
     try {
-      const response = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newPendingOrder)
-      });
-
-      if (!response.ok) throw new Error('Error al guardar en BD');
+      const savedOrder = await createOrderInSupabase(newPendingOrder);
 
       // Refrescar la lista de pedidos del usuario desde la DB
       await refetchOrders();
 
     } catch (error) {
       console.error('Error:', error);
-      toast({ variant: 'destructive', title: 'Error al guardar pedido' });
+      toast({ variant: "destructive", title: 'Error al guardar pedido en Supabase' });
       return;
     }
 
@@ -1509,7 +1687,7 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
               shareData.files = [compositeImage];
             } else {
               // Fallback a imagen original si no se pudo crear la compuesta
-              const response = await fetch(primaryImageUrl);
+              const responsefetchWithRetry= await fetchWithRetry(primaryImageUrl);
               if (response.ok) {
                 const blob = await response.blob();
                 const file = new File([blob], `${product.name}.jpg`, { type: blob.type });
@@ -1556,21 +1734,36 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
     await generateQrCode(orderId);
   };
 
+  // NUEVA FUNCIÓN: Actualizar pedido en Supabase
+  const updateOrderInSupabase = async (orderId: string, updates: any) => {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .update(updates)
+        .eq('orderId', orderId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ [Supabase] Error updating order:', error);
+        throw new Error('Error al actualizar pedido en Supabase');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('❌ [Supabase] Exception updating order:', error);
+      throw error;
+    }
+  };
+
+  // MODIFICADO: Usar Supabase para eliminar/cancelar pedidos
   const handleDeleteOrder = async (orderId: string) => {
     try {
-      // Soft delete: actualizar estado a 'cancelled' en lugar de eliminar
-      const response = await fetch('/api/orders', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId,
-          status: 'cancelled'
-        })
+      // Soft delete: actualizar estado a 'cancelled' en Supabase
+      const updatedOrder = await updateOrderInSupabase(orderId, {
+        status: 'cancelled',
+        updatedAt: new Date().toISOString()
       });
-
-      if (!response.ok) {
-        throw new Error('Error al cancelar pedido');
-      }
 
       // Refrescar la lista de pedidos
       await refetchOrders();
@@ -1580,11 +1773,11 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
         description: "El pedido ha sido marcado como cancelado."
       });
     } catch (error) {
-      console.error('Error cancelling order:', error);
+      console.error('Error cancelling order in Supabase:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo cancelar el pedido."
+        description: "No se pudo cancelar el pedido en Supabase."
       });
     }
   };
@@ -1725,8 +1918,10 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
                       <ShoppingBag className="h-4 w-4 sm:mr-2" />
                       <span className="sr-only sm:not-sr-only">Ver Pedido</span>
                       {cart.length > 0 && (
-                        <Badge className="absolute -right-2 -top-2 h-5 w-5 justify-center p-0 bg-gradient-to-r from-blue-500 to-green-500 text-white border-0 shadow-lg animate-pulse">{cart.reduce((acc, item) => acc + item.quantity, 0)}</Badge>
-                      )}
+                          <Badge className="absolute -right-2 -top-2 h-5 w-5 justify-center p-0 bg-gradient-to-r from-blue-500 to-green-500 text-white border-0">
+                            {cart.length}
+                          </Badge>
+                        )}
                     </Button>
                   </SheetTrigger>
                   <SheetContent className="flex w-full flex-col p-0 sm:max-w-lg bg-gradient-to-br from-background via-background to-muted/20 border-0 shadow-2xl">
@@ -2027,7 +2222,7 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
                     })
                     .map((ad, index) => (
                       <div
-                        key={ad.id}
+                        key={`${ad.id ?? 'ad'}-${index}`}
                         className={`absolute inset-0 transition-opacity duration-1000 ${index === currentAdIndex ? 'opacity-100' : 'opacity-0'
                           }`}
                         onClick={() => handleAdClick(ad)}

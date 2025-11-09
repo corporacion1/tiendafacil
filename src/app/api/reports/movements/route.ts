@@ -1,13 +1,9 @@
 // src/app/api/reports/movements/route.ts
 import { NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import { InventoryMovement } from '@/models/InventoryMovement';
-import { Product } from '@/models/Product';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function GET(request: Request) {
   try {
-    await connectToDatabase();
-    
     const { searchParams } = new URL(request.url);
     const storeId = searchParams.get('storeId');
     const dateFrom = searchParams.get('dateFrom');
@@ -22,75 +18,83 @@ export async function GET(request: Request) {
     console.log('📊 [Reports Movements API] Obteniendo movimientos para storeId:', storeId);
 
     // Construir query
-    const query: any = { storeId };
+    let query = supabaseAdmin
+      .from('inventory_movements')
+      .select('*')
+      .eq('store_id', storeId);
     
     if (dateFrom || dateTo) {
-      query.createdAt = {};
-      if (dateFrom) query.createdAt.$gte = new Date(dateFrom);
-      if (dateTo) query.createdAt.$lte = new Date(dateTo);
+      if (dateFrom) query = query.gte('created_at', dateFrom);
+      if (dateTo) query = query.lte('created_at', dateTo);
     }
     
-    if (productId) query.productId = productId;
-    if (movementType) query.movementType = movementType;
+    if (productId) query = query.eq('product_id', productId);
+    if (movementType) query = query.eq('movement_type', movementType);
 
-    // Obtener movimientos reales de la base de datos
-    const movements = await InventoryMovement.find(query)
-      .sort({ createdAt: -1 })
-      .limit(1000) // Limitar para rendimiento
-      .lean();
+    // Obtener movimientos
+    const { data: movements, error } = await query
+      .order('created_at', { ascending: false })
+      .limit(1000);
 
-    console.log('📦 [Reports Movements API] Movimientos encontrados:', movements.length);
+    if (error) {
+      console.error('❌ [Reports Movements API] Error fetching movements:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    console.log('📦 [Reports Movements API] Movimientos encontrados:', movements?.length || 0);
 
     // Enriquecer con información de productos
     const enrichedMovements = await Promise.all(
-      movements.map(async (movement) => {
+      (movements || []).map(async (movement: any) => {
         try {
-          const product = await Product.findOne({ 
-            id: movement.productId, 
-            storeId 
-          });
+          const { data: product } = await supabaseAdmin
+            .from('products')
+            .select('name, sku')
+            .eq('id', movement.product_id)
+            .eq('store_id', storeId)
+            .single();
           
           return {
-            id: movement._id,
-            productId: movement.productId,
-            productName: product?.name || `Producto ${movement.productId}`,
+            id: movement.id,
+            productId: movement.product_id,
+            productName: product?.name || `Producto ${movement.product_id}`,
             productSku: product?.sku || '',
-            warehouseId: movement.warehouseId,
-            movementType: movement.movementType,
+            warehouseId: movement.warehouse_id,
+            movementType: movement.movement_type,
             quantity: movement.quantity,
-            unitCost: movement.unitCost,
-            totalValue: movement.totalValue,
-            referenceType: movement.referenceType,
-            referenceId: movement.referenceId,
-            batchId: movement.batchId,
-            previousStock: movement.previousStock,
-            newStock: movement.newStock,
-            userId: movement.userId,
+            unitCost: movement.unit_cost,
+            totalValue: movement.total_value,
+            referenceType: movement.reference_type,
+            referenceId: movement.reference_id,
+            batchId: movement.batch_id,
+            previousStock: movement.previous_stock,
+            newStock: movement.new_stock,
+            userId: movement.user_id,
             notes: movement.notes,
-            date: movement.createdAt,
-            storeId: movement.storeId
+            date: movement.created_at,
+            storeId: movement.store_id
           };
         } catch (productError) {
           console.warn('⚠️ [Reports Movements API] Error obteniendo producto:', productError);
           return {
-            id: movement._id,
-            productId: movement.productId,
-            productName: `Producto ${movement.productId}`,
+            id: movement.id,
+            productId: movement.product_id,
+            productName: `Producto ${movement.product_id}`,
             productSku: '',
-            warehouseId: movement.warehouseId,
-            movementType: movement.movementType,
+            warehouseId: movement.warehouse_id,
+            movementType: movement.movement_type,
             quantity: movement.quantity,
-            unitCost: movement.unitCost,
-            totalValue: movement.totalValue,
-            referenceType: movement.referenceType,
-            referenceId: movement.referenceId,
-            batchId: movement.batchId,
-            previousStock: movement.previousStock,
-            newStock: movement.newStock,
-            userId: movement.userId,
+            unitCost: movement.unit_cost,
+            totalValue: movement.total_value,
+            referenceType: movement.reference_type,
+            referenceId: movement.reference_id,
+            batchId: movement.batch_id,
+            previousStock: movement.previous_stock,
+            newStock: movement.new_stock,
+            userId: movement.user_id,
             notes: movement.notes,
-            date: movement.createdAt,
-            storeId: movement.storeId
+            date: movement.created_at,
+            storeId: movement.store_id
           };
         }
       })
@@ -105,8 +109,8 @@ export async function GET(request: Request) {
       }, {}),
       totalValue: enrichedMovements.reduce((acc, m) => acc + (m.totalValue || 0), 0),
       dateRange: {
-        from: movements.length > 0 ? movements[movements.length - 1].createdAt : null,
-        to: movements.length > 0 ? movements[0].createdAt : null
+        from: enrichedMovements.length > 0 ? enrichedMovements[enrichedMovements.length - 1].date : null,
+        to: enrichedMovements.length > 0 ? enrichedMovements[0].date : null
       }
     };
 

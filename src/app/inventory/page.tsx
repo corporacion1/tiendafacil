@@ -1,9 +1,8 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
-import { File, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X, Package, Check, ImageOff, FileText, FileSpreadsheet, FileJson, Filter } from "lucide-react";
+import { File, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X, Package, Check, ImageOff, FileText, FileSpreadsheet, FileJson, Filter, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { logger } from "@/lib/logger";
 import { RouteGuard } from "@/components/route-guard";
 import { usePermissions } from "@/hooks/use-permissions";
 import type { Product, InventoryMovement, Sale } from "@/lib/types";
@@ -49,7 +49,10 @@ const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewM
   setProductToDelete: (product: Product | null) => void;
 }) => {
   const [imageError, setImageError] = useState(false);
-  const imageUrl = getDisplayImageUrl(product.imageUrl);
+  const primaryImage = (product.images && product.images.length > 0)
+    ? (product.images[0].thumbnailUrl || product.images[0].url)
+    : product.imageUrl;
+  const imageUrl = getDisplayImageUrl(primaryImage);
 
   const getStatusVariant = (status: Product['status']) => {
     switch (status) {
@@ -74,12 +77,10 @@ const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewM
       <TableCell className="hidden sm:table-cell">
         <div className="relative flex items-center justify-center w-16 h-16 bg-muted rounded-lg overflow-hidden isolate shadow-sm">
           {imageUrl && !imageError ? (
-            <Image
+            <img
               src={imageUrl}
               alt={product.name}
-              fill
-              sizes="64px"
-              className="object-cover hover:scale-105 transition-transform duration-200"
+              className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
               data-ai-hint={product.imageHint}
               onError={() => setImageError(true)}
             />
@@ -167,10 +168,42 @@ export default function InventoryPage() {
   const [isProcessingMovement, setIsProcessingMovement] = useState(false);
 
 
-  const handleEdit = (product: Product) => {
-    console.log('✏️ [Inventory] Editando producto:', product);
-    console.log('📦 [Inventory] Producto tiene storeId:', product.storeId);
-    setProductToEdit(product);
+  const handleEdit = async (product: Product) => {
+    logger.debug('✏️ [Inventory] Editando producto:', product);
+    const productId = product.id;
+    const storeId = product.storeId || activeStoreId;
+    if (!productId || !storeId) {
+      toast({ variant: 'destructive', title: 'No se puede editar', description: `Faltan identificadores (id=${String(productId)}, storeId=${String(storeId)})` });
+      return;
+    }
+    try {
+      const res = await fetch(`/api/supabase/products/${productId}?storeId=${encodeURIComponent(storeId)}`);
+      if (!res.ok) {
+        const txt = await res.text();
+        logger.warn('⚠️ [Inventory] Producto no encontrado al abrir modal (GET by id):', { status: res.status, txt });
+        // Fallback: cargar todos y buscar localmente por id
+        const listRes = await fetch(`/api/supabase/products?storeId=${encodeURIComponent(storeId)}`);
+        if (listRes.ok) {
+          const list = await listRes.json();
+          const found = (Array.isArray(list) ? list : (list?.products || [])).find((p: any) => p.id === productId);
+          if (found) {
+            logger.debug('📦 [Inventory] Producto encontrado vía listado para edición:', { id: found.id, storeId: found.storeId });
+            setProductToEdit(found);
+            return;
+          }
+        }
+        // Último recurso: abrir con el producto seleccionado y advertir
+        toast({ variant: 'destructive', title: `Producto no encontrado`, description: txt || 'Abriendo con datos locales. Guardar/Imágenes podrían fallar.' });
+        setProductToEdit({ ...(product as any), id: productId, storeId } as Product);
+        return;
+      }
+      const fresh = await res.json();
+      logger.debug('📦 [Inventory] Producto cargado para edición:', { id: fresh.id, storeId: fresh.storeId });
+      setProductToEdit(fresh);
+    } catch (e) {
+      logger.error('❌ [Inventory] Error cargando producto para edición:', e);
+      toast({ variant: 'destructive', title: 'Error de red', description: 'No se pudo cargar el producto.' });
+    }
   };
 
   const handleViewMovements = (product: Product) => {
@@ -179,10 +212,11 @@ export default function InventoryPage() {
     setIsMovementsDialogOpen(true);
   };
 
+  // ✅ CORREGIDO: Función para actualizar productos - AHORA INCLUYE IMÁGENES
   async function handleUpdateProduct(data: Omit<Product, 'id' | 'createdAt' | 'storeId'> & { id?: string }) {
     if (!data.id) return false;
 
-    console.log('🔄 [Inventory] Actualizando producto:', {
+    logger.info('🔄 [Inventory] Actualizando producto:', {
       id: data.id,
       name: data.name,
       hasImages: !!data.images,
@@ -190,31 +224,99 @@ export default function InventoryPage() {
       imageUrl: data.imageUrl
     });
 
-    // Usar el endpoint específico por ID para mejor manejo
-    const result = await updateWithSync<Product>(`/api/products/${data.id}`, data, {
-      successMessage: `El producto "${data.name}" ha sido actualizado exitosamente.`,
-      errorMessage: "No se pudo actualizar el producto. Intenta nuevamente.",
-      syncType: 'products',
-      updateState: (updatedProduct) => {
-        console.log('✅ [Inventory] Producto actualizado en estado local:', {
-          id: updatedProduct.id,
-          imagesCount: updatedProduct.images?.length || 0
-        });
-        // Actualizar el producto específico en el estado local
-        setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+    // Validación: SKU único en la tienda (contra el estado local)
+    if (data.sku) {
+      const duplicate = products.find(p => p.sku === data.sku && p.id !== data.id);
+      if (duplicate) {
+        toast({ variant: 'destructive', title: 'SKU duplicado', description: `Ya existe un producto con SKU "${data.sku}" (${duplicate.name}).` });
+        return false;
       }
-    });
-
-    if (result) {
-      // No cerrar el modal, en su lugar, actualizar los datos del producto en el modal
-      setProductToEdit(result);
-      toast({
-        title: "Producto Actualizado",
-        description: `El producto "${result.name}" ha sido actualizado.`,
-      });
-      return true;
     }
-    return false;
+
+    // ✅ CORREGIDO: AHORA INCLUIMOS LAS IMÁGENES en el payload
+    const storeIdForUpdate = (productToEdit as any)?.storeId || activeStoreId;
+    if (!storeIdForUpdate) {
+      toast({ variant: 'destructive', title: 'No se puede guardar', description: 'Falta Store ID. Intente recargar la página.' });
+      return false;
+    }
+
+    // ✅ CORREGIDO: Incluir todas las propiedades incluyendo imágenes
+    const payload = { 
+      ...data,
+      store_id: storeIdForUpdate,
+      updated_at: new Date().toISOString()
+    };
+
+    try {
+      const response = await fetch(`/api/supabase/products/${data.id}?storeId=${encodeURIComponent(storeIdForUpdate)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        logger.error('❌ [Inventory] PUT /api/supabase/products error:', { status: response.status, errorText });
+        
+        if (response.status === 404) {
+          // Verificar duplicados en el servidor
+          if (data.sku) {
+            try {
+              const listRes = await fetch(`/api/supabase/products?storeId=${encodeURIComponent(storeIdForUpdate)}`);
+              if (listRes.ok) {
+                const listJson = await listRes.json();
+                const serverProducts = Array.isArray(listJson) ? listJson : (listJson?.products || []);
+                const serverDuplicate = serverProducts.find((p: any) => p.sku === data.sku && p.id !== data.id);
+                if (serverDuplicate) {
+                  toast({ variant: 'destructive', title: 'SKU duplicado', description: `Ya existe un producto con SKU "${data.sku}" (${serverDuplicate.name}).` });
+                  return false;
+                }
+              }
+            } catch {}
+          }
+          
+          // Intentar crear el producto si no existe
+          const createResp = await fetch(`/api/supabase/products?storeId=${encodeURIComponent(storeIdForUpdate)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          
+          if (!createResp.ok) {
+            const createText = await createResp.text();
+            toast({ variant: 'destructive', title: `Error ${createResp.status} al crear`, description: createText || errorText || 'No se pudo crear/actualizar el producto.' });
+            return false;
+          }
+          
+          const created = await createResp.json();
+          setProducts(prev => {
+            const exists = prev.find(p => p.id === created.id);
+            return exists ? prev.map(p => p.id === created.id ? created : p) : [created, ...prev];
+          });
+          setProductToEdit(created);
+          toast({ title: 'Producto Creado', description: `Se creó el producto "${created.name}" al no existir en la base de datos.` });
+          await reloadProducts();
+          return true;
+        }
+        
+        toast({ variant: 'destructive', title: `Error ${response.status} al guardar`, description: errorText || 'No se pudo actualizar el producto.' });
+        return false;
+      }
+
+      const updatedProduct = await response.json();
+      
+      // Actualizar estado local
+      setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+      setProductToEdit(updatedProduct);
+      toast({ title: 'Producto Actualizado', description: `El producto "${updatedProduct.name}" ha sido actualizado.` });
+      await reloadProducts();
+      return true;
+      
+    } catch (err) {
+      logger.error('❌ [Inventory] Error de red al actualizar producto:', err);
+      toast({ variant: 'destructive', title: 'No se pudo actualizar el producto', description: 'Error de red. Intenta nuevamente.' });
+      return false;
+    }
   }
 
   const handleDelete = async (productId: string) => {
@@ -229,7 +331,7 @@ export default function InventoryPage() {
       return;
     }
 
-    const success = await deleteWithSync('/api/products', productId, {
+    const success = await deleteWithSync('/api/supabase/products', productId, {
       successMessage: "El producto ha sido eliminado exitosamente.",
       errorMessage: "No se pudo eliminar el producto. Intenta nuevamente.",
       syncType: 'products',
@@ -274,13 +376,13 @@ export default function InventoryPage() {
       if (movementType === 'adjustment') {
         // Para ajustes, usar la API PUT que registra automáticamente el movimiento
         newStock = movementQuantity;
-        apiEndpoint = '/api/inventory/movements';
+        apiEndpoint = '/api/supabase/inventory/movements';
         requestBody = {
-          productId: movementProduct.id,
-          newStock: newStock,
+          product_id: movementProduct.id,
+          new_stock: newStock,
           reason: movementResponsible,
-          userId: (user as any)?.id || 'system',
-          storeId: activeStoreId
+          user_id: (user as any)?.id || 'system',
+          store_id: activeStoreId
         };
 
         const response = await fetch(apiEndpoint, {
@@ -294,7 +396,7 @@ export default function InventoryPage() {
         }
 
         const result = await response.json();
-        console.log('✅ Ajuste registrado:', result);
+        logger.info('✅ Ajuste registrado:', result);
 
       } else {
         // Para compras y ventas, usar la API POST de movimientos
@@ -319,17 +421,17 @@ export default function InventoryPage() {
         }
 
         // Registrar movimiento manual
-        apiEndpoint = '/api/inventory/movements';
+        apiEndpoint = '/api/supabase/inventory/movements';
         requestBody = {
-          productId: movementProduct.id,
-          warehouseId: 'wh-1',
-          movementType: movementType === 'purchase' ? 'purchase' : 'sale',
+          product_id: movementProduct.id,
+          warehouse_id: 'wh-1',
+          movement_type: movementType === 'purchase' ? 'purchase' : 'sale',
           quantity: movementType === 'purchase' ? movementQuantity : -movementQuantity,
-          referenceType: 'manual_adjustment',
-          referenceId: `manual_${Date.now()}`,
-          userId: (user as any)?.id || 'system',
+          reference_type: 'manual_adjustment',
+          reference_id: `manual_${Date.now()}`,
+          user_id: (user as any)?.id || 'system',
           notes: `${getMovementLabel(movementType)} manual - ${movementResponsible}`,
-          storeId: activeStoreId
+          store_id: activeStoreId
         };
 
         const response = await fetch(apiEndpoint, {
@@ -342,19 +444,8 @@ export default function InventoryPage() {
           throw new Error('Error al registrar movimiento');
         }
 
-        // Actualizar stock del producto
-        const updateResponse = await fetch('/api/products', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...movementProduct,
-            stock: newStock
-          })
-        });
-
-        if (!updateResponse.ok) {
-          throw new Error('Error al actualizar stock del producto');
-        }
+        // El stock del producto se actualiza en backend dentro de MovementService.
+        // Solo recargamos productos luego del registro del movimiento.
       }
 
       // Recargar productos desde la base de datos
@@ -370,7 +461,7 @@ export default function InventoryPage() {
       if (closeButton) closeButton.click();
 
     } catch (error) {
-      console.error('❌ Error procesando movimiento:', error);
+      logger.error('❌ Error procesando movimiento:', error);
       toast({
         variant: "destructive",
         title: "Error al procesar movimiento",
@@ -428,7 +519,7 @@ export default function InventoryPage() {
   const loadProductMovements = async (productId: string) => {
     setIsLoadingMovements(true);
     try {
-      const response = await fetch(`/api/inventory/movements?productId=${productId}&storeId=${activeStoreId}`);
+      const response = await fetch(`/api/supabase/inventory/movements?productId=${productId}&storeId=${activeStoreId}`);
       if (response.ok) {
         const data = await response.json();
         setProductMovements(data.movements || []);
@@ -595,9 +686,9 @@ export default function InventoryPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {productsToRender.map((product) => (
+            {productsToRender.map((product, index) => (
               <ProductRow
-                key={product.id}
+                key={`${product.id || product.sku || 'product'}-${index}`}
                 product={product}
                 activeSymbol={activeSymbol}
                 activeRate={activeRate}
@@ -757,7 +848,14 @@ export default function InventoryPage() {
                     <Button variant="outline" onClick={resetMovementForm} id="close-movement-dialog">Cancelar</Button>
                   </DialogClose>
                   <Button onClick={handleMoveInventory} disabled={!isMovementFormValid || isProcessingMovement}>
-                    {isProcessingMovement ? 'Procesando...' : 'Registrar Movimiento'}
+                    {isProcessingMovement ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Procesando...
+                      </span>
+                    ) : (
+                      'Registrar Movimiento'
+                    )}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -779,21 +877,31 @@ export default function InventoryPage() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={!!productToEdit} onOpenChange={(isOpen) => !isOpen && setProductToEdit(null)}>
-        <DialogContent className="sm:max-w-2xl">
+      <Dialog open={!!productToEdit} onOpenChange={async (isOpen) => {
+        if (!isOpen) {
+          setProductToEdit(null);
+          await reloadProducts();
+        }
+      }}>
+        <DialogContent className="sm:max-w-2xl overflow-hidden">
           <DialogHeader>
             <DialogTitle>Editar Producto</DialogTitle>
             <DialogDescription>
               Modifica los detalles del producto y guarda los cambios.
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[80vh] overflow-y-auto p-1">
+          <div className="max-h-[80vh] overflow-y-auto p-1 scrollbar-none" style={{ scrollbarWidth: 'none' }}>
             {productToEdit && (
-              <ProductForm
-                product={productToEdit}
-                onSubmit={handleUpdateProduct}
-                onCancel={() => setProductToEdit(null)}
-              />
+              <>
+                <div className="text-[10px] text-muted-foreground mb-1">
+                  ID: {String(productToEdit?.id)} · Store: {String(productToEdit?.storeId || '')}
+                </div>
+                <ProductForm
+                  product={productToEdit}
+                  onSubmit={handleUpdateProduct}
+                  onCancel={() => setProductToEdit(null)}
+                />
+              </>
             )}
           </div>
         </DialogContent>

@@ -1,170 +1,115 @@
-// src/app/api/auth/login/route.ts - VERIFICAR que tenga esto
 import { NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import { User } from '@/models/User';
-import bcrypt from 'bcryptjs';
+import { createClient } from '@supabase/supabase-js';
+import { comparePassword } from '@/lib/auth'; // Usa tu función existente
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  throw new Error('Missing Supabase environment variables');
+}
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export async function POST(request: Request) {
   try {
-    // Attempt database connection with proper error handling
-    try {
-      await connectToDatabase();
-    } catch (dbError: any) {
-      console.error('❌ [Login API] Error de conexión a la base de datos:', dbError);
-      return NextResponse.json(
-        { 
-          success: false,
-          msg: 'Error de conexión a la base de datos. Inténtalo más tarde.',
-          error: 'DATABASE_CONNECTION_ERROR'
-        },
-        { status: 503 }
-      );
-    }
+    console.log('🔐 [Login API] Usando tabla users con auth.ts helpers');
 
-    // Parse and validate request body
-    let email: string, password: string;
-    try {
-      const body = await request.json();
-      email = body.email;
-      password = body.password;
-    } catch (parseError) {
-      console.error('❌ [Login API] Error parsing request body:', parseError);
-      return NextResponse.json(
-        { 
-          success: false,
-          msg: 'Formato de datos inválido',
-          error: 'INVALID_REQUEST_FORMAT'
-        },
-        { status: 400 }
-      );
-    }
+    const { email, password } = await request.json();
 
     if (!email || !password) {
       return NextResponse.json(
         { 
           success: false,
-          msg: 'Email y contraseña son requeridos',
-          error: 'MISSING_CREDENTIALS'
+          msg: 'Email y contraseña son requeridos'
         },
         { status: 400 }
       );
     }
 
-    // Find user with proper error handling using direct MongoDB operations
-    let user;
-    try {
-      // Use direct MongoDB operations instead of Mongoose model
-      const mongoose = await import('mongoose');
-      const db = mongoose.default.connection.db;
-      
-      if (!db) {
-        throw new Error('Database connection not established');
-      }
-      
-      const usersCollection = db.collection('users');
-      
-      user = await usersCollection.findOne({ email: email.toLowerCase().trim() });
-      console.log('👤 [Login API] Usuario encontrado:', user ? user.email : 'null');
-      console.log('🔍 [Login API] Usuario tiene contraseña:', user ? !!user.password : false);
-    } catch (dbQueryError: any) {
-      console.error('❌ [Login API] Error consultando usuario:', dbQueryError);
-      return NextResponse.json(
-        { 
-          success: false,
-          msg: 'Error al consultar la base de datos',
-          error: 'DATABASE_QUERY_ERROR'
-        },
-        { status: 500 }
-      );
-    }
+    console.log('👤 [Login API] Buscando usuario:', email);
 
-    if (!user) {
+    // Buscar usuario en TU tabla users
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email.toLowerCase())
+      .single();
+
+    if (error || !user) {
+      console.log('❌ [Login API] Usuario no encontrado:', email);
       return NextResponse.json(
         { 
           success: false,
-          msg: 'Credenciales incorrectas',
-          error: 'INVALID_CREDENTIALS'
+          msg: 'Usuario no encontrado'
         },
         { status: 401 }
       );
     }
 
-    // Verify password with proper error handling
-    let isMatch: boolean;
-    try {
-      console.log('🔒 [Login API] Verificando contraseña para:', user.email);
-      console.log('🔒 [Login API] Contraseña proporcionada:', password);
-      console.log('🔒 [Login API] Hash almacenado preview:', user.password ? user.password.substring(0, 20) + '...' : 'null');
-      
-      isMatch = await bcrypt.compare(password, user.password);
-      console.log('✅ [Login API] Resultado de comparación:', isMatch);
-    } catch (bcryptError: any) {
-      console.error('❌ [Login API] Error verificando contraseña:', bcryptError);
-      console.error('❌ [Login API] Stack trace:', bcryptError.stack);
-      return NextResponse.json(
-        { 
-          success: false,
-          msg: 'Error al verificar credenciales',
-          error: 'PASSWORD_VERIFICATION_ERROR',
-          details: bcryptError.message
-        },
-        { status: 500 }
-      );
-    }
+    console.log('🔍 [Login API] Usuario encontrado:', user.email, 'Role:', user.role);
 
-    if (!isMatch) {
+    // Verificar contraseña usando TU función de auth.ts
+    const isPasswordValid = await comparePassword(password, user.password);
+    
+    if (!isPasswordValid) {
+      console.log('❌ [Login API] Contraseña incorrecta para:', email);
       return NextResponse.json(
         { 
           success: false,
-          msg: 'Credenciales incorrectas',
-          error: 'INVALID_CREDENTIALS'
+          msg: 'Contraseña incorrecta'
         },
         { status: 401 }
       );
     }
 
-    // Generate JWT token
-    const jwt = await import('jsonwebtoken');
-    const token = jwt.default.sign(
-      { 
-        userId: user._id.toString(),
-        email: user.email,
-        role: user.role,
-        storeId: user.storeId
-      },
-      process.env.JWT_SECRET || 'fallback-secret-key',
-      { expiresIn: '7d' }
-    );
+    console.log('✅ [Login API] Contraseña válida');
 
-    // Successful login
-    console.log('✅ [Login API] Login exitoso para usuario:', email);
-    return NextResponse.json({
+    // Crear token
+    const tokenPayload = {
+      uid: user.uid,
+      email: user.email,
+      role: user.role,
+      storeId: user.store_id,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24 horas
+    };
+
+    const token = `tf-token-${btoa(JSON.stringify(tokenPayload))}`;
+
+    // Respuesta exitosa (sin la contraseña)
+    const { password: _, ...userWithoutPassword } = user;
+    
+    const responseData = {
       success: true,
       msg: 'Login exitoso',
       token: token,
       user: {
-        id: user._id.toString(),
+        id: user.uid,
         uid: user.uid,
         email: user.email,
-        phone: user.phone,
-        storeId: user.storeId,
+        displayName: user.display_name,
+        photoURL: user.photo_url,
         role: user.role,
-        displayName: user.displayName || user.email.split('@')[0],
-        storeRequest: user.storeRequest || false,
-        status: user.status || 'active'
+        status: user.status,
+        storeId: user.store_id,
+        storeRequest: user.store_request,
+        phone: user.phone,
+        createdAt: user.created_at
       }
-    });
+    };
+
+    console.log('✅ [Login API] Login exitoso para:', user.email);
+
+    return NextResponse.json(responseData);
 
   } catch (error: any) {
     console.error('❌ [Login API] Error inesperado:', error);
-    console.error('Stack trace:', error.stack);
     
     return NextResponse.json(
       { 
         success: false,
-        msg: 'Error interno del servidor',
-        error: 'INTERNAL_SERVER_ERROR',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        msg: 'Error interno del servidor'
       },
       { status: 500 }
     );

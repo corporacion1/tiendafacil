@@ -45,7 +45,10 @@ import { usePermissions } from "@/hooks/use-permissions";
 const ProductCard = ({ product, onAddToCart, onShowDetails, isClicked }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void, isClicked?: boolean }) => {
   const { activeSymbol, activeRate } = useSettings();
   const [imageError, setImageError] = useState(false);
-  const imageUrl = getDisplayImageUrl(product.imageUrl);
+  const primaryImage = (product.images && product.images.length > 0)
+    ? (product.images[0].thumbnailUrl || product.images[0].url)
+    : product.imageUrl;
+  const imageUrl = getDisplayImageUrl(primaryImage);
 
   return (
     <Card className={cn(
@@ -79,6 +82,7 @@ const ProductCard = ({ product, onAddToCart, onShowDetails, isClicked }: { produ
                 isClicked && "scale-110 brightness-110"
               )}
               data-ai-hint={product.imageHint}
+              unoptimized
               onError={() => setImageError(true)}
               priority={false}
             />
@@ -233,6 +237,9 @@ export default function POSPage() {
 
   // Estado para el efecto de click en imágenes
   const [clickedProductId, setClickedProductId] = useState<string | null>(null);
+
+  // Clave estable para identificar un producto en UI
+  const getProductKey = (p: Product) => p.id || p.sku || p.name;
 
   // Load existing cash session on component mount
   useEffect(() => {
@@ -511,7 +518,7 @@ export default function POSPage() {
     }
 
     // Activar efecto visual
-    setClickedProductId(product.id);
+    setClickedProductId(getProductKey(product));
 
     // Validar estado del producto
     if (product.status !== 'active' && product.status !== 'promotion') {
@@ -2375,11 +2382,11 @@ export default function POSPage() {
                   <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-1 xs:gap-2 sm:gap-3 md:gap-4 p-1 sm:p-2 w-full max-w-full overflow-hidden">
                     {filteredProducts.map((product) => (
                       <ProductCard
-                        key={product.id}
+                        key={getProductKey(product)}
                         product={product}
                         onAddToCart={addToCart}
                         onShowDetails={handleShowDetails}
-                        isClicked={clickedProductId === product.id}
+                        isClicked={clickedProductId === getProductKey(product)}
                       />
                     ))}
                   </div>

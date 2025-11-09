@@ -361,9 +361,9 @@ export default function PurchasesPage() {
                             </div>
                           </div>
                         )}
-                        {getDisplayImageUrl(product.imageUrl) ? (
+                        {getDisplayImageUrl((product.images && product.images.length > 0 ? (product.images[0].thumbnailUrl || product.images[0].url) : product.imageUrl)) ? (
                             <Image 
-                              src={getDisplayImageUrl(product.imageUrl)}
+                              src={getDisplayImageUrl((product.images && product.images.length > 0 ? (product.images[0].thumbnailUrl || product.images[0].url) : product.imageUrl))}
                               alt={product.name} 
                               fill 
                               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw" 
@@ -372,6 +372,7 @@ export default function PurchasesPage() {
                                 clickedProductId === product.id && "scale-110 brightness-110"
                               )} 
                               data-ai-hint={product.imageHint}
+                              unoptimized
                             />
                             ) : (
                             <Package className={cn(

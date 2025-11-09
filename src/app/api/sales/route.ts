@@ -1,14 +1,23 @@
 import { NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import { Sale } from '@/models/Sale';
-import { MovementService } from '@/services/MovementService';
-import { MovementType, ReferenceType } from '@/models/InventoryMovement';
-import { Product } from '@/models/Product';
-import { IDGenerator } from '@/lib/id-generator';
+import { createClient } from '@supabase/supabase-js';
+
+// Inicializar cliente de Supabase
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  throw new Error('Missing Supabase environment variables');
+}
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+// Helper para generar IDs
+const generateId = (prefix: string) => {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+};
 
 export async function GET(request: Request) {
   try {
-    await connectToDatabase();
     const { searchParams } = new URL(request.url);
     const storeId = searchParams.get('storeId');
     
@@ -16,8 +25,41 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
     }
 
-    const sales = await Sale.find({ storeId }).lean();
-    return NextResponse.json(sales);
+    // Obtener ventas de Supabase
+    const { data: sales, error } = await supabase
+      .from('sales')
+      .select('*')
+      .eq('store_id', storeId)
+      .order('date', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching sales from Supabase:', error);
+      return NextResponse.json(
+        { error: 'No se pudo obtener la lista de ventas', detalles: error.message },
+        { status: 500 }
+      );
+    }
+
+    // Mapear campos de Supabase a tu formato actual
+    const formattedSales = sales?.map(sale => ({
+      id: sale.id,
+      customerId: sale.customer_id,
+      customerName: sale.customer_name,
+      customerPhone: sale.customer_phone,
+      items: sale.items,
+      total: sale.total,
+      date: sale.date,
+      transactionType: sale.transaction_type,
+      status: sale.status,
+      paidAmount: sale.paid_amount,
+      payments: sale.payments,
+      storeId: sale.store_id,
+      creditDays: sale.credit_days,
+      creditDueDate: sale.credit_due_date,
+      userId: sale.user_id
+    })) || [];
+
+    return NextResponse.json(formattedSales);
   } catch (error: any) {
     console.error('Error fetching sales:', error);
     return NextResponse.json(
@@ -29,135 +71,242 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    await connectToDatabase();
     const data = await request.json();
     
-    // Generar ID único si no se proporciona
-    if (!data.id) {
-      data.id = IDGenerator.generate('sale');
-    }
-    
-    // Generar IDs únicos para payments si existen
-    if (data.payments && Array.isArray(data.payments)) {
-      data.payments = data.payments.map((payment: any) => ({
-        ...payment,
-        id: payment.id || IDGenerator.generate('payment')
-      }));
-    }
-    
+    // Validaciones básicas
     if (!data.storeId || !data.items) {
       return NextResponse.json({ error: "Campos requeridos faltantes" }, { status: 400 });
     }
+
+    // Generar ID único si no se proporciona
+    const saleId = data.id || generateId('SALE');
     
-    const created = await Sale.create(data);
-    
-    // 📦 NUEVO: Registrar movimientos de inventario para cada producto vendido
-    if (created && data.items && Array.isArray(data.items) && data.items.length > 0) {
-      console.log('📦 [Sales API] Registrando movimientos para venta:', created.id);
-      console.log('📦 [Sales API] Productos en venta:', data.items.length);
+    // Preparar datos para Supabase
+    const saleData = {
+      id: saleId,
+      customer_id: data.customerId || 'eventual',
+      customer_name: data.customerName || 'Cliente Eventual',
+      customer_phone: data.customerPhone,
+      items: data.items,
+      total: data.total,
+      date: data.date || new Date().toISOString(),
+      transaction_type: data.transactionType || 'contado',
+      status: data.status || 'paid',
+      paid_amount: data.paidAmount || 0,
+      payments: (data.payments || []).map((payment: any) => ({
+        ...payment,
+        id: payment.id || generateId('PAY')
+      })),
+      store_id: data.storeId,
+      credit_days: data.creditDays,
+      credit_due_date: data.creditDueDate,
+      user_id: data.userId || 'system'
+    };
+
+    console.log('💰 [Sales API] Creando venta en Supabase:', saleId);
+
+    // Insertar venta en Supabase
+    const { data: createdSale, error: saleError } = await supabase
+      .from('sales')
+      .insert([saleData])
+      .select()
+      .single();
+
+    if (saleError) {
+      console.error('❌ Error creando venta en Supabase:', saleError);
+      return NextResponse.json(
+        { error: 'Error al crear la venta', detalles: saleError.message },
+        { status: 500 }
+      );
+    }
+
+    console.log('✅ [Sales API] Venta creada exitosamente:', saleId);
+
+    // 📦 Registrar movimientos de inventario para cada producto vendido
+    if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+      console.log('📦 [Sales API] Registrando movimientos para venta:', saleId);
       
       try {
-        // Generar un batchId para agrupar todos los movimientos de esta venta
-        const batchId = MovementService.generateBatchId();
-        
-        // Crear movimientos para cada producto (cantidades negativas para salidas)
+        const batchId = generateId('BATCH');
         const movementPromises = data.items.map(async (item: any) => {
           if (!item.productId || !item.quantity || item.quantity <= 0) {
             console.warn('⚠️ [Sales API] Item inválido:', item);
             return null;
           }
-          
-          // Obtener información del producto para el almacén y costo
+
+          // Obtener información del producto para costo y almacén
           let warehouseId = 'wh-1'; // Por defecto
           let unitCost = 0;
-          
+
           try {
-            const product = await Product.findOne({ 
-              id: item.productId, 
-              storeId: data.storeId 
-            });
-            
+            const { data: product } = await supabase
+              .from('products')
+              .select('cost, warehouse')
+              .eq('id', item.productId)
+              .eq('store_id', data.storeId)
+              .single();
+
             if (product) {
-              // Mapear nombre de almacén a ID si es necesario
+              // Mapear nombre de almacén a ID
               if (product.warehouse) {
                 warehouseId = product.warehouse === 'Almacén Principal' ? 'wh-1' : 
-                             product.warehouse === 'Depósito Secundario' ? 'wh-2' : 
-                             'wh-1';
+                             product.warehouse === 'Depósito Secundario' ? 'wh-2' : 'wh-1';
               }
-              // Usar el costo del producto para valorizar la salida
               unitCost = product.cost || 0;
             }
           } catch (productError) {
             console.warn('⚠️ [Sales API] Error obteniendo producto:', productError);
           }
-          
-          return MovementService.recordMovement({
-            productId: item.productId,
-            warehouseId: warehouseId,
-            movementType: MovementType.SALE,
+
+          // Crear movimiento de inventario
+          const movementData = {
+            id: generateId('MOV'),
+            product_id: item.productId,
+            warehouse_id: warehouseId,
+            movement_type: 'sale',
             quantity: -Number(item.quantity), // NEGATIVO para salidas
-            unitCost: unitCost,
-            referenceType: ReferenceType.SALE_TRANSACTION,
-            referenceId: created.id,
-            batchId: batchId,
-            userId: data.userId || data.soldBy || 'system',
+            unit_cost: unitCost,
+            total_value: unitCost * Number(item.quantity),
+            reference_type: 'sale_transaction',
+            reference_id: saleId,
+            batch_id: batchId,
+            user_id: data.userId || 'system',
             notes: `Venta a ${data.customerName || 'cliente'} - ${item.productName || item.productId}`,
-            storeId: data.storeId
-          });
+            store_id: data.storeId,
+            created_at: new Date().toISOString()
+          };
+
+          const { error: movementError } = await supabase
+            .from('inventory_movements')
+            .insert([movementData]);
+
+          if (movementError) {
+            console.error('❌ Error creando movimiento:', movementError);
+            return null;
+          }
+
+          return movementData.id;
         });
-        
+
         // Ejecutar todos los movimientos
         const movements = await Promise.all(movementPromises);
         const successfulMovements = movements.filter(m => m !== null);
         
         console.log('✅ [Sales API] Movimientos registrados:', successfulMovements.length, 'de', data.items.length);
-        
-        // Opcional: Validar que hay suficiente stock antes de la venta
-        // (esto se puede implementar como una validación adicional)
-        
+
       } catch (movementError) {
         console.warn('⚠️ [Sales API] Error registrando movimientos:', movementError);
         // No fallar la creación de la venta por error en movimientos
-        // En un sistema real, podrías querer revertir la venta si fallan los movimientos
       }
     }
-    
-    return NextResponse.json(created);
+
+    // Formatear respuesta para mantener compatibilidad
+    const formattedResponse = {
+      id: createdSale.id,
+      customerId: createdSale.customer_id,
+      customerName: createdSale.customer_name,
+      customerPhone: createdSale.customer_phone,
+      items: createdSale.items,
+      total: createdSale.total,
+      date: createdSale.date,
+      transactionType: createdSale.transaction_type,
+      status: createdSale.status,
+      paidAmount: createdSale.paid_amount,
+      payments: createdSale.payments,
+      storeId: createdSale.store_id,
+      creditDays: createdSale.credit_days,
+      creditDueDate: createdSale.credit_due_date,
+      userId: createdSale.user_id
+    };
+
+    return NextResponse.json(formattedResponse);
+
   } catch (error: any) {
-    console.error('Error creating sale:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('❌ Error general creando venta:', error);
+    return NextResponse.json(
+      { error: 'Error interno del servidor', detalles: error.message },
+      { status: 500 }
+    );
   }
 }
 
 export async function PUT(request: Request) {
   try {
-    await connectToDatabase();
     const data = await request.json();
     
     if (!data.id || !data.storeId) {
       return NextResponse.json({ error: "Campos requeridos 'id' y 'storeId'" }, { status: 400 });
     }
-    
-    const updated = await Sale.findOneAndUpdate(
-      { id: data.id, storeId: data.storeId },
-      { $set: data },
-      { new: true }
-    );
-    
-    if (!updated) {
+
+    // Preparar datos para actualización
+    const updateData: any = {};
+    if (data.customerId !== undefined) updateData.customer_id = data.customerId;
+    if (data.customerName !== undefined) updateData.customer_name = data.customerName;
+    if (data.customerPhone !== undefined) updateData.customer_phone = data.customerPhone;
+    if (data.items !== undefined) updateData.items = data.items;
+    if (data.total !== undefined) updateData.total = data.total;
+    if (data.date !== undefined) updateData.date = data.date;
+    if (data.transactionType !== undefined) updateData.transaction_type = data.transactionType;
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.paidAmount !== undefined) updateData.paid_amount = data.paidAmount;
+    if (data.payments !== undefined) updateData.payments = data.payments;
+    if (data.creditDays !== undefined) updateData.credit_days = data.creditDays;
+    if (data.creditDueDate !== undefined) updateData.credit_due_date = data.creditDueDate;
+    if (data.userId !== undefined) updateData.user_id = data.userId;
+
+    // Actualizar en Supabase
+    const { data: updatedSale, error } = await supabase
+      .from('sales')
+      .update(updateData)
+      .eq('id', data.id)
+      .eq('store_id', data.storeId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Error actualizando venta en Supabase:', error);
+      return NextResponse.json(
+        { error: 'Error al actualizar la venta', detalles: error.message },
+        { status: 500 }
+      );
+    }
+
+    if (!updatedSale) {
       return NextResponse.json({ error: "Venta no encontrada" }, { status: 404 });
     }
-    
-    return NextResponse.json(updated);
+
+    // Formatear respuesta
+    const formattedResponse = {
+      id: updatedSale.id,
+      customerId: updatedSale.customer_id,
+      customerName: updatedSale.customer_name,
+      customerPhone: updatedSale.customer_phone,
+      items: updatedSale.items,
+      total: updatedSale.total,
+      date: updatedSale.date,
+      transactionType: updatedSale.transaction_type,
+      status: updatedSale.status,
+      paidAmount: updatedSale.paid_amount,
+      payments: updatedSale.payments,
+      storeId: updatedSale.store_id,
+      creditDays: updatedSale.credit_days,
+      creditDueDate: updatedSale.credit_due_date,
+      userId: updatedSale.user_id
+    };
+
+    return NextResponse.json(formattedResponse);
+
   } catch (error: any) {
-    console.error('Error updating sale:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('❌ Error general actualizando venta:', error);
+    return NextResponse.json(
+      { error: 'Error interno del servidor', detalles: error.message },
+      { status: 500 }
+    );
   }
 }
 
 export async function DELETE(request: Request) {
   try {
-    await connectToDatabase();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const storeId = searchParams.get('storeId');
@@ -165,16 +314,29 @@ export async function DELETE(request: Request) {
     if (!id || !storeId) {
       return NextResponse.json({ error: "Faltan parámetros 'id' y/o 'storeId'" }, { status: 400 });
     }
-    
-    const deleted = await Sale.findOneAndDelete({ id, storeId });
-    
-    if (!deleted) {
-      return NextResponse.json({ error: "Venta no encontrada" }, { status: 404 });
+
+    // Eliminar de Supabase
+    const { error } = await supabase
+      .from('sales')
+      .delete()
+      .eq('id', id)
+      .eq('store_id', storeId);
+
+    if (error) {
+      console.error('❌ Error eliminando venta de Supabase:', error);
+      return NextResponse.json(
+        { error: 'Error al eliminar la venta', detalles: error.message },
+        { status: 500 }
+      );
     }
-    
+
     return NextResponse.json({ message: "Venta eliminada exitosamente" });
+
   } catch (error: any) {
-    console.error('Error deleting sale:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('❌ Error general eliminando venta:', error);
+    return NextResponse.json(
+      { error: 'Error interno del servidor', detalles: error.message },
+      { status: 500 }
+    );
   }
 }

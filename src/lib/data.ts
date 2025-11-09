@@ -13,13 +13,14 @@ export let defaultStore: Store = {
   id: defaultStoreId,
   storeId: defaultStoreId, // Incluye storeId si tu modelo lo usa
   name: "Tienda Facil DEMO",
-  ownerIds: ["5QLaiiIr4mcGsjRXVGeGx50nrpk1"], // UIDs de dueños
+  ownerIds: ["USE-18724321371"], // UIDs de dueños
 
   userRoles: [
-    { uid: "5QLaiiIr4mcGsjRXVGeGx50nrpk1", role: "su" },
-    { uid: "admin_demo_001", role: "admin" },
-    { uid: "pos_demo_001", role: "pos" },
-    { uid: "depositary_demo_001", role: "depositary" }
+    { uid: "USE-18724321371", role: "su" },
+    { uid: "USE-42843103735", role: "admin" },
+    { uid: "USE-95434426715", role: "pos" },
+    { uid: "USE-52993436840", role: "depositary" },
+    { uid: "USE-59547611188", role: "user" }
   ],
   businessType: "Tecnologia",
   address: "Av. Principal, Local 1, Ciudad",
@@ -45,7 +46,7 @@ export let defaultStore: Store = {
 // Usuarios con contraseñas pre-hasheadas (bcrypt, 10 rounds)
 export let defaultUsers: UserProfile[] = [
   {
-    uid: '5QLaiiIr4mcGsjRXVGeGx50nrpk1',
+    uid: 'USE-18724321371',
     email: 'corporacion1@gmail.com',
     displayName: 'Jorge Negrete',
     photoURL: 'https://i.imgur.com/8bXhQXa.png',
@@ -57,7 +58,7 @@ export let defaultUsers: UserProfile[] = [
     createdAt: new Date().toISOString(),
   },
   {
-    uid: 'admin_demo_001',
+    uid: 'USE-42843103735',
     email: 'admin@tiendafacil.com',
     displayName: 'Admin Demo',
     photoURL: '/tienda_facil_logo.svg',
@@ -69,7 +70,7 @@ export let defaultUsers: UserProfile[] = [
     createdAt: new Date().toISOString(),
   },
   {
-    uid: 'seller_demo_001',
+    uid: 'USE-95434426715',
     email: 'pos@tiendafacil.com',
     displayName: 'POS Demo',
     photoURL: '/tienda_facil_logo.svg',
@@ -81,7 +82,7 @@ export let defaultUsers: UserProfile[] = [
     createdAt: new Date().toISOString(),
   },
   {
-    uid: 'depositary_demo_001',
+    uid: 'USE-52993436840',
     email: 'depositary@tiendafacil.com',
     displayName: 'Depositary Demo',
     photoURL: '/tienda_facil_logo.svg',
@@ -93,7 +94,7 @@ export let defaultUsers: UserProfile[] = [
     createdAt: new Date().toISOString(),
   },
   {
-    uid: 'user_demo_001',
+    uid: 'USE-59547611188',
     email: 'demo@tiendafacil.com',
     displayName: 'User Demo',
     photoURL: '/tienda_facil_logo.svg',

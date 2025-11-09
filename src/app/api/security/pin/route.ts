@@ -1,101 +1,122 @@
 import { NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import Security from '@/models/Security';
-import { getSession } from '@/lib/auth';
+import { createClient } from '@supabase/supabase-js';
+import bcrypt from 'bcryptjs';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export async function POST(request: Request) {
-  await connectToDatabase();
-  const session = await getSession(request);
-  
-  console.log('🔐 [PIN API] POST recibido');
-  console.log('👤 [PIN API] Session:', session?.user?.id);
-  
-  if (!session?.user?.id) {
-    console.error('❌ [PIN API] No autorizado - sin sesión');
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
-
-  const { currentPin, newPin } = await request.json();
-  
-  console.log('📦 [PIN API] Datos recibidos:', { 
-    hasCurrentPin: !!currentPin, 
-    currentPinLength: currentPin?.length,
-    newPinLength: newPin?.length 
-  });
-
-  // Validación
-  if (!newPin || !/^\d{4}$/.test(newPin)) {
-    console.error('❌ [PIN API] PIN inválido:', newPin);
-    return NextResponse.json({ error: "El PIN debe tener 4 dígitos" }, { status: 400 });
-  }
-
   try {
-    const securityRecord = await Security.findOne({ userId: session.user.id }).select('+pin');
-    console.log('🔍 [PIN API] Registro existente:', !!securityRecord);
+    const { currentPin, newPin, storeId } = await request.json();
 
-    // Verificar PIN actual si ya existe uno
-    if (securityRecord) {
-      console.log('🔐 [PIN API] Ya existe PIN, verificando currentPin...');
-      
-      if (!currentPin || currentPin === '') {
-        console.error('❌ [PIN API] Se requiere PIN actual para cambiar');
-        return NextResponse.json({ error: "Se requiere el PIN actual" }, { status: 400 });
-      }
-      
-      const isMatch = await securityRecord.comparePin(currentPin);
-      console.log('🔐 [PIN API] PIN actual coincide:', isMatch);
-      
-      if (!isMatch) {
-        console.error('❌ [PIN API] PIN actual incorrecto');
-        return NextResponse.json({ error: "PIN actual incorrecto" }, { status: 403 });
-      }
-      
-      // Actualizar existente
-      console.log('📝 [PIN API] Actualizando PIN existente...');
-      securityRecord.pin = newPin;
-      securityRecord.attempts = 0;
-      securityRecord.lockedUntil = null;
-      securityRecord.lastChanged = new Date();
-      await securityRecord.save();
-      console.log('✅ [PIN API] PIN actualizado exitosamente');
-    } else {
-      // Crear nuevo
-      console.log('📝 [PIN API] Creando nuevo PIN...');
-      await Security.create({
-        userId: session.user.id,
-        pin: newPin,
-        attempts: 0,
-        lockedUntil: null,
-        lastChanged: new Date()
-      });
-      console.log('✅ [PIN API] PIN creado exitosamente');
+    if (!newPin || !storeId) {
+      return NextResponse.json(
+        { error: 'Nuevo PIN y storeId son requeridos' },
+        { status: 400 }
+      );
     }
 
-    return NextResponse.json({ success: true });
+    console.log('🔐 [Security PIN] Configurando PIN para store:', storeId);
 
-  } catch (error) {
-    console.error('❌ [PIN API] Error:', error);
+    // Verificar PIN actual si se proporciona (para cambio)
+    if (currentPin) {
+      const { data: existingConfig } = await supabase
+        .from('store_security')
+        .select('pin_hash')
+        .eq('store_id', storeId)
+        .single();
+
+      if (existingConfig?.pin_hash) {
+        const isCurrentValid = await bcrypt.compare(currentPin, existingConfig.pin_hash);
+        if (!isCurrentValid) {
+          return NextResponse.json(
+            { error: 'PIN actual incorrecto' },
+            { status: 401 }
+          );
+        }
+      }
+    }
+
+    // Hash del nuevo PIN
+    const saltRounds = 12;
+    const pinHash = await bcrypt.hash(newPin, saltRounds);
+
+    // Insertar o actualizar configuración
+    const { data, error } = await supabase
+      .from('store_security')
+      .upsert({
+        store_id: storeId,
+        pin_hash: pinHash,
+        remaining_attempts: 5,
+        is_locked: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select();
+
+    if (error) {
+      console.error('❌ [Security PIN] Error de Supabase:', error);
+      return NextResponse.json(
+        { error: 'Error guardando configuración de PIN' },
+        { status: 500 }
+      );
+    }
+
+    console.log('✅ [Security PIN] PIN configurado exitosamente para store:', storeId);
+
+    return NextResponse.json({
+      success: true,
+      message: 'PIN configurado correctamente'
+    });
+
+  } catch (error: any) {
+    console.error('❌ [Security PIN] Error inesperado:', error);
     return NextResponse.json(
-      { error: "Error al actualizar PIN" },
+      { error: 'Error interno del servidor' },
       { status: 500 }
     );
   }
 }
 
 export async function DELETE(request: Request) {
-  await connectToDatabase();
-  const session = await getSession(request);
-  
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  }
-
   try {
-    await Security.findOneAndDelete({ userId: session.user.id });
-    return NextResponse.json({ success: true });
-  } catch (error) {
+    const { storeId } = await request.json();
+
+    if (!storeId) {
+      return NextResponse.json(
+        { error: 'storeId es requerido' },
+        { status: 400 }
+      );
+    }
+
+    console.log('🔐 [Security PIN] Eliminando PIN para store:', storeId);
+
+    const { error } = await supabase
+      .from('store_security')
+      .delete()
+      .eq('store_id', storeId);
+
+    if (error) {
+      console.error('❌ [Security PIN] Error eliminando PIN:', error);
+      return NextResponse.json(
+        { error: 'Error eliminando PIN' },
+        { status: 500 }
+      );
+    }
+
+    console.log('✅ [Security PIN] PIN eliminado para store:', storeId);
+
+    return NextResponse.json({
+      success: true,
+      message: 'PIN eliminado correctamente'
+    });
+
+  } catch (error: any) {
+    console.error('❌ [Security PIN] Error inesperado:', error);
     return NextResponse.json(
-      { error: "Error al eliminar PIN" },
+      { error: 'Error interno del servidor' },
       { status: 500 }
     );
   }

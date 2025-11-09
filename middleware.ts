@@ -1,52 +1,72 @@
-import { NextRequest, NextResponse } from 'next/server';
-
-// Routes that are exempt from store validation
-const EXEMPT_ROUTES = [
-  '/',
-  '/login',
-  '/register',
-  '/catalog',
-  '/unauthorized',
-  '/api',
-  '/_next',
-  '/favicon.ico',
-];
-
-// Helper function to check if route is exempt from validation
-function isExemptRoute(pathname: string): boolean {
-  return EXEMPT_ROUTES.some(route => {
-    if (route === '/') {
-      return pathname === '/';
-    }
-    return pathname.startsWith(route);
-  });
-}
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  
-  // Skip validation for exempt routes
-  if (isExemptRoute(pathname)) {
+  // Solo aplicar a rutas API
+  if (!request.nextUrl.pathname.startsWith('/api/')) {
     return NextResponse.next();
   }
+
+  // Excluir rutas públicas
+  const publicRoutes = [
+    '/api/auth/login', 
+    '/api/auth/register',
+    '/api/auth/verify'
+  ];
   
-  // For now, let the client-side handle the validation
-  // The middleware will be enhanced later if needed
-  // This allows the AuthContext to handle the store validation
-  
-  return NextResponse.next();
+  if (publicRoutes.includes(request.nextUrl.pathname)) {
+    return NextResponse.next();
+  }
+
+  const authHeader = request.headers.get('Authorization');
+  const token = authHeader?.replace('Bearer ', '');
+
+  if (!token) {
+    return NextResponse.json(
+      { error: 'Token de autenticación requerido' },
+      { status: 401 }
+    );
+  }
+
+  // Verificar token de Tienda Fácil
+  if (token.startsWith('tf-token-')) {
+    try {
+      const tokenData = token.replace('tf-token-', '');
+      const decoded = atob(tokenData);
+      const userData = JSON.parse(decoded);
+      
+      // Verificar expiración
+      const now = Math.floor(Date.now() / 1000);
+      if (userData.exp && userData.exp < now) {
+        return NextResponse.json(
+          { error: 'Token expirado' },
+          { status: 401 }
+        );
+      }
+
+      // Agregar usuario a los headers para que las APIs lo usen
+      const requestHeaders = new Headers(request.headers);
+      requestHeaders.set('x-user-data', JSON.stringify(userData));
+      
+      return NextResponse.next({
+        request: {
+          headers: requestHeaders,
+        },
+      });
+    } catch (error) {
+      return NextResponse.json(
+        { error: 'Token inválido' },
+        { status: 401 }
+      );
+    }
+  }
+
+  return NextResponse.json(
+    { error: 'Token no válido' },
+    { status: 401 }
+  );
 }
 
-// Configure which routes the middleware should run on
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
-  ],
+  matcher: ['/api/:path*']
 };

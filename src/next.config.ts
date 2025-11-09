@@ -1,56 +1,28 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   images: {
+    domains: [
+      'jdbqvzpjdyaksuaxhmty.supabase.co',
+      'images.unsplash.com',
+      'i.imgur.com'
+    ],
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'images.unsplash.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'lh3.googleusercontent.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'i.imgur.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'picsum.photos',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'dl.dropboxusercontent.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'www.dropbox.com',
-        port: '',
-        pathname: '/**',
+        hostname: 'jdbqvzpjdyaksuaxhmty.supabase.co',
+        pathname: '/storage/v1/object/public/**',
       },
     ],
   },
   experimental: {
-    serverActions: {
-      bodySizeLimit: '4mb',
-    },
+    serverComponentsExternalPackages: ['@supabase/supabase-js'],
   },
-};
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  eslint: {
+    ignoreDuringBuilds: false,
+  },
+}
 
-export default nextConfig;
+module.exports = nextConfig

@@ -14,13 +14,13 @@ interface DashboardStats {
     totalInventoryValue: number;
   };
   topProducts: Array<{
-    _id: string;
+    id: string; // ✅ CORREGIDO: Cambiado _id por id (Supabase)
     productName: string;
     totalSold: number;
     totalRevenue: number;
   }>;
   topCustomers: Array<{
-    _id: string;
+    id: string; // ✅ CORREGIDO: Cambiado _id por id (Supabase)
     customerName: string;
     totalSpent: number;
     purchaseCount: number;
@@ -49,10 +49,11 @@ export const useDashboardStats = () => {
 
         const data = await response.json();
         
-        if (data.success) {
-          setStats(data.data);
+        // ✅ CORREGIDO: Para Supabase, los datos vienen directamente, no en {success, data}
+        if (data) {
+          setStats(data);
         } else {
-          throw new Error(data.error || 'Error desconocido');
+          throw new Error('No se recibieron datos del servidor');
         }
       } catch (err: any) {
         console.error('Error fetching dashboard stats:', err);

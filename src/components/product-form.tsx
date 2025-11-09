@@ -1,12 +1,10 @@
-
 "use client";
 
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import Image from "next/image";
-import { Package, ImageOff, ScanLine, X, AlertCircle, Eye } from "lucide-react";
+import { Package, ImageOff, ScanLine, X, AlertCircle, Eye, Loader2 } from "lucide-react";
 import dynamic from 'next/dynamic';
 
 // Importar el scanner dinámicamente para evitar problemas de SSR
@@ -78,7 +76,12 @@ interface ProductFormProps {
 
 const getInitialValues = (product?: Product): ProductFormValues => {
     if (product) {
-        return { ...product, affectsInventory: product.type === 'product' };
+        return { 
+          ...product, 
+          affectsInventory: product.type === 'product',
+          // ✅ Asegurar que siempre tengamos un ID válido para Supabase
+          id: product.id || (product as any)?._id 
+        };
     }
     
     return {
@@ -97,7 +100,6 @@ const getInitialValues = (product?: Product): ProductFormValues => {
         unit: '',
         family: '',
         warehouse: '',
-        // Valores por defecto para nuevos campos
         type: "product",
         affectsInventory: true,
         images: [],
@@ -113,9 +115,31 @@ const calculateProfit = (currentPrice: number, cost: number): string => {
     return '0.00';
 };
 
+// ✅ COMPONENTE SEGURO PARA IMÁGENES
+const SafeImage = ({ src, alt, className = '' }: { src: string; alt: string; className?: string }) => {
+  const [imageError, setImageError] = useState(false);
+
+  if (!src || imageError) {
+    return (
+      <div className={`flex items-center justify-center bg-muted rounded-lg ${className}`}>
+        <Package className="h-8 w-8 text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={`object-cover rounded-lg ${className}`}
+      onError={() => setImageError(true)}
+    />
+  );
+};
+
 export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onCancel }) => {
   const { toast } = useToast();
-  const { settings, products, units, families, warehouses } = useSettings();
+  const { settings, products, units, families, warehouses, activeStoreId } = useSettings();
   
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -123,6 +147,9 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
   });
 
   const { formState: { isDirty }, watch, setValue, trigger } = form;
+
+  // Estado de envío para evitar envíos múltiples y mostrar animación
+  const [submitting, setSubmitting] = useState(false);
 
   // Estados del scanner
   const [showScanner, setShowScanner] = useState(false);
@@ -147,13 +174,23 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     if (product) {
         const migrate = async () => {
             const migratedProduct = await migrateProductToMultipleImages(product);
-            form.reset(migratedProduct);
+            // Preservar siempre el id del producto en el formulario (id || _id)
+            const effectiveId = product.id ?? (product as any)?._id;
+            form.reset({ ...migratedProduct, id: effectiveId });
         };
         migrate();
     } else {
         form.reset(getInitialValues());
     }
   }, [product, form]);
+
+  // Si por alguna razón el ID no está en el form pero sí en props, establecerlo
+  useEffect(() => {
+    const currentId = form.getValues('id');
+    if (!currentId && product?.id) {
+      form.setValue('id', product.id, { shouldDirty: false });
+    }
+  }, [product?.id, form]);
 
   const handleSkuBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
     const sku = e.target.value;
@@ -239,9 +276,15 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
   const wholesaleProfitMargin = useMemo(() => calculateProfit(wholesalePrice, cost), [wholesalePrice, cost]);
 
   const handleSubmit = async (data: ProductFormValues) => {
-    const result = await onSubmit(data);
-    if (!product && result === true) {
-      form.reset(getInitialValues());
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const result = await onSubmit(data);
+      if (!product && result === true) {
+        form.reset(getInitialValues());
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -410,7 +453,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                         <FormLabel>Imágenes del Producto</FormLabel>
                         <FormControl>
                           <MultiImageUpload
-                            productId={form.watch('id')}
+                            productId={(product?.id ?? (product as any)?._id ?? form.watch('id'))}
+                            storeId={product?.storeId ?? activeStoreId}
                             existingImages={field.value || []}
                             maxImages={4}
                             onImagesChange={(newImages) => {
@@ -627,11 +671,18 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
           <div className="flex justify-end gap-2 mt-6">
             {onCancel && (
               <AlertDialogTrigger asChild>
-                <Button variant="outline" disabled={!isDirty}>Cancelar</Button>
+                <Button variant="outline" disabled={submitting}>Cancelar</Button>
               </AlertDialogTrigger>
             )}
-            <Button type="submit" disabled={!isDirty && !!product}>
-              {product ? "Guardar Cambios" : "Crear Producto"}
+            <Button type="submit" disabled={submitting}>
+              {submitting ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {product ? "Guardando..." : "Creando..."}
+                </span>
+              ) : (
+                product ? "Guardar Cambios" : "Crear Producto"
+              )}
             </Button>
           </div>
 

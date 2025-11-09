@@ -1,13 +1,12 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import { Store } from '@/models/Store';
+import { supabaseAdmin } from '@/lib/supabase';
 
 // Leer tienda actual
 export async function GET(request: NextRequest) {
   try {
-    await connectToDatabase();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id'); // id de la tienda
+    
     if (!id) {
       console.error('❌ [Stores API] ID de tienda requerido');
       return NextResponse.json({ error: 'ID de tienda requerido' }, { status: 400 });
@@ -15,21 +14,40 @@ export async function GET(request: NextRequest) {
     
     console.log('🔍 [Stores API] Buscando tienda con ID:', id);
     
-    // Try to find by storeId first (correct field), then by id for backwards compatibility
-    let store = await Store.findOne({ storeId: id }).lean();
-    if (!store) {
-      console.log('⚠️ [Stores API] No encontrada por storeId, intentando con id...');
-      store = await Store.findOne({ id }).lean();
-    }
+    const { data: store, error } = await supabaseAdmin
+      .from('stores')
+      .select('*')
+      .eq('id', id)
+      .single();
     
-    const storeData = Array.isArray(store) ? store[0] : store;
-    if (!storeData) {
-      console.error('❌ [Stores API] Tienda no encontrada:', id);
+    if (error || !store) {
+      console.error('❌ [Stores API] Tienda no encontrada:', id, error);
       return NextResponse.json({ error: "Tienda no encontrada" }, { status: 404 });
     }
     
-    console.log('✅ [Stores API] Tienda encontrada:', storeData.name);
-    return NextResponse.json(storeData);
+    console.log('✅ [Stores API] Tienda encontrada:', store.name);
+    
+    // Transformar snake_case a camelCase
+    const response = {
+      id: store.id,
+      storeId: store.id, // Alias for backwards compatibility
+      name: store.name,
+      businessType: store.business_type,
+      address: store.address,
+      phone: store.phone,
+      email: store.email,
+      taxId: store.tax_id,
+      logoUrl: store.logo_url,
+      primaryCurrency: store.primary_currency,
+      primaryCurrencySymbol: store.primary_currency_symbol,
+      secondaryCurrency: store.secondary_currency,
+      secondaryCurrencySymbol: store.secondary_currency_symbol,
+      status: store.status,
+      createdAt: store.created_at,
+      updatedAt: store.updated_at
+    };
+    
+    return NextResponse.json(response);
   } catch (error: any) {
     console.error('❌ [Stores API] Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -39,35 +57,104 @@ export async function GET(request: NextRequest) {
 // Crear tienda
 export async function POST(request: NextRequest) {
   try {
-    await connectToDatabase();
     const data = await request.json();
     
     console.log('📥 [Stores API] Datos recibidos para crear tienda:', JSON.stringify(data, null, 2));
     
-    // Ensure we use storeId consistently
-    if (!data.storeId && data.id) {
-      data.storeId = data.id;
-    }
+    // Ensure we use id consistently
+    const storeId = data.storeId || data.id;
     
-    if (!data.storeId || !data.name) {
-      console.error('❌ [Stores API] Faltan campos obligatorios:', { storeId: data.storeId, name: data.name });
+    if (!storeId || !data.name) {
+      console.error('❌ [Stores API] Faltan campos obligatorios:', { storeId, name: data.name });
       return NextResponse.json({ error: "Faltan campos obligatorios (storeId, name)" }, { status: 400 });
     }
     
-    // Verificar si ya existe una tienda con este storeId
-    const existingStore = await Store.findOne({ storeId: data.storeId });
+    // Verificar si ya existe una tienda con este id
+    const { data: existingStore } = await supabaseAdmin
+      .from('stores')
+      .select('*')
+      .eq('id', storeId)
+      .single();
+    
     if (existingStore) {
-      console.log('⚠️ [Stores API] Tienda ya existe, devolviendo existente:', data.storeId);
-      return NextResponse.json(existingStore);
+      console.log('⚠️ [Stores API] Tienda ya existe, devolviendo existente:', storeId);
+      
+      const response = {
+        id: existingStore.id,
+        storeId: existingStore.id,
+        name: existingStore.name,
+        businessType: existingStore.business_type,
+        address: existingStore.address,
+        phone: existingStore.phone,
+        email: existingStore.email,
+        taxId: existingStore.tax_id,
+        logoUrl: existingStore.logo_url,
+        primaryCurrency: existingStore.primary_currency,
+        primaryCurrencySymbol: existingStore.primary_currency_symbol,
+        secondaryCurrency: existingStore.secondary_currency,
+        secondaryCurrencySymbol: existingStore.secondary_currency_symbol,
+        status: existingStore.status,
+        createdAt: existingStore.created_at,
+        updatedAt: existingStore.updated_at
+      };
+      
+      return NextResponse.json(response);
     }
     
-    console.log('🏪 [Stores API] Creando nueva tienda:', data.storeId);
-    const created = await Store.create(data);
-    console.log('✅ [Stores API] Tienda creada exitosamente:', created.storeId);
-    return NextResponse.json(created);
+    console.log('🏪 [Stores API] Creando nueva tienda:', storeId);
+    
+    // Transformar camelCase a snake_case
+    const storeData = {
+      id: storeId,
+      name: data.name,
+      business_type: data.businessType || null,
+      address: data.address || null,
+      phone: data.phone || null,
+      email: data.email || null,
+      tax_id: data.taxId || null,
+      logo_url: data.logoUrl || null,
+      primary_currency: data.primaryCurrency || 'USD',
+      primary_currency_symbol: data.primaryCurrencySymbol || '$',
+      secondary_currency: data.secondaryCurrency || 'VES',
+      secondary_currency_symbol: data.secondaryCurrencySymbol || 'Bs.',
+      status: data.status || 'active'
+    };
+    
+    const { data: created, error } = await supabaseAdmin
+      .from('stores')
+      .insert(storeData)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('❌ [Stores API] Error creando tienda:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    
+    console.log('✅ [Stores API] Tienda creada exitosamente:', created.id);
+    
+    const response = {
+      id: created.id,
+      storeId: created.id,
+      name: created.name,
+      businessType: created.business_type,
+      address: created.address,
+      phone: created.phone,
+      email: created.email,
+      taxId: created.tax_id,
+      logoUrl: created.logo_url,
+      primaryCurrency: created.primary_currency,
+      primaryCurrencySymbol: created.primary_currency_symbol,
+      secondaryCurrency: created.secondary_currency,
+      secondaryCurrencySymbol: created.secondary_currency_symbol,
+      status: created.status,
+      createdAt: created.created_at,
+      updatedAt: created.updated_at
+    };
+    
+    return NextResponse.json(response);
   } catch (error: any) {
     console.error('❌ [Stores API] Error creando tienda:', error);
-    console.error('❌ [Stores API] Stack trace:', error.stack);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -75,7 +162,6 @@ export async function POST(request: NextRequest) {
 // Editar tienda/settings
 export async function PUT(request: NextRequest) {
   try {
-    await connectToDatabase();
     const data = await request.json();
     
     // Support both id and storeId for backwards compatibility
@@ -87,53 +173,92 @@ export async function PUT(request: NextRequest) {
     console.log('📝 [Stores API] Actualizando tienda:', storeId);
     console.log('🏷️ [Stores API] Nombre recibido:', data.name, 'Longitud:', data.name?.length);
     
-    // Try to update by storeId first, then by id
-    let updated = await Store.findOneAndUpdate(
-      { storeId: storeId },
-      { $set: data },
-      { new: true }
-    );
+    // Transformar camelCase a snake_case
+    const updateData: any = {
+      updated_at: new Date().toISOString()
+    };
     
-    if (!updated) {
-      updated = await Store.findOneAndUpdate(
-        { id: storeId },
-        { $set: data },
-        { new: true }
-      );
-    }
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.businessType !== undefined) updateData.business_type = data.businessType;
+    if (data.address !== undefined) updateData.address = data.address;
+    if (data.phone !== undefined) updateData.phone = data.phone;
+    if (data.email !== undefined) updateData.email = data.email;
+    if (data.taxId !== undefined) updateData.tax_id = data.taxId;
+    if (data.logoUrl !== undefined) updateData.logo_url = data.logoUrl;
+    if (data.primaryCurrency !== undefined) updateData.primary_currency = data.primaryCurrency;
+    if (data.primaryCurrencySymbol !== undefined) updateData.primary_currency_symbol = data.primaryCurrencySymbol;
+    if (data.secondaryCurrency !== undefined) updateData.secondary_currency = data.secondaryCurrency;
+    if (data.secondaryCurrencySymbol !== undefined) updateData.secondary_currency_symbol = data.secondaryCurrencySymbol;
+    if (data.status !== undefined) updateData.status = data.status;
     
-    if (!updated) {
-      console.error('❌ [Stores API] Tienda no encontrada para actualizar:', storeId);
-      return NextResponse.json({ error: "Tienda no encontrada" }, { status: 404 });
+    const { data: updated, error } = await supabaseAdmin
+      .from('stores')
+      .update(updateData)
+      .eq('id', storeId)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('❌ [Stores API] Error actualizando tienda:', error);
+      if (error.code === 'PGRST116') {
+        return NextResponse.json({ error: "Tienda no encontrada" }, { status: 404 });
+      }
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
     
     console.log('✅ [Stores API] Tienda actualizada:', updated.name, 'Longitud final:', updated.name?.length);
-    return NextResponse.json(updated);
+    
+    const response = {
+      id: updated.id,
+      storeId: updated.id,
+      name: updated.name,
+      businessType: updated.business_type,
+      address: updated.address,
+      phone: updated.phone,
+      email: updated.email,
+      taxId: updated.tax_id,
+      logoUrl: updated.logo_url,
+      primaryCurrency: updated.primary_currency,
+      primaryCurrencySymbol: updated.primary_currency_symbol,
+      secondaryCurrency: updated.secondary_currency,
+      secondaryCurrencySymbol: updated.secondary_currency_symbol,
+      status: updated.status,
+      createdAt: updated.created_at,
+      updatedAt: updated.updated_at
+    };
+    
+    return NextResponse.json(response);
   } catch (error: any) {
     console.error('❌ [Stores API] Error actualizando tienda:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-// Borrar tienda (si lo permites)
+// Borrar tienda
 export async function DELETE(request: NextRequest) {
   try {
-    await connectToDatabase();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    if (!id) return NextResponse.json({ error: "Falta id" }, { status: 400 });
+    
+    if (!id) {
+      return NextResponse.json({ error: "Falta id" }, { status: 400 });
+    }
     
     console.log('🗑️ [Stores API] Eliminando tienda:', id);
     
-    // Try to delete by storeId first, then by id
-    let deleted = await Store.findOneAndDelete({ storeId: id });
-    if (!deleted) {
-      deleted = await Store.findOneAndDelete({ id });
-    }
+    const { data: deleted, error } = await supabaseAdmin
+      .from('stores')
+      .delete()
+      .eq('id', id)
+      .select()
+      .single();
     
-    if (!deleted) {
-      console.error('❌ [Stores API] Tienda no encontrada para eliminar:', id);
-      return NextResponse.json({ error: "Tienda no existe" }, { status: 404 });
+    if (error) {
+      console.error('❌ [Stores API] Error eliminando tienda:', error);
+      if (error.code === 'PGRST116') {
+        return NextResponse.json({ error: "Tienda no existe" }, { status: 404 });
+      }
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
     
     console.log('✅ [Stores API] Tienda eliminada:', deleted.name);
