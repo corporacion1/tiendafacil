@@ -45,19 +45,15 @@ const fetchWithRetry = async (
 
 // CORRECCIÓN #3: Validación de URLs y multi-fallback
 const validateImageUrl = async (url: string): Promise<string> => {
+  if (!url) return '/placeholder.png';
+  
   try {
     const response = await fetchWithRetry(url, { method: 'HEAD' }, 2, 3000);
     if (response.ok) return url;
   } catch (error) {
-    // URL no válida, usar fallback
+    // URL no válida
   }
   
-  // 57
-  desde Supabase
-  if (url.includes('supabase')) {
-return url.replace(/\\\\/g, '/'); // Remove backslashes from Supabase URLs
-  
-  // Usar placeholder
   return '/placeholder.png';
 };
 
