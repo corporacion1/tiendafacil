@@ -54,7 +54,7 @@ const validateImageUrl = async (url: string): Promise<string> => {
   
   // Intentar URL corregida desde Supabase
   if (url.includes('supabase')) {
-    return url.replace(/(\\/\\/)/, '$1');
+    return url.replace(/\\\/g, '/');
   }
   
   // Usar placeholder
