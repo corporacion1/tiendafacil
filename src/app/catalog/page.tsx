@@ -1,3 +1,5 @@
+
+// CRITICAL FIX v2 - Force complete rebuild - Timestamp: 2025-11-09-14:00:00-UTC
 "use client";
 // FORCE REBUILD - Clear .next cache and rebuild: 2025-01-11-13:00
 
