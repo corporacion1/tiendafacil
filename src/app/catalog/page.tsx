@@ -52,9 +52,10 @@ const validateImageUrl = async (url: string): Promise<string> => {
     // URL no válida, usar fallback
   }
   
-  // Intentar URL corregida desde Supabase
+  // 57
+  desde Supabase
   if (url.includes('supabase')) {
-    return url.split('\\\\').join('/');  }
+return url.replace(/\\\\/g, '/'); // Remove backslashes from Supabase URLs
   
   // Usar placeholder
   return '/placeholder.png';
