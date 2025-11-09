@@ -1,4 +1,5 @@
 "use client";
+// FORCE REBUILD - Clear .next cache and rebuild: 2025-01-11-13:00
 
 // ========== CORRECCIONES - ERRORES FIJOS =========="
 
