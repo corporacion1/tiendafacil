@@ -84,7 +84,7 @@ const safeDebugCall = async <T,>(
 };
 
 // ===================================================
-export default function
+export default function CatalogPage() {
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import Image from "next/image";
