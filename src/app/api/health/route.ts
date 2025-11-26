@@ -1,29 +1,35 @@
 import { NextResponse } from 'next/server';
-import { healthCheck, getConnectionStatus } from '@/lib/mongodb';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function GET() {
   try {
-    const health = await healthCheck();
-    
-    const response = {
-      timestamp: new Date().toISOString(),
-      status: health.status,
-      database: health.details,
-      environment: {
-        nodeEnv: process.env.NODE_ENV,
-        hasMongoUri: !!process.env.MONGO_URI
-      }
-    };
+    const start = Date.now();
+    const { data, error } = await supabaseAdmin.from('products').select('count', { count: 'exact', head: true });
+    const duration = Date.now() - start;
 
-    const statusCode = health.status === 'healthy' ? 200 : 503;
-    
-    return NextResponse.json(response, { status: statusCode });
+    if (error) {
+      throw error;
+    }
+
+    return NextResponse.json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      database: {
+        type: 'supabase',
+        latency: `${duration}ms`,
+        connected: true
+      },
+      environment: process.env.NODE_ENV
+    });
   } catch (error: any) {
     return NextResponse.json({
+      status: 'unhealthy',
       timestamp: new Date().toISOString(),
-      status: 'error',
       error: error.message,
-      database: getConnectionStatus()
-    }, { status: 500 });
+      database: {
+        type: 'supabase',
+        connected: false
+      }
+    }, { status: 503 });
   }
 }
