@@ -44,8 +44,8 @@ const productSchema = z.object({
   family: z.string().optional(),
   warehouse: z.string().optional(),
   description: z.string().optional(),
-  imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
-  imageHint: z.string().optional(),
+  imageUrl: z.string().optional(),
+  imageHint: z.string().nullable().optional(),
   // Nuevos campos para múltiples imágenes
   images: z.array(z.object({
     id: z.string(),
@@ -63,7 +63,7 @@ const productSchema = z.object({
   primaryImageIndex: z.number().optional(),
   // Tipo: Producto Simple o Servicio/Fabricación
   type: z.enum(["product", "service"]),
-  affectsInventory: z.boolean(),
+  affectsInventory: z.boolean().optional(),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -76,11 +76,48 @@ interface ProductFormProps {
 
 const getInitialValues = (product?: Product): ProductFormValues => {
   if (product) {
+    // ✅ Normalizar imágenes para cumplir con el esquema Zod
+    const normalizedImages = Array.isArray(product.images)
+      ? product.images.map((img: any, index: number) => ({
+        id: img.id || `img-${Date.now()}-${index}`,
+        url: img.url || img, // Manejar si es solo un string
+        thumbnailUrl: img.thumbnailUrl || img.url || img,
+        alt: img.alt || product.name,
+        order: typeof img.order === 'number' ? img.order : index,
+        uploadedAt: img.uploadedAt || new Date().toISOString(),
+        size: img.size || 0,
+        dimensions: img.dimensions || { width: 0, height: 0 }
+      }))
+      : [];
+
+    console.log('📝 [ProductForm] Initializing with product:', product);
+
+    const resolvedType = product.type || "product";
+    const resolvedAffectsInventory = resolvedType === 'product';
+
+    console.log('📝 [ProductForm] Resolved values:', { resolvedType, resolvedAffectsInventory });
+
     return {
-      ...product,
-      affectsInventory: product.type === 'product',
-      // ✅ Asegurar que siempre tengamos un ID válido para Supabase
-      id: product.id || (product as any)?._id
+      id: product.id || (product as any)?._id,
+      name: product.name || "",
+      sku: product.sku || "",
+      price: Number(product.price) || 0,
+      wholesalePrice: Number(product.wholesalePrice) || 0,
+      cost: Number(product.cost) || 0,
+      stock: Number(product.stock) || 0,
+      status: product.status || "active",
+      tax1: !!product.tax1,
+      tax2: !!product.tax2,
+      unit: product.unit || "",
+      family: product.family || "",
+      warehouse: product.warehouse || "",
+      description: product.description || "",
+      imageUrl: product.imageUrl || "",
+      imageHint: product.imageHint || "",
+      type: resolvedType,
+      affectsInventory: resolvedAffectsInventory,
+      images: normalizedImages,
+      primaryImageIndex: Number(product.primaryImageIndex) || 0,
     };
   }
 
@@ -278,13 +315,27 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
   const wholesaleProfitMargin = useMemo(() => calculateProfit(wholesalePrice, cost), [wholesalePrice, cost]);
 
   const handleSubmit = async (data: ProductFormValues) => {
-    if (submitting) return;
+    console.log('📝 [ProductForm] handleSubmit llamado con:', data);
+    console.log('📝 [ProductForm] Form state:', {
+      isValid: form.formState.isValid,
+      isDirty: form.formState.isDirty,
+      errors: form.formState.errors
+    });
+
+    if (submitting) {
+      console.warn('⚠️ [ProductForm] Envío bloqueado: ya se está enviando');
+      return;
+    }
     setSubmitting(true);
     try {
+      console.log('🚀 [ProductForm] Ejecutando onSubmit prop...');
       const result = await onSubmit(data);
+      console.log('✅ [ProductForm] Resultado de onSubmit:', result);
       if (!product && result === true) {
         form.reset(getInitialValues());
       }
+    } catch (error) {
+      console.error('❌ [ProductForm] Error en onSubmit:', error);
     } finally {
       setSubmitting(false);
     }
@@ -293,7 +344,27 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
   return (
     <>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-6">
+        <form onSubmit={form.handleSubmit(handleSubmit, (errors) => {
+          console.error('❌ [ProductForm] Errores de validación (raw):', errors);
+          console.error('❌ [ProductForm] Errores de validación (JSON):', JSON.stringify(errors, null, 2));
+          console.error('❌ [ProductForm] Valores actuales del formulario:', form.getValues());
+
+          // Log each field error individually for easier debugging
+          Object.keys(errors).forEach(fieldName => {
+            const error = errors[fieldName as keyof typeof errors];
+            console.error(`❌ [ProductForm] Error en campo "${fieldName}":`, {
+              message: error?.message,
+              type: error?.type,
+              value: form.getValues(fieldName as any)
+            });
+          });
+
+          toast({
+            variant: "destructive",
+            title: "Error de validación",
+            description: `Revisa los campos: ${Object.keys(errors).join(', ')}`
+          });
+        })} className="space-y-6">
           <AlertDialog>
             <Card>
               <CardHeader>
@@ -427,7 +498,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Almacén</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Selecciona un almacén" />
@@ -666,7 +737,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                     </FormItem>
                   )}
                 />
-
               </CardContent>
             </Card>
 

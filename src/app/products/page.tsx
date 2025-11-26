@@ -23,15 +23,46 @@ export default function ProductsPage() {
   // Función para crear producto en Supabase
   const createProductInSupabase = async (productData: Product) => {
     try {
+      // Mapear campos de camelCase a snake_case para Supabase
+      const dbProduct = {
+        id: productData.id,
+        store_id: productData.storeId,
+        // user_id: (productData as any).userId, // Columna no existe en DB según API
+        name: productData.name,
+        sku: productData.sku,
+        // barcode: productData.barcode, // Columna no existe en DB
+        description: productData.description,
+        price: productData.price,
+        wholesale_price: productData.wholesalePrice,
+        cost: productData.cost,
+        stock: productData.stock,
+        status: productData.status,
+        // tax1: productData.tax1, // Columna no existe en DB según API
+        // tax2: productData.tax2, // Columna no existe en DB según API
+        unit: productData.unit,
+        family: productData.family,
+        // warehouse: productData.warehouse, // Columna no existe en DB según API
+        type: productData.type,
+        // affects_inventory: productData.affectsInventory, // Columna no existe en DB
+        image_url: productData.imageUrl,
+        image_hint: productData.imageHint,
+        images: productData.images,
+        primary_image_index: productData.primaryImageIndex,
+        created_at: productData.createdAt
+      };
+
+      console.log('📦 [Supabase] Sending product data:', dbProduct);
+
       const { data, error } = await supabase
         .from('products')
-        .insert([productData])
+        .insert([dbProduct])
         .select()
         .single();
 
       if (error) {
-        console.error('❌ [Supabase] Error creating product:', error);
-        throw new Error('Error al crear producto en Supabase');
+        console.error('❌ [Supabase] Error creating product (full):', JSON.stringify(error, null, 2));
+        console.error('❌ [Supabase] Error details:', error);
+        throw new Error(`Error al crear producto en Supabase: ${error.message || 'Unknown error'} (Code: ${error.code})`);
       }
 
       return data;
@@ -49,7 +80,7 @@ export default function ProductsPage() {
     try {
       const newProduct: Product = {
         ...data,
-        id: `prod-${Date.now()}`,
+        id: crypto.randomUUID(), // Usar UUID estándar
         storeId: activeStoreId,
         createdAt: new Date().toISOString(),
         userId: (user as any)?.id || 'system' // Para rastrear quién creó el producto
@@ -59,7 +90,10 @@ export default function ProductsPage() {
       const savedProduct = await createProductInSupabase(newProduct);
 
       // Actualizar el estado local
-      setProducts(prev => [savedProduct, ...prev]);
+      // Nota: savedProduct vendrá con claves snake_case de Supabase si no se tipa, 
+      // pero para el estado local necesitamos camelCase.
+      // Por simplicidad, usamos newProduct que ya tiene el formato correcto para la UI
+      setProducts(prev => [newProduct, ...prev]);
 
       // Mostrar mensaje de éxito
       console.log(`✅ Producto "${data.name}" creado exitosamente en Supabase`);

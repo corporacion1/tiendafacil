@@ -1,332 +1,353 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import { Product } from '@/models/Product';
-import { handleDatabaseError, logDatabaseOperation } from '@/lib/db-error-handler';
-
-// Configuración para MongoDB (base64)
-const MONGODB_CONFIG = {
-  MAX_FILE_SIZE: 2 * 1024 * 1024, // 2MB para base64
-  ALLOWED_TYPES: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
-  MAX_IMAGES: 4
-};
+import { supabaseAdmin, uploadImage, deleteImage } from '@/lib/supabase';
 
 /**
- * POST - Subir múltiples imágenes (versión MongoDB con base64)
+ * POST - Subir múltiples imágenes a Supabase Storage
  */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log('🚀 [API] POST /api/products/[id]/images iniciado (MongoDB)');
-    
-    await connectToDatabase();
-    
+    console.log('🚀 [API] POST /api/products/[id]/images iniciado (Supabase)');
+
     const resolvedParams = await params;
     const productId = resolvedParams.id;
     console.log('📦 [API] ProductId:', productId);
-    
+
     const formData = await request.formData();
     const storeId = formData.get('storeId') as string;
-    
+
     console.log('🏪 [API] StoreId:', storeId);
-    
+
     if (!storeId) {
       console.error('❌ [API] StoreId no proporcionado');
       return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
     }
-    
-    // Verificar que el producto existe
+
+    // Verificar que el producto existe en Supabase
     console.log('🔍 [API] Buscando producto:', { id: productId, storeId });
-    const product = await Product.findOne({ id: productId, storeId });
-    if (!product) {
-      console.error('❌ [API] Producto no encontrado');
+    const { data: product, error: productError } = await supabaseAdmin
+      .from('products')
+      .select('*')
+      .eq('id', productId)
+      .eq('store_id', storeId)
+      .single();
+
+    if (productError || !product) {
+      console.error('❌ [API] Producto no encontrado:', productError);
       return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 });
     }
-    
+
     console.log('✅ [API] Producto encontrado:', product.name);
-    
+
     // Obtener imágenes actuales
-    let currentImages = product.images || [];
-    
-    // Si no tiene array de imágenes pero sí tiene imageUrl, migrar automáticamente
-    if ((!product.images || product.images.length === 0) && product.imageUrl) {
-      console.log('🔄 [API] Migrando producto de imagen única a múltiples imágenes');
-      
-      const migratedImage = {
-        id: `migrated-${Date.now()}`,
-        url: product.imageUrl,
-        thumbnailUrl: product.imageUrl,
-        alt: product.imageHint || product.name,
-        order: 0,
-        uploadedAt: new Date().toISOString(),
-        size: 0,
-        dimensions: { width: 800, height: 600 }
-      };
-      
-      currentImages = [migratedImage];
-      console.log('✅ [API] Producto migrado exitosamente');
-    }
-    
+    let currentImages = typeof product.images === 'string'
+      ? JSON.parse(product.images)
+      : (product.images || []);
+
     console.log('📊 [API] Imágenes actuales:', currentImages.length);
-    
+
     // Obtener archivos del FormData
     const files = formData.getAll('images') as File[];
     console.log('📁 [API] Archivos recibidos:', files.length);
-    
+
     if (files.length === 0) {
       console.error('❌ [API] No se enviaron archivos');
       return NextResponse.json({ error: 'No se enviaron archivos' }, { status: 400 });
     }
-    
-    // Procesar archivos y convertir a base64
-    const processedImages = [];
-    
+
+    // Subir archivos a Supabase Storage (carpeta 'products')
+    const uploadedImages = [];
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       console.log(`📷 [API] Procesando archivo ${i + 1}: ${file.name} (${file.size} bytes)`);
-      
-      // Validar tamaño (máximo 2MB para base64)
-      if (file.size > 2 * 1024 * 1024) {
+
+      // Validar tamaño (máximo 5MB para Supabase Storage)
+      if (file.size > 5 * 1024 * 1024) {
         console.warn(`⚠️ [API] Archivo muy grande: ${file.name}`);
-        return NextResponse.json({ 
-          error: `Archivo ${file.name} es demasiado grande (máximo 2MB)` 
+        return NextResponse.json({
+          error: `Archivo ${file.name} es demasiado grande (máximo 5MB)`
         }, { status: 400 });
       }
-      
+
       // Validar formato
       if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
-        return NextResponse.json({ 
-          error: `Formato ${file.type} no soportado` 
+        return NextResponse.json({
+          error: `Formato ${file.type} no soportado`
         }, { status: 400 });
       }
-      
-      // Convertir a base64
-      const arrayBuffer = await file.arrayBuffer();
-      const base64 = Buffer.from(arrayBuffer).toString('base64');
-      const dataUrl = `data:${file.type};base64,${base64}`;
-      
-      const imageData = {
-        id: `img-${Date.now()}-${i}`,
-        url: dataUrl,
-        thumbnailUrl: dataUrl,
-        alt: file.name.replace(/\.[^/.]+$/, ''),
-        order: currentImages.length + i,
-        uploadedAt: new Date().toISOString(),
-        size: file.size,
-        dimensions: { width: 800, height: 600 }
-      };
-      
-      processedImages.push(imageData);
-      console.log(`✅ [API] Imagen procesada: ${file.name}`);
-    }
-    
-    console.log('📝 [API] Imágenes procesadas:', processedImages.length);
-    
-    // Actualizar producto con nuevas imágenes
-    const updatedImages = [...currentImages, ...processedImages];
-    console.log('🔄 [API] Total de imágenes:', updatedImages.length);
-    
-    const updateData: any = {
-      images: updatedImages
-    };
-    
-    // Actualizar campos de compatibilidad si es la primera imagen
-    if (currentImages.length === 0 && processedImages.length > 0) {
-      updateData.imageUrl = processedImages[0].url;
-      updateData.imageHint = processedImages[0].alt;
-      updateData.primaryImageIndex = 0;
-      console.log('🔄 [API] Actualizando campos de compatibilidad');
-    }
-    
-    console.log('💾 [API] Actualizando producto en BD...');
-    
-    const updatedProduct = await Product.findOneAndUpdate(
-      { id: productId, storeId },
-      { $set: updateData },
-      { new: true, runValidators: true }
-    );
-    
-    if (!updatedProduct) {
-      console.error('❌ [API] No se pudo actualizar el producto');
-      return NextResponse.json({ error: 'Error al actualizar producto' }, { status: 500 });
-    }
-    
-    console.log('✅ [API] Producto actualizado exitosamente');
-    
-    logDatabaseOperation('POST', 'product-images-mongodb', { 
-      productId, 
-      storeId, 
-      imagesAdded: processedImages.length 
-    });
-    
-    const response = {
-      success: true,
-      imagesAdded: processedImages.length,
-      totalImages: updatedImages.length,
-      product: updatedProduct
-    };
-    
-    console.log('📤 [API] Enviando respuesta exitosa');
-    
-    return NextResponse.json(response);
-    
-  } catch (error) {
-    console.error('❌ [API] Error:', error);
-    return handleDatabaseError(error, 'POST product images mongodb');
-  }
-}
 
-/**
- * PUT - Reordenar imágenes de un producto
- */
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    await connectToDatabase();
-    
-    const resolvedParams = await params;
-    const productId = resolvedParams.id;
-    const { imageIds, storeId } = await request.json();
-    
-    if (!storeId || !Array.isArray(imageIds)) {
-      return NextResponse.json({ 
-        error: 'storeId e imageIds (array) son requeridos' 
-      }, { status: 400 });
+      try {
+        // Subir a Supabase Storage en carpeta 'products'
+        const { url, path } = await uploadImage(file, 'products');
+
+        const newImage = {
+          id: `img-${Date.now()}-${i}`,
+          url: url,
+          thumbnailUrl: url, // En futuro podemos generar thumbnail
+          alt: file.name.replace(/\.[^/.]+$/, ''),
+          order: currentImages.length + i,
+          uploadedAt: new Date().toISOString(),
+          size: file.size,
+          storagePath: path // Guardar path para poder eliminar después
+        };
+
+        uploadedImages.push(newImage);
+        console.log(`✅ [API] Imagen ${i + 1} subida:`, url);
+      } catch (uploadError) {
+        console.error(`❌ [API] Error subiendo imagen ${file.name}:`, uploadError);
+        return NextResponse.json({
+          error: `Error al subir ${file.name}`
+        }, { status: 500 });
+      }
     }
-    
-    // Verificar que el producto existe
-    const product = await Product.findOne({ id: productId, storeId });
-    if (!product) {
-      return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 });
+
+    // Actualizar producto con nuevas imágenes
+    const updatedImages = [...currentImages, ...uploadedImages];
+
+    const { data: updatedProduct, error: updateError } = await supabaseAdmin
+      .from('products')
+      .update({
+        images: JSON.stringify(updatedImages),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', productId)
+      .eq('store_id', storeId)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('❌ [API] Error actualizando producto:', updateError);
+      return NextResponse.json({
+        error: 'Error al actualizar producto con nuevas imágenes'
+      }, { status: 500 });
     }
-    
-    const currentImages = product.images || [];
-    
-    // Reordenar imágenes según el nuevo orden
-    const reorderedImages = imageIds
-      .map(id => currentImages.find((img: any) => img.id === id))
-      .filter(img => img !== undefined)
-      .map((img, index) => ({ ...img, order: index }));
-    
-    // Actualizar campos de compatibilidad
-    const updateData: any = {
-      images: reorderedImages
+
+    console.log('✅ [API] Producto actualizado con', uploadedImages.length, 'nuevas imágenes');
+
+    // Transformar respuesta a camelCase
+    const response = {
+      id: updatedProduct.id,
+      storeId: updatedProduct.store_id,
+      images: typeof updatedProduct.images === 'string'
+        ? JSON.parse(updatedProduct.images)
+        : updatedProduct.images,
+      name: updatedProduct.name
     };
-    
-    if (reorderedImages.length > 0) {
-      updateData.imageUrl = reorderedImages[0].url;
-      updateData.imageHint = reorderedImages[0].alt;
-      updateData.primaryImageIndex = 0;
-    }
-    
-    const updatedProduct = await Product.findOneAndUpdate(
-      { id: productId, storeId },
-      { $set: updateData },
-      { new: true, runValidators: true }
-    );
-    
-    logDatabaseOperation('PUT', 'product-images-reorder', { 
-      productId, 
-      storeId, 
-      newOrder: imageIds 
-    });
-    
+
     return NextResponse.json({
       success: true,
-      product: updatedProduct
+      product: response,
+      uploadedCount: uploadedImages.length
     });
-    
-  } catch (error) {
-    return handleDatabaseError(error, 'PUT product images reorder');
+
+  } catch (error: any) {
+    console.error('❌ [API] Error inesperado:', error);
+    return NextResponse.json({
+      error: 'Error interno del servidor'
+    }, { status: 500 });
   }
 }
 
 /**
- * DELETE - Eliminar una imagen específica de un producto (MongoDB)
+ * DELETE - Eliminar una imagen de Supabase Storage
  */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log('🗑️ [API] DELETE imagen iniciado (MongoDB)');
-    
-    await connectToDatabase();
-    
     const resolvedParams = await params;
     const productId = resolvedParams.id;
+
     const { searchParams } = new URL(request.url);
     const imageId = searchParams.get('imageId');
     const storeId = searchParams.get('storeId');
-    
-    console.log('📋 [API] Parámetros:', { productId, imageId, storeId });
-    
+
+    console.log('🗑️ [API] DELETE image:', { productId, imageId, storeId });
+
     if (!imageId || !storeId) {
-      return NextResponse.json({ 
-        error: 'imageId y storeId son requeridos' 
+      return NextResponse.json({
+        error: 'imageId y storeId son requeridos'
       }, { status: 400 });
     }
-    
-    // Verificar que el producto existe
-    const product = await Product.findOne({ id: productId, storeId });
-    if (!product) {
-      return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 });
+
+    // Obtener producto
+    const { data: product, error: productError } = await supabaseAdmin
+      .from('products')
+      .select('*')
+      .eq('id', productId)
+      .eq('store_id', storeId)
+      .single();
+
+    if (productError || !product) {
+      console.error('❌ [API] Producto no encontrado');
+      return NextResponse.json({
+        error: 'Producto no encontrado'
+      }, { status: 404 });
     }
-    
-    const currentImages = product.images || [];
-    
+
+    // Obtener imágenes actuales
+    let currentImages = typeof product.images === 'string'
+      ? JSON.parse(product.images)
+      : (product.images || []);
+
     // Encontrar la imagen a eliminar
-    const imageToDelete = currentImages.find((img: any) => img.id === imageId);
-    if (!imageToDelete) {
-      return NextResponse.json({ error: 'Imagen no encontrada' }, { status: 404 });
-    }
-    
-    console.log('🖼️ [API] Imagen a eliminar:', imageToDelete.id);
-    
-    // Filtrar la imagen eliminada y reordenar
-    const filteredImages = currentImages
-      .filter((img: any) => img.id !== imageId)
-      .map((img: any, index: number) => ({ ...img, order: index }));
-    
-    // Actualizar campos de compatibilidad
-    const updateData: any = {
-      images: filteredImages
-    };
-    
-    if (filteredImages.length > 0) {
-      updateData.imageUrl = filteredImages[0].url;
-      updateData.imageHint = filteredImages[0].alt;
-      updateData.primaryImageIndex = 0;
-    } else {
-      updateData.imageUrl = '';
-      updateData.imageHint = '';
-      updateData.primaryImageIndex = 0;
-    }
-    
-    const updatedProduct = await Product.findOneAndUpdate(
-      { id: productId, storeId },
-      { $set: updateData },
-      { new: true, runValidators: true }
+    const imageToDelete = currentImages.find((img: any) =>
+      img.id === imageId || img._id === imageId
     );
-    
+
+    if (!imageToDelete) {
+      return NextResponse.json({
+        error: 'Imagen no encontrada'
+      }, { status: 404 });
+    }
+
+    // Eliminar de Supabase Storage si tiene storagePath
+    if (imageToDelete.storagePath) {
+      try {
+        await deleteImage(imageToDelete.storagePath);
+        console.log('✅ [API] Imagen eliminada de Storage:', imageToDelete.storagePath);
+      } catch (storageError) {
+        console.warn('⚠️ [API] Error eliminando de Storage (continuando):', storageError);
+      }
+    }
+
+    // Actualizar array de imágenes
+    const updatedImages = currentImages.filter((img: any) =>
+      img.id !== imageId && img._id !== imageId
+    );
+
+    const { data: updatedProduct, error: updateError } = await supabaseAdmin
+      .from('products')
+      .update({
+        images: JSON.stringify(updatedImages),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', productId)
+      .eq('store_id', storeId)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('❌ [API] Error actualizando producto:', updateError);
+      return NextResponse.json({
+        error: 'Error al actualizar producto'
+      }, { status: 500 });
+    }
+
     console.log('✅ [API] Imagen eliminada exitosamente');
-    
-    logDatabaseOperation('DELETE', 'product-image-mongodb', { 
-      productId, 
-      storeId, 
-      imageId 
-    });
-    
+
+    const response = {
+      id: updatedProduct.id,
+      images: typeof updatedProduct.images === 'string'
+        ? JSON.parse(updatedProduct.images)
+        : updatedProduct.images
+    };
+
     return NextResponse.json({
       success: true,
-      product: updatedProduct
+      product: response
     });
-    
-  } catch (error) {
-    console.error('❌ [API] Error eliminando imagen:', error);
-    return handleDatabaseError(error, 'DELETE product image mongodb');
+
+  } catch (error: any) {
+    console.error('❌ [API] Error inesperado:', error);
+    return NextResponse.json({
+      error: 'Error interno del servidor'
+    }, { status: 500 });
+  }
+}
+
+/**
+ * PUT - Reordenar imágenes
+ */
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const resolvedParams = await params;
+    const productId = resolvedParams.id;
+
+    const body = await request.json();
+    const { imageIds, storeId } = body;
+
+    console.log('🔄 [API] PUT reorder images:', { productId, imageIds, storeId });
+
+    if (!imageIds || !Array.isArray(imageIds) || !storeId) {
+      return NextResponse.json({
+        error: 'imageIds (array) y storeId son requeridos'
+      }, { status: 400 });
+    }
+
+    // Obtener producto
+    const { data: product, error: productError } = await supabaseAdmin
+      .from('products')
+      .select('*')
+      .eq('id', productId)
+      .eq('store_id', storeId)
+      .single();
+
+    if (productError || !product) {
+      return NextResponse.json({
+        error: 'Producto no encontrado'
+      }, { status: 404 });
+    }
+
+    // Obtener imágenes actuales
+    let currentImages = typeof product.images === 'string'
+      ? JSON.parse(product.images)
+      : (product.images || []);
+
+    // Reordenar según el array de IDs
+    const reorderedImages = imageIds.map((imgId: string, index: number) => {
+      const img = currentImages.find((i: any) =>
+        (i.id === imgId || i._id === imgId)
+      );
+      if (img) {
+        return { ...img, order: index };
+      }
+      return null;
+    }).filter((img: any) => img !== null);
+
+    const { data: updatedProduct, error: updateError } = await supabaseAdmin
+      .from('products')
+      .update({
+        images: JSON.stringify(reorderedImages),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', productId)
+      .eq('store_id', storeId)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error('❌ [API] Error actualizando orden:', updateError);
+      return NextResponse.json({
+        error: 'Error al actualizar orden de imágenes'
+      }, { status: 500 });
+    }
+
+    console.log('✅ [API] Imágenes reordenadas exitosamente');
+
+    const response = {
+      id: updatedProduct.id,
+      images: typeof updatedProduct.images === 'string'
+        ? JSON.parse(updatedProduct.images)
+        : updatedProduct.images
+    };
+
+    return NextResponse.json({
+      success: true,
+      product: response
+    });
+
+  } catch (error: any) {
+    console.error('❌ [API] Error inesperado:', error);
+    return NextResponse.json({
+      error: 'Error interno del servidor'
+    }, { status: 500 });
   }
 }

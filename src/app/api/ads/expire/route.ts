@@ -43,7 +43,7 @@ export async function POST() {
     return NextResponse.json({
       message: `${expiredAds.length} anuncios vencidos han sido inactivados`,
       expiredCount: expiredAds.length,
-      expiredAds: expiredAds.map(ad => ({
+      expiredAds: expiredAds.map((ad: any) => ({
         id: ad.id,
         name: ad.name,
         expiryDate: ad.expiry_date

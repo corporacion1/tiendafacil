@@ -41,7 +41,7 @@ export async function GET(request: Request) {
     }
 
     // Mapear campos de Supabase a tu formato actual
-    const formattedSales = sales?.map(sale => ({
+    const formattedSales = sales?.map((sale: any) => ({
       id: sale.id,
       customerId: sale.customer_id,
       customerName: sale.customer_name,

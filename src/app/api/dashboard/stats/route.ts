@@ -20,14 +20,14 @@ export async function GET(request: Request) {
 
     if (salesError) throw salesError;
 
-    const totalSales = sales?.reduce((sum, sale) => sum + (sale.total || 0), 0) || 0;
+    const totalSales = sales?.reduce((sum: number, sale: any) => sum + (sale.total || 0), 0) || 0;
     const totalTransactions = sales?.length || 0;
     const averageSale = totalTransactions > 0 ? totalSales / totalTransactions : 0;
 
     // 2. Productos más vendidos
     const productSales: Record<string, { name: string, quantity: number, revenue: number }> = {};
 
-    sales?.forEach(sale => {
+    sales?.forEach((sale: any) => {
       const items = sale.items || []; // Asumiendo que items es un array JSONB
       if (Array.isArray(items)) {
         items.forEach((item: any) => {
@@ -58,7 +58,7 @@ export async function GET(request: Request) {
     // 3. Clientes frecuentes
     const customerStats: Record<string, { name: string, spent: number, count: number }> = {};
 
-    sales?.forEach(sale => {
+    sales?.forEach((sale: any) => {
       if (sale.customer_id) {
         const cid = sale.customer_id;
         if (!customerStats[cid]) {
@@ -93,8 +93,8 @@ export async function GET(request: Request) {
     if (productsError) throw productsError;
 
     const totalProducts = products?.length || 0;
-    const lowStockProducts = products?.filter(p => (p.stock || 0) < 10).length || 0;
-    const totalInventoryValue = products?.reduce((sum, p) => sum + ((p.stock || 0) * (p.price || 0)), 0) || 0;
+    const lowStockProducts = products?.filter((p: any) => (p.stock || 0) < 10).length || 0;
+    const totalInventoryValue = products?.reduce((sum: number, p: any) => sum + ((p.stock || 0) * (p.price || 0)), 0) || 0;
 
     const stats = {
       sales: { totalSales, totalTransactions, averageSale },

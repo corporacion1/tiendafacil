@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
 
     // Transformar snake_case a camelCase
-    const transformedMethods = paymentMethods?.map(pm => ({
+    const transformedMethods = paymentMethods?.map((pm: any) => ({
       id: pm.id,
       storeId: pm.store_id,
       name: pm.name,

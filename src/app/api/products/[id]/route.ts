@@ -50,8 +50,11 @@ export async function GET(
             stock: product.stock || 0,
             minStock: product.min_stock || 0,
             unit: product.unit,
+            warehouse: product.warehouse,
             type: product.type,
             status: product.status,
+            tax1: !!product.tax1,
+            tax2: !!product.tax2,
             imageUrl: product.image_url,
             imageHint: product.image_hint,
             images: typeof product.images === 'string' ? JSON.parse(product.images) : (product.images || []),
@@ -106,8 +109,11 @@ export async function PUT(
         if (data.stock !== undefined) updateData.stock = data.stock;
         if (data.minStock !== undefined) updateData.min_stock = data.minStock;
         if (data.unit !== undefined) updateData.unit = data.unit;
+        if (data.warehouse !== undefined) updateData.warehouse = data.warehouse;
         if (data.type !== undefined) updateData.type = data.type;
         if (data.status !== undefined) updateData.status = data.status;
+        if (data.tax1 !== undefined) updateData.tax1 = !!data.tax1;
+        if (data.tax2 !== undefined) updateData.tax2 = !!data.tax2;
         if (data.imageUrl !== undefined) updateData.image_url = data.imageUrl;
         if (data.imageHint !== undefined) updateData.image_hint = data.imageHint;
         if (data.images !== undefined) updateData.images = data.images;
@@ -147,8 +153,11 @@ export async function PUT(
             stock: updatedProduct.stock || 0,
             minStock: updatedProduct.min_stock || 0,
             unit: updatedProduct.unit,
+            warehouse: updatedProduct.warehouse,
             type: updatedProduct.type,
             status: updatedProduct.status,
+            tax1: !!updatedProduct.tax1,
+            tax2: !!updatedProduct.tax2,
             imageUrl: updatedProduct.image_url,
             imageHint: updatedProduct.image_hint,
             images: typeof updatedProduct.images === 'string' ? JSON.parse(updatedProduct.images) : (updatedProduct.images || []),

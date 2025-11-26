@@ -6,24 +6,24 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const storeId = searchParams.get('storeId');
-    
+
     if (!storeId) {
       return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
     }
-    
+
     console.log('📦 [Products API] GET products for store:', storeId);
-    
+
     const { data: products, error } = await supabaseAdmin
       .from('products')
       .select('*')
       .eq('store_id', storeId)
       .order('created_at', { ascending: false });
-    
+
     if (error) {
       console.error('❌ [Products API] Error fetching products:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    
+
     // Transformar snake_case a camelCase para compatibilidad
     const transformedProducts = products.map((p: any) => ({
       id: p.id,
@@ -38,8 +38,11 @@ export async function GET(request: NextRequest) {
       stock: p.stock || 0,
       minStock: p.min_stock || 0,
       unit: p.unit,
+      warehouse: p.warehouse,
       type: p.type,
       status: p.status,
+      tax1: !!p.tax1,
+      tax2: !!p.tax2,
       imageUrl: p.image_url,
       imageHint: p.image_hint,
       images: typeof p.images === 'string' ? JSON.parse(p.images) : (p.images || []),
@@ -47,7 +50,15 @@ export async function GET(request: NextRequest) {
       createdAt: p.created_at,
       updatedAt: p.updated_at
     }));
-    
+
+    console.log(`✅ [Products API] Sample product tax values:`, transformedProducts[0] ? {
+      id: transformedProducts[0].id,
+      sku: transformedProducts[0].sku,
+      tax1: transformedProducts[0].tax1,
+      tax2: transformedProducts[0].tax2,
+      tax1_raw: products[0]?.tax1,
+      tax2_raw: products[0]?.tax2
+    } : 'No products');
     console.log(`✅ [Products API] Returned ${transformedProducts.length} products`);
     return NextResponse.json(transformedProducts);
   } catch (error: any) {
@@ -59,20 +70,20 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
-    
+
     // Generar ID único si no se proporciona
     if (!data.id) {
       data.id = IDGenerator.generate('product');
     }
-    
+
     if (!data.name || !data.storeId) {
       return NextResponse.json({ error: 'name y storeId son requeridos' }, { status: 400 });
     }
-    
+
     console.log('📦 [Products API] POST product:', data.name);
-    
+
     const initialStock = Number(data.stock) || 0;
-    
+
     // Transformar camelCase a snake_case para Supabase
     const productData = {
       id: data.id,
@@ -87,27 +98,30 @@ export async function POST(request: NextRequest) {
       stock: initialStock,
       min_stock: parseInt(data.minStock) || 0,
       unit: data.unit || 'unidad',
+      warehouse: data.warehouse || null,
       type: data.type || 'product',
       status: data.status || 'active',
       image_url: data.imageUrl || null,
       image_hint: data.imageHint || null,
       images: JSON.stringify(data.images || []),
-      primary_image_index: data.primaryImageIndex || 0
+      primary_image_index: data.primaryImageIndex || 0,
+      tax1: !!data.tax1,
+      tax2: !!data.tax2
     };
-    
+
     const { data: created, error } = await supabaseAdmin
       .from('products')
       .insert(productData)
       .select()
       .single();
-    
+
     if (error) {
       console.error('❌ [Products API] Error creating product:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    
+
     console.log('✅ [Products API] Product created:', created.id);
-    
+
     // Transformar respuesta a camelCase
     const response = {
       id: created.id,
@@ -124,6 +138,8 @@ export async function POST(request: NextRequest) {
       unit: created.unit,
       type: created.type,
       status: created.status,
+      tax1: !!created.tax1,
+      tax2: !!created.tax2,
       imageUrl: created.image_url,
       imageHint: created.image_hint,
       images: typeof created.images === 'string' ? JSON.parse(created.images) : created.images,
@@ -131,7 +147,7 @@ export async function POST(request: NextRequest) {
       createdAt: created.created_at,
       updatedAt: created.updated_at
     };
-    
+
     return NextResponse.json(response);
   } catch (error: any) {
     console.error('❌ [Products API] Unexpected error:', error);
@@ -142,19 +158,19 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const data = await request.json();
-    
+
     console.log('📥 [Products API] PUT received:', { id: data.id, storeId: data.storeId });
-    
+
     if (!data.id || !data.storeId) {
       return NextResponse.json({ error: 'id y storeId son requeridos' }, { status: 400 });
     }
-    
+
     // Transformar camelCase a snake_case
     const updateData: any = {
       store_id: data.storeId,
       updated_at: new Date().toISOString()
     };
-    
+
     if (data.sku !== undefined) updateData.sku = data.sku;
     if (data.name !== undefined) updateData.name = data.name;
     if (data.description !== undefined) updateData.description = data.description;
@@ -165,13 +181,16 @@ export async function PUT(request: NextRequest) {
     if (data.stock !== undefined) updateData.stock = parseInt(data.stock);
     if (data.minStock !== undefined) updateData.min_stock = parseInt(data.minStock);
     if (data.unit !== undefined) updateData.unit = data.unit;
+    if (data.warehouse !== undefined) updateData.warehouse = data.warehouse;
     if (data.type !== undefined) updateData.type = data.type;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.imageUrl !== undefined) updateData.image_url = data.imageUrl;
     if (data.imageHint !== undefined) updateData.image_hint = data.imageHint;
     if (data.images !== undefined) updateData.images = JSON.stringify(data.images);
     if (data.primaryImageIndex !== undefined) updateData.primary_image_index = data.primaryImageIndex;
-    
+    if (data.tax1 !== undefined) updateData.tax1 = !!data.tax1;
+    if (data.tax2 !== undefined) updateData.tax2 = !!data.tax2;
+
     const { data: updated, error } = await supabaseAdmin
       .from('products')
       .update(updateData)
@@ -179,7 +198,7 @@ export async function PUT(request: NextRequest) {
       .eq('store_id', data.storeId)
       .select()
       .single();
-    
+
     if (error) {
       console.error('❌ [Products API] Error updating product:', error);
       if (error.code === 'PGRST116') {
@@ -187,9 +206,9 @@ export async function PUT(request: NextRequest) {
       }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    
+
     console.log('✅ [Products API] Product updated:', updated.id);
-    
+
     // Transformar respuesta a camelCase
     const response = {
       id: updated.id,
@@ -204,8 +223,11 @@ export async function PUT(request: NextRequest) {
       stock: updated.stock,
       minStock: updated.min_stock,
       unit: updated.unit,
+      warehouse: updated.warehouse,
       type: updated.type,
       status: updated.status,
+      tax1: !!updated.tax1,
+      tax2: !!updated.tax2,
       imageUrl: updated.image_url,
       imageHint: updated.image_hint,
       images: typeof updated.images === 'string' ? JSON.parse(updated.images) : updated.images,
@@ -213,7 +235,7 @@ export async function PUT(request: NextRequest) {
       createdAt: updated.created_at,
       updatedAt: updated.updated_at
     };
-    
+
     return NextResponse.json(response);
   } catch (error: any) {
     console.error('❌ [Products API] Unexpected error:', error);
@@ -226,13 +248,13 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const storeId = searchParams.get('storeId');
-    
+
     if (!id || !storeId) {
       return NextResponse.json({ error: "Faltan parámetros 'id' y/o 'storeId'" }, { status: 400 });
     }
-    
+
     console.log('🗑️ [Products API] DELETE product:', { id, storeId });
-    
+
     const { data, error } = await supabaseAdmin
       .from('products')
       .delete()
@@ -240,7 +262,7 @@ export async function DELETE(request: NextRequest) {
       .eq('store_id', storeId)
       .select()
       .single();
-    
+
     if (error) {
       console.error('❌ [Products API] Error deleting product:', error);
       if (error.code === 'PGRST116') {
@@ -248,7 +270,7 @@ export async function DELETE(request: NextRequest) {
       }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    
+
     console.log('✅ [Products API] Product deleted:', id);
     return NextResponse.json({ message: 'Producto eliminado exitosamente' });
   } catch (error: any) {

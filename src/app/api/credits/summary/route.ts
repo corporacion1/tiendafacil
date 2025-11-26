@@ -154,7 +154,7 @@ export async function GET(request: Request) {
           return dueDate >= now && dueDate <= sevenDaysFromNow;
         })
         .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
-        .map(acc => ({
+        .map((acc: any) => ({
           id: acc.id,
           saleId: acc.sale_id,
           customerId: acc.customer_id,
@@ -179,7 +179,7 @@ export async function GET(request: Request) {
         collectionRate: 0, // Porcentaje de cuentas cobradas vs creadas
         averageDebtPerCustomer: accounts.length > 0
           ? accounts.reduce((sum, acc) => sum + (acc.remaining_balance || 0), 0) /
-          new Set(accounts.map(acc => acc.customer_id)).size
+          new Set(accounts.map((acc: any) => acc.customer_id)).size
           : 0
       },
 

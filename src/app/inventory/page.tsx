@@ -177,29 +177,26 @@ export default function InventoryPage() {
       return;
     }
     try {
-      const res = await fetch(`/api/products/${productId}?storeId=${encodeURIComponent(storeId)}`);
-      if (!res.ok) {
-        const txt = await res.text();
-        logger.warn('⚠️ [Inventory] Producto no encontrado al abrir modal (GET by id):', { status: res.status, txt });
-        // Fallback: cargar todos y buscar localmente por id
-        const listRes = await fetch(`/api/products?storeId=${encodeURIComponent(storeId)}`);
-        if (listRes.ok) {
-          const list = await listRes.json();
-          const found = (Array.isArray(list) ? list : (list?.products || [])).find((p: any) => p.id === productId);
-          if (found) {
-            logger.debug('📦 [Inventory] Producto encontrado vía listado para edición:', { id: found.id, storeId: found.storeId });
-            setProductToEdit(found);
-            return;
-          }
-        }
-        // Último recurso: abrir con el producto seleccionado y advertir
-        toast({ variant: 'destructive', title: `Producto no encontrado`, description: txt || 'Abriendo con datos locales. Guardar/Imágenes podrían fallar.' });
-        setProductToEdit({ ...(product as any), id: productId, storeId } as Product);
-        return;
+      // Cargar productos frescos desde la API
+      const listRes = await fetch(`/api/products?storeId=${encodeURIComponent(storeId)}`);
+      if (!listRes.ok) {
+        throw new Error('Error loading products');
       }
-      const fresh = await res.json();
-      logger.debug('📦 [Inventory] Producto cargado para edición:', { id: fresh.id, storeId: fresh.storeId });
-      setProductToEdit(fresh);
+      const list = await listRes.json();
+      const found = (Array.isArray(list) ? list : (list?.products || [])).find((p: any) => p.id === productId);
+
+      if (found) {
+        logger.debug('📦 [Inventory] Producto cargado para edición:', {
+          id: found.id,
+          storeId: found.storeId,
+          tax1: found.tax1,
+          tax2: found.tax2
+        });
+        console.log('📦 [Inventory] Full product data for edit:', found);
+        setProductToEdit(found);
+      } else {
+        toast({ variant: 'destructive', title: 'Producto no encontrado', description: 'No se pudo cargar el producto.' });
+      }
     } catch (e) {
       logger.error('❌ [Inventory] Error cargando producto para edición:', e);
       toast({ variant: 'destructive', title: 'Error de red', description: 'No se pudo cargar el producto.' });
@@ -219,10 +216,14 @@ export default function InventoryPage() {
     logger.info('🔄 [Inventory] Actualizando producto:', {
       id: data.id,
       name: data.name,
+      tax1: data.tax1,
+      tax2: data.tax2,
       hasImages: !!data.images,
       imagesCount: data.images?.length || 0,
       imageUrl: data.imageUrl
     });
+
+    console.log('🔍 [Inventory] Full data received:', data);
 
     // Validación: SKU único en la tienda (contra el estado local)
     if (data.sku) {
@@ -243,9 +244,14 @@ export default function InventoryPage() {
     // ✅ CORREGIDO: Incluir todas las propiedades incluyendo imágenes
     const payload = {
       ...data,
-      store_id: storeIdForUpdate,
+      storeId: storeIdForUpdate, // Asegurar que storeId esté en el nivel raíz para la API
+      store_id: storeIdForUpdate, // También en snake_case por si acaso
       updated_at: new Date().toISOString()
     };
+
+    console.log('🚀 [Inventory] Enviando actualización:', payload);
+    console.log('🚀 [Inventory] URL:', `/api/products/${data.id}?storeId=${encodeURIComponent(storeIdForUpdate)}`);
+    console.log('🚀 [Inventory] Payload includes tax1:', payload.tax1, 'tax2:', payload.tax2);
 
     try {
       const response = await fetch(`/api/products/${data.id}?storeId=${encodeURIComponent(storeIdForUpdate)}`, {
@@ -257,6 +263,7 @@ export default function InventoryPage() {
       if (!response.ok) {
         const errorText = await response.text();
         logger.error('❌ [Inventory] PUT /api/products error:', { status: response.status, errorText });
+        console.error('❌ [Inventory] PUT failed:', { status: response.status, errorText, url: response.url });
 
         if (response.status === 404) {
           // Verificar duplicados en el servidor
@@ -304,6 +311,8 @@ export default function InventoryPage() {
       }
 
       const updatedProduct = await response.json();
+      console.log('✅ [Inventory] Product updated successfully:', updatedProduct);
+      console.log('✅ [Inventory] Response status:', response.status, response.statusText);
 
       // Actualizar estado local
       setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
@@ -897,6 +906,7 @@ export default function InventoryPage() {
                   ID: {String(productToEdit?.id)} · Store: {String(productToEdit?.storeId || '')}
                 </div>
                 <ProductForm
+                  key={productToEdit.id}
                   product={productToEdit}
                   onSubmit={handleUpdateProduct}
                   onCancel={() => setProductToEdit(null)}

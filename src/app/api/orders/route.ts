@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Para búsquedas generales, devolver lista
-    const formattedOrders = (orders || []).map(order => ({
+    const formattedOrders = (orders || []).map((order: any) => ({
       orderId: order.order_id,
       id: order.order_id, // Mantener compatibilidad
       createdAt: order.created_at,

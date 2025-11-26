@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Mapear campos de Supabase a tu formato actual
-    const formattedCustomers = customers?.map(customer => ({
+    const formattedCustomers = customers?.map((customer: any) => ({
       id: customer.id,
       name: customer.name,
       phone: customer.phone,
