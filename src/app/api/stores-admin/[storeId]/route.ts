@@ -1,0 +1,93 @@
+import { NextResponse, NextRequest } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabase';
+
+export async function GET(request: NextRequest, { params }: { params: { storeId: string } }) {
+  try {
+    const storeId = params.storeId;
+    
+    if (!storeId) {
+      return NextResponse.json({ error: 'Store ID is required' }, { status: 400 });
+    }
+
+    const { data: store, error } = await supabaseAdmin
+      .from('stores')
+      .select('*')
+      .eq('store_id', storeId)
+      .single();
+      
+    if (error) throw error;
+    if (!store) return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 });
+    
+    // Transformar snake_case a camelCase
+    const transformedStore = {
+      storeId: store.store_id,
+      name: store.name,
+      description: store.description,
+      address: store.address,
+      phone: store.phone,
+      email: store.email,
+      logoUrl: store.logo_url,
+      status: store.status,
+      subscriptionPlan: store.subscription_plan,
+      createdAt: store.created_at,
+      updatedAt: store.updated_at
+    };
+    
+    return NextResponse.json(transformedStore);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function PUT(request: NextRequest, { params }: { params: { storeId: string } }) {
+  try {
+    const storeId = params.storeId;
+    const data = await request.json();
+    
+    if (!storeId) {
+      return NextResponse.json({ error: 'Store ID is required' }, { status: 400 });
+    }
+    
+    // Mapear campos a actualizar
+    const updateData: any = {
+      updated_at: new Date().toISOString()
+    };
+    
+    if (data.name) updateData.name = data.name;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.address !== undefined) updateData.address = data.address;
+    if (data.phone !== undefined) updateData.phone = data.phone;
+    if (data.email !== undefined) updateData.email = data.email;
+    if (data.status) updateData.status = data.status;
+    if (data.subscriptionPlan) updateData.subscription_plan = data.subscriptionPlan;
+    
+    const { data: updated, error } = await supabaseAdmin
+      .from('stores')
+      .update(updateData)
+      .eq('store_id', storeId)
+      .select()
+      .single();
+      
+    if (error) throw error;
+    if (!updated) return NextResponse.json({ error: "Tienda no encontrada" }, { status: 404 });
+    
+    // Transformar respuesta
+    const response = {
+      storeId: updated.store_id,
+      name: updated.name,
+      description: updated.description,
+      address: updated.address,
+      phone: updated.phone,
+      email: updated.email,
+      logoUrl: updated.logo_url,
+      status: updated.status,
+      subscriptionPlan: updated.subscription_plan,
+      createdAt: updated.created_at,
+      updatedAt: updated.updated_at
+    };
+    
+    return NextResponse.json(response);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

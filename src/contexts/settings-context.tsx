@@ -1,0 +1,801 @@
+"use client";
+
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { usePathname } from 'next/navigation';
+import { useToast } from "@/hooks/use-toast";
+import { toastLogger } from "@/utils/toast-logger";
+import type { CurrencyRate, Settings, UserProfile, Product, Sale, Purchase, Customer, Supplier, Unit, Family, Warehouse, Ad, CashSession, PendingOrder } from "@/lib/types";
+
+type DisplayCurrency = 'primary' | 'secondary';
+
+interface SettingsContextType {
+  settings: Settings | null;
+  updateSettings: (settings: Partial<Settings>) => void;
+  saveSettings: (settings?: Partial<Settings>) => Promise<boolean>;
+  displayCurrency: DisplayCurrency;
+  toggleDisplayCurrency: () => void;
+  activeCurrency: 'primary' | 'secondary';
+  activeSymbol: string;
+  activeRate: number;
+  currencyRates: CurrencyRate[];
+  setCurrencyRates: React.Dispatch<React.SetStateAction<CurrencyRate[]>>;
+
+  products: Product[];
+  setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
+  sales: Sale[];
+  setSales: React.Dispatch<React.SetStateAction<Sale[]>>;
+  purchases: Purchase[];
+  setPurchases: React.Dispatch<React.SetStateAction<Purchase[]>>;
+  customers: Customer[];
+  setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
+  suppliers: Supplier[];
+  setSuppliers: React.Dispatch<React.SetStateAction<Supplier[]>>;
+  units: Unit[];
+  setUnits: React.Dispatch<React.SetStateAction<Unit[]>>;
+  families: Family[];
+  setFamilies: React.Dispatch<React.SetStateAction<Family[]>>;
+  warehouses: Warehouse[];
+  setWarehouses: React.Dispatch<React.SetStateAction<Warehouse[]>>;
+  ads: Ad[];
+  setAds: React.Dispatch<React.SetStateAction<Ad[]>>;
+  cashSessions: CashSession[];
+  setCashSessions: React.Dispatch<React.SetStateAction<CashSession[]>>;
+  pendingOrders: PendingOrder[];
+  setPendingOrders: React.Dispatch<React.SetStateAction<PendingOrder[]>>;
+  users: UserProfile[];
+  setUsers: React.Dispatch<React.SetStateAction<UserProfile[]>>;
+
+  activeStoreId: string;
+  switchStore: (storeId: string) => void;
+  isLoadingSettings: boolean;
+  userProfile: UserProfile | null;
+  setUserProfile: (user: UserProfile | null) => void;
+  signOut: () => Promise<void>;
+  seedDatabase: (storeId: string) => Promise<boolean>;
+  fetchCurrencyRates: () => Promise<CurrencyRate | null>;
+  saveCurrencyRate: (rate: number, userName: string) => Promise<boolean>;
+  reloadProducts: () => Promise<void>;
+  // Funciones de sincronización automática
+  syncAfterSave: (storeId: string) => Promise<void>;
+  syncProducts: () => Promise<void>;
+}
+
+
+
+
+const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
+
+// localStorage solo para preferencias de usuario (tienda activa y moneda display)
+const CURRENCY_PREF_STORAGE_KEY = 'tienda_facil_currency_pref';
+const ACTIVE_STORE_ID_STORAGE_KEY = 'tienda_facil_active_store_id';
+
+function AppLoadingScreen() {
+  return (
+    <div className="flex min-h-screen w-full items-center justify-center bg-background">
+      <div className="flex flex-col items-center gap-4">
+        <div className="h-12 w-12 animate-spin rounded-full border-4 border-muted border-t-primary" />
+        <p className="text-muted-foreground">Cargando aplicación...</p>
+      </div>
+    </div>
+  );
+}
+
+export const SettingsProvider = ({ children }: { children: React.ReactNode }) => {
+  const { toast } = useToast();
+  const pathname = usePathname();
+  const { user: authUser, logout: authSignOut, activeStoreId: authActiveStoreId, setActiveStoreId: setAuthActiveStoreId } = useAuth();
+
+  // Main settings state
+  const [settings, setLocalSettings] = useState<Settings | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+
+  // Use activeStoreId from AuthContext ONLY - no fallback to override login logic
+  const activeStoreId = authActiveStoreId || process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'ST-1234567890123';
+
+  // Data states - TODOS VACÍOS
+  const [products, setProducts] = useState<Product[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [families, setFamilies] = useState<Family[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [ads, setAds] = useState<Ad[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [cashSessions, setCashSessions] = useState<CashSession[]>([]);
+  const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
+  // Inicializar con datos locales por defecto para el switch rápido
+  const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>([
+    {
+      id: 'local-rate-1',
+      rate: 36.50,
+      date: new Date().toISOString(),
+      storeId: process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'ST-1234567890123',
+      createdBy: 'Sistema Local',
+      active: true
+    }
+  ]);
+
+  // UI states
+  const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>('primary');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isClient, setIsClient] = useState(false);
+
+  // Función para cargar datos desde Supabase - ESTABILIZADA
+  const loadDataFromSupabase = useCallback(async (storeId: string) => {
+    try {
+      setIsLoading(true);
+
+      console.log(`📥 Cargando datos desde Supabase para tienda: ${storeId}`);
+
+      // Primero cargar settings para obtener el businessType
+      let storeSettings = await fetch(`/api/stores?id=${storeId}`)
+        .then(res => res.ok ? res.json() : null)
+        .catch(() => null);
+
+      // Si no existe la tienda, NO crear datos demo automáticamente.
+      // Mostrar datos demo en UI causa confusión (muestra mock data).
+      // En su lugar dejamos storeSettings como null y dependencias que lean
+      // de storeSettings usarán el fallback seguro (arrays vacíos) para evitar
+      // mostrar datos mock en la UI.
+      if (!storeSettings) {
+        console.log(`⚠️ Tienda ${storeId} no encontrada en la base de datos. No se cargará demo automáticamente.`);
+        storeSettings = null as any;
+      }
+
+      // Array de promesas para cargar todos los datos en paralelo
+      const promises = [
+        // Cargar productos
+        fetch(`/api/products?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => []),
+
+        // Cargar ventas
+        fetch(`/api/sales?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => []),
+
+        // Cargar compras
+        fetch(`/api/purchases?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => []),
+
+        // Cargar clientes
+        fetch(`/api/costumers?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => []),
+
+        // Cargar proveedores
+        fetch(`/api/suppliers?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => []),
+
+        // Cargar unidades
+        fetch(`/api/units?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => []),
+
+        // Cargar familias
+        fetch(`/api/families?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => []),
+
+        // Cargar almacenes
+        fetch(`/api/warehouses?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => []),
+
+        // Cargar anuncios basados en businessType
+        storeSettings?.businessType
+          ? fetch(`/api/ads?businessType=${storeSettings.businessType}`)
+            .then(res => res.ok ? res.json() : [])
+            .catch(() => [])
+          : Promise.resolve([]),
+
+        // Cargar usuarios
+        fetch(`/api/users?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => []),
+
+        // Cargar sesiones de caja
+        fetch(`/api/cashsessions?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => []),
+
+        // Cargar órdenes pendientes
+        fetch(`/api/pending-orders?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => []),
+
+        // Cargar tasas de cambio
+        fetch(`/api/currency-rates?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
+          .catch(() => [])
+      ];
+
+      // Ejecutar todas las peticiones en paralelo
+      const results = await Promise.allSettled(promises);
+
+      // Procesar resultados
+      const [
+        productsResult, salesResult, purchasesResult,
+        customersResult, suppliersResult, unitsResult, familiesResult,
+        warehousesResult, adsResult, usersResult, cashSessionsResult,
+        pendingOrdersResult, currencyRatesResult
+      ] = results;
+
+      // Contador de datos cargados
+      let loadedCount = 0;
+
+      // Actualizar estados con los datos recibidos (settings ya se cargaron antes)
+      if (storeSettings) {
+        setLocalSettings(storeSettings);
+        loadedCount++;
+      }
+
+      if (productsResult.status === 'fulfilled' && productsResult.value) {
+        setProducts(productsResult.value);
+        loadedCount++;
+      }
+
+      if (salesResult.status === 'fulfilled' && salesResult.value) {
+        setSales(salesResult.value);
+        loadedCount++;
+      }
+
+      if (purchasesResult.status === 'fulfilled' && purchasesResult.value) {
+        setPurchases(purchasesResult.value);
+        loadedCount++;
+      }
+
+      if (customersResult.status === 'fulfilled' && customersResult.value) {
+        setCustomers(customersResult.value);
+        loadedCount++;
+      }
+
+      if (suppliersResult.status === 'fulfilled' && suppliersResult.value) {
+        setSuppliers(suppliersResult.value);
+        loadedCount++;
+      }
+
+      if (unitsResult.status === 'fulfilled' && unitsResult.value) {
+        setUnits(unitsResult.value);
+        loadedCount++;
+      }
+
+      if (familiesResult.status === 'fulfilled' && familiesResult.value) {
+        setFamilies(familiesResult.value);
+        loadedCount++;
+      }
+
+      if (warehousesResult.status === 'fulfilled' && warehousesResult.value) {
+        setWarehouses(warehousesResult.value);
+        loadedCount++;
+      }
+
+      if (adsResult.status === 'fulfilled' && adsResult.value) {
+        setAds(adsResult.value);
+        loadedCount++;
+      }
+
+      if (usersResult.status === 'fulfilled' && usersResult.value) {
+        setUsers(usersResult.value);
+        loadedCount++;
+      }
+
+      if (cashSessionsResult.status === 'fulfilled' && cashSessionsResult.value) {
+        setCashSessions(cashSessionsResult.value);
+        loadedCount++;
+      }
+
+      if (pendingOrdersResult.status === 'fulfilled' && pendingOrdersResult.value) {
+        setPendingOrders(pendingOrdersResult.value);
+        loadedCount++;
+      }
+
+      if (currencyRatesResult.status === 'fulfilled' && currencyRatesResult.value) {
+        console.log('💰 [LoadData] Currency rates raw response:', currencyRatesResult.value);
+
+        // Procesar la respuesta de currency rates igual que en fetchCurrencyRates
+        let rates = [];
+        const rawData = currencyRatesResult.value;
+
+        if (Array.isArray(rawData)) {
+          rates = rawData;
+        } else if (rawData.data && Array.isArray(rawData.data)) {
+          rates = rawData.data;
+        } else if (rawData.history && Array.isArray(rawData.history)) {
+          rates = rawData.history;
+        } else if (rawData.data?.history && Array.isArray(rawData.data.history)) {
+          rates = rawData.data.history;
+        }
+
+        // Procesar las tasas igual que en fetchCurrencyRates
+        const processedRates = rates.map((rate: Record<string, unknown>) => ({
+          ...rate,
+          id: (rate._id as string) || (rate.id as string) || `rate-${(rate.date as string) || Date.now()}`,
+          rate: rate.rate || rate.value || 1,
+          date: (rate.date as string) || new Date().toISOString(),
+          createdBy: rate.createdBy || rate.userId || 'Sistema'
+        }));
+
+        console.log('💰 [LoadData] Processed currency rates:', processedRates);
+        setCurrencyRates(processedRates);
+        loadedCount++;
+      }
+
+      console.log(`✅ ${loadedCount}/14 tipos de datos cargados desde Supabase`);
+
+    } catch (error) {
+      console.error('❌ Error cargando datos desde Supabase:', error);
+      // Removido toast para evitar loops infinitos
+    } finally {
+      setIsLoading(false);
+    }
+  }, []); // Removidas TODAS las dependencias para estabilizar
+
+  // ✅ FUNCIÓN SEEDDATABASE ESTABILIZADA
+  const seedDatabase = useCallback(async (storeId: string) => {
+    try {
+      console.log('🌱 Iniciando SEED COMPLETO en Supabase para store:', storeId);
+
+      const response = await fetch('/api/seed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storeId })
+      });
+
+      // MEJOR MANEJO DE ERRORES
+      if (!response.ok) {
+        let errorMessage = 'Error en API seed';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      console.log('✅ SEED COMPLETO exitoso:', result);
+
+      // Recargar datos después del seed
+      await loadDataFromSupabase(storeId);
+      return true;
+
+    } catch (error) {
+      console.error('❌ Error en seedDatabase:', error);
+      return false;
+    }
+  }, [loadDataFromSupabase]); // Mantener dependencia pero loadDataFromSupabase ya está estabilizado
+
+  // Cargar configuración inicial al montar el componente - ESTABILIZADO
+  useEffect(() => {
+    const initializeSettings = async () => {
+      setIsClient(true);
+
+      // Get activeStoreId from AuthContext - RESPECT login logic, don't override
+      let storeIdToUse = authActiveStoreId;
+
+      // Only use localStorage fallback if AuthContext has no activeStoreId AND user is not logged in
+      if (!storeIdToUse && !authUser) {
+        // Only for anonymous users - fallback to localStorage/default
+        storeIdToUse = localStorage.getItem(ACTIVE_STORE_ID_STORAGE_KEY) || process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'ST-1234567890123';
+        console.log('👤 [Settings] Anonymous user - using fallback store:', storeIdToUse);
+
+        // Set in AuthContext for consistency, but only for anonymous users
+        if (storeIdToUse && setAuthActiveStoreId) {
+          setAuthActiveStoreId(storeIdToUse);
+        }
+      } else if (authUser && !storeIdToUse) {
+        // Logged in user but no activeStoreId - this should not happen after login fix
+        console.warn('⚠️ [Settings] Logged user without activeStoreId - using default');
+        storeIdToUse = process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'ST-1234567890123';
+      }
+
+      const storedCurrencyPref = localStorage.getItem(CURRENCY_PREF_STORAGE_KEY);
+      if (storedCurrencyPref === 'secondary') {
+        setDisplayCurrency('secondary');
+      }
+
+      // Cargar datos de configuración SOLO desde Supabase
+      if (storeIdToUse) {
+        await loadDataFromSupabase(storeIdToUse);
+      }
+    };
+
+    initializeSettings();
+  }, [loadDataFromSupabase, authActiveStoreId, setAuthActiveStoreId, authUser]); // Incluir authUser para detectar login/logout
+
+  // Sincronizar datos cuando cambie el activeStoreId del AuthContext
+  useEffect(() => {
+    if (authActiveStoreId && isClient) {
+      console.log('🔄 [SettingsContext] ActiveStoreId changed, reloading data:', authActiveStoreId);
+
+      // CRITICAL FIX: Immediate sync for administrative users after login
+      // This ensures data is available quickly after store switch
+      const isAdministrativeUser = authUser && ['admin', 'pos', 'depositary'].includes(authUser.role);
+
+      if (isAdministrativeUser) {
+        console.log('⚡ [SettingsContext] Administrative user detected - immediate data sync');
+        // Load data immediately for administrative users
+        loadDataFromSupabase(authActiveStoreId);
+      } else {
+        // Small delay for regular users to avoid unnecessary API calls
+        const timeoutId = setTimeout(() => {
+          loadDataFromSupabase(authActiveStoreId);
+        }, 100);
+
+        return () => clearTimeout(timeoutId);
+      }
+    }
+  }, [authActiveStoreId, isClient, loadDataFromSupabase, authUser?.role]);
+
+  // Sincroniza userProfile con authUser
+  useEffect(() => {
+    if (authUser) {
+      setUserProfile(authUser);
+    } else {
+      setUserProfile(null);
+    }
+  }, [authUser]);
+
+
+
+  // ✅ FUNCIÓN PARA ACTUALIZAR SOLO EL ESTADO (SIN GUARDAR EN BD) - ESTABILIZADA
+  const updateSettingsState = useCallback((newSettings: Partial<Settings>) => {
+    setLocalSettings(prev => {
+      if (!prev) {
+        // Si prev es null, crear un objeto Settings básico con los valores requeridos
+        const baseSettings: Settings = {
+          id: newSettings.id || '',
+          storeId: newSettings.storeId || '',
+          name: newSettings.name || '',
+          ownerIds: newSettings.ownerIds || [],
+          status: newSettings.status || 'active',
+          businessType: newSettings.businessType || ''
+        };
+        return { ...baseSettings, ...newSettings };
+      }
+      return { ...prev, ...newSettings };
+    });
+  }, []); // Sin dependencias para máxima estabilidad
+
+  // ✅ FUNCIÓN PARA GUARDAR EN BASE DE DATOS SOLAMENTE - ESTABILIZADA
+  const saveSettingsToDatabase = useCallback(async (settingsToSave?: Partial<Settings>) => {
+    try {
+      console.log('💾 [Context] Guardando configuración en BD...');
+
+      if (!settingsToSave) {
+        throw new Error("No hay configuración para guardar");
+      }
+
+      console.log('📤 [Context] Datos a enviar:', { storeId: activeStoreId, ...settingsToSave });
+
+      const res = await fetch('/api/stores', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          storeId: activeStoreId,
+          ...settingsToSave
+        })
+      });
+
+      console.log('📥 [Context] Response status:', res.status);
+
+      const responseData = await res.json();
+      console.log('📥 [Context] Response data:', responseData);
+
+      if (!res.ok) {
+        throw new Error(responseData.error || "Error al guardar");
+      }
+
+      // Actualizar el estado local con los datos guardados desde el servidor
+      console.log('🔄 [Context] Actualizando estado local con datos del servidor...');
+      updateSettingsState(responseData);
+
+      console.log('✅ [Context] Configuración guardada y estado actualizado exitosamente');
+      return true;
+
+    } catch (error: unknown) {
+      console.error('❌ [Context] Error saving settings:', error);
+      throw error;
+    }
+  }, [activeStoreId, updateSettingsState, loadDataFromSupabase]); // Dependencias estabilizadas
+
+  // ✅ FUNCIÓN GUARDARCURRENCYRATE CORREGIDA Y DEFINITIVA
+  const saveCurrencyRate = useCallback(async (rate: number, userName: string) => {
+    try {
+      console.log('💰 [Context] Guardando tasa:', { rate, userName, activeStoreId });
+
+      const requestBody = {
+        storeId: activeStoreId,
+        rate,
+        userId: userName
+      };
+
+      console.log('📤 [Context] Enviando request:', requestBody);
+
+      const res = await fetch('/api/currency-rates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+
+      console.log('📥 [Context] Response status:', res.status);
+
+      const data = await res.json();
+      console.log('📥 [Context] Response data:', data);
+
+      if (!res.ok) {
+        throw new Error(data.error || `HTTP ${res.status}: ${res.statusText}`);
+      }
+
+      // Actualizar estado local
+      const newRate = {
+        ...data.data,
+        id: data.data._id || data.data.id || `rate-${Date.now()}`
+      };
+
+      console.log('✅ [Context] Actualizando estado local con:', newRate);
+
+      setCurrencyRates(prev => [newRate, ...prev.filter(r => r.id !== newRate.id)]);
+      return true;
+
+    } catch (error) {
+      console.error("❌ [Context] Error saving rate:", error);
+      return false;
+    }
+  }, [activeStoreId]);
+
+  const fetchCurrencyRates = useCallback(async () => {
+    console.log('🔄 [fetchCurrencyRates] Iniciando carga de tasas de cambio...');
+
+    if (!activeStoreId || activeStoreId === '') {
+      console.warn('🔄 [fetchCurrencyRates] activeStoreId no está disponible, omitiendo carga de tasas');
+      return null;
+    }
+
+    console.log('🔄 [fetchCurrencyRates] Cargando tasas para storeId:', activeStoreId);
+
+    try {
+      const res = await fetch(`/api/currency-rates?storeId=${activeStoreId}`);
+
+      // Verificar si la respuesta es JSON
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('API returned non-JSON response');
+      }
+
+      const data = await res.json();
+      console.log('🔄 [fetchCurrencyRates] Respuesta de API:', data);
+
+      if (!res.ok) throw new Error(data.error);
+
+      // Manejar diferentes estructuras de respuesta
+      let rates = [];
+
+      if (Array.isArray(data)) {
+        // Si la API devuelve directamente un array
+        rates = data;
+      } else if (data.data && Array.isArray(data.data)) {
+        // Si la API devuelve { data: [...] }
+        rates = data.data;
+      } else if (data.history && Array.isArray(data.history)) {
+        // Si la API devuelve { history: [...] }
+        rates = data.history;
+      } else if (data.data?.history && Array.isArray(data.data.history)) {
+        // Si la API devuelve { data: { history: [...] } }
+        rates = data.data.history;
+      }
+
+      // Asegurar que cada tasa tenga un ID único
+      const processedRates = rates.map((rate: Record<string, unknown>) => ({
+        ...rate,
+        id: (rate._id as string) || (rate.id as string) || `rate-${(rate.date as string) || Date.now()}`,
+        rate: rate.rate || rate.value || 1,
+        date: (rate.date as string) || new Date().toISOString(),
+        createdBy: rate.createdBy || rate.userId || 'Sistema'
+      }));
+
+      console.log('🔄 [fetchCurrencyRates] Tasas procesadas:', processedRates);
+      setCurrencyRates(processedRates);
+      return data.current || data.data?.current || null;
+
+    } catch (error) {
+      console.error("Error fetching rates:", error);
+      setCurrencyRates([]); // Asegurar que siempre sea array
+      return null;
+    }
+  }, [activeStoreId]);
+
+  // Cargar tasas de cambio al inicializar y configurar actualización automática
+  useEffect(() => {
+    console.log('🔄 [useEffect Currency] Ejecutando useEffect de currency rates, activeStoreId:', activeStoreId);
+
+    if (!activeStoreId) {
+      console.log('🔄 [useEffect Currency] No hay activeStoreId, saliendo...');
+      return;
+    }
+
+    console.log('🔄 [useEffect Currency] Llamando fetchCurrencyRates...');
+    fetchCurrencyRates();
+
+    // Actualizar currency rates cada 4 horas (14400000 ms)
+    const interval = setInterval(() => {
+      console.log('🔄 [Currency] Actualizando tasas de cambio automáticamente...');
+      fetchCurrencyRates();
+    }, 4 * 60 * 60 * 1000); // 4 horas
+
+    return () => {
+      console.log('🔄 [useEffect Currency] Limpiando interval...');
+      clearInterval(interval);
+    };
+  }, [fetchCurrencyRates, activeStoreId]);
+
+  const switchStore = useCallback(async (storeId: string) => {
+    console.log('🏪 Cambiando a tienda:', storeId);
+
+    // Use AuthContext to set activeStoreId
+    if (setAuthActiveStoreId) {
+      setAuthActiveStoreId(storeId);
+    }
+
+    // Also save to old localStorage key for backward compatibility
+    localStorage.setItem(ACTIVE_STORE_ID_STORAGE_KEY, storeId);
+
+    // Recargar datos de configuración desde Supabase
+    await loadDataFromSupabase(storeId);
+
+    // Removido toast para evitar loops infinitos
+  }, [loadDataFromSupabase, setAuthActiveStoreId]); // Removido toast de dependencias
+
+  const toggleDisplayCurrency = useCallback(() => {
+    const newPreference = displayCurrency === 'primary' ? 'secondary' : 'primary';
+    setDisplayCurrency(newPreference);
+
+    // Guardar preferencia de moneda display en localStorage
+    localStorage.setItem(CURRENCY_PREF_STORAGE_KEY, newPreference);
+  }, [displayCurrency]);
+
+  const reloadProducts = useCallback(async () => {
+    if (!activeStoreId) return;
+
+    try {
+      console.log('🔄 Recargando productos desde Supabase...');
+      const response = await fetch(`/api/products?storeId=${activeStoreId}`);
+      if (response.ok) {
+        const productsData = await response.json();
+        setProducts(productsData);
+        console.log('✅ Productos recargados:', productsData.length);
+      }
+    } catch (error) {
+      console.error('❌ Error recargando productos:', error);
+    }
+  }, [activeStoreId]);
+
+  const handleSetUserProfile = useCallback((user: UserProfile | null) => {
+    setUserProfile(user);
+  }, []);
+
+  const handleSignOut = useCallback(async () => {
+    if (authSignOut) {
+      authSignOut();
+      // Removido toast para evitar loops infinitos
+    }
+  }, [authSignOut]); // Removido toast de dependencias
+
+  const activeSymbol = displayCurrency === 'primary' ? (settings?.primaryCurrencySymbol || '$') : (settings?.secondaryCurrencySymbol || 'Bs.');
+  const latestRate = currencyRates.length > 0 ? currencyRates[0].rate : 1;
+  const activeRate = displayCurrency === 'primary' ? 1 : (latestRate > 0 ? latestRate : 1);
+
+  const isPublicPath = pathname.startsWith('/catalog') || pathname === '/' || pathname.startsWith('/login');
+
+  // CONTEXT VALUE ESTABILIZADO - Solo dependencias esenciales
+  const contextValue: SettingsContextType = useMemo(() => {
+    return {
+      settings,
+      updateSettings: updateSettingsState,
+      saveSettings: saveSettingsToDatabase,
+      displayCurrency,
+      toggleDisplayCurrency,
+      activeCurrency: displayCurrency,
+      activeSymbol,
+      activeRate,
+      currencyRates,
+      setCurrencyRates,
+      products,
+      setProducts,
+      sales,
+      setSales,
+      purchases,
+      setPurchases,
+      customers,
+      setCustomers,
+      suppliers,
+      setSuppliers,
+      units,
+      setUnits,
+      families,
+      setFamilies,
+      warehouses,
+      setWarehouses,
+      ads,
+      setAds,
+      cashSessions,
+      setCashSessions,
+      pendingOrders,
+      setPendingOrders,
+      users,
+      setUsers,
+      activeStoreId,
+      switchStore,
+      isLoadingSettings: isLoading,
+      userProfile,
+      setUserProfile: handleSetUserProfile,
+      signOut: handleSignOut,
+      seedDatabase,
+      fetchCurrencyRates,
+      saveCurrencyRate,
+      reloadProducts,
+      // Funciones de sincronización automática
+      syncAfterSave: loadDataFromSupabase,
+      syncProducts: reloadProducts
+    }
+  }, [
+    // Solo incluir dependencias que realmente cambian y son necesarias
+    settings,
+    displayCurrency,
+    activeSymbol,
+    activeRate,
+    currencyRates,
+    products,
+    sales,
+    purchases,
+    customers,
+    suppliers,
+    units,
+    families,
+    warehouses,
+    ads,
+    cashSessions,
+    pendingOrders,
+    users,
+    activeStoreId,
+    isLoading,
+    userProfile,
+    // Funciones estabilizadas
+    updateSettingsState,
+    saveSettingsToDatabase,
+    toggleDisplayCurrency,
+    switchStore,
+    handleSetUserProfile,
+    handleSignOut,
+    seedDatabase,
+    fetchCurrencyRates,
+    saveCurrencyRate,
+    reloadProducts,
+    loadDataFromSupabase
+  ]);
+
+  if (isLoading && !isPublicPath && isClient) {
+    return <AppLoadingScreen />;
+  }
+
+  return (
+    <SettingsContext.Provider value={contextValue}>
+      {children}
+    </SettingsContext.Provider>
+  );
+};
+
+export const useSettings = (): SettingsContextType => {
+  const context = useContext(SettingsContext);
+  if (context === undefined) {
+    throw new Error('useSettings must be used within a SettingsProvider');
+  }
+  return context;
+};
