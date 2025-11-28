@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     console.log('📊 [Currency API] Datos recibidos:', body);
-    
+
     const { storeId, rate, userId } = body;
 
     // Validación
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    
+
     if (isNaN(rate) || rate <= 0) {
       console.error('❌ [Currency API] Tasa inválida:', rate);
       return NextResponse.json(
@@ -30,31 +30,34 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log('🔄 [Currency API] Desactivando tasas anteriores para storeId:', storeId);
-    
-    // 1. Desactivar todas las tasas anteriores
-    const { error: updateError } = await supabase
-      .from('currency_rates')
-      .update({ active: false })
-      .eq('store_id', storeId);
+    // Obtener configuración de la tienda para usar las monedas correctas
+    const { data: storeSettings, error: storeError } = await supabase
+      .from('stores')
+      .select('primary_currency, secondary_currency')
+      .eq('id', storeId)
+      .single();
 
-    if (updateError) {
-      console.error('❌ [Currency API] Error desactivando tasas:', updateError);
-      throw new Error('Error al desactivar tasas anteriores');
+    if (storeError) {
+      console.error('❌ [Currency API] Error obteniendo configuración de tienda:', storeError);
+      // Usar valores por defecto si no se puede obtener la configuración
     }
 
-    // 2. Crear nueva tasa activa
+    const fromCurrency = storeSettings?.primary_currency || 'USD';
+    const toCurrency = storeSettings?.secondary_currency || 'VES';
+
+    // Crear nueva tasa
     const rateData = {
       id: 'RAT-' + Date.now(),
       store_id: storeId,
+      from_currency: fromCurrency,
+      to_currency: toCurrency,
       rate: Number(rate),
       date: new Date().toISOString(),
-      created_by: userId || 'system',
-      active: true
+      created_at: new Date().toISOString()
     };
-    
+
     console.log('💾 [Currency API] Creando nueva tasa:', rateData);
-    
+
     const { data: newRate, error: insertError } = await supabase
       .from('currency_rates')
       .insert(rateData)
@@ -65,19 +68,19 @@ export async function POST(request: Request) {
       console.error('❌ [Currency API] Error creando tasa:', insertError);
       throw new Error('Error al crear nueva tasa');
     }
-    
+
     console.log('✅ [Currency API] Tasa creada exitosamente:', newRate.id);
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
-      data: newRate 
+      data: newRate
     });
 
   } catch (error: any) {
     console.error('❌ [Currency API] Error completo:', error);
-    
+
     return NextResponse.json(
-      { 
+      {
         error: error.message || "Error al guardar tasa",
         details: process.env.NODE_ENV === 'development' ? error.stack : undefined
       },
@@ -98,21 +101,7 @@ export async function GET(request: Request) {
       );
     }
 
-    // Obtener tasa activa actual
-    const { data: currentRate, error: currentError } = await supabase
-      .from('currency_rates')
-      .select('*')
-      .eq('store_id', storeId)
-      .eq('active', true)
-      .order('date', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (currentError && currentError.code !== 'PGRST116') {
-      console.error('❌ [Currency API] Error obteniendo tasa actual:', currentError);
-    }
-
-    // Obtener historial (últimas 10)
+    // Obtener historial (últimas 10 tasas, ordenadas por fecha)
     const { data: history, error: historyError } = await supabase
       .from('currency_rates')
       .select('*')
@@ -124,7 +113,10 @@ export async function GET(request: Request) {
       console.error('❌ [Currency API] Error obteniendo historial:', historyError);
     }
 
-    return NextResponse.json({ 
+    // La tasa más reciente es la "actual"
+    const currentRate = history && history.length > 0 ? history[0] : null;
+
+    return NextResponse.json({
       success: true,
       data: {
         current: currentRate,

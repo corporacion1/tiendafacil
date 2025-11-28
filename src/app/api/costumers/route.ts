@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const storeId = searchParams.get('storeId');
-    
+
     if (!storeId) {
       return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
     }
@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
       name: customer.name,
       phone: customer.phone,
       address: customer.address,
+      cardId: customer.card_id,
       storeId: customer.store_id,
       createdAt: customer.created_at,
       updatedAt: customer.updated_at
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
-    
+
     // Validaciones básicas
     if (!data.name || !data.storeId) {
       return NextResponse.json({ error: "Campos requeridos faltantes" }, { status: 400 });
@@ -74,13 +75,14 @@ export async function POST(request: NextRequest) {
 
     // Generar ID único si no se proporciona
     const customerId = data.id || generateId('CUST');
-    
+
     // Preparar datos para Supabase
     const customerData = {
       id: customerId,
       name: data.name.trim(),
       phone: data.phone?.trim() || null,
       address: data.address?.trim() || null,
+      card_id: data.cardId?.trim() || null,
       store_id: data.storeId,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -97,7 +99,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('❌ Error creando cliente en Supabase:', error);
-      
+
       // Verificar si es error de duplicado
       if (error.code === '23505') { // Código de violación de unique constraint
         return NextResponse.json(
@@ -105,7 +107,7 @@ export async function POST(request: NextRequest) {
           { status: 409 }
         );
       }
-      
+
       return NextResponse.json(
         { error: 'Error al crear el cliente', detalles: error.message },
         { status: 500 }
@@ -120,6 +122,7 @@ export async function POST(request: NextRequest) {
       name: createdCustomer.name,
       phone: createdCustomer.phone,
       address: createdCustomer.address,
+      cardId: createdCustomer.card_id,
       storeId: createdCustomer.store_id,
       createdAt: createdCustomer.created_at,
       updatedAt: createdCustomer.updated_at
@@ -139,7 +142,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const data = await request.json();
-    
+
     if (!data.id || !data.storeId) {
       return NextResponse.json({ error: "Campos requeridos 'id' y 'storeId'" }, { status: 400 });
     }
@@ -148,10 +151,11 @@ export async function PUT(request: NextRequest) {
     const updateData: any = {
       updated_at: new Date().toISOString()
     };
-    
+
     if (data.name !== undefined) updateData.name = data.name.trim();
     if (data.phone !== undefined) updateData.phone = data.phone?.trim() || null;
     if (data.address !== undefined) updateData.address = data.address?.trim() || null;
+    if (data.cardId !== undefined) updateData.card_id = data.cardId?.trim() || null;
 
     console.log('👤 [Customers API] Actualizando cliente:', data.id);
 
@@ -182,6 +186,7 @@ export async function PUT(request: NextRequest) {
       name: updatedCustomer.name,
       phone: updatedCustomer.phone,
       address: updatedCustomer.address,
+      cardId: updatedCustomer.card_id,
       storeId: updatedCustomer.store_id,
       createdAt: updatedCustomer.created_at,
       updatedAt: updatedCustomer.updated_at
@@ -204,7 +209,7 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const storeId = searchParams.get('storeId');
-    
+
     if (!id || !storeId) {
       return NextResponse.json({ error: "Faltan parámetros 'id' y/o 'storeId'" }, { status: 400 });
     }

@@ -197,6 +197,7 @@ export type Customer = {
   name: string;
   phone?: string;
   address?: string;
+  cardId?: string;
   storeId: string;
 }
 
@@ -248,6 +249,8 @@ export type Ad = {
   targetBusinessTypes: string[];
   expiryDate?: string;
   createdAt: string;
+  price?: number;
+  sku?: string;
 };
 
 export type AdClick = {

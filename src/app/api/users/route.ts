@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     if (error) throw error;
 
     // Transformar snake_case a camelCase
-    const transformedUsers = users?.map(u => ({
+    const transformedUsers = users?.map((u: any) => ({
       uid: u.uid,
       email: u.email,
       displayName: u.display_name,

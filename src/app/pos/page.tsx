@@ -1495,7 +1495,7 @@ export default function POSPage() {
       };
 
       // Guardar en la base de datos
-      const response = await fetch('/api/customers', {
+      const response = await fetch('/api/costumers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(customerToAdd)

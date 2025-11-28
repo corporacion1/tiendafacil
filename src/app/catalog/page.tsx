@@ -1690,7 +1690,7 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
               shareData.files = [compositeImage];
             } else {
               // Fallback a imagen original si no se pudo crear la compuesta
-              const responsefetchWithRetry = await fetchWithRetry(primaryImageUrl);
+              const response = await fetchWithRetry(primaryImageUrl);
               if (response.ok) {
                 const blob = await response.blob();
                 const file = new File([blob], `${product.name}.jpg`, { type: blob.type });
@@ -2847,14 +2847,18 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
                 </div>
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="text-2xl font-bold text-primary">
-                      <span>
-                        {activeSymbol}{(selectedAd.price * activeRate).toFixed(2)}
-                      </span>
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      SKU: {selectedAd.sku}
-                    </p>
+                    {selectedAd.price !== undefined && (
+                      <p className="text-2xl font-bold text-primary">
+                        <span>
+                          {activeSymbol}{(selectedAd.price * activeRate).toFixed(2)}
+                        </span>
+                      </p>
+                    )}
+                    {selectedAd.sku && (
+                      <p className="text-sm text-muted-foreground">
+                        SKU: {selectedAd.sku}
+                      </p>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <Badge variant="outline">

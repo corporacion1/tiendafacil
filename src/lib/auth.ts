@@ -34,11 +34,11 @@ export async function getSession(request?: Request) {
 }
 
 // NUEVAS FUNCIONES PARA EL SISTEMA DE AUTH
-export function getAuthUser() {
+export async function getAuthUser() {
   try {
-    const headersList = headers();
+    const headersList = await headers();
     const userData = headersList.get('x-user-data');
-    
+
     if (userData) {
       return JSON.parse(userData);
     }
@@ -49,24 +49,24 @@ export function getAuthUser() {
   }
 }
 
-export function requireAuth() {
-  const user = getAuthUser();
+export async function requireAuth() {
+  const user = await getAuthUser();
   if (!user) {
     throw new Error('Authentication required');
   }
   return user;
 }
 
-export function requireRole(requiredRole: string) {
-  const user = requireAuth();
+export async function requireRole(requiredRole: string) {
+  const user = await requireAuth();
   if (user.role !== requiredRole) {
     throw new Error(`Insufficient permissions. Required role: ${requiredRole}`);
   }
   return user;
 }
 
-export function requireStoreAccess(storeId: string) {
-  const user = requireAuth();
+export async function requireStoreAccess(storeId: string) {
+  const user = await requireAuth();
   if (user.storeId !== storeId && user.role !== 'su') {
     throw new Error(`Access denied for store: ${storeId}`);
   }

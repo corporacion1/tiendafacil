@@ -1,10 +1,11 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
-export async function GET(request: NextRequest, { params }: { params: { storeId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ storeId: string }> }) {
   try {
-    const storeId = params.storeId;
-    
+    const resolvedParams = await params;
+    const storeId = resolvedParams.storeId;
+
     if (!storeId) {
       return NextResponse.json({ error: 'Store ID is required' }, { status: 400 });
     }
@@ -14,10 +15,10 @@ export async function GET(request: NextRequest, { params }: { params: { storeId:
       .select('*')
       .eq('store_id', storeId)
       .single();
-      
+
     if (error) throw error;
     if (!store) return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 });
-    
+
     // Transformar snake_case a camelCase
     const transformedStore = {
       storeId: store.store_id,
@@ -32,27 +33,28 @@ export async function GET(request: NextRequest, { params }: { params: { storeId:
       createdAt: store.created_at,
       updatedAt: store.updated_at
     };
-    
+
     return NextResponse.json(transformedStore);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: { storeId: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ storeId: string }> }) {
   try {
-    const storeId = params.storeId;
+    const resolvedParams = await params;
+    const storeId = resolvedParams.storeId;
     const data = await request.json();
-    
+
     if (!storeId) {
       return NextResponse.json({ error: 'Store ID is required' }, { status: 400 });
     }
-    
+
     // Mapear campos a actualizar
     const updateData: any = {
       updated_at: new Date().toISOString()
     };
-    
+
     if (data.name) updateData.name = data.name;
     if (data.description !== undefined) updateData.description = data.description;
     if (data.address !== undefined) updateData.address = data.address;
@@ -60,17 +62,17 @@ export async function PUT(request: NextRequest, { params }: { params: { storeId:
     if (data.email !== undefined) updateData.email = data.email;
     if (data.status) updateData.status = data.status;
     if (data.subscriptionPlan) updateData.subscription_plan = data.subscriptionPlan;
-    
+
     const { data: updated, error } = await supabaseAdmin
       .from('stores')
       .update(updateData)
       .eq('store_id', storeId)
       .select()
       .single();
-      
+
     if (error) throw error;
     if (!updated) return NextResponse.json({ error: "Tienda no encontrada" }, { status: 404 });
-    
+
     // Transformar respuesta
     const response = {
       storeId: updated.store_id,
@@ -85,7 +87,7 @@ export async function PUT(request: NextRequest, { params }: { params: { storeId:
       createdAt: updated.created_at,
       updatedAt: updated.updated_at
     };
-    
+
     return NextResponse.json(response);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

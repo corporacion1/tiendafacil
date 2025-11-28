@@ -10,40 +10,40 @@ export async function GET(request: NextRequest) {
     const storeId = searchParams.get('storeId');
 
     console.log('📢 [Ads API] GET ads:', { businessType, storeId });
-    
+
     let query = supabaseAdmin
       .from('ads')
       .select('*')
       .order('created_at', { ascending: false });
-    
+
     // Filtrar por businessType si se proporciona
     if (businessType) {
       query = query.eq('status', 'active');
     }
-    
+
     // Filtrar por storeId si se proporciona
     if (storeId) {
       query = query.eq('store_id', storeId);
     }
 
     const { data: ads, error } = await query;
-    
+
     if (error) {
       console.error('❌ [Ads API] Error fetching ads:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    
+
     // Filtrar por businessType en JS si es necesario (para targetBusinessTypes array)
     let filteredAds = ads;
     if (businessType && ads) {
-      filteredAds = ads.filter(ad => {
+      filteredAds = ads.filter((ad: any) => {
         if (!ad.target_business_types || !Array.isArray(ad.target_business_types)) {
           return true;
         }
         return ad.target_business_types.includes(businessType);
       });
     }
-    
+
     // Transformar snake_case a camelCase
     const transformedAds = (filteredAds || []).map((ad: any) => ({
       id: ad.id,

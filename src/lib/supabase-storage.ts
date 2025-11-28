@@ -15,7 +15,7 @@ export async function ensureProductsBucket() {
             return false;
         }
 
-        const exists = buckets?.some((b) => b.name === 'products');
+        const exists = buckets?.some((b: any) => b.name === 'products');
         if (exists) {
             console.log('✅ [Supabase Storage] Bucket "products" already exists');
             return true;

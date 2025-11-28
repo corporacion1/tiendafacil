@@ -537,7 +537,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       // Actualizar estado local
       const newRate = {
         ...data.data,
-        id: data.data._id || data.data.id || `rate-${Date.now()}`
+        id: data.data.id || `rate-${Date.now()}`
       };
 
       console.log('✅ [Context] Actualizando estado local con:', newRate);

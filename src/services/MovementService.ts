@@ -297,7 +297,7 @@ export class MovementService {
       if (error) throw error;
 
       let stock = 0;
-      movements?.forEach(m => {
+      movements?.forEach((m: any) => {
         stock += m.quantity;
       });
 
@@ -586,7 +586,7 @@ export class MovementService {
       let currentCalculatedStock = 0;
       let lastMovementDate: Date | null = null;
 
-      movements?.forEach(movement => {
+      movements?.forEach((movement: any) => {
         if (movement.quantity > 0) {
           totalIn += movement.quantity;
         } else {
