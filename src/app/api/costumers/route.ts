@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Inicializar cliente de Supabase
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// Lazy Supabase client initialization to avoid build-time errors
+const getSupabaseClient = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Missing Supabase environment variables');
-}
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error('Missing Supabase environment variables');
+  }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  return createClient(supabaseUrl, supabaseServiceKey);
+};
 
 // Helper para generar IDs
 const generateId = (prefix: string) => {
@@ -26,6 +28,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Obtener clientes de Supabase
+    const supabase = getSupabaseClient();
     const { data: customers, error } = await supabase
       .from('customers')
       .select('*')
@@ -41,7 +44,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Mapear campos de Supabase a tu formato actual
-    const formattedCustomers = customers?.map(customer => ({
+    const formattedCustomers = customers?.map((customer: any) => ({
       id: customer.id,
       name: customer.name,
       phone: customer.phone,
@@ -73,6 +76,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Campos requeridos faltantes" }, { status: 400 });
     }
 
+    // Verificar si ya existe un cliente con el mismo teléfono en la misma tienda
+    if (data.phone && data.phone.trim()) {
+      const supabase = getSupabaseClient();
+      const { data: existingCustomer, error: searchError } = await supabase
+        .from('customers')
+        .select('id, name')
+        .eq('store_id', data.storeId)
+        .eq('phone', data.phone.trim())
+        .single();
+
+      if (existingCustomer) {
+        console.warn('⚠️ [Customers API] Cliente duplicado intentado:', data.phone);
+        return NextResponse.json(
+          { error: `Ya existe un cliente con el teléfono ${data.phone}: ${existingCustomer.name}` },
+          { status: 409 }
+        );
+      }
+    }
+
     // Generar ID único si no se proporciona
     const customerId = data.id || generateId('CUST');
 
@@ -83,14 +105,14 @@ export async function POST(request: NextRequest) {
       phone: data.phone?.trim() || null,
       address: data.address?.trim() || null,
       card_id: data.cardId?.trim() || null,
-      store_id: data.storeId,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      store_id: data.storeId
+      // created_at and updated_at removed to test if columns are missing
     };
 
     console.log('👤 [Customers API] Creando cliente en Supabase:', customerId);
 
     // Insertar cliente en Supabase
+    const supabase = getSupabaseClient();
     const { data: createdCustomer, error } = await supabase
       .from('customers')
       .insert([customerData])
@@ -160,6 +182,7 @@ export async function PUT(request: NextRequest) {
     console.log('👤 [Customers API] Actualizando cliente:', data.id);
 
     // Actualizar en Supabase
+    const supabase = getSupabaseClient();
     const { data: updatedCustomer, error } = await supabase
       .from('customers')
       .update(updateData)
@@ -217,6 +240,7 @@ export async function DELETE(request: NextRequest) {
     console.log('👤 [Customers API] Eliminando cliente:', id);
 
     // Eliminar de Supabase
+    const supabase = getSupabaseClient();
     const { error } = await supabase
       .from('customers')
       .delete()

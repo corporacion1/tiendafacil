@@ -1502,7 +1502,9 @@ export default function POSPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Error al guardar el cliente');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('❌ Error al guardar cliente:', errorData);
+        throw new Error(errorData.error || 'Error al guardar el cliente');
       }
 
       const savedCustomer = await response.json();
