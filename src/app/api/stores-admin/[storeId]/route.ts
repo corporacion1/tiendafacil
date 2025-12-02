@@ -13,7 +13,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const { data: store, error } = await supabaseAdmin
       .from('stores')
       .select('*')
-      .eq('store_id', storeId)
+      .eq('id', storeId)
       .single();
 
     if (error) throw error;
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     // Transformar snake_case a camelCase
     const transformedStore = {
-      storeId: store.store_id,
+      storeId: store.id,
       name: store.name,
       description: store.description,
       address: store.address,
@@ -66,7 +66,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const { data: updated, error } = await supabaseAdmin
       .from('stores')
       .update(updateData)
-      .eq('store_id', storeId)
+      .eq('id', storeId)
       .select()
       .single();
 
@@ -75,7 +75,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     // Transformar respuesta
     const response = {
-      storeId: updated.store_id,
+      storeId: updated.id,
       name: updated.name,
       description: updated.description,
       address: updated.address,

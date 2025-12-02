@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       const { data: store, error } = await supabaseAdmin
         .from('stores')
         .select('*')
-        .eq('store_id', storeId)
+        .eq('id', storeId)
         .single();
 
       if (error) throw error;
@@ -21,13 +21,13 @@ export async function GET(request: NextRequest) {
       const transformedStore = {
         storeId: store.id,
         name: store.name,
-        description: store.description,
+        // description: store.description, // No existe en DB
         address: store.address,
         phone: store.phone,
-        email: store.email,
+        // email: store.email, // No existe en DB
         logoUrl: store.logo_url,
         status: store.status,
-        subscriptionPlan: store.subscription_plan,
+        // subscriptionPlan: store.subscription_plan, // No existe en DB
         createdAt: store.created_at,
         updatedAt: store.updated_at
       };
@@ -45,15 +45,15 @@ export async function GET(request: NextRequest) {
 
     // Transformar snake_case a camelCase y agregar stats básicas
     const transformedStores = (stores || []).map((s: any) => ({
-      storeId: s.id,  // La tabla stores usa 'id' no 'store_id'
+      storeId: s.id,
       name: s.name,
-      description: s.description,
+      // description: s.description,
       address: s.address,
       phone: s.phone,
-      email: s.email,
+      // email: s.email,
       logoUrl: s.logo_url,
       status: s.status || 'active',
-      subscriptionPlan: s.subscription_plan || 'free',
+      // subscriptionPlan: s.subscription_plan || 'free',
       createdAt: s.created_at,
       updatedAt: s.updated_at,
       // Stats básicas (se pueden mejorar con queries adicionales)

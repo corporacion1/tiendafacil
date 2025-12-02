@@ -97,7 +97,7 @@ export async function POST(request: Request) {
     // Preparar datos para Supabase
     const saleData: any = {
       id: saleId,
-      customer_id: data.customerId || 'eventual',
+      customer_id: data.customerId || null,
       customer_name: data.customerName || 'Cliente Eventual',
       items: data.items,
       total: data.total || 0,

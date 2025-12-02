@@ -153,7 +153,7 @@ export type Payment = {
 
 export type Sale = {
   id: string;
-  customerId: string;
+  customerId: string | null;
   customerName: string;
   customerPhone?: string;
   items: {

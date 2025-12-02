@@ -1,6 +1,121 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
+export async function GET(request: NextRequest) {
+    try {
+        const url = new URL(request.url);
+        const sessionId = url.searchParams.get('sessionId');
+        const type = url.searchParams.get('type');
+        const storeId = url.searchParams.get('storeId');
+
+        if (!sessionId || !type || !storeId) {
+            return NextResponse.json({ error: 'Faltan parámetros requeridos' }, { status: 400 });
+        }
+
+        console.log(`📊 [Report API] Generando reporte ${type} para sesión ${sessionId}`);
+
+        // 1. Obtener la sesión
+        const { data: session, error: sessionError } = await supabaseAdmin
+            .from('cash_sessions')
+            .select('*')
+            .eq('id', sessionId)
+            .eq('store_id', storeId)
+            .single();
+
+        if (sessionError || !session) {
+            console.error('❌ Error buscando sesión:', sessionError);
+            throw new Error('Sesión no encontrada');
+        }
+
+        // 2. Definir rango de fechas
+        const startDate = session.opening_date;
+        const endDate = session.closing_date || new Date().toISOString();
+
+        // 3. Obtener ventas del período
+        const { data: sales, error: salesError } = await supabaseAdmin
+            .from('sales')
+            .select('*')
+            .eq('store_id', storeId)
+            .gte('created_at', startDate)
+            .lte('created_at', endDate)
+            .neq('status', 'cancelled'); // Excluir ventas canceladas
+
+        if (salesError) {
+            console.error('❌ Error buscando ventas:', salesError);
+            throw new Error('Error al obtener ventas');
+        }
+
+        // 4. Calcular totales
+        const salesData = sales || [];
+
+        const totalSales = salesData.length;
+        const totalAmount = salesData.reduce((sum: number, sale: any) => sum + (sale.total || 0), 0);
+        const totalItems = salesData.reduce((sum: number, sale: any) => sum + (sale.items?.length || 0), 0); // Asumiendo que items es un array JSON
+        const totalTax = salesData.reduce((sum: number, sale: any) => sum + (sale.tax || 0), 0);
+        const averageTicket = totalSales > 0 ? totalAmount / totalSales : 0;
+
+        // Agrupar por método de pago
+        const paymentMethods: Record<string, number> = {};
+        salesData.forEach((sale: any) => {
+            const method = sale.payment_method || 'Efectivo';
+            paymentMethods[method] = (paymentMethods[method] || 0) + (sale.total || 0);
+        });
+
+        // 5. Calcular balances
+        const openingBalance = session.opening_balance || 0;
+        const cashSales = paymentMethods['Efectivo'] || 0;
+        const calculatedCash = openingBalance + cashSales;
+
+        // Si es reporte Z y ya se cerró, usar el balance de cierre real
+        const closingBalance = session.closing_balance !== null ? session.closing_balance : undefined;
+        const difference = closingBalance !== undefined ? closingBalance - calculatedCash : 0;
+
+        // 6. Preparar respuesta
+        const reportData = {
+            sessionId: session.id,
+            storeId: session.store_id,
+            reportType: type,
+            generatedAt: new Date().toISOString(),
+            session: {
+                openingDate: session.opening_date,
+                closingDate: session.closing_date,
+                openedBy: session.opened_by,
+                closedBy: session.closed_by,
+                status: session.status,
+                xReports: (session.x_reports_count || 0) + (type === 'X' ? 1 : 0)
+            },
+            balances: {
+                openingBalance,
+                closingBalance,
+                calculatedCash,
+                difference
+            },
+            sales: {
+                count: totalSales,
+                totalAmount,
+                totalItems,
+                totalTax,
+                averageTicket
+            },
+            paymentMethods,
+            salesDetails: salesData.map((sale: any) => ({
+                id: sale.id,
+                date: sale.created_at,
+                customerName: sale.customer_name || 'Cliente General',
+                total: sale.total,
+                items: sale.items?.length || 0,
+                paymentMethod: sale.payment_method
+            }))
+        };
+
+        return NextResponse.json(reportData);
+
+    } catch (error: any) {
+        console.error('❌ [Report API] Error:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
+
 export async function POST(request: NextRequest) {
     try {
         const data = await request.json();
@@ -31,18 +146,43 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "La sesión ya está cerrada" }, { status: 400 });
         }
 
-        // 2. Calcular totales
-        // Usar las nuevas columnas si existen, fallback a las viejas
-        const openingBalance = currentSession.opening_balance ?? currentSession.opening_amount ?? 0;
-
-        // En una implementación real, aquí podríamos recalcular el total de ventas desde la tabla 'sales'
-        // para asegurar consistencia. Por ahora usamos los acumuladores de la sesión.
-        const cashFromSales = currentSession.total_cash || 0;
-        const calculatedCash = openingBalance + cashFromSales;
-        const difference = closingBalance - calculatedCash;
+        // 2. Calcular totales desde ventas
+        const startDate = currentSession.opening_date;
         const closingDate = new Date().toISOString();
 
-        // 3. Preparar datos de actualización (usando nuevas y viejas columnas)
+        const { data: sales, error: salesError } = await supabaseAdmin
+            .from('sales')
+            .select('*')
+            .eq('store_id', storeId)
+            .gte('created_at', startDate)
+            .lte('created_at', closingDate)
+            .neq('status', 'cancelled');
+
+        if (salesError) {
+            console.error('❌ Error buscando ventas para cierre:', salesError);
+            throw new Error('Error al calcular totales de ventas');
+        }
+
+        const salesData = sales || [];
+
+        // Calcular efectivo real de ventas
+        const cashSales = salesData
+            .filter((s: any) => s.payment_method === 'Efectivo')
+            .reduce((sum: number, s: any) => sum + (s.total || 0), 0);
+
+        const totalSales = salesData.reduce((sum: number, s: any) => sum + (s.total || 0), 0);
+        const totalCard = salesData
+            .filter((s: any) => s.payment_method === 'Tarjeta')
+            .reduce((sum: number, s: any) => sum + (s.total || 0), 0);
+        const totalTransfer = salesData
+            .filter((s: any) => s.payment_method === 'Transferencia')
+            .reduce((sum: number, s: any) => sum + (s.total || 0), 0);
+
+        const openingBalance = currentSession.opening_balance || 0;
+        const calculatedCash = openingBalance + cashSales;
+        const difference = closingBalance - calculatedCash;
+
+        // 3. Preparar datos de actualización
         const updateData = {
             status: 'closed',
             closing_balance: closingBalance,
@@ -51,16 +191,14 @@ export async function POST(request: NextRequest) {
             closed_at: closingDate, // Compatibilidad
             closed_by: closedBy,
             calculated_cash: calculatedCash,
-            difference: difference
+            difference: difference,
+            total_sales: totalSales,
+            total_cash: cashSales,
+            total_card: totalCard,
+            total_transfer: totalTransfer
         };
 
-        console.log('📊 [CashSessions Reports API] Datos de cierre:', {
-            openingBalance,
-            cashFromSales,
-            calculatedCash,
-            closingBalance,
-            difference
-        });
+        console.log('📊 [CashSessions Reports API] Datos de cierre calculados:', updateData);
 
         // 4. Actualizar sesión en BD
         const { data: closedSession, error: updateError } = await supabaseAdmin

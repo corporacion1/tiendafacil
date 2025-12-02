@@ -16,7 +16,7 @@ export async function PUT(request: NextRequest) {
         status: status,
         updated_at: new Date().toISOString()
       })
-      .eq('store_id', storeId)
+      .eq('id', storeId)
       .select()
       .single();
 
