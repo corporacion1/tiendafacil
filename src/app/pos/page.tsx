@@ -1181,7 +1181,13 @@ export default function POSPage() {
         setActiveSession(updatedSession);
         console.log('💰 Sesión de caja actualizada con venta:', saleId);
       } else {
-        console.error('Error actualizando sesión de caja');
+        const errorData = await sessionResponse.json();
+        console.error('Error actualizando sesión de caja:', errorData);
+        toast({
+          variant: "destructive",
+          title: "Error de sesión",
+          description: `No se pudo actualizar la sesión: ${errorData.error || 'Error desconocido'}`
+        });
       }
     } catch (error) {
       console.error('Error actualizando sesión de caja:', error);
