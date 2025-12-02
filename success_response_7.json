@@ -1,0 +1,10 @@
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100    52    0     0  100    52      0    248 --:--:-- --:--:-- --:--:--   248
+100    52    0     0  100    52      0     42  0:00:01  0:00:01 --:--:--    42
+100    52    0     0  100    52      0     23  0:00:02  0:00:02 --:--:--    23
+100    52    0     0  100    52      0     16  0:00:03  0:00:03 --:--:--    16
+100   207    0   155  100    52     39     13  0:00:04  0:00:03  0:00:01    52
+{"error":"Error al crear la venta","detalles":"insert or update on table \"sales\" violates foreign key constraint \"sales_store_id_fkey\"","code":"23503"}

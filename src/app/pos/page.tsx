@@ -404,6 +404,7 @@ export default function POSPage() {
 
   const salesInCurrentSession = useMemo(() => {
     if (!activeSession || !sales) return [];
+    if (!activeSession.salesIds || !Array.isArray(activeSession.salesIds)) return [];
     return sales.filter(s => activeSession.salesIds.includes(s.id));
   }, [sales, activeSession]);
 
@@ -1109,7 +1110,19 @@ export default function POSPage() {
       });
 
       if (!saleResponse.ok) {
-        throw new Error('Error al guardar la venta');
+        console.error(`❌ API Error: ${saleResponse.status} ${saleResponse.statusText}`);
+        const text = await saleResponse.text();
+        console.error('❌ API Raw Response:', text);
+
+        let errorData: any = {};
+        try {
+          errorData = JSON.parse(text);
+          console.error('❌ API Parsed Error:', errorData);
+        } catch (e) {
+          console.error('❌ Could not parse error response as JSON');
+        }
+
+        throw new Error(errorData.error || errorData.detalles || `Error al guardar la venta (${saleResponse.status})`);
       }
 
       const savedSale = await saleResponse.json();
@@ -1129,6 +1142,10 @@ export default function POSPage() {
       }
       setProducts(updatedProducts);
 
+      // Movimientos de inventario ahora son manejados automáticamente por la API /api/sales
+      // usando MovementService.recordSaleMovements
+      console.log('✅ Venta procesada y movimientos registrados automáticamente');
+
     } catch (error) {
       console.error('❌ Error procesando venta:', error);
       toast({
@@ -1142,7 +1159,7 @@ export default function POSPage() {
     // Update active session
     const updatedSession = {
       ...activeSession,
-      salesIds: [...activeSession.salesIds, saleId],
+      salesIds: [...(activeSession.salesIds || []), saleId],
       transactions: {
         ...activeSession.transactions,
         ...finalPayments.reduce((acc, p) => {

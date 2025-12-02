@@ -1,0 +1,11 @@
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100    38    0     0  100    38      0     31  0:00:01  0:00:01 --:--:--    31
+100    38    0     0  100    38      0     17  0:00:02  0:00:02 --:--:--    17
+100    38    0     0  100    38      0     11  0:00:03  0:00:03 --:--:--    11
+100    38    0     0  100    38      0      8  0:00:04  0:00:04 --:--:--     8
+100    38    0     0  100    38      0      7  0:00:05  0:00:04  0:00:01     7
+100   178    0   140  100    38     28      7  0:00:05  0:00:04  0:00:01    37
+{"error":"Error al crear la venta","detalles":"Could not find the 'customer_phone' column of 'sales' in the schema cache","code":"PGRST204"}

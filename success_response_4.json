@@ -1,0 +1,7 @@
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100    38    0     0  100    38      0    181 --:--:-- --:--:-- --:--:--   180
+100   183    0   145  100    38    428    112 --:--:-- --:--:-- --:--:--   541
+{"error":"Error al crear la venta","detalles":"null value in column \"total\" of relation \"sales\" violates not-null constraint","code":"23502"}

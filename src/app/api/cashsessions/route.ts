@@ -92,20 +92,27 @@ export async function POST(request: NextRequest) {
       }, { status: 409 });
     }
 
-    // Mapear datos a la estructura de Supabase
+    // Mapear datos a la estructura de Supabase (usando las nuevas columnas)
     const sessionData = {
       id: data.id,
       store_id: data.storeId,
-      user_id: data.openedBy, // openedBy -> user_id
-      opening_amount: data.openingBalance, // openingBalance -> opening_amount
+      user_id: data.openedBy, // Mantener por compatibilidad
+      opened_by: data.openedBy, // Nueva columna
+      opening_balance: data.openingBalance, // Nueva columna
+      opening_amount: data.openingBalance, // Mantener por compatibilidad
       status: SessionStatus.OPEN,
-      opened_at: new Date().toISOString(),
+      opening_date: new Date().toISOString(), // Nueva columna
+      opened_at: new Date().toISOString(), // Mantener por compatibilidad
       // Inicializar todos los totales en 0
       total_sales: 0,
       total_cash: 0,
       total_card: 0,
       total_transfer: 0,
       total_other: 0,
+      calculated_cash: 0,
+      difference: 0,
+      sales_ids: [],
+      transactions: {},
       notes: data.notes || ''
     };
 
@@ -119,9 +126,20 @@ export async function POST(request: NextRequest) {
       throw createError;
     }
 
+    // Formatear respuesta para coincidir con CashSession type
+    const formattedSession = {
+      ...created,
+      storeId: created.store_id,
+      openingBalance: created.opening_balance,
+      openingDate: created.opening_date,
+      openedBy: created.opened_by,
+      salesIds: created.sales_ids || [],
+      transactions: created.transactions || {}
+    };
+
     console.log('✅ [CashSessions API] Sesión creada:', created.id);
 
-    return NextResponse.json(created);
+    return NextResponse.json(formattedSession);
   } catch (error: any) {
     console.error('❌ [CashSessions API] Error creando sesión:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -144,6 +162,8 @@ export async function PUT(request: NextRequest) {
     // Mapear campos si existen
     if (data.status !== undefined) updateData.status = data.status;
     if (data.notes !== undefined) updateData.notes = data.notes;
+    if (data.salesIds !== undefined) updateData.sales_ids = data.salesIds;
+    if (data.transactions !== undefined) updateData.transactions = data.transactions;
 
     // Si se está cerrando la sesión, calcular datos finales
     if (data.status === SessionStatus.CLOSED && data.closingBalance !== undefined) {
@@ -165,18 +185,26 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json({ error: "Sesión no encontrada" }, { status: 404 });
       }
 
-      // TODO: Necesito saber la estructura de la tabla 'sales' para hacer el cálculo equivalente
-      // Por ahora, usar la lógica simplificada
-      const calculatedCash = currentSession.opening_amount + (currentSession.total_cash || 0);
-      const difference = data.closingBalance - calculatedCash;
+      // Usar opening_balance si existe, sino fallback a opening_amount
+      const openingBalance = currentSession.opening_balance ?? currentSession.opening_amount ?? 0;
+      const cashFromSales = currentSession.total_cash || 0;
 
-      // Actualizar datos de cierre
+      const calculatedCash = openingBalance + cashFromSales;
+      const difference = data.closingBalance - calculatedCash;
+      const closingDate = new Date().toISOString();
+
+      // Actualizar datos de cierre (nuevas y viejas columnas)
+      updateData.closing_balance = data.closingBalance;
       updateData.closing_amount = data.closingBalance;
-      updateData.closed_at = new Date().toISOString();
+      updateData.closing_date = closingDate;
+      updateData.closed_at = closingDate;
+      updateData.calculated_cash = calculatedCash;
+      updateData.difference = difference;
+      updateData.closed_by = data.closedBy || currentSession.opened_by; // Asumir mismo usuario si no se envía
 
       console.log('📊 [CashSessions API] Cálculos de cierre:', {
-        openingBalance: currentSession.opening_amount,
-        cashFromSales: currentSession.total_cash,
+        openingBalance,
+        cashFromSales,
         calculatedCash,
         closingBalance: data.closingBalance,
         difference
@@ -185,6 +213,7 @@ export async function PUT(request: NextRequest) {
 
     // Si se está actualizando el balance de apertura
     if (data.openingBalance !== undefined) {
+      updateData.opening_balance = data.openingBalance;
       updateData.opening_amount = data.openingBalance;
     }
 
@@ -204,8 +233,24 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Sesión de caja no encontrada" }, { status: 404 });
     }
 
+    // Formatear respuesta
+    const formattedSession = {
+      ...updated,
+      storeId: updated.store_id,
+      openingBalance: updated.opening_balance,
+      openingDate: updated.opening_date,
+      closingBalance: updated.closing_balance,
+      closingDate: updated.closing_date,
+      openedBy: updated.opened_by,
+      closedBy: updated.closed_by,
+      calculatedCash: updated.calculated_cash,
+      difference: updated.difference,
+      salesIds: updated.sales_ids || [],
+      transactions: updated.transactions || {}
+    };
+
     console.log('✅ [CashSessions API] Sesión actualizada:', updated.id);
-    return NextResponse.json(updated);
+    return NextResponse.json(formattedSession);
 
   } catch (error: any) {
     console.error('❌ [CashSessions API] Error actualizando sesión:', error);

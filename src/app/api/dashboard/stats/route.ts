@@ -47,7 +47,7 @@ export async function GET(request: Request) {
 
     const topProducts = Object.entries(productSales)
       .map(([id, data]) => ({
-        _id: id,
+        id: id, // ✅ FIXED: Changed _id to id to match TypeScript interface
         productName: data.name,
         totalSold: data.quantity,
         totalRevenue: data.revenue
@@ -75,7 +75,7 @@ export async function GET(request: Request) {
 
     const topCustomers = Object.entries(customerStats)
       .map(([id, data]) => ({
-        _id: id,
+        id: id, // ✅ FIXED: Changed _id to id to match TypeScript interface
         customerName: data.name,
         totalSpent: data.spent,
         purchaseCount: data.count
@@ -103,7 +103,9 @@ export async function GET(request: Request) {
       topCustomers
     };
 
-    return NextResponse.json({ success: true, data: stats });
+    // ✅ FIXED: Return data directly, not wrapped in {success, data}
+    // This matches what useDashboardStats expects (line 53)
+    return NextResponse.json(stats);
 
   } catch (error: any) {
     console.error('Error en dashboard stats:', error);

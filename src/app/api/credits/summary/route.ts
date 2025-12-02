@@ -122,7 +122,7 @@ export async function GET(request: Request) {
           const customerId = acc.customer_id;
           if (!debtorMap.has(customerId)) {
             debtorMap.set(customerId, {
-              _id: customerId,
+              id: customerId, // ✅ FIXED: Changed _id to id to match TypeScript interface
               customerName: acc.customer_name,
               customerPhone: acc.customer_phone,
               totalDebt: 0,
