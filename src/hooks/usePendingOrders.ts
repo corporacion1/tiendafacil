@@ -19,13 +19,13 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
   const [isPolling, setIsPolling] = useState(false);
   const { toast } = useToast();
   const { isOnline, wasOffline } = useNetworkStatus();
-  
+
   // Referencias para manejar el polling
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastFetchTimeRef = useRef<number>(0);
   const isActiveRef = useRef(true);
   const retryCountRef = useRef<number>(0);
-  
+
   // Configuración del polling
   const POLLING_INTERVAL = 10000; // 10 segundos
   const MIN_FETCH_INTERVAL = 2000; // Mínimo 2 segundos entre fetches
@@ -52,13 +52,13 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
 
     try {
       console.log('🔍 [POS] Fetching pending orders for store:', storeId);
-      
+
       // Obtener pedidos pendientes y en procesamiento (no completamente procesados)
       const url = `/api/orders?storeId=${encodeURIComponent(storeId)}&status=pending,processing`;
       console.log('🔗 [POS] API URL:', url);
-      
+
       const response = await fetch(url);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
@@ -66,13 +66,13 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
       const data = await response.json();
       console.log('📦 [POS] Pending orders fetched:', data.length);
       console.log('📋 [POS] Orders data:', data);
-      
+
       // Log de clientes únicos para confirmar que son de diferentes usuarios
       if (Array.isArray(data) && data.length > 0) {
         const uniqueCustomers = [...new Set(data.map(order => order.customerName))];
         console.log('👥 [POS] Clientes únicos en pedidos:', uniqueCustomers.length, uniqueCustomers);
       }
-      
+
       // Convertir formato de respuesta a PendingOrder si es necesario
       const formattedOrders: PendingOrder[] = Array.isArray(data) ? data.map(order => ({
         orderId: order.orderId || order.id,
@@ -99,25 +99,25 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
 
       // Reset retry counter on success
       retryCountRef.current = 0;
-      
+
     } catch (err: any) {
       console.error('❌ [POS] Error fetching pending orders:', err);
       setError(err.message);
-      
+
       // Incrementar contador de reintentos
       retryCountRef.current += 1;
-      
+
       // Solo mostrar toast en fetch inicial o después de varios reintentos
       if (showLoadingState || retryCountRef.current >= MAX_RETRIES) {
         toast({
           variant: "destructive",
           title: "Error al cargar pedidos",
-          description: isOnline 
+          description: isOnline
             ? "No se pudieron cargar los pedidos pendientes."
             : "Sin conexión. Los pedidos se actualizarán cuando vuelvas a estar online."
         });
       }
-      
+
       if (showLoadingState) {
         setOrders([]);
       }
@@ -132,12 +132,13 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
   const updateOrderStatus = useCallback(async (orderId: string, status: string, saleId?: string) => {
     try {
       console.log('🔄 [POS] Updating order status:', orderId, 'to', status);
-      
+
       const response = await fetch('/api/orders', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           orderId,
+          storeId, // Add storeId required by API
           status,
           processedBy: 'POS', // Identificar que fue procesado desde POS
           saleId,
@@ -151,9 +152,9 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
 
       // Refrescar la lista de pedidos
       await fetchOrders(false);
-      
+
       console.log('✅ [POS] Order status updated successfully');
-      
+
     } catch (error) {
       console.error('❌ [POS] Error updating order status:', error);
       throw error; // Re-throw para que el caller pueda manejar el error
@@ -168,7 +169,7 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
 
     console.log('🔄 [POS] Starting order polling...');
     setIsPolling(true);
-    
+
     pollingIntervalRef.current = setInterval(() => {
       if (isActiveRef.current && isOnline) {
         fetchOrders(false); // No mostrar loading state en polling
@@ -235,7 +236,7 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    
+
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };

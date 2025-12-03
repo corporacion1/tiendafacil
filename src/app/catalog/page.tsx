@@ -1375,23 +1375,44 @@ export default function CatalogPage() {
     }
   }
 
-  // NUEVA FUNCIÓN: Crear pedido en Supabase
-  const createOrderInSupabase = async (orderData: any) => {
+  // NUEVA FUNCIÓN: Crear pedido usando API (evita problemas de RLS)
+  const createOrderInSupabase = async (orderData: Order) => {
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .insert([orderData])
-        .select()
-        .single();
+      console.log('📦 [API] Creating order via API:', orderData.orderId);
+      console.log('📦 [API] Order data being sent:', JSON.stringify(orderData, null, 2));
 
-      if (error) {
-        console.error('❌ [Supabase] Error creating order:', error);
-        throw new Error('Error al guardar pedido en Supabase');
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      console.log('📦 [API] Response status:', response.status, response.statusText);
+
+      if (!response.ok) {
+        const responseText = await response.text();
+        console.log('📦 [API] Response text:', responseText);
+
+        let errorData;
+        try {
+          errorData = JSON.parse(responseText);
+        } catch (e) {
+          errorData = { error: 'Parse error', details: responseText };
+        }
+
+        console.error('❌ [API] Error creating order:', errorData);
+        console.error('❌ [API] Full error details:', JSON.stringify(errorData, null, 2));
+        throw new Error(errorData.error || errorData.detalles || errorData.details || 'Error al guardar pedido');
       }
 
-      return data;
+      const result = await response.json();
+      console.log('✅ [API] Order created successfully:', result);
+
+      return result.data;
     } catch (error) {
-      console.error('❌ [Supabase] Exception creating order:', error);
+      console.error('❌ [API] Exception creating order:', error);
       throw error;
     }
   };
@@ -1444,13 +1465,23 @@ export default function CatalogPage() {
 
     const newOrderId = IDGenerator.generate('order', storeIdForCatalog);
 
+    console.log('🔍 [Order Creation] Validation:', {
+      hasAuthUser: !!authUser,
+      hasEmail: !!authUser?.email,
+      email: authUser?.email,
+      customerName,
+      customerPhone,
+      storeId: storeIdForCatalog,
+      cartLength: cart.length
+    });
+
     const newPendingOrder: Order = {
       orderId: newOrderId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       customerName: customerName,
       customerPhone: customerPhone,
-      customerEmail: authUser.email, // Email del usuario logueado (ya validamos que existe)
+      customerEmail: authUser?.email || undefined, // Use optional chaining and provide undefined fallback
       items: cart.map(item => ({
         productId: item.product.id,
         productName: item.product.name,
@@ -1738,24 +1769,35 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
     await generateQrCode(orderId);
   };
 
-  // NUEVA FUNCIÓN: Actualizar pedido en Supabase
+  // NUEVA FUNCIÓN: Actualizar pedido usando API (evita problemas de RLS)
   const updateOrderInSupabase = async (orderId: string, updates: any) => {
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .update(updates)
-        .eq('orderId', orderId)
-        .select()
-        .single();
+      console.log('🔄 [API] Updating order via API:', orderId);
 
-      if (error) {
-        console.error('❌ [Supabase] Error updating order:', error);
-        throw new Error('Error al actualizar pedido en Supabase');
+      const response = await fetch('/api/orders', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          orderId,
+          storeId: storeIdForCatalog,
+          ...updates
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('❌ [API] Error updating order:', errorData);
+        throw new Error(errorData.error || 'Error al actualizar pedido');
       }
 
-      return data;
+      const result = await response.json();
+      console.log('✅ [API] Order updated successfully:', result);
+
+      return result;
     } catch (error) {
-      console.error('❌ [Supabase] Exception updating order:', error);
+      console.error('❌ [API] Exception updating order:', error);
       throw error;
     }
   };

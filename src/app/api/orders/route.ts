@@ -163,6 +163,7 @@ export async function POST(request: NextRequest) {
     
     // Preparar datos para Supabase
     const orderData = {
+      id: orderId, // Add id field for NOT NULL constraint
       order_id: orderId,
       customer_name: body.customerName,
       customer_phone: body.customerPhone,

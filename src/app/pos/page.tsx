@@ -1597,196 +1597,220 @@ export default function POSPage() {
   const isNewCustomerFormDirty = newCustomer.name.trim() !== '' || newCustomer.id.trim() !== '' || newCustomer.phone.trim() !== '' || newCustomer.address.trim() !== '';
 
   const loadPendingOrder = async (order: PendingOrder) => {
-    if (cartItems.length > 0) {
-      toast({
-        variant: "destructive",
-        title: "Carrito no está vacío",
-        description: "Vacía el carrito actual antes de cargar un pedido pendiente."
-      });
-      return;
-    }
-
-    if (!products || products.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "Productos no disponibles",
-        description: "No se han cargado los productos. Intenta recargar la página."
-      });
-      return;
-    }
-
-    if (!order.items || order.items.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "Pedido vacío",
-        description: "Este pedido no contiene productos."
-      });
-      return;
-    }
-
-    console.log('📦 Cargando pedido:', order.orderId, 'con', order.items.length, 'productos');
-
-    const orderCartItems: CartItem[] = [];
-    const missingProducts: string[] = [];
-    const insufficientStock: string[] = [];
-
-    // Validar cada producto del pedido
-    for (const item of order.items) {
-      const product = products.find(p => p.id === item.productId);
-
-      if (!product) {
-        console.warn('⚠️ Producto no encontrado:', item.productId, item.productName);
-        missingProducts.push(item.productName || item.productId);
-        continue;
+    console.log('📦 Intentando cargar pedido:', order);
+    try {
+      if (cartItems.length > 0) {
+        toast({
+          variant: "destructive",
+          title: "Carrito no está vacío",
+          description: "Vacía el carrito actual antes de cargar un pedido pendiente."
+        });
+        return;
       }
 
-      // Verificar stock disponible solo para productos que afectan inventario
-      if (product.affectsInventory && product.type === 'product' && product.stock < item.quantity) {
-        console.warn('⚠️ Stock insuficiente:', product.name, 'disponible:', product.stock, 'requerido:', item.quantity);
-        insufficientStock.push(`${product.name} (disponible: ${product.stock}, requerido: ${item.quantity})`);
+      console.log('📦 Estado de productos:', { count: products?.length, isArray: Array.isArray(products) });
 
-        // Agregar la cantidad disponible si hay algo
-        if (product.stock > 0) {
+      if (!products || products.length === 0) {
+        toast({
+          variant: "destructive",
+          title: "Productos no disponibles",
+          description: "No se han cargado los productos. Intenta recargar la página."
+        });
+        return;
+      }
+
+      if (!order.items || order.items.length === 0) {
+        toast({
+          variant: "destructive",
+          title: "Pedido vacío",
+          description: "Este pedido no contiene productos."
+        });
+        return;
+      }
+
+      console.log('📦 Cargando pedido:', order.orderId, 'con', order.items.length, 'productos');
+
+      const orderCartItems: CartItem[] = [];
+      const missingProducts: string[] = [];
+      const insufficientStock: string[] = [];
+
+      // Validar cada producto del pedido
+      for (const item of order.items) {
+        let product = products.find(p => p.id === item.productId);
+
+        // FALLBACK: Buscar por nombre si no se encuentra por ID
+        if (!product && item.productName) {
+          product = products.find(p => p.name.toLowerCase() === item.productName.toLowerCase());
+          if (product) {
+            console.warn('⚠️ Producto encontrado por nombre (posible ID mismatch):', {
+              orderProductId: item.productId,
+              foundProductId: product.id,
+              name: item.productName
+            });
+          }
+        }
+
+        if (!product) {
+          console.warn('⚠️ Producto no encontrado:', item.productId, item.productName);
+          missingProducts.push(item.productName || item.productId);
+          continue;
+        }
+
+        // Verificar stock disponible solo para productos que afectan inventario
+        if (product.affectsInventory && product.type === 'product' && product.stock < item.quantity) {
+          console.warn('⚠️ Stock insuficiente:', product.name, 'disponible:', product.stock, 'requerido:', item.quantity);
+          insufficientStock.push(`${product.name} (disponible: ${product.stock}, requerido: ${item.quantity})`);
+
+          // Agregar la cantidad disponible si hay algo
+          if (product.stock > 0) {
+            orderCartItems.push({
+              product,
+              quantity: product.stock,
+              price: item.price
+            });
+          }
+        } else {
+          // Producto disponible (sin restricción de stock para servicios)
           orderCartItems.push({
             product,
-            quantity: product.stock,
+            quantity: item.quantity,
             price: item.price
           });
         }
-      } else {
-        // Producto disponible (sin restricción de stock para servicios)
-        orderCartItems.push({
-          product,
-          quantity: item.quantity,
-          price: item.price
-        });
       }
-    }
 
-    // Mostrar advertencias si hay problemas
-    if (missingProducts.length > 0) {
-      toast({
-        variant: "destructive",
-        title: "Productos no encontrados",
-        description: `Los siguientes productos ya no existen: ${missingProducts.join(', ')}`
-      });
-    }
-
-    if (insufficientStock.length > 0) {
-      toast({
-        title: "Stock insuficiente",
-        description: `Stock limitado para: ${insufficientStock.join(', ')}. Se cargó la cantidad disponible.`
-      });
-    }
-
-    if (orderCartItems.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "No se pudo cargar el pedido",
-        description: "Ningún producto del pedido está disponible actualmente."
-      });
-      return;
-    }
-
-    // Cargar productos al carrito
-    setCartItems(orderCartItems);
-
-    // Buscar y seleccionar cliente, o crearlo automáticamente si no existe
-    let customer = (customers || []).find(c =>
-      c.phone === order.customerPhone ||
-      c.name === order.customerName ||
-      c.id === (order as any).customerId
-    );
-
-    if (customer) {
-      setSelectedCustomerId(customer.id);
-      console.log('👤 Cliente encontrado y seleccionado:', customer.name);
-    } else if (order.customerName && order.customerName !== 'Cliente Eventual') {
-      // Cliente no existe, crearlo automáticamente
-      console.log('👤 Cliente no encontrado, creando automáticamente:', order.customerName, order.customerPhone);
-
-      try {
-        const newCustomerData = {
-          name: order.customerName,
-          phone: order.customerPhone || '',
-          email: order.customerEmail || '',
-          address: '',
-          storeId: activeStoreId
-        };
-
-        const response = await fetch('/api/costumers', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newCustomerData)
-        });
-
-        if (response.ok) {
-          const createdCustomer = await response.json();
-
-          // Actualizar la lista de clientes
-          setCustomers(prev => [...(prev || []), createdCustomer]);
-
-          // Seleccionar el cliente recién creado
-          setSelectedCustomerId(createdCustomer.id);
-
-          console.log('✅ Cliente creado automáticamente:', createdCustomer.name);
-
-          toast({
-            title: "Cliente creado",
-            description: `Cliente ${createdCustomer.name} creado automáticamente.`
-          });
-        } else {
-          console.warn('⚠️ Error creando cliente automáticamente');
-          toast({
-            title: "Advertencia",
-            description: "No se pudo crear el cliente automáticamente, pero el pedido se cargó correctamente."
-          });
-        }
-      } catch (error) {
-        console.error('❌ Error creando cliente:', error);
+      // Mostrar advertencias si hay problemas
+      if (missingProducts.length > 0) {
         toast({
-          title: "Advertencia",
-          description: "Error al crear cliente automáticamente, pero el pedido se cargó correctamente."
+          variant: "destructive",
+          title: "Productos no encontrados",
+          description: `Los siguientes productos ya no existen: ${missingProducts.join(', ')}`
         });
       }
-    }
 
-    // Marcar pedido como "en procesamiento" usando el nuevo hook
-    try {
-      await updateOrderStatus(
-        order.orderId,
-        'processing'
+      if (insufficientStock.length > 0) {
+        toast({
+          title: "Stock insuficiente",
+          description: `Stock limitado para: ${insufficientStock.join(', ')}. Se cargó la cantidad disponible.`
+        });
+      }
+
+      if (orderCartItems.length === 0) {
+        toast({
+          variant: "destructive",
+          title: "No se pudo cargar el pedido",
+          description: "Ningún producto del pedido está disponible actualmente."
+        });
+        return;
+      }
+
+      // Cargar productos al carrito
+      setCartItems(orderCartItems);
+
+      // Buscar y seleccionar cliente, o crearlo automáticamente si no existe
+      let customer = (customers || []).find(c =>
+        c.phone === order.customerPhone ||
+        c.name === order.customerName ||
+        c.id === (order as any).customerId
       );
 
-      console.log('✅ Pedido marcado como en procesamiento:', order.orderId);
+      if (customer) {
+        setSelectedCustomerId(customer.id);
+        console.log('👤 Cliente encontrado y seleccionado:', customer.name);
+      } else if (order.customerName && order.customerName !== 'Cliente Eventual') {
+        // Cliente no existe, crearlo automáticamente
+        console.log('👤 Cliente no encontrado, creando automáticamente:', order.customerName, order.customerPhone);
+
+        try {
+          const newCustomerData = {
+            name: order.customerName,
+            phone: order.customerPhone || '',
+            email: order.customerEmail || '',
+            address: '',
+            storeId: activeStoreId
+          };
+
+          const response = await fetch('/api/costumers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newCustomerData)
+          });
+
+          if (response.ok) {
+            const createdCustomer = await response.json();
+
+            // Actualizar la lista de clientes
+            setCustomers(prev => [...(prev || []), createdCustomer]);
+
+            // Seleccionar el cliente recién creado
+            setSelectedCustomerId(createdCustomer.id);
+
+            console.log('✅ Cliente creado automáticamente:', createdCustomer.name);
+
+            toast({
+              title: "Cliente creado",
+              description: `Cliente ${createdCustomer.name} creado automáticamente.`
+            });
+          } else {
+            console.warn('⚠️ Error creando cliente automáticamente');
+            toast({
+              title: "Advertencia",
+              description: "No se pudo crear el cliente automáticamente, pero el pedido se cargó correctamente."
+            });
+          }
+        } catch (error) {
+          console.error('❌ Error creando cliente:', error);
+          toast({
+            title: "Advertencia",
+            description: "Error al crear cliente automáticamente, pero el pedido se cargó correctamente."
+          });
+        }
+      }
+
+      // Marcar pedido como "en procesamiento" usando el nuevo hook
+      try {
+        await updateOrderStatus(
+          order.orderId,
+          'processing'
+        );
+
+        console.log('✅ Pedido marcado como en procesamiento:', order.orderId);
+
+        toast({
+          title: "Pedido cargado",
+          description: `Pedido ${order.orderId} cargado y marcado como en procesamiento.`
+        });
+      } catch (error) {
+        console.warn('⚠️ Error actualizando estado del pedido:', error);
+        toast({
+          variant: "destructive",
+          title: "Advertencia",
+          description: "El pedido se cargó pero no se pudo actualizar su estado en la base de datos."
+        });
+      }
+
+      const loadedCount = orderCartItems.length;
+      const totalCount = order.items.length;
 
       toast({
-        title: "Pedido cargado",
-        description: `Pedido ${order.orderId} cargado y marcado como en procesamiento.`
+        title: "Pedido Cargado",
+        description: loadedCount === totalCount
+          ? `Pedido ${order.orderId} cargado completamente (${loadedCount} productos)`
+          : `Pedido ${order.orderId} cargado parcialmente (${loadedCount}/${totalCount} productos)`
       });
+
+      // Cerrar modal de pedidos pendientes
+      document.getElementById('pending-orders-close-button')?.click();
+
+      console.log('✅ Pedido cargado exitosamente:', order.orderId);
     } catch (error) {
-      console.warn('⚠️ Error actualizando estado del pedido:', error);
+      console.error('❌ Error cargando pedido:', error);
       toast({
         variant: "destructive",
-        title: "Advertencia",
-        description: "El pedido se cargó pero no se pudo actualizar su estado en la base de datos."
+        title: "Error al cargar pedido",
+        description: "Ocurrió un error inesperado al cargar el pedido."
       });
     }
-
-    const loadedCount = orderCartItems.length;
-    const totalCount = order.items.length;
-
-    toast({
-      title: "Pedido Cargado",
-      description: loadedCount === totalCount
-        ? `Pedido ${order.orderId} cargado completamente (${loadedCount} productos)`
-        : `Pedido ${order.orderId} cargado parcialmente (${loadedCount}/${totalCount} productos)`
-    });
-
-    // Cerrar modal de pedidos pendientes
-    document.getElementById('pending-orders-close-button')?.click();
-
-    console.log('✅ Pedido cargado exitosamente:', order.orderId);
   };
 
   const loadOrderById = async () => {
