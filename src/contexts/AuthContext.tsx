@@ -33,10 +33,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const setActiveStoreId = (storeId: string) => {
     console.log(`🏪 [setActiveStoreId] Setting activeStoreId to: ${storeId}`);
     console.log(`🏪 [setActiveStoreId] Previous activeStoreId: ${activeStoreId}`);
-    
+
     setActiveStoreIdState(storeId);
     localStorage.setItem('activeStoreId', storeId);
-    
+
     console.log(`🏪 [setActiveStoreId] localStorage updated with: ${localStorage.getItem('activeStoreId')}`);
   };
 
@@ -76,7 +76,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (storedActiveStoreId) {
           setActiveStoreIdState(storedActiveStoreId);
         }
-        
+
         // Restore token and validate session
         const storedToken = localStorage.getItem('authToken');
         if (storedToken) {
@@ -84,12 +84,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             // Verify token with backend
             const res = await fetch('/api/auth/verify', {
               method: 'POST',
-              headers: { 
+              headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${storedToken}`
               }
             });
-            
+
             if (res.ok) {
               const data = await res.json();
               setToken(storedToken);
@@ -105,7 +105,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             console.log('🔄 [AuthContext] Token verification failed, cleared');
           }
         }
-        
+
       } catch (error) {
         console.error('Error restoring session:', error);
         localStorage.removeItem('authToken');
@@ -142,22 +142,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log('✅ [Login] Authentication successful for:', data.user.email);
         console.log('🔍 [Login] User role:', data.user.role);
         console.log('🔍 [Login] User storeId:', data.user.storeId);
-        
+
         // STEP 1: Set user data and token (login successful) - WITH PERSISTENCE
         setToken(data.token);
         setUser(data.user);
         // Guardar solo el token en localStorage para mantener sesión
         localStorage.setItem('authToken', data.token);
         console.log('✅ [Login] User session set with token persistence');
-        
+
         // STEP 2: If role is NOT "user", update activeStoreId with user's storeId IMMEDIATELY
         if (data.user.role !== 'user') {
           console.log('🏪 [Login] Administrative user - setting active store to:', data.user.storeId);
-          
+
           if (!data.user.storeId) {
             throw new Error('Usuario administrativo sin tienda asignada. Contacte al administrador.');
           }
-          
+
           // Update active store ID IMMEDIATELY and SYNCHRONOUSLY
           console.log('🔄 [Login] BEFORE - activeStoreId:', activeStoreId);
           setActiveStoreIdState(data.user.storeId);
@@ -167,27 +167,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } else {
           console.log('👤 [Login] Regular user - no store assignment needed');
         }
-        
+
         // STEP 3: Redirect to appropriate page based on role
         const redirectUrl = getStoreRedirectUrl(data.user.role);
         console.log('🚀 [Login] Redirecting to:', redirectUrl);
-        
+
         toast({
           title: "Inicio de sesión exitoso",
           description: `¡Bienvenido, ${data.user.email}!`,
         });
-        
+
         // CRITICAL FIX: Ensure activeStoreId is properly set before redirect
         // For administrative users, wait longer to ensure state propagation
         const redirectDelay = data.user.role !== 'user' ? 500 : 300;
-        
+
         setTimeout(() => {
           console.log('🚀 [Login] Executing redirect to:', redirectUrl);
           console.log('🔍 [Login] Final activeStoreId check:', localStorage.getItem('activeStoreId'));
-          console.log('🔍 [Login] Final state activeStoreId:', activeStoreId);
-          router.push(redirectUrl);
+
+          // Force full page reload to ensure all contexts (Settings, etc.) are re-initialized 
+          // with the correct store ID from localStorage. This prevents stale state issues.
+          window.location.href = redirectUrl;
         }, redirectDelay); // Longer delay for administrative users
-        
+
       } else {
         throw new Error(data.msg || 'Error en el inicio de sesión');
       }
@@ -257,17 +259,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setToken(null);
     // NO limpiar activeStoreId en logout para mantener la tienda seleccionada
     // clearActiveStoreId(); 
-    
+
     // Limpiar solo el token de autenticación
     localStorage.removeItem('authToken');
-    
+
     console.log('🚪 [Logout] User session cleared (activeStoreId preserved)');
-    
+
     toast({
       title: "Sesión cerrada",
       description: "Has cerrado sesión exitosamente.",
     });
-    
+
     router.push('/');
   };
 

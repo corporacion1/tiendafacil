@@ -56,6 +56,8 @@ export async function GET(
             imageHint: product.image_hint,
             images: typeof product.images === 'string' ? JSON.parse(product.images) : (product.images || []),
             primaryImageIndex: product.primary_image_index || 0,
+            tax1: product.tax1 || false,
+            tax2: product.tax2 || false,
             createdAt: product.created_at,
             updatedAt: product.updated_at
         };
@@ -112,6 +114,8 @@ export async function PUT(
         if (data.imageHint !== undefined) updateData.image_hint = data.imageHint;
         if (data.images !== undefined) updateData.images = data.images;
         if (data.primaryImageIndex !== undefined) updateData.primary_image_index = data.primaryImageIndex;
+        if (data.tax1 !== undefined) updateData.tax1 = data.tax1;
+        if (data.tax2 !== undefined) updateData.tax2 = data.tax2;
 
         const { data: updatedProduct, error } = await supabaseAdmin
             .from('products')
@@ -153,6 +157,8 @@ export async function PUT(
             imageHint: updatedProduct.image_hint,
             images: typeof updatedProduct.images === 'string' ? JSON.parse(updatedProduct.images) : (updatedProduct.images || []),
             primaryImageIndex: updatedProduct.primary_image_index || 0,
+            tax1: updatedProduct.tax1 || false,
+            tax2: updatedProduct.tax2 || false,
             createdAt: updatedProduct.created_at,
             updatedAt: updatedProduct.updated_at
         };

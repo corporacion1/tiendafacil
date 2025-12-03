@@ -23,12 +23,8 @@ export async function GET(request: NextRequest) {
       id: w.id,
       storeId: w.store_id,
       name: w.name,
-      address: w.address,
-      description: w.description,
-      isDefault: w.is_default,
-      isActive: w.is_active,
-      createdAt: w.created_at,
-      updatedAt: w.updated_at
+      status: w.status,
+      createdAt: w.created_at
     })) || [];
 
     return NextResponse.json(transformedWarehouses);
@@ -41,12 +37,15 @@ export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
 
+    console.log('📦 [Warehouses API] POST received:', data);
+
     // Generar ID único si no se proporciona
     if (!data.id) {
       data.id = IDGenerator.generate('warehouse');
     }
 
     if (!data.name || !data.storeId) {
+      console.error('❌ [Warehouses API] Missing required fields:', { name: data.name, storeId: data.storeId });
       return NextResponse.json({ error: "Campos requeridos faltantes" }, { status: 400 });
     }
 
@@ -55,11 +54,11 @@ export async function POST(request: NextRequest) {
       id: data.id,
       store_id: data.storeId,
       name: data.name,
-      address: data.address,
-      description: data.description,
-      is_default: data.isDefault || false,
-      is_active: data.isActive !== undefined ? data.isActive : true
+      status: data.status || 'active',
+      created_at: new Date().toISOString()
     };
+
+    console.log('📤 [Warehouses API] Inserting warehouse:', warehouseData);
 
     const { data: created, error } = await supabaseAdmin
       .from('warehouses')
@@ -67,23 +66,25 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ [Warehouses API] Supabase error:', error);
+      throw error;
+    }
+
+    console.log('✅ [Warehouses API] Warehouse created:', created);
 
     // Transformar respuesta
     const response = {
       id: created.id,
       storeId: created.store_id,
       name: created.name,
-      address: created.address,
-      description: created.description,
-      isDefault: created.is_default,
-      isActive: created.is_active,
-      createdAt: created.created_at,
-      updatedAt: created.updated_at
+      status: created.status,
+      createdAt: created.created_at
     };
 
     return NextResponse.json(response);
   } catch (error: any) {
+    console.error('❌ [Warehouses API] Unexpected error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -96,15 +97,10 @@ export async function PUT(request: NextRequest) {
     }
 
     // Mapear campos a actualizar
-    const updateData: any = {
-      updated_at: new Date().toISOString()
-    };
+    const updateData: any = {};
 
     if (data.name) updateData.name = data.name;
-    if (data.address !== undefined) updateData.address = data.address;
-    if (data.description !== undefined) updateData.description = data.description;
-    if (data.isDefault !== undefined) updateData.is_default = data.isDefault;
-    if (data.isActive !== undefined) updateData.is_active = data.isActive;
+    if (data.status !== undefined) updateData.status = data.status;
 
     const { data: updated, error } = await supabaseAdmin
       .from('warehouses')
@@ -122,12 +118,8 @@ export async function PUT(request: NextRequest) {
       id: updated.id,
       storeId: updated.store_id,
       name: updated.name,
-      address: updated.address,
-      description: updated.description,
-      isDefault: updated.is_default,
-      isActive: updated.is_active,
-      createdAt: updated.created_at,
-      updatedAt: updated.updated_at
+      status: updated.status,
+      createdAt: updated.created_at
     };
 
     return NextResponse.json(response);

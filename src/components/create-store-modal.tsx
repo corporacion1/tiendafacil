@@ -20,7 +20,7 @@ export function CreateStoreModal({ onStoreCreated }: CreateStoreModalProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
-  
+
   const [formData, setFormData] = useState({
     name: '',
     businessType: '',
@@ -29,7 +29,7 @@ export function CreateStoreModal({ onStoreCreated }: CreateStoreModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!formData.name.trim() || !formData.ownerUid.trim()) {
       toast({
         variant: "destructive",
@@ -38,38 +38,45 @@ export function CreateStoreModal({ onStoreCreated }: CreateStoreModalProps) {
       })
       return
     }
-    
+
     try {
       setLoading(true)
-      
+
       const response = await fetch('/api/stores/create-new', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       })
-      
+
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await response.text();
+        console.error("Received non-JSON response:", text);
+        throw new Error("El servidor devolvió una respuesta inválida (no es JSON). Revisa la consola para más detalles.");
+      }
+
       const result = await response.json()
-      
+
       if (!response.ok) {
         throw new Error(result.error || 'Error al crear la tienda')
       }
-      
+
       toast({
         title: "¡Tienda creada!",
         description: `${result.store.name} (${result.store.storeId}) ha sido creada y sembrada exitosamente`,
         duration: 5000
       })
-      
+
       // Resetear formulario
       setFormData({
         name: '',
         businessType: '',
         ownerUid: ''
       })
-      
+
       onStoreCreated?.(result.store)
       setOpen(false)
-      
+
     } catch (error) {
       console.error('Error creating store:', error)
       toast({
@@ -90,7 +97,7 @@ export function CreateStoreModal({ onStoreCreated }: CreateStoreModalProps) {
           Nueva Tienda
         </Button>
       </DialogTrigger>
-      
+
       <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto invisible-scroll mx-auto my-4">
         <DialogHeader>
           <DialogTitle>Crear Nueva Tienda</DialogTitle>
@@ -98,7 +105,7 @@ export function CreateStoreModal({ onStoreCreated }: CreateStoreModalProps) {
             Crea una nueva tienda con datos demo. Se generará automáticamente un StoreID único.
           </DialogDescription>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Nombre de la Tienda *</Label>
@@ -110,7 +117,7 @@ export function CreateStoreModal({ onStoreCreated }: CreateStoreModalProps) {
               required
             />
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="businessType">Tipo de Negocio</Label>
             <Select
@@ -129,7 +136,7 @@ export function CreateStoreModal({ onStoreCreated }: CreateStoreModalProps) {
               </SelectContent>
             </Select>
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="ownerUid">UID del Propietario *</Label>
             <Input
@@ -143,7 +150,7 @@ export function CreateStoreModal({ onStoreCreated }: CreateStoreModalProps) {
               UID del usuario que será el administrador de esta tienda
             </p>
           </div>
-          
+
           <DialogFooter>
             <Button
               type="button"
@@ -153,7 +160,7 @@ export function CreateStoreModal({ onStoreCreated }: CreateStoreModalProps) {
             >
               Cancelar
             </Button>
-            
+
             <Button type="submit" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Crear Tienda
