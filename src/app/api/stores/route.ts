@@ -46,7 +46,10 @@ export async function GET(request: NextRequest) {
       tax2: store.tax2,
       status: store.status,
       createdAt: store.created_at,
-      updatedAt: store.updated_at
+      updatedAt: store.updated_at,
+      whatsapp: store.whatsapp,
+      meta: store.meta,
+      tiktok: store.tiktok
     };
 
     return NextResponse.json(response);
@@ -99,7 +102,10 @@ export async function POST(request: NextRequest) {
         tax2: existingStore.tax2,
         status: existingStore.status,
         createdAt: existingStore.created_at,
-        updatedAt: existingStore.updated_at
+        updatedAt: existingStore.updated_at,
+        whatsapp: existingStore.whatsapp,
+        meta: existingStore.meta,
+        tiktok: existingStore.tiktok
       };
 
       return NextResponse.json(response);
@@ -123,7 +129,10 @@ export async function POST(request: NextRequest) {
       secondary_currency_symbol: data.secondaryCurrencySymbol || 'Bs.',
       tax1: data.tax1 || 0,
       tax2: data.tax2 || 0,
-      status: data.status || 'active'
+      status: data.status || 'active',
+      whatsapp: data.whatsapp || null,
+      meta: data.meta || null,
+      tiktok: data.tiktok || null
     };
 
     const { data: created, error } = await supabaseAdmin
@@ -157,7 +166,10 @@ export async function POST(request: NextRequest) {
       tax2: created.tax2,
       status: created.status,
       createdAt: created.created_at,
-      updatedAt: created.updated_at
+      updatedAt: created.updated_at,
+      whatsapp: created.whatsapp,
+      meta: created.meta,
+      tiktok: created.tiktok
     };
 
     return NextResponse.json(response);
@@ -200,6 +212,9 @@ export async function PUT(request: NextRequest) {
     if (data.tax1 !== undefined) updateData.tax1 = data.tax1;
     if (data.tax2 !== undefined) updateData.tax2 = data.tax2;
     if (data.status !== undefined) updateData.status = data.status;
+    if (data.whatsapp !== undefined) updateData.whatsapp = data.whatsapp;
+    if (data.meta !== undefined) updateData.meta = data.meta;
+    if (data.tiktok !== undefined) updateData.tiktok = data.tiktok;
 
     const { data: updated, error } = await supabaseAdmin
       .from('stores')
@@ -234,7 +249,10 @@ export async function PUT(request: NextRequest) {
       secondaryCurrencySymbol: updated.secondary_currency_symbol,
       status: updated.status,
       createdAt: updated.created_at,
-      updatedAt: updated.updated_at
+      updatedAt: updated.updated_at,
+      whatsapp: updated.whatsapp,
+      meta: updated.meta,
+      tiktok: updated.tiktok
     };
 
     return NextResponse.json(response);
