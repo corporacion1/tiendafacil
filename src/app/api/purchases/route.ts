@@ -1,8 +1,8 @@
-import { NextResponse, NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { IDGenerator } from '@/lib/id-generator';
 
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const storeId = searchParams.get('storeId');
@@ -11,115 +11,199 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
     }
 
+    console.log('📦 [Purchases API] GET purchases for store:', storeId);
+
     const { data: purchases, error } = await supabaseAdmin
       .from('purchases')
       .select('*')
       .eq('store_id', storeId)
-      .order('date', { ascending: false });
+      .order('created_at', { ascending: false });
 
     if (error) {
-      console.warn('⚠️ [Purchases API] Error fetching purchases (tabla podría no existir):', error.message);
-      // Retornar array vacío en lugar de error 500
-      return NextResponse.json([]);
+      console.error('⚠️ [Purchases API] Error fetching purchases:', error.message);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Transformar snake_case a camelCase
-    const transformedPurchases = purchases?.map((p: any) => ({
-      id: p.id,
-      storeId: p.store_id,
-      supplierId: p.supplier_id,
-      supplierName: p.supplier_name,
-      date: p.date,
-      total: p.total,
-      status: p.status,
-      items: typeof p.items === 'string' ? JSON.parse(p.items) : p.items,
-      notes: p.notes,
-      userId: p.user_id,
-      createdAt: p.created_at
+    // Transform to camelCase
+    const formattedPurchases = purchases?.map(purchase => ({
+      id: purchase.id,
+      supplierId: purchase.supplier_id,
+      supplierName: purchase.supplier_name,
+      items: purchase.items,
+      total: purchase.total,
+      date: purchase.created_at,
+      documentNumber: purchase.document_number,
+      responsible: purchase.responsible,
+      storeId: purchase.store_id,
+      createdAt: purchase.created_at,
+      updatedAt: purchase.updated_at
     })) || [];
 
-    return NextResponse.json(transformedPurchases);
+    console.log(`✅ [Purchases API] Returned ${formattedPurchases.length} purchases`);
+    return NextResponse.json(formattedPurchases);
   } catch (error: any) {
-    console.error('❌ [Purchases API] Error inesperado:', error);
-    // Retornar array vacío en lugar de error 500
-    return NextResponse.json([]);
+    console.error('❌ [Purchases API] Error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
     const data = await request.json();
+    console.log('📥 [Purchases API] Creating purchase:', {
+      supplierId: data.supplierId,
+      storeId: data.storeId,
+      itemsCount: data.items?.length
+    });
 
-    // Generar ID único si no se proporciona
-    if (!data.id) {
-      data.id = IDGenerator.generate('purchase');
+    if (!data.storeId || !data.supplierId || !data.items) {
+      return NextResponse.json({
+        error: 'storeId, supplierId, and items are required'
+      }, { status: 400 });
     }
 
-    if (!data.storeId || !data.supplierId) {
-      return NextResponse.json({ error: "Campos requeridos faltantes" }, { status: 400 });
-    }
+    const purchaseId = data.id || IDGenerator.generate('purchase');
 
-    // Mapear a snake_case
+    // Prepare purchase data
     const purchaseData = {
-      id: data.id,
-      store_id: data.storeId,
+      id: purchaseId,
       supplier_id: data.supplierId,
-      supplier_name: data.supplierName,
-      date: data.date || new Date().toISOString(),
+      supplier_name: data.supplierName || 'Unknown Supplier',
+      items: data.items,
       total: data.total || 0,
-      status: data.status || 'completed',
-      items: JSON.stringify(data.items || []),
-      notes: data.notes,
-      user_id: data.userId || 'system'
+      document_number: data.documentNumber || null,
+      responsible: data.responsible || 'system',
+      store_id: data.storeId,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
 
-    const { data: created, error } = await supabaseAdmin
+    console.log('📦 [Purchases API] Inserting purchase:', purchaseId);
+
+    // Insert purchase
+    const { data: createdPurchase, error: purchaseError } = await supabaseAdmin
       .from('purchases')
       .insert([purchaseData])
       .select()
       .single();
 
-    if (error) throw error;
+    if (purchaseError) {
+      console.error('❌ [Purchases API] Error creating purchase:', purchaseError);
+      return NextResponse.json({ error: purchaseError.message }, { status: 500 });
+    }
 
-    // Transformar respuesta
-    const response = {
-      id: created.id,
-      storeId: created.store_id,
-      supplierId: created.supplier_id,
-      supplierName: created.supplier_name,
-      date: created.date,
-      total: created.total,
-      status: created.status,
-      items: typeof created.items === 'string' ? JSON.parse(created.items) : created.items,
-      notes: created.notes,
-      userId: created.user_id,
-      createdAt: created.created_at
+    console.log('✅ [Purchases API] Purchase created:', purchaseId);
+
+    // Create inventory movements for each item
+    if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+      console.log('📦 [Purchases API] Creating inventory movements...');
+
+      for (const item of data.items) {
+        try {
+          // Get current product stock
+          const { data: product } = await supabaseAdmin
+            .from('products')
+            .select('stock, cost')
+            .eq('id', item.productId)
+            .eq('store_id', data.storeId)
+            .single();
+
+          if (product) {
+            const previousStock = product.stock || 0;
+            const newStock = previousStock + item.quantity;
+
+            // Update product stock and cost
+            await supabaseAdmin
+              .from('products')
+              .update({
+                stock: newStock,
+                cost: item.cost || product.cost,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', item.productId)
+              .eq('store_id', data.storeId);
+
+            // Create movement record with correct Supabase column names (user provided schema)
+            const movementData = {
+              id: IDGenerator.generate('movement'),
+              product_id: item.productId,
+              store_id: data.storeId,
+              watrhouse_id: null, // User typo
+              movement_type: 'purchase',
+              quantily: item.quantity, // User typo
+              previous_stock: previousStock,
+              new_stock: newStock,
+              reference_type: purchaseId,
+              user_id: data.userId || 'system',
+              notes: `Purchase ${purchaseId} from ${data.supplierName || 'supplier'}`,
+              unit_cost: item.cost || product.cost || 0,
+              total_value: (item.cost || product.cost || 0) * item.quantity,
+              batch_id: null,
+              created_id: new Date().toISOString(), // User naming
+              updated_at: new Date().toISOString()
+            };
+
+            const { error: movementError } = await supabaseAdmin
+              .from('inventory_movements')
+              .insert(movementData);
+
+            if (movementError) {
+              console.error(`❌ [Purchases API] Movement error for ${item.productId}:`, movementError);
+            } else {
+              console.log(`✅ [Purchases API] Movement created for product ${item.productId}`);
+            }
+          }
+        } catch (movementError: any) {
+          console.warn(`⚠️ [Purchases API] Error creating movement for ${item.productId}:`, movementError.message);
+        }
+      }
+
+      console.log('✅ [Purchases API] Inventory movements completed');
+    }
+
+    // Format response
+    const formattedResponse = {
+      id: createdPurchase.id,
+      supplierId: createdPurchase.supplier_id,
+      supplierName: createdPurchase.supplier_name,
+      items: createdPurchase.items,
+      total: createdPurchase.total,
+      date: createdPurchase.created_at,
+      documentNumber: createdPurchase.document_number,
+      responsible: createdPurchase.responsible,
+      storeId: createdPurchase.store_id,
+      createdAt: createdPurchase.created_at,
+      updatedAt: createdPurchase.updated_at
     };
 
-    return NextResponse.json(response);
+    return NextResponse.json(formattedResponse);
+
   } catch (error: any) {
+    console.error('❌ [Purchases API] Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-export async function PUT(request: NextRequest) {
+export async function PUT(request: Request) {
   try {
     const data = await request.json();
+
     if (!data.id || !data.storeId) {
-      return NextResponse.json({ error: "Campos requeridos 'id' y 'storeId'" }, { status: 400 });
+      return NextResponse.json({ error: 'id and storeId are required' }, { status: 400 });
     }
 
-    // Mapear campos a actualizar
-    const updateData: any = {};
-    if (data.supplierId) updateData.supplier_id = data.supplierId;
-    if (data.supplierName) updateData.supplier_name = data.supplierName;
-    if (data.date) updateData.date = data.date;
-    if (data.total !== undefined) updateData.total = data.total;
-    if (data.status) updateData.status = data.status;
-    if (data.items) updateData.items = JSON.stringify(data.items);
-    if (data.notes !== undefined) updateData.notes = data.notes;
+    const updateData: any = {
+      updated_at: new Date().toISOString()
+    };
 
-    const { data: updated, error } = await supabaseAdmin
+    if (data.supplierId !== undefined) updateData.supplier_id = data.supplierId;
+    if (data.supplierName !== undefined) updateData.supplier_name = data.supplierName;
+    if (data.items !== undefined) updateData.items = data.items;
+    if (data.total !== undefined) updateData.total = data.total;
+    if (data.documentNumber !== undefined) updateData.document_number = data.documentNumber;
+    if (data.responsible !== undefined) updateData.responsible = data.responsible;
+
+    const { data: updatedPurchase, error } = await supabaseAdmin
       .from('purchases')
       .update(updateData)
       .eq('id', data.id)
@@ -127,38 +211,45 @@ export async function PUT(request: NextRequest) {
       .select()
       .single();
 
-    if (error) throw error;
-    if (!updated) return NextResponse.json({ error: "Compra no encontrada" }, { status: 404 });
+    if (error) {
+      console.error('❌ [Purchases API] Error updating purchase:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 
-    // Transformar respuesta
-    const response = {
-      id: updated.id,
-      storeId: updated.store_id,
-      supplierId: updated.supplier_id,
-      supplierName: updated.supplier_name,
-      date: updated.date,
-      total: updated.total,
-      status: updated.status,
-      items: typeof updated.items === 'string' ? JSON.parse(updated.items) : updated.items,
-      notes: updated.notes,
-      userId: updated.user_id,
-      createdAt: updated.created_at
+    if (!updatedPurchase) {
+      return NextResponse.json({ error: 'Purchase not found' }, { status: 404 });
+    }
+
+    const formattedResponse = {
+      id: updatedPurchase.id,
+      supplierId: updatedPurchase.supplier_id,
+      supplierName: updatedPurchase.supplier_name,
+      items: updatedPurchase.items,
+      total: updatedPurchase.total,
+      date: updatedPurchase.created_at,
+      documentNumber: updatedPurchase.document_number,
+      responsible: updatedPurchase.responsible,
+      storeId: updatedPurchase.store_id,
+      createdAt: updatedPurchase.created_at,
+      updatedAt: updatedPurchase.updated_at
     };
 
-    return NextResponse.json(response);
+    return NextResponse.json(formattedResponse);
+
   } catch (error: any) {
+    console.error('❌ [Purchases API] Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-export async function DELETE(request: NextRequest) {
+export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const storeId = searchParams.get('storeId');
 
     if (!id || !storeId) {
-      return NextResponse.json({ error: "Faltan parámetros 'id' y/o 'storeId'" }, { status: 400 });
+      return NextResponse.json({ error: 'id and storeId are required' }, { status: 400 });
     }
 
     const { error } = await supabaseAdmin
@@ -167,10 +258,15 @@ export async function DELETE(request: NextRequest) {
       .eq('id', id)
       .eq('store_id', storeId);
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ [Purchases API] Error deleting purchase:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 
-    return NextResponse.json({ message: "Compra eliminada exitosamente" });
+    return NextResponse.json({ message: 'Purchase deleted successfully' });
+
   } catch (error: any) {
+    console.error('❌ [Purchases API] Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

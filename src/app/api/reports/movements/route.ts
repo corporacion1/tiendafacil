@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     const dateTo = searchParams.get('dateTo');
     const productId = searchParams.get('productId');
     const movementType = searchParams.get('movementType');
-    
+
     if (!storeId) {
       return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
     }
@@ -22,18 +22,18 @@ export async function GET(request: Request) {
       .from('inventory_movements')
       .select('*')
       .eq('store_id', storeId);
-    
+
     if (dateFrom || dateTo) {
-      if (dateFrom) query = query.gte('created_at', dateFrom);
-      if (dateTo) query = query.lte('created_at', dateTo);
+      if (dateFrom) query = query.gte('created_id', dateFrom); // User schema: created_id
+      if (dateTo) query = query.lte('created_id', dateTo);     // User schema: created_id
     }
-    
+
     if (productId) query = query.eq('product_id', productId);
     if (movementType) query = query.eq('movement_type', movementType);
 
     // Obtener movimientos
     const { data: movements, error } = await query
-      .order('created_at', { ascending: false })
+      .order('created_id', { ascending: false }) // User schema: created_id
       .limit(1000);
 
     if (error) {
@@ -53,25 +53,25 @@ export async function GET(request: Request) {
             .eq('id', movement.product_id)
             .eq('store_id', storeId)
             .single();
-          
+
           return {
             id: movement.id,
             productId: movement.product_id,
             productName: product?.name || `Producto ${movement.product_id}`,
             productSku: product?.sku || '',
-            warehouseId: movement.warehouse_id,
+            warehouseId: movement.watrhouse_id, // User schema: watrhouse_id
             movementType: movement.movement_type,
-            quantity: movement.quantity,
+            quantity: movement.quantily, // User schema: quantily
             unitCost: movement.unit_cost,
             totalValue: movement.total_value,
-            referenceType: movement.reference_type,
-            referenceId: movement.reference_id,
+            referenceType: 'movement', // Generic type since we use reference_type for ID
+            referenceId: movement.reference_type, // User schema: reference_type holds the ID
             batchId: movement.batch_id,
             previousStock: movement.previous_stock,
             newStock: movement.new_stock,
             userId: movement.user_id,
             notes: movement.notes,
-            date: movement.created_at,
+            date: movement.created_id, // User schema: created_id
             storeId: movement.store_id
           };
         } catch (productError) {
@@ -81,19 +81,19 @@ export async function GET(request: Request) {
             productId: movement.product_id,
             productName: `Producto ${movement.product_id}`,
             productSku: '',
-            warehouseId: movement.warehouse_id,
+            warehouseId: movement.watrhouse_id, // User schema: watrhouse_id
             movementType: movement.movement_type,
-            quantity: movement.quantity,
+            quantity: movement.quantily, // User schema: quantily
             unitCost: movement.unit_cost,
             totalValue: movement.total_value,
-            referenceType: movement.reference_type,
-            referenceId: movement.reference_id,
+            referenceType: 'movement',
+            referenceId: movement.reference_type, // User schema: reference_type holds the ID
             batchId: movement.batch_id,
             previousStock: movement.previous_stock,
             newStock: movement.new_stock,
             userId: movement.user_id,
             notes: movement.notes,
-            date: movement.created_at,
+            date: movement.created_id, // User schema: created_id
             storeId: movement.store_id
           };
         }

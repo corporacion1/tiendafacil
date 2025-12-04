@@ -1,0 +1,18 @@
+        const response = await fetch(apiEndpoint, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          logger.error('❌ [Inventory] Error al registrar ajuste:', { 
+            status: response.status, 
+            errorText 
+          });
+          console.error('❌ [Inventory] Adjustment error details:', errorText);
+          throw new Error(errorText || 'Error al registrar ajuste de inventario');
+        }
+
+        const result = await response.json();
+        logger.info('✅ Ajuste registrado:', result);

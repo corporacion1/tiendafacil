@@ -7,7 +7,6 @@ enum SessionStatus {
   CLOSED = 'closed'
 }
 
-// Usar supabaseAdmin en lugar de crear un nuevo cliente
 const supabase = supabaseAdmin;
 
 export async function GET(request: NextRequest) {
@@ -21,13 +20,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
     }
 
-    // Construir query - MANTENIENDO EXACTAMENTE LA MISMA LÓGICA
-    const query: any = { storeId };
-    if (status) {
-      query.status = status;
-    }
-
-    console.log('🔍 [CashSessions API] Buscando sesiones:', query);
+    console.log('🔍 [CashSessions API] Buscando sesiones:', { storeId, status });
 
     let supabaseQuery = supabase
       .from('cash_sessions')
@@ -43,11 +36,11 @@ export async function GET(request: NextRequest) {
     const { data: cashSessions, error } = await supabaseQuery;
 
     if (error) {
-      throw error;
+      console.error('❌ [CashSessions API] Error fetching:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     console.log('📊 [CashSessions API] Sesiones encontradas:', cashSessions?.length || 0);
-
     return NextResponse.json(cashSessions || []);
   } catch (error: any) {
     console.error('❌ [CashSessions API] Error en GET:', error);
@@ -59,12 +52,10 @@ export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
 
-    // Generar ID único si no se proporciona - MANTENIENDO EXACTAMENTE LA MISMA LÓGICA
     if (!data.id) {
       data.id = IDGenerator.generate('session');
     }
 
-    // Validar campos requeridos - MANTENIENDO EXACTAMENTE LA MISMA LÓGICA
     if (!data.storeId || !data.openedBy || data.openingBalance === undefined) {
       return NextResponse.json({
         error: "Campos requeridos: storeId, openedBy, openingBalance"
@@ -73,7 +64,7 @@ export async function POST(request: NextRequest) {
 
     console.log('💰 [CashSessions API] Creando nueva sesión:', data.id);
 
-    // Verificar que no hay sesión abierta - MANTENIENDO EXACTAMENTE LA MISMA LÓGICA
+    // Check for existing open session
     const { data: existingOpenSession, error: checkError } = await supabase
       .from('cash_sessions')
       .select('*')
@@ -82,7 +73,8 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (checkError) {
-      throw checkError;
+      console.error('❌ [CashSessions API] Error checking existing:', checkError);
+      return NextResponse.json({ error: checkError.message }, { status: 500 });
     }
 
     if (existingOpenSession) {
@@ -92,18 +84,16 @@ export async function POST(request: NextRequest) {
       }, { status: 409 });
     }
 
-    // Mapear datos a la estructura de Supabase (usando las nuevas columnas)
     const sessionData = {
       id: data.id,
       store_id: data.storeId,
-      user_id: data.openedBy, // Mantener por compatibilidad
-      opened_by: data.openedBy, // Nueva columna
-      opening_balance: data.openingBalance, // Nueva columna
-      opening_amount: data.openingBalance, // Mantener por compatibilidad
+      user_id: data.openedBy,
+      opened_by: data.openedBy,
+      opening_balance: data.openingBalance,
+      opening_amount: data.openingBalance,
       status: SessionStatus.OPEN,
-      opening_date: new Date().toISOString(), // Nueva columna
-      opened_at: new Date().toISOString(), // Mantener por compatibilidad
-      // Inicializar todos los totales en 0
+      opening_date: new Date().toISOString(),
+      opened_at: new Date().toISOString(),
       total_sales: 0,
       total_cash: 0,
       total_card: 0,
@@ -123,10 +113,10 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (createError) {
-      throw createError;
+      console.error('❌ [CashSessions API] Error creating:', createError);
+      return NextResponse.json({ error: createError.message }, { status: 500 });
     }
 
-    // Formatear respuesta para coincidir con CashSession type
     const formattedSession = {
       ...created,
       storeId: created.store_id,
@@ -138,7 +128,6 @@ export async function POST(request: NextRequest) {
     };
 
     console.log('✅ [CashSessions API] Sesión creada:', created.id);
-
     return NextResponse.json(formattedSession);
   } catch (error: any) {
     console.error('❌ [CashSessions API] Error creando sesión:', error);
@@ -150,57 +139,77 @@ export async function PUT(request: NextRequest) {
   try {
     const data = await request.json();
 
-    if (!data.id || !data.storeId) {
-      return NextResponse.json({ error: "Campos requeridos 'id' y 'storeId'" }, { status: 400 });
+    console.log('🔄 [CashSessions API] PUT - Received data:', JSON.stringify(data, null, 2));
+
+    // Check for required fields
+    if (!data.id) {
+      console.error('❌ [CashSessions API] Missing id field');
+      return NextResponse.json({ error: "Campo requerido: 'id'" }, { status: 400 });
     }
 
-    console.log('🔄 [CashSessions API] Actualizando sesión:', data.id);
+    // storeId might be in the data or we need to fetch it
+    let storeId = data.storeId;
 
-    // Preparar datos para actualizar
+    if (!storeId) {
+      console.warn('⚠️ [CashSessions API] storeId not provided, fetching from session');
+      // Fetch the session to get storeId
+      const { data: session } = await supabase
+        .from('cash_sessions')
+        .select('store_id')
+        .eq('id', data.id)
+        .single();
+
+      if (session) {
+        storeId = session.store_id;
+        console.log('✅ [CashSessions API] Found storeId:', storeId);
+      } else {
+        console.error('❌ [CashSessions API] Session not found:', data.id);
+        return NextResponse.json({ error: "Sesión no encontrada" }, { status: 404 });
+      }
+    }
+
+    console.log('🔄 [CashSessions API] Actualizando sesión:', data.id, 'Store:', storeId);
+
+    // Prepare update data
     const updateData: any = {};
 
-    // Mapear campos si existen
     if (data.status !== undefined) updateData.status = data.status;
     if (data.notes !== undefined) updateData.notes = data.notes;
     if (data.salesIds !== undefined) updateData.sales_ids = data.salesIds;
     if (data.transactions !== undefined) updateData.transactions = data.transactions;
 
-    // Si se está cerrando la sesión, calcular datos finales
+    // Handle closing session
     if (data.status === SessionStatus.CLOSED && data.closingBalance !== undefined) {
       console.log('🔒 [CashSessions API] Cerrando sesión con balance:', data.closingBalance);
 
-      // Obtener la sesión actual para calcular el efectivo
       const { data: currentSession, error: fetchError } = await supabase
         .from('cash_sessions')
         .select('*')
         .eq('id', data.id)
-        .eq('store_id', data.storeId)
         .single();
 
       if (fetchError) {
-        throw fetchError;
+        console.error('❌ [CashSessions API] Error fetching session:', fetchError);
+        return NextResponse.json({ error: fetchError.message }, { status: 500 });
       }
 
       if (!currentSession) {
         return NextResponse.json({ error: "Sesión no encontrada" }, { status: 404 });
       }
 
-      // Usar opening_balance si existe, sino fallback a opening_amount
       const openingBalance = currentSession.opening_balance ?? currentSession.opening_amount ?? 0;
       const cashFromSales = currentSession.total_cash || 0;
-
       const calculatedCash = openingBalance + cashFromSales;
       const difference = data.closingBalance - calculatedCash;
       const closingDate = new Date().toISOString();
 
-      // Actualizar datos de cierre (nuevas y viejas columnas)
       updateData.closing_balance = data.closingBalance;
       updateData.closing_amount = data.closingBalance;
       updateData.closing_date = closingDate;
       updateData.closed_at = closingDate;
       updateData.calculated_cash = calculatedCash;
       updateData.difference = difference;
-      updateData.closed_by = data.closedBy || currentSession.opened_by; // Asumir mismo usuario si no se envía
+      updateData.closed_by = data.closedBy || currentSession.opened_by;
 
       console.log('📊 [CashSessions API] Cálculos de cierre:', {
         openingBalance,
@@ -211,29 +220,29 @@ export async function PUT(request: NextRequest) {
       });
     }
 
-    // Si se está actualizando el balance de apertura
     if (data.openingBalance !== undefined) {
       updateData.opening_balance = data.openingBalance;
       updateData.opening_amount = data.openingBalance;
     }
 
+    console.log('📝 [CashSessions API] Update data:', JSON.stringify(updateData, null, 2));
+
     const { data: updated, error: updateError } = await supabase
       .from('cash_sessions')
       .update(updateData)
       .eq('id', data.id)
-      .eq('store_id', data.storeId)
       .select()
       .single();
 
     if (updateError) {
-      throw updateError;
+      console.error('❌ [CashSessions API] Error updating:', updateError);
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
     if (!updated) {
       return NextResponse.json({ error: "Sesión de caja no encontrada" }, { status: 404 });
     }
 
-    // Formatear respuesta
     const formattedSession = {
       ...updated,
       storeId: updated.store_id,
@@ -254,6 +263,7 @@ export async function PUT(request: NextRequest) {
 
   } catch (error: any) {
     console.error('❌ [CashSessions API] Error actualizando sesión:', error);
+    console.error('❌ [CashSessions API] Error stack:', error.stack);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -277,7 +287,8 @@ export async function DELETE(request: NextRequest) {
       .single();
 
     if (error) {
-      throw error;
+      console.error('❌ [CashSessions API] Error deleting:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     if (!deleted) {
@@ -286,6 +297,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
+    console.error('❌ [CashSessions API] Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

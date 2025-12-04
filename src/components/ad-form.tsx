@@ -34,7 +34,7 @@ const adSchema = z.object({
     if (/^data:image\//.test(val)) return true;
     return false;
   }, { message: 'La imagen debe ser una URL válida o un data URI.' }),
-  imageHint: z.string().optional(),
+  imageHint: z.string().nullable().optional(),
   linkUrl: z.string().url("Debe ser una URL válida").optional().or(z.literal('')),
   targetBusinessTypes: z.array(z.string()).min(1, "Debes seleccionar al menos un tipo de negocio."),
   expiryDate: z.string().optional(),
@@ -75,20 +75,19 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
     defaultValues: getInitialValues(ad),
   });
 
-  const { formState: { isDirty }, watch, setValue, trigger } = form;
+  const { formState: { isDirty, errors }, watch, setValue, trigger } = form;
+
+  useEffect(() => {
+    if (Object.keys(errors).length > 0) {
+      console.log('[AdForm] Current form errors:', JSON.stringify(errors, null, 2));
+    }
+  }, [errors]);
 
   const watchedImageUrl = watch("imageUrl");
-
-
-
-
 
   useEffect(() => {
     form.reset(getInitialValues(ad));
   }, [ad, form]);
-
-
-
 
   const handleSubmit = async (data: AdFormValues) => {
     console.log('[AdForm] Submitting data', data);
@@ -106,15 +105,27 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
     }
   };
 
+  const onInvalid = (errors: any) => {
+    console.error('[AdForm] Validation errors (JSON):', JSON.stringify(errors, null, 2));
+    toast({
+      variant: "destructive",
+      title: "Error de validación",
+      description: "Por favor revisa los campos del formulario.",
+    });
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-6">
+      <form onSubmit={form.handleSubmit(handleSubmit, onInvalid)} className="grid gap-6">
+        {/* Hidden ID field to ensure it's passed on submit */}
+        {ad?.id && <input type="hidden" {...form.register("id")} />}
         <AlertDialog>
           <Card>
             <CardHeader>
               <CardTitle>Detalles del Anuncio</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* ... fields ... */}
               <div className="space-y-4">
                 <FormField
                   control={form.control}
@@ -264,7 +275,7 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
                 <Button variant="outline" disabled={!isDirty}>Cancelar</Button>
               </AlertDialogTrigger>
             )}
-            <Button type="submit" disabled={!isDirty && !!ad}>
+            <Button type="submit">
               {ad ? "Guardar Cambios" : "Crear Anuncio"}
             </Button>
           </div>

@@ -248,7 +248,15 @@ export default function AdsPage() {
   };
 
   async function handleUpdateAd(data: Omit<Ad, 'id' | 'views' | 'createdAt'> & { id?: string }) {
-    if (!data.id) return false;
+    if (!data.id) {
+      console.error('❌ [AdsPage] Error: ID is missing in update data', data);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo identificar el anuncio a actualizar.",
+      });
+      return false;
+    }
 
     console.log('📝 [AdsPage] Updating ad with data:', data);
 

@@ -1,20 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-// Inicializar cliente de Supabase
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Missing Supabase environment variables');
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-// Helper para generar IDs
-const generateId = (prefix: string) => {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-};
+import { supabaseAdmin } from '@/lib/supabase';
+import { IDGenerator } from '@/lib/id-generator';
 
 export async function GET(request: Request) {
   try {
@@ -25,22 +11,18 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
     }
 
-    // Obtener ventas de Supabase
-    const { data: sales, error } = await supabase
+    const { data: sales, error } = await supabaseAdmin
       .from('sales')
       .select('*')
       .eq('store_id', storeId)
       .order('date', { ascending: false });
 
     if (error) {
-      console.error('Error fetching sales from Supabase:', error);
-      return NextResponse.json(
-        { error: 'No se pudo obtener la lista de ventas', detalles: error.message },
-        { status: 500 }
-      );
+      console.error('❌ [Sales API] Error fetching sales:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Mapear campos de Supabase a tu formato actual
+    // Transform to camelCase
     const formattedSales = sales?.map(sale => ({
       id: sale.id,
       customerId: sale.customer_id,
@@ -61,40 +43,23 @@ export async function GET(request: Request) {
 
     return NextResponse.json(formattedSales);
   } catch (error: any) {
-    console.error('Error fetching sales:', error);
-    return NextResponse.json(
-      { error: 'No se pudo obtener la lista de ventas', detalles: error.message },
-      { status: 500 }
-    );
+    console.error('❌ [Sales API] Error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const bodyText = await request.text();
-    console.log('📥 [Sales API] Raw body received:', bodyText.substring(0, 200) + '...');
+    const data = await request.json();
+    console.log('📥 [Sales API] Creating sale:', { id: data.id, storeId: data.storeId, itemsCount: data.items?.length });
 
-    if (!bodyText) {
-      return NextResponse.json({ error: "Empty body" }, { status: 400 });
-    }
-
-    const data = JSON.parse(bodyText);
-    console.log('📥 [Sales API] Parsed data:', {
-      id: data.id,
-      storeId: data.storeId,
-      itemsCount: data.items?.length
-    });
-
-    // Validaciones básicas
     if (!data.storeId || !data.items) {
-      console.error('❌ [Sales API] Missing required fields:', { storeId: data.storeId, items: !!data.items });
-      return NextResponse.json({ error: "Campos requeridos faltantes (storeId, items)" }, { status: 400 });
+      return NextResponse.json({ error: 'storeId and items are required' }, { status: 400 });
     }
 
-    // Generar ID único si no se proporciona
-    const saleId = data.id || generateId('SALE');
+    const saleId = data.id || IDGenerator.generate('sale');
 
-    // Preparar datos para Supabase
+    // Prepare sale data
     const saleData: any = {
       id: saleId,
       customer_id: data.customerId || null,
@@ -106,98 +71,92 @@ export async function POST(request: Request) {
       status: data.status || 'paid',
       payments: (data.payments || []).map((payment: any) => ({
         ...payment,
-        id: payment.id || generateId('PAY')
+        id: payment.id || IDGenerator.generate('payment')
       })),
       store_id: data.storeId,
       user_id: data.userId || 'system'
     };
 
-    // Solo agregar campos opcionales si están definidos Y si existen en la base de datos
-    // TODO: Descomentar estos campos cuando se actualice el esquema de la base de datos
-    /*
-    if (data.customerPhone) {
-      saleData.customer_phone = data.customerPhone;
-    }
-    if (data.paidAmount !== undefined && data.paidAmount !== null) {
-      saleData.paid_amount = data.paidAmount;
-    }
-    if (data.creditDays !== undefined && data.creditDays !== null) {
-      saleData.credit_days = data.creditDays;
-    }
-    if (data.creditDueDate !== undefined && data.creditDueDate !== null) {
-      saleData.credit_due_date = data.creditDueDate;
-    }
-    */
+    console.log('💰 [Sales API] Inserting sale:', saleId);
 
-    console.log('💰 [Sales API] Inserting sale into Supabase:', saleId);
-
-    // Insertar venta en Supabase
-    const { data: createdSale, error: saleError } = await supabase
+    // Insert sale
+    const { data: createdSale, error: saleError } = await supabaseAdmin
       .from('sales')
       .insert([saleData])
       .select()
       .single();
 
     if (saleError) {
-      console.error('❌ [Sales API] Supabase insert error:', saleError);
-      return NextResponse.json(
-        {
-          error: 'Error al crear la venta',
-          detalles: saleError.message || JSON.stringify(saleError),
-          code: saleError.code || 'UNKNOWN'
-        },
-        { status: 500 }
-      );
+      console.error('❌ [Sales API] Error creating sale:', saleError);
+      return NextResponse.json({ error: saleError.message }, { status: 500 });
     }
 
-    console.log('✅ [Sales API] Sale created successfully:', saleId);
+    console.log('✅ [Sales API] Sale created:', saleId);
 
-    // 📦 Registrar movimientos de inventario usando MovementService
+    // Create inventory movements for each item
     if (data.items && Array.isArray(data.items) && data.items.length > 0) {
-      console.log('📦 [Sales API] Starting inventory movements for:', saleId);
-      console.log('📦 [Sales API] Items to process:', JSON.stringify(data.items, null, 2));
-      try {
-        console.log('📦 [Sales API] Importing MovementService...');
-        const { MovementService } = await import('@/services/MovementService');
+      console.log('📦 [Sales API] Creating inventory movements...');
 
-        // Mapear items al formato esperado por MovementService
-        const saleItems = data.items.map((item: any) => ({
-          productId: item.productId,
-          productName: item.productName || 'Producto',
-          quantity: Number(item.quantity),
-          price: Number(item.price || 0)
-        }));
+      for (const item of data.items) {
+        try {
+          // Get current product stock and cost
+          const { data: product } = await supabaseAdmin
+            .from('products')
+            .select('stock, cost')
+            .eq('id', item.productId)
+            .eq('store_id', data.storeId)
+            .single();
 
-        console.log('📦 [Sales API] Mapped sale items:', JSON.stringify(saleItems, null, 2));
-        console.log('📦 [Sales API] Calling recordSaleMovements with:', {
-          saleId,
-          itemCount: saleItems.length,
-          userId: data.userId || 'system',
-          storeId: data.storeId,
-          warehouseId: 'main'
-        });
+          if (product) {
+            const previousStock = product.stock || 0;
+            const newStock = previousStock - item.quantity;
 
-        const movements = await MovementService.recordSaleMovements(
-          saleId,
-          saleItems,
-          data.userId || 'system',
-          data.storeId,
-          'main' // TODO: Detectar almacén correcto si es necesario
-        );
+            // Update product stock
+            await supabaseAdmin
+              .from('products')
+              .update({ stock: newStock, updated_at: new Date().toISOString() })
+              .eq('id', item.productId)
+              .eq('store_id', data.storeId);
 
-        console.log('✅ [Sales API] Inventory movements recorded via MovementService');
-        console.log('✅ [Sales API] Movements created:', movements.length);
-      } catch (movementError: any) {
-        console.warn('⚠️ [Sales API] Error recording movements:', movementError);
-        console.warn('⚠️ [Sales API] Error message:', movementError.message);
-        console.warn('⚠️ [Sales API] Stack:', movementError.stack);
-        // No fallar la creación de la venta por error en movimientos
+            // Create movement record with correct Supabase column names (user provided schema)
+            const movementData = {
+              id: IDGenerator.generate('movement'),
+              product_id: item.productId,
+              store_id: data.storeId,
+              watrhouse_id: null, // User typo
+              movement_type: 'sale',
+              quantily: item.quantity, // User typo
+              previous_stock: previousStock,
+              new_stock: newStock,
+              reference_type: saleId,
+              user_id: data.userId || 'system',
+              notes: `Sale ${saleId}`,
+              unit_cost: product.cost || 0,
+              total_value: (product.cost || 0) * item.quantity,
+              batch_id: null,
+              created_id: new Date().toISOString(), // User naming
+              updated_at: new Date().toISOString()
+            };
+
+            const { error: movementError } = await supabaseAdmin
+              .from('inventory_movements')
+              .insert(movementData);
+
+            if (movementError) {
+              console.error(`❌ [Sales API] Movement error for ${item.productId}:`, movementError);
+            } else {
+              console.log(`✅ [Sales API] Movement created for product ${item.productId}`);
+            }
+          }
+        } catch (movementError: any) {
+          console.warn(`⚠️ [Sales API] Error creating movement for ${item.productId}:`, movementError.message);
+        }
       }
-    } else {
-      console.warn('⚠️ [Sales API] No items to process for inventory movements');
+
+      console.log('✅ [Sales API] Inventory movements completed');
     }
 
-    // Formatear respuesta para mantener compatibilidad
+    // Format response
     const formattedResponse = {
       id: createdSale.id,
       customerId: createdSale.customer_id,
@@ -219,13 +178,8 @@ export async function POST(request: Request) {
     return NextResponse.json(formattedResponse);
 
   } catch (error: any) {
-    console.error('❌ [Sales API] General error in POST:', error);
-    const errorMessage = error?.message || 'Error desconocido';
-    const errorStack = error?.stack || '';
-    return NextResponse.json(
-      { error: 'Error interno del servidor', detalles: errorMessage, stack: errorStack },
-      { status: 500 }
-    );
+    console.error('❌ [Sales API] Error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
@@ -234,10 +188,9 @@ export async function PUT(request: Request) {
     const data = await request.json();
 
     if (!data.id || !data.storeId) {
-      return NextResponse.json({ error: "Campos requeridos 'id' y 'storeId'" }, { status: 400 });
+      return NextResponse.json({ error: 'id and storeId are required' }, { status: 400 });
     }
 
-    // Preparar datos para actualización
     const updateData: any = {};
     if (data.customerId !== undefined) updateData.customer_id = data.customerId;
     if (data.customerName !== undefined) updateData.customer_name = data.customerName;
@@ -253,8 +206,7 @@ export async function PUT(request: Request) {
     if (data.creditDueDate !== undefined) updateData.credit_due_date = data.creditDueDate;
     if (data.userId !== undefined) updateData.user_id = data.userId;
 
-    // Actualizar en Supabase
-    const { data: updatedSale, error } = await supabase
+    const { data: updatedSale, error } = await supabaseAdmin
       .from('sales')
       .update(updateData)
       .eq('id', data.id)
@@ -263,18 +215,14 @@ export async function PUT(request: Request) {
       .single();
 
     if (error) {
-      console.error('❌ Error actualizando venta en Supabase:', error);
-      return NextResponse.json(
-        { error: 'Error al actualizar la venta', detalles: error.message },
-        { status: 500 }
-      );
+      console.error('❌ [Sales API] Error updating sale:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     if (!updatedSale) {
-      return NextResponse.json({ error: "Venta no encontrada" }, { status: 404 });
+      return NextResponse.json({ error: 'Sale not found' }, { status: 404 });
     }
 
-    // Formatear respuesta
     const formattedResponse = {
       id: updatedSale.id,
       customerId: updatedSale.customer_id,
@@ -296,11 +244,8 @@ export async function PUT(request: Request) {
     return NextResponse.json(formattedResponse);
 
   } catch (error: any) {
-    console.error('❌ Error general actualizando venta:', error);
-    return NextResponse.json(
-      { error: 'Error interno del servidor', detalles: error.message },
-      { status: 500 }
-    );
+    console.error('❌ [Sales API] Error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
@@ -311,31 +256,24 @@ export async function DELETE(request: Request) {
     const storeId = searchParams.get('storeId');
 
     if (!id || !storeId) {
-      return NextResponse.json({ error: "Faltan parámetros 'id' y/o 'storeId'" }, { status: 400 });
+      return NextResponse.json({ error: 'id and storeId are required' }, { status: 400 });
     }
 
-    // Eliminar de Supabase
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('sales')
       .delete()
       .eq('id', id)
       .eq('store_id', storeId);
 
     if (error) {
-      console.error('❌ Error eliminando venta de Supabase:', error);
-      return NextResponse.json(
-        { error: 'Error al eliminar la venta', detalles: error.message },
-        { status: 500 }
-      );
+      console.error('❌ [Sales API] Error deleting sale:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ message: "Venta eliminada exitosamente" });
+    return NextResponse.json({ message: 'Sale deleted successfully' });
 
   } catch (error: any) {
-    console.error('❌ Error general eliminando venta:', error);
-    return NextResponse.json(
-      { error: 'Error interno del servidor', detalles: error.message },
-      { status: 500 }
-    );
+    console.error('❌ [Sales API] Error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
