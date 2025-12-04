@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { IDGenerator } from '@/lib/id-generator';
 
 // GET /api/users - Obtener todos los usuarios (solo para superadmin)
 export async function GET(request: NextRequest) {
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     // Mapear a snake_case
     const userData = {
-      uid: `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      uid: IDGenerator.generate('user'),
       email: body.email,
       display_name: body.displayName,
       photo_url: body.photoURL,

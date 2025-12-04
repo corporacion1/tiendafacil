@@ -3056,7 +3056,7 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
               {currentStoreSettings?.id && (
                 <div className="flex items-center justify-center gap-1">
                   <span className="font-medium font-semibold">RIF:</span>
-                  <span >{currentStoreSettings.id}</span>
+                  <span >{currentStoreSettings.nitId}</span>
                 </div>
               )}
               {currentStoreSettings?.address && (

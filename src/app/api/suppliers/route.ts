@@ -17,18 +17,13 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error;
 
-    // Transformar snake_case a camelCase
+    // Transform snake_case to camelCase
     const transformedSuppliers = suppliers?.map((s: any) => ({
       id: s.id,
       storeId: s.store_id,
       name: s.name,
-      contactName: s.contact_name,
-      email: s.email,
       phone: s.phone,
       address: s.address,
-      taxId: s.tax_id,
-      notes: s.notes,
-      status: s.status,
       createdAt: s.created_at,
       updatedAt: s.updated_at
     })) || [];
@@ -52,18 +47,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Campos requeridos faltantes" }, { status: 400 });
     }
 
-    // Mapear a snake_case
+    // Mapear a snake_case - solo campos que existen en la tabla
     const supplierData = {
       id: data.id,
       store_id: data.storeId,
       name: data.name,
-      contact_name: data.contactName,
-      email: data.email,
-      phone: data.phone,
-      address: data.address,
-      tax_id: data.taxId,
-      notes: data.notes,
-      status: data.status || 'active'
+      phone: data.phone || null,
+      address: data.address || null
     };
 
     const { data: created, error } = await supabaseAdmin
@@ -74,18 +64,13 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error;
 
-    // Transformar respuesta
+    // Transform response to camelCase
     const response = {
       id: created.id,
       storeId: created.store_id,
       name: created.name,
-      contactName: created.contact_name,
-      email: created.email,
       phone: created.phone,
       address: created.address,
-      taxId: created.tax_id,
-      notes: created.notes,
-      status: created.status,
       createdAt: created.created_at,
       updatedAt: created.updated_at
     };
@@ -103,19 +88,14 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Campos requeridos 'id' y 'storeId'" }, { status: 400 });
     }
 
-    // Mapear campos a actualizar
+    // Map fields to update - only existing columns
     const updateData: any = {
       updated_at: new Date().toISOString()
     };
 
     if (data.name) updateData.name = data.name;
-    if (data.contactName !== undefined) updateData.contact_name = data.contactName;
-    if (data.email !== undefined) updateData.email = data.email;
     if (data.phone !== undefined) updateData.phone = data.phone;
     if (data.address !== undefined) updateData.address = data.address;
-    if (data.taxId !== undefined) updateData.tax_id = data.taxId;
-    if (data.notes !== undefined) updateData.notes = data.notes;
-    if (data.status) updateData.status = data.status;
 
     const { data: updated, error } = await supabaseAdmin
       .from('suppliers')
@@ -128,18 +108,13 @@ export async function PUT(request: NextRequest) {
     if (error) throw error;
     if (!updated) return NextResponse.json({ error: "Proveedor no encontrado" }, { status: 404 });
 
-    // Transformar respuesta
+    // Transform response to camelCase
     const response = {
       id: updated.id,
       storeId: updated.store_id,
       name: updated.name,
-      contactName: updated.contact_name,
-      email: updated.email,
       phone: updated.phone,
       address: updated.address,
-      taxId: updated.tax_id,
-      notes: updated.notes,
-      status: updated.status,
       createdAt: updated.created_at,
       updatedAt: updated.updated_at
     };
