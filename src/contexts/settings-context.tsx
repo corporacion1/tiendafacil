@@ -514,7 +514,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       const requestBody = {
         storeId: activeStoreId,
         rate,
-        userId: userName
+        userId: userName,
+        fromCurrency: settings?.primaryCurrencyName || 'USD',
+        toCurrency: settings?.secondaryCurrencyName || 'VES'
       };
 
       console.log('📤 [Context] Enviando request:', requestBody);
@@ -549,7 +551,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       console.error("❌ [Context] Error saving rate:", error);
       return false;
     }
-  }, [activeStoreId]);
+  }, [activeStoreId, settings]);
 
   const fetchCurrencyRates = useCallback(async () => {
     console.log('🔄 [fetchCurrencyRates] Iniciando carga de tasas de cambio...');

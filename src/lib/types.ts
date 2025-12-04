@@ -31,6 +31,7 @@ export type Store = {
   address?: string;
   phone?: string | null;
   taxId?: string | null; // Identificación fiscal (RIF, NIT, etc.)
+  nitId?: string | null; // Alias for taxId
   slogan?: string | null;
   logoUrl?: string;
   whatsapp?: string;

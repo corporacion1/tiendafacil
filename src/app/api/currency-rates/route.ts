@@ -30,20 +30,24 @@ export async function POST(request: Request) {
       );
     }
 
-    // Obtener configuración de la tienda para usar las monedas correctas
-    const { data: storeSettings, error: storeError } = await supabase
-      .from('stores')
-      .select('primary_currency, secondary_currency')
-      .eq('id', storeId)
-      .single();
+    let fromCurrency = body.fromCurrency;
+    let toCurrency = body.toCurrency;
 
-    if (storeError) {
-      console.error('❌ [Currency API] Error obteniendo configuración de tienda:', storeError);
-      // Usar valores por defecto si no se puede obtener la configuración
+    if (!fromCurrency || !toCurrency) {
+      // Obtener configuración de la tienda para usar las monedas correctas
+      const { data: storeSettings, error: storeError } = await supabase
+        .from('stores')
+        .select('primary_currency, secondary_currency')
+        .eq('id', storeId)
+        .single();
+
+      if (storeError) {
+        console.error('❌ [Currency API] Error obteniendo configuración de tienda:', storeError);
+      }
+
+      fromCurrency = fromCurrency || storeSettings?.primary_currency || 'USD';
+      toCurrency = toCurrency || storeSettings?.secondary_currency || 'VES';
     }
-
-    const fromCurrency = storeSettings?.primary_currency || 'USD';
-    const toCurrency = storeSettings?.secondary_currency || 'VES';
 
     // Crear nueva tasa
     const rateData = {

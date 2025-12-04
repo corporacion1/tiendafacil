@@ -1086,10 +1086,10 @@ export default function SettingsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="md:col-span-1 space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="taxId">Identificación Fiscal</Label>
+                                <Label htmlFor="nitId">Identificación Fiscal</Label>
                                 <Input
-                                    id="taxId"
-                                    value={settings?.id || settings?.taxId || ''}
+                                    id="nitId"
+                                    value={settings?.nitId || ''}
                                     onChange={handleSettingsChange}
                                     placeholder="J-12345678-9 o RIF/NIT"
                                     maxLength={20}

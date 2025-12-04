@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('✅ [Stores API] Tienda encontrada:', store.name);
+    console.log('🔑 [Stores API] Columnas disponibles:', Object.keys(store));
 
     // Transformar snake_case a camelCase
     const response = {
@@ -36,11 +37,12 @@ export async function GET(request: NextRequest) {
       address: store.address,
       phone: store.phone,
       email: store.email,
-      taxId: store.tax_id,
+      taxId: store.tax_id || store.nitId || store.nit_id,
+      nitId: store.nitId || store.nit_id || store.tax_id,
       logoUrl: store.logo_url,
-      primaryCurrency: store.primary_currency,
+      primaryCurrencyName: store.primary_currency,
       primaryCurrencySymbol: store.primary_currency_symbol,
-      secondaryCurrency: store.secondary_currency,
+      secondaryCurrencyName: store.secondary_currency,
       secondaryCurrencySymbol: store.secondary_currency_symbol,
       tax1: store.tax1,
       tax2: store.tax2,
@@ -49,7 +51,9 @@ export async function GET(request: NextRequest) {
       updatedAt: store.updated_at,
       whatsapp: store.whatsapp,
       meta: store.meta,
-      tiktok: store.tiktok
+      tiktok: store.tiktok,
+      saleSeries: store.saleSeries || store.sale_series,
+      saleCorrelative: store.saleCorrelative || store.sale_correlative
     };
 
     return NextResponse.json(response);
@@ -94,9 +98,9 @@ export async function POST(request: NextRequest) {
         email: existingStore.email,
         taxId: existingStore.tax_id,
         logoUrl: existingStore.logo_url,
-        primaryCurrency: existingStore.primary_currency,
+        primaryCurrencyName: existingStore.primary_currency,
         primaryCurrencySymbol: existingStore.primary_currency_symbol,
-        secondaryCurrency: existingStore.secondary_currency,
+        secondaryCurrencyName: existingStore.secondary_currency,
         secondaryCurrencySymbol: existingStore.secondary_currency_symbol,
         tax1: existingStore.tax1,
         tax2: existingStore.tax2,
@@ -121,18 +125,20 @@ export async function POST(request: NextRequest) {
       address: data.address || null,
       phone: data.phone || null,
       email: data.email || null,
-      tax_id: data.taxId || null,
+      tax_id: data.nitId || data.taxId || null,
       logo_url: data.logoUrl || null,
-      primary_currency: data.primaryCurrency || 'USD',
+      primary_currency: data.primaryCurrencyName || data.primaryCurrency || 'USD',
       primary_currency_symbol: data.primaryCurrencySymbol || '$',
-      secondary_currency: data.secondaryCurrency || 'VES',
+      secondary_currency: data.secondaryCurrencyName || data.secondaryCurrency || 'VES',
       secondary_currency_symbol: data.secondaryCurrencySymbol || 'Bs.',
       tax1: data.tax1 || 0,
       tax2: data.tax2 || 0,
       status: data.status || 'active',
       whatsapp: data.whatsapp || null,
       meta: data.meta || null,
-      tiktok: data.tiktok || null
+      tiktok: data.tiktok || null,
+      sale_series: data.saleSeries || null,
+      sale_correlative: data.saleCorrelative || 0
     };
 
     const { data: created, error } = await supabaseAdmin
@@ -157,10 +163,11 @@ export async function POST(request: NextRequest) {
       phone: created.phone,
       email: created.email,
       taxId: created.tax_id,
+      nitId: created.tax_id,
       logoUrl: created.logo_url,
-      primaryCurrency: created.primary_currency,
+      primaryCurrencyName: created.primary_currency,
       primaryCurrencySymbol: created.primary_currency_symbol,
-      secondaryCurrency: created.secondary_currency,
+      secondaryCurrencyName: created.secondary_currency,
       secondaryCurrencySymbol: created.secondary_currency_symbol,
       tax1: created.tax1,
       tax2: created.tax2,
@@ -169,7 +176,9 @@ export async function POST(request: NextRequest) {
       updatedAt: created.updated_at,
       whatsapp: created.whatsapp,
       meta: created.meta,
-      tiktok: created.tiktok
+      tiktok: created.tiktok,
+      saleSeries: created.sale_series,
+      saleCorrelative: created.sale_correlative
     };
 
     return NextResponse.json(response);
@@ -203,11 +212,16 @@ export async function PUT(request: NextRequest) {
     if (data.address !== undefined) updateData.address = data.address;
     if (data.phone !== undefined) updateData.phone = data.phone;
     if (data.email !== undefined) updateData.email = data.email;
+    if (data.nitId !== undefined) updateData.tax_id = data.nitId;
     if (data.taxId !== undefined) updateData.tax_id = data.taxId;
+    if (data.saleSeries !== undefined) updateData.sale_series = data.saleSeries;
+    if (data.saleCorrelative !== undefined) updateData.sale_correlative = data.saleCorrelative;
     if (data.logoUrl !== undefined) updateData.logo_url = data.logoUrl;
-    if (data.primaryCurrency !== undefined) updateData.primary_currency = data.primaryCurrency;
+    if (data.primaryCurrencyName !== undefined) updateData.primary_currency = data.primaryCurrencyName;
+    if (data.primaryCurrency !== undefined) updateData.primary_currency = data.primaryCurrency; // Backwards compatibility
     if (data.primaryCurrencySymbol !== undefined) updateData.primary_currency_symbol = data.primaryCurrencySymbol;
-    if (data.secondaryCurrency !== undefined) updateData.secondary_currency = data.secondaryCurrency;
+    if (data.secondaryCurrencyName !== undefined) updateData.secondary_currency = data.secondaryCurrencyName;
+    if (data.secondaryCurrency !== undefined) updateData.secondary_currency = data.secondaryCurrency; // Backwards compatibility
     if (data.secondaryCurrencySymbol !== undefined) updateData.secondary_currency_symbol = data.secondaryCurrencySymbol;
     if (data.tax1 !== undefined) updateData.tax1 = data.tax1;
     if (data.tax2 !== undefined) updateData.tax2 = data.tax2;
@@ -242,17 +256,20 @@ export async function PUT(request: NextRequest) {
       phone: updated.phone,
       email: updated.email,
       taxId: updated.tax_id,
+      nitId: updated.tax_id,
       logoUrl: updated.logo_url,
-      primaryCurrency: updated.primary_currency,
+      primaryCurrencyName: updated.primary_currency,
       primaryCurrencySymbol: updated.primary_currency_symbol,
-      secondaryCurrency: updated.secondary_currency,
+      secondaryCurrencyName: updated.secondary_currency,
       secondaryCurrencySymbol: updated.secondary_currency_symbol,
       status: updated.status,
       createdAt: updated.created_at,
       updatedAt: updated.updated_at,
       whatsapp: updated.whatsapp,
       meta: updated.meta,
-      tiktok: updated.tiktok
+      tiktok: updated.tiktok,
+      saleSeries: updated.sale_series,
+      saleCorrelative: updated.sale_correlative
     };
 
     return NextResponse.json(response);
