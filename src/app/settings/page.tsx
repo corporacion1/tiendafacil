@@ -1329,7 +1329,6 @@ export default function SettingsPage() {
                                         <TableRow>
                                             <TableHead>Fecha</TableHead>
                                             <TableHead>Tasa</TableHead>
-                                            <TableHead>Registrada por</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -1340,9 +1339,6 @@ export default function SettingsPage() {
                                                 </TableCell>
                                                 <TableCell className="font-mono">
                                                     {rate.rate.toFixed(4)}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {(rate as any).createdBy || 'Sistema'}
                                                 </TableCell>
                                             </TableRow>
                                         ))}

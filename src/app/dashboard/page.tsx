@@ -36,39 +36,43 @@ export default function Dashboard() {
   const productMap = useMemo(() => {
     const map = new Map<string, Product>();
     if (products) {
-        for (const product of products) {
-            map.set(product.id, product);
-        }
+      for (const product of products) {
+        map.set(product.id, product);
+      }
     }
     return map;
   }, [products]);
-  
+
   const isLoading = statsLoading || isLoadingSettings
 
   const recentMovements: InventoryMovement[] = useMemo(() => {
     if (!sales || !purchases) return []
-    const saleMovements = sales.flatMap(sale => 
+    const saleMovements = sales
+      .filter(sale => sale.storeId === activeStoreId)
+      .flatMap(sale =>
         sale.items.map(item => ({
-            id: `mov-sale-${sale.id}-${item.productId}`,
-            productName: item.productName,
-            type: 'sale' as 'sale',
-            quantity: -item.quantity,
-            date: sale.date,
-            storeId: sale.storeId,
+          id: `mov-sale-${sale.id}-${item.productId}`,
+          productName: item.productName,
+          type: 'sale' as 'sale',
+          quantity: -item.quantity,
+          date: sale.date,
+          storeId: sale.storeId,
         }))
-    )
-     const purchaseMovements = purchases.flatMap(purchase => 
+      )
+    const purchaseMovements = purchases
+      .filter(purchase => purchase.storeId === activeStoreId)
+      .flatMap(purchase =>
         purchase.items.map(item => ({
-            id: `mov-pur-${purchase.id}-${item.productId}`,
-            productName: item.productName,
-            type: 'purchase' as 'purchase',
-            quantity: item.quantity,
-            date: purchase.date,
-            storeId: purchase.storeId,
+          id: `mov-pur-${purchase.id}-${item.productId}`,
+          productName: item.productName,
+          type: 'purchase' as 'purchase',
+          quantity: item.quantity,
+          date: purchase.date,
+          storeId: purchase.storeId,
         }))
-    )
-    return [...saleMovements, ...purchaseMovements].sort((a,b) => getDate(b.date).getTime() - getDate(a.date).getTime())
-  }, [sales, purchases])
+      )
+    return [...saleMovements, ...purchaseMovements].sort((a, b) => getDate(b.date).getTime() - getDate(a.date).getTime())
+  }, [sales, purchases, activeStoreId])
 
   const cutoffDate = useMemo(() => {
     const now = new Date()
@@ -80,70 +84,70 @@ export default function Dashboard() {
     }
   }, [timeFilter])
 
-  const filteredSales = useMemo(() => (sales || []).filter(s => getDate(s.date) >= cutoffDate), [sales, cutoffDate])
-  const filteredPurchases = useMemo(() => (purchases || []).filter(p => getDate(p.date) >= cutoffDate), [purchases, cutoffDate])
+  const filteredSales = useMemo(() => (sales || []).filter(s => s.storeId === activeStoreId && getDate(s.date) >= cutoffDate), [sales, cutoffDate, activeStoreId])
+  const filteredPurchases = useMemo(() => (purchases || []).filter(p => p.storeId === activeStoreId && getDate(p.date) >= cutoffDate), [purchases, cutoffDate, activeStoreId])
 
   const chartData = useMemo(() => {
     const dataByDate: { [key: string]: { date: string, sales: number, profit: number, unitsSold: number, unitsPurchased: number } } = {}
     const dateFormat = timeFilter === 'month' ? 'dd-MMM' : 'eee dd'
-    
-    filteredSales.forEach(sale => {
-        const saleDate = getDate(sale.date)
-        const dateKey = format(saleDate, 'yyyy-MM-dd')
-      
-        if (!dataByDate[dateKey]) {
-            dataByDate[dateKey] = { date: format(saleDate, dateFormat), sales: 0, profit: 0, unitsSold: 0, unitsPurchased: 0 }
-        }
-      
-        const { costOfGoods, totalUnitsSold } = sale.items.reduce((acc, item) => {
-            const product = productMap.get(item.productId)
-            if (product) {
-                acc.costOfGoods += product.cost * item.quantity
-            }
-            acc.totalUnitsSold += item.quantity
-            return acc;
-        }, { costOfGoods: 0, totalUnitsSold: 0 });
 
-        dataByDate[dateKey].sales += sale.total;
-        dataByDate[dateKey].profit += (sale.total - costOfGoods);
-        dataByDate[dateKey].unitsSold += totalUnitsSold;
+    filteredSales.forEach(sale => {
+      const saleDate = getDate(sale.date)
+      const dateKey = format(saleDate, 'yyyy-MM-dd')
+
+      if (!dataByDate[dateKey]) {
+        dataByDate[dateKey] = { date: format(saleDate, dateFormat), sales: 0, profit: 0, unitsSold: 0, unitsPurchased: 0 }
+      }
+
+      const { costOfGoods, totalUnitsSold } = sale.items.reduce((acc, item) => {
+        const product = productMap.get(item.productId)
+        if (product) {
+          acc.costOfGoods += product.cost * item.quantity
+        }
+        acc.totalUnitsSold += item.quantity
+        return acc;
+      }, { costOfGoods: 0, totalUnitsSold: 0 });
+
+      dataByDate[dateKey].sales += sale.total;
+      dataByDate[dateKey].profit += (sale.total - costOfGoods);
+      dataByDate[dateKey].unitsSold += totalUnitsSold;
     })
 
     filteredPurchases.forEach(purchase => {
-        const purchaseDate = getDate(purchase.date)
-        const dateKey = format(purchaseDate, 'yyyy-MM-dd')
+      const purchaseDate = getDate(purchase.date)
+      const dateKey = format(purchaseDate, 'yyyy-MM-dd')
 
-        if (!dataByDate[dateKey]) {
-            dataByDate[dateKey] = { date: format(purchaseDate, dateFormat), sales: 0, profit: 0, unitsSold: 0, unitsPurchased: 0 }
-        }
-        
-        const totalUnitsPurchased = purchase.items.reduce((acc, item) => acc + item.quantity, 0);
-        dataByDate[dateKey].unitsPurchased += totalUnitsPurchased;;
+      if (!dataByDate[dateKey]) {
+        dataByDate[dateKey] = { date: format(purchaseDate, dateFormat), sales: 0, profit: 0, unitsSold: 0, unitsPurchased: 0 }
+      }
+
+      const totalUnitsPurchased = purchase.items.reduce((acc, item) => acc + item.quantity, 0);
+      dataByDate[dateKey].unitsPurchased += totalUnitsPurchased;;
     })
-    
+
     const sortedKeys = Object.keys(dataByDate).sort()
     const sortedData = sortedKeys.map(key => dataByDate[key])
 
     return sortedData.map(d => ({
-        ...d,
-        sales: parseFloat((d.sales * activeRate).toFixed(2)),
-        profit: parseFloat((d.profit * activeRate).toFixed(2)),
+      ...d,
+      sales: parseFloat((d.sales * activeRate).toFixed(2)),
+      profit: parseFloat((d.profit * activeRate).toFixed(2)),
     }))
   }, [filteredSales, filteredPurchases, productMap, activeRate, timeFilter])
 
   const getMovementLabel = (type: 'sale' | 'purchase' | 'adjustment') => {
     switch (type) {
-        case 'sale': return 'Salida'
-        case 'purchase': return 'Entrada'
-        case 'adjustment': return 'Ajuste'
-        default: return type
+      case 'sale': return 'Salida'
+      case 'purchase': return 'Entrada'
+      case 'adjustment': return 'Ajuste'
+      default: return type
     }
   }
 
   const totalRevenue = useMemo(() => filteredSales.reduce((acc, s) => acc + s.total, 0), [filteredSales])
   const totalPurchasesValue = useMemo(() => filteredPurchases.reduce((acc, p) => acc + p.total, 0), [filteredPurchases])
-  const activeProducts = useMemo(() => (products || []).filter(p => (p.status === 'active' || p.status === 'promotion') && p.type === 'product').length, [products])
-  
+  const activeProducts = useMemo(() => (products || []).filter(p => p.storeId === activeStoreId && (p.status === 'active' || p.status === 'promotion') && p.type === 'product').length, [products, activeStoreId])
+
   return (
     <div className="flex min-h-screen w-full flex-col overflow-x-hidden">
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8 max-w-full">
@@ -170,18 +174,18 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent>
-           {isLoading ? (
-               <div className="flex justify-center items-center h-[350px]">
-                   <p className="text-muted-foreground">Cargando datos del gráfico...</p>
-               </div>
-           ) : (
-            <Carousel className="w-full max-w-full overflow-hidden" opts={{ loop: true }}>
-              <CarouselContent>
-                <CarouselItem>
-                  <div className="p-1">
-                    <h3 className="text-lg font-semibold mb-4 text-center">Rendimiento Financiero</h3>
-                    <ResponsiveContainer width="100%" height={350}>
-                      <LineChart data={chartData}>
+            {isLoading ? (
+              <div className="flex justify-center items-center h-[350px]">
+                <p className="text-muted-foreground">Cargando datos del gráfico...</p>
+              </div>
+            ) : (
+              <Carousel className="w-full max-w-full overflow-hidden" opts={{ loop: true }}>
+                <CarouselContent>
+                  <CarouselItem>
+                    <div className="p-1">
+                      <h3 className="text-lg font-semibold mb-4 text-center">Rendimiento Financiero</h3>
+                      <ResponsiveContainer width="100%" height={350}>
+                        <LineChart data={chartData}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                           <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${activeSymbol}${value.toFixed(0)}`} />
@@ -189,31 +193,31 @@ export default function Dashboard() {
                           <Legend />
                           <Line type="monotone" dataKey="sales" name="Ventas" stroke="hsl(var(--chart-1))" strokeWidth={2} />
                           <Line type="monotone" dataKey="profit" name="Utilidad Bruta" stroke="hsl(var(--chart-3))" strokeWidth={2} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CarouselItem>
-                <CarouselItem>
-                   <div className="p-1">
-                    <h3 className="text-lg font-semibold mb-4 text-center">Movimientos de Inventario (Unidades)</h3>
-                    <ResponsiveContainer width="100%" height={350}>
-                      <BarChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-                        <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
-                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }} formatter={(value: number, name: string) => [`${value} unidades`, name === 'unitsSold' ? 'Salidas (Venta)' : 'Entradas (Compra)']} />
-                        <Legend />
-                        <Bar dataKey="unitsPurchased" name="Entradas (Compra)" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="unitsSold" name="Salidas (Venta)" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CarouselItem>
-              </CarouselContent>
-              <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 md:left-[-50px]" />
-              <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 md:right-[-50px]" />
-            </Carousel>
-           )}
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CarouselItem>
+                  <CarouselItem>
+                    <div className="p-1">
+                      <h3 className="text-lg font-semibold mb-4 text-center">Movimientos de Inventario (Unidades)</h3>
+                      <ResponsiveContainer width="100%" height={350}>
+                        <BarChart data={chartData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                          <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}`} />
+                          <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }} formatter={(value: number, name: string) => [`${value} unidades`, name === 'unitsSold' ? 'Salidas (Venta)' : 'Entradas (Compra)']} />
+                          <Legend />
+                          <Bar dataKey="unitsPurchased" name="Entradas (Compra)" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="unitsSold" name="Salidas (Venta)" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CarouselItem>
+                </CarouselContent>
+                <CarouselPrevious className="absolute left-2 top-1/2 -translate-y-1/2 md:left-[-50px]" />
+                <CarouselNext className="absolute right-2 top-1/2 -translate-y-1/2 md:right-[-50px]" />
+              </Carousel>
+            )}
           </CardContent>
         </Card>
 
