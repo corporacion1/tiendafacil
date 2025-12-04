@@ -37,8 +37,8 @@ export async function GET(request: NextRequest) {
       address: store.address,
       phone: store.phone,
       email: store.email,
-      taxId: store.tax_id || store.nitId || store.nit_id,
-      nitId: store.nitId || store.nit_id || store.tax_id,
+      taxId: store.tax_id,
+      nitId: store.nitId || store.tax_id,
       logoUrl: store.logo_url,
       primaryCurrencyName: store.primary_currency,
       primaryCurrencySymbol: store.primary_currency_symbol,
@@ -52,8 +52,8 @@ export async function GET(request: NextRequest) {
       whatsapp: store.whatsapp,
       meta: store.meta,
       tiktok: store.tiktok,
-      saleSeries: store.saleSeries || store.sale_series,
-      saleCorrelative: store.saleCorrelative || store.sale_correlative
+      saleSeries: store.saleSeries,
+      saleCorrelative: store.saleCorrelative
     };
 
     return NextResponse.json(response);
@@ -126,6 +126,7 @@ export async function POST(request: NextRequest) {
       phone: data.phone || null,
       email: data.email || null,
       tax_id: data.nitId || data.taxId || null,
+      nitId: data.nitId || null,
       logo_url: data.logoUrl || null,
       primary_currency: data.primaryCurrencyName || data.primaryCurrency || 'USD',
       primary_currency_symbol: data.primaryCurrencySymbol || '$',
@@ -137,8 +138,8 @@ export async function POST(request: NextRequest) {
       whatsapp: data.whatsapp || null,
       meta: data.meta || null,
       tiktok: data.tiktok || null,
-      sale_series: data.saleSeries || null,
-      sale_correlative: data.saleCorrelative || 0
+      saleSeries: data.saleSeries || null,
+      saleCorrelative: data.saleCorrelative || 0
     };
 
     const { data: created, error } = await supabaseAdmin
@@ -163,7 +164,7 @@ export async function POST(request: NextRequest) {
       phone: created.phone,
       email: created.email,
       taxId: created.tax_id,
-      nitId: created.tax_id,
+      nitId: created.nitId || created.tax_id,
       logoUrl: created.logo_url,
       primaryCurrencyName: created.primary_currency,
       primaryCurrencySymbol: created.primary_currency_symbol,
@@ -177,8 +178,8 @@ export async function POST(request: NextRequest) {
       whatsapp: created.whatsapp,
       meta: created.meta,
       tiktok: created.tiktok,
-      saleSeries: created.sale_series,
-      saleCorrelative: created.sale_correlative
+      saleSeries: created.saleSeries,
+      saleCorrelative: created.saleCorrelative
     };
 
     return NextResponse.json(response);
@@ -212,10 +213,10 @@ export async function PUT(request: NextRequest) {
     if (data.address !== undefined) updateData.address = data.address;
     if (data.phone !== undefined) updateData.phone = data.phone;
     if (data.email !== undefined) updateData.email = data.email;
-    if (data.nitId !== undefined) updateData.tax_id = data.nitId;
+    if (data.nitId !== undefined) updateData.nitId = data.nitId;
     if (data.taxId !== undefined) updateData.tax_id = data.taxId;
-    if (data.saleSeries !== undefined) updateData.sale_series = data.saleSeries;
-    if (data.saleCorrelative !== undefined) updateData.sale_correlative = data.saleCorrelative;
+    if (data.saleSeries !== undefined) updateData.saleSeries = data.saleSeries;
+    if (data.saleCorrelative !== undefined) updateData.saleCorrelative = data.saleCorrelative;
     if (data.logoUrl !== undefined) updateData.logo_url = data.logoUrl;
     if (data.primaryCurrencyName !== undefined) updateData.primary_currency = data.primaryCurrencyName;
     if (data.primaryCurrency !== undefined) updateData.primary_currency = data.primaryCurrency; // Backwards compatibility
@@ -256,7 +257,7 @@ export async function PUT(request: NextRequest) {
       phone: updated.phone,
       email: updated.email,
       taxId: updated.tax_id,
-      nitId: updated.tax_id,
+      nitId: updated.nitId || updated.tax_id,
       logoUrl: updated.logo_url,
       primaryCurrencyName: updated.primary_currency,
       primaryCurrencySymbol: updated.primary_currency_symbol,
@@ -268,8 +269,8 @@ export async function PUT(request: NextRequest) {
       whatsapp: updated.whatsapp,
       meta: updated.meta,
       tiktok: updated.tiktok,
-      saleSeries: updated.sale_series,
-      saleCorrelative: updated.sale_correlative
+      saleSeries: updated.saleSeries,
+      saleCorrelative: updated.saleCorrelative
     };
 
     return NextResponse.json(response);

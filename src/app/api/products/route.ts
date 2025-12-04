@@ -64,16 +64,19 @@ export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
 
+    console.log('📥 [Products API] POST - Received data:', JSON.stringify(data, null, 2));
+
     // Generar ID único si no se proporciona
     if (!data.id) {
       data.id = IDGenerator.generate('product');
     }
 
     if (!data.name || !data.storeId) {
+      console.error('❌ [Products API] Missing required fields:', { name: data.name, storeId: data.storeId });
       return NextResponse.json({ error: 'name y storeId son requeridos' }, { status: 400 });
     }
 
-    console.log('📦 [Products API] POST product:', data.name);
+    console.log('📦 [Products API] POST product:', data.name, 'for store:', data.storeId);
 
     const initialStock = Number(data.stock) || 0;
 
@@ -103,6 +106,8 @@ export async function POST(request: NextRequest) {
       affects_inventory: data.affectsInventory !== undefined ? data.affectsInventory : true
     };
 
+    console.log('📤 [Products API] Inserting product data:', JSON.stringify(productData, null, 2));
+
     const { data: created, error } = await supabaseAdmin
       .from('products')
       .insert(productData)
@@ -111,6 +116,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('❌ [Products API] Error creating product:', error);
+      console.error('❌ [Products API] Error details:', JSON.stringify(error, null, 2));
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 

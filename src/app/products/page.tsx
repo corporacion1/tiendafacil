@@ -9,9 +9,6 @@ import { useSettings } from "@/contexts/settings-context";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAutoSync } from "@/hooks/use-auto-sync";
 
-// Cliente Supabase
-import { supabase } from '@/lib/supabase';
-
 import { RequireAuth } from "@/components/require-auth";
 
 export default function ProductsPage() {
@@ -20,23 +17,28 @@ export default function ProductsPage() {
   const { createWithSync } = useAutoSync();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Función para crear producto en Supabase
+  // Función para crear producto usando la API
   const createProductInSupabase = async (productData: Product) => {
     try {
-      const { data, error } = await supabase
-        .from('products')
-        .insert([productData])
-        .select()
-        .single();
+      console.log('📤 [Products Page] Sending product to API:', productData);
 
-      if (error) {
-        console.error('❌ [Supabase] Error creating product:', error);
-        throw new Error('Error al crear producto en Supabase');
+      const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(productData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('❌ [Products Page] API error response:', errorData);
+        throw new Error(errorData.error || 'Error al crear producto');
       }
 
+      const data = await response.json();
+      console.log('✅ [Products Page] Product created via API:', data);
       return data;
     } catch (error) {
-      console.error('❌ [Supabase] Exception creating product:', error);
+      console.error('❌ [Products Page] Exception creating product:', error);
       throw error;
     }
   };
@@ -55,19 +57,19 @@ export default function ProductsPage() {
         userId: (user as any)?.id || 'system' // Para rastrear quién creó el producto
       } as any;
 
-      // MODIFICADO: Usar Supabase en lugar de MongoDB
+      // Usar la API en lugar de Supabase directo
       const savedProduct = await createProductInSupabase(newProduct);
 
       // Actualizar el estado local
       setProducts(prev => [savedProduct, ...prev]);
 
       // Mostrar mensaje de éxito
-      console.log(`✅ Producto "${data.name}" creado exitosamente en Supabase`);
+      console.log(`✅ Producto "${data.name}" creado exitosamente`);
 
       return true; // Indica que el formulario debe resetearse
 
     } catch (error) {
-      console.error('❌ Error creando producto en Supabase:', error);
+      console.error('❌ Error creando producto:', error);
       return false;
     } finally {
       setIsSubmitting(false);
