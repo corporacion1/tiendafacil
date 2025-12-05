@@ -15,10 +15,9 @@ export async function GET(request: NextRequest) {
     // Calculate statistics
     const total = stores.length;
     const active = stores.filter((s: any) => s.status === 'active').length;
-    const inactive = stores.filter((s: any) => s.status === 'inactive' || !s.status).length;
-    // For production, we'll count stores that don't have demo data flag or it's explicitly false
-    // Since the column might not exist, we'll just set it to 0 for now
-    const production = 0;
+    const inactive = stores.filter((s: any) => s.status === 'inactive').length;
+    // Count stores in production mode
+    const production = stores.filter((s: any) => s.status === 'inProduction').length;
 
     // Get total users count
     const { count: totalUsers, error: usersError } = await supabaseAdmin
@@ -59,8 +58,8 @@ export async function GET(request: NextRequest) {
           storeName: store.name || 'Sin nombre',
           adminName,
           createdAt: store.created_at,
-          status: store.status || 'active',
-          isProduction: false // Default to false since we don't have the column
+          status: store.status === 'inProduction' ? 'production' : (store.status || 'active'),
+          isProduction: store.status === 'inProduction'
         };
       })
     );

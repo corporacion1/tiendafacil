@@ -53,14 +53,14 @@ export async function PUT(request: Request) {
         }
 
         // Create movement record
-        // Schema: id, store_id, product_id, watrhouse_id, movement_type, quantily, reference_type, user_id, notes, created_id, previous_stock, new_stock, unit_cost, total_value, batch_id, updated_at
+        // Schema: id, store_id, product_id, warehouse_id, movement_type, quantity, reference_type, user_id, notes, created_at, previous_stock, new_stock, unit_cost, total_value, batch_id, updated_at
         const movementData = {
             id: IDGenerator.generate('movement'),
             product_id,
             store_id,
-            watrhouse_id: null, // User typo
+            warehouse_id: null,
             movement_type: 'adjustment',
-            quantily: quantity, // User typo
+            quantity: quantity,
             previous_stock: previousStock,
             new_stock,
             reference_type: 'manual_adjustment',
@@ -69,7 +69,7 @@ export async function PUT(request: Request) {
             unit_cost: unitCost,
             total_value: unitCost * Math.abs(quantity),
             batch_id: null,
-            created_id: new Date().toISOString(), // User typo/naming
+            created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         };
 
@@ -119,9 +119,9 @@ export async function POST(request: Request) {
             id: IDGenerator.generate('movement'),
             product_id: body.product_id,
             store_id: body.store_id,
-            watrhouse_id: body.warehouse_id || null, // Map to user typo
+            warehouse_id: body.warehouse_id || null,
             movement_type: body.movement_type,
-            quantily: body.quantity || 0, // Map to user typo
+            quantity: body.quantity || 0,
             previous_stock: body.previous_stock || 0,
             new_stock: body.new_stock || 0,
             reference_type: body.reference_type || null,
@@ -130,7 +130,7 @@ export async function POST(request: Request) {
             unit_cost: body.unit_cost || 0,
             total_value: body.total_value || 0,
             batch_id: body.batch_id || null,
-            created_id: new Date().toISOString(), // Map to user naming
+            created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         };
 
@@ -169,7 +169,7 @@ export async function GET(request: Request) {
             .from('inventory_movements')
             .select('*')
             .eq('store_id', storeId)
-            .order('created_id', { ascending: false }); // Use created_id for ordering
+            .order('created_at', { ascending: false });
 
         if (productId) {
             query = query.eq('product_id', productId);

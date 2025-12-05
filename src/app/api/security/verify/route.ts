@@ -29,12 +29,25 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error('❌ [Security Verify] Error obteniendo configuración:', error);
+
+      // If no security config exists, treat as if PIN is not required (allow operation)
+      // Check for various "not found" error conditions
+      if (!securityConfig || (error as any)?.code === 'PGRST116' || (error as any)?.details?.includes('0 rows')) {
+        console.log('ℹ️ [Security Verify] No security config found - allowing operation (PIN not configured)');
+        return NextResponse.json({
+          isValid: true,
+          isLocked: false,
+          remainingAttempts: 5,
+          message: 'No PIN configured'
+        });
+      }
+
       return NextResponse.json(
-        { 
-          error: 'Configuración de seguridad no encontrada',
-          isValid: false 
+        {
+          error: 'Error al verificar configuración de seguridad',
+          isValid: false
         },
-        { status: 404 }
+        { status: 500 }
       );
     }
 
@@ -50,7 +63,7 @@ export async function POST(request: Request) {
 
     // Verificar PIN
     const isValid = await bcrypt.compare(pin, securityConfig.pin_hash);
-    
+
     let remainingAttempts = securityConfig.remaining_attempts;
     let isLocked = securityConfig.is_locked;
 
@@ -58,7 +71,7 @@ export async function POST(request: Request) {
       // Resetear intentos en éxito
       remainingAttempts = 5;
       isLocked = false;
-      
+
       await supabase
         .from('store_security')
         .update({
@@ -90,8 +103,8 @@ export async function POST(request: Request) {
       isValid,
       isLocked,
       remainingAttempts,
-      error: !isValid ? (isLocked ? 
-        'Demasiados intentos fallidos. Sistema bloqueado.' : 
+      error: !isValid ? (isLocked ?
+        'Demasiados intentos fallidos. Sistema bloqueado.' :
         'PIN incorrecto. Intentos restantes: ' + remainingAttempts
       ) : undefined
     });
@@ -99,9 +112,9 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error('❌ [Security Verify] Error inesperado:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Error interno del servidor',
-        isValid: false 
+        isValid: false
       },
       { status: 500 }
     );

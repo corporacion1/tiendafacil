@@ -165,6 +165,7 @@ export default function InventoryPage() {
   const [movementType, setMovementType] = useState<'purchase' | 'sale' | 'adjustment' | ''>('');
   const [movementQuantity, setMovementQuantity] = useState<number>(0);
   const [movementResponsible, setMovementResponsible] = useState('');
+  const [movementNotes, setMovementNotes] = useState('');
   const [isProcessingMovement, setIsProcessingMovement] = useState(false);
 
 
@@ -351,6 +352,7 @@ export default function InventoryPage() {
     setMovementType('');
     setMovementQuantity(0);
     setMovementResponsible('');
+    setMovementNotes('');
   }
 
   const handleMoveInventory = async () => {
@@ -380,7 +382,7 @@ export default function InventoryPage() {
         requestBody = {
           product_id: movementProduct.id,
           new_stock: newStock,
-          reason: movementResponsible,
+          reason: movementNotes || movementResponsible,
           user_id: (user as any)?.id || 'system',
           store_id: activeStoreId
         };
@@ -430,7 +432,7 @@ export default function InventoryPage() {
           reference_type: 'manual_adjustment',
           reference_id: `manual_${Date.now()}`,
           user_id: (user as any)?.id || 'system',
-          notes: `${getMovementLabel(movementType)} manual - ${movementResponsible}`,
+          notes: movementNotes || `${getMovementLabel(movementType)} manual - ${movementResponsible}`,
           store_id: activeStoreId
         };
 
@@ -841,6 +843,16 @@ export default function InventoryPage() {
                   <div className="space-y-2">
                     <Label htmlFor="responsable">Responsable *</Label>
                     <Input id="responsable" type="text" placeholder="Nombre del responsable" value={movementResponsible} onChange={e => setMovementResponsible(e.target.value)} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="notes">Notas</Label>
+                    <textarea
+                      id="notes"
+                      className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      placeholder="Notas adicionales sobre este movimiento (opcional)"
+                      value={movementNotes}
+                      onChange={e => setMovementNotes(e.target.value)}
+                    />
                   </div>
                 </div>
                 <DialogFooter>

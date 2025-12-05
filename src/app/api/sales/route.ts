@@ -123,9 +123,9 @@ export async function POST(request: Request) {
               id: IDGenerator.generate('movement'),
               product_id: item.productId,
               store_id: data.storeId,
-              watrhouse_id: null, // User typo
+              warehouse_id: null,
               movement_type: 'sale',
-              quantily: item.quantity, // User typo
+              quantity: item.quantity,
               previous_stock: previousStock,
               new_stock: newStock,
               reference_type: saleId,
@@ -134,7 +134,7 @@ export async function POST(request: Request) {
               unit_cost: product.cost || 0,
               total_value: (product.cost || 0) * item.quantity,
               batch_id: null,
-              created_id: new Date().toISOString(), // User naming
+              created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             };
 

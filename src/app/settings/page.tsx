@@ -949,15 +949,15 @@ export default function SettingsPage() {
         return (currentCount + 1).toString().padStart(3, '0');
     }, [sales]);
 
-    const handleSeed = async () => {
-        console.log('🌱 [Settings] Iniciando proceso de siembra...');
+    const handleReset = async () => {
+        console.log('🔄 [Settings] Iniciando proceso de reinicio...');
         console.log('🔐 [Settings] Verificando PIN...');
 
         const isPinValid = await checkPin(resetPin);
         console.log('🔐 [Settings] Resultado de verificación de PIN:', isPinValid);
 
         if (!isPinValid) {
-            console.error('❌ [Settings] PIN inválido, abortando siembra');
+            console.error('❌ [Settings] PIN inválido, abortando reinicio');
             toast({
                 variant: "destructive",
                 title: "PIN incorrecto",
@@ -975,21 +975,33 @@ export default function SettingsPage() {
         }
         setIsProcessing(true);
         try {
-            const success = await seedDatabase(activeStoreId);
-            if (success) {
+            console.log('🗑️ [Settings] Reiniciando datos de la tienda...');
+
+            const response = await fetch('/api/stores/reset', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ storeId: activeStoreId })
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
                 toast({
-                    title: "Datos sembrados exitosamente",
-                    description: "La base de datos ha sido reiniciada con datos de demostración.",
+                    title: "Datos reiniciados exitosamente",
+                    description: "Todos los datos transaccionales han sido eliminados.",
                     duration: 5000,
                 });
                 setIsResetConfirmOpen(false);
                 setResetConfirmationText("");
                 setResetPin("");
+
+                // Recargar datos para reflejar los cambios
+                window.location.reload();
             } else {
                 toast({
                     variant: "destructive",
-                    title: "Error al sembrar datos",
-                    description: "Hubo un problema al reiniciar la base de datos.",
+                    title: "Error al reiniciar datos",
+                    description: result.error || "Hubo un problema al reiniciar la base de datos.",
                 });
             }
         } catch (error) {
@@ -1007,7 +1019,7 @@ export default function SettingsPage() {
 
 
     const handleGoToProduction = async () => {
-        console.log('🚀 [Settings] Iniciando proceso de pasar a producción...');
+        console.log('🚀 [Settings] Iniciando proceso de cambio a producción...');
         console.log('🔐 [Settings] Verificando PIN...');
 
         const isPinValid = await checkPin(productionPin);
@@ -1034,7 +1046,7 @@ export default function SettingsPage() {
 
         setIsProcessingProduction(true);
         try {
-            console.log('🏭 [Settings] Pasando tienda a producción...');
+            console.log('🏭 [Settings] Cambiando estado de tienda a producción...');
 
             const response = await fetch('/api/stores/production', {
                 method: 'POST',
@@ -1047,7 +1059,7 @@ export default function SettingsPage() {
             if (response.ok && result.success) {
                 toast({
                     title: "¡Tienda en Producción!",
-                    description: "La tienda ha sido limpiada y está lista para uso en producción.",
+                    description: "El estado de la tienda ha sido cambiado a 'En Producción'.",
                     duration: 5000,
                 });
                 setIsProductionConfirmOpen(false);
@@ -1059,7 +1071,7 @@ export default function SettingsPage() {
             } else {
                 toast({
                     variant: "destructive",
-                    title: "Error al pasar a producción",
+                    title: "Error al cambiar a producción",
                     description: result.error || "Hubo un problema al procesar la solicitud.",
                 });
             }
@@ -1502,15 +1514,16 @@ export default function SettingsPage() {
                                         disabled={(settings as any)?.status === 'inProduction'}
                                         className="w-full"
                                     >
-                                        <Database className="mr-2" /> Reiniciar y Sembrar Datos
+                                        <Database className="mr-2" /> Reiniciar
                                     </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                     <AlertDialogHeader>
                                         <AlertDialogTitle>¿Estás absolutamente seguro?</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                            Esta acción eliminará <span className="font-bold">TODOS</span> los datos de la tienda actual
-                                            y los reemplazará con los datos de demostración. No se puede deshacer.
+                                            Esta acción eliminará <span className="font-bold">TODOS</span> los datos transaccionales
+                                            (productos, ventas, compras, movimientos de inventario) de la tienda actual.
+                                            La configuración y usuarios se mantendrán. No se puede deshacer.
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <div className="space-y-4 py-4">
@@ -1536,7 +1549,7 @@ export default function SettingsPage() {
                                     <AlertDialogFooter>
                                         <AlertDialogCancel onClick={() => { setResetConfirmationText(''); setResetPin(''); }}>Cancelar</AlertDialogCancel>
                                         <AlertDialogAction
-                                            onClick={handleSeed}
+                                            onClick={handleReset}
                                             disabled={resetConfirmationText !== "BORRAR DATOS" || resetPin.length !== 4 || isProcessing}
                                         >
                                             {isProcessing ? (
@@ -1545,7 +1558,7 @@ export default function SettingsPage() {
                                                     Procesando...
                                                 </span>
                                             ) : (
-                                                "SÍ, borrar y sembrar datos"
+                                                "SÍ, reiniciar datos"
                                             )}
                                         </AlertDialogAction>
                                     </AlertDialogFooter>
@@ -1563,17 +1576,16 @@ export default function SettingsPage() {
                                         className="bg-orange-600 hover:bg-orange-700 w-full"
                                         disabled={(settings as any)?.status === 'inProduction' || userRole !== 'su'}
                                     >
-                                        <Package className="mr-2" /> Reiniciar y Pasar a Producción
+                                        <Package className="mr-2" /> Pasar a Producción
                                     </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                     <AlertDialogHeader>
                                         <AlertDialogTitle>¿Pasar a Producción?</AlertDialogTitle>
                                         <AlertDialogDescription>
-                                            Esta acción eliminará <span className="font-bold">TODOS</span> los datos demo
-                                            (productos, ventas, compras, etc.) pero mantendrá la configuración de la tienda
-                                            y usuarios. La tienda se marcará como "En Producción" y no podrás usar los botones
-                                            de reinicio nuevamente.
+                                            Esta acción cambiará el estado de la tienda a <span className="font-bold">"En Producción"</span>.
+                                            Una vez en producción, el botón de reinicio quedará deshabilitado permanentemente.
+                                            Los datos actuales se mantendrán intactos.
                                         </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <div className="space-y-4 py-4">
@@ -1609,7 +1621,7 @@ export default function SettingsPage() {
                                                     Procesando...
                                                 </span>
                                             ) : (
-                                                "SÍ, pasar a producción"
+                                                "SÍ, cambiar a producción"
                                             )}
                                         </AlertDialogAction>
                                     </AlertDialogFooter>
@@ -1625,8 +1637,8 @@ export default function SettingsPage() {
                 </CardContent>
                 <CardFooter className="space-y-2">
                     <div className="space-y-1 text-xs text-muted-foreground">
-                        <p><strong>Reiniciar y Sembrar Datos:</strong> Restaura productos, clientes, ventas y configuraciones a su estado original de demostración.</p>
-                        <p><strong>Reiniciar y Pasar a Producción:</strong> Elimina todos los datos demo pero mantiene la configuración de la tienda y usuarios. Marca la tienda como "En Producción". <span className="text-orange-600 font-medium">(Solo Super Usuarios)</span></p>
+                        <p><strong>Reiniciar:</strong> Elimina todos los datos transaccionales (productos, ventas, compras, movimientos) pero mantiene configuración y usuarios. Solo disponible cuando la tienda NO está en producción.</p>
+                        <p><strong>Pasar a Producción:</strong> Cambia el estado de la tienda a 'En Producción', bloqueando permanentemente el botón de reinicio. Los datos actuales se mantienen. <span className="text-orange-600 font-medium">(Solo Super Usuarios)</span></p>
                         {(settings as any)?.status === 'inProduction' && (
                             <p className="text-orange-600 font-medium">⚠️ Esta tienda está en producción. Los botones de reinicio están deshabilitados.</p>
                         )}

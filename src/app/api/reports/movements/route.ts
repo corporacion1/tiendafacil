@@ -24,8 +24,8 @@ export async function GET(request: Request) {
       .eq('store_id', storeId);
 
     if (dateFrom || dateTo) {
-      if (dateFrom) query = query.gte('created_id', dateFrom); // User schema: created_id
-      if (dateTo) query = query.lte('created_id', dateTo);     // User schema: created_id
+      if (dateFrom) query = query.gte('created_at', dateFrom);
+      if (dateTo) query = query.lte('created_at', dateTo);
     }
 
     if (productId) query = query.eq('product_id', productId);
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 
     // Obtener movimientos
     const { data: movements, error } = await query
-      .order('created_id', { ascending: false }) // User schema: created_id
+      .order('created_at', { ascending: false })
       .limit(1000);
 
     if (error) {
@@ -59,9 +59,9 @@ export async function GET(request: Request) {
             productId: movement.product_id,
             productName: product?.name || `Producto ${movement.product_id}`,
             productSku: product?.sku || '',
-            warehouseId: movement.watrhouse_id, // User schema: watrhouse_id
+            warehouseId: movement.warehouse_id,
             movementType: movement.movement_type,
-            quantity: movement.quantily, // User schema: quantily
+            quantity: movement.quantity,
             unitCost: movement.unit_cost,
             totalValue: movement.total_value,
             referenceType: 'movement', // Generic type since we use reference_type for ID
@@ -71,7 +71,7 @@ export async function GET(request: Request) {
             newStock: movement.new_stock,
             userId: movement.user_id,
             notes: movement.notes,
-            date: movement.created_id, // User schema: created_id
+            date: movement.created_at,
             storeId: movement.store_id
           };
         } catch (productError) {
@@ -81,19 +81,19 @@ export async function GET(request: Request) {
             productId: movement.product_id,
             productName: `Producto ${movement.product_id}`,
             productSku: '',
-            warehouseId: movement.watrhouse_id, // User schema: watrhouse_id
+            warehouseId: movement.warehouse_id,
             movementType: movement.movement_type,
-            quantity: movement.quantily, // User schema: quantily
+            quantity: movement.quantity,
             unitCost: movement.unit_cost,
             totalValue: movement.total_value,
             referenceType: 'movement',
-            referenceId: movement.reference_type, // User schema: reference_type holds the ID
+            referenceId: movement.reference_type,
             batchId: movement.batch_id,
             previousStock: movement.previous_stock,
             newStock: movement.new_stock,
             userId: movement.user_id,
             notes: movement.notes,
-            date: movement.created_id, // User schema: created_id
+            date: movement.created_at,
             storeId: movement.store_id
           };
         }

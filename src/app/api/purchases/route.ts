@@ -123,14 +123,14 @@ export async function POST(request: Request) {
               .eq('id', item.productId)
               .eq('store_id', data.storeId);
 
-            // Create movement record with correct Supabase column names (user provided schema)
+            // Create movement record with correct Supabase column names
             const movementData = {
               id: IDGenerator.generate('movement'),
               product_id: item.productId,
               store_id: data.storeId,
-              watrhouse_id: null, // User typo
+              warehouse_id: null,
               movement_type: 'purchase',
-              quantily: item.quantity, // User typo
+              quantity: item.quantity,
               previous_stock: previousStock,
               new_stock: newStock,
               reference_type: purchaseId,
@@ -139,7 +139,7 @@ export async function POST(request: Request) {
               unit_cost: item.cost || product.cost || 0,
               total_value: (item.cost || product.cost || 0) * item.quantity,
               batch_id: null,
-              created_id: new Date().toISOString(), // User naming
+              created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             };
 
