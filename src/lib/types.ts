@@ -143,7 +143,7 @@ export type InventoryMovement = {
   storeId: string;
 };
 
-export type Payment = {
+export type SalePayment = {
   id: string;
   amount: number;
   date: string;
@@ -168,7 +168,7 @@ export type Sale = {
   transactionType: 'contado' | 'credito';
   status: 'paid' | 'unpaid';
   paidAmount: number;
-  payments: Payment[];
+  payments: SalePayment[];
   storeId: string;
   creditDays?: number;
   creditDueDate?: string;
@@ -210,6 +210,41 @@ export type Supplier = {
   address?: string;
   storeId: string;
 }
+
+// Expense Payment Types
+export type PaymentCategory = 'rent' | 'fuel' | 'consumables' | 'raw_materials' | 'utilities' | 'other';
+export type PaymentMethod = 'cash' | 'transfer' | 'card' | 'check' | 'other';
+
+export type ExpensePayment = {
+  id: string;
+  storeId: string;
+  recipientName: string;
+  recipientId?: string;
+  recipientPhone?: string;
+  category: PaymentCategory;
+  amount: number;
+  currency?: string;
+  documentNumber?: string;
+  paymentMethod?: PaymentMethod;
+  notes?: string;
+  responsible: string;
+  paymentDate: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type PaymentRecipient = {
+  id: string;
+  storeId: string;
+  name: string;
+  taxId?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
 
 export type Unit = {
   id: string;

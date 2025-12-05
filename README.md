@@ -4,13 +4,13 @@
 
 ![TiendaFácil Logo](public/tienda_facil_logo.svg)
 
-**Versión 1.1.10.3** | **Noviembre 2025**
+**Versión 1.2.0** | **Diciembre 2024**
 
 *Sistema completo de Punto de Venta, Inventario y Comercio Electrónico*
 
 [![Next.js](https://img.shields.io/badge/Next.js-15.5.5-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
-[![MongoDB](https://img.shields.io/badge/MongoDB-7.0-green?style=for-the-badge&logo=mongodb)](https://www.mongodb.com/)
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 
 ---
@@ -81,9 +81,40 @@ Democratizar el acceso a tecnología comercial avanzada, permitiendo que cualqui
 - **Interfaz Intuitiva**: Botón de intercambio que muestra la moneda opuesta
 - **Actualización Automática**: Todos los precios se actualizan al cambiar moneda
 
-## 🚀 **Nuevas Características - Versión 1.1.10.3**
+### 💳 **Módulo de Pagos y Gastos**
+- **Registro de Gastos**: Sistema completo para registrar pagos generales del negocio
+- **Categorías Predefinidas**: Alquiler, Combustible, Consumibles, Materia Prima, Servicios, Otros
+- **Gestión de Destinatarios**: Base de datos de proveedores y destinatarios de pagos
+- **Métodos de Pago**: Efectivo, Transferencia, Tarjeta, Cheque, Otro
+- **Historial Completo**: Filtros por categoría, búsqueda y totales automáticos
+- **Sin Impacto en Inventario**: Separado del módulo de compras de productos
+
+## 🚀 **Nuevas Características - Versión 1.2.0**
 
 ### ✨ **Funcionalidades Recién Agregadas**
+
+#### 💳 **Módulo de Pagos y Gastos Generales**
+- **Sistema Completo de Pagos**: Nuevo módulo para registrar gastos del negocio separado de compras de inventario
+- **Gestión de Destinatarios**: Base de datos de proveedores y destinatarios con información completa (RIF, teléfono, email)
+- **6 Categorías de Gastos**: Alquiler, Combustible, Consumibles, Materia Prima, Servicios, Otros
+- **5 Métodos de Pago**: Efectivo, Transferencia, Tarjeta, Cheque, Otro
+- **Historial Avanzado**: Tabla con filtros por categoría, búsqueda por destinatario/notas, y cálculo automático de totales
+- **Campos Completos**: Fecha, monto, número de documento, responsable, notas
+- **Sin Impacto en Inventario**: Los pagos no afectan el stock de productos
+- **Integración con Supabase**: Almacenamiento persistente en PostgreSQL
+
+#### 🔐 **Mejoras en Seguridad y Configuración**
+- **Zona de Peligro Refinada**: Botones de reinicio y producción con funcionalidad mejorada
+- **Reiniciar**: Solo elimina datos transaccionales, mantiene configuración
+- **Pasar a Producción**: Solo cambia estado, sin eliminación de datos
+- **Verificación de PIN Mejorada**: Manejo correcto cuando no hay PIN configurado
+
+#### 📊 **Administración de Tiendas Mejorada**
+- **Conteo de Producción Correcto**: Dashboard muestra correctamente tiendas en modo producción
+- **Badges de Estado**: Indicadores visuales precisos (Activa, Inactiva, En Producción)
+- **Lista de Tiendas Recientes**: Muestra estado correcto de tiendas recientes
+
+### ✨ **Funcionalidades Anteriores (v1.1.10.3)**
 
 #### 🖼️ **Sistema Multi-Imágenes para Productos**
 - **Galería de Imágenes**: Soporte completo para múltiples imágenes por producto
@@ -163,10 +194,11 @@ Democratizar el acceso a tecnología comercial avanzada, permitiendo que cualqui
 - **ShadCN/UI**: Componentes de interfaz modernos
 - **Lucide React**: Iconografía consistente y moderna
 
-### **Backend**
-- **MongoDB 7.0**: Base de datos NoSQL escalable
+### **Backend y Base de Datos**
+- **Supabase**: Base de datos PostgreSQL en la nube
 - **Next.js API Routes**: Endpoints RESTful integrados
-- **Mongoose**: ODM para MongoDB con validaciones
+- **PostgreSQL**: Base de datos relacional con soporte completo
+- **Row Level Security**: Seguridad a nivel de fila en Supabase
 
 ### **Herramientas de Desarrollo**
 - **ESLint**: Linting de código
@@ -208,17 +240,52 @@ cp .env.example .env.local
 
 Editar `.env.local` con tus configuraciones:
 ```env
-MONGODB_URI=mongodb://localhost:27017/tienda-facil
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=tu-service-role-key
+
+# Authentication
 NEXTAUTH_SECRET=tu-secret-key
 NEXTAUTH_URL=http://localhost:3000
 ```
 
-### **4. Ejecutar en Desarrollo**
+### **4. Configurar Supabase**
+
+#### **Crear Proyecto en Supabase**
+1. Ir a [supabase.com](https://supabase.com)
+2. Crear nuevo proyecto
+3. Copiar URL y Service Role Key
+4. Agregar a `.env.local`
+
+#### **Ejecutar Migraciones**
+En el SQL Editor de Supabase, ejecutar las migraciones en orden:
+
+1. **Tablas principales** (si no existen):
+   - `stores`
+   - `users`
+   - `products`
+   - `sales`
+   - `purchases`
+   - `customers`
+   - `suppliers`
+   - etc.
+
+2. **Módulo de Pagos** (nuevo):
+```sql
+-- Ejecutar: migrations/create_payments_tables.sql
+```
+
+Esto creará:
+- Tabla `payments` (registros de gastos)
+- Tabla `payment_recipients` (destinatarios)
+- Índices y triggers necesarios
+
+### **5. Ejecutar en Desarrollo**
 ```bash
 npm run dev
 ```
 
-### **5. Acceder a la Aplicación**
+### **6. Acceder a la Aplicación**
 Abrir [http://localhost:3000](http://localhost:3000) en tu navegador
 
 ## 🎯 **Características Destacadas v1.1.10.3**
@@ -318,16 +385,48 @@ docker run -p 3000:3000 tienda-facil
 - `GET /api/stores-admin/stats` - Estadísticas globales
 - `PUT /api/stores-admin/status` - Cambiar estado de tienda
 
+#### **Pagos y Gastos** (Nuevo)
+- `GET /api/payments?storeId={id}` - Listar pagos
+- `POST /api/payments` - Registrar pago
+- `PUT /api/payments` - Actualizar pago
+- `DELETE /api/payments?id={id}` - Eliminar pago
+- `GET /api/payment-recipients?storeId={id}` - Listar destinatarios
+- `POST /api/payment-recipients` - Crear destinatario
+- `PUT /api/payment-recipients` - Actualizar destinatario
+- `DELETE /api/payment-recipients?id={id}` - Eliminar destinatario
+
 ## 👥 **Roles y Permisos**
 
-| Rol | Catálogo | Productos | Inventario | POS | Compras | Créditos | Dashboard | Admin | Promoción |
-|-----|----------|-----------|------------|-----|---------|----------|-----------|-------|-----------|
-| **Guest** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **User** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Depositary** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **POS** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Admin** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| **SuperUser** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Rol | Catálogo | Productos | Inventario | POS | Compras | Pagos | Créditos | Dashboard | Admin | Promoción |
+|-----|----------|-----------|------------|-----|---------|-------|----------|-----------|-------|-----------|
+| **Guest** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **User** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Depositary** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **POS** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Admin** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **SuperUser** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+## 🔄 **Changelog - Versión 1.2.0**
+
+### ✨ **Nuevas Características**
+- **Módulo de Pagos**: Sistema completo para registrar gastos generales del negocio
+- **Gestión de Destinatarios**: Base de datos de proveedores y destinatarios de pagos
+- **6 Categorías de Gastos**: Alquiler, Combustible, Consumibles, Materia Prima, Servicios, Otros
+- **5 Métodos de Pago**: Efectivo, Transferencia, Tarjeta, Cheque, Otro
+- **Historial con Filtros**: Búsqueda y filtrado por categoría con totales automáticos
+- **API Completa**: Endpoints RESTful para pagos y destinatarios
+- **Integración Supabase**: Almacenamiento en PostgreSQL con tablas dedicadas
+
+### 🐛 **Correcciones**
+- **Zona de Peligro**: Funcionalidad de botones refinada (Reiniciar solo elimina datos, Producción solo cambia estado)
+- **Verificación de PIN**: Manejo correcto cuando no hay PIN configurado
+- **Conteo de Producción**: Dashboard muestra correctamente tiendas en modo producción
+- **Estados de Tiendas**: Badges y listas muestran estado correcto (Activa/Inactiva/En Producción)
+
+### 📚 **Documentación**
+- **README Actualizado**: Información completa sobre módulo de Pagos
+- **Configuración Supabase**: Instrucciones detalladas de conexión
+- **Migraciones**: Documentación de tablas y estructura de base de datos
 
 ## 🔄 **Changelog - Versión 1.1.10.3**
 
@@ -410,7 +509,7 @@ Este proyecto es propiedad de **Corporación 1 Plus, C.A.** y está protegido po
 
 <div align="center">
 
-**🚀 TiendaFácil v1.1.10.3 - Impulsando el Comercio Digital**
+**🚀 TiendaFácil v1.2.0 - Impulsando el Comercio Digital**
 
 *Desarrollado con ❤️ por Corporación 1 Plus, C.A.*
 
