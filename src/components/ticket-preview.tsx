@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Share } from "lucide-react";
-import type { CartItem, Customer, Product, Payment } from "@/lib/types";
+import type { CartItem, Customer, Product, SalePayment } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
 
 interface TicketPreviewProps {
@@ -16,7 +16,7 @@ interface TicketPreviewProps {
   customer: Customer | null;
   saleId?: string | null;
   ticketType?: 'sale' | 'quote';
-  payments?: Payment[];
+  payments?: SalePayment[];
   onShare?: () => void;
 }
 
@@ -56,7 +56,7 @@ export function TicketPreview({
 
     return { tax1Amount, tax2Amount, totalTaxes: tax1Amount + tax2Amount };
   };
-  
+
   const { tax1Amount, tax2Amount, totalTaxes } = calculateTaxes();
   const total = subtotal + totalTaxes;
 
@@ -176,108 +176,108 @@ export function TicketPreview({
           </DialogDescription>
         </DialogHeader>
         {displayInfo ? (
-            <div className="overflow-y-auto p-2 border rounded-md bg-gray-50 dark:bg-gray-800">
+          <div className="overflow-y-auto p-2 border rounded-md bg-gray-50 dark:bg-gray-800">
             <div ref={ticketRef} className="ticket font-mono" style={{ fontFamily: "'Inconsolata', monospace", width: '100%', color: '#000', backgroundColor: '#fff', padding: '5px' }}>
-                <div className="header" style={{ textAlign: 'center' }}>
+              <div className="header" style={{ textAlign: 'center' }}>
                 <h1 style={{ fontSize: '16px', margin: '0', fontWeight: 'bold' }}>{settings?.name}</h1>
                 <p style={{ margin: '2px 0', fontSize: '10px' }}>{settings?.address}</p>
                 <p style={{ margin: '2px 0', fontSize: '10px' }}>Tel: {settings?.phone}</p>
                 <p style={{ margin: '2px 0', fontSize: '10px' }}>{new Date().toLocaleString()}</p>
                 {ticketType === 'sale' && saleId && <p style={{ margin: '2px 0', fontSize: '10px', fontWeight: 'bold' }}>CONTROL #: {saleId}</p>}
-                </div>
-                
-                {ticketType === 'quote' ? (
-                  <div className="ticket-title" style={{ fontSize: '14px', fontWeight: 'bold', textAlign: 'center', margin: '10px 0', textTransform: 'uppercase' }}>
-                      Cotización
-                  </div>
-                ) : (
-                  <div className="ticket-title" style={{ fontSize: '14px', fontWeight: 'bold', textAlign: 'center', margin: '10px 0', textTransform: 'uppercase' }}>
-                      Ticket de Venta
-                  </div>
-                )}
-                
-                {customer && (
-                <div className="customer" style={{ marginTop: '10px', fontSize: '10px' }}>
-                    <div className="separator" style={{ borderTop: '1px dashed #000', margin: '5px 0' }}></div>
-                    <p><strong>Cliente:</strong> {customer.name}</p>
-                    {customer.id && customer.id !== 'eventual' && <p><strong>ID:</strong> {customer.id}</p>}
-                    {customer.phone && <p><strong>Tel:</strong> {customer.phone}</p>}
-                    {customer.address && <p><strong>Dir:</strong> {customer.address}</p>}
-                </div>
-                )}
+              </div>
 
-                <div className="separator" style={{ borderTop: '1px dashed #000', margin: '10px 0 5px' }}></div>
-                
-                {displayCartItems && cartItems.map(item => (
+              {ticketType === 'quote' ? (
+                <div className="ticket-title" style={{ fontSize: '14px', fontWeight: 'bold', textAlign: 'center', margin: '10px 0', textTransform: 'uppercase' }}>
+                  Cotización
+                </div>
+              ) : (
+                <div className="ticket-title" style={{ fontSize: '14px', fontWeight: 'bold', textAlign: 'center', margin: '10px 0', textTransform: 'uppercase' }}>
+                  Ticket de Venta
+                </div>
+              )}
+
+              {customer && (
+                <div className="customer" style={{ marginTop: '10px', fontSize: '10px' }}>
+                  <div className="separator" style={{ borderTop: '1px dashed #000', margin: '5px 0' }}></div>
+                  <p><strong>Cliente:</strong> {customer.name}</p>
+                  {customer.id && customer.id !== 'eventual' && <p><strong>ID:</strong> {customer.id}</p>}
+                  {customer.phone && <p><strong>Tel:</strong> {customer.phone}</p>}
+                  {customer.address && <p><strong>Dir:</strong> {customer.address}</p>}
+                </div>
+              )}
+
+              <div className="separator" style={{ borderTop: '1px dashed #000', margin: '10px 0 5px' }}></div>
+
+              {displayCartItems && cartItems.map(item => (
                 <div key={item.product.id} className="item" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', lineHeight: '1.4' }}>
-                    <div className="name-col" style={{ width: '70%' }}>
+                  <div className="name-col" style={{ width: '70%' }}>
                     <span className="name">{item.product.name}</span>
                     <span className="price-per-unit" style={{ fontSize: '9px' }}>{item.quantity} x {activeSymbol}{(item.price * activeRate).toFixed(2)}</span>
-                    </div>
-                    <div className="price-col" style={{ width: '30%', textAlign: 'right' }}>
+                  </div>
+                  <div className="price-col" style={{ width: '30%', textAlign: 'right' }}>
                     {activeSymbol}{(item.price * item.quantity * activeRate).toFixed(2)}
-                    </div>
+                  </div>
                 </div>
-                ))}
-                
-                {displayCartItems && (
-                  <>
-                    <div className="separator" style={{ borderTop: '1px dashed #000', margin: '5px 0' }}></div>
-                    <div className="totals" style={{ marginTop: '5px', fontSize: '11px' }}>
-                        <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <div>Total de Artículos:</div>
-                            <div>{totalItems}</div>
-                        </div>
-                        <div className="separator" style={{ borderTop: '1px dotted #ccc', margin: '2px 0' }}></div>
-                        <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <div>Subtotal:</div>
-                            <div>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</div>
-                        </div>
-                        {settings?.tax1 && settings.tax1 > 0 && tax1Amount > 0 && (
-                          <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <div>Impuesto ({settings.tax1}%):</div>
-                              <div>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</div>
-                          </div>
-                        )}
-                        {settings?.tax2 && settings.tax2 > 0 && tax2Amount > 0 && (
-                          <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <div>Impuesto ({settings.tax2}%):</div>
-                              <div>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</div>
-                          </div>
-                        )}
-                        <div className="total-line grand-total" style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px', marginTop: '5px' }}>
-                            <div>TOTAL:</div>
-                            <div>{activeSymbol}{(total * activeRate).toFixed(2)}</div>
-                        </div>
+              ))}
+
+              {displayCartItems && (
+                <>
+                  <div className="separator" style={{ borderTop: '1px dashed #000', margin: '5px 0' }}></div>
+                  <div className="totals" style={{ marginTop: '5px', fontSize: '11px' }}>
+                    <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <div>Total de Artículos:</div>
+                      <div>{totalItems}</div>
                     </div>
-                  </>
-                )}
-                
-                {ticketType === 'sale' && payments && payments.length > 0 && (
-                    <div className="payments" style={{marginTop: '10px'}}>
-                        <h4 style={{textAlign: 'center', textTransform: 'uppercase', margin: '5px 0', fontSize: '12px'}}>Resumen de Pago</h4>
-                        <div className="separator" style={{ borderTop: '1px dashed #000', margin: '5px 0' }}></div>
-                         {payments.map(p => (
-                            <div key={p.id} className="payment-line" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-                                <span>{p.method}:</span>
-                                <span>{activeSymbol}{(p.amount * activeRate).toFixed(2)}</span>
-                            </div>
-                        ))}
+                    <div className="separator" style={{ borderTop: '1px dotted #ccc', margin: '2px 0' }}></div>
+                    <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <div>Subtotal:</div>
+                      <div>{activeSymbol}{(subtotal * activeRate).toFixed(2)}</div>
                     </div>
-                )}
-                
-                <div className="footer" style={{ textAlign: 'center', marginTop: '10px', fontSize: '10px' }}>
-                    {ticketType === 'sale' ? 
-                      <p>{settings?.slogan || '¡Gracias por tu compra!'}</p> :
-                      <p>El Presupuesto puede variar sin previo aviso</p>
-                    }
+                    {settings?.tax1 && settings.tax1 > 0 && tax1Amount > 0 && (
+                      <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <div>Impuesto ({settings.tax1}%):</div>
+                        <div>{activeSymbol}{(tax1Amount * activeRate).toFixed(2)}</div>
+                      </div>
+                    )}
+                    {settings?.tax2 && settings.tax2 > 0 && tax2Amount > 0 && (
+                      <div className="total-line" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <div>Impuesto ({settings.tax2}%):</div>
+                        <div>{activeSymbol}{(tax2Amount * activeRate).toFixed(2)}</div>
+                      </div>
+                    )}
+                    <div className="total-line grand-total" style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '14px', marginTop: '5px' }}>
+                      <div>TOTAL:</div>
+                      <div>{activeSymbol}{(total * activeRate).toFixed(2)}</div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {ticketType === 'sale' && payments && payments.length > 0 && (
+                <div className="payments" style={{ marginTop: '10px' }}>
+                  <h4 style={{ textAlign: 'center', textTransform: 'uppercase', margin: '5px 0', fontSize: '12px' }}>Resumen de Pago</h4>
+                  <div className="separator" style={{ borderTop: '1px dashed #000', margin: '5px 0' }}></div>
+                  {payments.map(p => (
+                    <div key={p.id} className="payment-line" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                      <span>{p.method}:</span>
+                      <span>{activeSymbol}{(p.amount * activeRate).toFixed(2)}</span>
+                    </div>
+                  ))}
                 </div>
+              )}
+
+              <div className="footer" style={{ textAlign: 'center', marginTop: '10px', fontSize: '10px' }}>
+                {ticketType === 'sale' ?
+                  <p>{settings?.slogan || '¡Gracias por tu compra!'}</p> :
+                  <p>El Presupuesto puede variar sin previo aviso</p>
+                }
+              </div>
             </div>
-            </div>
+          </div>
         ) : (
-            <div className="p-8 text-center text-muted-foreground">
-                No hay información para mostrar.
-            </div>
+          <div className="p-8 text-center text-muted-foreground">
+            No hay información para mostrar.
+          </div>
         )}
         <DialogFooter className="sm:justify-end gap-2">
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
@@ -298,4 +298,3 @@ export function TicketPreview({
   );
 }
 
-    

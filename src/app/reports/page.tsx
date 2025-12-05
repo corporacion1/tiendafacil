@@ -39,7 +39,7 @@ import {
     DialogClose,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Sale, CartItem, Customer, Product, InventoryMovement, Purchase, Payment, CashSession } from "@/lib/types";
+import { Sale, CartItem, Customer, Product, InventoryMovement, Purchase, SalePayment, CashSession } from "@/lib/types";
 import { TicketPreview } from "@/components/ticket-preview";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -265,7 +265,7 @@ export default function ReportsPage() {
         return customers.find(c => c.name === sale.customerName) || { id: 'unknown', name: sale.customerName, phone: '', address: '', storeId: settings?.id || '' };
     }
 
-    const filterByDate = (data: (Sale | Purchase | InventoryMovement | (Payment & { saleId: string; customerName: string; }) | CashSession)[]) => {
+    const filterByDate = (data: (Sale | Purchase | InventoryMovement | (SalePayment & { saleId: string; customerName: string; }) | CashSession)[]) => {
         if (!dateFilterQuery || !data) return data || [];
         const filterDateKey = data.length > 0 && 'openingDate' in data[0] ? 'openingDate' : 'date';
         return data.filter(item => {
@@ -319,7 +319,7 @@ export default function ReportsPage() {
             ((p as any).saleId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             ((p as any).customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             ((p as any).reference && (p as any).reference.toLowerCase().includes(searchTerm.toLowerCase()))
-        ) as (Payment & { saleId: string; customerName: string; })[];
+        ) as (SalePayment & { saleId: string; customerName: string; })[];
     }, [allPayments, searchTerm, dateFilterQuery]);
 
     const sortedCashSessions = useMemo(() => {
@@ -528,8 +528,8 @@ export default function ReportsPage() {
                                     {paginatedSales.map((sale) => (
                                         <TableRow key={sale.id}>
                                             <TableCell>
-                                                {isClient && sale.date && isValid(getDate(sale.date)) 
-                                                    ? format(getDate(sale.date), 'dd/MM/yyyy HH:mm') 
+                                                {isClient && sale.date && isValid(getDate(sale.date))
+                                                    ? format(getDate(sale.date), 'dd/MM/yyyy HH:mm')
                                                     : '...'}
                                             </TableCell>
                                             <TableCell className="font-medium">{sale.id}</TableCell>
@@ -596,8 +596,8 @@ export default function ReportsPage() {
                                     {paginatedPurchases.map((purchase) => (
                                         <TableRow key={purchase.id}>
                                             <TableCell>
-                                                {isClient && purchase.date && isValid(getDate(purchase.date)) 
-                                                    ? format(getDate(purchase.date), 'dd/MM/yyyy HH:mm') 
+                                                {isClient && purchase.date && isValid(getDate(purchase.date))
+                                                    ? format(getDate(purchase.date), 'dd/MM/yyyy HH:mm')
                                                     : '...'}
                                             </TableCell>
                                             <TableCell className="font-medium">{purchase.id}</TableCell>
@@ -650,8 +650,8 @@ export default function ReportsPage() {
                                     {paginatedPayments.map((payment, index) => (
                                         <TableRow key={payment.id || `payment-${index}`}>
                                             <TableCell>
-                                                {isClient && payment.date && isValid(getDate(payment.date)) 
-                                                    ? format(getDate(payment.date), 'dd/MM/yyyy HH:mm') 
+                                                {isClient && payment.date && isValid(getDate(payment.date))
+                                                    ? format(getDate(payment.date), 'dd/MM/yyyy HH:mm')
                                                     : '...'}
                                             </TableCell>
                                             <TableCell>{payment.saleId}</TableCell>
@@ -709,13 +709,13 @@ export default function ReportsPage() {
                                             <TableRow key={session.id}>
                                                 <TableCell className="font-medium">{session.id}</TableCell>
                                                 <TableCell>
-                                                    {isClient && session.openingDate && isValid(getDate(session.openingDate)) 
-                                                        ? format(getDate(session.openingDate), 'dd/MM/yy HH:mm') 
+                                                    {isClient && session.openingDate && isValid(getDate(session.openingDate))
+                                                        ? format(getDate(session.openingDate), 'dd/MM/yy HH:mm')
                                                         : '...'}
                                                 </TableCell>
                                                 <TableCell>
-                                                    {isClient && session.closingDate && isValid(getDate(session.closingDate)) 
-                                                        ? format(getDate(session.closingDate), 'dd/MM/yy HH:mm') 
+                                                    {isClient && session.closingDate && isValid(getDate(session.closingDate))
+                                                        ? format(getDate(session.closingDate), 'dd/MM/yy HH:mm')
                                                         : 'N/A'}
                                                 </TableCell>
                                                 <TableCell>{session.openedBy}</TableCell>
@@ -794,8 +794,8 @@ export default function ReportsPage() {
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="hidden md:table-cell">
-                                                {isClient && movement.date && isValid(getDate(movement.date)) 
-                                                    ? format(getDate(movement.date), 'dd/MM/yyyy HH:mm') 
+                                                {isClient && movement.date && isValid(getDate(movement.date))
+                                                    ? format(getDate(movement.date), 'dd/MM/yyyy HH:mm')
                                                     : '...'}
                                             </TableCell>
                                             <TableCell className="text-right">{movement.quantity}</TableCell>
@@ -878,8 +878,8 @@ export default function ReportsPage() {
                     <DialogHeader>
                         <DialogTitle>Detalles de la Venta: {selectedSaleDetails?.id}</DialogTitle>
                         <DialogDescription>
-                            Cliente: {selectedSaleDetails?.customerName} | Fecha: {selectedSaleDetails && isClient && selectedSaleDetails.date && isValid(getDate(selectedSaleDetails.date)) 
-                                ? format(getDate(selectedSaleDetails.date), 'dd/MM/yyyy HH:mm') 
+                            Cliente: {selectedSaleDetails?.customerName} | Fecha: {selectedSaleDetails && isClient && selectedSaleDetails.date && isValid(getDate(selectedSaleDetails.date))
+                                ? format(getDate(selectedSaleDetails.date), 'dd/MM/yyyy HH:mm')
                                 : '...'}
                         </DialogDescription>
                     </DialogHeader>

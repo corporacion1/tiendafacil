@@ -22,7 +22,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import type { Product, CartItem, Customer, Sale, InventoryMovement, Family, Payment, PendingOrder, CashSession } from "@/lib/types";
+import type { Product, CartItem, Customer, Sale, InventoryMovement, Family, SalePayment, PendingOrder, CashSession } from "@/lib/types";
 import { TicketPreview } from "@/components/ticket-preview";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -202,7 +202,7 @@ export default function POSPage() {
   const [isCustomerSearchOpen, setIsCustomerSearchOpen] = useState(false);
 
   const [isProcessSaleDialogOpen, setIsProcessSaleDialogOpen] = useState(false);
-  const [payments, setPayments] = useState<Omit<Payment, 'id' | 'date'>[]>([]);
+  const [payments, setPayments] = useState<Omit<SalePayment, 'id' | 'date'>[]>([]);
   const [currentPaymentMethod, setCurrentPaymentMethod] = useState('efectivo');
   const [currentPaymentAmount, setCurrentPaymentAmount] = useState<number | string>('');
   const [currentPaymentRef, setCurrentPaymentRef] = useState('');
@@ -1070,7 +1070,7 @@ export default function POSPage() {
     }
 
     const saleId = generateSaleId();
-    const finalPayments: Payment[] = payments.map((p, i) => ({
+    const finalPayments: SalePayment[] = payments.map((p, i) => ({
       ...p,
       id: `pay-${saleId}-${i}`,
       date: new Date().toISOString(),
