@@ -25,7 +25,7 @@ export async function GET(request: Request) {
         }
 
         // Map database fields to camelCase
-        const formattedPayments = payments.map(p => ({
+        const formattedPayments = payments.map((p: any) => ({
             id: p.id,
             storeId: p.store_id,
             recipientName: p.recipient_name,

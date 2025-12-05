@@ -25,7 +25,7 @@ export async function GET(request: Request) {
         }
 
         // Map database fields to camelCase
-        const formattedRecipients = recipients.map(r => ({
+        const formattedRecipients = recipients.map((r: any) => ({
             id: r.id,
             storeId: r.store_id,
             name: r.name,
