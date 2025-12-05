@@ -45,7 +45,7 @@ const productSchema = z.object({
   warehouse: z.string().optional(),
   description: z.string().optional(),
   imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
-  imageHint: z.string().optional(),
+  imageHint: z.preprocess((val) => val === null ? undefined : val, z.string().optional()),
   // Nuevos campos para múltiples imágenes
   images: z.array(z.object({
     id: z.string(),
@@ -63,7 +63,7 @@ const productSchema = z.object({
   primaryImageIndex: z.number().optional(),
   // Tipo: Producto Simple o Servicio/Fabricación
   type: z.enum(["product", "service"]),
-  affectsInventory: z.boolean(),
+  affectsInventory: z.boolean().default(true),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -78,7 +78,10 @@ const getInitialValues = (product?: Product): ProductFormValues => {
   if (product) {
     return {
       ...product,
-      affectsInventory: product.type === 'product',
+      // Transform null to undefined for imageHint to match schema
+      imageHint: product.imageHint ?? undefined,
+      // Ensure affectsInventory is set based on type
+      affectsInventory: product.affectsInventory ?? (product.type === 'product'),
       // ✅ Asegurar que siempre tengamos un ID válido para Supabase
       id: product.id || (product as any)?._id
     };
@@ -96,7 +99,7 @@ const getInitialValues = (product?: Product): ProductFormValues => {
     tax2: false,
     imageUrl: '',
     description: '',
-    imageHint: '',
+    imageHint: undefined,
     unit: '',
     family: '',
     warehouse: '',
@@ -473,11 +476,11 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                               // Actualizar campos de compatibilidad
                               if (newImages.length > 0) {
                                 setValue('imageUrl', newImages[0].url);
-                                setValue('imageHint', newImages[0].alt);
+                                setValue('imageHint', newImages[0].alt || undefined);
                                 setValue('primaryImageIndex', 0);
                               } else {
                                 setValue('imageUrl', '');
-                                setValue('imageHint', '');
+                                setValue('imageHint', undefined);
                                 setValue('primaryImageIndex', 0);
                               }
                             }}

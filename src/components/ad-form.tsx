@@ -34,7 +34,7 @@ const adSchema = z.object({
     if (/^data:image\//.test(val)) return true;
     return false;
   }, { message: 'La imagen debe ser una URL válida o un data URI.' }),
-  imageHint: z.string().optional(),
+  imageHint: z.preprocess((val) => val === null ? undefined : val, z.string().optional()),
   linkUrl: z.string().url("Debe ser una URL válida").optional().or(z.literal('')),
   targetBusinessTypes: z.array(z.string()).min(1, "Debes seleccionar al menos un tipo de negocio."),
   expiryDate: z.string().optional(),
@@ -51,6 +51,8 @@ interface AdFormProps {
 const getInitialValues = (ad?: Ad): AdFormValues => {
   return ad ? {
     ...ad,
+    // Transform null to undefined for imageHint to match schema
+    imageHint: ad.imageHint ?? undefined,
     targetBusinessTypes: ad.targetBusinessTypes || [],
     linkUrl: ad.linkUrl || ''
   } : {
@@ -58,7 +60,7 @@ const getInitialValues = (ad?: Ad): AdFormValues => {
     status: "active",
     imageUrl: '',
     description: '',
-    imageHint: '',
+    imageHint: undefined,
     linkUrl: '',
     targetBusinessTypes: [],
     expiryDate: '',
