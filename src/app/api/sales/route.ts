@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     }
 
     // Transform to camelCase
-    const formattedSales = sales?.map(sale => ({
+    const formattedSales = sales?.map((sale: any) => ({
       id: sale.id,
       customerId: sale.customer_id,
       customerName: sale.customer_name,

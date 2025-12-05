@@ -34,7 +34,7 @@ const adSchema = z.object({
     if (/^data:image\//.test(val)) return true;
     return false;
   }, { message: 'La imagen debe ser una URL válida o un data URI.' }),
-  imageHint: z.string().nullable().optional(),
+  imageHint: z.string().optional(),
   linkUrl: z.string().url("Debe ser una URL válida").optional().or(z.literal('')),
   targetBusinessTypes: z.array(z.string()).min(1, "Debes seleccionar al menos un tipo de negocio."),
   expiryDate: z.string().optional(),

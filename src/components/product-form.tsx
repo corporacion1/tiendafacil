@@ -45,7 +45,7 @@ const productSchema = z.object({
   warehouse: z.string().optional(),
   description: z.string().optional(),
   imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
-  imageHint: z.string().nullable().optional(),
+  imageHint: z.string().optional(),
   // Nuevos campos para múltiples imágenes
   images: z.array(z.object({
     id: z.string(),

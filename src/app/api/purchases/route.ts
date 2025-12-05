@@ -25,7 +25,7 @@ export async function GET(request: Request) {
     }
 
     // Transform to camelCase
-    const formattedPurchases = purchases?.map(purchase => ({
+    const formattedPurchases = purchases?.map((purchase: any) => ({
       id: purchase.id,
       supplierId: purchase.supplier_id,
       supplierName: purchase.supplier_name,
