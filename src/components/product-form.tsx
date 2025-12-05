@@ -45,7 +45,7 @@ const productSchema = z.object({
   warehouse: z.string().optional(),
   description: z.string().optional(),
   imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
-  imageHint: z.string().optional(),
+  imageHint: z.string().nullable().optional(),
   // Nuevos campos para múltiples imágenes
   images: z.array(z.object({
     id: z.string(),
@@ -293,7 +293,16 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
   return (
     <>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="grid gap-6">
+        <form onSubmit={form.handleSubmit(handleSubmit, (errors) => {
+          console.error('[ProductForm] Validation errors:', JSON.stringify(errors, null, 2));
+          toast({
+            variant: "destructive",
+            title: "Error de validación",
+            description: "Por favor revisa los campos del formulario.",
+          });
+        })} className="grid gap-6">
+          {/* Hidden ID field to ensure it's passed on submit */}
+          {product?.id && <input type="hidden" {...form.register("id")} />}
           <AlertDialog>
             <Card>
               <CardHeader>
