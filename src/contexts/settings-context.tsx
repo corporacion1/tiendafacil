@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePathname } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import { toastLogger } from "@/utils/toast-logger";
-import type { CurrencyRate, Settings, UserProfile, Product, Sale, Purchase, Customer, Supplier, Unit, Family, Warehouse, Ad, CashSession, PendingOrder } from "@/lib/types";
+import type { CurrencyRate, Settings, UserProfile, Product, Sale, Purchase, Customer, Supplier, Unit, Family, Warehouse, Ad, CashSession, PendingOrder, ExpensePayment } from "@/lib/types";
 
 type DisplayCurrency = 'primary' | 'secondary';
 
@@ -45,6 +45,8 @@ interface SettingsContextType {
   setPendingOrders: React.Dispatch<React.SetStateAction<PendingOrder[]>>;
   users: UserProfile[];
   setUsers: React.Dispatch<React.SetStateAction<UserProfile[]>>;
+  expensePayments: ExpensePayment[];
+  setExpensePayments: React.Dispatch<React.SetStateAction<ExpensePayment[]>>;
 
   activeStoreId: string;
   switchStore: (storeId: string) => void;
@@ -106,6 +108,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [cashSessions, setCashSessions] = useState<CashSession[]>([]);
   const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
+  const [expensePayments, setExpensePayments] = useState<ExpensePayment[]>([]);
   // Inicializar con datos locales por defecto para el switch rápido
   const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>([
     {
@@ -212,6 +215,11 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         // Cargar tasas de cambio
         fetch(`/api/currency-rates?storeId=${storeId}`)
           .then(res => res.ok ? res.json() : [])
+          .catch(() => []),
+
+        // Cargar pagos de gastos
+        fetch(`/api/payments?storeId=${storeId}`)
+          .then(res => res.ok ? res.json() : [])
           .catch(() => [])
       ];
 
@@ -223,7 +231,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         productsResult, salesResult, purchasesResult,
         customersResult, suppliersResult, unitsResult, familiesResult,
         warehousesResult, adsResult, usersResult, cashSessionsResult,
-        pendingOrdersResult, currencyRatesResult
+        pendingOrdersResult, currencyRatesResult, expensePaymentsResult
       ] = results;
 
       // Contador de datos cargados
@@ -323,10 +331,16 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
         console.log('💰 [LoadData] Processed currency rates:', processedRates);
         setCurrencyRates(processedRates);
+        setCurrencyRates(processedRates);
         loadedCount++;
       }
 
-      console.log(`✅ ${loadedCount}/14 tipos de datos cargados desde Supabase`);
+      if (expensePaymentsResult && expensePaymentsResult.status === 'fulfilled' && expensePaymentsResult.value) {
+        setExpensePayments(expensePaymentsResult.value);
+        loadedCount++;
+      }
+
+      console.log(`✅ ${loadedCount}/15 tipos de datos cargados desde Supabase`);
 
     } catch (error) {
       console.error('❌ Error cargando datos desde Supabase:', error);
@@ -745,7 +759,9 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       reloadProducts,
       // Funciones de sincronización automática
       syncAfterSave: loadDataFromSupabase,
-      syncProducts: reloadProducts
+      syncProducts: reloadProducts,
+      expensePayments,
+      setExpensePayments
     }
   }, [
     // Solo incluir dependencias que realmente cambian y son necesarias
@@ -769,6 +785,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     activeStoreId,
     isLoading,
     userProfile,
+    expensePayments,
     // Funciones estabilizadas
     updateSettingsState,
     saveSettingsToDatabase,
