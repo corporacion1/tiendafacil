@@ -19,7 +19,7 @@ import { useDashboardStats } from "@/hooks/useDashboardStats"
 import { supabase } from '@/lib/supabase'
 
 type TimeFilter = 'day' | 'week' | 'month'
-type GraphType = 'financial' | 'inventory' | 'roi'
+type GraphType = 'financial' | 'inventory' | 'roi' | 'cashflow'
 
 const getDate = (d: any): Date => {
   if (!d) return new Date()
@@ -246,6 +246,15 @@ export default function Dashboard() {
                   <BarChart3 className="h-4 w-4" />
                   ROI (Utilidad vs Pagos)
                 </Button>
+                <Button
+                  variant={selectedGraph === 'cashflow' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedGraph('cashflow')}
+                  className="flex items-center gap-2 whitespace-nowrap"
+                >
+                  <DollarSign className="h-4 w-4" />
+                  Flujo de Caja
+                </Button>
               </div>
             </div>
           </CardHeader>
@@ -300,6 +309,22 @@ export default function Dashboard() {
                         <Bar dataKey="profit" name="Utilidad Bruta" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
                         <Bar dataKey="payments" name="Pagos" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
                       </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+
+                {selectedGraph === 'cashflow' && (
+                  <div className="p-1">
+                    <ResponsiveContainer width="100%" height={350}>
+                      <LineChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${activeSymbol}${value.toFixed(0)}`} />
+                        <Tooltip contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }} formatter={(value: number) => `${activeSymbol}${value.toFixed(2)}`} />
+                        <Legend />
+                        <Line type="monotone" dataKey="sales" name="Ventas Brutas" stroke="hsl(var(--chart-1))" strokeWidth={2} />
+                        <Line type="monotone" dataKey="payments" name="Pagos (Salidas)" stroke="hsl(var(--chart-2))" strokeWidth={2} />
+                      </LineChart>
                     </ResponsiveContainer>
                   </div>
                 )}
