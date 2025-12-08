@@ -5,9 +5,7 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  eslint: {
-    ignoreDuringBuilds: false,
-  },
+
   images: {
     // Permitir imágenes base64 (se usarán con <img> nativo para evitar problemas)
     unoptimized: false, // Mantener optimización para URLs remotas
