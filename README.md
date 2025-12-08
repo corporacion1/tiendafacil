@@ -4,7 +4,7 @@
 
 ![TiendaFácil Logo](public/tienda_facil_logo.svg)
 
-**Versión 1.2.0** | **Diciembre 2024**
+**Versión 1.2.2** | **Diciembre 2024**
 
 *Sistema completo de Punto de Venta, Inventario y Comercio Electrónico*
 
