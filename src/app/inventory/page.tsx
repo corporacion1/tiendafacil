@@ -578,7 +578,7 @@ export default function InventoryPage() {
     setCurrentPage(1);
   }, [searchTerm, activeTab, productTypeFilter]);
 
-  const exportData = (format: 'csv' | 'json' | 'txt') => {
+  const exportData = (format: 'csv' | 'json' | 'txt' | 'xlsx') => {
     const data = getVisibleProducts();
     if (data.length === 0) {
       toast({ variant: 'destructive', title: 'No hay datos para exportar' });
