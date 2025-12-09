@@ -294,7 +294,7 @@ export default function InventoryPage() {
             const exists = prev.find(p => p.id === created.id);
             return exists ? prev.map(p => p.id === created.id ? created : p) : [created, ...prev];
           });
-          setProductToEdit(created);
+          setProductToEdit(null);
           toast({ title: 'Producto Creado', description: `Se creó el producto "${created.name}" al no existir en la base de datos.` });
           await reloadProducts();
           return true;
@@ -308,7 +308,7 @@ export default function InventoryPage() {
 
       // Actualizar estado local
       setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
-      setProductToEdit(updatedProduct);
+      setProductToEdit(null);
       toast({ title: 'Producto Actualizado', description: `El producto "${updatedProduct.name}" ha sido actualizado.` });
       await reloadProducts();
       return true;

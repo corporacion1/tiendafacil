@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { ProductForm } from "@/components/product-form";
@@ -16,6 +17,7 @@ export default function ProductsPage() {
   const { user } = useAuth();
   const { createWithSync } = useAutoSync();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
 
   // Función para crear producto usando la API
   const createProductInSupabase = async (productData: Product) => {
@@ -65,6 +67,8 @@ export default function ProductsPage() {
 
       // Mostrar mensaje de éxito
       console.log(`✅ Producto "${data.name}" creado exitosamente`);
+
+      router.push('/inventory');
 
       return true; // Indica que el formulario debe resetearse
 
