@@ -39,6 +39,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAutoSync } from "@/hooks/use-auto-sync";
 import { format, parseISO } from "date-fns";
 import { Pagination } from "@/components/ui/pagination";
+import * as XLSX from 'xlsx';
+import { useRef } from "react";
 
 const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewMovements, setProductToDelete }: {
   product: Product;
@@ -143,7 +145,9 @@ export default function InventoryPage() {
   const { toast } = useToast();
   const { activeSymbol, activeRate, activeStoreId, products, setProducts, sales, reloadProducts } = useSettings();
   const { user } = useAuth();
-  const { updateWithSync, deleteWithSync } = useAutoSync();
+  const { createWithSync, updateWithSync, deleteWithSync } = useAutoSync();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   const [inventoryMovements, setInventoryMovements] = useState<InventoryMovement[]>([]);
 
@@ -585,6 +589,28 @@ export default function InventoryPage() {
     let mimeType = '';
     let fileExtension = '';
 
+    if (format === 'xlsx') {
+      const dataToExport = data.map(p => ({
+        SKU: p.sku || '',
+        Nombre: p.name,
+        Estado: p.status === 'active' ? 'Activo' : p.status === 'inactive' ? 'Inactivo' : 'Promoción',
+        'Precio Detal': parseFloat((p.price * activeRate).toFixed(2)),
+        'Precio Mayor': parseFloat((p.wholesalePrice * activeRate).toFixed(2)),
+        Costo: parseFloat((p.cost * activeRate).toFixed(2)),
+        Stock: p.stock,
+        Unidad: p.unit || 'Unidad',
+        Familia: p.family || 'General',
+        Tipo: p.type === 'service' ? 'Servicio' : 'Producto'
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Inventario");
+      XLSX.writeFile(workbook, `inventario-${activeTab}-${new Date().toISOString().split('T')[0]}.xlsx`);
+      toast({ title: 'Exportación completada' });
+      return;
+    }
+
     const dataToExport = data.map(p => ({
       SKU: p.sku,
       Nombre: p.name,
@@ -625,6 +651,109 @@ export default function InventoryPage() {
     link.click();
     URL.revokeObjectURL(link.href);
     toast({ title: 'Exportación completada' });
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+      const worksheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[worksheetName];
+      const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+      logger.info('📂 [Inventory] Importando datos:', jsonData.length, 'filas');
+
+      let createdCount = 0;
+      let updatedCount = 0;
+      let errorCount = 0;
+
+      for (const row of jsonData) {
+        try {
+          // Normalizar datos del Excel
+          // Mapeo flexible de nombres de columnas
+          const name = row['Nombre'] || row['nombre'] || row['Name'] || row['name'];
+          // Continuar solo si hay nombre
+          if (!name) continue;
+
+          const sku = (row['SKU'] || row['sku'] || '').toString();
+          const price = parseFloat(row['Precio Detal'] || row['Precio'] || row['price'] || 0);
+          const cost = parseFloat(row['Costo'] || row['cost'] || 0);
+          const stock = parseInt(row['Stock'] || row['stock'] || 0);
+
+          // Buscar producto existente por SKU o Nombre exacto
+          const existingProduct = products.find(p =>
+            (sku && p.sku === sku) ||
+            (p.name.toLowerCase() === name.toLowerCase())
+          );
+
+          const productData = {
+            name: name,
+            sku: sku,
+            price: price,
+            cost: cost,
+            stock: stock,
+            store_id: activeStoreId,
+            updated_at: new Date().toISOString()
+          };
+
+          if (existingProduct) {
+            // Actualizar
+            const res = await fetch(`/api/products/${existingProduct.id}?storeId=${encodeURIComponent(activeStoreId)}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ...existingProduct, ...productData })
+            });
+
+            if (res.ok) updatedCount++;
+            else errorCount++;
+          } else {
+            // Crear nuevo
+            const newProduct = {
+              ...productData,
+              id: `prod-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              created_at: new Date().toISOString(),
+              user_id: (user as any)?.id || 'system',
+              status: 'active',
+              type: 'product',
+              image_hint: 'default-product'
+            };
+
+            const res = await fetch('/api/products', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(newProduct)
+            });
+
+            if (res.ok) createdCount++;
+            else errorCount++;
+          }
+        } catch (err) {
+          console.error('Error importando fila:', row, err);
+          errorCount++;
+        }
+      }
+
+      await reloadProducts();
+      toast({
+        title: "Importación Finalizada",
+        description: `Creados: ${createdCount}, Actualizados: ${updatedCount}, Errores: ${errorCount}`
+      });
+
+    } catch (error) {
+      console.error('Error leyendo archivo Excel:', error);
+      toast({ variant: 'destructive', title: 'Error al importar', description: 'No se pudo leer el archivo Excel.' });
+    } finally {
+      setIsImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
 
@@ -735,6 +864,20 @@ export default function InventoryPage() {
             <TabsTrigger value="promotion">Promoción</TabsTrigger>
           </TabsList>
           <div className="ml-auto flex items-center gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              accept=".xlsx, .xls, .csv"
+              className="hidden"
+            />
+            <Button size="sm" variant="outline" className="h-8 gap-1" onClick={handleImportClick} disabled={isImporting}>
+              {isImporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
+              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                {isImporting ? 'Importando...' : 'Importar Excel'}
+              </span>
+            </Button>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button size="sm" variant="outline" className="h-8 gap-1">
@@ -746,8 +889,12 @@ export default function InventoryPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Formatos de Exportación</DropdownMenuLabel>
-                <DropdownMenuItem onSelect={() => exportData('csv')}>
+                <DropdownMenuItem onSelect={() => exportData('xlsx')}>
                   <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  <span>Excel (.xlsx)</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportData('csv')}>
+                  <FileText className="mr-2 h-4 w-4" />
                   <span>CSV (para Excel)</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => exportData('json')}>
