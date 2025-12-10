@@ -89,11 +89,33 @@ Democratizar el acceso a tecnología comercial avanzada, permitiendo que cualqui
 - **Historial Completo**: Filtros por categoría, búsqueda y totales automáticos
 - **Sin Impacto en Inventario**: Separado del módulo de compras de productos
 
-## 🚀 **Nuevas Características - Versión 1.2.0**
+## 🚀 **Nuevas Características - Versión 1.2.3**
 
 ### ✨ **Funcionalidades Recién Agregadas**
 
-#### 💳 **Módulo de Pagos y Gastos Generales**
+#### � **Gestión Avanzada de Inventario con Excel**
+- **Importación Masiva**: Carga de productos desde Excel (`.xlsx`) con creación y actualización automática.
+- **Exportación Nativa**: Descarga directa de inventario en formato Excel (`.xlsx`).
+- **Validación Automática**: Detección inteligente de duplicados y errores durante la importación.
+
+#### 📈 **Nuevos Módulos de Análisis**
+- **Gráfico de Ventas vs Pagos**: Visualización comparativa en el Dashboard principal.
+- **Análisis Financiero**: Monitoreo en tiempo real del flujo de caja (Ingresos vs Gastos).
+
+#### 🔄 **Mejoras de Flujo de Trabajo**
+- **Redirección Inteligente**:
+  - Al crear producto -> Redirige automáticamente al inventario.
+  - Al editar producto -> Cierra el modal y actualiza la lista.
+- **Optimización de UX**: Menos clics para realizar tareas comunes.
+
+#### 🛠️ **Correcciones y Optimizaciones**
+- **Seguridad**: Actualización de Next.js y React para mitigar vulnerabilidades (CVE-2025-66478).
+- **Tipado Estricto**: Corrección de errores de TypeScript en módulos de ventas y pagos.
+- **Estabilidad**: Solución a problemas de validación en formularios de productos.
+
+### ✨ **Funcionalidades Anteriores (v1.2.2)**
+
+#### �💳 **Módulo de Pagos y Gastos Generales**
 - **Sistema Completo de Pagos**: Nuevo módulo para registrar gastos del negocio separado de compras de inventario
 - **Gestión de Destinatarios**: Base de datos de proveedores y destinatarios con información completa (RIF, teléfono, email)
 - **6 Categorías de Gastos**: Alquiler, Combustible, Consumibles, Materia Prima, Servicios, Otros
