@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react";
-import { DollarSign, PlusCircle, Trash2, ArrowUpDown, Check, Calendar as CalendarIcon } from "lucide-react";
+import { DollarSign, PlusCircle, Trash2, ArrowUpDown, Check, Calendar as CalendarIcon, Eye, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -60,6 +60,7 @@ export default function PaymentsPage() {
 
     // Recipient dialog states
     const [isRecipientDialogOpen, setIsRecipientDialogOpen] = useState(false);
+    const [editingRecipientId, setEditingRecipientId] = useState<string | null>(null);
     const [newRecipient, setNewRecipient] = useState({
         name: '',
         taxId: '',
@@ -72,6 +73,10 @@ export default function PaymentsPage() {
     // Filters
     const [filterCategory, setFilterCategory] = useState<string>('all');
     const [searchTerm, setSearchTerm] = useState('');
+
+    // Detail View State
+    const [viewPayment, setViewPayment] = useState<ExpensePayment | null>(null);
+    const [isViewOpen, setIsViewOpen] = useState(false);
 
     const selectedRecipient = recipients.find(r => r.id === selectedRecipientId) || null;
 
@@ -109,17 +114,26 @@ export default function PaymentsPage() {
         }
     };
 
-    const handleAddRecipient = async () => {
+    const handleSaveRecipient = async () => {
         if (!newRecipient.name.trim()) {
             toast({ variant: "destructive", title: "Nombre requerido" });
             return;
         }
 
         try {
-            const response = await fetch('/api/payment-recipients', {
-                method: 'POST',
+            const url = editingRecipientId
+                ? '/api/payment-recipients' // PUT
+                : '/api/payment-recipients'; // POST
+
+            const method = editingRecipientId ? 'PUT' : 'POST';
+            const body = editingRecipientId
+                ? { ...newRecipient, id: editingRecipientId, storeId: activeStoreId }
+                : { ...newRecipient, storeId: activeStoreId };
+
+            const response = await fetch(url, {
+                method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...newRecipient, storeId: activeStoreId })
+                body: JSON.stringify(body)
             });
 
             if (!response.ok) {
@@ -127,21 +141,32 @@ export default function PaymentsPage() {
                 throw new Error(error.error);
             }
 
-            const createdRecipient = await response.json();
-            setRecipients(prev => [createdRecipient, ...prev]);
-            setSelectedRecipientId(createdRecipient.id);
+            const savedRecipient = await response.json();
+
+            if (editingRecipientId) {
+                setRecipients(prev => prev.map(r => r.id === editingRecipientId ? savedRecipient : r));
+                toast({
+                    title: "Destinatario Actualizado",
+                    description: `"${savedRecipient.name}" ha sido actualizado exitosamente.`
+                });
+            } else {
+                setRecipients(prev => [savedRecipient, ...prev]);
+                setSelectedRecipientId(savedRecipient.id);
+                toast({
+                    title: "Destinatario Agregado",
+                    description: `"${savedRecipient.name}" ha sido creado exitosamente.`
+                });
+            }
+
             setNewRecipient({ name: '', taxId: '', phone: '', email: '', address: '', notes: '' });
+            setEditingRecipientId(null);
             setIsRecipientDialogOpen(false);
 
-            toast({
-                title: "Destinatario Agregado",
-                description: `"${createdRecipient.name}" ha sido creado exitosamente.`
-            });
         } catch (error: any) {
             toast({
                 variant: "destructive",
                 title: "Error",
-                description: error.message || "No se pudo crear el destinatario"
+                description: error.message || "No se pudo guardar el destinatario"
             });
         }
     };
@@ -245,8 +270,14 @@ export default function PaymentsPage() {
     const filteredPayments = useMemo(() => {
         return payments.filter(payment => {
             const matchesCategory = filterCategory === 'all' || payment.category === filterCategory;
-            const matchesSearch = payment.recipientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                payment.notes?.toLowerCase().includes(searchTerm.toLowerCase());
+
+            const formattedDate = format(new Date(payment.paymentDate), "dd/MM/yyyy");
+            const searchLower = searchTerm.toLowerCase();
+
+            const matchesSearch = payment.recipientName.toLowerCase().includes(searchLower) ||
+                payment.notes?.toLowerCase().includes(searchLower) ||
+                formattedDate.includes(searchTerm);
+
             return matchesCategory && matchesSearch;
         });
     }, [payments, filterCategory, searchTerm]);
@@ -292,9 +323,32 @@ export default function PaymentsPage() {
                                                                 setSelectedRecipientId(recipient.id);
                                                                 setIsRecipientSearchOpen(false);
                                                             }}
+                                                            className="flex items-center justify-between group"
                                                         >
-                                                            <Check className={cn("mr-2 h-4 w-4", selectedRecipientId === recipient.id ? "opacity-100" : "opacity-0")} />
-                                                            {recipient.name}
+                                                            <div className="flex items-center">
+                                                                <Check className={cn("mr-2 h-4 w-4", selectedRecipientId === recipient.id ? "opacity-100" : "opacity-0")} />
+                                                                {recipient.name}
+                                                            </div>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setNewRecipient({
+                                                                        name: recipient.name,
+                                                                        taxId: recipient.taxId || '',
+                                                                        phone: recipient.phone || '',
+                                                                        email: recipient.email || '',
+                                                                        address: recipient.address || '',
+                                                                        notes: recipient.notes || ''
+                                                                    });
+                                                                    setEditingRecipientId(recipient.id);
+                                                                    setIsRecipientDialogOpen(true);
+                                                                }}
+                                                            >
+                                                                <Pencil className="h-3 w-3" />
+                                                            </Button>
                                                         </CommandItem>
                                                     ))}
                                                 </CommandGroup>
@@ -305,13 +359,22 @@ export default function PaymentsPage() {
 
                                 <Dialog open={isRecipientDialogOpen} onOpenChange={setIsRecipientDialogOpen}>
                                     <DialogTrigger asChild>
-                                        <Button variant="outline" size="icon">
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={() => {
+                                                setNewRecipient({ name: '', taxId: '', phone: '', email: '', address: '', notes: '' });
+                                                setEditingRecipientId(null);
+                                            }}
+                                        >
                                             <PlusCircle className="h-4 w-4" />
                                         </Button>
                                     </DialogTrigger>
                                     <DialogContent>
                                         <DialogHeader>
-                                            <DialogTitle>Agregar Destinatario</DialogTitle>
+                                            <DialogTitle>
+                                                {editingRecipientId ? 'Editar Destinatario' : 'Agregar Destinatario'}
+                                            </DialogTitle>
                                         </DialogHeader>
                                         <div className="grid gap-4 py-4">
                                             <div className="space-y-2">
@@ -326,10 +389,27 @@ export default function PaymentsPage() {
                                                 <Label>Teléfono</Label>
                                                 <Input value={newRecipient.phone} onChange={(e) => setNewRecipient(prev => ({ ...prev, phone: e.target.value }))} />
                                             </div>
+                                            <div className="space-y-2">
+                                                <Label>Email</Label>
+                                                <Input value={newRecipient.email} onChange={(e) => setNewRecipient(prev => ({ ...prev, email: e.target.value }))} placeholder="opcional" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Dirección</Label>
+                                                <Input value={newRecipient.address} onChange={(e) => setNewRecipient(prev => ({ ...prev, address: e.target.value }))} placeholder="opcional" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Notas</Label>
+                                                <textarea
+                                                    className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                                    value={newRecipient.notes}
+                                                    onChange={(e) => setNewRecipient(prev => ({ ...prev, notes: e.target.value }))}
+                                                    placeholder="opcional"
+                                                />
+                                            </div>
                                         </div>
                                         <DialogFooter>
                                             <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-                                            <Button onClick={handleAddRecipient}>Guardar</Button>
+                                            <Button onClick={handleSaveRecipient}>Guardar</Button>
                                         </DialogFooter>
                                     </DialogContent>
                                 </Dialog>
@@ -500,27 +580,40 @@ export default function PaymentsPage() {
                                                     {activeSymbol}{(payment.amount * activeRate).toFixed(2)}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <AlertDialog>
-                                                        <AlertDialogTrigger asChild>
-                                                            <Button variant="ghost" size="icon">
-                                                                <Trash2 className="h-4 w-4 text-destructive" />
-                                                            </Button>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent>
-                                                            <AlertDialogHeader>
-                                                                <AlertDialogTitle>¿Eliminar pago?</AlertDialogTitle>
-                                                                <AlertDialogDescription>
-                                                                    Esta acción no se puede deshacer.
-                                                                </AlertDialogDescription>
-                                                            </AlertDialogHeader>
-                                                            <AlertDialogFooter>
-                                                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                                                <AlertDialogAction onClick={() => handleDeletePayment(payment.id)}>
-                                                                    Eliminar
-                                                                </AlertDialogAction>
-                                                            </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
+                                                    <div className="flex justify-end gap-2">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            onClick={() => {
+                                                                setViewPayment(payment);
+                                                                setIsViewOpen(true);
+                                                            }}
+                                                        >
+                                                            <Eye className="h-4 w-4 text-blue-500" />
+                                                        </Button>
+
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button variant="ghost" size="icon">
+                                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                                </Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>¿Eliminar pago?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        Esta acción no se puede deshacer.
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                                                    <AlertDialogAction onClick={() => handleDeletePayment(payment.id)}>
+                                                                        Eliminar
+                                                                    </AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    </div>
                                                 </TableCell>
                                             </TableRow>
                                         ))
@@ -541,6 +634,78 @@ export default function PaymentsPage() {
                     </CardContent>
                 </Card>
             </div>
+            {/* Payment Detail Dialog */}
+            <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Detalle de Pago</DialogTitle>
+                        <DialogDescription>Información completa del registro</DialogDescription>
+                    </DialogHeader>
+
+                    {viewPayment && (
+                        <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <Label className="text-muted-foreground">Fecha</Label>
+                                    <p className="font-medium">{format(new Date(viewPayment.paymentDate), "PPP", { locale: es })}</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-muted-foreground">Monto</Label>
+                                    <p className="font-medium text-lg text-green-600">
+                                        {activeSymbol}{(viewPayment.amount * activeRate).toFixed(2)}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <Separator />
+
+                            <div className="space-y-1">
+                                <Label className="text-muted-foreground">Destinatario</Label>
+                                <p className="font-medium text-lg">{viewPayment.recipientName}</p>
+                                {viewPayment.recipientId && <p className="text-sm text-muted-foreground">ID: {viewPayment.recipientId}</p>}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <Label className="text-muted-foreground">Categoría</Label>
+                                    <p className="font-medium">
+                                        {PAYMENT_CATEGORIES.find(c => c.value === viewPayment.category)?.label}
+                                    </p>
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-muted-foreground">Método de Pago</Label>
+                                    <p className="font-medium">
+                                        {PAYMENT_METHODS.find(m => m.value === viewPayment.paymentMethod)?.label}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {viewPayment.documentNumber && (
+                                <div className="space-y-1">
+                                    <Label className="text-muted-foreground">Documento Referencia</Label>
+                                    <p className="font-medium">{viewPayment.documentNumber}</p>
+                                </div>
+                            )}
+
+                            <div className="space-y-1">
+                                <Label className="text-muted-foreground">Responsable</Label>
+                                <p className="font-medium">{viewPayment.responsible}</p>
+                            </div>
+
+                            {viewPayment.notes && (
+                                <div className="space-y-1 bg-muted p-3 rounded-md">
+                                    <Label className="text-muted-foreground text-xs uppercase">Notas</Label>
+                                    <p className="text-sm mt-1">{viewPayment.notes}</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    <DialogFooter>
+                        <Button onClick={() => setIsViewOpen(false)}>Cerrar</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

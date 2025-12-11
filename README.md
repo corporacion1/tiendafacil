@@ -4,7 +4,7 @@
 
 ![TiendaFácil Logo](public/tienda_facil_logo.svg)
 
-**Versión 1.2.2** | **Diciembre 2024**
+**Versión 1.2.4** | **Diciembre 2024**
 
 *Sistema completo de Punto de Venta, Inventario y Comercio Electrónico*
 
@@ -89,7 +89,22 @@ Democratizar el acceso a tecnología comercial avanzada, permitiendo que cualqui
 - **Historial Completo**: Filtros por categoría, búsqueda y totales automáticos
 - **Sin Impacto en Inventario**: Separado del módulo de compras de productos
 
-## 🚀 **Nuevas Características - Versión 1.2.3**
+## 🚀 **Nuevas Características - Versión 1.2.4**
+
+### ✨ **Optimización y Rendimiento Critico**
+
+#### ⚡ **Sistema de Caché Inteligente (Smart Caching)**
+- **Reducción de Egress**: Implementación de `unstable_cache` en endpoints críticos (`/api/products`, `/api/orders`) para minimizar el consumo de ancho de banda y lecturas a la base de datos (Supabase).
+- **Actualizaciones en Tiempo Real**: Lógica de invalidación de caché (`revalidateTag`) activada automáticamente al crear, editar o eliminar productos y pedidos.
+- **Sincronización de Inventario**: Invalidación automática del caché de productos al registrar ventas, asegurando stock preciso en todos los dispositivos sin latencia.
+- **Headers HTTP**: Implementación de `Cache-Control` (stale-while-revalidate) para caché eficiente en el navegador.
+
+#### 🔄 **Mejoras en APIs de Ventas y Pedidos**
+- **Carga Instantánea**: El POS ahora recupera productos y pedidos desde el caché del servidor, reduciendo drásticamente los tiempos de carga.
+- **Menor Latencia**: Respuestas más rápidas gracias a la reducción de viajes completos a la base de datos.
+- **Estabilidad**: El sistema es más resistente a intermitencias de red menores gracias al caché local.
+
+### ✨ **Características Anteriores (v1.2.3)**
 
 ### ✨ **Funcionalidades Recién Agregadas**
 
@@ -531,7 +546,7 @@ Este proyecto es propiedad de **Corporación 1 Plus, C.A.** y está protegido po
 
 <div align="center">
 
-**🚀 TiendaFácil v1.2.0 - Impulsando el Comercio Digital**
+**🚀 TiendaFácil v1.2.4 - Impulsando el Comercio Digital**
 
 *Desarrollado con ❤️ por Corporación 1 Plus, C.A.*
 

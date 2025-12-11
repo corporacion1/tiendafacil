@@ -171,7 +171,7 @@ export async function PUT(request: NextRequest) {
 
     // Preparar datos para actualización
     const updateData: any = {
-      updated_at: new Date().toISOString()
+      // updated_at removed as column does not exist
     };
 
     if (data.name !== undefined) updateData.name = data.name.trim();

@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { IDGenerator } from '@/lib/id-generator';
+import { unstable_cache, revalidateTag } from 'next/cache';
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,21 +12,33 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
     }
 
-    console.log('📦 [Products API] GET products for store:', storeId);
+    // Definir la función de fetch cacheada
+    const getCachedProducts = unstable_cache(
+      async (id: string) => {
+        console.log(`🔌 [Products API] Fetching FRESH data from DB for store: ${id}`);
+        const { data: products, error } = await supabaseAdmin
+          .from('products')
+          .select('*')
+          .eq('store_id', id)
+          .order('created_at', { ascending: false });
 
-    const { data: products, error } = await supabaseAdmin
-      .from('products')
-      .select('*')
-      .eq('store_id', storeId)
-      .order('created_at', { ascending: false });
+        if (error) throw error;
+        return products;
+      },
+      [`products-${storeId}`], // Key parts
+      {
+        tags: [`products-${storeId}`, 'products'], // Tags para invalidación
+        revalidate: 3600 // Fallback: revalidar cada hora si no hay cambios
+      }
+    );
 
-    if (error) {
-      console.error('❌ [Products API] Error fetching products:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    console.log(`🔍 [Products API] Requesting products for store: ${storeId}`);
+    const products = await getCachedProducts(storeId);
 
     // Transformar snake_case a camelCase para compatibilidad
-    const transformedProducts = products.map((p: any) => ({
+    // Nota: Mantenemos la transformación fuera del cache para permitir flexibilidad si el modelo cambia
+    // aunque idealmente se cachearía el objeto transformado para ahorrar CPU también.
+    const transformedProducts = products?.map((p: any) => ({
       id: p.id,
       storeId: p.store_id,
       sku: p.sku,
@@ -50,10 +63,18 @@ export async function GET(request: NextRequest) {
       affectsInventory: p.affects_inventory !== undefined ? p.affects_inventory : true,
       createdAt: p.created_at,
       updatedAt: p.updated_at
-    }));
+    })) || [];
 
-    console.log(`✅ [Products API] Returned ${transformedProducts.length} products`);
-    return NextResponse.json(transformedProducts);
+    console.log(`✅ [Products API] Returned ${transformedProducts.length} products (Cache Status: Likely HIT if no 'Fresh data' log)`);
+
+    // Agregar headers de cache HTTP para el navegador (Client-side cache)
+    // stale-while-revalidate permite usar datos "viejos" mientras se busca nuevo en background
+    return NextResponse.json(transformedProducts, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30',
+      }
+    });
+
   } catch (error: any) {
     console.error('❌ [Products API] Unexpected error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -150,6 +171,10 @@ export async function POST(request: NextRequest) {
       updatedAt: created.updated_at
     };
 
+    // Invalidar cache
+    revalidateTag(`products-${created.store_id}`);
+    revalidateTag('products');
+
     return NextResponse.json(response);
   } catch (error: any) {
     console.error('❌ [Products API] Unexpected error:', error);
@@ -240,6 +265,10 @@ export async function PUT(request: NextRequest) {
       updatedAt: updated.updated_at
     };
 
+    // Invalidar cache
+    revalidateTag(`products-${updated.store_id}`);
+    revalidateTag('products');
+
     return NextResponse.json(response);
   } catch (error: any) {
     console.error('❌ [Products API] Unexpected error:', error);
@@ -274,6 +303,11 @@ export async function DELETE(request: NextRequest) {
       }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+
+    // Invalidar cache 
+    revalidateTag(`products-${storeId}`);
+    revalidateTag('products');
 
     console.log('✅ [Products API] Product deleted:', id);
     return NextResponse.json({ message: 'Producto eliminado exitosamente' });

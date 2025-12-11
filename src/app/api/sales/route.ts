@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { IDGenerator } from '@/lib/id-generator';
+import { revalidateTag } from 'next/cache';
 
 export async function GET(request: Request) {
   try {
@@ -174,6 +175,10 @@ export async function POST(request: Request) {
       creditDueDate: createdSale.credit_due_date,
       userId: createdSale.user_id
     };
+
+    // Invalidar cache de productos para que se actualice el stock
+    revalidateTag(`products-${createdSale.store_id}`);
+    revalidateTag('products');
 
     return NextResponse.json(formattedResponse);
 

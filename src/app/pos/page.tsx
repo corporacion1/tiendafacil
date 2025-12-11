@@ -2,7 +2,7 @@
 "use client"
 import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
-import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff, Archive, QrCode, Lock, Unlock, Library, FilePieChart, LogOut, ArrowLeft, Armchair, ScanLine, Search, Share } from "lucide-react"
+import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff, Archive, QrCode, Lock, Unlock, Library, FilePieChart, LogOut, ArrowLeft, Armchair, ScanLine, Search, Share, Pencil } from "lucide-react"
 import { FaWhatsapp } from "react-icons/fa";
 import dynamic from 'next/dynamic';
 
@@ -197,6 +197,7 @@ export default function POSPage() {
   const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
 
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('eventual');
+  const [editingCustomerId, setEditingCustomerId] = useState<string | null>(null);
   const [newCustomer, setNewCustomer] = useState({ id: '', name: '', phone: '', address: '' });
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [isCustomerSearchOpen, setIsCustomerSearchOpen] = useState(false);
@@ -1465,7 +1466,7 @@ export default function POSPage() {
     });
   };
 
-  const handleAddNewCustomer = async () => {
+  const handleSaveCustomer = async () => {
     // Validaciones básicas
     if (!newCustomer.name.trim()) {
       toast({
@@ -1496,8 +1497,8 @@ export default function POSPage() {
       return;
     }
 
-    // Verificar si ya existe un cliente con el mismo teléfono
-    const existingCustomer = customers.find(c => c.phone === newCustomer.phone.trim());
+    // Verificar si ya existe un cliente con el mismo teléfono (solo si no estamos editando el mismo)
+    const existingCustomer = customers.find(c => c.phone === newCustomer.phone.trim() && c.id !== editingCustomerId);
     if (existingCustomer) {
       toast({
         variant: "destructive",
@@ -1508,65 +1509,102 @@ export default function POSPage() {
     }
 
     try {
+      const url = editingCustomerId ? '/api/costumers' : '/api/costumers'; // Using same endpoint with different method
+      const method = editingCustomerId ? 'PUT' : 'POST';
+
       const newId = `cust-${Date.now()}`;
-      const customerToAdd: Customer = {
-        id: newId,
+      const customerData: Customer = {
+        id: editingCustomerId || newCustomer.id || newId,
         name: newCustomer.name.trim(),
         phone: newCustomer.phone.trim(),
         address: newCustomer.address.trim(),
         storeId: activeStoreId,
       };
 
+      console.log('📤 [POS] Saving customer:', { method, url, customerData });
+
       // Guardar en la base de datos
-      const response = await fetch('/api/costumers', {
-        method: 'POST',
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(customerToAdd)
+        body: JSON.stringify(customerData)
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        const errorText = await response.text();
+        console.error(`❌ [POS] Error response (${response.status}):`, errorText);
+
+        let errorData = {};
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { error: 'Non-JSON response', text: errorText };
+        }
+
         console.error('❌ Error al guardar cliente:', errorData);
-        throw new Error(errorData.error || 'Error al guardar el cliente');
+        throw new Error((errorData as any).error || 'Error al guardar el cliente');
       }
 
       const savedCustomer = await response.json();
 
       // Actualizar estado local
-      setCustomers(prev => [...prev, savedCustomer]);
-      setSelectedCustomerId(newId);
+      if (editingCustomerId) {
+        setCustomers(prev => prev.map(c => c.id === editingCustomerId ? savedCustomer : c));
+        toast({
+          title: "Cliente Actualizado",
+          description: `El cliente "${savedCustomer.name}" ha sido actualizado.`,
+        });
+      } else {
+        setCustomers(prev => [...prev, savedCustomer]);
+        setSelectedCustomerId(savedCustomer.id);
+        toast({
+          title: "Cliente Agregado",
+          description: `El cliente "${savedCustomer.name}" ha sido agregado y seleccionado.`,
+        });
+      }
+
       setNewCustomer({ id: '', name: '', phone: '', address: '' });
+      setEditingCustomerId(null);
       setIsCustomerDialogOpen(false);
 
-      toast({
-        title: "Cliente Agregado",
-        description: `El cliente "${customerToAdd.name}" ha sido agregado y seleccionado.`,
-      });
-
-      console.log('✅ Cliente agregado exitosamente:', savedCustomer.id);
+      console.log('✅ Cliente guardado exitosamente:', savedCustomer.id);
 
     } catch (error) {
-      console.error('❌ Error agregando cliente:', error);
+      console.error('❌ Error guardando cliente:', error);
 
-      // Fallback: agregar solo localmente si falla la BD
-      const newId = `cust-${Date.now()}`;
-      const customerToAdd: Customer = {
-        id: newId,
-        name: newCustomer.name.trim(),
-        phone: newCustomer.phone.trim(),
-        address: newCustomer.address.trim(),
-        storeId: activeStoreId,
-      };
+      // Fallback: agregar/actualizar solo localmente si falla la BD
+      if (editingCustomerId) {
+        setCustomers(prev => prev.map(c => c.id === editingCustomerId ? {
+          ...c,
+          name: newCustomer.name.trim(),
+          phone: newCustomer.phone.trim(),
+          address: newCustomer.address.trim()
+        } : c));
+        toast({
+          title: "Cliente Actualizado (Local)",
+          description: `El cliente ha sido actualizado localmente.`,
+        });
+      } else {
+        const newId = `cust-${Date.now()}`;
+        const customerToAdd: Customer = {
+          id: newId,
+          name: newCustomer.name.trim(),
+          phone: newCustomer.phone.trim(),
+          address: newCustomer.address.trim(),
+          storeId: activeStoreId,
+        };
 
-      setCustomers(prev => [...prev, customerToAdd]);
-      setSelectedCustomerId(newId);
+        setCustomers(prev => [...prev, customerToAdd]);
+        setSelectedCustomerId(newId);
+
+        toast({
+          title: "Cliente Agregado (Local)",
+          description: `El cliente "${customerToAdd.name}" ha sido agregado localmente.`,
+        });
+      }
       setNewCustomer({ id: '', name: '', phone: '', address: '' });
+      setEditingCustomerId(null);
       setIsCustomerDialogOpen(false);
-
-      toast({
-        title: "Cliente Agregado (Local)",
-        description: `El cliente "${customerToAdd.name}" ha sido agregado localmente.`,
-      });
     }
   };
 
@@ -2498,9 +2536,30 @@ export default function POSPage() {
                                   key={customer.id}
                                   value={customer.name}
                                   onSelect={() => { setSelectedCustomerId(customer.id); setIsCustomerSearchOpen(false); }}
+                                  className="flex items-center justify-between group"
                                 >
-                                  <Check className={cn("mr-2 h-4 w-4", selectedCustomerId === customer.id ? "opacity-100" : "opacity-0")} />
-                                  {customer.name}
+                                  <div className="flex items-center">
+                                    <Check className={cn("mr-2 h-4 w-4", selectedCustomerId === customer.id ? "opacity-100" : "opacity-0")} />
+                                    {customer.name}
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setNewCustomer({
+                                        id: customer.id,
+                                        name: customer.name,
+                                        phone: customer.phone || '',
+                                        address: customer.address || ''
+                                      });
+                                      setEditingCustomerId(customer.id);
+                                      setIsCustomerDialogOpen(true);
+                                    }}
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
                                 </CommandItem>
                               ))}
                             </CommandGroup>
@@ -2511,13 +2570,21 @@ export default function POSPage() {
 
                     <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
                       <DialogTrigger asChild>
-                        <Button variant="outline" size="icon" className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0"
+                          onClick={() => {
+                            setNewCustomer({ id: '', name: '', phone: '', address: '' });
+                            setEditingCustomerId(null);
+                          }}
+                        >
                           <PlusCircle className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
                       </DialogTrigger>
                       <DialogContent>
                         <DialogHeader>
-                          <DialogTitle>Agregar Nuevo Cliente</DialogTitle>
+                          <DialogTitle>{editingCustomerId ? 'Editar Cliente' : 'Agregar Nuevo Cliente'}</DialogTitle>
                         </DialogHeader>
                         <div className="grid gap-4 py-4">
                           <div className="grid grid-cols-4 items-center gap-4">
@@ -2539,7 +2606,7 @@ export default function POSPage() {
                         </div>
                         <DialogFooter>
                           <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-                          <Button onClick={handleAddNewCustomer} disabled={!isNewCustomerFormDirty || !newCustomer.name.trim()}>Guardar Cliente</Button>
+                          <Button onClick={handleSaveCustomer} disabled={!isNewCustomerFormDirty || !newCustomer.name.trim()}>Guardar Cliente</Button>
                         </DialogFooter>
                       </DialogContent>
                     </Dialog>

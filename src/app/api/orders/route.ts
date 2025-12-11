@@ -1,5 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { unstable_cache, revalidateTag } from 'next/cache';
 
 // Inicializar cliente de Supabase
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -19,148 +20,137 @@ const generateId = (prefix: string) => {
 // Estados de pedidos compatibles
 const OrderStatus = {
   PENDING: 'pending',
-  PROCESSING: 'processing', 
+  PROCESSING: 'processing',
   PROCESSED: 'processed',
   CANCELLED: 'cancelled',
   EXPIRED: 'expired'
 };
 
 export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const storeId = searchParams.get('storeId');
-    const phone = searchParams.get('phone');
-    const id = searchParams.get('id');
-    const status = searchParams.get('status');
-    const customerEmail = searchParams.get('customerEmail');
-    const limit = parseInt(searchParams.get('limit') || '50');
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
+  const storeId = searchParams.get('storeId');
+  const status = searchParams.get('status');
 
-    console.log('🔍 [Orders API] Búsqueda con parámetros:', { storeId, phone, id, status, customerEmail, limit });
-
-    // Construir query para Supabase
-    let query = supabase
+  // Si se busca por ID específico, no cacheamos por ahora
+  if (id) {
+    console.log('🔍 [Orders API] Buscando orden por ID:', id);
+    const { data: order, error } = await supabase
       .from('orders')
       .select('*')
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    // Aplicar filtros
-    if (storeId) {
-      query = query.eq('store_id', storeId);
-    }
-    
-    if (phone) {
-      query = query.eq('customer_phone', phone);
-    }
-    
-    if (id) {
-      query = query.eq('order_id', id);
-      console.log('🎯 [Orders API] Buscando pedido específico:', id);
-    }
-    
-    if (customerEmail) {
-      query = query.eq('customer_email', customerEmail);
-      console.log('📧 [Orders API] Filtrando por email:', customerEmail);
-    }
-    
-    // Filtro por estado
-    if (status) {
-      if (status.includes(',')) {
-        const statusArray = status.split(',').map(s => s.trim());
-        query = query.in('status', statusArray);
-        console.log('🔍 [Orders API] Filtrando por múltiples estados:', statusArray);
-      } else {
-        query = query.eq('status', status);
-        console.log('🔍 [Orders API] Filtrando por estado único:', status);
-      }
-    } else {
-      // Por defecto, solo mostrar pedidos pendientes y en procesamiento
-      query = query.in('status', [OrderStatus.PENDING, OrderStatus.PROCESSING]);
-      console.log('🔍 [Orders API] Usando filtro por defecto: pending, processing');
-    }
-
-    // Ejecutar query
-    const { data: orders, error } = await query;
+      .or(`order_id.eq.${id},id.eq.${id}`)
+      .single();
 
     if (error) {
-      console.error('❌ [Orders API] Error obteniendo pedidos de Supabase:', error);
-      return NextResponse.json(
-        { error: 'Error al obtener pedidos', detalles: error.message },
-        { status: 500 }
-      );
+      console.error('❌ [Orders API] Error al buscar orden:', error);
+      return NextResponse.json({ error: 'Error al buscar orden' }, { status: 500 });
     }
 
-    console.log('📊 [Orders API] Pedidos encontrados:', orders?.length || 0);
-
-    // Si se busca por ID específico, devolver el pedido directamente
-    if (id && orders && orders.length > 0) {
-      const order = orders[0];
-      console.log('✅ [Orders API] Pedido encontrado:', order.order_id);
-      
-      // Convertir formato para compatibilidad
-      const formattedOrder = {
-        orderId: order.order_id,
-        id: order.order_id, // Mantener compatibilidad
-        createdAt: order.created_at,
-        date: order.created_at, // Mantener compatibilidad
-        updatedAt: order.updated_at,
-        customerName: order.customer_name,
-        customerPhone: order.customer_phone,
-        customerEmail: order.customer_email,
-        items: order.items,
-        total: order.total,
-        storeId: order.store_id,
-        status: order.status
-      };
-      
-      return NextResponse.json(formattedOrder);
+    if (!order) {
+      return NextResponse.json({ error: 'Orden no encontrada' }, { status: 404 });
     }
 
-    // Para búsquedas generales, devolver lista
-    const formattedOrders = (orders || []).map(order => ({
+    // Transform snake_case to camelCase
+    const formattedOrder = {
       orderId: order.order_id,
-      id: order.order_id, // Mantener compatibilidad
-      createdAt: order.created_at,
-      date: order.created_at, // Mantener compatibilidad
-      updatedAt: order.updated_at,
+      storeId: order.store_id,
       customerName: order.customer_name,
       customerPhone: order.customer_phone,
       customerEmail: order.customer_email,
-      items: order.items,
+      items: typeof order.items === 'string' ? JSON.parse(order.items) : order.items,
       total: order.total,
-      storeId: order.store_id,
       status: order.status,
-      processedAt: order.processed_at,
-      processedBy: order.processed_by,
-      saleId: order.sale_id,
-      notes: order.notes
-    }));
+      createdAt: order.created_at,
+      updatedAt: order.updated_at
+    };
 
-    return NextResponse.json(formattedOrders);
+    return NextResponse.json(formattedOrder);
+  }
+
+  // Si no hay storeId, error
+  if (!storeId) {
+    return NextResponse.json({ error: 'Store ID is required' }, { status: 400 });
+  }
+
+  try {
+    // Cache key parts
+    const cacheKey = ['orders', storeId, status || 'all'];
+    const cacheTags = [`orders-${storeId}`, 'orders'];
+
+    // Función cacheada
+    const getCachedOrders = unstable_cache(
+      async (sId: string, sStatus: string | null) => {
+        console.log(`🔌 [Orders API] Fetching FRESH orders from DB for store: ${sId}, status: ${sStatus || 'all'}`);
+        let query = supabase
+          .from('orders')
+          .select('*')
+          .eq('store_id', sId)
+          .order('created_at', { ascending: false });
+
+        if (sStatus) {
+          const statuses = sStatus.split(',');
+          if (statuses.length > 1) {
+            query = query.in('status', statuses);
+          } else {
+            query = query.eq('status', sStatus);
+          }
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        return data;
+      },
+      cacheKey,
+      {
+        tags: cacheTags,
+        revalidate: 30 // Check DB every 30s max if no revalidation event occurs
+      }
+    );
+
+    const orders = await getCachedOrders(storeId, status);
+
+    // Transform snake_case to camelCase
+    const formattedOrders = orders?.map((order: any) => ({
+      orderId: order.order_id,
+      storeId: order.store_id,
+      customerName: order.customer_name,
+      customerPhone: order.customer_phone,
+      customerEmail: order.customer_email,
+      items: typeof order.items === 'string' ? JSON.parse(order.items) : order.items,
+      total: order.total,
+      status: order.status,
+      createdAt: order.created_at,
+      updatedAt: order.updated_at
+    })) || [];
+
+    console.log(`✅ [Orders API] Returned ${formattedOrders.length} orders (Cache Status: Likely HIT if no 'Fresh data' log)`);
+
+    return NextResponse.json(formattedOrders, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=59',
+      }
+    });
 
   } catch (error: any) {
-    console.error('❌ [Orders API] Error general obteniendo pedidos:', error);
-    return NextResponse.json(
-      { error: 'Error interno del servidor', detalles: error.message },
-      { status: 500 }
-    );
+    console.error('❌ [Orders API] Error fetching orders:', error);
+    return NextResponse.json({ error: 'Error fetching orders' }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
+
     // Validar campos requeridos
     if (!body.storeId || !body.customerName || !body.customerPhone || !body.items) {
-      return NextResponse.json({ 
-        error: 'Campos requeridos: storeId, customerName, customerPhone, items' 
+      return NextResponse.json({
+        error: 'Campos requeridos: storeId, customerName, customerPhone, items'
       }, { status: 400 });
     }
-    
+
     // Generar ID único si no se proporciona
     const orderId = body.orderId || body.id || generateId('ORD');
-    
+
     // Preparar datos para Supabase
     const orderData = {
       id: orderId, // Add id field for NOT NULL constraint
@@ -215,6 +205,10 @@ export async function POST(request: NextRequest) {
       }
     };
 
+    // Invalidar cache de pedidos
+    revalidateTag(`orders-${createdOrder.store_id}`);
+    revalidateTag('orders');
+
     return NextResponse.json(formattedResponse);
 
   } catch (error: any) {
@@ -232,8 +226,8 @@ export async function PUT(request: NextRequest) {
     const { orderId, status, processedBy, saleId, notes, storeId } = body;
 
     if (!orderId || !status || !storeId) {
-      return NextResponse.json({ 
-        error: 'orderId, status y storeId son requeridos' 
+      return NextResponse.json({
+        error: 'orderId, status y storeId son requeridos'
       }, { status: 400 });
     }
 
@@ -272,8 +266,8 @@ export async function PUT(request: NextRequest) {
     }
 
     if (!updatedOrder) {
-      return NextResponse.json({ 
-        error: 'Pedido no encontrado' 
+      return NextResponse.json({
+        error: 'Pedido no encontrado'
       }, { status: 404 });
     }
 
@@ -296,6 +290,10 @@ export async function PUT(request: NextRequest) {
       notes: updatedOrder.notes
     };
 
+    // Invalidar cache de pedidos
+    revalidateTag(`orders-${updatedOrder.store_id}`);
+    revalidateTag('orders');
+
     return NextResponse.json(formattedOrder);
 
   } catch (error: any) {
@@ -312,13 +310,13 @@ export async function DELETE(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const orderId = searchParams.get('orderId');
     const storeId = searchParams.get('storeId');
-    
+
     if (!orderId || !storeId) {
-      return NextResponse.json({ 
-        error: "Faltan parámetros 'orderId' y/o 'storeId'" 
+      return NextResponse.json({
+        error: "Faltan parámetros 'orderId' y/o 'storeId'"
       }, { status: 400 });
     }
-    
+
     console.log('🗑️ [Orders API] Eliminando pedido:', orderId);
 
     const { data: deleted, error } = await supabase
@@ -339,10 +337,10 @@ export async function DELETE(request: NextRequest) {
     }
 
     console.log('✅ [Orders API] Pedido eliminado:', orderId);
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       success: true,
-      message: "Orden eliminada exitosamente" 
+      message: "Orden eliminada exitosamente"
     });
   } catch (error: any) {
     console.error('❌ [Orders API] Error eliminando pedido:', error);

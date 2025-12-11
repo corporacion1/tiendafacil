@@ -2,7 +2,7 @@
 "use client"
 import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
-import { Package, PackagePlus, PlusCircle, Trash2, ArrowUpDown, Check, ScanLine, AlertCircle, X } from "lucide-react";
+import { Package, PackagePlus, PlusCircle, Trash2, ArrowUpDown, Check, ScanLine, AlertCircle, X, Pencil } from "lucide-react";
 import dynamic from 'next/dynamic';
 
 // Importar el scanner dinámicamente para evitar problemas de SSR
@@ -43,6 +43,7 @@ export default function PurchasesPage() {
   const [isClient, setIsClient] = useState(false);
 
   const [selectedSupplierId, setSelectedSupplierId] = useState<string>('');
+  const [editingSupplierId, setEditingSupplierId] = useState<string | null>(null);
   const [isSupplierSearchOpen, setIsSupplierSearchOpen] = useState(false);
   const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
   const [newSupplier, setNewSupplier] = useState({ id: '', name: '', phone: '', address: '' });
@@ -215,52 +216,66 @@ export default function PurchasesPage() {
   const totalCost = subtotal + totalTaxes;
 
 
-  const handleAddNewSupplier = async () => {
+  const handleSaveSupplier = async () => {
     if (newSupplier.name.trim() === "") {
       toast({ variant: "destructive", title: "Nombre inválido" });
       return;
     }
 
     try {
-      const supplierToAdd = {
+      const url = editingSupplierId ? '/api/suppliers' : '/api/suppliers';
+      const method = editingSupplierId ? 'PUT' : 'POST';
+
+      const supplierData = {
+        ...(editingSupplierId ? { id: editingSupplierId } : {}),
         name: newSupplier.name,
         phone: newSupplier.phone,
         address: newSupplier.address,
         storeId: activeStoreId
       };
 
-      console.log('📤 [Purchases Page] Creating supplier:', supplierToAdd);
+      console.log('📤 [Purchases Page] Saving supplier:', supplierData);
 
-      const response = await fetch('/api/suppliers', {
-        method: 'POST',
+      const response = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(supplierToAdd)
+        body: JSON.stringify(supplierData)
       });
 
       if (!response.ok) {
         const errorData = await response.json();
         console.error('❌ [Purchases Page] API error:', errorData);
-        throw new Error(errorData.error || 'Error al crear proveedor');
+        throw new Error(errorData.error || 'Error al guardar proveedor');
       }
 
-      const createdSupplier = await response.json();
-      console.log('✅ [Purchases Page] Supplier created:', createdSupplier);
+      const savedSupplier = await response.json();
+      console.log('✅ [Purchases Page] Supplier saved:', savedSupplier);
 
-      setSuppliers(prev => [createdSupplier, ...prev]);
-      setSelectedSupplierId(createdSupplier.id);
+      if (editingSupplierId) {
+        setSuppliers(prev => prev.map(s => s.id === editingSupplierId ? savedSupplier : s));
+        toast({
+          title: "Proveedor Actualizado",
+          description: `El proveedor "${savedSupplier.name}" ha sido actualizado exitosamente.`
+        });
+      } else {
+        setSuppliers(prev => [savedSupplier, ...prev]);
+        setSelectedSupplierId(savedSupplier.id);
+        toast({
+          title: "Proveedor Agregado",
+          description: `El proveedor "${savedSupplier.name}" ha sido creado exitosamente.`
+        });
+      }
+
       setNewSupplier({ id: '', name: '', phone: '', address: '' });
+      setEditingSupplierId(null);
       setIsSupplierDialogOpen(false);
 
-      toast({
-        title: "Proveedor Agregado",
-        description: `El proveedor "${createdSupplier.name}" ha sido creado exitosamente.`
-      });
     } catch (error: any) {
-      console.error('❌ [Purchases Page] Error creating supplier:', error);
+      console.error('❌ [Purchases Page] Error saving supplier:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: error.message || "No se pudo crear el proveedor"
+        description: error.message || "No se pudo guardar el proveedor"
       });
     }
   };
@@ -471,9 +486,30 @@ export default function PurchasesPage() {
                                 key={supplier.id}
                                 value={supplier.name}
                                 onSelect={() => { setSelectedSupplierId(supplier.id); setIsSupplierSearchOpen(false); }}
+                                className="flex items-center justify-between group"
                               >
-                                <Check className={cn("mr-2 h-4 w-4", selectedSupplierId === supplier.id ? "opacity-100" : "opacity-0")} />
-                                {supplier.name}
+                                <div className="flex items-center">
+                                  <Check className={cn("mr-2 h-4 w-4", selectedSupplierId === supplier.id ? "opacity-100" : "opacity-0")} />
+                                  {supplier.name}
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setNewSupplier({
+                                      id: supplier.id,
+                                      name: supplier.name,
+                                      phone: supplier.phone || '',
+                                      address: supplier.address || ''
+                                    });
+                                    setEditingSupplierId(supplier.id);
+                                    setIsSupplierDialogOpen(true);
+                                  }}
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
                               </CommandItem>
                             ))}
                           </CommandGroup>
@@ -484,13 +520,20 @@ export default function PurchasesPage() {
 
                   <Dialog open={isSupplierDialogOpen} onOpenChange={setIsSupplierDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button variant="outline" size="icon">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => {
+                          setNewSupplier({ id: '', name: '', phone: '', address: '' });
+                          setEditingSupplierId(null);
+                        }}
+                      >
                         <PlusCircle className="h-4 w-4" />
                       </Button>
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
-                        <DialogTitle>Agregar Nuevo Proveedor</DialogTitle>
+                        <DialogTitle>{editingSupplierId ? 'Editar Proveedor' : 'Agregar Nuevo Proveedor'}</DialogTitle>
                       </DialogHeader>
                       <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-4 items-center gap-4">
@@ -512,7 +555,7 @@ export default function PurchasesPage() {
                       </div>
                       <DialogFooter>
                         <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-                        <Button onClick={handleAddNewSupplier} disabled={!isNewSupplierFormDirty || !newSupplier.name.trim()}>Guardar Proveedor</Button>
+                        <Button onClick={handleSaveSupplier} disabled={!isNewSupplierFormDirty || !newSupplier.name.trim()}>Guardar Proveedor</Button>
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
