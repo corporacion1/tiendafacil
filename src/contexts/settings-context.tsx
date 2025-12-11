@@ -682,7 +682,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
     try {
       console.log('🔄 Recargando productos desde Supabase...');
-      const response = await fetch(`/api/products?storeId=${activeStoreId}`);
+      const response = await fetch(`/api/products?storeId=${activeStoreId}&_t=${Date.now()}`);
       if (response.ok) {
         const productsData = await response.json();
         setProducts(productsData);

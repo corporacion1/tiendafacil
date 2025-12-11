@@ -4,114 +4,39 @@
 
 ![TiendaFácil Logo](public/tienda_facil_logo.svg)
 
-**Versión 1.2.4** | **Diciembre 2024**
+**Versión 1.2.5** | **Diciembre 2024**
+ 
+ *Sistema completo de Punto de Venta, Inventario y Comercio Electrónico*
+@@ -92,8 +92,19 @@
+ 
+ ## 🚀 **Nuevas Características - Versión 1.2.5**
+ 
++###  **Gestión Avanzada de Inventario con Excel (Mejorado v1.2.5)**
++- **Campos Extendidos**: Soporte completo para "Descripción" y "Tipo" en importación/exportación.
++- **Detección Inteligente de Tipo**: Admite valores de texto ("Producto"/"Servicio") y booleanos.
++- **Seguridad en Importación**: Nuevo modal de confirmación con vista previa estadística.
++- **Resumen de Cambios**: Muestra conteo exacto de productos nuevos, actualizaciones y errores antes de procesar.
++- **Validación Robusta**: Prevención de carga de archivos corruptos o mal formateados.
++
++### ✨ **Características Anteriores (v1.2.4)**
++
+ ### ✨ **Optimización y Rendimiento Critico**
+ 
+ #### ⚡ **Sistema de Caché Inteligente (Smart Caching)**
+ - **Reducción de Egress**: Implementación de `unstable_cache` en endpoints críticos (`/api/products`, `/api/orders`) para minimizar el consumo de ancho de banda y lecturas a la base de datos (Supabase).
+ - **Actualizaciones en Tiempo Real**: Lógica de invalidación de caché (`revalidateTag`) activada automáticamente al crear, editar o eliminar productos y pedidos.
+@@ -109,10 +120,6 @@
+ - **Estabilidad**: El sistema es más resistente a intermitencias de red menores gracias al caché local.
+ 
+-### ✨ **Características Anteriores (v1.2.3)**
+-
+-### ✨ **Funcionalidades Recién Agregadas**
+-
+-####  **Gestión Avanzada de Inventario con Excel**
+-- **Importación Masiva**: Carga de productos desde Excel (`.xlsx`) con creación y actualización automática.
+-- **Exportación Nativa**: Descarga directa de inventario en formato Excel (`.xlsx`).
+-- **Validación Automática**: Detección inteligente de duplicados y errores durante la importación.
 
-*Sistema completo de Punto de Venta, Inventario y Comercio Electrónico*
-
-[![Next.js](https://img.shields.io/badge/Next.js-15.5.5-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
-[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green?style=for-the-badge&logo=supabase)](https://supabase.com/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
-
----
-
-### 🏢 **Desarrollado por Corporación 1 Plus, C.A.**
-*Soluciones tecnológicas empresariales de vanguardia*
-
-</div>
-
-## 🌟 **Descripción del Proyecto**
-
-TiendaFácil es una plataforma integral de comercio digital desarrollada por **Corporación 1 Plus, C.A.**, diseñada para revolucionar la gestión comercial de pequeñas y medianas empresas. Combina un sistema de punto de venta moderno, gestión de inventario inteligente, y un catálogo público dinámico en una sola aplicación web de alto rendimiento.
-
-### 🎯 **Misión**
-Democratizar el acceso a tecnología comercial avanzada, permitiendo que cualquier negocio pueda competir en el mercado digital con herramientas profesionales y accesibles.
-
-## ✨ **Características Principales**
-
-### 🏪 **Sistema de Punto de Venta (POS)**
-- **Interfaz Moderna**: Diseño intuitivo optimizado para velocidad de venta
-- **Múltiples Métodos de Pago**: Efectivo, tarjetas, transferencias
-- **Gestión de Clientes**: Base de datos integrada de clientes
-- **Impresión de Tickets**: Tickets personalizables con logo y datos de la empresa
-- **Sesiones de Caja**: Control completo de apertura/cierre de caja
-
-### 📦 **Gestión de Inventario Inteligente**
-- **Control de Stock en Tiempo Real**: Actualizaciones automáticas
-- **Categorización Avanzada**: Familias, unidades, almacenes personalizables
-- **Códigos de Barras**: Soporte completo para lectura y generación
-- **Alertas de Stock**: Notificaciones automáticas de productos bajos
-- **Movimientos Detallados**: Historial completo de entradas y salidas
-- **Galería Multi-Imágenes**: Sistema completo de gestión de múltiples imágenes por producto
-- **Stock Inicial Preciso**: Corrección automática de inventario al crear productos nuevos
-
-### 🌐 **Catálogo Público Digital**
-- **Vitrina Online**: Catálogo público accesible 24/7
-- **Modo Visor Automático**: Scroll automático para displays
-- **Pedidos por QR**: Generación automática de códigos QR para pedidos
-- **Responsive Design**: Optimizado para todos los dispositivos
-- **Publicidad Integrada**: Sistema de anuncios segmentados
-
-### 📊 **Dashboard y Reportes**
-- **Métricas en Tiempo Real**: Ventas, inventario, clientes
-- **Gráficos Interactivos**: Visualización de datos con Recharts
-- **Reportes Personalizables**: Exportación en múltiples formatos
-- **Análisis de Tendencias**: Insights automáticos de ventas
-
-### 🔐 **Seguridad y Control de Acceso**
-- **Sistema de Roles**: 6 niveles de acceso (Guest, User, Depositary, POS, Admin, SuperUser)
-- **Autenticación Robusta**: Sistema de login seguro con cambio automático de contexto
-- **Visibilidad de Contraseña**: Toggle para mostrar/ocultar contraseña en login y registro
-- **PIN de Seguridad**: Protección adicional para operaciones críticas
-- **Auditoría Completa**: Logs de todas las operaciones
-- **Validación de Contexto**: Verificación automática de permisos por tienda
-
-### 🏢 **Administración Multi-Tienda**
-- **Panel de Super Administrador**: Gestión centralizada de múltiples tiendas
-- **Estadísticas Globales**: Métricas consolidadas de todas las tiendas
-- **Control de Estados**: Activación/desactivación de tiendas
-- **Modo Producción**: Transición automática de demo a producción
-- **Promoción de Usuarios**: Conversión automática de usuarios a administradores
-- **Creación Automática**: Seeding completo de nuevas tiendas
-
-### 💰 **Sistema de Monedas Dual**
-- **Moneda Principal y Secundaria**: Soporte completo para dos monedas
-- **Cambio Dinámico**: Intercambio instantáneo entre monedas
-- **Tasas de Cambio**: Actualización manual de tasas con validación temporal
-- **Interfaz Intuitiva**: Botón de intercambio que muestra la moneda opuesta
-- **Actualización Automática**: Todos los precios se actualizan al cambiar moneda
-
-### 💳 **Módulo de Pagos y Gastos**
-- **Registro de Gastos**: Sistema completo para registrar pagos generales del negocio
-- **Categorías Predefinidas**: Alquiler, Combustible, Consumibles, Materia Prima, Servicios, Otros
-- **Gestión de Destinatarios**: Base de datos de proveedores y destinatarios de pagos
-- **Métodos de Pago**: Efectivo, Transferencia, Tarjeta, Cheque, Otro
-- **Historial Completo**: Filtros por categoría, búsqueda y totales automáticos
-- **Sin Impacto en Inventario**: Separado del módulo de compras de productos
-
-## 🚀 **Nuevas Características - Versión 1.2.4**
-
-### ✨ **Optimización y Rendimiento Critico**
-
-#### ⚡ **Sistema de Caché Inteligente (Smart Caching)**
-- **Reducción de Egress**: Implementación de `unstable_cache` en endpoints críticos (`/api/products`, `/api/orders`) para minimizar el consumo de ancho de banda y lecturas a la base de datos (Supabase).
-- **Actualizaciones en Tiempo Real**: Lógica de invalidación de caché (`revalidateTag`) activada automáticamente al crear, editar o eliminar productos y pedidos.
-- **Sincronización de Inventario**: Invalidación automática del caché de productos al registrar ventas, asegurando stock preciso en todos los dispositivos sin latencia.
-- **Headers HTTP**: Implementación de `Cache-Control` (stale-while-revalidate) para caché eficiente en el navegador.
-
-#### 🔄 **Mejoras en APIs de Ventas y Pedidos**
-- **Carga Instantánea**: El POS ahora recupera productos y pedidos desde el caché del servidor, reduciendo drásticamente los tiempos de carga.
-- **Menor Latencia**: Respuestas más rápidas gracias a la reducción de viajes completos a la base de datos.
-- **Estabilidad**: El sistema es más resistente a intermitencias de red menores gracias al caché local.
-
-### ✨ **Características Anteriores (v1.2.3)**
-
-### ✨ **Funcionalidades Recién Agregadas**
-
-#### � **Gestión Avanzada de Inventario con Excel**
-- **Importación Masiva**: Carga de productos desde Excel (`.xlsx`) con creación y actualización automática.
-- **Exportación Nativa**: Descarga directa de inventario en formato Excel (`.xlsx`).
-- **Validación Automática**: Detección inteligente de duplicados y errores durante la importación.
 
 #### 📈 **Nuevos Módulos de Análisis**
 - **Gráfico de Ventas vs Pagos**: Visualización comparativa en el Dashboard principal.

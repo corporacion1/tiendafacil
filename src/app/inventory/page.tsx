@@ -148,6 +148,9 @@ export default function InventoryPage() {
   const { createWithSync, updateWithSync, deleteWithSync } = useAutoSync();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [showImportConfirmation, setShowImportConfirmation] = useState(false);
+  const [importStats, setImportStats] = useState({ created: 0, updated: 0, errors: 0, total: 0 });
+  const [importPreview, setImportPreview] = useState<any[]>([]);
 
   const [inventoryMovements, setInventoryMovements] = useState<InventoryMovement[]>([]);
 
@@ -600,7 +603,8 @@ export default function InventoryPage() {
         Stock: p.stock,
         Unidad: p.unit || 'Unidad',
         Familia: p.family || 'General',
-        Tipo: p.type === 'service' ? 'Servicio' : 'Producto'
+        Tipo: p.type === 'service' ? 'Servicio' : 'Producto',
+        Descripcion: p.description || ''
       }));
 
       const worksheet = XLSX.utils.json_to_sheet(dataToExport);
@@ -621,6 +625,8 @@ export default function InventoryPage() {
       Stock: p.stock,
       Unidad: p.unit,
       Familia: p.family,
+      Tipo: p.type === 'service' ? 'Servicio' : 'Producto',
+      Descripcion: p.description || '',
     }));
 
     if (format === 'csv') {
@@ -669,8 +675,9 @@ export default function InventoryPage() {
       const worksheet = workbook.Sheets[worksheetName];
       const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet);
 
-      logger.info('📂 [Inventory] Importando datos:', jsonData.length, 'filas');
+      logger.info('📂 [Inventory] Analizando archivo:', jsonData.length, 'filas');
 
+      const parsedData: any[] = [];
       let createdCount = 0;
       let updatedCount = 0;
       let errorCount = 0;
@@ -678,82 +685,120 @@ export default function InventoryPage() {
       for (const row of jsonData) {
         try {
           // Normalizar datos del Excel
-          // Mapeo flexible de nombres de columnas
           const name = row['Nombre'] || row['nombre'] || row['Name'] || row['name'];
-          // Continuar solo si hay nombre
           if (!name) continue;
 
           const sku = (row['SKU'] || row['sku'] || '').toString();
           const price = parseFloat(row['Precio Detal'] || row['Precio'] || row['price'] || 0);
           const cost = parseFloat(row['Costo'] || row['cost'] || 0);
           const stock = parseInt(row['Stock'] || row['stock'] || 0);
+          const description = row['Descripcion'] || row['descripcion'] || row['Description'] || row['description'] || '';
 
-          // Buscar producto existente por SKU o Nombre exacto
+          // Lógica para Tipo (Soporta String y Boolean)
+          let type: 'product' | 'service' = 'product';
+          const rawType = row['Tipo'] || row['tipo'] || row['Type'] || row['type'];
+
+          if (typeof rawType === 'boolean') {
+            // Boolean: true -> Producto, false -> Servicio
+            type = rawType ? 'product' : 'service';
+          } else if (typeof rawType === 'string') {
+            const lowerType = rawType.toLowerCase();
+            if (lowerType.includes('serv') || lowerType === 'service') {
+              type = 'service';
+            }
+            // Default is product
+          }
+
+          // Buscar producto existente
           const existingProduct = products.find(p =>
             (sku && p.sku === sku) ||
             (p.name.toLowerCase() === name.toLowerCase())
           );
 
           const productData = {
-            name: name,
-            sku: sku,
-            price: price,
-            cost: cost,
-            stock: stock,
-            store_id: activeStoreId,
-            updated_at: new Date().toISOString()
+            name,
+            sku,
+            price,
+            cost,
+            stock,
+            description,
+            type,
+            storeId: activeStoreId
           };
 
           if (existingProduct) {
-            // Actualizar
-            const res = await fetch(`/api/products/${existingProduct.id}?storeId=${encodeURIComponent(activeStoreId)}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ...existingProduct, ...productData })
-            });
-
-            if (res.ok) updatedCount++;
-            else errorCount++;
+            updatedCount++;
+            parsedData.push({ action: 'update', existingId: existingProduct.id, data: productData, original: existingProduct });
           } else {
-            // Crear nuevo
-            const newProduct = {
-              ...productData,
-              id: `prod-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-              created_at: new Date().toISOString(),
-              user_id: (user as any)?.id || 'system',
-              status: 'active',
-              type: 'product',
-              image_hint: 'default-product'
-            };
-
-            const res = await fetch('/api/products', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(newProduct)
-            });
-
-            if (res.ok) createdCount++;
-            else errorCount++;
+            createdCount++;
+            parsedData.push({ action: 'create', data: productData });
           }
         } catch (err) {
-          console.error('Error importando fila:', row, err);
+          console.error('Error analizando fila:', row, err);
           errorCount++;
         }
       }
 
-      await reloadProducts();
-      toast({
-        title: "Importación Finalizada",
-        description: `Creados: ${createdCount}, Actualizados: ${updatedCount}, Errores: ${errorCount}`
-      });
+      setImportPreview(parsedData);
+      setImportStats({ created: createdCount, updated: updatedCount, errors: errorCount, total: parsedData.length });
+      setShowImportConfirmation(true);
 
     } catch (error) {
       console.error('Error leyendo archivo Excel:', error);
-      toast({ variant: 'destructive', title: 'Error al importar', description: 'No se pudo leer el archivo Excel.' });
+      toast({ variant: 'destructive', title: 'Error al leer archivo', description: 'No se pudo procesar el Excel. Verifique el formato.' });
     } finally {
       setIsImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const processImport = async () => {
+    setIsImporting(true);
+    setShowImportConfirmation(false);
+
+    let processedCount = 0;
+    let errors = 0;
+
+    for (const item of importPreview) {
+      try {
+        if (item.action === 'update') {
+          const res = await fetch(`/api/products/${item.existingId}?storeId=${encodeURIComponent(activeStoreId)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...item.original, ...item.data })
+          });
+          if (!res.ok) errors++;
+        } else {
+          const newProduct = {
+            ...item.data,
+            id: `prod-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            created_at: new Date().toISOString(),
+            user_id: (user as any)?.id || 'system',
+            status: 'active',
+            image_hint: 'default-product'
+          };
+
+          const res = await fetch('/api/products', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newProduct)
+          });
+          if (!res.ok) errors++;
+        }
+        processedCount++;
+      } catch (e) {
+        errors++;
+        console.error("Error processing import item", e);
+      }
+    }
+
+    await reloadProducts();
+    toast({
+      title: "Importación Completada",
+      description: `Procesados: ${processedCount}, Errores: ${errors}`
+    });
+    setIsImporting(false);
+    setImportPreview([]);
   };
 
 
@@ -1187,6 +1232,50 @@ export default function InventoryPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileUpload}
+        className="hidden"
+        accept=".xlsx, .xls"
+      />
+
+      <AlertDialog open={showImportConfirmation} onOpenChange={setShowImportConfirmation}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Importación</AlertDialogTitle>
+            <AlertDialogDescription>
+              Se ha analizado el archivo Excel. Resumen de cambios detectados:
+              <ul className="mt-2 text-sm space-y-1">
+                <li className="flex items-center gap-2">
+                  <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-semibold">NUEVOS</span>
+                  <span>{importStats.created} productos nuevos</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-semibold">EXISTENTES</span>
+                  <span>{importStats.updated} productos a actualizar</span>
+                </li>
+                {importStats.errors > 0 && (
+                  <li className="flex items-center gap-2 text-red-600">
+                    <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-semibold">ERRORES</span>
+                    <span>{importStats.errors} filas inválidas</span>
+                  </li>
+                )}
+              </ul>
+              <div className="mt-4 p-3 bg-muted/50 rounded-md text-sm text-muted-foreground">
+                ¿Desea proceder? Esta acción modificará la base de datos de forma permanente.
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setImportPreview([]); setImportStats({ created: 0, updated: 0, errors: 0, total: 0 }); }}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={processImport} disabled={isImporting} className={isImporting ? 'opacity-50 cursor-not-allowed' : ''}>
+              {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
+              {isImporting ? 'Procesando...' : 'Confirmar e Importar'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
