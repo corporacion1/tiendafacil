@@ -2637,9 +2637,17 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
                     <div className="space-y-3">
                       <div className="flex justify-between items-center p-4 bg-primary/5 rounded-xl border border-primary/10">
                         <span className="text-base font-medium">Precio Oferta</span>
-                        <span className="font-bold text-2xl text-primary">
-                          {activeSymbol}{(productDetails.price * activeRate).toFixed(2)}
-                        </span>
+                        <div className="flex flex-col items-end">
+                          <span className="font-bold text-2xl text-primary">
+                            {activeSymbol}{(productDetails.price * activeRate).toFixed(2)}
+                          </span>
+                          {/* Etiqueta de Precio + Impuesto */}
+                          {(productDetails.tax1 || productDetails.tax2) && (
+                            <span className="text-xs text-muted-foreground mt-1">
+                              +Imp: {activeSymbol}{((productDetails.price + (productDetails.tax1 ? productDetails.price * ((currentStoreSettings.tax1 || 0) / 100) : 0) + (productDetails.tax2 ? productDetails.price * ((currentStoreSettings.tax2 || 0) / 100) : 0)) * activeRate).toFixed(2)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
