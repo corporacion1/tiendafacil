@@ -27,6 +27,9 @@ const PAYMENT_CATEGORIES: { value: PaymentCategory; label: string }[] = [
     { value: 'consumables', label: 'Consumibles' },
     { value: 'raw_materials', label: 'Materia Prima' },
     { value: 'utilities', label: 'Servicios' },
+    { value: 'spare_parts', label: 'Repuestos' },
+    { value: 'repairs', label: 'Reparaciones' },
+    { value: 'travel_expenses', label: 'Viaticos' },
     { value: 'other', label: 'Otros' }
 ];
 

@@ -212,7 +212,7 @@ export type Supplier = {
 }
 
 // Expense Payment Types
-export type PaymentCategory = 'rent' | 'fuel' | 'consumables' | 'raw_materials' | 'utilities' | 'other';
+export type PaymentCategory = 'rent' | 'fuel' | 'consumables' | 'raw_materials' | 'utilities' | 'spare_parts' | 'repairs' | 'travel_expenses' | 'other';
 export type PaymentMethod = 'cash' | 'transfer' | 'card' | 'check' | 'other';
 
 export type ExpensePayment = {

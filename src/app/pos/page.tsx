@@ -40,6 +40,7 @@ import { usePendingOrders } from "@/hooks/usePendingOrders";
 import { useProducts } from "@/hooks/useProducts";
 import { RouteGuard } from "@/components/route-guard";
 import { usePermissions } from "@/hooks/use-permissions";
+import { IDGenerator } from "@/lib/id-generator";
 
 
 const ProductCard = ({ product, onAddToCart, onShowDetails, isClicked }: { product: Product, onAddToCart: (p: Product) => void, onShowDetails: (p: Product) => void, isClicked?: boolean }) => {
@@ -1265,7 +1266,7 @@ export default function POSPage() {
     }
   }
 
-  const handlePrintQuote = () => {
+  const handlePrintQuote = async () => {
     if (cartItems.length === 0) {
       toast({
         variant: "destructive",
@@ -1274,9 +1275,87 @@ export default function POSPage() {
       });
       return;
     }
-    setTicketType('quote');
-    setLastSale(null);
-    setIsPrintPreviewOpen(true);
+
+    // Generar ID para el pedido
+    const newOrderId = IDGenerator.generate('order', activeStoreId || 'general');
+
+    // Construir objeto PendingOrder
+    const newOrder: PendingOrder = {
+      orderId: newOrderId,
+      customerName: selectedCustomer ? selectedCustomer.name : 'Cliente Eventual',
+      customerPhone: selectedCustomer?.phone || '',
+      customerEmail: selectedCustomer?.email || '',
+      items: cartItems.map(item => ({
+        productId: item.product.id,
+        productName: item.product.name,
+        quantity: item.quantity,
+        price: item.price
+      })),
+      total: subtotal, // Usamos subtotal base o total con impuestos si aplica? Generalmente total final.
+      storeId: activeStoreId || 'general',
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Usar el total correcto para la orden (con impuestos si aplican)
+    newOrder.total = total;
+
+    try {
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newOrder)
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Cotización Guardada",
+          description: "La cotización se ha guardado como pedido pendiente.",
+        });
+
+        // Convertir a estructura Sale para TicketPreview
+        // Esto permite reutilizar la lógica de visualización de items en TicketPreview
+        const quoteAsSale: Sale = {
+          id: newOrderId,
+          customerId: selectedCustomer?.id ?? null,
+          customerName: newOrder.customerName,
+          // Mapeamos los items de vuelta a una estructura que TicketPreview pueda entender (aunque TicketPreview re-hidrata usando productId)
+          // Pero TicketPreview espera SalePayment[] para pagos, array vacío está bien.
+          items: newOrder.items,
+          total: newOrder.total,
+          date: newOrder.createdAt,
+          transactionType: 'contado',
+          status: 'pending',
+          paidAmount: 0,
+          payments: [],
+          storeId: newOrder.storeId,
+          userId: (userProfile as any)?.id || 'system'
+        } as any;
+
+        setLastSale(quoteAsSale);
+        setTicketType('quote');
+        setCartItems([]); // Limpiar carrito como solicitado
+        setIsPrintPreviewOpen(true);
+
+        // Refrescar lista de pedidos pendientes si es posible (poll o recarga manual)
+        // No tenemos acceso directo a refetch del hook aquí fuera del hook, pero el polling debería captarlo.
+      } else {
+        const err = await response.json();
+        toast({
+          variant: "destructive",
+          title: "Error al guardar",
+          description: err.error || "No se pudo guardar la cotización."
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Error de conexión al guardar cotización."
+      });
+    }
   };
 
   const generateShareText = (type: 'quote' | 'sale', saleData?: any) => {
@@ -2898,7 +2977,7 @@ export default function POSPage() {
             isOpen={isPrintPreviewOpen}
             onOpenChange={setIsPrintPreviewOpen}
             ticketType={ticketType}
-            cartItems={ticketType === 'quote' || !lastSale ? cartItems : lastSale.items.map(item => ({ product: (products || []).find(p => p.id === item.productId)!, quantity: item.quantity, price: item.price }))}
+            cartItems={(!lastSale && ticketType === 'quote') ? cartItems : (lastSale ? lastSale.items.map(item => ({ product: (products || []).find(p => p.id === item.productId)!, quantity: item.quantity, price: item.price })) : cartItems)}
             saleId={ticketType === 'sale' ? lastSale?.id : undefined}
             customer={selectedCustomer}
             payments={ticketType === 'sale' ? lastSale?.payments : undefined}
