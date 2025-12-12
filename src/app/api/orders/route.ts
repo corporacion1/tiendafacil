@@ -223,21 +223,29 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { orderId, status, processedBy, saleId, notes, storeId } = body;
+    const { orderId, status, processedBy, saleId, notes, storeId, items, total, customerName, customerPhone, customerEmail } = body;
 
-    if (!orderId || !status || !storeId) {
+    if (!orderId || !storeId) {
       return NextResponse.json({
-        error: 'orderId, status y storeId son requeridos'
+        error: 'orderId y storeId son requeridos'
       }, { status: 400 });
     }
 
-    console.log('🔄 [Orders API] Actualizando pedido:', orderId, 'a estado:', status);
+    console.log('🔄 [Orders API] Actualizando pedido:', orderId, 'store:', storeId);
 
     // Preparar datos para actualización
     const updateData: any = {
-      status,
       updated_at: new Date().toISOString()
     };
+
+    // Actualizar campos si se proporcionan
+    if (status) updateData.status = status;
+    if (items) updateData.items = items;
+    if (total !== undefined) updateData.total = total;
+    if (customerName) updateData.customer_name = customerName;
+    if (customerPhone) updateData.customer_phone = customerPhone;
+    if (customerEmail !== undefined) updateData.customer_email = customerEmail;
+    if (notes !== undefined) updateData.notes = notes;
 
     // Si se marca como procesado, agregar campos adicionales
     if (status === OrderStatus.PROCESSED) {
@@ -245,8 +253,6 @@ export async function PUT(request: NextRequest) {
       if (processedBy) updateData.processed_by = processedBy;
       if (saleId) updateData.sale_id = saleId;
     }
-
-    if (notes !== undefined) updateData.notes = notes;
 
     // Actualizar en Supabase
     const { data: updatedOrder, error } = await supabase

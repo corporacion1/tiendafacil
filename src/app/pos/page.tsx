@@ -224,6 +224,8 @@ export default function POSPage() {
   const [productImageError, setImageError] = useState(false);
 
   const [scannedOrderId, setScannedOrderId] = useState('');
+  // Estado para rastrear el pedido actual que se está editando (para evitar duplicados al guardar cotización)
+  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
 
   // --- Cash Session State ---
   const [activeSession, setActiveSession] = useState<CashSession | null>(null);
@@ -1250,7 +1252,11 @@ export default function POSPage() {
     setCartItems([]);
     setIsProcessSaleDialogOpen(false);
     resetPaymentModal();
+    setCartItems([]);
+    setIsProcessSaleDialogOpen(false);
+    resetPaymentModal();
     setSelectedCustomerId('eventual');
+    setCurrentOrderId(null); // Resetear orden actual después de venta exitosa
 
     if (andPrint) {
       setTimeout(() => {
@@ -1276,12 +1282,13 @@ export default function POSPage() {
       return;
     }
 
-    // Generar ID para el pedido
-    const newOrderId = IDGenerator.generate('order', activeStoreId || 'general');
+    // Generar ID para el pedido o usar el existente
+    const isUpdate = !!currentOrderId;
+    const orderIdToUse = currentOrderId || IDGenerator.generate('order', activeStoreId || 'general');
 
     // Construir objeto PendingOrder
     const newOrder: PendingOrder = {
-      orderId: newOrderId,
+      orderId: orderIdToUse,
       customerName: selectedCustomer ? selectedCustomer.name : 'Cliente Eventual',
       customerPhone: selectedCustomer?.phone || '',
       customerEmail: selectedCustomer?.email || '',
@@ -1294,7 +1301,7 @@ export default function POSPage() {
       total: subtotal, // Usamos subtotal base o total con impuestos si aplica? Generalmente total final.
       storeId: activeStoreId || 'general',
       status: 'pending',
-      createdAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(), // Esto no se actualizará en DB si es update
       updatedAt: new Date().toISOString(),
     };
 
@@ -1302,22 +1309,27 @@ export default function POSPage() {
     newOrder.total = total;
 
     try {
+      const method = isUpdate ? 'PUT' : 'POST';
+      console.log(`📦 [POS] ${isUpdate ? 'Actualizando' : 'Creando'} cotización/pedido:`, orderIdToUse);
+
       const response = await fetch('/api/orders', {
-        method: 'POST',
+        method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newOrder)
       });
 
       if (response.ok) {
         toast({
-          title: "Cotización Guardada",
-          description: "La cotización se ha guardado como pedido pendiente.",
+          title: isUpdate ? "Cotización Actualizada" : "Cotización Guardada",
+          description: isUpdate
+            ? "El pedido pendiente ha sido actualizado."
+            : "La cotización se ha guardado como pedido pendiente.",
         });
 
         // Convertir a estructura Sale para TicketPreview
         // Esto permite reutilizar la lógica de visualización de items en TicketPreview
         const quoteAsSale: Sale = {
-          id: newOrderId,
+          id: orderIdToUse,
           customerId: selectedCustomer?.id ?? null,
           customerName: newOrder.customerName,
           // Mapeamos los items de vuelta a una estructura que TicketPreview pueda entender (aunque TicketPreview re-hidrata usando productId)
@@ -1336,6 +1348,7 @@ export default function POSPage() {
         setLastSale(quoteAsSale);
         setTicketType('quote');
         setCartItems([]); // Limpiar carrito como solicitado
+        setCurrentOrderId(null); // Resetear orden actual ya que "salió" del carrito
         setIsPrintPreviewOpen(true);
 
         // Refrescar lista de pedidos pendientes inmediatamente
@@ -1345,7 +1358,6 @@ export default function POSPage() {
         toast({
           variant: "destructive",
           title: "Error al guardar",
-          description: err.error || "No se pudo guardar la cotización."
         });
       }
     } catch (error) {
@@ -1823,6 +1835,8 @@ export default function POSPage() {
 
       // Cargar productos al carrito
       setCartItems(orderCartItems);
+      // Establecer el ID del pedido actual para rastrear updates
+      setCurrentOrderId(order.orderId);
 
       // Buscar y seleccionar cliente, o crearlo automáticamente si no existe
       let customer = (customers || []).find(c =>
@@ -2585,7 +2599,7 @@ export default function POSPage() {
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={clearCart}>Sí, vaciar</AlertDialogAction>
+                        <AlertDialogAction onClick={() => { clearCart(); setCurrentOrderId(null); }}>Sí, vaciar</AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
