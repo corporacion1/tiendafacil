@@ -1338,8 +1338,8 @@ export default function POSPage() {
         setCartItems([]); // Limpiar carrito como solicitado
         setIsPrintPreviewOpen(true);
 
-        // Refrescar lista de pedidos pendientes si es posible (poll o recarga manual)
-        // No tenemos acceso directo a refetch del hook aquí fuera del hook, pero el polling debería captarlo.
+        // Refrescar lista de pedidos pendientes inmediatamente
+        refetchPendingOrders();
       } else {
         const err = await response.json();
         toast({
