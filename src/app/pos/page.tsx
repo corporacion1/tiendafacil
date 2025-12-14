@@ -3130,12 +3130,18 @@ export default function POSPage() {
                           <span className="text-xs sm:text-sm">Para guardar como crédito a ({creditDays}) días, debe seleccionar un cliente debidamente registrado</span>
                         </div>
                       )}
+                      {(!localSeries || !localCorrelative) && (
+                        <div className="text-destructive text-xs sm:text-sm font-medium flex items-center gap-2 mt-3 p-2 bg-destructive/10 rounded-md">
+                          <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                          <span className="text-xs sm:text-sm">Debe configurar la Serie y Correlativo antes de procesar ventas. Use el botón de configuración en la parte superior.</span>
+                        </div>
+                      )}
                     </div>
                     <DialogFooter className="gap-2 sm:gap-1 mt-3 sm:mt-4 flex-shrink-0 flex-col sm:flex-row">
                       <Button
                         variant="outline"
                         onClick={() => handleProcessSale(false)}
-                        disabled={(remainingBalance > 0 && !isCreditSale) || (isCreditSale && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone))}
+                        disabled={!localSeries || !localCorrelative || (remainingBalance > 0 && !isCreditSale) || (isCreditSale && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone))}
                         className="flex-1 h-8 sm:h-10 text-xs sm:text-sm"
                       >
                         <Check className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
@@ -3145,7 +3151,7 @@ export default function POSPage() {
                       <Button
                         variant="secondary"
                         onClick={() => handleProcessSale(false, true)}
-                        disabled={(remainingBalance > 0 && !isCreditSale) || (isCreditSale && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone))}
+                        disabled={!localSeries || !localCorrelative || (remainingBalance > 0 && !isCreditSale) || (isCreditSale && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone))}
                         className="flex-1 h-8 sm:h-10 text-xs sm:text-sm"
                       >
                         <Share className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
@@ -3154,7 +3160,7 @@ export default function POSPage() {
                       </Button>
                       <Button
                         onClick={() => handleProcessSale(true)}
-                        disabled={(remainingBalance > 0 && !isCreditSale) || (isCreditSale && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone))}
+                        disabled={!localSeries || !localCorrelative || (remainingBalance > 0 && !isCreditSale) || (isCreditSale && (selectedCustomerId === 'eventual' || !selectedCustomer?.phone))}
                         className="flex-1 h-8 sm:h-10 text-xs sm:text-sm"
                       >
                         <Printer className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
