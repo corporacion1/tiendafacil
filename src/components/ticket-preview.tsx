@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -35,6 +35,8 @@ export function TicketPreview({
   onShare,
 }: TicketPreviewProps) {
   const ticketRef = useRef<HTMLDivElement>(null);
+  const [fetchedSale, setFetchedSale] = useState<any>(null);
+  const { settings, activeSymbol, activeRate } = useSettings();
   // Debug logs to help trace why ticketNumber might not appear
   useEffect(() => {
     if (isOpen && ticketType === 'sale') {
@@ -47,7 +49,28 @@ export function TicketPreview({
     }
   }, [isOpen, ticketType, saleId, ticketNumber, saleObj]);
 
-  const resolvedTicket = ticketNumber || (Array.isArray(saleObj) ? (saleObj[0]?.ticketNumber || saleObj[0]?.ticket_number) : (saleObj?.ticketNumber || saleObj?.ticket_number)) || null;
+  // If the caller didn't provide a full `saleObj` but we have a saleId and storeId,
+  // attempt to fetch the persisted sale so we can show the ticket_number and customer fields.
+  useEffect(() => {
+    let mounted = true;
+    const tryFetch = async () => {
+      if (saleObj || !saleId || !settings?.id) return;
+      try {
+        const resp = await fetch(`/api/sales?storeId=${encodeURIComponent(settings.id)}`);
+        if (!resp.ok) return;
+        const list = await resp.json();
+        const found = Array.isArray(list) ? list.find((s: any) => s.id === saleId) : null;
+        if (mounted && found) setFetchedSale(found);
+      } catch (e) {
+        // ignore fetch failures here; fallback behavior already covers missing data
+      }
+    };
+    tryFetch();
+    return () => { mounted = false; };
+  }, [saleObj, saleId, settings?.id]);
+
+  const effectiveSaleObj = saleObj || fetchedSale;
+  const resolvedTicket = ticketNumber || (Array.isArray(effectiveSaleObj) ? (effectiveSaleObj[0]?.ticketNumber || effectiveSaleObj[0]?.ticket_number) : (effectiveSaleObj?.ticketNumber || effectiveSaleObj?.ticket_number)) || null;
   // Resolve customer info: prefer `saleObj` (server record) if present, otherwise use explicit `customer` prop
   const resolvedCustomer = Array.isArray(saleObj)
     ? {
@@ -78,18 +101,17 @@ export function TicketPreview({
         return obj.customerAddress || obj.customer_address || obj.address || obj.direccion || obj.dir || null;
       };
 
-      if (Array.isArray(saleObj)) {
-        return tryFrom(saleObj[0]) || (customer as any)?.address || (customer as any)?.direccion || null;
+      if (Array.isArray(effectiveSaleObj)) {
+        return tryFrom(effectiveSaleObj[0]) || (customer as any)?.address || (customer as any)?.direccion || null;
       }
-      if (saleObj) {
-        return tryFrom(saleObj) || (customer as any)?.address || (customer as any)?.direccion || null;
+      if (effectiveSaleObj) {
+        return tryFrom(effectiveSaleObj) || (customer as any)?.address || (customer as any)?.direccion || null;
       }
       return (customer as any)?.address || (customer as any)?.direccion || null;
     };
 
     const resolvedAddress = resolveAddress();
     if (resolvedCustomer) (resolvedCustomer as any).address = resolvedAddress;
-  const { settings, activeSymbol, activeRate } = useSettings();
 
   const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
@@ -248,8 +270,8 @@ export function TicketPreview({
                 <p style={{ margin: '2px 0', fontSize: '10px' }}>{settings?.address || ''}</p>
                 <p style={{ margin: '2px 0', fontSize: '10px' }}>{new Date().toLocaleString()}</p>
                 {ticketType === 'sale' && saleId && <p style={{ margin: '2px 0', fontSize: '10px', fontWeight: 'bold' }}>CONTROL #: {saleId}</p>}
-                {ticketType === 'sale' && (ticketNumber || saleObj?.ticketNumber || saleObj?.ticket_number) && (
-                  <p style={{ margin: '2px 0', fontSize: '10px', fontWeight: 'bold' }}>TICKET #: {ticketNumber || saleObj?.ticketNumber || saleObj?.ticket_number}</p>
+                {ticketType === 'sale' && resolvedTicket && (
+                  <p style={{ margin: '2px 0', fontSize: '10px', fontWeight: 'bold' }}>TICKET #: {resolvedTicket}</p>
                 )}
               </div>
 

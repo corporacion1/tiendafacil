@@ -262,7 +262,16 @@ export default function ReportsPage() {
 
     const getTicketCustomer = (sale: Sale | null): Customer | null => {
         if (!sale || !customers) return null;
-        return customers.find(c => c.name === sale.customerName) || { id: 'unknown', name: sale.customerName, phone: '', address: '', storeId: settings?.id || '' };
+        // Prefer an existing customer record, but fall back to sale-provided contact info
+        const found = customers.find(c => c.name === sale.customerName);
+        if (found) return found;
+        return {
+            id: 'unknown',
+            name: sale.customerName,
+            phone: (sale as any).customerPhone || (sale as any).customer_phone || '',
+            address: (sale as any).customerAddress || (sale as any).customer_address || '',
+            storeId: settings?.id || ''
+        };
     }
 
     const filterByDate = (data: (Sale | Purchase | InventoryMovement | (SalePayment & { saleId: string; customerName: string; }) | CashSession)[]) => {
@@ -995,6 +1004,8 @@ export default function ReportsPage() {
                     onOpenChange={setIsTicketPreviewOpen}
                     cartItems={getTicketCartItems(saleForTicket)}
                     saleId={saleForTicket.id}
+                    ticketNumber={(saleForTicket as any).ticketNumber || (saleForTicket as any).ticket_number || undefined}
+                    saleObj={saleForTicket}
                     customer={getTicketCustomer(saleForTicket)}
                     payments={saleForTicket.payments}
                 />
