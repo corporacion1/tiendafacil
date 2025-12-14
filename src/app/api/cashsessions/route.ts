@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
     const sessionData = {
       id: data.id,
       store_id: data.storeId,
+      series: data.series || null,
       user_id: data.openedBy,
       opened_by: data.openedBy,
       opening_balance: data.openingBalance,
@@ -120,6 +121,7 @@ export async function POST(request: NextRequest) {
     const formattedSession = {
       ...created,
       storeId: created.store_id,
+      series: created.series || null,
       openingBalance: created.opening_balance,
       openingDate: created.opening_date,
       openedBy: created.opened_by,
