@@ -2074,6 +2074,16 @@ export default function POSPage() {
           : `Pedido ${order.orderId} cargado parcialmente (${loadedCount}/${totalCount} productos)`
       });
 
+      // Actualizar estado del pedido de 'pending' a 'processing'
+      try {
+        console.log('🔄 Actualizando estado del pedido a "processing":', order.orderId);
+        await updateOrderStatus(order.orderId, 'processing');
+        console.log('✅ Estado del pedido actualizado exitosamente');
+      } catch (statusError) {
+        console.error('⚠️ Error al actualizar estado del pedido (no crítico):', statusError);
+        // No mostramos error al usuario porque el pedido ya se cargó correctamente
+      }
+
       // Cerrar modal de pedidos pendientes
       document.getElementById('pending-orders-close-button')?.click();
 
