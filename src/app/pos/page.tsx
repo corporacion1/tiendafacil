@@ -223,9 +223,18 @@ export default function POSPage() {
   const [currentPaymentRef, setCurrentPaymentRef] = useState('');
 
   const [lastSale, setLastSale] = useState<Sale | null>(null);
+  const [lastTicketNumber, setLastTicketNumber] = useState<string | null>(null);
   const [ticketType, setTicketType] = useState<'sale' | 'quote'>('sale');
   const [isCreditSale, setIsCreditSale] = useState(false);
   const [creditDays, setCreditDays] = useState(7);
+
+  // Estados para descuentos
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [discountType, setDiscountType] = useState<'amount' | 'percentage'>('amount');
+  const [discountNotes, setDiscountNotes] = useState<string>('');
+  const [isDiscountDialogOpen, setIsDiscountDialogOpen] = useState(false);
+  const [discountPin, setDiscountPin] = useState('');
+
 
   // Estados del scanner
   const [showScanner, setShowScanner] = useState(false);
@@ -239,6 +248,7 @@ export default function POSPage() {
   const [scannedOrderId, setScannedOrderId] = useState('');
   // Estado para rastrear el pedido actual que se está editando (para evitar duplicados al guardar cotización)
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
+  const [currentOrder, setCurrentOrder] = useState<any | null>(null);
 
   // --- Cash Session State ---
   const [activeSession, setActiveSession] = useState<CashSession | null>(null);
@@ -547,12 +557,7 @@ export default function POSPage() {
   const isSessionReady = useMemo(() => !!activeSession && !isLocked, [activeSession, isLocked]);
 
   const generateSaleId = () => {
-    // Si hay configuración local, usarla
-    if (localSeries && localCorrelative) {
-      const paddedCorrelative = localCorrelative.padStart(6, '0');
-      return `${localSeries}-${paddedCorrelative}`;
-    }
-    // Fallback al generador aleatorio si no hay config local
+    // Siempre usar ID aleatorio para el identificador de la venta (seguridad)
     return IDGenerator.generate('sale');
   };
 
@@ -673,9 +678,86 @@ export default function POSPage() {
     }
   };
 
+  const handleApplyDiscount = async () => {
+    // Validate discount amount
+    if (!discountAmount || discountAmount <= 0) {
+      toast({
+        variant: "destructive",
+        title: "Descuento inválido",
+        description: "Ingresa un monto de descuento válido"
+      });
+      return;
+    }
+
+    // Validate percentage range
+    if (discountType === 'percentage' && discountAmount > 100) {
+      toast({
+        variant: "destructive",
+        title: "Porcentaje inválido",
+        description: "El porcentaje no puede ser mayor a 100%"
+      });
+      return;
+    }
+
+    // VALIDATE MANDATORY NOTES
+    if (!discountNotes.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Motivo requerido",
+        description: "Debes ingresar el motivo del descuento"
+      });
+      return;
+    }
+
+    // Check PIN if security is active
+    if (hasPin) {
+      if (discountPin.length !== 4) {
+        toast({
+          variant: "destructive",
+          title: "PIN incompleto",
+          description: "Ingresa un PIN de 4 dígitos"
+        });
+        return;
+      }
+
+      try {
+        const isValid = await checkPin(discountPin);
+        if (!isValid) {
+          toast({
+            variant: "destructive",
+            title: "PIN Incorrecto",
+            description: "No tienes autorización para aplicar descuentos"
+          });
+          return;
+        }
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Error al verificar PIN"
+        });
+        return;
+      }
+    }
+
+    // Apply discount
+    toast({
+      title: "Descuento Aplicado",
+      description: discountType === 'percentage'
+        ? `${discountAmount}% de descuento aplicado`
+        : `${activeSymbol}${discountAmount.toFixed(2)} de descuento aplicado`
+    });
+
+    setIsDiscountDialogOpen(false);
+    setDiscountPin('');
+  };
+
+
 
   const clearCart = () => {
     setCartItems([]);
+    setDiscountAmount(0);
+    setDiscountNotes('');
     toast({
       title: "Carrito Vaciado",
       description: "Todos los productos han sido eliminados del carrito.",
@@ -938,7 +1020,18 @@ export default function POSPage() {
   };
 
   const { tax1Amount, tax2Amount, totalTaxes } = calculateTaxes();
-  const total = subtotal + totalTaxes;
+
+  // Calcular descuento final
+  const finalDiscount = useMemo(() => {
+    if (discountAmount === 0) return 0;
+    const baseTotal = subtotal + totalTaxes;
+    return discountType === 'percentage'
+      ? (baseTotal * discountAmount / 100)
+      : discountAmount;
+  }, [subtotal, totalTaxes, discountAmount, discountType]);
+
+  // Total con descuento aplicado
+  const total = Math.max(0, subtotal + totalTaxes - finalDiscount);
 
   const totalPaid = useMemo(() => payments.reduce((sum, p) => sum + p.amount, 0), [payments]);
   const remainingBalance = useMemo(() => total - totalPaid, [total, totalPaid]);
@@ -1163,17 +1256,22 @@ export default function POSPage() {
       return;
     }
 
-    const saleId = generateSaleId();
-    const finalPayments: SalePayment[] = payments.map((p, i) => ({
+    // Ticket number (serie-correlativo) to show on the printed ticket — do not use as DB id
+    const ticketNumber = (localSeries && localCorrelative) ? `${localSeries}-${localCorrelative.padStart(6, '0')}` : undefined;
+
+    // Do not include sale id from client. Let the server generate a secure ID (SAL-<13 digits>).
+    let saleId: string | undefined;
+    let createdSale: any = null;
+
+    const finalPayments: SalePayment[] = payments.map((p) => ({
       ...p,
-      id: `pay-${saleId}-${i}`,
       date: new Date().toISOString(),
     }));
 
-    const newSale: Sale = {
-      id: saleId,
-      customerId: selectedCustomer?.id ?? null,
-      customerName: selectedCustomer?.name ?? 'Cliente Eventual',
+    const newSale: any = {
+      customerId: selectedCustomer?.id ?? currentOrder?.customerId ?? null,
+      customerName: selectedCustomer?.name ?? currentOrder?.customerName ?? 'Cliente Eventual',
+      customerPhone: selectedCustomer?.phone ?? currentOrder?.customerPhone ?? null,
       items: cartItems.map(item => ({
         productId: item.product.id,
         productName: item.product.name,
@@ -1183,7 +1281,8 @@ export default function POSPage() {
       total: total,
       subtotal: subtotal,
       tax: totalTaxes,
-      discount: 0, // Por ahora 0, implementar lógica de descuento visual si es necesario
+      discount: finalDiscount, // Descuento aplicado
+      notes: discountNotes || null, // Motivo del descuento
       paymentMethod: payments.length > 0 ? (payments.length > 1 ? 'Multiple' : payments[0].method) : 'Pendiente',
       date: new Date().toISOString(),
       transactionType: isCredit ? 'credito' : 'contado',
@@ -1196,6 +1295,9 @@ export default function POSPage() {
         creditDays: creditDays,
         creditDueDate: new Date(new Date().setDate(new Date().getDate() + creditDays)).toISOString(),
       })
+      ,
+      // Include ticket number (serie-correlativo) for the server to store
+      ticketNumber: ticketNumber || null
     } as any
 
     // --- SAVE TO DATABASE WITH AUTOMATIC MOVEMENT TRACKING ---
@@ -1209,25 +1311,57 @@ export default function POSPage() {
 
       if (!saleResponse.ok) {
         console.error(`❌ API Error: ${saleResponse.status} ${saleResponse.statusText}`);
-        const text = await saleResponse.text();
-        console.error('❌ API Raw Response:', text);
 
-        let errorData: any = {};
+        // Log response headers and content-type for easier debugging
         try {
-          errorData = JSON.parse(text);
-          console.error('❌ API Parsed Error:', errorData);
-        } catch (e) {
-          console.error('❌ Could not parse error response as JSON');
-        }
+          const contentType = saleResponse.headers.get('content-type') || 'unknown';
+          console.error('❌ API Response Content-Type:', contentType);
+          // Log headers at debug level to avoid triggering Next.js dev overlay for non-fatal info
+          try {
+            const headersObj = Object.fromEntries(Array.from(saleResponse.headers.entries()));
+            console.debug('API Response Headers:', headersObj);
+          } catch (hdrErr) {
+            console.debug('API Response Headers: (could not serialize headers)', hdrErr);
+          }
 
-        throw new Error(errorData.error || errorData.detalles || `Error al guardar la venta (${saleResponse.status})`);
+          const text = await saleResponse.text();
+
+          // If the server returned HTML (Next error page or not-found), log a trimmed preview
+          if (contentType.includes('text/html')) {
+            const preview = text.slice(0, 2000);
+            console.error('❌ API Raw HTML Response (trimmed):', preview);
+            console.error('❌ The API returned HTML. This usually means the route threw an exception or returned an HTML error page. Check the Next.js server logs for a stack trace.');
+            throw new Error(`Error al guardar la venta: servidor respondió con HTML (status ${saleResponse.status}). Revisa los logs del servidor.`);
+          }
+
+          // Try to parse JSON fallback
+          let errorData: any = {};
+          try {
+            errorData = JSON.parse(text);
+            console.error('❌ API Parsed Error:', errorData);
+          } catch (e) {
+            console.error('❌ Could not parse error response as JSON, raw response:', text.slice(0, 1000));
+          }
+
+          throw new Error(errorData.error || errorData.detalles || `Error al guardar la venta (${saleResponse.status})`);
+        } catch (innerErr) {
+          // Re-throw any inspection errors
+          throw innerErr;
+        }
       }
 
-      const savedSale = await saleResponse.json();
-      console.log('✅ Venta guardada con movimientos automáticos:', savedSale.id);
+      createdSale = await saleResponse.json();
+      saleId = createdSale.id;
+      console.log('✅ Venta guardada con movimientos automáticos:', saleId);
+      // Debug: log the server response and ticket number resolution
+      try {
+        console.debug('📥 [POS Debug] createdSale response:', createdSale);
+      } catch (e) {
+        console.debug('📥 [POS Debug] createdSale (unserializable)');
+      }
 
       // Actualizar estado local
-      setSales(prev => [savedSale, ...prev]);
+      setSales(prev => [createdSale, ...prev]);
 
       // Actualizar stock local de productos
       let updatedProducts = [...products];
@@ -1240,7 +1374,7 @@ export default function POSPage() {
       }
       setProducts(updatedProducts);
 
-      // Increment Local Correlative if used
+      // Increment Local Correlative if used (only affects ticket printing)
       if (localSeries && localCorrelative) {
         const nextCorr = (parseInt(localCorrelative) + 1).toString();
         setLocalCorrelative(nextCorr);
@@ -1251,14 +1385,20 @@ export default function POSPage() {
       // usando MovementService.recordSaleMovements
       console.log('✅ Venta procesada y movimientos registrados automáticamente');
 
+      // Guardar información para la impresión: usar el ticketNumber devuelto por el servidor si existe
+      setLastSale(createdSale);
+      // Accept both camelCase and snake_case just in case the API returns either
+      setLastTicketNumber(createdSale.ticketNumber || createdSale.ticket_number || ticketNumber || null);
+
       // Si hay un pedido asociado, actualizar su estado a 'processed'
       if (currentOrderId) {
         try {
           console.log('🔄 Actualizando estado del pedido a procesado:', currentOrderId);
-          const success = await updateOrderStatus(currentOrderId, 'processed');
+          const success = await updateOrderStatus(currentOrderId, 'processed', saleId, userProfile?.displayName || (userProfile as any)?.name || 'Usuario POS');
           if (success) {
             console.log('✅ Pedido actualizado correctamente');
             setCurrentOrderId(null);
+            setCurrentOrder(null);
             // Pequeña pausa para asegurar que Supabase procese el cambio antes de recargar
             setTimeout(() => refetchPendingOrders(), 500);
           } else {
@@ -1267,6 +1407,7 @@ export default function POSPage() {
         } catch (orderError) {
           console.error('❌ Error al actualizar estado del pedido:', orderError);
         }
+
       }
 
     } catch (error) {
@@ -1384,8 +1525,7 @@ export default function POSPage() {
       // No fallar la venta por este error
     }
 
-    setLastSale(newSale);
-
+    // lastSale was already set to the created sale returned by the server
     toast({
       title: "Venta Procesada",
       description: `La venta #${saleId} ha sido registrada con movimientos de inventario.`,
@@ -1396,20 +1536,29 @@ export default function POSPage() {
     resetPaymentModal();
     setCartItems([]);
     setIsProcessSaleDialogOpen(false);
-    resetPaymentModal();
-    setSelectedCustomerId('eventual');
+    // Do not reset selected customer immediately — keep it for ticket preview
     setCurrentOrderId(null); // Resetear orden actual después de venta exitosa
+    setCurrentOrder(null);
+    setDiscountAmount(0); // Resetear descuento
+    setDiscountNotes(''); // Resetear notas de descuento
+
 
     if (andPrint) {
       setTimeout(() => {
         setTicketType('sale');
         setIsPrintPreviewOpen(true);
+        // After opening preview, reset selected customer to eventual to clear UI selection
+        setTimeout(() => setSelectedCustomerId('eventual'), 300);
       }, 100);
+    } else {
+      // If not printing, reset immediately
+      setSelectedCustomerId('eventual');
     }
 
     if (andShare) {
       setTimeout(() => {
-        handleShareSale(newSale);
+        // Share the created sale (server-generated id)
+        handleShareSale(createdSale);
       }, 200);
     }
   }
@@ -1491,6 +1640,7 @@ export default function POSPage() {
         setTicketType('quote');
         setCartItems([]); // Limpiar carrito como solicitado
         setCurrentOrderId(null); // Resetear orden actual ya que "salió" del carrito
+        setCurrentOrder(null);
         setIsPrintPreviewOpen(true);
 
         // Refrescar lista de pedidos pendientes inmediatamente
@@ -1979,6 +2129,7 @@ export default function POSPage() {
       setCartItems(orderCartItems);
       // Establecer el ID del pedido actual para rastrear updates
       setCurrentOrderId(order.orderId);
+      setCurrentOrder(order);
 
       // Buscar y seleccionar cliente, o crearlo automáticamente si no existe
       let customer = (customers || []).find(c =>
@@ -2044,7 +2195,9 @@ export default function POSPage() {
       try {
         await updateOrderStatus(
           order.orderId,
-          'processed'
+          'processed',
+          saleId,
+          userProfile?.displayName || (userProfile as any)?.name || 'Usuario POS'
         );
         // Refrescar lista para que desaparezca inmediatamente
         setTimeout(() => refetchPendingOrders(), 100);
@@ -2077,7 +2230,7 @@ export default function POSPage() {
       // Actualizar estado del pedido de 'pending' a 'processing'
       try {
         console.log('🔄 Actualizando estado del pedido a "processing":', order.orderId);
-        await updateOrderStatus(order.orderId, 'processing');
+        await updateOrderStatus(order.orderId, 'processing', undefined, userProfile?.displayName || (userProfile as any)?.name || 'Usuario POS');
         console.log('✅ Estado del pedido actualizado exitosamente');
       } catch (statusError) {
         console.error('⚠️ Error al actualizar estado del pedido (no crítico):', statusError);
@@ -3190,6 +3343,8 @@ export default function POSPage() {
             ticketType={ticketType}
             cartItems={(!lastSale && ticketType === 'quote') ? cartItems : (lastSale ? lastSale.items.map(item => ({ product: (products || []).find(p => p.id === item.productId)!, quantity: item.quantity, price: item.price })) : cartItems)}
             saleId={ticketType === 'sale' ? lastSale?.id : undefined}
+            ticketNumber={ticketType === 'sale' ? lastTicketNumber : undefined}
+            saleObj={ticketType === 'sale' ? lastSale : undefined}
             customer={selectedCustomer}
             payments={ticketType === 'sale' ? lastSale?.payments : undefined}
             onShare={ticketType === 'quote' ? handleShareQuote : undefined}

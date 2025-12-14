@@ -13,7 +13,8 @@ interface ToastLogEntry {
 class ToastLogger {
   private logs: ToastLogEntry[] = [];
   private maxLogs = 100;
-  private isEnabled = process.env.NODE_ENV === 'development';
+  // Enable logger in development and test environments so unit tests can assert logs
+  private isEnabled = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
 
   log(entry: Omit<ToastLogEntry, 'timestamp'>) {
     if (!this.isEnabled) return;

@@ -1,0 +1,40 @@
+// Simple mock for lucide-react icons used in tests
+const React = require('react');
+
+const make = (name) => (props) => React.createElement('svg', { 'data-icon': name, ...props });
+
+module.exports = {
+  __esModule: true,
+  PlusCircle: make('PlusCircle'),
+  Printer: make('Printer'),
+  X: make('X'),
+  ShoppingCart: make('ShoppingCart'),
+  Trash2: make('Trash2'),
+  ArrowUpDown: make('ArrowUpDown'),
+  Check: make('Check'),
+  ZoomIn: make('ZoomIn'),
+  Tags: make('Tags'),
+  Package: make('Package'),
+  FileText: make('FileText'),
+  Banknote: make('Banknote'),
+  CreditCard: make('CreditCard'),
+  Smartphone: make('Smartphone'),
+  ScrollText: make('ScrollText'),
+  Plus: make('Plus'),
+  AlertCircle: make('AlertCircle'),
+  ImageOff: make('ImageOff'),
+  Archive: make('Archive'),
+  QrCode: make('QrCode'),
+  Lock: make('Lock'),
+  Unlock: make('Unlock'),
+  Library: make('Library'),
+  FilePieChart: make('FilePieChart'),
+  LogOut: make('LogOut'),
+  ArrowLeft: make('ArrowLeft'),
+  Armchair: make('Armchair'),
+  ScanLine: make('ScanLine'),
+  Search: make('Search'),
+  Share: make('Share'),
+  Pencil: make('Pencil'),
+  ShieldCheck: make('ShieldCheck'),
+};

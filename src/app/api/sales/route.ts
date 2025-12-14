@@ -26,6 +26,7 @@ export async function GET(request: Request) {
     // Transform to camelCase
     const formattedSales = sales?.map((sale: any) => ({
       id: sale.id,
+      ticketNumber: sale.ticket_number,
       customerId: sale.customer_id,
       customerName: sale.customer_name,
       customerPhone: sale.customer_phone,
@@ -64,6 +65,10 @@ export async function POST(request: Request) {
     const saleData: any = {
       id: saleId,
       customer_id: data.customerId || null,
+      customer_phone: data.customerPhone || null,
+      customer_address: data.customerAddress || null,
+      customer_card_id: data.customerCardId || data.customer_card_id || null,
+      ticket_number: data.ticketNumber || null,
       customer_name: data.customerName || 'Cliente Eventual',
       items: data.items,
       total: data.total || 0,
@@ -85,62 +90,58 @@ export async function POST(request: Request) {
 
     console.log('💰 [Sales API] Inserting sale:', saleId);
 
-    // Insert sale
-    const { data: createdSale, error: saleError } = await supabaseAdmin
-      .from('sales')
-      .insert([saleData])
-      .select()
-      .single();
+    // Insert sale. Some deployments may not yet have the optional customer_* columns
+    // (customer_phone, customer_address, customer_card_id). Try once with them,
+    // and if the insert fails due to missing columns, retry without those fields
+    // and return the client-provided values as a fallback in the response.
+    let createdSale: any = null;
+    const attemptInsert = async (payload: any) => {
+      const res = await supabaseAdmin
+        .from('sales')
+        .insert([payload])
+        .select()
+        .single();
+      return res;
+    };
 
-    if (saleError) {
-      console.error('❌ [Sales API] Error creating sale:', saleError);
-      return NextResponse.json({ error: saleError.message }, { status: 500 });
-    }
+    const firstAttempt = await attemptInsert(saleData);
 
-    console.log('✅ [Sales API] Sale created:', saleId);
+    if (firstAttempt.error) {
+      const errMsg = (firstAttempt.error.message || '').toLowerCase();
+      // Detect common Postgres/Supabase messages about missing columns
+      const missingColumnDetected = errMsg.includes('could not find') || errMsg.includes('does not exist') || errMsg.includes('column') && errMsg.includes('does not exist');
 
-    // Create Account Receivable if Credit Sale or Unpaid
-    // This replaces the SQL trigger logic to allow removing redundant columns from 'sales' table
-    if (data.transactionType === 'credito' || data.status === 'unpaid') {
-      try {
-        // Calculate due date
-        const creditDays = data.creditDays || 0;
-        const saleDate = new Date(data.date || new Date());
-        const defaultDueDate = new Date(saleDate);
-        defaultDueDate.setDate(defaultDueDate.getDate() + creditDays);
+      if (missingColumnDetected) {
+        console.warn('⚠️ [Sales API] Insert failed due to missing column(s). Retrying without optional customer_* fields. Error:', firstAttempt.error.message);
 
-        const receivableData = {
-          store_id: data.storeId,
-          customer_id: data.customerId,
-          customer_name: data.customerName,
-          customer_phone: data.customerPhone, // Ideally passed from frontend, or null
-          original_amount: data.total,
-          paid_amount: data.paidAmount || 0,
-          remaining_balance: data.total - (data.paidAmount || 0),
-          due_date: data.creditDueDate || defaultDueDate.toISOString(),
-          sale_id: saleId,
-          sale_date: data.date || new Date().toISOString(),
-          status: (data.total - (data.paidAmount || 0)) <= 0 ? 'paid' : ((data.paidAmount || 0) > 0 ? 'partial' : 'pending'),
-          credit_days: creditDays,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
+        const retryData: any = { ...saleData };
+        delete retryData.customer_phone;
+        delete retryData.customer_address;
+        delete retryData.customer_card_id;
 
-        const { error: receivableError } = await supabaseAdmin
-          .from('account_receivables')
-          .insert(receivableData);
-
-        if (receivableError) {
-          console.error('❌ [Sales API] Error creating receivable:', receivableError);
-          // Critical error, but we don't want to fail the sale? 
-          // Better to log loudly. In a real tx, we'd rollback.
-        } else {
-          console.log('✅ [Sales API] Account Receivable created manually');
+        const retryAttempt = await attemptInsert(retryData);
+        if (retryAttempt.error) {
+          console.error('❌ [Sales API] Error creating sale (retry):', retryAttempt.error);
+          return NextResponse.json({ error: retryAttempt.error.message || retryAttempt.error }, { status: 500 });
         }
-      } catch (err) {
-        console.error('❌ [Sales API] Exception creating receivable:', err);
+
+        createdSale = retryAttempt.data;
+        // Keep track that the values weren't persisted; we'll include them in the response from the original request body
+        createdSale.__preservedClientValues = {
+          customer_phone: saleData.customer_phone,
+          customer_address: saleData.customer_address,
+          customer_card_id: saleData.customer_card_id
+        };
+      } else {
+        console.error('❌ [Sales API] Error creating sale:', firstAttempt.error);
+        return NextResponse.json({ error: firstAttempt.error.message }, { status: 500 });
       }
+    } else {
+      createdSale = firstAttempt.data;
+      console.log('✅ [Sales API] Sale created:', saleId);
     }
+
+    // NOTE: account receivables will be created later using the persisted `createdSale` record
 
     // Create inventory movements for each item
     if (data.items && Array.isArray(data.items) && data.items.length > 0) {
@@ -205,28 +206,38 @@ export async function POST(request: Request) {
       console.log('✅ [Sales API] Inventory movements completed');
     }
 
-    // --- AUTOMATIC ACCOUNT RECEIVABLE CREATION ---
-    if (saleData.transaction_type === 'credito') {
+    // --- AUTOMATIC ACCOUNT RECEIVABLE CREATION (use persisted createdSale to ensure correctness) ---
+    // Determine creditDays/creditDueDate from request (data) or defaults based on createdSale.date
+    const computedCreditDays = (data && data.creditDays !== undefined) ? data.creditDays : 0;
+    const saleDateForDue = new Date(createdSale.date || new Date());
+    const defaultDueDateForCreated = new Date(saleDateForDue);
+    defaultDueDateForCreated.setDate(defaultDueDateForCreated.getDate() + (computedCreditDays || 0));
+
+    if (data.transactionType === 'credito' || data.status === 'unpaid' || createdSale.transaction_type === 'credito') {
       try {
         console.log('💳 [Sales API] Creating account receivable for credit sale...');
 
+        const creditDays = computedCreditDays || 0;
+        const creditDueDate = (data && data.creditDueDate) ? data.creditDueDate : defaultDueDateForCreated.toISOString();
+
         const accountData = {
           id: IDGenerator.generate('account'),
-          store_id: saleData.store_id,
-          sale_id: saleId,
-          customer_id: saleData.customer_id,
-          customer_name: saleData.customer_name,
-          original_amount: saleData.total,
-          paid_amount: saleData.paidAmount || 0,
-          remaining_balance: saleData.total - (saleData.paidAmount || 0),
-          status: (saleData.paidAmount >= saleData.total) ? 'paid' : 'pending',
-          sale_date: saleData.date,
-          due_date: saleData.creditDueDate || new Date(new Date().setDate(new Date().getDate() + (saleData.creditDays || 30))).toISOString(),
-          last_payment_date: (saleData.paidAmount > 0) ? new Date().toISOString() : null,
-          payments: saleData.payments || [],
+          store_id: createdSale.store_id,
+          sale_id: createdSale.id,
+          customer_id: createdSale.customer_id,
+          customer_name: createdSale.customer_name,
+          original_amount: createdSale.total,
+          paid_amount: createdSale.paid_amount || 0,
+          remaining_balance: createdSale.total - (createdSale.paid_amount || 0),
+          status: (createdSale.paid_amount >= createdSale.total) ? 'paid' : 'pending',
+          sale_date: createdSale.date,
+          due_date: creditDueDate,
+          credit_days: creditDays || null,
+          last_payment_date: (createdSale.paid_amount > 0) ? new Date().toISOString() : null,
+          payments: createdSale.payments || [],
           notes: null,
-          created_by: saleData.user_id,
-          updated_by: saleData.user_id,
+          created_by: createdSale.user_id,
+          updated_by: createdSale.user_id,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
@@ -237,7 +248,6 @@ export async function POST(request: Request) {
 
         if (accountError) {
           console.error('❌ [Sales API] Error automatically creating account receivable:', accountError);
-          // Note: We don't fail the sale creation here, but we log the error.
         } else {
           console.log('✅ [Sales API] Account receivable created automatically');
         }
@@ -248,22 +258,30 @@ export async function POST(request: Request) {
     // ---------------------------------------------
 
     // Format response
+    // Build response using persisted values when available, otherwise fall back
+    // to the original request's client-supplied values for customer fields.
+    const persisted = createdSale || {};
+    const preservedClient = persisted.__preservedClientValues || {};
+
     const formattedResponse = {
-      id: createdSale.id,
-      customerId: createdSale.customer_id,
-      customerName: createdSale.customer_name,
-      customerPhone: createdSale.customer_phone,
-      items: createdSale.items,
-      total: createdSale.total,
-      date: createdSale.date,
-      transactionType: createdSale.transaction_type,
-      status: createdSale.status,
-      paidAmount: createdSale.paid_amount,
-      payments: createdSale.payments,
-      storeId: createdSale.store_id,
-      creditDays: createdSale.credit_days,
-      creditDueDate: createdSale.credit_due_date,
-      userId: createdSale.user_id
+      id: persisted.id,
+      ticketNumber: persisted.ticket_number,
+      customerId: persisted.customer_id || data.customerId || null,
+      customerCardId: persisted.customer_card_id || preservedClient.customer_card_id || data.customerCardId || data.customer_card_id || null,
+      customerAddress: persisted.customer_address || preservedClient.customer_address || data.customerAddress || data.customer_address || null,
+      customerName: persisted.customer_name || data.customerName || data.customer_name || 'Cliente Eventual',
+      customerPhone: persisted.customer_phone || preservedClient.customer_phone || data.customerPhone || data.customer_phone || null,
+      items: persisted.items || data.items,
+      total: persisted.total || data.total || 0,
+      date: persisted.date || data.date,
+      transactionType: persisted.transaction_type || data.transactionType,
+      status: persisted.status || data.status,
+      paidAmount: persisted.paid_amount || data.paidAmount || 0,
+      payments: persisted.payments || data.payments || [],
+      storeId: persisted.store_id || data.storeId,
+      creditDays: (data && data.creditDays !== undefined) ? data.creditDays : null,
+      creditDueDate: (data && data.creditDueDate) ? data.creditDueDate : (computedCreditDays !== undefined ? defaultDueDateForCreated.toISOString() : null),
+      userId: persisted.user_id || data.userId
     };
 
     // Invalidar cache de productos para que se actualice el stock
@@ -320,6 +338,7 @@ export async function PUT(request: Request) {
 
     const formattedResponse = {
       id: updatedSale.id,
+      ticketNumber: updatedSale.ticket_number,
       customerId: updatedSale.customer_id,
       customerName: updatedSale.customer_name,
       customerPhone: updatedSale.customer_phone,

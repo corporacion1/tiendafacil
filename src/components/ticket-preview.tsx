@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -15,6 +15,8 @@ interface TicketPreviewProps {
   cartItems: CartItem[];
   customer: Customer | null;
   saleId?: string | null;
+  ticketNumber?: string | null;
+  saleObj?: any;
   ticketType?: 'sale' | 'quote';
   payments?: SalePayment[];
   onShare?: () => void;
@@ -26,11 +28,67 @@ export function TicketPreview({
   cartItems,
   customer,
   saleId,
+  ticketNumber,
+  saleObj,
   ticketType = 'sale',
   payments,
   onShare,
 }: TicketPreviewProps) {
   const ticketRef = useRef<HTMLDivElement>(null);
+  // Debug logs to help trace why ticketNumber might not appear
+  useEffect(() => {
+    if (isOpen && ticketType === 'sale') {
+      try {
+        const resolvedTicket = ticketNumber || (Array.isArray(saleObj) ? (saleObj[0]?.ticketNumber || saleObj[0]?.ticket_number) : (saleObj?.ticketNumber || saleObj?.ticket_number)) || null;
+        console.debug('📋 [TicketPreview] props:', { saleId, ticketNumber, saleObj, resolvedTicket });
+      } catch (e) {
+        console.debug('📋 [TicketPreview] props (unserializable)');
+      }
+    }
+  }, [isOpen, ticketType, saleId, ticketNumber, saleObj]);
+
+  const resolvedTicket = ticketNumber || (Array.isArray(saleObj) ? (saleObj[0]?.ticketNumber || saleObj[0]?.ticket_number) : (saleObj?.ticketNumber || saleObj?.ticket_number)) || null;
+  // Resolve customer info: prefer `saleObj` (server record) if present, otherwise use explicit `customer` prop
+  const resolvedCustomer = Array.isArray(saleObj)
+    ? {
+        name: saleObj[0]?.customerName || saleObj[0]?.customer_name || customer?.name || null,
+        phone: saleObj[0]?.customerPhone || saleObj[0]?.customer_phone || customer?.phone || null,
+        address: saleObj[0]?.customerAddress || saleObj[0]?.customer_address || (customer as any)?.address || null,
+        cardId: saleObj[0]?.customerCardId || saleObj[0]?.customer_card_id || (customer as any)?.cardId || (customer as any)?.card_id || null
+      }
+    : saleObj
+      ? {
+          name: saleObj?.customerName || saleObj?.customer_name || customer?.name || null,
+          phone: saleObj?.customerPhone || saleObj?.customer_phone || customer?.phone || null,
+          address: saleObj?.customerAddress || saleObj?.customer_address || (customer as any)?.address || null,
+          cardId: saleObj?.customerCardId || saleObj?.customer_card_id || (customer as any)?.cardId || (customer as any)?.card_id || null
+        }
+      : customer
+        ? {
+            name: customer.name,
+            phone: customer.phone,
+            address: (customer as any).address || null,
+            cardId: (customer as any).cardId || (customer as any).card_id || null
+          }
+        : null;
+    // Ensure we resolve address from several possible keys (snake/camel/alt names)
+    const resolveAddress = () => {
+      const tryFrom = (obj: any) => {
+        if (!obj) return null;
+        return obj.customerAddress || obj.customer_address || obj.address || obj.direccion || obj.dir || null;
+      };
+
+      if (Array.isArray(saleObj)) {
+        return tryFrom(saleObj[0]) || (customer as any)?.address || (customer as any)?.direccion || null;
+      }
+      if (saleObj) {
+        return tryFrom(saleObj) || (customer as any)?.address || (customer as any)?.direccion || null;
+      }
+      return (customer as any)?.address || (customer as any)?.direccion || null;
+    };
+
+    const resolvedAddress = resolveAddress();
+    if (resolvedCustomer) (resolvedCustomer as any).address = resolvedAddress;
   const { settings, activeSymbol, activeRate } = useSettings();
 
   const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
@@ -179,11 +237,20 @@ export function TicketPreview({
           <div className="overflow-y-auto p-2 border rounded-md bg-gray-50 dark:bg-gray-800">
             <div ref={ticketRef} className="ticket font-mono" style={{ fontFamily: "'Inconsolata', monospace", width: '100%', color: '#000', backgroundColor: '#fff', padding: '5px' }}>
               <div className="header" style={{ textAlign: 'center' }}>
-                <h1 style={{ fontSize: '16px', margin: '0', fontWeight: 'bold' }}>{settings?.name}</h1>
-                <p style={{ margin: '2px 0', fontSize: '10px' }}>{settings?.address}</p>
-                <p style={{ margin: '2px 0', fontSize: '10px' }}>Tel: {settings?.phone}</p>
+                <h1 style={{ fontSize: '16px', margin: '0', fontWeight: 'bold', textTransform: 'uppercase' }}>{(settings?.name || '').toUpperCase()}</h1>
+                {
+                  // RIF/Tax ID and phone on the next line
+                }
+                <p style={{ margin: '2px 0', fontSize: '10px' }}>
+                  {settings?.taxId || settings?.nitId ? `${settings.taxId || settings.nitId}` : ''}
+                  {settings?.phone ? (settings?.taxId || settings?.nitId ? `  |  Tel: ${settings.phone}` : `Tel: ${settings.phone}`) : ''}
+                </p>
+                <p style={{ margin: '2px 0', fontSize: '10px' }}>{settings?.address || ''}</p>
                 <p style={{ margin: '2px 0', fontSize: '10px' }}>{new Date().toLocaleString()}</p>
                 {ticketType === 'sale' && saleId && <p style={{ margin: '2px 0', fontSize: '10px', fontWeight: 'bold' }}>CONTROL #: {saleId}</p>}
+                {ticketType === 'sale' && (ticketNumber || saleObj?.ticketNumber || saleObj?.ticket_number) && (
+                  <p style={{ margin: '2px 0', fontSize: '10px', fontWeight: 'bold' }}>TICKET #: {ticketNumber || saleObj?.ticketNumber || saleObj?.ticket_number}</p>
+                )}
               </div>
 
               {ticketType === 'quote' ? (
@@ -196,13 +263,14 @@ export function TicketPreview({
                 </div>
               )}
 
-              {customer && (
+              {resolvedCustomer && (
                 <div className="customer" style={{ marginTop: '10px', fontSize: '10px' }}>
                   <div className="separator" style={{ borderTop: '1px dashed #000', margin: '5px 0' }}></div>
-                  <p><strong>Cliente:</strong> {customer.name}</p>
-                  {customer.id && customer.id !== 'eventual' && <p><strong>ID:</strong> {customer.id}</p>}
-                  {customer.phone && <p><strong>Tel:</strong> {customer.phone}</p>}
-                  {customer.address && <p><strong>Dir:</strong> {customer.address}</p>}
+                  {/* Show card_id first, then name, phone, address */}
+                  {(resolvedCustomer as any)?.cardId && <p><strong>RIF/ID:</strong> {(resolvedCustomer as any).cardId}</p>}
+                  <p><strong>Cliente:</strong> {(resolvedCustomer.name || 'Cliente Eventual').toUpperCase()}</p>
+                  {resolvedCustomer.phone && <p><strong>Tel:</strong> {resolvedCustomer.phone}</p>}
+                  {resolvedCustomer.address && <p><strong>Dir:</strong> {resolvedCustomer.address}</p>}
                 </div>
               )}
 

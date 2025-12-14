@@ -9,7 +9,7 @@ interface UsePendingOrdersReturn {
   error: string | null;
   refetch: () => Promise<void>;
   isPolling: boolean;
-  updateOrderStatus: (orderId: string, status: string, saleId?: string) => Promise<boolean>;
+  updateOrderStatus: (orderId: string, status: string, saleId?: string, processedBy?: string) => Promise<boolean>;
 }
 
 export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
@@ -129,10 +129,11 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
   }, [storeId, toast, isOnline]);
 
   // Función para actualizar estado de pedido
-  const updateOrderStatus = useCallback(async (orderId: string, status: string, saleId?: string): Promise<boolean> => {
+  const updateOrderStatus = useCallback(async (orderId: string, status: string, saleId?: string, processedBy?: string): Promise<boolean> => {
     try {
       console.log('🔄 [POS] Updating order status:', orderId, 'to', status);
 
+      const processor = processedBy || 'POS';
       const response = await fetch('/api/orders', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -140,7 +141,7 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
           orderId,
           storeId, // Add storeId required by API
           status,
-          processedBy: 'POS', // Identificar que fue procesado desde POS
+          processedBy: processor,
           saleId,
           processedAt: new Date().toISOString()
         })
