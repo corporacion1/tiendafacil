@@ -4,12 +4,35 @@
 
 ![TiendaFácil Logo](public/tienda_facil_logo.svg)
 
-**Versión 1.2.5** | **Diciembre 2024**
+**Versión 1.2.6** | **Diciembre 2024**
  
  *Sistema completo de Punto de Venta, Inventario y Comercio Electrónico*
 @@ -92,8 +92,19 @@
  
- ## 🚀 **Nuevas Características - Versión 1.2.5**
+ ## 🚀 **Nuevas Características - Versión 1.2.6**
+
+### 🏪 **Series de Venta Locales (Local POS Series)**
+- **Configuración por Dispositivo**: Cada caja/dispositivo puede tener su propia serie (ej. POS-A, CAJA-1) y correlativo independiente.
+- **Persistencia Local**: Uso de `localStorage` para mantener la secuencia incluso mas allá de las sesiones.
+- **Control de SuperUsuario**: Interfaz de configuración bloqueada y solo visible para usuarios con rol `su`.
+- **Visibilidad Mejorada**: Indicadores claros en el carrito y en el modal de confirmación de venta.
+
+### 💳 **Gestión de Créditos y Cuentas por Cobrar**
+- **Persistencia Robusta**: Solución definitiva para la persistencia de `credit_days` y `paid_amount` en ventas a crédito.
+- **Sincronización Exacta**: Migración de trigger SQL a lógica de API explícita para crear registros en `account_receivables`.
+- **Manejo de Pagos Parciales**: Cálculo preciso de "Saldo Pendiente" al momento de la venta.
+- **Visualización Corrigida**: La fecha de vencimiento y días de crédito se muestran correctamente en el módulo de Créditos.
+
+### 🔄 **Optimización de Flujo de Pedidos**
+- **Auto-Procesamiento**: Al cargar un **Pedido Pendiente** al carrito, este se marca automáticamente como `processed`.
+- **Limpieza de Lista**: El pedido desaparece inmediatamente de la lista "Pendientes", evitando duplicidad y errores operativos.
+- **Validación de Estado**: Doble verificación al finalizar la venta para asegurar que el pedido cambie de estado.
+
+### 🛠️ **Limpieza Técnica**
+- **Optimización de Base de Datos**: Eliminación de columnas redundantes en tabla `sales`.
+- **API Refactor**: Limpieza de código duplicado y mejora en el manejo de transacciones.
+
+### ✨ **Características Anteriores (v1.2.5)**
  
 +###  **Gestión Avanzada de Inventario con Excel (Mejorado v1.2.5)**
 +- **Campos Extendidos**: Soporte completo para "Descripción" y "Tipo" en importación/exportación.
@@ -471,7 +494,7 @@ Este proyecto es propiedad de **Corporación 1 Plus, C.A.** y está protegido po
 
 <div align="center">
 
-**🚀 TiendaFácil v1.2.4 - Impulsando el Comercio Digital**
+**🚀 TiendaFácil v1.2.6 - Impulsando el Comercio Digital**
 
 *Desarrollado con ❤️ por Corporación 1 Plus, C.A.*
 

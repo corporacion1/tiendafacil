@@ -1,4 +1,4 @@
-'use client'; 
+'use client';
 
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -63,8 +63,19 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
 
 
   const setPin = async (currentPin: string, newPin: string): Promise<boolean> => {
-    if (!activeStoreId) return false;
+    console.log('🔐 [SecurityContext] setPin called', { activeStoreId, hasDetails: !!currentPin, newPinLength: newPin.length });
+
+    if (!activeStoreId) {
+      console.error('❌ [SecurityContext] setPin failed: No activeStoreId');
+      toast({
+        variant: "destructive",
+        title: "Error de Configuración",
+        description: "No se identificó la tienda activa. Intenta recargar la página.",
+      });
+      return false;
+    }
     try {
+      console.log('🚀 [SecurityContext] Sending PIN update request...');
       const res = await fetch('/api/security/pin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -106,7 +117,7 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
     }
     try {
       console.log(`🔐 [Security Context] Verificando PIN para store: ${activeStoreId}`);
-      
+
       const res = await fetch('/api/security/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -115,7 +126,7 @@ export const SecurityProvider = ({ children }: { children: React.ReactNode }) =>
 
       const data = await res.json();
       console.log('📥 [Security Context] Response received:', { status: res.status, ok: res.ok, data });
-      
+
       if (!res.ok) {
         console.error('❌ [Security Context] PIN verification failed:', data.error);
         setSecurityState(prev => ({

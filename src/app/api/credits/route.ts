@@ -11,46 +11,46 @@ export async function GET(request: Request) {
     const status = searchParams.get('status');
     const overdue = searchParams.get('overdue');
     const limit = parseInt(searchParams.get('limit') || '50');
-    
+
     if (!storeId) {
       return NextResponse.json({ error: 'storeId es requerido' }, { status: 400 });
     }
-    
+
     console.log('🔍 [Credits API] Buscando cuentas por cobrar:', { storeId, customerId, status, overdue });
-    
+
     // Construir query
     let query = supabaseAdmin
       .from('account_receivables')
       .select('*')
       .eq('store_id', storeId);
-    
+
     if (customerId) {
       query = query.eq('customer_id', customerId);
     }
-    
+
     if (status) {
       query = query.eq('status', status);
     } else {
       // Por defecto, excluir las pagadas y canceladas
       query = query.in('status', ['pending', 'overdue']);
     }
-    
+
     if (overdue === 'true') {
       query = query.lt('due_date', new Date().toISOString());
     }
-    
+
     const { data: accounts, error } = await query
       .order('due_date', { ascending: true })
       .order('sale_date', { ascending: false })
       .limit(limit);
-    
+
     if (error) {
       console.error('❌ [Credits API] Error fetching accounts:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    
+
     console.log('📊 [Credits API] Cuentas encontradas:', accounts?.length || 0);
-    
+
     // Transformar snake_case a camelCase
     const transformedAccounts = (accounts || []).map((account: any) => ({
       id: account.id,
@@ -64,6 +64,7 @@ export async function GET(request: Request) {
       status: account.status,
       saleDate: account.sale_date,
       dueDate: account.due_date,
+      creditDays: account.credit_days,
       lastPaymentDate: account.last_payment_date,
       payments: account.payments || [],
       notes: account.notes,
@@ -72,24 +73,24 @@ export async function GET(request: Request) {
       createdAt: account.created_at,
       updatedAt: account.updated_at
     }));
-    
+
     // Calcular totales
     const totals = {
       totalAccounts: transformedAccounts.length,
       totalAmount: transformedAccounts.reduce((sum: number, acc: any) => sum + acc.originalAmount, 0),
       totalPaid: transformedAccounts.reduce((sum: number, acc: any) => sum + acc.paidAmount, 0),
       totalPending: transformedAccounts.reduce((sum: number, acc: any) => sum + acc.remainingBalance, 0),
-      overdueCount: transformedAccounts.filter((acc: any) => 
+      overdueCount: transformedAccounts.filter((acc: any) =>
         new Date() > new Date(acc.dueDate) && acc.remainingBalance > 0
       ).length
     };
-    
+
     return NextResponse.json({
       success: true,
       accounts: transformedAccounts,
       totals
     });
-    
+
   } catch (error: any) {
     console.error('❌ [Credits API] Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -101,54 +102,54 @@ export async function POST(request: Request) {
   try {
     const data = await request.json();
     const { saleId, creditDays = 30, createdBy } = data;
-    
+
     if (!saleId || !createdBy) {
-      return NextResponse.json({ 
-        error: 'saleId y createdBy son requeridos' 
+      return NextResponse.json({
+        error: 'saleId y createdBy son requeridos'
       }, { status: 400 });
     }
-    
+
     console.log('💳 [Credits API] Creando cuenta por cobrar para venta:', saleId);
-    
+
     // Obtener la venta
     const { data: sale, error: saleError } = await supabaseAdmin
       .from('sales')
       .select('*')
       .eq('id', saleId)
       .single();
-    
+
     if (saleError || !sale) {
-      return NextResponse.json({ 
-        error: 'Venta no encontrada' 
+      return NextResponse.json({
+        error: 'Venta no encontrada'
       }, { status: 404 });
     }
-    
+
     // Verificar que sea una venta a crédito
     if (sale.transaction_type !== 'credito') {
-      return NextResponse.json({ 
-        error: 'La venta no es a crédito' 
+      return NextResponse.json({
+        error: 'La venta no es a crédito'
       }, { status: 400 });
     }
-    
+
     // Verificar si ya existe una cuenta por cobrar para esta venta
     const { data: existingAccount } = await supabaseAdmin
       .from('account_receivables')
       .select('*')
       .eq('sale_id', saleId)
       .single();
-    
+
     if (existingAccount) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Ya existe una cuenta por cobrar para esta venta',
-        account: existingAccount 
+        account: existingAccount
       }, { status: 409 });
     }
-    
+
     // Calcular fechas
     const saleDate = new Date(sale.date);
     const dueDate = new Date(saleDate);
     dueDate.setDate(dueDate.getDate() + creditDays);
-    
+
     // Crear cuenta por cobrar
     const accountData = {
       id: IDGenerator.generate('account'),
@@ -168,20 +169,20 @@ export async function POST(request: Request) {
       created_by: createdBy,
       updated_by: createdBy
     };
-    
+
     const { data: account, error } = await supabaseAdmin
       .from('account_receivables')
       .insert(accountData)
       .select()
       .single();
-    
+
     if (error) {
       console.error('❌ [Credits API] Error creando cuenta:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    
+
     console.log('✅ [Credits API] Cuenta por cobrar creada:', account.id);
-    
+
     // Transformar respuesta
     const response = {
       id: account.id,
@@ -203,9 +204,9 @@ export async function POST(request: Request) {
       createdAt: account.created_at,
       updatedAt: account.updated_at
     };
-    
+
     return NextResponse.json(response);
-    
+
   } catch (error: any) {
     console.error('❌ [Credits API] Error creando cuenta:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -217,48 +218,48 @@ export async function PUT(request: Request) {
   try {
     const data = await request.json();
     const { accountId, payment } = data;
-    
+
     if (!accountId || !payment) {
-      return NextResponse.json({ 
-        error: 'accountId y payment son requeridos' 
+      return NextResponse.json({
+        error: 'accountId y payment son requeridos'
       }, { status: 400 });
     }
-    
+
     // Validar datos del pago
     if (!payment.amount || payment.amount <= 0) {
-      return NextResponse.json({ 
-        error: 'El monto del pago debe ser mayor a 0' 
+      return NextResponse.json({
+        error: 'El monto del pago debe ser mayor a 0'
       }, { status: 400 });
     }
-    
+
     if (!payment.paymentMethod || !payment.processedBy) {
-      return NextResponse.json({ 
-        error: 'paymentMethod y processedBy son requeridos' 
+      return NextResponse.json({
+        error: 'paymentMethod y processedBy son requeridos'
       }, { status: 400 });
     }
-    
+
     console.log('💰 [Credits API] Agregando pago a cuenta:', accountId, payment.amount);
-    
+
     // Obtener cuenta actual
     const { data: account, error: accountError } = await supabaseAdmin
       .from('account_receivables')
       .select('*')
       .eq('id', accountId)
       .single();
-    
+
     if (accountError || !account) {
-      return NextResponse.json({ 
-        error: 'Cuenta por cobrar no encontrada' 
+      return NextResponse.json({
+        error: 'Cuenta por cobrar no encontrada'
       }, { status: 404 });
     }
-    
+
     // Validar que el pago no exceda el balance pendiente
     if (payment.amount > account.remaining_balance) {
-      return NextResponse.json({ 
-        error: `El pago (${payment.amount}) no puede ser mayor al balance pendiente (${account.remaining_balance})` 
+      return NextResponse.json({
+        error: `El pago (${payment.amount}) no puede ser mayor al balance pendiente (${account.remaining_balance})`
       }, { status: 400 });
     }
-    
+
     // Validar referencias duplicadas
     if (payment.reference && payment.reference.trim()) {
       const { data: duplicateAccount } = await supabaseAdmin
@@ -267,14 +268,14 @@ export async function PUT(request: Request) {
         .eq('store_id', account.store_id)
         .like('payments', `%${payment.reference.trim()}%`)
         .neq('id', accountId);
-      
+
       if (duplicateAccount && duplicateAccount.length > 0) {
-        return NextResponse.json({ 
-          error: `La referencia "${payment.reference}" ya existe para el método ${payment.paymentMethod}` 
+        return NextResponse.json({
+          error: `La referencia "${payment.reference}" ya existe para el método ${payment.paymentMethod}`
         }, { status: 400 });
       }
     }
-    
+
     // Crear objeto de pago
     const newPayment = {
       id: `pay_${Date.now()}`,
@@ -286,14 +287,14 @@ export async function PUT(request: Request) {
       processedBy: payment.processedBy,
       processedAt: new Date().toISOString()
     };
-    
+
     // Actualizar cuenta
     const updatedPayments = [...(account.payments || []), newPayment];
     const newPaidAmount = account.paid_amount + payment.amount;
     const newRemainingBalance = account.remaining_balance - payment.amount;
-    const newStatus = newRemainingBalance <= 0 ? 'paid' : 
-                     (new Date() > new Date(account.due_date) ? 'overdue' : 'pending');
-    
+    const newStatus = newRemainingBalance <= 0 ? 'paid' :
+      (new Date() > new Date(account.due_date) ? 'overdue' : 'pending');
+
     const { data: updatedAccount, error: updateError } = await supabaseAdmin
       .from('account_receivables')
       .update({
@@ -308,12 +309,12 @@ export async function PUT(request: Request) {
       .eq('id', accountId)
       .select()
       .single();
-    
+
     if (updateError) {
       console.error('❌ [Credits API] Error actualizando cuenta:', updateError);
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
-    
+
     // Sincronizar con la venta
     await supabaseAdmin
       .from('sales')
@@ -324,10 +325,10 @@ export async function PUT(request: Request) {
         updated_at: new Date().toISOString()
       })
       .eq('id', account.sale_id);
-    
+
     console.log('🔄 [Credits API] Venta sincronizada:', account.sale_id);
     console.log('✅ [Credits API] Pago agregado exitosamente');
-    
+
     // Transformar respuesta
     const response = {
       id: updatedAccount.id,
@@ -349,9 +350,9 @@ export async function PUT(request: Request) {
       createdAt: updatedAccount.created_at,
       updatedAt: updatedAccount.updated_at
     };
-    
+
     return NextResponse.json(response);
-    
+
   } catch (error: any) {
     console.error('❌ [Credits API] Error agregando pago:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

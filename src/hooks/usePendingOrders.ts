@@ -9,7 +9,7 @@ interface UsePendingOrdersReturn {
   error: string | null;
   refetch: () => Promise<void>;
   isPolling: boolean;
-  updateOrderStatus: (orderId: string, status: string, saleId?: string) => Promise<void>;
+  updateOrderStatus: (orderId: string, status: string, saleId?: string) => Promise<boolean>;
 }
 
 export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
@@ -129,7 +129,7 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
   }, [storeId, toast, isOnline]);
 
   // Función para actualizar estado de pedido
-  const updateOrderStatus = useCallback(async (orderId: string, status: string, saleId?: string) => {
+  const updateOrderStatus = useCallback(async (orderId: string, status: string, saleId?: string): Promise<boolean> => {
     try {
       console.log('🔄 [POS] Updating order status:', orderId, 'to', status);
 
@@ -154,12 +154,13 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
       await fetchOrders(false);
 
       console.log('✅ [POS] Order status updated successfully');
+      return true;
 
     } catch (error) {
       console.error('❌ [POS] Error updating order status:', error);
       throw error; // Re-throw para que el caller pueda manejar el error
     }
-  }, [fetchOrders]);
+  }, [fetchOrders, storeId]);
 
   // Función para iniciar polling
   const startPolling = useCallback(() => {
@@ -242,11 +243,13 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
     };
   }, [storeId, fetchOrders, startPolling, stopPolling]);
 
+  const refetch = useCallback(() => fetchOrders(true), [fetchOrders]);
+
   return {
     orders,
     isLoading,
     error,
-    refetch: () => fetchOrders(true),
+    refetch,
     isPolling,
     updateOrderStatus
   };

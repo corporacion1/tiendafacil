@@ -1,8 +1,9 @@
 
 "use client"
 import { useState, useEffect, useMemo, useRef } from "react";
+import { PinModal } from "@/components/pin-modal";
 import Image from "next/image";
-import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff, Archive, QrCode, Lock, Unlock, Library, FilePieChart, LogOut, ArrowLeft, Armchair, ScanLine, Search, Share, Pencil } from "lucide-react"
+import { PlusCircle, Printer, X, ShoppingCart, Trash2, ArrowUpDown, Check, ZoomIn, Tags, Package, FileText, Banknote, CreditCard, Smartphone, ScrollText, Plus, AlertCircle, ImageOff, Archive, QrCode, Lock, Unlock, Library, FilePieChart, LogOut, ArrowLeft, Armchair, ScanLine, Search, Share, Pencil, ShieldCheck } from "lucide-react"
 import { FaWhatsapp } from "react-icons/fa";
 import dynamic from 'next/dynamic';
 
@@ -12,6 +13,7 @@ const BarcodeScannerComponent = dynamic(
   { ssr: false }
 );
 import { useRouter } from "next/navigation";
+import { Settings as SettingsIcon } from "lucide-react"; // Import icon for config button
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -137,6 +139,9 @@ export default function POSPage() {
     pendingOrders: pendingOrdersContext, setPendingOrders
   } = useSettings();
 
+  // Verificar si es SuperUsuario para la configuración local
+  const isSuperUser = userProfile?.role === 'su';
+
   // Hook para productos con sincronización automática
   const {
     products: syncedProducts,
@@ -146,10 +151,18 @@ export default function POSPage() {
 
   // Usar productos sincronizados si están disponibles, sino usar del contexto
   const products = syncedProducts.length > 0 ? syncedProducts : contextProducts;
-  const { isPinLocked } = useSecurity();
+  const { isPinLocked, checkPin, hasPin } = useSecurity();
   const isLocked = isPinLocked;
-  const isSecurityReady = true; // Simplified for now
+  // const isSecurityReady = true; 
   const router = useRouter();
+
+  // -- Estado para validación de PIN al eliminar --
+  const [itemToDelete, setItemToDelete] = useState<{ id: string, price: number } | null>(null);
+  const [deletePin, setDeletePin] = useState('');
+  const [isDeletePinOpen, setIsDeletePinOpen] = useState(false);
+
+  // NOTA: El chequeo de isLocked se hace más abajo, después de todos los hooks
+
 
   // Hook para pedidos pendientes con sincronización automática
   const {
@@ -239,6 +252,38 @@ export default function POSPage() {
   const [reportType, setReportType] = useState<'X' | 'Z' | null>(null);
   const [sessionForReport, setSessionForReport] = useState<CashSession | null>(null);
 
+  // --- LOCAL POS SERIES STATE ---
+  const [localSeries, setLocalSeries] = useState('');
+  const [localCorrelative, setLocalCorrelative] = useState('');
+  const [isLocalConfigOpen, setIsLocalConfigOpen] = useState(false);
+  const [newLocalSeries, setNewLocalSeries] = useState('');
+  const [newLocalCorrelative, setNewLocalCorrelative] = useState('');
+
+  // Load Local Series from localStorage
+  useEffect(() => {
+    const savedSeries = localStorage.getItem('TIENDA_FACIL_POS_SERIES');
+    const savedCorrelative = localStorage.getItem('TIENDA_FACIL_POS_CORRELATIVE');
+
+    if (savedSeries) setLocalSeries(savedSeries);
+    if (savedCorrelative) setLocalCorrelative(savedCorrelative);
+
+    if (savedSeries) setNewLocalSeries(savedSeries);
+    if (savedCorrelative) setNewLocalCorrelative(savedCorrelative);
+  }, []);
+
+  const handleSaveLocalConfig = () => {
+    localStorage.setItem('TIENDA_FACIL_POS_SERIES', newLocalSeries);
+    localStorage.setItem('TIENDA_FACIL_POS_CORRELATIVE', newLocalCorrelative);
+    setLocalSeries(newLocalSeries);
+    setLocalCorrelative(newLocalCorrelative);
+    setIsLocalConfigOpen(false);
+    toast({
+      title: "Configuración Local Guardada",
+      description: `Serie: ${newLocalSeries} | Correlativo: ${newLocalCorrelative}`
+    });
+  };
+  // --- END LOCAL POS SERIES STATE ---
+
   // Estado para el efecto de click en imágenes
   const [clickedProductId, setClickedProductId] = useState<string | null>(null);
 
@@ -309,14 +354,14 @@ export default function POSPage() {
   }, []);
 
   useEffect(() => {
-    console.log('📦 Estado POS:', { isSecurityReady, isLocked, isLoadingSession, activeSession: !!activeSession });
+    console.log('📦 Estado POS:', { isLocked, isLoadingSession, activeSession: !!activeSession });
 
     // Simplificar la lógica - mostrar modal si no hay sesión activa y no estamos cargando
     if (!isLoadingSession && !activeSession) {
       console.log('📦 Mostrando modal de apertura de caja');
       setIsSessionModalOpen(true);
     }
-  }, [isSecurityReady, isLocked, activeSession, isLoadingSession]);
+  }, [isLocked, activeSession, isLoadingSession]);
 
   // Timeout de emergencia para evitar carga infinita
   useEffect(() => {
@@ -502,15 +547,13 @@ export default function POSPage() {
   const isSessionReady = useMemo(() => !!activeSession && !isLocked, [activeSession, isLocked]);
 
   const generateSaleId = () => {
-    const series = settings?.saleSeries || 'SALE';
-    const highestId = (sales || []).reduce((max, sale) => {
-      if (!sale.id.startsWith(series + '-')) return max;
-      const parts = sale.id.split('-');
-      const currentNum = parseInt(parts[parts.length - 1], 10);
-      return !isNaN(currentNum) && currentNum > max ? currentNum : max;
-    }, 0);
-    const nextCorrelative = highestId + 1;
-    return `${series}-${String(nextCorrelative).padStart(3, '0')}`;
+    // Si hay configuración local, usarla
+    if (localSeries && localCorrelative) {
+      const paddedCorrelative = localCorrelative.padStart(6, '0');
+      return `${localSeries}-${paddedCorrelative}`;
+    }
+    // Fallback al generador aleatorio si no hay config local
+    return IDGenerator.generate('sale');
   };
 
   const customerList = useMemo(() => [{ id: 'eventual', name: 'Cliente Eventual', phone: '', storeId: activeStoreId, address: '' }, ...(customers || [])], [customers, activeStoreId]);
@@ -585,12 +628,51 @@ export default function POSPage() {
   };
 
   const removeFromCart = (productId: string, price: number) => {
+    // Si hay PIN configurado, pedir confirmación
+    if (hasPin) {
+      setItemToDelete({ id: productId, price });
+      setIsDeletePinOpen(true);
+      setDeletePin('');
+    } else {
+      // Si no hay PIN, borrar directo
+      confirmRemoveFromCart(productId, price);
+    }
+  };
+
+  const confirmRemoveFromCart = (productId: string, price: number) => {
     setCartItems(prevItems => prevItems.filter(item => !(item.product.id === productId && item.price === price)));
     toast({
       title: "Producto Eliminado",
       description: "El producto ha sido eliminado del carrito.",
     });
   };
+
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+
+    try {
+      const isValid = await checkPin(deletePin);
+      if (isValid) {
+        confirmRemoveFromCart(itemToDelete.id, itemToDelete.price);
+        setIsDeletePinOpen(false);
+        setItemToDelete(null);
+        setDeletePin('');
+      } else {
+        toast({
+          variant: "destructive",
+          title: "PIN Incorrecto",
+          description: "No tienes permiso para eliminar este ítem.",
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Error al verificar PIN.",
+      });
+    }
+  };
+
 
   const clearCart = () => {
     setCartItems([]);
@@ -863,11 +945,14 @@ export default function POSPage() {
 
   useEffect(() => {
     if (isProcessSaleDialogOpen && remainingBalance > 0) {
-      setCurrentPaymentAmount(remainingBalance);
+      // Mostrar monto sugerido en la moneda actual
+      const suggestedAmount = remainingBalance * activeRate;
+      // Redondear a 2 decimales para evitar problemas con flotantes
+      setCurrentPaymentAmount(Number(suggestedAmount.toFixed(2)));
     } else {
       setCurrentPaymentAmount('');
     }
-  }, [isProcessSaleDialogOpen, remainingBalance]);
+  }, [isProcessSaleDialogOpen, remainingBalance, activeRate]);
 
   const isReferenceDuplicate = (reference: string, method: string) => {
     if (!reference || !method) return false;
@@ -900,7 +985,12 @@ export default function POSPage() {
   };
 
   const handleAddPayment = () => {
-    const amount = Number(currentPaymentAmount);
+    const inputAmount = Number(currentPaymentAmount);
+
+    // Convertir el monto ingresado a moneda base para guardar
+    // Base = Input / Rate
+    const amount = inputAmount / activeRate;
+
     const method = paymentMethods.find(m => m.id === currentPaymentMethod);
 
     // Validaciones básicas
@@ -922,8 +1012,8 @@ export default function POSPage() {
       return;
     }
 
-    // Validar que no exceda el total pendiente
-    if (amount > remainingBalance) {
+    // Validar que no exceda el total pendiente (con pequeña tolerancia)
+    if (amount > remainingBalance + 0.01) {
       toast({
         variant: 'destructive',
         title: 'Monto excesivo',
@@ -1091,6 +1181,10 @@ export default function POSPage() {
         price: item.price
       })),
       total: total,
+      subtotal: subtotal,
+      tax: totalTaxes,
+      discount: 0, // Por ahora 0, implementar lógica de descuento visual si es necesario
+      paymentMethod: payments.length > 0 ? (payments.length > 1 ? 'Multiple' : payments[0].method) : 'Pendiente',
       date: new Date().toISOString(),
       transactionType: isCredit ? 'credito' : 'contado',
       status: isCredit ? 'unpaid' : 'paid',
@@ -1146,9 +1240,34 @@ export default function POSPage() {
       }
       setProducts(updatedProducts);
 
+      // Increment Local Correlative if used
+      if (localSeries && localCorrelative) {
+        const nextCorr = (parseInt(localCorrelative) + 1).toString();
+        setLocalCorrelative(nextCorr);
+        localStorage.setItem('TIENDA_FACIL_POS_CORRELATIVE', nextCorr);
+      }
+
       // Movimientos de inventario ahora son manejados automáticamente por la API /api/sales
       // usando MovementService.recordSaleMovements
       console.log('✅ Venta procesada y movimientos registrados automáticamente');
+
+      // Si hay un pedido asociado, actualizar su estado a 'processed'
+      if (currentOrderId) {
+        try {
+          console.log('🔄 Actualizando estado del pedido a procesado:', currentOrderId);
+          const success = await updateOrderStatus(currentOrderId, 'processed');
+          if (success) {
+            console.log('✅ Pedido actualizado correctamente');
+            setCurrentOrderId(null);
+            // Pequeña pausa para asegurar que Supabase procese el cambio antes de recargar
+            setTimeout(() => refetchPendingOrders(), 500);
+          } else {
+            console.warn('⚠️ No se pudo actualizar el estado del pedido');
+          }
+        } catch (orderError) {
+          console.error('❌ Error al actualizar estado del pedido:', orderError);
+        }
+      }
 
     } catch (error) {
       console.error('❌ Error procesando venta:', error);
@@ -1199,41 +1318,64 @@ export default function POSPage() {
 
     // Marcar pedidos relacionados como procesados
     try {
-      // Buscar si algún producto del carrito proviene de un pedido pendiente
-      // Esto se puede hacer comparando productos y cantidades con pedidos en procesamiento
-      const processingOrders = pendingOrdersFromDB.filter(order =>
-        order.customerPhone === selectedCustomer?.phone ||
-        order.customerName === selectedCustomer?.name
-      );
+      if (currentOrderId) {
+        // Lógica prioritaria: Si tenemos el ID exacto del pedido (cargado explícitamente), usamos ese
+        console.log('🔗 Marcando pedido actual como procesado:', currentOrderId);
 
-      for (const order of processingOrders) {
-        // Verificar si los productos del pedido coinciden con los de la venta
-        const orderProductIds = order.items.map(item => item.productId).sort();
-        const saleProductIds = cartItems.map(item => item.product.id).sort();
+        const orderResponse = await fetch('/api/orders', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: currentOrderId,
+            status: 'processed',
+            processedBy: userProfile?.displayName || (userProfile as any)?.name || 'Usuario POS',
+            saleId: saleId,
+            notes: `Pedido completado con venta ${saleId}`
+          })
+        });
 
-        // Si hay coincidencia significativa (al menos 70% de productos)
-        const matchingProducts = orderProductIds.filter(id => saleProductIds.includes(id));
-        const matchPercentage = matchingProducts.length / orderProductIds.length;
+        if (orderResponse.ok) {
+          console.log('✅ Pedido actual marcado como procesado:', currentOrderId);
+        } else {
+          console.warn('⚠️ No se pudo marcar pedido actual como procesado:', currentOrderId);
+        }
+      } else {
+        // Lógica de fallback (heurística): Buscar coincidencias si no se cargó un pedido explícitamente
+        // Buscar si algún producto del carrito proviene de un pedido pendiente por coincidencia de cliente
+        const processingOrders = pendingOrdersFromDB.filter(order =>
+          order.customerPhone === selectedCustomer?.phone ||
+          order.customerName === selectedCustomer?.name
+        );
 
-        if (matchPercentage >= 0.7) {
-          console.log('🔗 Marcando pedido como procesado:', order.orderId);
+        for (const order of processingOrders) {
+          // Verificar si los productos del pedido coinciden con los de la venta
+          const orderProductIds = order.items.map(item => item.productId).sort();
+          const saleProductIds = cartItems.map(item => item.product.id).sort();
 
-          const orderResponse = await fetch('/api/orders', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              orderId: order.orderId,
-              status: 'processed',
-              processedBy: userProfile?.displayName || (userProfile as any)?.name || 'Usuario POS',
-              saleId: saleId,
-              notes: `Pedido completado con venta ${saleId}`
-            })
-          });
+          // Si hay coincidencia significativa (al menos 70% de productos)
+          const matchingProducts = orderProductIds.filter(id => saleProductIds.includes(id));
+          const matchPercentage = matchingProducts.length / orderProductIds.length;
 
-          if (orderResponse.ok) {
-            console.log('✅ Pedido marcado como procesado:', order.orderId);
-          } else {
-            console.warn('⚠️ No se pudo marcar pedido como procesado:', order.orderId);
+          if (matchPercentage >= 0.7) {
+            console.log('🔗 Coincidencia encontrada - Marcando pedido como procesado:', order.orderId);
+
+            const orderResponse = await fetch('/api/orders', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                orderId: order.orderId,
+                status: 'processed',
+                processedBy: userProfile?.displayName || (userProfile as any)?.name || 'Usuario POS',
+                saleId: saleId,
+                notes: `Pedido completado con venta ${saleId} (coincidencia automática)`
+              })
+            });
+
+            if (orderResponse.ok) {
+              console.log('✅ Pedido heurístico marcado como procesado:', order.orderId);
+            } else {
+              console.warn('⚠️ No se pudo marcar pedido heurístico como procesado:', order.orderId);
+            }
           }
         }
       }
@@ -1898,12 +2040,14 @@ export default function POSPage() {
         }
       }
 
-      // Marcar pedido como "en procesamiento" usando el nuevo hook
+      // Marcar pedido como "procesado" usando el nuevo hook para que desaparezca de la lista
       try {
         await updateOrderStatus(
           order.orderId,
-          'processing'
+          'processed'
         );
+        // Refrescar lista para que desaparezca inmediatamente
+        setTimeout(() => refetchPendingOrders(), 100);
 
         console.log('✅ Pedido marcado como en procesamiento:', order.orderId);
 
@@ -2093,6 +2237,11 @@ export default function POSPage() {
 
   if (!isClient) {
     return null;
+  }
+
+  // Si está bloqueado por PIN, mostrar modal de desbloqueo
+  if (isLocked) {
+    return <PinModal />;
   }
 
   if (isLoadingSession) {
@@ -2345,7 +2494,6 @@ export default function POSPage() {
                         Pedidos de Clientes
                         {pendingOrdersFromDB.length > 0 && <Badge variant="destructive" className="ml-2">{pendingOrdersFromDB.length}</Badge>}
                         {!isOnline && <Badge variant="outline" className="ml-2 text-xs">Sin conexión</Badge>}
-                        {isPollingOrders && <Badge variant="secondary" className="ml-2 text-xs">Sincronizando</Badge>}
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col w-full mx-2 sm:mx-auto">
@@ -2581,12 +2729,40 @@ export default function POSPage() {
               className={cn("sticky top-6 flex flex-col h-full w-full max-w-full overflow-hidden", !isSessionReady && "opacity-50 pointer-events-none")}
             >
               <CardHeader className="flex flex-row justify-between items-center p-2 sm:p-4 w-full max-w-full">
-                <CardTitle className="text-sm sm:text-base truncate">Carrito de Compra</CardTitle>
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <CardTitle className="text-sm sm:text-base truncate">Carrito de Compra</CardTitle>
+
+                  {/* Serie Local Display & Config */}
+                  {/* Serie Local Display & Config */}
+                  <div className="flex items-center gap-1 ml-2">
+                    {/* DEBUG: Always show something to verify position */}
+                    <div className={cn(
+                      "text-[10px] sm:text-xs font-mono border px-1.5 py-0.5 rounded whitespace-nowrap",
+                      localSeries ? "bg-muted text-muted-foreground" : "bg-red-100 text-red-600 border-red-200"
+                    )}>
+                      {localSeries ? `${localSeries}-${localCorrelative?.padStart(6, '0')}` : (isSuperUser ? "Sin Serie (Configurar)" : "Sin Serie")}
+                    </div>
+
+                    {/* Config Button - Visible for SU */}
+                    {isSuperUser && (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setIsLocalConfigOpen(true)}
+                        className="h-6 w-6 text-muted-foreground hover:text-foreground shrink-0 ml-1"
+                        title="Configurar Serie Local"
+                      >
+                        <SettingsIcon className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
                 {cartItems.length > 0 && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="destructive" size="sm" className="flex-shrink-0">
-                        <Trash2 className="h-4 w-4 sm:mr-2" />
+                      <Button variant="destructive" size="sm" className="flex-shrink-0 h-7 text-xs px-2">
+                        <Trash2 className="h-3 w-3 sm:mr-1" />
                         <span className="hidden sm:inline">Vaciar</span>
                       </Button>
                     </AlertDialogTrigger>
@@ -2801,7 +2977,12 @@ export default function POSPage() {
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col w-full mx-2 sm:mx-auto">
                     <DialogHeader className="flex-shrink-0">
-                      <DialogTitle className="text-lg sm:text-xl">Finalizar Venta</DialogTitle>
+                      <DialogTitle className="text-lg sm:text-xl flex items-center gap-2">
+                        Finalizar Venta
+                        <span className="text-sm font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                          ID: {generateSaleId()}
+                        </span>
+                      </DialogTitle>
                       <DialogDescription className="text-sm sm:text-base">
                         Total a Pagar: <span className="font-bold text-primary">{activeSymbol}{(total * activeRate).toFixed(2)}</span>
                       </DialogDescription>
@@ -3149,6 +3330,83 @@ export default function POSPage() {
           </DialogContent>
         </Dialog>
       </div>
+      {/* Modal de Configuración Local */}
+      <Dialog open={isLocalConfigOpen} onOpenChange={setIsLocalConfigOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Configuración Local POS</DialogTitle>
+            <DialogDescription>
+              Configura la serie y correlativo para este dispositivo específico.
+              Estos valores se guardan en el navegador.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="local-series">Serie</Label>
+              <Input
+                id="local-series"
+                value={newLocalSeries}
+                onChange={(e) => setNewLocalSeries(e.target.value)}
+                placeholder="Ej: CAJA-1"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="local-correlative">Correlativo Actual</Label>
+              <Input
+                id="local-correlative"
+                type="number"
+                value={newLocalCorrelative}
+                onChange={(e) => setNewLocalCorrelative(e.target.value)}
+                placeholder="Ej: 100"
+              />
+              <p className="text-xs text-muted-foreground">
+                El próximo ID de venta será: {newLocalSeries || '...'}-{newLocalCorrelative ? newLocalCorrelative.padStart(6, '0') : '...'}
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsLocalConfigOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveLocalConfig}>Guardar Configuración</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Modal de Validación de PIN para Eliminar */}
+      <Dialog open={isDeletePinOpen} onOpenChange={(open) => {
+        if (!open) {
+          setIsDeletePinOpen(false);
+          setItemToDelete(null);
+          setDeletePin('');
+        }
+      }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-center flex flex-col items-center gap-2">
+              <ShieldCheck className="w-10 h-10 text-primary" />
+              Autorización Requerida
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              Ingresa el PIN de seguridad para eliminar este ítem.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Input
+              type="password"
+              placeholder="****"
+              className="text-center text-2xl tracking-[0.5em]"
+              value={deletePin}
+              onChange={(e) => setDeletePin(e.target.value)}
+              maxLength={4}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleConfirmDelete();
+              }}
+              autoFocus
+            />
+            <Button className="w-full" onClick={handleConfirmDelete}>
+              Confirmar Eliminación
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

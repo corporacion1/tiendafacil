@@ -23,64 +23,64 @@ import { useErrorHandler } from "@/hooks/use-error-handler";
 
 // Interfaces para las APIs
 interface AccountReceivable {
-  id: string;
-  saleId: string;
-  customerId: string;
-  customerName: string;
-  customerPhone?: string;
-  originalAmount: number;
-  paidAmount: number;
-  remainingBalance: number;
-  saleDate: string;
-  dueDate: string;
-  lastPaymentDate?: string;
-  status: 'pending' | 'partial' | 'paid' | 'overdue' | 'cancelled';
-  creditDays: number;
-  payments: Array<{
     id: string;
-    amount: number;
-    paymentMethod: string;
-    reference?: string;
-    type: 'payment' | 'adjustment' | 'discount' | 'refund';
-    notes?: string;
-    processedBy: string;
-    processedAt: string;
-  }>;
-  createdAt: string;
-  updatedAt: string;
+    saleId: string;
+    customerId: string;
+    customerName: string;
+    customerPhone?: string;
+    originalAmount: number;
+    paidAmount: number;
+    remainingBalance: number;
+    saleDate: string;
+    dueDate: string;
+    lastPaymentDate?: string;
+    status: 'pending' | 'partial' | 'paid' | 'overdue' | 'cancelled';
+    creditDays: number;
+    payments: Array<{
+        id: string;
+        amount: number;
+        paymentMethod: string;
+        reference?: string;
+        type: 'payment' | 'adjustment' | 'discount' | 'refund';
+        notes?: string;
+        processedBy: string;
+        processedAt: string;
+    }>;
+    createdAt: string;
+    updatedAt: string;
 }
 
 interface CreditsSummary {
-  totalAccounts: number;
-  totalAmount: number;
-  totalPaid: number;
-  totalPending: number;
-  byStatus: {
-    pending: number;
-    partial: number;
-    overdue: number;
-  };
-  amountsByStatus: {
-    pending: number;
-    partial: number;
-    overdue: number;
-  };
-  aging: {
-    current: number;
-    days1to30: number;
-    days31to60: number;
-    days61to90: number;
-    over90: number;
-  };
-  topDebtors: Array<{
-    _id: string;
-    customerName: string;
-    customerPhone?: string;
-    totalDebt: number;
-    accountCount: number;
-    oldestDueDate: string;
-  }>;
-  upcomingDue: AccountReceivable[];
+    totalAccounts: number;
+    totalAmount: number;
+    totalPaid: number;
+    totalPending: number;
+    byStatus: {
+        pending: number;
+        partial: number;
+        overdue: number;
+    };
+    amountsByStatus: {
+        pending: number;
+        partial: number;
+        overdue: number;
+    };
+    aging: {
+        current: number;
+        days1to30: number;
+        days31to60: number;
+        days61to90: number;
+        over90: number;
+    };
+    topDebtors: Array<{
+        _id: string;
+        customerName: string;
+        customerPhone?: string;
+        totalDebt: number;
+        accountCount: number;
+        oldestDueDate: string;
+    }>;
+    upcomingDue: AccountReceivable[];
 }
 
 export default function CreditsPage() {
@@ -95,18 +95,18 @@ export default function CreditsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [selectedStatus, setSelectedStatus] = useState<string>('all');
     const [searchTerm, setSearchTerm] = useState("");
-    
+
     // Estados para el formulario de pago
     const [selectedAccount, setSelectedAccount] = useState<AccountReceivable | null>(null);
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-    
+
     // Estados del formulario de pago
     const [paymentAmount, setPaymentAmount] = useState("");
     const [paymentMethod, setPaymentMethod] = useState("efectivo");
     const [paymentReference, setPaymentReference] = useState("");
     const [paymentNotes, setPaymentNotes] = useState("");
-    
+
 
 
     // Cargar datos al montar el componente
@@ -119,33 +119,35 @@ export default function CreditsPage() {
     const loadCreditsData = async () => {
         try {
             setIsLoading(true);
-            
+
             // Construir parámetros de consulta
             const accountsParams = new URLSearchParams({
                 storeId: activeStoreId,
                 ...(selectedStatus !== 'all' && { status: selectedStatus })
             });
-            
+
             // Cargar cuentas por cobrar y resumen en paralelo
             const [accountsResponse, summaryResponse] = await Promise.all([
                 fetch(`/api/credits?${accountsParams}`),
                 fetch(`/api/credits/summary?storeId=${activeStoreId}`)
             ]);
-            
+
             if (accountsResponse.ok) {
                 const accountsData = await accountsResponse.json();
                 setAccounts(accountsData.accounts || []);
             } else {
-                throw new Error('Error cargando cuentas por cobrar');
+                const errorData = await accountsResponse.json().catch(() => ({}));
+                console.error('Error fetching accounts:', errorData);
+                throw new Error(errorData.error || 'Error cargando cuentas por cobrar');
             }
-            
+
             if (summaryResponse.ok) {
                 const summaryData = await summaryResponse.json();
                 setSummary(summaryData.summary);
             } else {
                 console.warn('No se pudo cargar el resumen de créditos');
             }
-            
+
         } catch (error) {
             handleError.api(error, {
                 action: 'load_credits_data',
@@ -158,7 +160,14 @@ export default function CreditsPage() {
 
     // Función para procesar pagos usando la API
     const handleProcessPayment = async () => {
+        console.log('🔄 [handleProcessPayment] Iniciando proceso de pago', {
+            selectedAccount: selectedAccount?.id,
+            amount: paymentAmount,
+            method: paymentMethod
+        });
+
         if (!selectedAccount || !paymentAmount || !paymentMethod) {
+            console.warn('❌ [handleProcessPayment] Datos incompletos');
             toast({
                 variant: "destructive",
                 title: "Datos incompletos",
@@ -167,8 +176,8 @@ export default function CreditsPage() {
             return;
         }
 
-        const amount = parseFloat(paymentAmount);
-        if (isNaN(amount) || amount <= 0) {
+        const amountInput = parseFloat(paymentAmount);
+        if (isNaN(amountInput) || amountInput <= 0) {
             toast({
                 variant: "destructive",
                 title: "Monto inválido",
@@ -177,7 +186,12 @@ export default function CreditsPage() {
             return;
         }
 
-        if (amount > selectedAccount.remainingBalance) {
+        // Convertir monto ingresado (Moneda Actual) a Moneda Base
+        const amountInBase = amountInput / activeRate;
+
+        // Validar contra el saldo pendiente (que siempre está en Moneda Base)
+        // Usamos una pequeña tolerancia para errores de redondeo
+        if (amountInBase > (selectedAccount.remainingBalance + 0.01)) {
             toast({
                 variant: "destructive",
                 title: "Monto excesivo",
@@ -199,11 +213,11 @@ export default function CreditsPage() {
 
         try {
             setIsProcessingPayment(true);
-            
+
             const paymentData = {
                 accountId: selectedAccount.id,
                 payment: {
-                    amount,
+                    amount: amountInBase, // Enviamos el monto en moneda base
                     paymentMethod: method?.name || paymentMethod,
                     reference: paymentReference.trim() || undefined,
                     notes: paymentNotes.trim() || undefined,
@@ -211,39 +225,44 @@ export default function CreditsPage() {
                     type: 'payment'
                 }
             };
-            
+
+            console.log('📤 [handleProcessPayment] Enviando datos a API:', paymentData);
+
             const response = await fetch('/api/credits', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(paymentData)
             });
-            
+
             if (!response.ok) {
                 const errorData = await response.json();
+                console.error('❌ [handleProcessPayment] Error API:', errorData);
                 throw new Error(errorData.error || 'Error procesando el pago');
             }
-            
+
             const updatedAccount = await response.json();
-            
+            console.log('✅ [handleProcessPayment] Pago exitoso, cuenta actualizada:', updatedAccount);
+
             // Actualizar la cuenta en el estado local
-            setAccounts(prev => prev.map(acc => 
+            setAccounts(prev => prev.map(acc =>
                 acc.id === updatedAccount.id ? updatedAccount : acc
             ));
-            
+
             toast({
                 title: "Pago Procesado",
-                description: `Pago de ${activeSymbol}${(amount * activeRate).toFixed(2)} registrado para ${selectedAccount.customerName}.`
+                description: `Pago de ${activeSymbol}${(amountInBase * activeRate).toFixed(2)} registrado para ${selectedAccount.customerName}.`
             });
-            
+
             // Resetear formulario y cerrar diálogo
             resetPaymentForm();
             setPaymentDialogOpen(false);
             setSelectedAccount(null);
-            
+
             // Recargar datos para actualizar resumen
             loadCreditsData();
-            
+
         } catch (error) {
+            console.error('❌ [handleProcessPayment] Excepción:', error);
             handleError.api(error, {
                 action: 'process_payment',
                 component: 'CreditsPage'
@@ -298,20 +317,20 @@ export default function CreditsPage() {
     const filteredAccounts = accounts.filter(account => {
         // Filtro por búsqueda
         const matchesSearch = account.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            account.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            account.saleId.toLowerCase().includes(searchTerm.toLowerCase());
-        
+            account.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            account.saleId.toLowerCase().includes(searchTerm.toLowerCase());
+
         if (!matchesSearch) return false;
-        
+
         // Filtro por estado
         if (selectedStatus === 'all') return true;
         if (selectedStatus === 'overdue') {
-            return account.status === 'overdue' || 
-                   (account.remainingBalance > 0 && new Date() > new Date(account.dueDate));
+            return account.status === 'overdue' ||
+                (account.remainingBalance > 0 && new Date() > new Date(account.dueDate));
         }
         return account.status === selectedStatus;
     });
-    
+
     // Componente para renderizar la tabla de cuentas por cobrar
     const renderAccountsTable = (accountsToRender: AccountReceivable[]) => (
         <Table>
@@ -381,10 +400,10 @@ export default function CreditsPage() {
                                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                                         <DropdownMenuItem onSelect={() => setSelectedAccount(account)}>Ver Detalles</DropdownMenuItem>
                                         {account.status !== 'paid' && (
-                                            <DropdownMenuItem onSelect={() => { 
-                                                setSelectedAccount(account); 
-                                                setPaymentDialogOpen(true); 
-                                                setPaymentAmount(account.remainingBalance.toString());
+                                            <DropdownMenuItem onSelect={() => {
+                                                setSelectedAccount(account);
+                                                setPaymentDialogOpen(true);
+                                                setPaymentAmount((account.remainingBalance * activeRate).toFixed(2));
                                             }}>Agregar Abono</DropdownMenuItem>
                                         )}
                                     </DropdownMenuContent>
@@ -399,341 +418,345 @@ export default function CreditsPage() {
 
     return (
         <div className="w-full max-w-full overflow-x-hidden">
-        <ErrorBoundary fallback={MinimalErrorFallback}>
-            {/* Dashboard de métricas */}
-            {summary && (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Total Pendiente</CardTitle>
-                            <DollarSign className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{formatCurrency(summary.totalPending)}</div>
-                            <p className="text-xs text-muted-foreground">
-                                {summary.totalAccounts} cuentas activas
-                            </p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Vencidas</CardTitle>
-                            <AlertCircle className="h-4 w-4 text-red-500" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-red-600">{summary.byStatus.overdue}</div>
-                            <p className="text-xs text-muted-foreground">
-                                {formatCurrency(summary.amountsByStatus.overdue)}
-                            </p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Parciales</CardTitle>
-                            <Clock className="h-4 w-4 text-yellow-500" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-yellow-600">{summary.byStatus.partial}</div>
-                            <p className="text-xs text-muted-foreground">
-                                {formatCurrency(summary.amountsByStatus.partial)}
-                            </p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Cobrado</CardTitle>
-                            <TrendingUp className="h-4 w-4 text-green-500" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-green-600">{formatCurrency(summary.totalPaid)}</div>
-                            <p className="text-xs text-muted-foreground">
-                                Total recaudado
-                            </p>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
-
-
-
-            <Tabs value={selectedStatus} onValueChange={setSelectedStatus}>
-                <div className="flex items-center">
-                    <TabsList>
-                        <TabsTrigger value="all">Todas</TabsTrigger>
-                        <TabsTrigger value="pending">Pendientes</TabsTrigger>
-                        <TabsTrigger value="partial">Parciales</TabsTrigger>
-                        <TabsTrigger value="overdue">Vencidas</TabsTrigger>
-                        <TabsTrigger value="paid">Pagadas</TabsTrigger>
-                    </TabsList>
-                    <div className="ml-auto flex items-center gap-2">
-                        <div className="relative">
-                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                type="search"
-                                placeholder="Buscar por cliente o ID..."
-                                className="pl-8"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
+            <ErrorBoundary fallback={MinimalErrorFallback}>
+                {/* Dashboard de métricas */}
+                {summary && (
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Total Pendiente</CardTitle>
+                                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{formatCurrency(summary.totalPending)}</div>
+                                <p className="text-xs text-muted-foreground">
+                                    {summary.totalAccounts} cuentas activas
+                                </p>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Vencidas</CardTitle>
+                                <AlertCircle className="h-4 w-4 text-red-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-red-600">{summary.byStatus.overdue}</div>
+                                <p className="text-xs text-muted-foreground">
+                                    {formatCurrency(summary.amountsByStatus.overdue)}
+                                </p>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Parciales</CardTitle>
+                                <Clock className="h-4 w-4 text-yellow-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-yellow-600">{summary.byStatus.partial}</div>
+                                <p className="text-xs text-muted-foreground">
+                                    {formatCurrency(summary.amountsByStatus.partial)}
+                                </p>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">Cobrado</CardTitle>
+                                <TrendingUp className="h-4 w-4 text-green-500" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-green-600">{formatCurrency(summary.totalPaid)}</div>
+                                <p className="text-xs text-muted-foreground">
+                                    Total recaudado
+                                </p>
+                            </CardContent>
+                        </Card>
                     </div>
-                </div>
-                <Card className="mt-4">
-                    <CardHeader>
-                        <CardTitle>Cuentas por Cobrar</CardTitle>
-                        <CardDescription>
-                            Gestiona las cuentas por cobrar y registra abonos.
-                            {filteredAccounts.length > 0 && (
-                                <span className="ml-2">
-                                    Mostrando {filteredAccounts.length} de {accounts.length} cuentas
-                                </span>
-                            )}
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <TabsContent value="all">
-                            {renderAccountsTable(filteredAccounts)}
-                        </TabsContent>
-                        <TabsContent value="pending">
-                            {renderAccountsTable(filteredAccounts.filter(a => a.status === 'pending'))}
-                        </TabsContent>
-                        <TabsContent value="partial">
-                            {renderAccountsTable(filteredAccounts.filter(a => a.status === 'partial'))}
-                        </TabsContent>
-                        <TabsContent value="overdue">
-                            {renderAccountsTable(filteredAccounts.filter(a => a.status === 'overdue'))}
-                        </TabsContent>
-                        <TabsContent value="paid">
-                            {renderAccountsTable(filteredAccounts.filter(a => a.status === 'paid'))}
-                        </TabsContent>
-                    </CardContent>
-                </Card>
-            </Tabs>
-            
-            {/* Diálogo de detalles de cuenta */}
-            <Dialog open={!!selectedAccount && !paymentDialogOpen} onOpenChange={(isOpen) => !isOpen && setSelectedAccount(null)}>
-                <DialogContent className="sm:max-w-3xl">
-                    <DialogHeader>
-                        <DialogTitle>Detalles de Cuenta por Cobrar: {selectedAccount?.saleId}</DialogTitle>
-                        <DialogDescription>
-                            Cliente: {selectedAccount?.customerName} | Fecha Venta: {selectedAccount ? getFormattedDateTime(selectedAccount.saleDate) : '...'}
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid md:grid-cols-2 gap-6 max-h-[60vh] overflow-y-auto p-2">
-                        <div>
-                            <h3 className="font-semibold mb-2">Información de la Cuenta</h3>
-                            <div className="space-y-3">
-                                <div className="flex justify-between">
-                                    <span className="text-sm text-muted-foreground">ID Cuenta:</span>
-                                    <span className="font-medium">{selectedAccount?.id}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-sm text-muted-foreground">Cliente:</span>
-                                    <span className="font-medium">{selectedAccount?.customerName}</span>
-                                </div>
-                                {selectedAccount?.customerPhone && (
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-muted-foreground">Teléfono:</span>
-                                        <span className="font-medium">{selectedAccount.customerPhone}</span>
-                                    </div>
-                                )}
-                                <div className="flex justify-between">
-                                    <span className="text-sm text-muted-foreground">Fecha Venta:</span>
-                                    <span className="font-medium">{selectedAccount ? getFormattedDateTime(selectedAccount.saleDate) : ''}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-sm text-muted-foreground">Fecha Vencimiento:</span>
-                                    <span className="font-medium">{selectedAccount ? format(parseISO(selectedAccount.dueDate), "dd/MM/yyyy") : ''}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-sm text-muted-foreground">Días de Crédito:</span>
-                                    <span className="font-medium">{selectedAccount?.creditDays} días</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-sm text-muted-foreground">Estado:</span>
-                                    <span>{selectedAccount ? getStatusBadge(selectedAccount.status) : ''}</span>
-                                </div>
-                            </div>
-                            <div className="mt-4 space-y-2 border-t pt-4">
-                                <div className="flex justify-between">
-                                    <span>Monto Original:</span>
-                                    <span className="font-semibold">{selectedAccount ? formatCurrency(selectedAccount.originalAmount) : ''}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span>Total Abonado:</span>
-                                    <span className="font-semibold text-green-600">{selectedAccount ? formatCurrency(selectedAccount.paidAmount) : ''}</span>
-                                </div>
-                                <div className="flex justify-between font-bold text-lg">
-                                    <span>Saldo Pendiente:</span>
-                                    <span className={selectedAccount?.remainingBalance && selectedAccount.remainingBalance > 0 ? "text-red-600" : "text-green-600"}>
-                                        {selectedAccount ? formatCurrency(selectedAccount.remainingBalance) : ''}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <h3 className="font-semibold mb-2">Historial de Pagos</h3>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Fecha</TableHead>
-                                        <TableHead>Método</TableHead>
-                                        <TableHead>Referencia</TableHead>
-                                        <TableHead className="text-right">Monto</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {selectedAccount?.payments && selectedAccount.payments.length > 0 ? selectedAccount.payments.map(p => (
-                                        <TableRow key={p.id}>
-                                            <TableCell>{getFormattedDateTime(p.processedAt)}</TableCell>
-                                            <TableCell>{p.paymentMethod}</TableCell>
-                                            <TableCell>
-                                                <div className="flex flex-col">
-                                                    <span>{p.reference || 'N/A'}</span>
-                                                    <span className="text-xs text-muted-foreground">Por: {p.processedBy}</span>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="text-right">{formatCurrency(p.amount)}</TableCell>
-                                        </TableRow>
-                                    )) : (
-                                        <TableRow>
-                                            <TableCell colSpan={4} className="text-center text-muted-foreground">No hay pagos registrados.</TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <DialogClose asChild>
-                            <Button variant="outline">Cerrar</Button>
-                        </DialogClose>
-                        {selectedAccount?.status !== 'paid' && (
-                            <Button onClick={() => {
-                                setPaymentDialogOpen(true);
-                                setPaymentAmount(selectedAccount?.remainingBalance.toString() || "");
-                            }}>
-                                <PlusCircle className="mr-2 h-4 w-4" /> Registrar Abono
-                            </Button>
-                        )}
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                )}
 
-            {/* Diálogo de registro de pago */}
-            <Dialog open={paymentDialogOpen} onOpenChange={(isOpen) => { 
-                if(!isOpen) { 
-                    setPaymentDialogOpen(false); 
-                    resetPaymentForm(); 
-                } 
-            }}>
-                <DialogContent className="sm:max-w-lg">
-                    <DialogHeader>
-                        <DialogTitle>Registrar Abono</DialogTitle>
-                        <DialogDescription>
-                            Cliente: {selectedAccount?.customerName} | Saldo: {selectedAccount ? formatCurrency(selectedAccount.remainingBalance) : ''}
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="paymentMethod">Método de Pago</Label>
-                            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Selecciona método de pago" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {paymentMethods.map(method => (
-                                        <SelectItem key={method.id} value={method.id}>
-                                            {method.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        
-                        <div className="space-y-2">
-                            <Label htmlFor="paymentAmount">Monto del Abono</Label>
-                            <Input
-                                id="paymentAmount"
-                                type="number"
-                                placeholder="0.00"
-                                value={paymentAmount}
-                                onChange={(e) => setPaymentAmount(e.target.value)}
-                                min="0"
-                                max={selectedAccount?.remainingBalance}
-                                step="0.01"
-                            />
-                            <p className="text-xs text-muted-foreground">
-                                Máximo: {selectedAccount ? formatCurrency(selectedAccount.remainingBalance) : ''}
-                            </p>
-                        </div>
 
-                        {paymentMethods.find(m => m.id === paymentMethod)?.requiresRef && (
-                            <div className="space-y-2">
-                                <Label htmlFor="paymentReference">Referencia</Label>
+
+                <Tabs value={selectedStatus} onValueChange={setSelectedStatus}>
+                    <div className="flex items-center">
+                        <TabsList>
+                            <TabsTrigger value="all">Todas</TabsTrigger>
+                            <TabsTrigger value="pending">Pendientes</TabsTrigger>
+                            <TabsTrigger value="partial">Parciales</TabsTrigger>
+                            <TabsTrigger value="overdue">Vencidas</TabsTrigger>
+                            <TabsTrigger value="paid">Pagadas</TabsTrigger>
+                        </TabsList>
+                        <div className="ml-auto flex items-center gap-2">
+                            <div className="relative">
+                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                 <Input
-                                    id="paymentReference"
-                                    placeholder="Número de referencia"
-                                    value={paymentReference}
-                                    onChange={(e) => setPaymentReference(e.target.value)}
+                                    type="search"
+                                    placeholder="Buscar por cliente o ID..."
+                                    className="pl-8"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
                                 />
                             </div>
-                        )}
-
-                        <div className="space-y-2">
-                            <Label htmlFor="paymentNotes">Notas (opcional)</Label>
-                            <Input
-                                id="paymentNotes"
-                                placeholder="Notas adicionales"
-                                value={paymentNotes}
-                                onChange={(e) => setPaymentNotes(e.target.value)}
-                            />
                         </div>
+                    </div>
+                    <Card className="mt-4">
+                        <CardHeader>
+                            <CardTitle>Cuentas por Cobrar</CardTitle>
+                            <CardDescription>
+                                Gestiona las cuentas por cobrar y registra abonos.
+                                {filteredAccounts.length > 0 && (
+                                    <span className="ml-2">
+                                        Mostrando {filteredAccounts.length} de {accounts.length} cuentas
+                                    </span>
+                                )}
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <TabsContent value="all">
+                                {renderAccountsTable(filteredAccounts)}
+                            </TabsContent>
+                            <TabsContent value="pending">
+                                {renderAccountsTable(filteredAccounts.filter(a => a.status === 'pending'))}
+                            </TabsContent>
+                            <TabsContent value="partial">
+                                {renderAccountsTable(filteredAccounts.filter(a => a.status === 'partial'))}
+                            </TabsContent>
+                            <TabsContent value="overdue">
+                                {renderAccountsTable(filteredAccounts.filter(a => a.status === 'overdue'))}
+                            </TabsContent>
+                            <TabsContent value="paid">
+                                {renderAccountsTable(filteredAccounts.filter(a => a.status === 'paid'))}
+                            </TabsContent>
+                        </CardContent>
+                    </Card>
+                </Tabs>
 
-                        {selectedAccount && parseFloat(paymentAmount) > 0 && (
-                            <div className="p-3 bg-muted/50 rounded-lg space-y-2">
-                                <div className="flex justify-between text-sm">
-                                    <span>Saldo Actual:</span>
-                                    <span className="font-semibold text-red-600">
-                                        {formatCurrency(selectedAccount.remainingBalance)}
-                                    </span>
+                {/* Diálogo de detalles de cuenta */}
+                <Dialog open={!!selectedAccount && !paymentDialogOpen} onOpenChange={(isOpen) => !isOpen && setSelectedAccount(null)}>
+                    <DialogContent className="sm:max-w-3xl">
+                        <DialogHeader>
+                            <DialogTitle>Detalles de Cuenta por Cobrar: {selectedAccount?.saleId}</DialogTitle>
+                            <DialogDescription>
+                                Cliente: {selectedAccount?.customerName} | Fecha Venta: {selectedAccount ? getFormattedDateTime(selectedAccount.saleDate) : '...'}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid md:grid-cols-2 gap-6 max-h-[60vh] overflow-y-auto p-2">
+                            <div>
+                                <h3 className="font-semibold mb-2">Información de la Cuenta</h3>
+                                <div className="space-y-3">
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-muted-foreground">ID Cuenta:</span>
+                                        <span className="font-medium">{selectedAccount?.id}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-muted-foreground">Cliente:</span>
+                                        <span className="font-medium">{selectedAccount?.customerName}</span>
+                                    </div>
+                                    {selectedAccount?.customerPhone && (
+                                        <div className="flex justify-between">
+                                            <span className="text-sm text-muted-foreground">Teléfono:</span>
+                                            <span className="font-medium">{selectedAccount.customerPhone}</span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-muted-foreground">Fecha Venta:</span>
+                                        <span className="font-medium">{selectedAccount ? getFormattedDateTime(selectedAccount.saleDate) : ''}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-muted-foreground">Fecha Vencimiento:</span>
+                                        <span className="font-medium">{selectedAccount ? format(parseISO(selectedAccount.dueDate), "dd/MM/yyyy") : ''}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-muted-foreground">Días de Crédito:</span>
+                                        <span className="font-medium">
+                                            {selectedAccount
+                                                ? (selectedAccount.creditDays || differenceInDays(parseISO(selectedAccount.dueDate), parseISO(selectedAccount.saleDate)))
+                                                : 0} días
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-muted-foreground">Estado:</span>
+                                        <span>{selectedAccount ? getStatusBadge(selectedAccount.status) : ''}</span>
+                                    </div>
                                 </div>
-                                <div className="flex justify-between text-sm">
-                                    <span>Monto a Abonar:</span>
-                                    <span className="font-semibold">
-                                        {formatCurrency(parseFloat(paymentAmount) || 0)}
-                                    </span>
-                                </div>
-                                <Separator />
-                                <div className="flex justify-between font-bold">
-                                    <span>Saldo Restante:</span>
-                                    <span className={
-                                        (selectedAccount.remainingBalance - (parseFloat(paymentAmount) || 0)) <= 0 
-                                            ? "text-green-600" 
-                                            : "text-red-600"
-                                    }>
-                                        {formatCurrency(selectedAccount.remainingBalance - (parseFloat(paymentAmount) || 0))}
-                                    </span>
+                                <div className="mt-4 space-y-2 border-t pt-4">
+                                    <div className="flex justify-between">
+                                        <span>Monto Original:</span>
+                                        <span className="font-semibold">{selectedAccount ? formatCurrency(selectedAccount.originalAmount) : ''}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Total Abonado:</span>
+                                        <span className="font-semibold text-green-600">{selectedAccount ? formatCurrency(selectedAccount.paidAmount) : ''}</span>
+                                    </div>
+                                    <div className="flex justify-between font-bold text-lg">
+                                        <span>Saldo Pendiente:</span>
+                                        <span className={selectedAccount?.remainingBalance && selectedAccount.remainingBalance > 0 ? "text-red-600" : "text-green-600"}>
+                                            {selectedAccount ? formatCurrency(selectedAccount.remainingBalance) : ''}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
-                        )}
-                    </div>
-                    <DialogFooter>
-                        <DialogClose asChild>
-                            <Button variant="outline" disabled={isProcessingPayment}>
-                                Cancelar
+                            <div>
+                                <h3 className="font-semibold mb-2">Historial de Pagos</h3>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Fecha</TableHead>
+                                            <TableHead>Método</TableHead>
+                                            <TableHead>Referencia</TableHead>
+                                            <TableHead className="text-right">Monto</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {selectedAccount?.payments && selectedAccount.payments.length > 0 ? selectedAccount.payments.map(p => (
+                                            <TableRow key={p.id}>
+                                                <TableCell>{getFormattedDateTime(p.processedAt)}</TableCell>
+                                                <TableCell>{p.paymentMethod}</TableCell>
+                                                <TableCell>
+                                                    <div className="flex flex-col">
+                                                        <span>{p.reference || 'N/A'}</span>
+                                                        <span className="text-xs text-muted-foreground">Por: {p.processedBy}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-right">{formatCurrency(p.amount)}</TableCell>
+                                            </TableRow>
+                                        )) : (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="text-center text-muted-foreground">No hay pagos registrados.</TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button variant="outline">Cerrar</Button>
+                            </DialogClose>
+                            {selectedAccount?.status !== 'paid' && (
+                                <Button onClick={() => {
+                                    setPaymentDialogOpen(true);
+                                    setPaymentAmount(((selectedAccount?.remainingBalance || 0) * activeRate).toFixed(2));
+                                }}>
+                                    <PlusCircle className="mr-2 h-4 w-4" /> Registrar Abono
+                                </Button>
+                            )}
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Diálogo de registro de pago */}
+                <Dialog open={paymentDialogOpen} onOpenChange={(isOpen) => {
+                    if (!isOpen) {
+                        setPaymentDialogOpen(false);
+                        resetPaymentForm();
+                    }
+                }}>
+                    <DialogContent className="sm:max-w-lg">
+                        <DialogHeader>
+                            <DialogTitle>Registrar Abono</DialogTitle>
+                            <DialogDescription>
+                                Cliente: {selectedAccount?.customerName} | Saldo: {selectedAccount ? formatCurrency(selectedAccount.remainingBalance) : ''}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="paymentMethod">Método de Pago</Label>
+                                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecciona método de pago" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {paymentMethods.map(method => (
+                                            <SelectItem key={method.id} value={method.id}>
+                                                {method.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="paymentAmount">Monto del Abono</Label>
+                                <Input
+                                    id="paymentAmount"
+                                    type="number"
+                                    placeholder="0.00"
+                                    value={paymentAmount}
+                                    onChange={(e) => setPaymentAmount(e.target.value)}
+                                    min="0"
+                                    max={selectedAccount?.remainingBalance}
+                                    step="0.01"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Máximo: {selectedAccount ? formatCurrency(selectedAccount.remainingBalance) : ''}
+                                </p>
+                            </div>
+
+                            {paymentMethods.find(m => m.id === paymentMethod)?.requiresRef && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="paymentReference">Referencia</Label>
+                                    <Input
+                                        id="paymentReference"
+                                        placeholder="Número de referencia"
+                                        value={paymentReference}
+                                        onChange={(e) => setPaymentReference(e.target.value)}
+                                    />
+                                </div>
+                            )}
+
+                            <div className="space-y-2">
+                                <Label htmlFor="paymentNotes">Notas (opcional)</Label>
+                                <Input
+                                    id="paymentNotes"
+                                    placeholder="Notas adicionales"
+                                    value={paymentNotes}
+                                    onChange={(e) => setPaymentNotes(e.target.value)}
+                                />
+                            </div>
+
+                            {selectedAccount && parseFloat(paymentAmount) > 0 && (
+                                <div className="p-3 bg-muted/50 rounded-lg space-y-2">
+                                    <div className="flex justify-between text-sm">
+                                        <span>Saldo Actual:</span>
+                                        <span className="font-semibold text-red-600">
+                                            {formatCurrency(selectedAccount.remainingBalance)}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                        <span>Monto a Abonar:</span>
+                                        <span className="font-semibold">
+                                            {formatCurrency(parseFloat(paymentAmount) || 0)}
+                                        </span>
+                                    </div>
+                                    <Separator />
+                                    <div className="flex justify-between font-bold">
+                                        <span>Saldo Restante:</span>
+                                        <span className={
+                                            (selectedAccount.remainingBalance - (parseFloat(paymentAmount) || 0)) <= 0
+                                                ? "text-green-600"
+                                                : "text-red-600"
+                                        }>
+                                            {formatCurrency(selectedAccount.remainingBalance - (parseFloat(paymentAmount) || 0))}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <DialogFooter>
+                            <DialogClose asChild>
+                                <Button variant="outline" disabled={isProcessingPayment}>
+                                    Cancelar
+                                </Button>
+                            </DialogClose>
+                            <Button
+                                onClick={handleProcessPayment}
+                                disabled={!paymentAmount || parseFloat(paymentAmount) <= 0 || isProcessingPayment}
+                            >
+                                {isProcessingPayment ? "Procesando..." : "Registrar Abono"}
                             </Button>
-                        </DialogClose>
-                        <Button 
-                            onClick={handleProcessPayment} 
-                            disabled={!paymentAmount || parseFloat(paymentAmount) <= 0 || isProcessingPayment}
-                        >
-                            {isProcessingPayment ? "Procesando..." : "Registrar Abono"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </ErrorBoundary>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </ErrorBoundary>
         </div>
     );
 }

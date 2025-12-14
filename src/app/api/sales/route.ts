@@ -67,6 +67,10 @@ export async function POST(request: Request) {
       customer_name: data.customerName || 'Cliente Eventual',
       items: data.items,
       total: data.total || 0,
+      subtotal: data.subtotal || data.total || 0,
+      tax: data.tax || 0,
+      discount: data.discount || 0,
+      payment_method: data.paymentMethod || (data.payments && data.payments.length > 0 ? data.payments[0].method : null),
       date: data.date || new Date().toISOString(),
       transaction_type: data.transactionType || 'contado',
       status: data.status || 'paid',
@@ -75,7 +79,8 @@ export async function POST(request: Request) {
         id: payment.id || IDGenerator.generate('payment')
       })),
       store_id: data.storeId,
-      user_id: data.userId || 'system'
+      user_id: data.userId || 'system',
+      paid_amount: data.paidAmount || 0
     };
 
     console.log('💰 [Sales API] Inserting sale:', saleId);
@@ -93,6 +98,49 @@ export async function POST(request: Request) {
     }
 
     console.log('✅ [Sales API] Sale created:', saleId);
+
+    // Create Account Receivable if Credit Sale or Unpaid
+    // This replaces the SQL trigger logic to allow removing redundant columns from 'sales' table
+    if (data.transactionType === 'credito' || data.status === 'unpaid') {
+      try {
+        // Calculate due date
+        const creditDays = data.creditDays || 0;
+        const saleDate = new Date(data.date || new Date());
+        const defaultDueDate = new Date(saleDate);
+        defaultDueDate.setDate(defaultDueDate.getDate() + creditDays);
+
+        const receivableData = {
+          store_id: data.storeId,
+          customer_id: data.customerId,
+          customer_name: data.customerName,
+          customer_phone: data.customerPhone, // Ideally passed from frontend, or null
+          original_amount: data.total,
+          paid_amount: data.paidAmount || 0,
+          remaining_balance: data.total - (data.paidAmount || 0),
+          due_date: data.creditDueDate || defaultDueDate.toISOString(),
+          sale_id: saleId,
+          sale_date: data.date || new Date().toISOString(),
+          status: (data.total - (data.paidAmount || 0)) <= 0 ? 'paid' : ((data.paidAmount || 0) > 0 ? 'partial' : 'pending'),
+          credit_days: creditDays,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        const { error: receivableError } = await supabaseAdmin
+          .from('account_receivables')
+          .insert(receivableData);
+
+        if (receivableError) {
+          console.error('❌ [Sales API] Error creating receivable:', receivableError);
+          // Critical error, but we don't want to fail the sale? 
+          // Better to log loudly. In a real tx, we'd rollback.
+        } else {
+          console.log('✅ [Sales API] Account Receivable created manually');
+        }
+      } catch (err) {
+        console.error('❌ [Sales API] Exception creating receivable:', err);
+      }
+    }
 
     // Create inventory movements for each item
     if (data.items && Array.isArray(data.items) && data.items.length > 0) {
@@ -156,6 +204,48 @@ export async function POST(request: Request) {
 
       console.log('✅ [Sales API] Inventory movements completed');
     }
+
+    // --- AUTOMATIC ACCOUNT RECEIVABLE CREATION ---
+    if (saleData.transaction_type === 'credito') {
+      try {
+        console.log('💳 [Sales API] Creating account receivable for credit sale...');
+
+        const accountData = {
+          id: IDGenerator.generate('account'),
+          store_id: saleData.store_id,
+          sale_id: saleId,
+          customer_id: saleData.customer_id,
+          customer_name: saleData.customer_name,
+          original_amount: saleData.total,
+          paid_amount: saleData.paidAmount || 0,
+          remaining_balance: saleData.total - (saleData.paidAmount || 0),
+          status: (saleData.paidAmount >= saleData.total) ? 'paid' : 'pending',
+          sale_date: saleData.date,
+          due_date: saleData.creditDueDate || new Date(new Date().setDate(new Date().getDate() + (saleData.creditDays || 30))).toISOString(),
+          last_payment_date: (saleData.paidAmount > 0) ? new Date().toISOString() : null,
+          payments: saleData.payments || [],
+          notes: null,
+          created_by: saleData.user_id,
+          updated_by: saleData.user_id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+
+        const { error: accountError } = await supabaseAdmin
+          .from('account_receivables')
+          .insert(accountData);
+
+        if (accountError) {
+          console.error('❌ [Sales API] Error automatically creating account receivable:', accountError);
+          // Note: We don't fail the sale creation here, but we log the error.
+        } else {
+          console.log('✅ [Sales API] Account receivable created automatically');
+        }
+      } catch (accError) {
+        console.error('❌ [Sales API] unexpected error creating account receivable:', accError);
+      }
+    }
+    // ---------------------------------------------
 
     // Format response
     const formattedResponse = {

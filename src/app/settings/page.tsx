@@ -25,7 +25,7 @@ import { ImageUpload } from "@/components/image-upload";
 import { FullscreenToggleButton } from "@/components/fullscreen-toggle-button";
 
 function ChangePinDialog() {
-    const { changePin } = useSecurity();
+    const { changePin, hasPin, setPin } = useSecurity();
     const { toast } = useToast();
     const [oldPin, setOldPin] = useState('');
     const [newPin, setNewPin] = useState('');
@@ -57,258 +57,72 @@ function ChangePinDialog() {
                 throw new Error("Los PINs no coinciden");
             }
 
-            const success = await changePin(oldPin, newPin);
+            // Si ya tiene PIN, usar changePin que valida el anterior
+            // Si no, usar setPin directamente (aunque el backend de setPin ya maneja ambos casos,
+            // pero changePin en el context es un alias, así que la distinción es más de UI aquí)
+
+            // NOTA: El context exporta setPin y changePin como alias de la misma función actualmente.
+            // Pero la lógica de UI debe depender de hasPin para saber si enviar oldPin o no.
+            // El backend valida oldPin SI se envía. Si es configuración inicial, podemos enviar string vacío
+            // si el backend lo permite, o simplemente confiar en que el usuario sabe lo que hace.
+
+            // Para ser consistente con la API:
+            // Si hasPin es true, oldPin es requerido por lógica de negocio (aunque la API lo permite opcional, la UI debe forzarlo).
+            // Si hasPin es false, oldPin no se pide y se envía vacío o '0000' dummy si fuera necesario, 
+            // pero la API de 'changePin' (setPin) toma (current, new).
+
+            const currentPinToSend = hasPin ? oldPin : '';
+
+            const success = await setPin(currentPinToSend, newPin);
+
             if (success) {
-                toast({
-                    title: "PIN actualizado",
-                    description: "El PIN se ha cambiado correctamente",
-                });
                 handleOpenChange(false); // Cerrar el diálogo
-            } else {
-                throw new Error("PIN actual incorrecto");
             }
         } catch (error: any) {
-            toast({
-                variant: "destructive",
-                title: "Error al cambiar PIN",
-                description: error.message,
-            });
+            // El toast de error ya se muestra en el context para errores de API, 
+            // pero para validaciones locales lo mostramos aquí si no se lanzó desde el context
+            if (!error.message.includes('Error al configurar PIN')) { // Evitar duplicar si el context ya mostró
+                toast({
+                    variant: "destructive",
+                    title: "Error al cambiar PIN",
+                    description: error.message,
+                });
+            }
         } finally {
             setIsProcessing(false);
         }
     };
 
-    // Componente para gestión de productos
-    const ProductManagementCard = ({ products }: { products: any[] }) => {
-        const [editingProduct, setEditingProduct] = useState<any | null>(null);
-        const [searchTerm, setSearchTerm] = useState('');
-
-        const filteredProducts = products.filter(product =>
-            product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            product.sku.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-
-        const handleSaveProduct = async () => {
-            if (!editingProduct) return;
-
-            try {
-                const response = await fetch('/api/products', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(editingProduct),
-                });
-
-                if (!response.ok) {
-                    throw new Error('Error al actualizar producto');
-                }
-
-                setEditingProduct(null);
-                toast({ title: 'Producto actualizado correctamente' });
-                // Aquí podrías recargar los productos si fuera necesario
-            } catch (error) {
-                toast({
-                    variant: 'destructive',
-                    title: 'Error',
-                    description: 'No se pudo actualizar el producto.',
-                });
-            }
-        };
-
-        return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>Productos Registrados</CardTitle>
-                    <CardDescription>Gestiona los productos de tu inventario. Los servicios no afectan el stock.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-4">
-                        <Input
-                            placeholder="Buscar productos por nombre o SKU..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="max-w-sm"
-                        />
-
-                        <div className="space-y-2 max-h-60 overflow-y-auto">
-                            {filteredProducts.slice(0, 20).map(product => (
-                                <div key={product.id} className="flex items-center gap-2 p-2 border rounded-md">
-                                    <div className="flex-grow">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm font-medium truncate">{product.name}</span>
-                                            <span className={`text-xs px-2 py-1 rounded-full ${product.type === 'service'
-                                                ? 'bg-blue-100 text-blue-700'
-                                                : 'bg-green-100 text-green-700'
-                                                }`}>
-                                                {product.type === 'service' ? '🔧 Servicio' : '🛍️ Producto'}
-                                            </span>
-                                        </div>
-                                        <div className="text-xs text-muted-foreground">
-                                            SKU: {product.sku} | Stock: {product.stock || 0}
-                                        </div>
-                                    </div>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-7 w-7"
-                                        onClick={() => setEditingProduct(product)}
-                                    >
-                                        <Pencil className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            ))}
-                        </div>
-
-                        {filteredProducts.length > 20 && (
-                            <p className="text-xs text-muted-foreground">
-                                Mostrando 20 de {filteredProducts.length} productos. Usa la búsqueda para filtrar.
-                            </p>
-                        )}
-                    </div>
-                </CardContent>
-
-                {/* Modal de edición */}
-                <Dialog open={!!editingProduct} onOpenChange={() => setEditingProduct(null)}>
-                    <DialogContent className="max-w-2xl">
-                        <DialogHeader>
-                            <DialogTitle>Editar Producto</DialogTitle>
-                            <DialogDescription>
-                                Modifica la información del producto. El stock es de solo lectura.
-                            </DialogDescription>
-                        </DialogHeader>
-
-                        {editingProduct && (
-                            <div className="grid grid-cols-2 gap-4 py-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="edit-name">Nombre</Label>
-                                    <Input
-                                        id="edit-name"
-                                        value={editingProduct.name}
-                                        onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="edit-sku">SKU</Label>
-                                    <Input
-                                        id="edit-sku"
-                                        value={editingProduct.sku}
-                                        onChange={(e) => setEditingProduct({ ...editingProduct, sku: e.target.value })}
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="edit-price">Precio</Label>
-                                    <Input
-                                        id="edit-price"
-                                        type="number"
-                                        step="0.01"
-                                        value={editingProduct.price}
-                                        onChange={(e) => setEditingProduct({ ...editingProduct, price: parseFloat(e.target.value) })}
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="edit-cost">Costo</Label>
-                                    <Input
-                                        id="edit-cost"
-                                        type="number"
-                                        step="0.01"
-                                        value={editingProduct.cost}
-                                        onChange={(e) => setEditingProduct({ ...editingProduct, cost: parseFloat(e.target.value) })}
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="edit-stock">Stock (Solo lectura)</Label>
-                                    <Input
-                                        id="edit-stock"
-                                        type="number"
-                                        value={editingProduct.stock || 0}
-                                        readOnly
-                                        className="bg-muted"
-                                    />
-                                    <p className="text-xs text-muted-foreground">
-                                        El stock se modifica automáticamente con las ventas y compras
-                                    </p>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="edit-type">Tipo de Producto</Label>
-                                    <div className="flex items-center space-x-2">
-                                        <Switch
-                                            id="edit-type"
-                                            checked={editingProduct.type === 'service'}
-                                            onCheckedChange={(checked) =>
-                                                setEditingProduct({
-                                                    ...editingProduct,
-                                                    type: checked ? 'service' : 'product',
-                                                    affectsInventory: !checked
-                                                })
-                                            }
-                                        />
-                                        <Label htmlFor="edit-type" className="text-sm">
-                                            {editingProduct.type === 'service' ? '🔧 Servicios o Fabricación' : '🛍️ Productos Simples'}
-                                        </Label>
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">
-                                        {editingProduct.type === 'service'
-                                            ? 'Los servicios y fabricación no afectan el inventario'
-                                            : 'Los productos simples afectan el inventario'
-                                        }
-                                    </p>
-                                </div>
-
-                                <div className="col-span-2 space-y-2">
-                                    <Label htmlFor="edit-description">Descripción</Label>
-                                    <Input
-                                        id="edit-description"
-                                        value={editingProduct.description || ''}
-                                        onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
-                                        placeholder="Descripción del producto..."
-                                    />
-                                </div>
-                            </div>
-                        )}
-
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => setEditingProduct(null)}>
-                                Cancelar
-                            </Button>
-                            <Button onClick={handleSaveProduct}>
-                                Guardar Cambios
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-            </Card>
-        );
-    };
-
     return (
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
-                <Button variant="outline">Cambiar PIN</Button>
+                <Button variant="outline">{hasPin ? "Cambiar PIN" : "Configurar PIN"}</Button>
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Cambiar PIN de Seguridad</DialogTitle>
+                    <DialogTitle>{hasPin ? "Cambiar PIN de Seguridad" : "Configurar Nuevo PIN"}</DialogTitle>
                     <DialogDescription>
-                        Ingresa tu PIN actual y el nuevo PIN de 4 dígitos
+                        {hasPin
+                            ? "Ingresa tu PIN actual y el nuevo PIN de 4 dígitos"
+                            : "Establece un PIN de seguridad de 4 dígitos para proteger operaciones sensibles"
+                        }
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="old-pin">PIN Actual</Label>
-                        <Input
-                            id="old-pin"
-                            type="password"
-                            inputMode="numeric"
-                            value={oldPin}
-                            onChange={(e) => setOldPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                            maxLength={4}
-                            placeholder="****"
-                        />
-                    </div>
+                    {hasPin && (
+                        <div className="space-y-2">
+                            <Label htmlFor="old-pin">PIN Actual</Label>
+                            <Input
+                                id="old-pin"
+                                type="password"
+                                inputMode="numeric"
+                                value={oldPin}
+                                onChange={(e) => setOldPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                                maxLength={4}
+                                placeholder="****"
+                            />
+                        </div>
+                    )}
                     <div className="space-y-2">
                         <Label htmlFor="new-pin">Nuevo PIN (4 dígitos)</Label>
                         <Input
@@ -343,15 +157,22 @@ function ChangePinDialog() {
                     </Button>
                     <Button
                         onClick={handleChangePin}
-                        disabled={isProcessing || oldPin.length !== 4 || newPin.length !== 4 || confirmPin.length !== 4}
+                        disabled={
+                            isProcessing ||
+                            (hasPin && oldPin.length !== 4) ||
+                            newPin.length !== 4 ||
+                            confirmPin.length !== 4
+                        }
                     >
                         {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Confirmar Cambio
+                        {hasPin ? "Cambiar PIN" : "Establecer PIN"}
                     </Button>
+
+
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-    )
+    );
 }
 
 export default function SettingsPage() {
@@ -1179,20 +1000,7 @@ export default function SettingsPage() {
                         </div>
                     </div>
 
-                    <Separator />
-                    <h3 className="text-lg font-medium">Correlativos de Venta</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="saleSeries">Serie de Venta</Label>
-                            <Input id="saleSeries" value={settings?.saleSeries || ''} onChange={handleSettingsChange} placeholder="Ej: SALE" maxLength={11} />
-                            <CardDescription>Prefijo para los números de control de venta.</CardDescription>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="saleCorrelative">Próximo Correlativo</Label>
-                            <Input id="saleCorrelative" type="text" value={nextSaleCorrelative} readOnly />
-                            <CardDescription>El número de la próxima venta. Se actualiza automáticamente.</CardDescription>
-                        </div>
-                    </div>
+
 
                     <Separator />
                     <h3 className="text-lg font-medium">Impuestos</h3>
