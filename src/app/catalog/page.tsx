@@ -1354,24 +1354,87 @@ export default function CatalogPage() {
 
   const generateQrCode = async (orderId: string) => {
     try {
-      const url = await QRCode.toDataURL(orderId);
+      console.log('🔗 [QR] Generando QR para pedido:', orderId);
+      
+      // Configurar opciones del QR para mejor reconocimiento
+      const qrOptions = {
+        width: 256,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        },
+        errorCorrectionLevel: 'M', // Nivel medio de corrección de errores
+        type: 'image/png',
+        quality: 0.92,
+        rendererOpts: {
+          quality: 0.92
+        }
+      };
+      
+      const url = await QRCode.toDataURL(orderId, qrOptions);
       setQrCodeUrl(url);
       setOrderIdForQr(orderId);
+      
+      console.log('✅ [QR] QR de pedido generado exitosamente');
     } catch (err) {
-      console.error(err);
+      console.error('❌ [QR] Error generando QR de pedido:', err);
       toast({ variant: 'destructive', title: 'Error al generar QR' });
     }
   };
 
   const generateShareQrCode = async () => {
     try {
-      const url = `${window.location.origin}${window.location.pathname}?storeId=${storeIdForCatalog}`;
-      setShareUrl(url);
-      const dataUrl = await QRCode.toDataURL(url, { width: 256 });
+      // Asegurar que la URL sea completa y válida con protocolo HTTPS
+      const baseUrl = window.location.origin;
+      const catalogPath = '/catalog';
+      const fullUrl = `${baseUrl}${catalogPath}?storeId=${storeIdForCatalog}`;
+      
+      // Validar que la URL sea válida y tenga protocolo
+      const urlObj = new URL(fullUrl);
+      if (!urlObj.protocol.startsWith('http')) {
+        throw new Error('URL debe tener protocolo HTTP/HTTPS');
+      }
+      
+      console.log('🔗 [QR] Generando QR para URL válida:', fullUrl);
+      
+      setShareUrl(fullUrl);
+      
+      // Configurar opciones del QR optimizadas para reconocimiento automático
+      const qrOptions = {
+        width: 300, // Aumentar tamaño para mejor lectura
+        margin: 3,  // Aumentar margen para mejor detección
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        },
+        errorCorrectionLevel: 'H', // Alto nivel de corrección para mejor reconocimiento
+        type: 'image/png' as const,
+        quality: 1.0, // Máxima calidad
+        rendererOpts: {
+          quality: 1.0
+        }
+      };
+      
+      const dataUrl = await QRCode.toDataURL(fullUrl, qrOptions);
       setShareQrCodeUrl(dataUrl);
+      
+      console.log('✅ [QR] QR generado exitosamente para URL:', fullUrl);
+      console.log('✅ [QR] Configuración aplicada:', qrOptions);
+      
+      // Verificar que el QR contiene la URL correcta
+      toast({ 
+        title: 'QR Generado', 
+        description: `Código QR creado para: ${fullUrl.length > 50 ? fullUrl.substring(0, 50) + '...' : fullUrl}` 
+      });
+      
     } catch (err) {
-      console.error(err);
-      toast({ variant: 'destructive', title: 'Error al generar QR para compartir' });
+      console.error('❌ [QR] Error generando QR:', err);
+      toast({ 
+        variant: 'destructive', 
+        title: 'Error al generar QR para compartir',
+        description: 'Verifique que la URL sea válida'
+      });
     }
   }
 
@@ -1907,15 +1970,21 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
                   <div className="flex flex-col items-center space-y-4 py-4">
                     <div className="bg-gradient-to-br from-white to-blue-50/50 p-6 rounded-2xl shadow-inner border border-blue-100/50 ring-1 ring-blue-200/20">
                       {shareQrCodeUrl ? (
-                        <Image
-                          src={shareQrCodeUrl}
-                          alt="Código QR para compartir"
-                          width={200}
-                          height={200}
-                          className="rounded-xl shadow-sm"
-                        />
+                        <div className="flex flex-col items-center space-y-3">
+                          <Image
+                            src={shareQrCodeUrl}
+                            alt="Código QR para compartir catálogo"
+                            width={250}
+                            height={250}
+                            className="rounded-xl shadow-sm"
+                          />
+                          <div className="text-center space-y-1">
+                            <p className="text-xs text-blue-600 font-medium">📱 Escanea para abrir automáticamente</p>
+                            <p className="text-xs text-muted-foreground">Compatible con cualquier lector QR</p>
+                          </div>
+                        </div>
                       ) : (
-                        <div className="w-[200px] h-[200px] flex items-center justify-center bg-gradient-to-br from-muted/30 to-muted/60 rounded-xl">
+                        <div className="w-[250px] h-[250px] flex items-center justify-center bg-gradient-to-br from-muted/30 to-muted/60 rounded-xl">
                           <div className="flex flex-col items-center gap-3">
                             <div className="w-10 h-10 animate-spin rounded-full border-3 border-blue-200 border-t-blue-600 shadow-sm" />
                             <p className="text-sm text-muted-foreground font-medium">Generando QR...</p>
