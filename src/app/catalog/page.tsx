@@ -128,6 +128,73 @@ const safeDebugCall = async <T,>(
   }
 };
 
+// CORRECCIÓN #5: Utilidades robustas para matching de SKU
+const normalizeSkuForComparison = (sku: string | null | undefined): string => {
+  if (!sku || typeof sku !== 'string') {
+    return '';
+  }
+  return sku.trim().toLowerCase();
+};
+
+const isExactSkuMatch = (productSku: string | null | undefined, searchTerm: string | null | undefined): boolean => {
+  const normalizedProductSku = normalizeSkuForComparison(productSku);
+  const normalizedSearchTerm = normalizeSkuForComparison(searchTerm);
+  
+  // Ambos deben tener contenido para ser una coincidencia válida
+  if (!normalizedProductSku || !normalizedSearchTerm) {
+    return false;
+  }
+  
+  return normalizedProductSku === normalizedSearchTerm;
+};
+
+const findExactSkuMatches = (products: Product[], searchTerm: string): Product[] => {
+  if (!searchTerm || !Array.isArray(products)) {
+    return [];
+  }
+  
+  const normalizedSearchTerm = normalizeSkuForComparison(searchTerm);
+  if (!normalizedSearchTerm) {
+    return [];
+  }
+  
+  return products.filter(product => isExactSkuMatch(product.sku, searchTerm));
+};
+
+const shouldAutoOpenProduct = (
+  filteredProducts: Product[], 
+  searchTerm: string, 
+  lastOpenedSku: string | null
+): { shouldOpen: boolean; product?: Product; reason: string } => {
+  
+  if (!searchTerm || !Array.isArray(filteredProducts)) {
+    return { shouldOpen: false, reason: 'Invalid input parameters' };
+  }
+
+  const exactMatches = findExactSkuMatches(filteredProducts, searchTerm);
+  
+  if (exactMatches.length === 0) {
+    return { shouldOpen: false, reason: 'No exact SKU matches found' };
+  }
+  
+  if (exactMatches.length > 1) {
+    return { shouldOpen: false, reason: `Multiple exact matches found: ${exactMatches.length}` };
+  }
+  
+  if (filteredProducts.length !== 1) {
+    return { shouldOpen: false, reason: `Filtered products count is ${filteredProducts.length}, expected 1` };
+  }
+  
+  const product = exactMatches[0];
+  const alreadyOpened = normalizeSkuForComparison(product.sku) === normalizeSkuForComparison(lastOpenedSku);
+  
+  if (alreadyOpened) {
+    return { shouldOpen: false, reason: 'Product already auto-opened' };
+  }
+  
+  return { shouldOpen: true, product, reason: 'All conditions met for auto-opening' };
+};
+
 
 
 
@@ -657,28 +724,53 @@ export default function CatalogPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [lastAutoOpenedSku, setLastAutoOpenedSku] = useState<string | null>(null);
   const [selectedFamily, setSelectedFamily] = useState<string>("all");
+  const [isAutoOpening, setIsAutoOpening] = useState(false);
 
   const [isEditingOrder, setIsEditingOrder] = useState(false);
 
   // PASO 2: Búsqueda automática por SKU - DESPUÉS de cambiar tienda
   useEffect(() => {
+    // DEBUGGING: Log detallado del estado de búsqueda
+    console.group('🔍 [Catalog] Auto-search Debug Analysis');
+    console.log('📊 Search State:', {
+      urlSku,
+      urlStoreId,
+      activeStoreId,
+      searchTerm,
+      productsLength: products.length
+    });
+
     // Esperar a que:
     // 1. Haya un SKU en la URL
     // 2. El activeStoreId coincida con urlStoreId (tienda ya cambiada)
     // 3. Los productos estén cargados
     // 4. No hayamos aplicado ya esta búsqueda
-    const shouldApplySearch = urlSku &&
-      urlSku.trim() !== '' &&
-      searchTerm !== urlSku &&
-      products.length > 0 &&
-      (!urlStoreId || activeStoreId === urlStoreId); // Tienda correcta
+    const searchConditions = {
+      hasUrlSku: !!urlSku && urlSku.trim() !== '',
+      searchTermDifferent: searchTerm !== urlSku,
+      productsLoaded: products.length > 0,
+      correctStore: !urlStoreId || activeStoreId === urlStoreId
+    };
+
+    console.log('🎯 Search Conditions:', searchConditions);
+
+    const shouldApplySearch = searchConditions.hasUrlSku &&
+      searchConditions.searchTermDifferent &&
+      searchConditions.productsLoaded &&
+      searchConditions.correctStore;
+
+    console.log('🚀 Should Apply Search:', shouldApplySearch);
 
     if (shouldApplySearch) {
-      console.log('🔍 [Catalog] Aplicando búsqueda automática por SKU:', urlSku, 'en tienda:', activeStoreId);
+      console.log('✅ [Catalog] Aplicando búsqueda automática por SKU:', urlSku, 'en tienda:', activeStoreId);
       setSearchTerm(urlSku);
       setSelectedFamily('all'); // Resetear filtro de familia para mostrar todos los productos
       setLastAutoOpenedSku(null); // Reset para permitir auto-apertura
+    } else {
+      console.log('❌ [Catalog] Auto-search conditions not met');
     }
+    
+    console.groupEnd();
   }, [urlSku, urlStoreId, activeStoreId, searchTerm, products.length]); // Incluir activeStoreId como dependencia clave
 
   // Hook para manejar pedidos del usuario desde la base de datos
@@ -1168,22 +1260,48 @@ export default function CatalogPage() {
       return [];
     }
 
-    console.log('📦 Total productos cargados:', products.length);
-    console.log('🏪 StoreId para filtrar:', storeIdForCatalog);
+    console.group('📦 [Catalog] Product Filtering Debug');
+    console.log('📊 Filter State:', {
+      totalProducts: products.length,
+      storeIdForCatalog,
+      searchTerm,
+      selectedFamily
+    });
 
     const productsForStore = products.filter(product => product.storeId === storeIdForCatalog);
     console.log('🎯 Productos para esta tienda:', productsForStore.length);
 
     const trimmedSearchTerm = searchTerm.trim().toLowerCase();
+    console.log('🔍 Trimmed search term:', `"${trimmedSearchTerm}"`);
+
     const filtered = productsForStore
       .filter(
-        (product) =>
-          (product.status === 'active' || product.status === 'promotion') &&
-          // Los servicios siempre están disponibles, los productos necesitan stock
-          (product.type === 'service' || product.stock > 0) &&
-          (selectedFamily === 'all' || product.family === selectedFamily) &&
-          (product.name.toLowerCase().includes(trimmedSearchTerm) ||
-            (product.sku && product.sku.toLowerCase().includes(trimmedSearchTerm)))
+        (product) => {
+          const statusOk = product.status === 'active' || product.status === 'promotion';
+          const stockOk = product.type === 'service' || product.stock > 0;
+          const familyOk = selectedFamily === 'all' || product.family === selectedFamily;
+          const nameMatch = product.name.toLowerCase().includes(trimmedSearchTerm);
+          const skuMatch = product.sku && product.sku.toLowerCase().includes(trimmedSearchTerm);
+          const searchMatch = nameMatch || skuMatch;
+
+          const passes = statusOk && stockOk && familyOk && searchMatch;
+
+          // Log productos que coinciden con el término de búsqueda para debugging
+          if (trimmedSearchTerm && (nameMatch || skuMatch)) {
+            console.log('🎯 Product match found:', {
+              name: product.name,
+              sku: product.sku,
+              nameMatch,
+              skuMatch,
+              statusOk,
+              stockOk,
+              familyOk,
+              passes
+            });
+          }
+
+          return passes;
+        }
       )
       .sort((a, b) => {
         if (a.status === 'promotion' && b.status !== 'promotion') return -1;
@@ -1192,40 +1310,82 @@ export default function CatalogPage() {
       });
 
     console.log('✅ Productos filtrados finales:', filtered.length);
+    
+    // Log productos exactos por SKU si hay término de búsqueda
+    if (trimmedSearchTerm) {
+      const exactSkuMatches = findExactSkuMatches(filtered, trimmedSearchTerm);
+      console.log('🎯 Exact SKU matches:', exactSkuMatches.length, exactSkuMatches.map(p => ({ name: p.name, sku: p.sku, normalized: normalizeSkuForComparison(p.sku) })));
+    }
+    
+    console.groupEnd();
     return filtered;
   }, [products, searchTerm, selectedFamily, storeIdForCatalog]);
 
   // PASO 3: Auto-open product - DESPUÉS de búsqueda y en tienda correcta
   useEffect(() => {
     const trimmedSearchTerm = searchTerm.trim().toLowerCase();
-    // Solo auto-abrir si:
-    // 1. El término coincide con el SKU de la URL
-    // 2. Estamos en la tienda correcta
-    // 3. Solo hay un producto filtrado
-    // 4. No lo hemos abierto ya
-    const shouldAutoOpen = urlSku &&
-      trimmedSearchTerm === urlSku.toLowerCase() &&
-      sortedAndFilteredProducts.length === 1 &&
-      (!urlStoreId || activeStoreId === urlStoreId); // Tienda correcta
+    
+    // DEBUGGING: Log detallado del estado actual
+    console.group('🔍 [Catalog] Auto-open Debug Analysis');
+    console.log('📊 Current State:', {
+      urlSku,
+      urlStoreId,
+      activeStoreId,
+      searchTerm,
+      trimmedSearchTerm,
+      sortedAndFilteredProductsLength: sortedAndFilteredProducts.length,
+      lastAutoOpenedSku,
+      productsAvailable: products.length
+    });
 
-    if (shouldAutoOpen) {
-      const product = sortedAndFilteredProducts[0];
-      const isExactSkuMatch = product.sku?.toLowerCase() === trimmedSearchTerm;
+    // MEJORADO: Auto-abrir si hay exactamente un producto que coincide exactamente con el SKU buscado
+    // Esto funciona tanto para URLs como para búsquedas manuales
+    const exactSkuMatches = findExactSkuMatches(sortedAndFilteredProducts, trimmedSearchTerm);
+    
+    const conditions = {
+      hasSearchTerm: !!trimmedSearchTerm,
+      hasExactlyOneProduct: sortedAndFilteredProducts.length === 1,
+      hasExactlyOneSkuMatch: exactSkuMatches.length === 1,
+      correctStore: !urlStoreId || activeStoreId === urlStoreId,
+      sameProductInBothLists: sortedAndFilteredProducts.length === 1 && exactSkuMatches.length === 1 && 
+                              sortedAndFilteredProducts[0].id === exactSkuMatches[0].id
+    };
 
-      if (isExactSkuMatch && product.sku !== lastAutoOpenedSku) {
-        console.log('🎯 [Catalog] Auto-abriendo producto por SKU desde URL:', product.name, 'en tienda:', activeStoreId);
-        setProductDetails(product);
-        setLastAutoOpenedSku(product.sku || '');
+    console.log('🎯 Auto-open Conditions:', conditions);
+    console.log('🎯 Exact SKU matches found:', exactSkuMatches.map(p => ({ name: p.name, sku: p.sku })));
 
-        // LIMPIAR INPUT DE BÚSQUEDA inmediatamente después de abrir la modal
-        // Esto evita conflictos y permite que el usuario navegue libremente al cerrar
-        setTimeout(() => {
-          console.log('🧹 [Catalog] Limpiando input de búsqueda después de auto-apertura');
-          setSearchTerm('');
-        }, 100); // Pequeño delay para asegurar que la modal se abra primero
-      }
+    // Usar la nueva función de validación robusta
+    const autoOpenDecision = shouldAutoOpenProduct(sortedAndFilteredProducts, trimmedSearchTerm, lastAutoOpenedSku);
+    
+    console.log('🚀 Auto-open Decision:', autoOpenDecision);
+
+    // Solo proceder si estamos en la tienda correcta
+    const shouldAutoOpen = autoOpenDecision.shouldOpen && conditions.correctStore;
+
+    if (shouldAutoOpen && autoOpenDecision.product && !isAutoOpening) {
+      console.log('✅ [Catalog] Auto-abriendo producto por SKU:', autoOpenDecision.product.name, 'en tienda:', activeStoreId);
+      
+      setIsAutoOpening(true);
+      setProductDetails(autoOpenDecision.product);
+      setLastAutoOpenedSku(autoOpenDecision.product.sku || '');
+
+      // LIMPIAR INPUT DE BÚSQUEDA después de abrir la modal
+      // Usar requestAnimationFrame para mejor timing y evitar conflictos
+      requestAnimationFrame(() => {
+        console.log('🧹 [Catalog] Limpiando input de búsqueda después de auto-apertura');
+        setSearchTerm('');
+        setIsAutoOpening(false);
+      });
+    } else {
+      console.log('❌ [Catalog] Auto-open not executed:', {
+        reason: autoOpenDecision.reason,
+        correctStore: conditions.correctStore,
+        finalDecision: shouldAutoOpen
+      });
     }
-  }, [urlSku, urlStoreId, activeStoreId, sortedAndFilteredProducts.length, searchTerm, lastAutoOpenedSku]); // Incluir activeStoreId
+    
+    console.groupEnd();
+  }, [urlSku, urlStoreId, activeStoreId, sortedAndFilteredProducts, searchTerm, lastAutoOpenedSku, isAutoOpening]); // Incluir activeStoreId y productos completos
 
   useEffect(() => {
     setLastAutoOpenedSku(null);
