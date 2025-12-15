@@ -295,6 +295,14 @@ export default function POSPage() {
   const [deletePin, setDeletePin] = useState("");
   const [isDeletePinOpen, setIsDeletePinOpen] = useState(false);
 
+  // -- Estado para validación de PIN al cambiar precio mayorista --
+  const [itemToTogglePrice, setItemToTogglePrice] = useState<{
+    id: string;
+    price: number;
+  } | null>(null);
+  const [pricePin, setPricePin] = useState("");
+  const [isPricePinOpen, setIsPricePinOpen] = useState(false);
+
   // NOTA: El chequeo de isLocked se hace más abajo, después de todos los hooks
 
   // Hook para pedidos pendientes con sincronización automática
@@ -944,6 +952,32 @@ export default function POSPage() {
       title: "Producto Eliminado",
       description: "El producto ha sido eliminado del carrito.",
     });
+  };
+
+  const handleConfirmTogglePrice = async () => {
+    if (!itemToTogglePrice) return;
+
+    try {
+      const isValid = await checkPin(pricePin);
+      if (isValid) {
+        toggleWholesalePrice(itemToTogglePrice.id, itemToTogglePrice.price);
+        setIsPricePinOpen(false);
+        setItemToTogglePrice(null);
+        setPricePin("");
+      } else {
+        toast({
+          variant: "destructive",
+          title: "PIN Incorrecto",
+          description: "No tienes permiso para cambiar el precio de este ítem.",
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Error al verificar PIN.",
+      });
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -4018,7 +4052,7 @@ export default function POSPage() {
                                       parsed,
                                     );
                                   }}
-                                  className="h-6 sm:h-8 w-16 sm:w-20 text-xs"
+                                  className="h-6 sm:h-8 w-14 sm:w-16 text-xs"
                                   min="1"
                                 />
                               </TableCell>
@@ -4036,12 +4070,21 @@ export default function POSPage() {
                                     variant="ghost"
                                     size="icon"
                                     className="h-5 w-5 sm:h-8 sm:w-8 text-muted-foreground hover:text-accent-foreground"
-                                    onClick={() =>
-                                      toggleWholesalePrice(
-                                        item.product.id,
-                                        item.price,
-                                      )
-                                    }
+                                    onClick={() => {
+                                      if (hasPin) {
+                                        setItemToTogglePrice({
+                                          id: item.product.id,
+                                          price: item.price,
+                                        });
+                                        setPricePin("");
+                                        setIsPricePinOpen(true);
+                                      } else {
+                                        toggleWholesalePrice(
+                                          item.product.id,
+                                          item.price,
+                                        );
+                                      }
+                                    }}
                                   >
                                     <Tags
                                       className={cn(
@@ -4688,6 +4731,46 @@ export default function POSPage() {
               Guardar Configuración
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Modal de Validación de PIN para cambiar precio mayorista */}
+      <Dialog
+        open={isPricePinOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsPricePinOpen(false);
+            setItemToTogglePrice(null);
+            setPricePin("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-center flex flex-col items-center gap-2">
+              <ShieldCheck className="w-10 h-10 text-primary" />
+              Autorización Requerida
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              Ingresa el PIN de seguridad para cambiar el precio a mayorista.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Input
+              type="password"
+              placeholder="****"
+              className="text-center text-2xl tracking-[0.5em]"
+              value={pricePin}
+              onChange={(e) => setPricePin(e.target.value)}
+              maxLength={4}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleConfirmTogglePrice();
+              }}
+              autoFocus
+            />
+            <Button className="w-full" onClick={handleConfirmTogglePrice}>
+              Confirmar Cambio de Precio
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
       {/* Modal de Validación de PIN para Eliminar */}
