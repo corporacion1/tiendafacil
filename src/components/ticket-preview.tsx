@@ -181,6 +181,13 @@ export function TicketPreview({
                 margin: 10px 0;
                 text-transform: uppercase;
             }
+            .transaction-type {
+                font-size: 12px;
+                font-weight: bold;
+                text-align: center;
+                margin: 5px 0;
+                text-transform: uppercase;
+            }
             .customer {
               margin-top: 10px;
             }
@@ -280,9 +287,30 @@ export function TicketPreview({
                   Cotización
                 </div>
               ) : (
-                <div className="ticket-title" style={{ fontSize: '14px', fontWeight: 'bold', textAlign: 'center', margin: '10px 0', textTransform: 'uppercase' }}>
-                  Ticket de Venta
-                </div>
+                <>
+                  <div className="ticket-title" style={{ fontSize: '14px', fontWeight: 'bold', textAlign: 'center', margin: '10px 0', textTransform: 'uppercase' }}>
+                    Ticket de Venta
+                  </div>
+                  {(() => {
+                    // Obtener tipo de transacción del saleObj
+                    const getTransactionType = () => {
+                      if (Array.isArray(saleObj)) {
+                        return saleObj[0]?.transactionType || saleObj[0]?.transaction_type;
+                      }
+                      return saleObj?.transactionType || saleObj?.transaction_type;
+                    };
+                    
+                    const transactionType = getTransactionType();
+                    if (transactionType) {
+                      return (
+                        <div className="transaction-type" style={{ fontSize: '12px', fontWeight: 'bold', textAlign: 'center', margin: '5px 0', textTransform: 'uppercase' }}>
+                          {transactionType === 'credito' ? 'CRÉDITO' : 'CONTADO'}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </>
               )}
 
               {resolvedCustomer && (
