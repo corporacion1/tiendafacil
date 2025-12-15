@@ -1231,10 +1231,9 @@ export default function POSPage() {
     price: number,
     newQuantity: number,
   ) => {
-    if (newQuantity <= 0) {
-      removeFromCart(productId, price);
-      return;
-    }
+    // Evitar eliminar el ítem automáticamente al editar la cantidad con el teclado.
+    // Si la cantidad es menor o igual a 0, simplemente no actualizamos.
+    if (newQuantity <= 0) return;
 
     // Obtener producto actualizado del inventario
     const currentProduct = products.find((p) => p.id === productId);
@@ -1244,35 +1243,22 @@ export default function POSPage() {
         title: "Producto no encontrado",
         description: "El producto ya no existe en el inventario.",
       });
-      removeFromCart(productId, price);
       return;
     }
 
-    // Validar stock disponible
-    if (newQuantity > currentProduct.stock) {
+    // Validar stock disponible SOLO para productos que afectan inventario
+    if (
+      currentProduct.affectsInventory &&
+      currentProduct.type === "product" &&
+      newQuantity > currentProduct.stock
+    ) {
       toast({
         variant: "destructive",
         title: "Stock insuficiente",
         description: `Solo hay ${currentProduct.stock} unidades disponibles de "${currentProduct.name}".`,
       });
 
-      // Ajustar a la cantidad máxima disponible
-      const maxQuantity = Math.min(currentProduct.stock, newQuantity);
-      if (maxQuantity > 0) {
-        setCartItems((prevItems) =>
-          prevItems.map((item) =>
-            item.product.id === productId && item.price === price
-              ? { ...item, quantity: maxQuantity }
-              : item,
-          ),
-        );
-        toast({
-          title: "Cantidad ajustada",
-          description: `Cantidad ajustada a ${maxQuantity} unidades disponibles.`,
-        });
-      } else {
-        removeFromCart(productId, price);
-      }
+      // Mantener el ítem en el carrito y no modificar la cantidad
       return;
     }
 
@@ -4003,16 +3989,36 @@ export default function POSPage() {
                               </TableCell>
                               <TableCell className="p-1 sm:p-2">
                                 <Input
-                                  type="number"
-                                  value={item.quantity}
-                                  onChange={(e) =>
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={String(item.quantity)}
+                                  onChange={(e) => {
+                                    const rawValue = e.target.value.trim();
+
+                                    // Permitir solo números enteros o decimales (con punto o coma) y evitar letras
+                                    const normalized = rawValue.replace(",", ".");
+                                    const validPattern = /^[0-9]*([.][0-9]*)?$/;
+
+                                    if (!validPattern.test(normalized)) {
+                                      // Si no coincide con el patrón válido, no actualizamos
+                                      return;
+                                    }
+
+                                    const parsed = parseFloat(normalized);
+
+                                    // Evitar borrar accidentalmente el ítem cuando se edita la cantidad con el teclado
+                                    // Si el valor es vacío, NaN o <= 0, no actualizamos ni eliminamos
+                                    if (!rawValue || Number.isNaN(parsed) || parsed <= 0) {
+                                      return;
+                                    }
+
                                     updateQuantity(
                                       item.product.id,
                                       item.price,
-                                      parseInt(e.target.value),
-                                    )
-                                  }
-                                  className="h-6 sm:h-8 w-10 sm:w-14 text-xs"
+                                      parsed,
+                                    );
+                                  }}
+                                  className="h-6 sm:h-8 w-16 sm:w-20 text-xs"
                                   min="1"
                                 />
                               </TableCell>
