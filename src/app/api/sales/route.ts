@@ -85,7 +85,8 @@ export async function POST(request: Request) {
       })),
       store_id: data.storeId,
       user_id: data.userId || 'system',
-      paid_amount: data.paidAmount || 0
+      paid_amount: data.paidAmount || 0,
+      series: data.series || null // Agregar serie para filtrar por punto de venta
     };
 
     console.log('💰 [Sales API] Inserting sale:', saleId);
@@ -112,12 +113,17 @@ export async function POST(request: Request) {
       const missingColumnDetected = errMsg.includes('could not find') || errMsg.includes('does not exist') || errMsg.includes('column') && errMsg.includes('does not exist');
 
       if (missingColumnDetected) {
-        console.warn('⚠️ [Sales API] Insert failed due to missing column(s). Retrying without optional customer_* fields. Error:', firstAttempt.error.message);
+        console.warn('⚠️ [Sales API] Insert failed due to missing column(s). Retrying without optional fields. Error:', firstAttempt.error.message);
 
         const retryData: any = { ...saleData };
+        // Remove optional customer fields
         delete retryData.customer_phone;
         delete retryData.customer_address;
         delete retryData.customer_card_id;
+        // Remove optional credit and series fields
+        delete retryData.series;
+        delete retryData.paid_amount;
+        delete retryData.transaction_type;
 
         const retryAttempt = await attemptInsert(retryData);
         if (retryAttempt.error) {

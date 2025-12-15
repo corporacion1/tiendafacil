@@ -172,6 +172,7 @@ export type Sale = {
   storeId: string;
   creditDays?: number;
   creditDueDate?: string;
+  series?: string | null; // Serie del punto de venta
 };
 
 export type PurchaseItem = {
@@ -311,6 +312,7 @@ export type CashSession = {
   closedBy: string | null;
   salesIds: string[];
   transactions: Record<string, number>;
+  series?: string | null; // Serie del punto de venta
 };
 
 // Stores Administration Types

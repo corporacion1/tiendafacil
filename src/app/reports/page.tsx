@@ -103,6 +103,8 @@ export default function ReportsPage() {
     const [selectedSaleDetails, setSelectedSaleDetails] = useState<Sale | null>(null);
     const [saleForTicket, setSaleForTicket] = useState<Sale | null>(null);
     const [isTicketPreviewOpen, setIsTicketPreviewOpen] = useState(false);
+    const [saleForPayment, setSaleForPayment] = useState<Sale | null>(null);
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [activeTab, setActiveTab] = useState("sales");
     const [timeRange, setTimeRange] = useState<TimeRange>(null);
@@ -130,6 +132,11 @@ export default function ReportsPage() {
     const handlePrintTicket = (sale: Sale) => {
         setSaleForTicket(sale);
         setIsTicketPreviewOpen(true);
+    }
+
+    const handleAddPayment = (sale: Sale) => {
+        setSaleForPayment(sale);
+        setIsPaymentModalOpen(true);
     }
 
     const getDate = (date: any): Date => {
@@ -527,7 +534,10 @@ export default function ReportsPage() {
                                         <TableHead>Fecha</TableHead>
                                         <TableHead>ID Venta</TableHead>
                                         <TableHead>Cliente</TableHead>
+                                        <TableHead>Tipo</TableHead>
                                         <TableHead className="text-right">Total</TableHead>
+                                        <TableHead className="text-right">Abonado</TableHead>
+                                        <TableHead className="text-right">Saldo</TableHead>
                                         <TableHead>
                                             <span className="sr-only">Acciones</span>
                                         </TableHead>
@@ -543,7 +553,37 @@ export default function ReportsPage() {
                                             </TableCell>
                                             <TableCell className="font-medium">{sale.id}</TableCell>
                                             <TableCell>{sale.customerName}</TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col gap-1">
+                                                    <Badge variant={sale.transactionType === 'credito' ? 'destructive' : 'secondary'}>
+                                                        {sale.transactionType === 'credito' ? 'Crédito' : 'Contado'}
+                                                    </Badge>
+                                                    {sale.transactionType === 'credito' && (
+                                                        <Badge variant={sale.status === 'paid' ? 'default' : 'destructive'} className="text-xs">
+                                                            {sale.status === 'paid' ? 'Pagado' : 'Pendiente'}
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            </TableCell>
                                             <TableCell className="text-right">{activeSymbol}{(sale.total * activeRate).toFixed(2)}</TableCell>
+                                            <TableCell className="text-right">
+                                                {sale.transactionType === 'credito' ? (
+                                                    <span className={sale.paidAmount > 0 ? 'text-green-600 font-medium' : 'text-muted-foreground'}>
+                                                        {activeSymbol}{(sale.paidAmount * activeRate).toFixed(2)}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-muted-foreground">-</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                {sale.transactionType === 'credito' ? (
+                                                    <span className={(sale.total - sale.paidAmount) > 0 ? 'text-red-600 font-medium' : 'text-green-600 font-medium'}>
+                                                        {activeSymbol}{((sale.total - sale.paidAmount) * activeRate).toFixed(2)}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-muted-foreground">-</span>
+                                                )}
+                                            </TableCell>
                                             <TableCell>
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
@@ -564,8 +604,14 @@ export default function ReportsPage() {
                                 </TableBody>
                                 <TableFooter>
                                     <TableRow>
-                                        <TableCell colSpan={3} className="font-bold text-lg">Total General</TableCell>
+                                        <TableCell colSpan={4} className="font-bold text-lg">Total General</TableCell>
                                         <TableCell className="text-right font-bold text-lg">{activeSymbol}{(salesTotal * activeRate).toFixed(2)}</TableCell>
+                                        <TableCell className="text-right font-bold text-lg">
+                                            {activeSymbol}{(filteredSales.reduce((acc, sale) => acc + sale.paidAmount, 0) * activeRate).toFixed(2)}
+                                        </TableCell>
+                                        <TableCell className="text-right font-bold text-lg">
+                                            {activeSymbol}{(filteredSales.reduce((acc, sale) => acc + (sale.total - sale.paidAmount), 0) * activeRate).toFixed(2)}
+                                        </TableCell>
                                         <TableCell></TableCell>
                                     </TableRow>
                                 </TableFooter>
@@ -942,9 +988,143 @@ export default function ReportsPage() {
                             </div>
                         )
                     })()}
+                    
+                    {/* Payment Information for Credit Sales */}
+                    {selectedSaleDetails && selectedSaleDetails.transactionType === 'credito' && (
+                        <>
+                            <Separator className="my-4" />
+                            <div className="space-y-3">
+                                <h4 className="font-semibold text-sm">Información de Pagos:</h4>
+                                
+                                {/* Payment Summary */}
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div className="space-y-1">
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Total Abonado:</span>
+                                            <span className="font-medium text-green-600">
+                                                {activeSymbol}{(selectedSaleDetails.paidAmount * activeRate).toFixed(2)}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Saldo Pendiente:</span>
+                                            <span className={`font-medium ${(selectedSaleDetails.total - selectedSaleDetails.paidAmount) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                                {activeSymbol}{((selectedSaleDetails.total - selectedSaleDetails.paidAmount) * activeRate).toFixed(2)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Estado:</span>
+                                            <Badge variant={selectedSaleDetails.status === 'paid' ? 'default' : 'destructive'} className="text-xs">
+                                                {selectedSaleDetails.status === 'paid' ? 'Pagado' : 'Pendiente'}
+                                            </Badge>
+                                        </div>
+                                        {selectedSaleDetails.creditDays && (
+                                            <div className="flex justify-between">
+                                                <span className="text-muted-foreground">Días de Crédito:</span>
+                                                <span className="font-medium">{selectedSaleDetails.creditDays} días</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Payment History */}
+                                {selectedSaleDetails.payments && selectedSaleDetails.payments.length > 0 && (
+                                    <div className="mt-4">
+                                        <h5 className="font-medium text-sm mb-2">Historial de Pagos:</h5>
+                                        <div className="space-y-2 max-h-32 overflow-y-auto">
+                                            {selectedSaleDetails.payments.map((payment, index) => (
+                                                <div key={payment.id || index} className="flex justify-between items-center text-sm p-2 bg-muted/50 rounded">
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium">{payment.method}</span>
+                                                        <span className="text-xs text-muted-foreground">
+                                                            {isClient && payment.date && isValid(getDate(payment.date))
+                                                                ? format(getDate(payment.date), 'dd/MM/yyyy HH:mm')
+                                                                : '...'}
+                                                        </span>
+                                                        {payment.reference && (
+                                                            <span className="text-xs text-muted-foreground">Ref: {payment.reference}</span>
+                                                        )}
+                                                    </div>
+                                                    <span className="font-medium text-green-600">
+                                                        {activeSymbol}{(payment.amount * activeRate).toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
+                    <DialogFooter className="flex justify-between">
+                        <div>
+                            {selectedSaleDetails && selectedSaleDetails.transactionType === 'credito' && 
+                             selectedSaleDetails.status === 'unpaid' && 
+                             (selectedSaleDetails.total - selectedSaleDetails.paidAmount) > 0 && (
+                                <Button 
+                                    onClick={() => handleAddPayment(selectedSaleDetails)}
+                                    className="bg-green-600 hover:bg-green-700"
+                                >
+                                    Abonar a Cuenta
+                                </Button>
+                            )}
+                        </div>
+                        <DialogClose asChild>
+                            <Button variant="outline">Cerrar</Button>
+                        </DialogClose>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Payment Modal */}
+            <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Abonar a Cuenta</DialogTitle>
+                        <DialogDescription>
+                            Venta: {saleForPayment?.id} | Cliente: {saleForPayment?.customerName}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        {saleForPayment && (
+                            <>
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                        <span className="text-muted-foreground">Total de la venta:</span>
+                                        <div className="font-medium">{activeSymbol}{(saleForPayment.total * activeRate).toFixed(2)}</div>
+                                    </div>
+                                    <div>
+                                        <span className="text-muted-foreground">Ya abonado:</span>
+                                        <div className="font-medium text-green-600">{activeSymbol}{(saleForPayment.paidAmount * activeRate).toFixed(2)}</div>
+                                    </div>
+                                </div>
+                                <div className="p-3 bg-muted/50 rounded">
+                                    <span className="text-sm text-muted-foreground">Saldo pendiente:</span>
+                                    <div className="text-lg font-bold text-red-600">
+                                        {activeSymbol}{((saleForPayment.total - saleForPayment.paidAmount) * activeRate).toFixed(2)}
+                                    </div>
+                                </div>
+                                <div className="text-center text-sm text-muted-foreground">
+                                    Para realizar un abono, vaya al módulo de <strong>Créditos</strong> donde podrá registrar el pago correspondiente.
+                                </div>
+                            </>
+                        )}
+                    </div>
                     <DialogFooter>
                         <DialogClose asChild>
                             <Button variant="outline">Cerrar</Button>
+                        </DialogClose>
+                        <DialogClose asChild>
+                            <Button 
+                                onClick={() => {
+                                    // Redirect to credits page
+                                    window.location.href = '/credits';
+                                }}
+                                className="bg-blue-600 hover:bg-blue-700"
+                            >
+                                Ir a Créditos
+                            </Button>
                         </DialogClose>
                     </DialogFooter>
                 </DialogContent>

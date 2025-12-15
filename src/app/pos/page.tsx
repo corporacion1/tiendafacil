@@ -1708,6 +1708,8 @@ export default function POSPage() {
       }),
       // Include ticket number (serie-correlativo) for the server to store
       ticketNumber: ticketNumber || null,
+      // Include series for filtering by POS point
+      series: localSeries || null,
     } as any;
 
     // --- SAVE TO DATABASE WITH AUTOMATIC MOVEMENT TRACKING ---

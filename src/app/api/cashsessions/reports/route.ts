@@ -32,13 +32,53 @@ export async function GET(request: NextRequest) {
         const endDate = session.closing_date || new Date().toISOString();
 
         // 3. Obtener ventas del período
-        const { data: sales, error: salesError } = await supabaseAdmin
-            .from('sales')
-            .select('*')
-            .eq('store_id', storeId)
-            .gte('created_at', startDate)
-            .lte('created_at', endDate)
-            .neq('status', 'cancelled'); // Excluir ventas canceladas
+        let sales: any[] = [];
+        let salesError: any = null;
+
+        // Intentar primero con filtro por serie (si la columna existe)
+        if (session.series) {
+            console.log(`📊 [Report API] Intentando filtrar ventas por serie: ${session.series}`);
+            
+            const { data: seriesFilteredSales, error: seriesError } = await supabaseAdmin
+                .from('sales')
+                .select('*')
+                .eq('store_id', storeId)
+                .gte('created_at', startDate)
+                .lte('created_at', endDate)
+                .neq('status', 'cancelled')
+                .eq('series', session.series);
+
+            // Si el filtro por serie falla (columna no existe), usar consulta sin serie
+            if (seriesError && seriesError.code === '42703') {
+                console.log(`⚠️ [Report API] Columna 'series' no existe, obteniendo todas las ventas del período`);
+                
+                const { data: allSales, error: allSalesError } = await supabaseAdmin
+                    .from('sales')
+                    .select('*')
+                    .eq('store_id', storeId)
+                    .gte('created_at', startDate)
+                    .lte('created_at', endDate)
+                    .neq('status', 'cancelled');
+
+                sales = allSales || [];
+                salesError = allSalesError;
+            } else {
+                sales = seriesFilteredSales || [];
+                salesError = seriesError;
+            }
+        } else {
+            // Si no hay serie en la sesión, obtener todas las ventas del período
+            const { data: allSales, error: allSalesError } = await supabaseAdmin
+                .from('sales')
+                .select('*')
+                .eq('store_id', storeId)
+                .gte('created_at', startDate)
+                .lte('created_at', endDate)
+                .neq('status', 'cancelled');
+
+            sales = allSales || [];
+            salesError = allSalesError;
+        }
 
         if (salesError) {
             console.error('❌ Error buscando ventas:', salesError);
@@ -49,7 +89,15 @@ export async function GET(request: NextRequest) {
         const salesData = sales || [];
 
         const totalSales = salesData.length;
-        const totalAmount = salesData.reduce((sum: number, sale: any) => sum + (sale.total || 0), 0);
+        // Para el total de ingresos, usar paid_amount para créditos y total para contado (si las columnas existen)
+        const totalAmount = salesData.reduce((sum: number, sale: any) => {
+            // Verificar si existen las columnas de crédito
+            if (sale.transaction_type && sale.transaction_type === 'credito' && sale.paid_amount !== undefined) {
+                return sum + (sale.paid_amount || 0);
+            } else {
+                return sum + (sale.total || 0);
+            }
+        }, 0);
         const totalItems = salesData.reduce((sum: number, sale: any) => sum + (sale.items?.length || 0), 0); // Asumiendo que items es un array JSON
         const totalTax = salesData.reduce((sum: number, sale: any) => sum + (sale.tax || 0), 0);
         const averageTicket = totalSales > 0 ? totalAmount / totalSales : 0;
@@ -57,8 +105,16 @@ export async function GET(request: NextRequest) {
         // Agrupar por método de pago
         const paymentMethods: Record<string, number> = {};
         salesData.forEach((sale: any) => {
+            // Para ventas a crédito, solo contar el monto abonado, no el total (si las columnas existen)
+            let amountToCount: number;
+            if (sale.transaction_type && sale.transaction_type === 'credito' && sale.paid_amount !== undefined) {
+                amountToCount = sale.paid_amount || 0;
+            } else {
+                amountToCount = sale.total || 0;
+            }
+            
             const method = sale.payment_method || 'Efectivo';
-            paymentMethods[method] = (paymentMethods[method] || 0) + (sale.total || 0);
+            paymentMethods[method] = (paymentMethods[method] || 0) + amountToCount;
         });
 
         // 5. Calcular balances
