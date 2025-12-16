@@ -2,7 +2,7 @@
 "use client"
 import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
-import { Package, PackagePlus, PlusCircle, Trash2, ArrowUpDown, Check, ScanLine, AlertCircle, X, Pencil } from "lucide-react";
+import { Package, PackagePlus, PlusCircle, Trash2, ArrowUpDown, Check, ScanLine, AlertCircle, X, Pencil, EyeOff } from "lucide-react";
 import dynamic from 'next/dynamic';
 
 // Importar el scanner dinámicamente para evitar problemas de SSR
@@ -426,9 +426,31 @@ export default function PurchasesPage() {
                       <div className="absolute top-2 left-2 bg-secondary text-secondary-foreground text-xs font-bold px-2 py-1 rounded">
                         {activeSymbol}{(product.cost * activeRate).toFixed(2)}
                       </div>
+                      {product.status === "inactive" && (
+                        <div className="absolute top-2 right-2 bg-destructive text-destructive-foreground p-1 rounded z-20">
+                          <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </div>
+                      )}
+                      {product.status === "hidden" && (
+                        <div className="absolute top-2 right-2 bg-muted text-muted-foreground p-1 rounded z-20">
+                          <EyeOff className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </div>
+                      )}
                     </CardContent>
-                    <CardFooter className="p-2 bg-background/80 backdrop-blur-sm">
-                      <h3 className="text-sm font-medium truncate">{product.name}</h3>
+                    <CardFooter className={cn(
+                      "p-2 backdrop-blur-sm",
+                      product.status === "inactive" 
+                        ? "bg-destructive/20" 
+                        : product.status === "hidden"
+                        ? "bg-muted/20"
+                        : "bg-background/80"
+                    )}>
+                      <h3 className={cn(
+                        "text-sm font-medium truncate",
+                        (product.status === "inactive" || product.status === "hidden") && "text-muted-foreground"
+                      )}>
+                        {product.name}
+                      </h3>
                     </CardFooter>
                   </Card>
                 )

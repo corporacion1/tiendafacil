@@ -37,7 +37,7 @@ const productSchema = z.object({
   wholesalePrice: z.coerce.number().min(0, "El precio mayorista no puede ser negativo.").max(9999999999.99, "El monto es demasiado grande."),
   cost: z.coerce.number().min(0, "El costo no puede ser negativo.").max(9999999999.99, "El monto es demasiado grande."),
   stock: z.coerce.number().int("El stock debe ser un número entero.").min(0, "El stock no puede ser negativo.").max(9999999999, "La cantidad es demasiado grande."),
-  status: z.enum(["active", "inactive", "promotion"]),
+  status: z.enum(["active", "inactive", "promotion", "hidden"]),
   tax1: z.boolean(),
   tax2: z.boolean(),
   unit: z.string().optional(),
@@ -672,6 +672,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                           <SelectItem value="active">Activo</SelectItem>
                           <SelectItem value="inactive">Inactivo</SelectItem>
                           <SelectItem value="promotion">Promoción</SelectItem>
+                          <SelectItem value="hidden">Ocultar</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

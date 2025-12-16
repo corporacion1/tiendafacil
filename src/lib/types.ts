@@ -81,7 +81,7 @@ export type Product = {
   price: number;
   wholesalePrice: number;
   cost: number;
-  status: 'active' | 'inactive' | 'promotion';
+  status: 'active' | 'inactive' | 'promotion' | 'hidden';
   tax1: boolean;
   tax2: boolean;
   unit?: string;

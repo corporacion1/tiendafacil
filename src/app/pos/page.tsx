@@ -35,6 +35,7 @@ import {
   Share,
   Pencil,
   ShieldCheck,
+  EyeOff,
 } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import dynamic from "next/dynamic";
@@ -218,9 +219,29 @@ const ProductCard = ({
           {activeSymbol}
           {(product.price * activeRate).toFixed(2)}
         </div>
+        {product.status === "inactive" && (
+          <div className="absolute top-1 right-1 bg-destructive text-destructive-foreground p-1 rounded z-20">
+            <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+          </div>
+        )}
+        {product.status === "hidden" && (
+          <div className="absolute top-1 right-1 bg-muted text-muted-foreground p-1 rounded z-20">
+            <EyeOff className="h-3 w-3 sm:h-4 sm:w-4" />
+          </div>
+        )}
       </CardContent>
-      <CardFooter className="p-1 sm:p-2 bg-background/80 backdrop-blur-sm w-full max-w-full">
-        <h3 className="text-xs sm:text-sm font-medium truncate w-full">
+      <CardFooter className={cn(
+        "p-1 sm:p-2 backdrop-blur-sm w-full max-w-full",
+        product.status === "inactive" 
+          ? "bg-destructive/20" 
+          : product.status === "hidden"
+          ? "bg-muted/20"
+          : "bg-background/80"
+      )}>
+        <h3 className={cn(
+          "text-xs sm:text-sm font-medium truncate w-full",
+          (product.status === "inactive" || product.status === "hidden") && "text-muted-foreground"
+        )}>
           {product.name}
         </h3>
       </CardFooter>
@@ -302,6 +323,11 @@ export default function POSPage() {
   } | null>(null);
   const [pricePin, setPricePin] = useState("");
   const [isPricePinOpen, setIsPricePinOpen] = useState(false);
+
+  // -- Estado para validación de PIN al agregar producto inactivo --
+  const [productToAddInactive, setProductToAddInactive] = useState<Product | null>(null);
+  const [inactiveProductPin, setInactiveProductPin] = useState("");
+  const [isInactiveProductPinOpen, setIsInactiveProductPinOpen] = useState(false);
 
   // NOTA: El chequeo de isLocked se hace más abajo, después de todos los hooks
 
@@ -849,29 +875,8 @@ export default function POSPage() {
   const selectedCustomer =
     customerList.find((c) => c.id === selectedCustomerId) ?? null;
 
-  const addToCart = (product: Product) => {
-    if (!isSessionReady) {
-      toast({
-        variant: "destructive",
-        title: "Caja Cerrada",
-        description: "Debes abrir una nueva sesión de caja para vender.",
-      });
-      return;
-    }
-
-    // Activar efecto visual
-    setClickedProductId(getProductKey(product));
-
-    // Validar estado del producto
-    if (product.status !== "active" && product.status !== "promotion") {
-      toast({
-        variant: "destructive",
-        title: "Producto no disponible",
-        description: `"${product.name}" no está disponible para venta.`,
-      });
-      return;
-    }
-
+  // Función auxiliar para agregar producto al carrito (sin validaciones de estado)
+  const addProductToCart = (product: Product) => {
     // Obtener producto actualizado del inventario
     const currentProduct = products.find((p) => p.id === product.id);
     if (!currentProduct) {
@@ -930,6 +935,41 @@ export default function POSPage() {
     }, 300);
   };
 
+  const addToCart = (product: Product) => {
+    if (!isSessionReady) {
+      toast({
+        variant: "destructive",
+        title: "Caja Cerrada",
+        description: "Debes abrir una nueva sesión de caja para vender.",
+      });
+      return;
+    }
+
+    // Activar efecto visual
+    setClickedProductId(getProductKey(product));
+
+    // Si el producto está inactivo y el PIN está activo, solicitar PIN
+    if (product.status === "inactive" && hasPin) {
+      setProductToAddInactive(product);
+      setInactiveProductPin("");
+      setIsInactiveProductPinOpen(true);
+      return;
+    }
+
+    // Si el producto está inactivo y no hay PIN, no permitir agregarlo
+    if (product.status === "inactive" && !hasPin) {
+      toast({
+        variant: "destructive",
+        title: "Producto no disponible",
+        description: `"${product.name}" está inactivo y no está disponible para venta.`,
+      });
+      return;
+    }
+
+    // Agregar producto activo/promoción directamente
+    addProductToCart(product);
+  };
+
   const removeFromCart = (productId: string, price: number) => {
     // Si hay PIN configurado, pedir confirmación
     if (hasPin) {
@@ -969,6 +1009,32 @@ export default function POSPage() {
           variant: "destructive",
           title: "PIN Incorrecto",
           description: "No tienes permiso para cambiar el precio de este ítem.",
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Error al verificar PIN.",
+      });
+    }
+  };
+
+  const handleConfirmAddInactiveProduct = async () => {
+    if (!productToAddInactive) return;
+
+    try {
+      const isValid = await checkPin(inactiveProductPin);
+      if (isValid) {
+        addProductToCart(productToAddInactive);
+        setIsInactiveProductPinOpen(false);
+        setProductToAddInactive(null);
+        setInactiveProductPin("");
+      } else {
+        toast({
+          variant: "destructive",
+          title: "PIN Incorrecto",
+          description: "No tienes permiso para agregar productos inactivos.",
         });
       }
     } catch (error) {
@@ -2538,7 +2604,8 @@ export default function POSPage() {
   };
 
   const filteredProducts = useMemo(() => {
-    return (products || []).filter(
+    // Separar productos activos/promoción, inactivos y ocultos
+    const activeProducts = (products || []).filter(
       (product) =>
         (product.status === "active" || product.status === "promotion") &&
         (selectedFamily === "all" || product.family === selectedFamily) &&
@@ -2546,6 +2613,27 @@ export default function POSPage() {
           (product.sku &&
             product.sku.toLowerCase().includes(searchTerm.toLowerCase()))),
     );
+
+    const inactiveProducts = (products || []).filter(
+      (product) =>
+        product.status === "inactive" &&
+        (selectedFamily === "all" || product.family === selectedFamily) &&
+        (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (product.sku &&
+            product.sku.toLowerCase().includes(searchTerm.toLowerCase()))),
+    );
+
+    const hiddenProducts = (products || []).filter(
+      (product) =>
+        product.status === "hidden" &&
+        (selectedFamily === "all" || product.family === selectedFamily) &&
+        (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (product.sku &&
+            product.sku.toLowerCase().includes(searchTerm.toLowerCase()))),
+    );
+
+    // Retornar productos activos primero, luego inactivos, luego ocultos al final
+    return [...activeProducts, ...inactiveProducts, ...hiddenProducts];
   }, [products, searchTerm, selectedFamily]);
 
   useEffect(() => {
@@ -4809,6 +4897,46 @@ export default function POSPage() {
             />
             <Button className="w-full" onClick={handleConfirmDelete}>
               Confirmar Eliminación
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Modal de Validación de PIN para agregar producto inactivo */}
+      <Dialog
+        open={isInactiveProductPinOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsInactiveProductPinOpen(false);
+            setProductToAddInactive(null);
+            setInactiveProductPin("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-center flex flex-col items-center gap-2">
+              <ShieldCheck className="w-10 h-10 text-primary" />
+              Autorización Requerida
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              Ingresa el PIN de seguridad para agregar un producto inactivo al carrito.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Input
+              type="password"
+              placeholder="****"
+              className="text-center text-2xl tracking-[0.5em]"
+              value={inactiveProductPin}
+              onChange={(e) => setInactiveProductPin(e.target.value)}
+              maxLength={4}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleConfirmAddInactiveProduct();
+              }}
+              autoFocus
+            />
+            <Button className="w-full" onClick={handleConfirmAddInactiveProduct}>
+              Confirmar Agregar Producto
             </Button>
           </div>
         </DialogContent>

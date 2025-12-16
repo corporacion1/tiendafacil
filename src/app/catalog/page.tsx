@@ -1277,6 +1277,16 @@ export default function CatalogPage() {
     const filtered = productsForStore
       .filter(
         (product) => {
+          // Excluir productos con estado 'hidden', 'inactive' o stock = 0
+          const isHidden = product.status === 'hidden';
+          const isInactive = product.status === 'inactive';
+          const hasNoStock = product.type !== 'service' && product.stock === 0;
+          
+          // Si el producto está oculto, inactivo o sin stock, no mostrarlo en el catálogo
+          if (isHidden || isInactive || hasNoStock) {
+            return false;
+          }
+          
           const statusOk = product.status === 'active' || product.status === 'promotion';
           const stockOk = product.type === 'service' || product.stock > 0;
           const familyOk = selectedFamily === 'all' || product.family === selectedFamily;

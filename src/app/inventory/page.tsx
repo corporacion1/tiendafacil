@@ -61,6 +61,7 @@ const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewM
       case 'active': return 'outline';
       case 'inactive': return 'secondary';
       case 'promotion': return 'default';
+      case 'hidden': return 'secondary';
       default: return 'outline';
     }
   }
@@ -70,6 +71,7 @@ const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewM
       case 'active': return 'Activo';
       case 'inactive': return 'Inactivo';
       case 'promotion': return 'Promoción';
+      case 'hidden': return 'Ocultar';
       default: return status;
     }
   }
