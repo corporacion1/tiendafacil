@@ -27,9 +27,9 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
   const retryCountRef = useRef<number>(0);
 
   // Configuración del polling
-  const POLLING_INTERVAL = 10000; // 10 segundos
+  const POLLING_INTERVAL = 3000; // 3 segundos
   const MIN_FETCH_INTERVAL = 2000; // Mínimo 2 segundos entre fetches
-  const MAX_RETRIES = 3;
+  const MAX_RETRIES = 5;
 
   const fetchOrders = useCallback(async (showLoadingState = true) => {
     if (!storeId || !isActiveRef.current) {
@@ -219,7 +219,7 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
   // Cleanup al desmontar
   useEffect(() => {
     return () => {
-      isActiveRef.current = false;
+      isActiveRef.current = true;
       stopPolling();
     };
   }, [stopPolling]);

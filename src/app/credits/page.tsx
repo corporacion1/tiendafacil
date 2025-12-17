@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, ReactNode } from "react";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { MoreHorizontal, Search, PlusCircle, DollarSign, Clock, CheckCircle, AlertCircle, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +37,8 @@ interface AccountReceivable {
     status: 'pending' | 'partial' | 'paid' | 'overdue' | 'cancelled';
     creditDays: number;
     payments: Array<{
+        method: ReactNode;
+        date: string;
         id: string;
         amount: number;
         paymentMethod: string;

@@ -2885,11 +2885,11 @@ export default function POSPage() {
       // Marcar pedido como "procesado" usando el nuevo hook para que desaparezca de la lista
       try {
         await updateOrderStatus(
-  order.orderId,
-  "processed",
-  undefined, // No hay saleId aún
-  userProfile?.displayName || (userProfile as any)?.name || "Usuario POS",
-);
+          order.orderId,
+          "processed",
+          undefined, // No hay saleId aún
+          userProfile?.displayName || (userProfile as any)?.name || "Usuario POS",
+        );
         // Refrescar lista para que desaparezca inmediatamente
         setTimeout(() => refetchPendingOrders(), 100);
 
@@ -3526,7 +3526,13 @@ export default function POSPage() {
                           </div>
                         ) : (
                           <div className="space-y-4">
-                            {pendingOrdersFromDB.map((order) => (
+                            {pendingOrdersFromDB
+                              .filter(
+                                (order) =>
+                                  order.status === "pending" ||
+                                  order.status === "processing",
+                              )
+                              .map((order) => (
                               <div
                                 key={order.orderId}
                                 className="p-4 border rounded-lg"
@@ -3538,19 +3544,21 @@ export default function POSPage() {
                                         {order.orderId}
                                       </h4>
                                       <Badge
-                                        variant={
-                                          order.status === "pending"
-                                            ? "secondary"
-                                            : "default"
-                                        }
-                                        className="text-xs"
-                                      >
-                                        {order.status === "pending"
-                                          ? "Pendiente"
+                                      variant={
+                                        order.status === "pending"
+                                          ? "secondary"
                                           : order.status === "processing"
-                                            ? "Procesando"
-                                            : order.status}
-                                      </Badge>
+                                          ? "default"
+                                          : "outline"
+                                      }
+                                      className="text-xs"
+                                    >
+                                      {order.status === "pending"
+                                        ? "Pendiente"
+                                        : order.status === "processing"
+                                          ? "En Proceso"
+                                          : order.status}
+                                    </Badge>
                                     </div>
                                     <div className="space-y-1">
                                       <p className="text-sm font-medium text-blue-600">
