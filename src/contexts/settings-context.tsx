@@ -683,11 +683,34 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     try {
       console.log('🔄 Recargando productos desde Supabase...');
       const response = await fetch(`/api/products?storeId=${activeStoreId}&_t=${Date.now()}`);
-      if (response.ok) {
-        const productsData = await response.json();
-        setProducts(productsData);
-        console.log('✅ Productos recargados:', productsData.length);
+      
+      if (!response.ok) {
+        console.error('❌ Error en la respuesta de productos:', response.status);
+        return;
       }
+
+      const data = await response.json();
+      console.log('📦 Datos crudos recibidos:', data);
+
+      // Manejar diferentes estructuras de respuesta
+      let productsData: Product[] = [];
+      
+      if (Array.isArray(data)) {
+        // Si la API devuelve directamente un array
+        productsData = data;
+      } else if (data.products && Array.isArray(data.products)) {
+        // Si la API devuelve { products: [...] }
+        productsData = data.products;
+      } else if (data.data && Array.isArray(data.data)) {
+        // Si la API devuelve { data: [...] }
+        productsData = data.data;
+      }
+
+      console.log(`✅ Productos procesados para actualizar estado: ${productsData.length} items`);
+      
+      // Actualizar el estado global de productos
+      setProducts(productsData);
+
     } catch (error) {
       console.error('❌ Error recargando productos:', error);
     }

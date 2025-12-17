@@ -214,6 +214,7 @@ export default function InventoryPage() {
       logger.error('❌ [Inventory] Error cargando producto para edición:', e);
       toast({ variant: 'destructive', title: 'Error de red', description: 'No se pudo cargar el producto.' });
     }
+    await reloadProducts();
   };
 
   const handleViewMovements = (product: Product) => {
@@ -315,11 +316,18 @@ export default function InventoryPage() {
 
       const updatedProduct = await response.json();
 
-      // Actualizar estado local
-      setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+      // 1. Forzar recarga manual de productos
+      const freshProducts = await fetch(`/api/products?storeId=${activeStoreId}&_t=${Date.now()}`)
+        .then(res => res.json())
+        .catch(() => []);
+
+      // 2. Actualizar estado con la respuesta directa
+      setProducts(Array.isArray(freshProducts) ? freshProducts : (freshProducts?.products || []));
+
+      // 3. Cerrar diálogo
       setProductToEdit(null);
       toast({ title: 'Producto Actualizado', description: `El producto "${updatedProduct.name}" ha sido actualizado.` });
-      await reloadProducts();
+      reloadProducts();
       return true;
 
     } catch (err) {
@@ -328,6 +336,14 @@ export default function InventoryPage() {
       return false;
     }
   }
+
+  // 🔥 EFECTO que se ejecuta CADA VEZ que se cierra el modal de edición
+  useEffect(() => {
+    if (!productToEdit) { // Cuando el modal se cierra
+      console.log('🔄 Modal cerrado, recargando productos...');
+      reloadProducts(); // Esto debería actualizar la lista
+    }
+  }, [productToEdit, reloadProducts]);
 
   const handleDelete = async (productId: string) => {
     const isProductInSale = sales.some(sale => sale.items.some(item => item.productId === productId));

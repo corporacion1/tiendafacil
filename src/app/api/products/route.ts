@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       [`products-${storeId}`], // Key parts
       {
         tags: [`products-${storeId}`, 'products'], // Tags para invalidación
-        revalidate: 3600 // Fallback: revalidar cada hora si no hay cambios
+        revalidate: 3 // Fallback: revalidar cada hora si no hay cambios
       }
     );
 
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
       storeId: p.store_id,
       sku: p.sku,
       name: p.name,
-      description: p.description,
+      description: p.description || '',
       family: p.family,
       price: parseFloat(p.price) || 0,
       wholesalePrice: parseFloat(p.wholesale_price) || 0,
