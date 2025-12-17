@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { logger } from "@/lib/logger";
+import { IDGenerator } from "@/lib/id-generator";
 import { RouteGuard } from "@/components/route-guard";
 import { usePermissions } from "@/hooks/use-permissions";
 import type { Product, InventoryMovement, Sale } from "@/lib/types";
@@ -789,7 +790,8 @@ export default function InventoryPage() {
         } else {
           const newProduct = {
             ...item.data,
-            id: `prod-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            id: IDGenerator.generate('product', activeStoreId),
+            storeId: activeStoreId,
             created_at: new Date().toISOString(),
             user_id: (user as any)?.id || 'system',
             status: 'active',

@@ -9,7 +9,7 @@ import type { Product } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAutoSync } from "@/hooks/use-auto-sync";
-
+import { IDGenerator } from "@/lib/id-generator";
 import { RequireAuth } from "@/components/require-auth";
 
 export default function ProductsPage() {
@@ -53,7 +53,7 @@ export default function ProductsPage() {
     try {
       const newProduct: Product = {
         ...data,
-        id: `prod-${Date.now()}`,
+        id: IDGenerator.generate('product', activeStoreId),
         storeId: activeStoreId,
         createdAt: new Date().toISOString(),
         userId: (user as any)?.id || 'system' // Para rastrear quién creó el producto
