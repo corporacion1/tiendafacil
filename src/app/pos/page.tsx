@@ -2498,7 +2498,7 @@ export default function POSPage() {
       const url = editingCustomerId ? "/api/costumers" : "/api/costumers"; // Using same endpoint with different method
       const method = editingCustomerId ? "PUT" : "POST";
 
-      const newId = `cust-${Date.now()}`;
+      const newId = IDGenerator.generate("customer");
       const customerData: Customer = {
         id: editingCustomerId || newCustomer.id || newId,
         name: newCustomer.name.trim(),
@@ -2583,7 +2583,7 @@ export default function POSPage() {
           description: `El cliente ha sido actualizado localmente.`,
         });
       } else {
-        const newId = `cust-${Date.now()}`;
+        const newId = IDGenerator.generate("customer");
         const customerToAdd: Customer = {
           id: newId,
           name: newCustomer.name.trim(),

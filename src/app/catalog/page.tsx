@@ -1025,7 +1025,7 @@ export default function CatalogPage() {
     try {
       // Crear cliente en Supabase
       const newCustomer = await createCustomerInSupabase({
-        id: IDGenerator.generate('customer'),
+        id: IDGenerator.generate('customer', storeIdForCatalog),
         name: registerForm.name,
         email: registerForm.email,
         phone: registerForm.phone,
