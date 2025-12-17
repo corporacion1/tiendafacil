@@ -608,8 +608,8 @@ export default function CreditsPage() {
                                     <TableBody>
                                         {selectedAccount?.payments && selectedAccount.payments.length > 0 ? selectedAccount.payments.map(p => (
                                             <TableRow key={p.id}>
-                                                <TableCell>{getFormattedDateTime(p.processedAt)}</TableCell>
-                                                <TableCell>{p.paymentMethod}</TableCell>
+                                                <TableCell>{getFormattedDateTime(p.date)}</TableCell>
+                                                <TableCell>{p.method}</TableCell>
                                                 <TableCell>
                                                     <div className="flex flex-col">
                                                         <span>{p.reference || 'N/A'}</span>
