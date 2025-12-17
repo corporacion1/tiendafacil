@@ -232,11 +232,11 @@ const ProductCard = ({
       </CardContent>
       <CardFooter className={cn(
         "p-1 sm:p-2 backdrop-blur-sm w-full max-w-full",
-        product.status === "inactive" 
-          ? "bg-destructive/20" 
+        product.status === "inactive"
+          ? "bg-destructive/20"
           : product.status === "hidden"
-          ? "bg-muted/20"
-          : "bg-background/80"
+            ? "bg-muted/20"
+            : "bg-background/80"
       )}>
         <h3 className={cn(
           "text-xs sm:text-sm font-medium truncate w-full",
@@ -403,9 +403,11 @@ export default function POSPage() {
   const [isCustomerSearchOpen, setIsCustomerSearchOpen] = useState(false);
 
   const [isProcessSaleDialogOpen, setIsProcessSaleDialogOpen] = useState(false);
-  const [payments, setPayments] = useState<Omit<SalePayment, "id" | "date">[]>(
-    [],
-  );
+  const [payments, setPayments] = useState<Array<{
+  method: string;
+  amount: number;
+  reference?: string;
+}>>([]);
   const [currentPaymentMethod, setCurrentPaymentMethod] = useState("efectivo");
   const [currentPaymentAmount, setCurrentPaymentAmount] = useState<
     number | string
@@ -1724,7 +1726,7 @@ export default function POSPage() {
       return;
     }
 
-    const isCredit = remainingBalance > 0 && isCreditSale;
+    const isCredit = remainingBalance > 0;
 
     if (
       isCredit &&
@@ -1749,19 +1751,18 @@ export default function POSPage() {
     let saleId: string | undefined;
     let createdSale: any = null;
 
-    const finalPayments: SalePayment[] = payments.map((p) => ({
-      ...p,
-      date: new Date().toISOString(),
-    }));
+    const finalPayments: SalePayment[] = payments.map((p, index) => ({
+  ...p,
+  id: `pay-${Date.now()}-${index}`, // Generar ID único
+  date: new Date().toISOString(),
+}));
 
     const newSale: any = {
       customerId: selectedCustomer?.id ?? currentOrder?.customerId ?? null,
-      customerName:
-        selectedCustomer?.name ??
-        currentOrder?.customerName ??
-        "Cliente Eventual",
-      customerPhone:
-        selectedCustomer?.phone ?? currentOrder?.customerPhone ?? null,
+      customerName: selectedCustomer?.name ?? currentOrder?.customerName ?? "Cliente Eventual",
+      customerPhone: selectedCustomer?.phone ?? currentOrder?.customerPhone ?? null,
+      customerAddress: selectedCustomer?.address ?? currentOrder?.customerAddress ?? null,
+      customerEmail: selectedCustomer?.email ?? currentOrder?.customerEmail ?? null,
       items: cartItems.map((item) => ({
         productId: item.product.id,
         productName: item.product.name,
@@ -1771,7 +1772,7 @@ export default function POSPage() {
       total: total,
       subtotal: subtotal,
       tax: totalTaxes,
-      discount: finalDiscount, // Descuento aplicado
+      discount: finalDiscount || 0, // Descuento aplicado
       notes: discountNotes || null, // Motivo del descuento
       paymentMethod:
         payments.length > 0
@@ -1780,8 +1781,8 @@ export default function POSPage() {
             : payments[0].method
           : "Pendiente",
       date: new Date().toISOString(),
-      transactionType: isCredit ? "credito" : "contado",
       status: isCredit ? "unpaid" : "paid",
+      transactionType: isCredit ? "credito" : "contado",
       paidAmount: totalPaid,
       payments: finalPayments,
       storeId: activeStoreId,
@@ -1858,8 +1859,8 @@ export default function POSPage() {
 
           throw new Error(
             errorData.error ||
-              errorData.detalles ||
-              `Error al guardar la venta (${saleResponse.status})`,
+            errorData.detalles ||
+            `Error al guardar la venta (${saleResponse.status})`,
           );
         } catch (innerErr) {
           // Re-throw any inspection errors
@@ -1909,9 +1910,9 @@ export default function POSPage() {
       // Accept both camelCase and snake_case just in case the API returns either
       setLastTicketNumber(
         createdSale.ticketNumber ||
-          createdSale.ticket_number ||
-          ticketNumber ||
-          null,
+        createdSale.ticket_number ||
+        ticketNumber ||
+        null,
       );
 
       // Si hay un pedido asociado, actualizar su estado a 'processed'
@@ -1926,8 +1927,8 @@ export default function POSPage() {
             "processed",
             saleId,
             userProfile?.displayName ||
-              (userProfile as any)?.name ||
-              "Usuario POS",
+            (userProfile as any)?.name ||
+            "Usuario POS",
           );
           if (success) {
             console.log("✅ Pedido actualizado correctamente");
@@ -1958,7 +1959,7 @@ export default function POSPage() {
     // Update active session
     const updatedSession = {
       ...activeSession,
-      salesIds: [...(activeSession.salesIds || []), saleId],
+      salesIds: [...(activeSession.salesIds || []), saleId].filter((id): id is string => id !== undefined),
       transactions: {
         ...activeSession.transactions,
         ...finalPayments.reduce(
@@ -2199,16 +2200,18 @@ export default function POSPage() {
           id: orderIdToUse,
           customerId: selectedCustomer?.id ?? null,
           customerName: newOrder.customerName,
+          customerPhone: selectedCustomer?.phone || "",
+          customerEmail: selectedCustomer?.email || "",
           // Mapeamos los items de vuelta a una estructura que TicketPreview pueda entender (aunque TicketPreview re-hidrata usando productId)
           // Pero TicketPreview espera SalePayment[] para pagos, array vacío está bien.
           items: newOrder.items,
           total: newOrder.total,
           date: newOrder.createdAt,
-          transactionType: "contado",
-          status: "pending",
-          paidAmount: 0,
-          payments: [],
-          storeId: newOrder.storeId,
+          transactionType: lastSale?.transactionType || "contado",
+          status: lastSale?.status || "pending",
+          paidAmount: lastSale?.paidAmount || 0,
+          payments: lastSale?.payments || [],
+          storeId: lastSale?.storeId,
           userId: (userProfile as any)?.id || "system",
         } as any;
 
@@ -2567,11 +2570,11 @@ export default function POSPage() {
           prev.map((c) =>
             c.id === editingCustomerId
               ? {
-                  ...c,
-                  name: newCustomer.name.trim(),
-                  phone: newCustomer.phone.trim(),
-                  address: newCustomer.address.trim(),
-                }
+                ...c,
+                name: newCustomer.name.trim(),
+                phone: newCustomer.phone.trim(),
+                address: newCustomer.address.trim(),
+              }
               : c,
           ),
         );
@@ -2882,13 +2885,11 @@ export default function POSPage() {
       // Marcar pedido como "procesado" usando el nuevo hook para que desaparezca de la lista
       try {
         await updateOrderStatus(
-          order.orderId,
-          "processed",
-          saleId,
-          userProfile?.displayName ||
-            (userProfile as any)?.name ||
-            "Usuario POS",
-        );
+  order.orderId,
+  "processed",
+  undefined, // No hay saleId aún
+  userProfile?.displayName || (userProfile as any)?.name || "Usuario POS",
+);
         // Refrescar lista para que desaparezca inmediatamente
         setTimeout(() => refetchPendingOrders(), 100);
 
@@ -2930,8 +2931,8 @@ export default function POSPage() {
           "processing",
           undefined,
           userProfile?.displayName ||
-            (userProfile as any)?.name ||
-            "Usuario POS",
+          (userProfile as any)?.name ||
+          "Usuario POS",
         );
         console.log("✅ Estado del pedido actualizado exitosamente");
       } catch (statusError) {
@@ -3178,7 +3179,7 @@ export default function POSPage() {
               <div className="grid gap-4">
                 <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
                   {getDisplayImageUrl(productDetails.imageUrl) &&
-                  !productImageError ? (
+                    !productImageError ? (
                     <Image
                       src={getDisplayImageUrl(productDetails.imageUrl)}
                       alt={productDetails.name}
@@ -3317,7 +3318,7 @@ export default function POSPage() {
                       <Badge variant="secondary" className="flex items-center gap-2 text-xs">
                         <Unlock className="h-4 w-4 text-green-500" />
                         <span>
-                          Caja abierta por: {activeSession.openedBy ?? activeSession.opened_by ?? userProfile?.displayName ?? "Usuario"}
+                          Caja abierta por: {activeSession.openedBy ?? userProfile?.displayName ?? "Usuario"}
                         </span>
                       </Badge>
                     )}
@@ -3487,7 +3488,7 @@ export default function POSPage() {
                       <div className="py-4 flex-1 overflow-y-auto">
                         {isLoadingPendingOrders && <p>Cargando pedidos...</p>}
                         {!isLoadingPendingOrders &&
-                        pendingOrdersFromDB.length === 0 ? (
+                          pendingOrdersFromDB.length === 0 ? (
                           <div className="text-center text-muted-foreground py-8">
                             <p>No hay pedidos pendientes de clientes.</p>
                             <p className="text-xs mt-1">
@@ -4178,8 +4179,8 @@ export default function POSPage() {
                                       className={cn(
                                         "h-3 w-3 sm:h-4 sm:w-4",
                                         item.price ===
-                                          item.product.wholesalePrice &&
-                                          "text-accent-foreground",
+                                        item.product.wholesalePrice &&
+                                        "text-accent-foreground",
                                       )}
                                     />
                                   </Button>
@@ -4341,20 +4342,20 @@ export default function POSPage() {
                           {paymentMethods.find(
                             (m) => m.id === currentPaymentMethod,
                           )?.requiresRef && (
-                            <div className="space-y-2">
-                              <Label className="text-xs sm:text-sm">
-                                Referencia
-                              </Label>
-                              <Input
-                                placeholder="Nro. de referencia"
-                                value={currentPaymentRef}
-                                onChange={(e) =>
-                                  setCurrentPaymentRef(e.target.value)
-                                }
-                                className="h-8 sm:h-10 text-xs sm:text-sm"
-                              />
-                            </div>
-                          )}
+                              <div className="space-y-2">
+                                <Label className="text-xs sm:text-sm">
+                                  Referencia
+                                </Label>
+                                <Input
+                                  placeholder="Nro. de referencia"
+                                  value={currentPaymentRef}
+                                  onChange={(e) =>
+                                    setCurrentPaymentRef(e.target.value)
+                                  }
+                                  className="h-8 sm:h-10 text-xs sm:text-sm"
+                                />
+                              </div>
+                            )}
                           <Button
                             className="w-full h-8 sm:h-10 text-xs sm:text-sm"
                             onClick={handleAddPayment}
@@ -4589,12 +4590,12 @@ export default function POSPage() {
                 ? cartItems
                 : lastSale
                   ? lastSale.items.map((item) => ({
-                      product: (products || []).find(
-                        (p) => p.id === item.productId,
-                      )!,
-                      quantity: item.quantity,
-                      price: item.price,
-                    }))
+                    product: (products || []).find(
+                      (p) => p.id === item.productId,
+                    )!,
+                    quantity: item.quantity,
+                    price: item.price,
+                  }))
                   : cartItems
             }
             saleId={ticketType === "sale" ? lastSale?.id : undefined}

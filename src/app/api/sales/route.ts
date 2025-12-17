@@ -122,8 +122,8 @@ export async function POST(request: Request) {
         delete retryData.customer_card_id;
         // Remove optional credit and series fields
         delete retryData.series;
-        delete retryData.paid_amount;
-        delete retryData.transaction_type;
+        //delete retryData.paid_amount;
+        //delete retryData.transaction_type;
 
         const retryAttempt = await attemptInsert(retryData);
         if (retryAttempt.error) {
