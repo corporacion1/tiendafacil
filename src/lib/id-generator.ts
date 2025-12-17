@@ -19,6 +19,7 @@ export class IDGenerator {
     'sale': 'SAL',
     'purchase': 'PUR',
     'order': 'ORD',
+    'user': 'USE',
     
     // Clientes y proveedores
     'cust': 'CUS',
