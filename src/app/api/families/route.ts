@@ -164,6 +164,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     console.log(' [Families API] Family deleted:', id);
+    
     return NextResponse.json({ message: 'Familia eliminada exitosamente' });
   } catch (error: any) {
     console.error(' [Families API] Unexpected error:', error);

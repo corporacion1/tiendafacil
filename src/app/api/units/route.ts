@@ -8,9 +8,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const storeId = searchParams.get('storeId');
 
-    if (!storeId) {
-      return NextResponse.json({ error: 'storeId es requerido' }, { status: 400 });
-    }
+    if (!storeId) return NextResponse.json({ error: 'storeId es requerido' }, { status: 400 });
 
     console.log(' [Units API] GET units for store:', storeId);
 
@@ -18,7 +16,7 @@ export async function GET(request: NextRequest) {
       .from('units')
       .select('*')
       .eq('store_id', storeId)
-      .order('name', { ascending: true });
+      .order('name', { ascending: false });
 
     if (error) {
       console.error(' [Units API] Error fetching units:', error);

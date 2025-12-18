@@ -113,7 +113,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const [currencyRates, setCurrencyRates] = useState<CurrencyRate[]>([
     {
       id: 'local-rate-1',
-      rate: 36.50,
+      rate: 236.50,
       date: new Date().toISOString(),
       storeId: process.env.NEXT_PUBLIC_DEFAULT_STORE_ID || 'ST-1234567890123',
       createdBy: 'Sistema Local',

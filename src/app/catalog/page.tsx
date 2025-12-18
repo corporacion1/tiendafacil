@@ -2896,14 +2896,13 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
             {productDetails && (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 items-start">
-                  <div className="w-full max-h-[40vh] md:max-h-none">
+                  <div className="w-full max-h-[40vh] md:max-h-none overflow-hidden rounded-2xl border border-muted/50">
                     <ProductImageGallery
                       product={productDetails}
                       showThumbnails={true}
                       onImageShare={(imageUrl, imageName) => {
                         handleShareProduct(productDetails, imageUrl);
                       }}
-                      className="w-full"
                     />
                   </div>
                   <div className="space-y-4">

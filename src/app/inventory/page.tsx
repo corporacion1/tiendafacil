@@ -452,7 +452,7 @@ export default function InventoryPage() {
         apiEndpoint = '/api/supabase/inventory/movements';
         requestBody = {
           product_id: movementProduct.id,
-          warehouse_id: 'wh-1',
+          warehouse_id: movementProduct.warehouse || null,
           movement_type: movementType === 'purchase' ? 'purchase' : 'sale',
           quantity: movementType === 'purchase' ? movementQuantity : -movementQuantity,
           reference_type: 'manual_adjustment',
