@@ -792,8 +792,8 @@ export default function InventoryPage() {
             ...item.data,
             id: IDGenerator.generate('product', activeStoreId),
             storeId: activeStoreId,
-            created_at: new Date().toISOString(),
-            user_id: (user as any)?.id || 'system',
+            createdAt: new Date().toISOString(),
+            userId: (user as any)?.id || 'system',
             status: 'active',
             image_hint: 'default-product'
           };

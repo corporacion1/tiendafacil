@@ -176,7 +176,7 @@ export function ProductImageGallery({
 
     if (!touchStart || !touchEnd) return;
 
-    
+
 
     const distance = touchStart - touchEnd;
 
@@ -210,7 +210,7 @@ export function ProductImageGallery({
 
       if (!hasMultiple) return;
 
-      
+
 
       switch (e.key) {
 
@@ -324,27 +324,27 @@ export function ProductImageGallery({
 
         >
 
-                    <Image
+          <Image
 
-                      src={currentImage.url}
+            src={currentImage.url}
 
-                      alt={currentImage.alt || `${product.name} - Imagen ${currentImageIndex + 1}`}
+            alt={currentImage.alt || `${product.name} - Imagen ${currentImageIndex + 1}`}
 
-                      fill
+            fill
 
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
 
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
 
-                      priority={currentImageIndex === 0}
+            priority={currentImageIndex === 0}
 
-                      placeholder="blur"
+            placeholder="blur"
 
-                      blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+            blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
 
-                    />
+          />
 
-          
+
 
           {/* Indicador de múltiples imágenes */}
 
@@ -358,7 +358,7 @@ export function ProductImageGallery({
 
           )}
 
-          
+
 
           {/* Controles de navegación */}
 
@@ -388,7 +388,7 @@ export function ProductImageGallery({
 
               </Button>
 
-              
+
 
               <Button
 
@@ -416,7 +416,7 @@ export function ProductImageGallery({
 
           )}
 
-          
+
 
           {/* Indicador de zoom */}
 
@@ -431,6 +431,23 @@ export function ProductImageGallery({
             </Badge>
 
           </div>
+
+          {/* Botón de compartir imagen (Solicitud usuario) */}
+          {onImageShare && (
+            <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button
+                variant="secondary"
+                size="icon"
+                className="h-8 w-8 bg-black/70 hover:bg-black/80 text-white border-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleShareImage();
+                }}
+              >
+                <Share className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          )}
 
         </div>
 
@@ -466,23 +483,23 @@ export function ProductImageGallery({
 
             >
 
-                            <Image
+              <Image
 
-                              src={image.thumbnailUrl || image.url}
+                src={image.thumbnailUrl || image.url}
 
-                              alt={image.alt || `Thumbnail ${index + 1}`}
+                alt={image.alt || `Thumbnail ${index + 1}`}
 
-                              width={64}
+                width={64}
 
-                              height={64}
+                height={64}
 
-                              className="object-cover"
+                className="object-cover"
 
-                              placeholder="blur"
+                placeholder="blur"
 
-                              blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+                blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
 
-                            />
+              />
 
             </button>
 
@@ -540,25 +557,25 @@ export function ProductImageGallery({
 
             {/* Imagen ampliada */}
 
-                        <Image
+            <Image
 
-                          src={currentImage.url}
+              src={currentImage.url}
 
-                          alt={currentImage.alt || `${product.name} - Imagen ${currentImageIndex + 1}`}
+              alt={currentImage.alt || `${product.name} - Imagen ${currentImageIndex + 1}`}
 
-                          fill
+              fill
 
-                          className="object-contain"
+              className="object-contain"
 
-                          sizes="100vw"
+              sizes="100vw"
 
-                          placeholder="blur"
+              placeholder="blur"
 
-                          blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+              blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
 
-                        />
+            />
 
-            
+
 
             {/* Controles del modal */}
 
@@ -584,7 +601,7 @@ export function ProductImageGallery({
 
               )}
 
-              
+
 
               <DialogClose asChild>
 
@@ -606,7 +623,7 @@ export function ProductImageGallery({
 
             </div>
 
-            
+
 
             {/* Navegación en modal */}
 
@@ -630,7 +647,7 @@ export function ProductImageGallery({
 
                 </Button>
 
-                
+
 
                 <Button
 
@@ -652,7 +669,7 @@ export function ProductImageGallery({
 
             )}
 
-            
+
 
             {/* Información de la imagen */}
 
@@ -668,7 +685,7 @@ export function ProductImageGallery({
 
             </div>
 
-            
+
 
             {/* Thumbnails en modal */}
 
@@ -698,23 +715,23 @@ export function ProductImageGallery({
 
                   >
 
-                                        <Image
+                    <Image
 
-                                          src={image.thumbnailUrl || image.url}
+                      src={image.thumbnailUrl || image.url}
 
-                                          alt={`Thumbnail ${index + 1}`}
+                      alt={`Thumbnail ${index + 1}`}
 
-                                          width={48}
+                      width={48}
 
-                                          height={48}
+                      height={48}
 
-                                          className="object-cover"
+                      className="object-cover"
 
-                                          placeholder="blur"
+                      placeholder="blur"
 
-                                          blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
+                      blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
 
-                                        />
+                    />
 
                   </button>
 

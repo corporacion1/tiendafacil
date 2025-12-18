@@ -139,12 +139,12 @@ const normalizeSkuForComparison = (sku: string | null | undefined): string => {
 const isExactSkuMatch = (productSku: string | null | undefined, searchTerm: string | null | undefined): boolean => {
   const normalizedProductSku = normalizeSkuForComparison(productSku);
   const normalizedSearchTerm = normalizeSkuForComparison(searchTerm);
-  
+
   // Ambos deben tener contenido para ser una coincidencia válida
   if (!normalizedProductSku || !normalizedSearchTerm) {
     return false;
   }
-  
+
   return normalizedProductSku === normalizedSearchTerm;
 };
 
@@ -152,46 +152,46 @@ const findExactSkuMatches = (products: Product[], searchTerm: string): Product[]
   if (!searchTerm || !Array.isArray(products)) {
     return [];
   }
-  
+
   const normalizedSearchTerm = normalizeSkuForComparison(searchTerm);
   if (!normalizedSearchTerm) {
     return [];
   }
-  
+
   return products.filter(product => isExactSkuMatch(product.sku, searchTerm));
 };
 
 const shouldAutoOpenProduct = (
-  filteredProducts: Product[], 
-  searchTerm: string, 
+  filteredProducts: Product[],
+  searchTerm: string,
   lastOpenedSku: string | null
 ): { shouldOpen: boolean; product?: Product; reason: string } => {
-  
+
   if (!searchTerm || !Array.isArray(filteredProducts)) {
     return { shouldOpen: false, reason: 'Invalid input parameters' };
   }
 
   const exactMatches = findExactSkuMatches(filteredProducts, searchTerm);
-  
+
   if (exactMatches.length === 0) {
     return { shouldOpen: false, reason: 'No exact SKU matches found' };
   }
-  
+
   if (exactMatches.length > 1) {
     return { shouldOpen: false, reason: `Multiple exact matches found: ${exactMatches.length}` };
   }
-  
+
   if (filteredProducts.length !== 1) {
     return { shouldOpen: false, reason: `Filtered products count is ${filteredProducts.length}, expected 1` };
   }
-  
+
   const product = exactMatches[0];
   const alreadyOpened = normalizeSkuForComparison(product.sku) === normalizeSkuForComparison(lastOpenedSku);
-  
+
   if (alreadyOpened) {
     return { shouldOpen: false, reason: 'Product already auto-opened' };
   }
-  
+
   return { shouldOpen: true, product, reason: 'All conditions met for auto-opening' };
 };
 
@@ -272,16 +272,20 @@ const CatalogProductCard = ({
   product,
   onAddToCart,
   onImageClick,
+  onShare,
   displayCurrency,
-  isCurrencyRateRecent
+  isCurrencyRateRecent,
+  activeStoreId
 }: {
   product: Product;
   onAddToCart: (p: Product) => void;
   onImageClick: (p: Product) => void;
+  onShare: (p: Product) => void;
   displayCurrency: string;
   isCurrencyRateRecent: boolean;
+  activeStoreId: string | null;
 }) => {
-  const { activeSymbol, activeRate, activeStoreId } = useSettings();
+  const { activeSymbol, activeRate } = useSettings();
   const [imageError, setImageError] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
@@ -493,12 +497,16 @@ const CatalogProductCard = ({
           </Badge>
         )}
 
-        {/* Debug badge en desarrollo - movido para no chocar con el nombre */}
-        {process.env.NODE_ENV === 'development' && (
-          <Badge className="absolute bottom-3 left-3 z-20 bg-yellow-500 text-black text-xs">
-            {detectEnvironment()} | {images.length}img {fallbackToSingle ? '(FB)' : ''}
-          </Badge>
-        )}
+        {/* Botón de Compartir - Inferior izquierda */}
+        <Badge
+          className="absolute bottom-3 left-3 z-30 shadow-lg bg-white/90 hover:bg-white text-blue-600 border border-blue-100 cursor-pointer p-1.5 transition-all duration-200"
+          onClick={(e) => {
+            e.stopPropagation();
+            onShare(product);
+          }}
+        >
+          <Share className="w-4 h-4" />
+        </Badge>
 
         {/* Nombre del producto - Superior izquierda */}
         <div className="absolute top-3 left-3 z-20 max-w-[70%]">
@@ -726,52 +734,26 @@ export default function CatalogPage() {
   const [selectedFamily, setSelectedFamily] = useState<string>("all");
   const [isAutoOpening, setIsAutoOpening] = useState(false);
 
+  // Refs para tracking de inicialización única
+  const urlSearchAppliedRef = useRef(false);
+
   const [isEditingOrder, setIsEditingOrder] = useState(false);
 
-  // PASO 2: Búsqueda automática por SKU - DESPUÉS de cambiar tienda
+  // PASO 2: Aplicar SKU de la URL al buscador (UNA SOLA VEZ)
   useEffect(() => {
-    // DEBUGGING: Log detallado del estado de búsqueda
-    console.group('🔍 [Catalog] Auto-search Debug Analysis');
-    console.log('📊 Search State:', {
-      urlSku,
-      urlStoreId,
-      activeStoreId,
-      searchTerm,
-      productsLength: products.length
-    });
+    // Solo aplicar si hay SKU en URL y no lo hemos aplicado ya
+    if (urlSku && urlSku.trim() !== '' && !urlSearchAppliedRef.current) {
+      // Esperar a que estemos en la tienda correcta si hay storeId en URL
+      const isCorrectStore = !urlStoreId || activeStoreId === urlStoreId;
 
-    // Esperar a que:
-    // 1. Haya un SKU en la URL
-    // 2. El activeStoreId coincida con urlStoreId (tienda ya cambiada)
-    // 3. Los productos estén cargados
-    // 4. No hayamos aplicado ya esta búsqueda
-    const searchConditions = {
-      hasUrlSku: !!urlSku && urlSku.trim() !== '',
-      searchTermDifferent: searchTerm !== urlSku,
-      productsLoaded: products.length > 0,
-      correctStore: !urlStoreId || activeStoreId === urlStoreId
-    };
-
-    console.log('🎯 Search Conditions:', searchConditions);
-
-    const shouldApplySearch = searchConditions.hasUrlSku &&
-      searchConditions.searchTermDifferent &&
-      searchConditions.productsLoaded &&
-      searchConditions.correctStore;
-
-    console.log('🚀 Should Apply Search:', shouldApplySearch);
-
-    if (shouldApplySearch) {
-      console.log('✅ [Catalog] Aplicando búsqueda automática por SKU:', urlSku, 'en tienda:', activeStoreId);
-      setSearchTerm(urlSku);
-      setSelectedFamily('all'); // Resetear filtro de familia para mostrar todos los productos
-      setLastAutoOpenedSku(null); // Reset para permitir auto-apertura
-    } else {
-      console.log('❌ [Catalog] Auto-search conditions not met');
+      if (isCorrectStore) {
+        console.log('✅ [Catalog] Aplicando inicialización de búsqueda desde URL SKU:', urlSku);
+        setSearchTerm(urlSku);
+        setSelectedFamily('all');
+        urlSearchAppliedRef.current = true;
+      }
     }
-    
-    console.groupEnd();
-  }, [urlSku, urlStoreId, activeStoreId, searchTerm, products.length]); // Incluir activeStoreId como dependencia clave
+  }, [urlSku, urlStoreId, activeStoreId]); // Quitamos searchTerm y products.length para evitar bucles
 
   // Hook para manejar pedidos del usuario desde la base de datos
   const {
@@ -806,10 +788,10 @@ export default function CatalogPage() {
     // Convertir ambas fechas a timestamps UTC para comparación precisa
     const rateTimestamp = rateDate.getTime();
     const nowTimestamp = now.getTime();
-    const eightHoursInMs = 8 * 60 * 60 * 1000; // 8 horas en milisegundos
+    const twentyFourHoursInMs = 24 * 60 * 60 * 1000; // 24 horas para mayor flexibilidad
 
     const timeDifference = nowTimestamp - rateTimestamp;
-    const isRecent = timeDifference <= eightHoursInMs && timeDifference >= 0;
+    const isRecent = timeDifference <= twentyFourHoursInMs && timeDifference >= 0;
 
     console.log('📊 [Catalog] Validación de tasa de cambio (hora local):', {
       rateDate: rateDate.toLocaleString(),
@@ -819,13 +801,13 @@ export default function CatalogPage() {
       timeDifferenceMs: timeDifference,
       hoursDifference: Math.round(timeDifference / (1000 * 60 * 60)),
       isRecent,
-      eightHourLimitMs: eightHoursInMs
+      twentyFourHourLimitMs: twentyFourHoursInMs
     });
 
     if (isRecent) {
-      console.log('✅ [Catalog] Tasa de cambio reciente (< 8 horas) - mostrando icono de cambio');
+      console.log('✅ [Catalog] Tasa de cambio reciente (< 24 horas) - mostrando icono de cambio');
     } else {
-      console.log('❌ [Catalog] Tasa de cambio antigua (> 8 horas) - ocultando icono de cambio');
+      console.log('❌ [Catalog] Tasa de cambio antigua (> 24 horas) - ocultando icono de cambio');
     }
 
     return isRecent;
@@ -947,9 +929,8 @@ export default function CatalogPage() {
     }
   }, [urlStoreId, urlSku, activeStoreId, products.length, searchTerm]);
 
-
-
-
+  // Ref para evitar múltiples intentos de auto-apertura del mismo SKU de la URL
+  const urlParamsProcessedRef = useRef(false);
 
   // CORREGIDO: useEffect estabilizado para inicialización
   useEffect(() => {
@@ -1281,12 +1262,12 @@ export default function CatalogPage() {
           const isHidden = product.status === 'hidden';
           const isInactive = product.status === 'inactive';
           const hasNoStock = product.type !== 'service' && product.stock === 0;
-          
+
           // Si el producto está oculto, inactivo o sin stock, no mostrarlo en el catálogo
           if (isHidden || isInactive || hasNoStock) {
             return false;
           }
-          
+
           const statusOk = product.status === 'active' || product.status === 'promotion';
           const stockOk = product.type === 'service' || product.stock > 0;
           const familyOk = selectedFamily === 'all' || product.family === selectedFamily;
@@ -1320,85 +1301,99 @@ export default function CatalogPage() {
       });
 
     console.log('✅ Productos filtrados finales:', filtered.length);
-    
+
     // Log productos exactos por SKU si hay término de búsqueda
     if (trimmedSearchTerm) {
       const exactSkuMatches = findExactSkuMatches(filtered, trimmedSearchTerm);
       console.log('🎯 Exact SKU matches:', exactSkuMatches.length, exactSkuMatches.map(p => ({ name: p.name, sku: p.sku, normalized: normalizeSkuForComparison(p.sku) })));
     }
-    
+
     console.groupEnd();
     return filtered;
   }, [products, searchTerm, selectedFamily, storeIdForCatalog]);
 
-  // PASO 3: Auto-open product - DESPUÉS de búsqueda y en tienda correcta
+
+
+  // PASO 3: Auto-open product desde URL (Prioridad Alta)
   useEffect(() => {
-    const trimmedSearchTerm = searchTerm.trim().toLowerCase();
-    
-    // DEBUGGING: Log detallado del estado actual
-    console.group('🔍 [Catalog] Auto-open Debug Analysis');
-    console.log('📊 Current State:', {
-      urlSku,
-      urlStoreId,
-      activeStoreId,
-      searchTerm,
-      trimmedSearchTerm,
-      sortedAndFilteredProductsLength: sortedAndFilteredProducts.length,
-      lastAutoOpenedSku,
-      productsAvailable: products.length
-    });
+    // Si ya procesamos la URL, o no hay SKU, o los productos aún cargan, no hacer nada
+    if (urlParamsProcessedRef.current || !urlSku || isLoadingProducts) return;
 
-    // MEJORADO: Auto-abrir si hay exactamente un producto que coincide exactamente con el SKU buscado
-    // Esto funciona tanto para URLs como para búsquedas manuales
-    const exactSkuMatches = findExactSkuMatches(sortedAndFilteredProducts, trimmedSearchTerm);
-    
-    const conditions = {
-      hasSearchTerm: !!trimmedSearchTerm,
-      hasExactlyOneProduct: sortedAndFilteredProducts.length === 1,
-      hasExactlyOneSkuMatch: exactSkuMatches.length === 1,
-      correctStore: !urlStoreId || activeStoreId === urlStoreId,
-      sameProductInBothLists: sortedAndFilteredProducts.length === 1 && exactSkuMatches.length === 1 && 
-                              sortedAndFilteredProducts[0].id === exactSkuMatches[0].id
-    };
-
-    console.log('🎯 Auto-open Conditions:', conditions);
-    console.log('🎯 Exact SKU matches found:', exactSkuMatches.map(p => ({ name: p.name, sku: p.sku })));
-
-    // Usar la nueva función de validación robusta
-    const autoOpenDecision = shouldAutoOpenProduct(sortedAndFilteredProducts, trimmedSearchTerm, lastAutoOpenedSku);
-    
-    console.log('🚀 Auto-open Decision:', autoOpenDecision);
-
-    // Solo proceder si estamos en la tienda correcta
-    const shouldAutoOpen = autoOpenDecision.shouldOpen && conditions.correctStore;
-
-    if (shouldAutoOpen && autoOpenDecision.product && !isAutoOpening) {
-      console.log('✅ [Catalog] Auto-abriendo producto por SKU:', autoOpenDecision.product.name, 'en tienda:', activeStoreId);
-      
-      setIsAutoOpening(true);
-      setProductDetails(autoOpenDecision.product);
-      setLastAutoOpenedSku(autoOpenDecision.product.sku || '');
-
-      // LIMPIAR INPUT DE BÚSQUEDA después de abrir la modal
-      // Usar requestAnimationFrame para mejor timing y evitar conflictos
-      requestAnimationFrame(() => {
-        console.log('🧹 [Catalog] Limpiando input de búsqueda después de auto-apertura');
-        setSearchTerm('');
-        setIsAutoOpening(false);
-      });
-    } else {
-      console.log('❌ [Catalog] Auto-open not executed:', {
-        reason: autoOpenDecision.reason,
-        correctStore: conditions.correctStore,
-        finalDecision: shouldAutoOpen
-      });
+    const targetUrlSku = normalizeSkuForComparison(urlSku);
+    if (!targetUrlSku) {
+      urlParamsProcessedRef.current = true;
+      return;
     }
-    
-    console.groupEnd();
-  }, [urlSku, urlStoreId, activeStoreId, sortedAndFilteredProducts, searchTerm, lastAutoOpenedSku, isAutoOpening]); // Incluir activeStoreId y productos completos
 
+    console.group('🔍 [Catalog] Intento Auto-Open URL SKU');
+    console.log('Target SKU:', targetUrlSku);
+    console.log('Store ID:', storeIdForCatalog);
+    console.log('Available Products:', products.length);
+
+    // Buscar el producto en la lista completa
+    const product = products.find(p =>
+      p.storeId === storeIdForCatalog &&
+      normalizeSkuForComparison(p.sku) === targetUrlSku
+    );
+
+    if (product) {
+      console.log('✅ [AutoOpen] ¡PRODUCTO ENCONTRADO EN URL!', product.name, product.sku);
+
+      // Bloquear futuros intentos de procesamiento de URL
+      urlParamsProcessedRef.current = true;
+
+      // Abrir modal inmediatamente
+      setProductDetails(product);
+      setLastAutoOpenedSku(product.sku || '');
+
+      // Marcamos que estamos en proceso de apertura automática
+      setIsAutoOpening(true);
+      setTimeout(() => setIsAutoOpening(false), 800);
+    } else {
+      // Si no se encuentra después de que products terminó de cargar, marcar como procesado
+      if (products.length > 0) {
+        console.log('❌ [AutoOpen] Producto no encontrado con SKU:', targetUrlSku);
+        urlParamsProcessedRef.current = true;
+      }
+    }
+    console.groupEnd();
+  }, [urlSku, products, storeIdForCatalog, isLoadingProducts]);
+
+  // PASO 4: Auto-open desde Búsqueda Manual (Exact SKU match)
   useEffect(() => {
-    setLastAutoOpenedSku(null);
+    // Requisitos: hay búsqueda, los productos cargaron y no estamos ya abriendo algo
+    if (!searchTerm || isLoadingProducts || isAutoOpening) return;
+
+    // Si hay SKU en URL y aún no se procesa, ignorar búsqueda manual (prioridad URL)
+    if (urlSku && !urlParamsProcessedRef.current) return;
+
+    const currentSearch = normalizeSkuForComparison(searchTerm);
+    if (!currentSearch) return;
+
+    // No re-abrir automáticamente lo mismo que ya abrimos (evita bucles al cerrar la modal)
+    if (currentSearch === normalizeSkuForComparison(lastAutoOpenedSku)) return;
+
+    // Búsqueda EXACTA por SKU
+    const product = products.find(p =>
+      p.storeId === storeIdForCatalog &&
+      normalizeSkuForComparison(p.sku) === currentSearch
+    );
+
+    if (product) {
+      console.log('🚀 [AutoOpen] Match exacto detectado en buscador:', product.name, product.sku);
+      setProductDetails(product);
+      setLastAutoOpenedSku(product.sku || '');
+      setIsAutoOpening(true);
+      setTimeout(() => setIsAutoOpening(false), 800);
+    }
+  }, [searchTerm, products, storeIdForCatalog, isLoadingProducts, urlSku]);
+
+  // Resetear el tracker de auto-open cuando el usuario borra la búsqueda
+  // Esto permite que si borra y vuelve a escribir el mismo SKU, se vuelva a abrir.
+  useEffect(() => {
+    if (!searchTerm) {
+      setLastAutoOpenedSku(null);
+    }
   }, [searchTerm]);
 
   const validatePhoneNumber = (phone: string): string | null => {
@@ -1484,7 +1479,7 @@ export default function CatalogPage() {
   const itemsForGrid = useMemo(() => {
     const relevantAds = (allAds || []).filter(ad => {
       const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
-      return !isExpired && ad.status === 'active' && ad.targetBusinessTypes.includes(currentStoreSettings.businessType);
+      return !isExpired && ad.status === 'active' && ad.targetBusinessTypes?.includes(currentStoreSettings?.businessType || '');
     });
 
     const shuffledAds = [...relevantAds].sort(() => Math.random() - 0.5);
@@ -1525,7 +1520,7 @@ export default function CatalogPage() {
   const generateQrCode = async (orderId: string) => {
     try {
       console.log('🔗 [QR] Generando QR para pedido:', orderId);
-      
+
       // Configurar opciones del QR para mejor reconocimiento
       const qrOptions = {
         width: 256,
@@ -1534,18 +1529,18 @@ export default function CatalogPage() {
           dark: '#000000',
           light: '#FFFFFF'
         },
-        errorCorrectionLevel: 'M', // Nivel medio de corrección de errores
-        type: 'image/png',
+        errorCorrectionLevel: 'M' as const,
+        type: 'image/png' as const,
         quality: 0.92,
         rendererOpts: {
           quality: 0.92
         }
       };
-      
+
       const url = await QRCode.toDataURL(orderId, qrOptions);
       setQrCodeUrl(url);
       setOrderIdForQr(orderId);
-      
+
       console.log('✅ [QR] QR de pedido generado exitosamente');
     } catch (err) {
       console.error('❌ [QR] Error generando QR de pedido:', err);
@@ -1559,49 +1554,51 @@ export default function CatalogPage() {
       const baseUrl = window.location.origin;
       const catalogPath = '/catalog';
       const fullUrl = `${baseUrl}${catalogPath}?storeId=${storeIdForCatalog}`;
-      
+
       // Validar que la URL sea válida y tenga protocolo
       const urlObj = new URL(fullUrl);
       if (!urlObj.protocol.startsWith('http')) {
         throw new Error('URL debe tener protocolo HTTP/HTTPS');
       }
-      
+
       console.log('🔗 [QR] Generando QR para URL válida:', fullUrl);
-      
+
       setShareUrl(fullUrl);
-      
+
       // Configurar opciones del QR optimizadas para reconocimiento automático
       const qrOptions = {
-        width: 300, // Aumentar tamaño para mejor lectura
-        margin: 3,  // Aumentar margen para mejor detección
+        width: 300,
+        margin: 3,
         color: {
           dark: '#000000',
           light: '#FFFFFF'
         },
-        errorCorrectionLevel: 'H', // Alto nivel de corrección para mejor reconocimiento
+        errorCorrectionLevel: 'H' as const,
         type: 'image/png' as const,
-        quality: 1.0, // Máxima calidad
+        quality: 1.0,
         rendererOpts: {
           quality: 1.0
         }
       };
-      
+
       const dataUrl = await QRCode.toDataURL(fullUrl, qrOptions);
-      setShareQrCodeUrl(dataUrl);
-      
+      if (typeof dataUrl === 'string') {
+        setShareQrCodeUrl(dataUrl);
+      }
+
       console.log('✅ [QR] QR generado exitosamente para URL:', fullUrl);
       console.log('✅ [QR] Configuración aplicada:', qrOptions);
-      
+
       // Verificar que el QR contiene la URL correcta
-      toast({ 
-        title: 'QR Generado', 
-        description: `Código QR creado para: ${fullUrl.length > 50 ? fullUrl.substring(0, 50) + '...' : fullUrl}` 
+      toast({
+        title: 'QR Generado',
+        description: `Código QR creado para: ${fullUrl.length > 50 ? fullUrl.substring(0, 50) + '...' : fullUrl}`
       });
-      
+
     } catch (err) {
       console.error('❌ [QR] Error generando QR:', err);
-      toast({ 
-        variant: 'destructive', 
+      toast({
+        variant: 'destructive',
         title: 'Error al generar QR para compartir',
         description: 'Verifique que la URL sea válida'
       });
@@ -1758,9 +1755,9 @@ export default function CatalogPage() {
   };
 
   // Función para crear imagen compuesta con título y precio
-  const createProductImageWithOverlay = async (product: Product): Promise<File | null> => {
-    const primaryImageUrl = getPrimaryImageUrl(product);
-    if (!primaryImageUrl) return null;
+  const createProductImageWithOverlay = async (product: Product, overrideImageUrl?: string): Promise<File | null> => {
+    const imageUrl = overrideImageUrl || getPrimaryImageUrl(product);
+    if (!imageUrl) return null;
 
     try {
       // Crear canvas
@@ -1827,6 +1824,20 @@ export default function CatalogPage() {
             product.name;
           ctx.fillText(titleText, 20, 25);
 
+          // Si es oferta, agregar badge
+          if (product.status === 'promotion') {
+            ctx.fillStyle = '#ff4d4d';
+            ctx.beginPath();
+            const badgeWidth = 80;
+            const badgeHeight = 25;
+            ctx.roundRect(width - badgeWidth - 20, 25, badgeWidth, badgeHeight, 5);
+            ctx.fill();
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 14px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('OFERTA', width - 20 - badgeWidth / 2, 25 + badgeHeight / 2 + 5);
+          }
+
           // Precio con fondo destacado
           const priceFontSize = Math.min(32, width / 14);
           ctx.font = `bold ${priceFontSize}px Arial, sans-serif`;
@@ -1887,6 +1898,18 @@ export default function CatalogPage() {
           ctx.textBaseline = 'middle';
           ctx.fillText(priceText, priceX + 12, priceY + priceHeight / 2);
 
+          // Agregar Precio Final (con impuestos) si aplica
+          if (product.tax1 || product.tax2) {
+            const tax1Value = product.tax1 ? product.price * ((currentStoreSettings?.tax1 || 0) / 100) : 0;
+            const tax2Value = product.tax2 ? product.price * ((currentStoreSettings?.tax2 || 0) / 100) : 0;
+            const finalPrice = (product.price + tax1Value + tax2Value) * activeRate;
+            const finalPriceText = `Final: ${activeSymbol}${finalPrice.toFixed(2)}`;
+
+            ctx.fillStyle = 'white';
+            ctx.font = `bold ${priceFontSize * 0.5}px Arial, sans-serif`;
+            ctx.fillText(finalPriceText, priceX + priceWidth + 15, priceY + priceHeight / 2);
+          }
+
           // Nombre de la tienda (parte inferior)
           ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
           ctx.font = `${Math.min(20, width / 20)}px Arial, sans-serif`;
@@ -1909,7 +1932,7 @@ export default function CatalogPage() {
         };
 
         img.onerror = () => resolve(null);
-        img.src = primaryImageUrl;
+        img.src = imageUrl;
       });
     } catch (error) {
       console.log('Error creando imagen compuesta:', error);
@@ -1917,21 +1940,36 @@ export default function CatalogPage() {
     }
   };
 
-  const handleShareProduct = async (product: Product) => {
+  const handleCopyProductLink = (product: Product) => {
+    const link = `${window.location.origin}/catalog?storeId=${storeIdForCatalog}&sku=${product.sku}`;
+    navigator.clipboard.writeText(link);
+    toast({
+      title: "¡Enlace copiado!",
+      description: "El enlace directo al producto está en tu portapapeles."
+    });
+  };
+
+  const handleShareProduct = async (product: Product, specificImageUrl?: string) => {
     try {
       // Obtener información de imágenes del producto
-      const primaryImageUrl = getPrimaryImageUrl(product);
+      const primaryImageUrl = specificImageUrl || getPrimaryImageUrl(product);
       const hasImages = getImageCount(product) > 0;
       const imageCount = getImageCount(product);
+
+      // Calcular precio final para el texto
+      const tax1Value = product.tax1 ? product.price * ((currentStoreSettings?.tax1 || 0) / 100) : 0;
+      const tax2Value = product.tax2 ? product.price * ((currentStoreSettings?.tax2 || 0) / 100) : 0;
+      const finalPrice = (product.price + tax1Value + tax2Value) * activeRate;
 
       // Crear el mensaje de compartir
       const shareText = `🛍️ *${product.name}*
 
-�  Precio: ${activeSymbol}${(product.price * activeRate).toFixed(2)}
+💰 Precio Base: ${activeSymbol}${(product.price * activeRate).toFixed(2)}
+${(product.tax1 || product.tax2) ? `✅ Precio Total (con imp.): ${activeSymbol}${finalPrice.toFixed(2)}` : ''}
 
 📝 ${product.description || 'Producto disponible en nuestra tienda'}
 
-${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
+${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponibles` : ''}
 
 🏪 Disponible en ${currentStoreSettings?.name || 'Tienda Fácil'}
 👆 Ver producto: ${window.location.origin}/catalog?storeId=${storeIdForCatalog}&sku=${product.sku}
@@ -1949,7 +1987,7 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
         // Intentar crear imagen compuesta con título y precio
         if (primaryImageUrl) {
           try {
-            const compositeImage = await createProductImageWithOverlay(product);
+            const compositeImage = await createProductImageWithOverlay(product, specificImageUrl);
 
             if (compositeImage && navigator.canShare && navigator.canShare({ files: [compositeImage] })) {
               shareData.files = [compositeImage];
@@ -2087,7 +2125,7 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
   }
 
   return (
-    <Dialog onOpenChange={(open) => { if (!open) setProductDetails(null); setProductImageError(false); }}>
+    <>
       <div className="w-full min-h-screen bg-white">
         <header className="sticky top-0 z-40 w-full border-b border-blue-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/90 shadow-sm">
           {/* Primera fila - Logo y botones principales */}
@@ -2503,7 +2541,7 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
                   {allAds
                     .filter(ad => {
                       const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
-                      return !isExpired && ad.status === 'active' && ad.targetBusinessTypes.includes(currentStoreSettings.businessType);
+                      return !isExpired && ad.status === 'active' && ad.targetBusinessTypes?.includes(currentStoreSettings?.businessType || '');
                     })
                     .map((ad, index) => (
                       <div
@@ -2574,7 +2612,7 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
                 {/* Controles de navegación */}
                 {allAds.filter(ad => {
                   const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
-                  return !isExpired && ad.status === 'active' && ad.targetBusinessTypes.includes(currentStoreSettings.businessType);
+                  return !isExpired && ad.status === 'active' && ad.targetBusinessTypes?.includes(currentStoreSettings?.businessType || '');
                 }).length > 1 && (
                     <>
                       {/* Botones de navegación */}
@@ -2583,7 +2621,7 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
                         onClick={() => {
                           const relevantAds = allAds.filter(ad => {
                             const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
-                            return !isExpired && ad.status === 'active' && ad.targetBusinessTypes.includes(currentStoreSettings.businessType);
+                            return !isExpired && ad.status === 'active' && ad.targetBusinessTypes?.includes(currentStoreSettings?.businessType || '');
                           });
                           setCurrentAdIndex(prev => prev === 0 ? relevantAds.length - 1 : prev - 1);
                           setIsAutoScrolling(false);
@@ -2597,7 +2635,7 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
                         onClick={() => {
                           const relevantAds = allAds.filter(ad => {
                             const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
-                            return !isExpired && ad.status === 'active' && ad.targetBusinessTypes.includes(currentStoreSettings.businessType);
+                            return !isExpired && ad.status === 'active' && ad.targetBusinessTypes?.includes(currentStoreSettings?.businessType || '');
                           });
                           setCurrentAdIndex(prev => (prev + 1) % relevantAds.length);
                           setIsAutoScrolling(false);
@@ -2612,7 +2650,7 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
                           {allAds
                             .filter(ad => {
                               const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
-                              return !isExpired && ad.status === 'active' && ad.targetBusinessTypes.includes(currentStoreSettings.businessType);
+                              return !isExpired && ad.status === 'active' && ad.targetBusinessTypes?.includes(currentStoreSettings?.businessType || '');
                             })
                             .map((_, index) => (
                               <button
@@ -2667,8 +2705,10 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
                     product={item}
                     onAddToCart={handleOpenAddToCartDialog}
                     onImageClick={handleImageClick}
+                    onShare={handleShareProduct}
                     displayCurrency={displayCurrency}
                     isCurrencyRateRecent={isCurrencyRateRecent}
+                    activeStoreId={storeIdForCatalog}
                   />;
                 })}
               </div>
@@ -2831,13 +2871,18 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
         <Dialog open={!!productDetails} onOpenChange={(open) => {
           if (!open) {
             setProductDetails(null);
+            setProductImageError(false);
+
+            // LIMPIAR Buscador al cerrar (Solicitud usuario)
+            setSearchTerm("");
+            setLastAutoOpenedSku(null);
 
             // LIMPIAR URL si había un SKU para evitar re-apertura
             if (urlSku) {
               console.log('🧹 [Catalog] Limpiando SKU de la URL al cerrar modal');
-              const url = new URL(window.location.href);
-              url.searchParams.delete('sku');
-              window.history.replaceState({}, '', url.toString());
+              const params = new URLSearchParams(window.location.search);
+              params.delete('sku');
+              router.replace(`/catalog?${params.toString()}`, { scroll: false });
             }
           }
         }}>
@@ -2856,13 +2901,7 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
                       product={productDetails}
                       showThumbnails={true}
                       onImageShare={(imageUrl, imageName) => {
-                        // Crear un producto temporal para compartir imagen específica
-                        const tempProduct = {
-                          ...productDetails,
-                          imageUrl: imageUrl,
-                          name: imageName
-                        };
-                        handleShareProduct(tempProduct);
+                        handleShareProduct(productDetails, imageUrl);
                       }}
                       className="w-full"
                     />
@@ -2901,6 +2940,17 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
                   <DialogClose asChild>
                     <Button variant="outline" className="rounded-xl">Cerrar</Button>
                   </DialogClose>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      if (productDetails) {
+                        handleCopyProductLink(productDetails);
+                      }
+                    }}
+                    className="rounded-xl border-blue-200 text-blue-600 hover:bg-blue-50"
+                  >
+                    <Copy className="mr-2 h-4 w-4" /> Copiar Link
+                  </Button>
                   <Button
                     variant="outline"
                     onClick={() => {
@@ -3290,10 +3340,10 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
             </div>
           </div>
         </div>
-      </div >
+      </div>
 
       {/* Footer con información de la tienda */}
-      < footer className="bg-gray-50 border-t border-gray-200 py-6 px-4 mt-8" >
+      <footer className="bg-gray-50 border-t border-gray-200 py-6 px-4 mt-8">
         <div className="max-w-4xl mx-auto">
           <div className="text-center space-y-2">
             <h3 className="text-lg font-semibold text-gray-800">
@@ -3303,7 +3353,7 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
               {currentStoreSettings?.id && (
                 <div className="flex items-center justify-center gap-1">
                   <span className="font-medium font-semibold">RIF:</span>
-                  <span >{currentStoreSettings.nitId}</span>
+                  <span>{currentStoreSettings.nitId}</span>
                 </div>
               )}
               {currentStoreSettings?.address && (
@@ -3321,10 +3371,10 @@ ${imageCount > 1 ? `📸 ${imageCount} imágenes disponibles` : ''}
             </div>
           </div>
         </div>
-      </footer >
+      </footer>
 
       {/* Botón flotante para solicitar tienda */}
-      < StoreRequestButton />
-    </Dialog >
+      <StoreRequestButton />
+    </>
   );
 }
