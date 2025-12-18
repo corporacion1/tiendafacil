@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       name: customer.name,
       phone: customer.phone,
       address: customer.address,
-      cardId: customer.card_id,
+      rif_nit: customer.rif_nit,
       storeId: customer.store_id,
       createdAt: customer.created_at,
       updatedAt: customer.updated_at
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
       name: data.name.trim(),
       phone: data.phone?.trim() || null,
       address: data.address?.trim() || null,
-      card_id: data.cardId?.trim() || null,
+      rif_nit: data.rif_nit?.trim() || null,
       store_id: data.storeId
       // created_at and updated_at removed to test if columns are missing
     };
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
       name: createdCustomer.name,
       phone: createdCustomer.phone,
       address: createdCustomer.address,
-      cardId: createdCustomer.card_id,
+      rif_nit: createdCustomer.rif_nit,
       storeId: createdCustomer.store_id,
       createdAt: createdCustomer.created_at,
       updatedAt: createdCustomer.updated_at
@@ -177,7 +177,7 @@ export async function PUT(request: NextRequest) {
     if (data.name !== undefined) updateData.name = data.name.trim();
     if (data.phone !== undefined) updateData.phone = data.phone?.trim() || null;
     if (data.address !== undefined) updateData.address = data.address?.trim() || null;
-    if (data.cardId !== undefined) updateData.card_id = data.cardId?.trim() || null;
+    if (data.rif_nit !== undefined) updateData.rif_nit = data.rif_nit?.trim() || null;
 
     console.log('👤 [Customers API] Actualizando cliente:', data.id);
 
@@ -209,7 +209,7 @@ export async function PUT(request: NextRequest) {
       name: updatedCustomer.name,
       phone: updatedCustomer.phone,
       address: updatedCustomer.address,
-      cardId: updatedCustomer.card_id,
+      rif_nit: updatedCustomer.rif_nit,
       storeId: updatedCustomer.store_id,
       createdAt: updatedCustomer.created_at,
       updatedAt: updatedCustomer.updated_at

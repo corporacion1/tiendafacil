@@ -38,9 +38,9 @@ export async function GET(request: Request) {
       paidAmount: sale.paid_amount,
       payments: sale.payments,
       storeId: sale.store_id,
-      creditDays: sale.credit_days,
       creditDueDate: sale.credit_due_date,
-      userId: sale.user_id
+      userId: sale.user_id,
+      customerRifNit: sale.customer_rif_nit
     })) || [];
 
     return NextResponse.json(formattedSales);
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       customer_id: data.customerId || null,
       customer_phone: data.customerPhone || null,
       customer_address: data.customerAddress || null,
-      customer_card_id: data.customerCardId || data.customer_card_id || null,
+      customer_rif_nit: data.customerRifNit || data.customer_rif_nit || data.rif_nit || null,
       ticket_number: data.ticketNumber || null,
       customer_name: data.customerName || 'Cliente Eventual',
       items: data.items,
@@ -119,7 +119,7 @@ export async function POST(request: Request) {
         // Remove optional customer fields
         delete retryData.customer_phone;
         delete retryData.customer_address;
-        delete retryData.customer_card_id;
+        delete retryData.customer_rif_nit;
         // Remove optional credit and series fields
         delete retryData.series;
         //delete retryData.paid_amount;
@@ -136,7 +136,7 @@ export async function POST(request: Request) {
         createdSale.__preservedClientValues = {
           customer_phone: saleData.customer_phone,
           customer_address: saleData.customer_address,
-          customer_card_id: saleData.customer_card_id
+          customer_rif_nit: saleData.customer_rif_nit
         };
       } else {
         console.error('❌ [Sales API] Error creating sale:', firstAttempt.error);
@@ -273,7 +273,7 @@ export async function POST(request: Request) {
       id: persisted.id,
       ticketNumber: persisted.ticket_number,
       customerId: persisted.customer_id || data.customerId || null,
-      customerCardId: persisted.customer_card_id || preservedClient.customer_card_id || data.customerCardId || data.customer_card_id || null,
+      customerRifNit: persisted.customer_rif_nit || preservedClient.customer_rif_nit || data.customerRifNit || data.customer_rif_nit || data.rif_nit || null,
       customerAddress: persisted.customer_address || preservedClient.customer_address || data.customerAddress || data.customer_address || null,
       customerName: persisted.customer_name || data.customerName || data.customer_name || 'Cliente Eventual',
       customerPhone: persisted.customer_phone || preservedClient.customer_phone || data.customerPhone || data.customer_phone || null,
@@ -324,6 +324,7 @@ export async function PUT(request: Request) {
     if (data.creditDays !== undefined) updateData.credit_days = data.creditDays;
     if (data.creditDueDate !== undefined) updateData.credit_due_date = data.creditDueDate;
     if (data.userId !== undefined) updateData.user_id = data.userId;
+    if (data.customerRifNit !== undefined) updateData.customer_rif_nit = data.customerRifNit;
 
     const { data: updatedSale, error } = await supabaseAdmin
       .from('sales')
@@ -358,7 +359,8 @@ export async function PUT(request: Request) {
       storeId: updatedSale.store_id,
       creditDays: updatedSale.credit_days,
       creditDueDate: updatedSale.credit_due_date,
-      userId: updatedSale.user_id
+      userId: updatedSale.user_id,
+      customerRifNit: updatedSale.customer_rif_nit
     };
 
     return NextResponse.json(formattedResponse);

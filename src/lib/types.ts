@@ -200,7 +200,7 @@ export type Customer = {
   phone?: string;
   email?: string;
   address?: string;
-  cardId?: string;
+  rif_nit?: string;
   storeId: string;
 }
 

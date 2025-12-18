@@ -394,20 +394,20 @@ export default function POSPage() {
     null,
   );
   const [newCustomer, setNewCustomer] = useState({
-    id: "",
     name: "",
     phone: "",
     address: "",
+    rif_nit: "",
   });
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [isCustomerSearchOpen, setIsCustomerSearchOpen] = useState(false);
 
   const [isProcessSaleDialogOpen, setIsProcessSaleDialogOpen] = useState(false);
   const [payments, setPayments] = useState<Array<{
-  method: string;
-  amount: number;
-  reference?: string;
-}>>([]);
+    method: string;
+    amount: number;
+    reference?: string;
+  }>>([]);
   const [currentPaymentMethod, setCurrentPaymentMethod] = useState("efectivo");
   const [currentPaymentAmount, setCurrentPaymentAmount] = useState<
     number | string
@@ -1752,10 +1752,10 @@ export default function POSPage() {
     let createdSale: any = null;
 
     const finalPayments: SalePayment[] = payments.map((p, index) => ({
-  ...p,
-  id: `pay-${Date.now()}-${index}`, // Generar ID único
-  date: new Date().toISOString(),
-}));
+      ...p,
+      id: `pay-${Date.now()}-${index}`, // Generar ID único
+      date: new Date().toISOString(),
+    }));
 
     const newSale: any = {
       customerId: selectedCustomer?.id ?? currentOrder?.customerId ?? null,
@@ -2451,7 +2451,7 @@ export default function POSPage() {
 
   const handleSaveCustomer = async () => {
     // Validaciones básicas
-    if (!newCustomer.name.trim()) {
+    if (!newCustomer.name?.trim()) {
       toast({
         variant: "destructive",
         title: "Nombre requerido",
@@ -2460,7 +2460,7 @@ export default function POSPage() {
       return;
     }
 
-    if (!newCustomer.phone.trim()) {
+    if (!newCustomer.phone?.trim()) {
       toast({
         variant: "destructive",
         title: "Teléfono requerido",
@@ -2471,7 +2471,7 @@ export default function POSPage() {
 
     // Validar formato de teléfono venezolano
     const phoneRegex = /^(0412|0414|0416|0424|0426)\d{7}$/;
-    if (!phoneRegex.test(newCustomer.phone.trim())) {
+    if (!phoneRegex.test(newCustomer.phone?.trim() || "")) {
       toast({
         variant: "destructive",
         title: "Teléfono inválido",
@@ -2483,7 +2483,7 @@ export default function POSPage() {
 
     // Verificar si ya existe un cliente con el mismo teléfono (solo si no estamos editando el mismo)
     const existingCustomer = customers.find(
-      (c) => c.phone === newCustomer.phone.trim() && c.id !== editingCustomerId,
+      (c) => c.phone === newCustomer.phone?.trim() && c.id !== editingCustomerId,
     );
     if (existingCustomer) {
       toast({
@@ -2500,10 +2500,11 @@ export default function POSPage() {
 
       const newId = IDGenerator.generate("customer");
       const customerData: Customer = {
-        id: editingCustomerId || newCustomer.id || newId,
-        name: newCustomer.name.trim(),
-        phone: newCustomer.phone.trim(),
-        address: newCustomer.address.trim(),
+        id: editingCustomerId || newId,
+        name: newCustomer.name?.trim() || "",
+        phone: newCustomer.phone?.trim() || "",
+        address: newCustomer.address?.trim() || "",
+        rif_nit: newCustomer.rif_nit?.trim() || "",
         storeId: activeStoreId,
       };
 
@@ -2556,7 +2557,7 @@ export default function POSPage() {
         });
       }
 
-      setNewCustomer({ id: "", name: "", phone: "", address: "" });
+      setNewCustomer({ name: "", phone: "", address: "", rif_nit: "" });
       setEditingCustomerId(null);
       setIsCustomerDialogOpen(false);
 
@@ -2574,6 +2575,7 @@ export default function POSPage() {
                 name: newCustomer.name.trim(),
                 phone: newCustomer.phone.trim(),
                 address: newCustomer.address.trim(),
+                rif_nit: newCustomer.rif_nit.trim(),
               }
               : c,
           ),
@@ -2589,6 +2591,7 @@ export default function POSPage() {
           name: newCustomer.name.trim(),
           phone: newCustomer.phone.trim(),
           address: newCustomer.address.trim(),
+          rif_nit: newCustomer.rif_nit.trim(),
           storeId: activeStoreId,
         };
 
@@ -2600,7 +2603,7 @@ export default function POSPage() {
           description: `El cliente "${customerToAdd.name}" ha sido agregado localmente.`,
         });
       }
-      setNewCustomer({ id: "", name: "", phone: "", address: "" });
+      setNewCustomer({ name: "", phone: "", address: "", rif_nit: "" });
       setEditingCustomerId(null);
       setIsCustomerDialogOpen(false);
     }
@@ -2656,10 +2659,10 @@ export default function POSPage() {
   }, [isProcessSaleDialogOpen, sales]);
 
   const isNewCustomerFormDirty =
-    newCustomer.name.trim() !== "" ||
-    newCustomer.id.trim() !== "" ||
-    newCustomer.phone.trim() !== "" ||
-    newCustomer.address.trim() !== "";
+    (newCustomer.name?.trim() || "") !== "" ||
+    (newCustomer.rif_nit?.trim() || "") !== "" ||
+    (newCustomer.phone?.trim() || "") !== "" ||
+    (newCustomer.address?.trim() || "") !== "";
 
   const loadPendingOrder = async (order: PendingOrder) => {
     console.log("📦 Intentando cargar pedido:", order);
@@ -3533,102 +3536,102 @@ export default function POSPage() {
                                   order.status === "processing",
                               )
                               .map((order) => (
-                              <div
-                                key={order.orderId}
-                                className="p-4 border rounded-lg"
-                              >
-                                <div className="flex justify-between items-start">
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <h4 className="font-semibold">
-                                        {order.orderId}
-                                      </h4>
-                                      <Badge
-                                      variant={
-                                        order.status === "pending"
-                                          ? "secondary"
-                                          : order.status === "processing"
-                                          ? "default"
-                                          : "outline"
-                                      }
-                                      className="text-xs"
-                                    >
-                                      {order.status === "pending"
-                                        ? "Pendiente"
-                                        : order.status === "processing"
-                                          ? "En Proceso"
-                                          : order.status}
-                                    </Badge>
-                                    </div>
-                                    <div className="space-y-1">
-                                      <p className="text-sm font-medium text-blue-600">
-                                        👤 {order.customerName}
-                                      </p>
-                                      {order.customerPhone && (
-                                        <p className="text-xs text-muted-foreground">
-                                          📞 {order.customerPhone}
+                                <div
+                                  key={order.orderId}
+                                  className="p-4 border rounded-lg"
+                                >
+                                  <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <h4 className="font-semibold">
+                                          {order.orderId}
+                                        </h4>
+                                        <Badge
+                                          variant={
+                                            order.status === "pending"
+                                              ? "secondary"
+                                              : order.status === "processing"
+                                                ? "default"
+                                                : "outline"
+                                          }
+                                          className="text-xs"
+                                        >
+                                          {order.status === "pending"
+                                            ? "Pendiente"
+                                            : order.status === "processing"
+                                              ? "En Proceso"
+                                              : order.status}
+                                        </Badge>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <p className="text-sm font-medium text-blue-600">
+                                          👤 {order.customerName}
                                         </p>
-                                      )}
-                                      {order.customerEmail && (
-                                        <p className="text-xs text-muted-foreground">
-                                          📧 {order.customerEmail}
-                                        </p>
-                                      )}
-                                      <p className="text-xs text-muted-foreground">
-                                        🕒{" "}
-                                        {format(
-                                          new Date(order.createdAt as string),
-                                          "dd/MM/yyyy HH:mm",
+                                        {order.customerPhone && (
+                                          <p className="text-xs text-muted-foreground">
+                                            📞 {order.customerPhone}
+                                          </p>
                                         )}
+                                        {order.customerEmail && (
+                                          <p className="text-xs text-muted-foreground">
+                                            📧 {order.customerEmail}
+                                          </p>
+                                        )}
+                                        <p className="text-xs text-muted-foreground">
+                                          🕒{" "}
+                                          {format(
+                                            new Date(order.createdAt as string),
+                                            "dd/MM/yyyy HH:mm",
+                                          )}
+                                        </p>
+                                      </div>
+                                      <p className="text-sm font-medium text-primary mt-2">
+                                        {activeSymbol}
+                                        {(order.total * activeRate).toFixed(2)}
                                       </p>
                                     </div>
-                                    <p className="text-sm font-medium text-primary mt-2">
-                                      {activeSymbol}
-                                      {(order.total * activeRate).toFixed(2)}
-                                    </p>
-                                  </div>
-                                  <div className="flex flex-col gap-2">
-                                    <Button
-                                      size="sm"
-                                      onClick={() => loadPendingOrder(order)}
-                                      className="w-full sm:w-auto"
-                                      title="Cargar pedido"
-                                    >
-                                      <ShoppingCart className="h-4 w-4 sm:mr-2" />
-                                      <span className="hidden sm:inline">
-                                        Cargar
-                                      </span>
-                                    </Button>
-                                    {order.customerPhone && (
+                                    <div className="flex flex-col gap-2">
                                       <Button
                                         size="sm"
-                                        variant="outline"
-                                        className="border-[#25D366] text-[#25D366] hover:bg-[#25D366] hover:text-white w-full sm:w-auto"
-                                        onClick={(e) => {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          window.open(
-                                            `https://wa.me/${formatPhoneForWhatsApp(order.customerPhone)}`,
-                                            "_blank",
-                                            "noopener,noreferrer",
-                                          );
-                                        }}
-                                        title="Contactar por WhatsApp"
+                                        onClick={() => loadPendingOrder(order)}
+                                        className="w-full sm:w-auto"
+                                        title="Cargar pedido"
                                       >
-                                        <FaWhatsapp className="h-4 w-4 sm:mr-2" />
+                                        <ShoppingCart className="h-4 w-4 sm:mr-2" />
                                         <span className="hidden sm:inline">
-                                          WhatsApp
+                                          Cargar
                                         </span>
                                       </Button>
-                                    )}
+                                      {order.customerPhone && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="border-[#25D366] text-[#25D366] hover:bg-[#25D366] hover:text-white w-full sm:w-auto"
+                                          onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            window.open(
+                                              `https://wa.me/${formatPhoneForWhatsApp(order.customerPhone)}`,
+                                              "_blank",
+                                              "noopener,noreferrer",
+                                            );
+                                          }}
+                                          title="Contactar por WhatsApp"
+                                        >
+                                          <FaWhatsapp className="h-4 w-4 sm:mr-2" />
+                                          <span className="hidden sm:inline">
+                                            WhatsApp
+                                          </span>
+                                        </Button>
+                                      )}
+                                    </div>
                                   </div>
+                                  <Separator className="my-2" />
+                                  <p className="text-right font-bold">
+                                    Total: ${order.total.toFixed(2)}
+                                  </p>
                                 </div>
-                                <Separator className="my-2" />
-                                <p className="text-right font-bold">
-                                  Total: ${order.total.toFixed(2)}
-                                </p>
-                              </div>
-                            ))}
+                              ))}
                           </div>
                         )}
                       </div>
@@ -3905,16 +3908,23 @@ export default function POSPage() {
                                   }}
                                   className="flex items-center justify-between group"
                                 >
-                                  <div className="flex items-center">
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        selectedCustomerId === customer.id
-                                          ? "opacity-100"
-                                          : "opacity-0",
-                                      )}
-                                    />
-                                    {customer.name}
+                                  <div className="flex flex-col min-w-0">
+                                    <div className="flex items-center">
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4 shrink-0",
+                                          selectedCustomerId === customer.id
+                                            ? "opacity-100"
+                                            : "opacity-0",
+                                        )}
+                                      />
+                                      <span className="truncate">{customer.name}</span>
+                                    </div>
+                                    {customer.rif_nit && (
+                                      <span className="text-[10px] text-muted-foreground ml-6 truncate">
+                                        RIF/NIT: {customer.rif_nit}
+                                      </span>
+                                    )}
                                   </div>
                                   <Button
                                     variant="ghost"
@@ -3923,10 +3933,10 @@ export default function POSPage() {
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setNewCustomer({
-                                        id: customer.id,
                                         name: customer.name,
                                         phone: customer.phone || "",
                                         address: customer.address || "",
+                                        rif_nit: customer.rif_nit || "",
                                       });
                                       setEditingCustomerId(customer.id);
                                       setIsCustomerDialogOpen(true);
@@ -3953,10 +3963,10 @@ export default function POSPage() {
                           className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0"
                           onClick={() => {
                             setNewCustomer({
-                              id: "",
                               name: "",
                               phone: "",
                               address: "",
+                              rif_nit: "",
                             });
                             setEditingCustomerId(null);
                           }}
@@ -3975,22 +3985,22 @@ export default function POSPage() {
                         <div className="grid gap-4 py-4">
                           <div className="grid grid-cols-4 items-center gap-4">
                             <Label
-                              htmlFor="new-customer-id"
+                              htmlFor="new-customer-rif"
                               className="text-right"
                             >
-                              ID (Opcional)
+                              RIF / NIT
                             </Label>
                             <Input
-                              id="new-customer-id"
-                              value={newCustomer.id}
+                              id="new-customer-rif"
+                              value={newCustomer.rif_nit}
                               onChange={(e) =>
                                 setNewCustomer((prev) => ({
                                   ...prev,
-                                  id: e.target.value,
+                                  rif_nit: e.target.value,
                                 }))
                               }
                               className="col-span-3"
-                              placeholder="ID Fiscal o RIF"
+                              placeholder="Ej: J-12345678-9"
                             />
                           </div>
                           <div className="grid grid-cols-4 items-center gap-4">
@@ -4060,7 +4070,7 @@ export default function POSPage() {
                             onClick={handleSaveCustomer}
                             disabled={
                               !isNewCustomerFormDirty ||
-                              !newCustomer.name.trim()
+                              !newCustomer.name?.trim()
                             }
                           >
                             Guardar Cliente

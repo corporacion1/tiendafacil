@@ -74,44 +74,44 @@ export function TicketPreview({
   // Resolve customer info: prefer `saleObj` (server record) if present, otherwise use explicit `customer` prop
   const resolvedCustomer = Array.isArray(saleObj)
     ? {
-        name: saleObj[0]?.customerName || saleObj[0]?.customer_name || customer?.name || null,
-        phone: saleObj[0]?.customerPhone || saleObj[0]?.customer_phone || customer?.phone || null,
-        address: saleObj[0]?.customerAddress || saleObj[0]?.customer_address || (customer as any)?.address || null,
-        cardId: saleObj[0]?.customerCardId || saleObj[0]?.customer_card_id || (customer as any)?.cardId || (customer as any)?.card_id || null
-      }
+      name: saleObj[0]?.customerName || saleObj[0]?.customer_name || customer?.name || null,
+      phone: saleObj[0]?.customerPhone || saleObj[0]?.customer_phone || customer?.phone || null,
+      address: saleObj[0]?.customerAddress || saleObj[0]?.customer_address || (customer as any)?.address || null,
+      rif_nit: saleObj[0]?.customerRifNit || saleObj[0]?.customer_rif_nit || (customer as any)?.rif_nit || (customer as any)?.rif_nit || null
+    }
     : saleObj
       ? {
-          name: saleObj?.customerName || saleObj?.customer_name || customer?.name || null,
-          phone: saleObj?.customerPhone || saleObj?.customer_phone || customer?.phone || null,
-          address: saleObj?.customerAddress || saleObj?.customer_address || (customer as any)?.address || null,
-          cardId: saleObj?.customerCardId || saleObj?.customer_card_id || (customer as any)?.cardId || (customer as any)?.card_id || null
-        }
+        name: saleObj?.customerName || saleObj?.customer_name || customer?.name || null,
+        phone: saleObj?.customerPhone || saleObj?.customer_phone || customer?.phone || null,
+        address: saleObj?.customerAddress || saleObj?.customer_address || (customer as any)?.address || null,
+        rif_nit: saleObj?.customerRifNit || saleObj?.customer_rif_nit || (customer as any)?.rif_nit || (customer as any)?.rif_nit || null
+      }
       : customer
         ? {
-            name: customer.name,
-            phone: customer.phone,
-            address: (customer as any).address || null,
-            cardId: (customer as any).cardId || (customer as any).card_id || null
-          }
+          name: customer.name,
+          phone: customer.phone,
+          address: (customer as any).address || null,
+          rif_nit: (customer as any).rif_nit || (customer as any).rif_nit || null
+        }
         : null;
-    // Ensure we resolve address from several possible keys (snake/camel/alt names)
-    const resolveAddress = () => {
-      const tryFrom = (obj: any) => {
-        if (!obj) return null;
-        return obj.customerAddress || obj.customer_address || obj.address || obj.direccion || obj.dir || null;
-      };
-
-      if (Array.isArray(effectiveSaleObj)) {
-        return tryFrom(effectiveSaleObj[0]) || (customer as any)?.address || (customer as any)?.direccion || null;
-      }
-      if (effectiveSaleObj) {
-        return tryFrom(effectiveSaleObj) || (customer as any)?.address || (customer as any)?.direccion || null;
-      }
-      return (customer as any)?.address || (customer as any)?.direccion || null;
+  // Ensure we resolve address from several possible keys (snake/camel/alt names)
+  const resolveAddress = () => {
+    const tryFrom = (obj: any) => {
+      if (!obj) return null;
+      return obj.customerAddress || obj.customer_address || obj.address || obj.direccion || obj.dir || null;
     };
 
-    const resolvedAddress = resolveAddress();
-    if (resolvedCustomer) (resolvedCustomer as any).address = resolvedAddress;
+    if (Array.isArray(effectiveSaleObj)) {
+      return tryFrom(effectiveSaleObj[0]) || (customer as any)?.address || (customer as any)?.direccion || null;
+    }
+    if (effectiveSaleObj) {
+      return tryFrom(effectiveSaleObj) || (customer as any)?.address || (customer as any)?.direccion || null;
+    }
+    return (customer as any)?.address || (customer as any)?.direccion || null;
+  };
+
+  const resolvedAddress = resolveAddress();
+  if (resolvedCustomer) (resolvedCustomer as any).address = resolvedAddress;
 
   const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
@@ -299,7 +299,7 @@ export function TicketPreview({
                       }
                       return saleObj?.transactionType || saleObj?.transaction_type;
                     };
-                    
+
                     const transactionType = getTransactionType();
                     if (transactionType) {
                       return (
@@ -316,8 +316,8 @@ export function TicketPreview({
               {resolvedCustomer && (
                 <div className="customer" style={{ marginTop: '10px', fontSize: '10px' }}>
                   <div className="separator" style={{ borderTop: '1px dashed #000', margin: '5px 0' }}></div>
-                  {/* Show card_id first, then name, phone, address */}
-                  {(resolvedCustomer as any)?.cardId && <p><strong>RIF/ID:</strong> {(resolvedCustomer as any).cardId}</p>}
+                  {/* Show rif_nit first, then name, phone, address */}
+                  {(resolvedCustomer as any)?.rif_nit && <p><strong>RIF/NIT/ID:</strong> {(resolvedCustomer as any).rif_nit}</p>}
                   <p><strong>Cliente:</strong> {(resolvedCustomer.name || 'Cliente Eventual').toUpperCase()}</p>
                   {resolvedCustomer.phone && <p><strong>Tel:</strong> {resolvedCustomer.phone}</p>}
                   {resolvedCustomer.address && <p><strong>Dir:</strong> {resolvedCustomer.address}</p>}
