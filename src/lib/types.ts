@@ -120,12 +120,12 @@ export type Order = {
   total: number;
   storeId: string;
   status: 'pending' | 'processing' | 'processed' | 'cancelled' | 'expired';
-  processedAt?: Date | string;
+  processedAt?: string;
   processedBy?: string;
   saleId?: string;
   notes?: string;
-  createdAt: Date | string;
-  updatedAt: Date | string;
+  createdAt: string;
+  updatedAt: string;
 };
 
 // Alias para compatibilidad con código existente
@@ -133,10 +133,21 @@ export type PendingOrder = Order;
 
 export type InventoryMovement = {
   id: string;
-  productName: string;
-  type: 'sale' | 'purchase' | 'adjustment';
+  productId: string;
+  warehouseId: string;
+  movementType: string;
   quantity: number;
   date: string;
+  referenceType: string;
+  referenceId: string;
+  userId: string;
+  previousStock: number;
+  newStock: number;
+  unitCost?: number;
+  totalValue?: number;
+  batchId?: string;
+  createdAt: string;
+  updatedAt: string;
   responsible?: string;
   storeId: string;
 };
@@ -200,6 +211,7 @@ export type Customer = {
   address?: string;
   rif_nit?: string;
   storeId: string;
+  createdAt?: string;
 }
 
 export type Supplier = {
@@ -248,19 +260,25 @@ export type PaymentRecipient = {
 export type Unit = {
   id: string;
   name: string;
+  description?: string;
   storeId: string;
+  createdAt?: string;
 };
 
 export type Family = {
   id: string;
   name: string;
+  description?: string;
   storeId: string;
+  createdAt?: string;
 };
 
 export type Warehouse = {
   id: string;
   name: string;
+  location?: string;
   storeId: string;
+  createdAt?: string;
 };
 
 export type CurrencyRate = {

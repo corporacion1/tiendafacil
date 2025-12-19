@@ -1,7 +1,0 @@
-  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                                 Dload  Upload   Total   Spent    Left  Speed
-
-  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
-100    38    0     0  100    38      0     94 --:--:-- --:--:-- --:--:--    94
-100   175    0   137  100    38    340     94 --:--:-- --:--:-- --:--:--   434
-{"error":"Error al crear la venta","detalles":"Could not find the 'paid_amount' column of 'sales' in the schema cache","code":"PGRST204"}

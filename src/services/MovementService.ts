@@ -45,6 +45,8 @@ export interface CreateMovementRequest {
   quantity: number;
   unitCost?: number;
   referenceType: ReferenceType;
+  previousStock: number;
+  newStock: number;
   referenceId: string;
   batchId?: string;
   userId: string;

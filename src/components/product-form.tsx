@@ -36,7 +36,7 @@ const productSchema = z.object({
   price: z.coerce.number().min(0, "El precio no puede ser negativo.").max(9999999999.99, "El monto es demasiado grande."),
   wholesalePrice: z.coerce.number().min(0, "El precio mayorista no puede ser negativo.").max(9999999999.99, "El monto es demasiado grande."),
   cost: z.coerce.number().min(0, "El costo no puede ser negativo.").max(9999999999.99, "El monto es demasiado grande."),
-  stock: z.coerce.number().int("El stock debe ser un número entero.").min(0, "El stock no puede ser negativo.").max(9999999999, "La cantidad es demasiado grande."),
+  stock: z.coerce.number().int("El stock debe ser un número entero.").min(-9999999999, "El stock puede ser negativo.").max(9999999999, "La cantidad es demasiado grande."),
   status: z.enum(["active", "inactive", "promotion", "hidden"]),
   tax1: z.boolean(),
   tax2: z.boolean(),

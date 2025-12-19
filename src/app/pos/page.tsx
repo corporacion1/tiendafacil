@@ -1774,12 +1774,7 @@ export default function POSPage() {
       tax: totalTaxes,
       discount: finalDiscount || 0, // Descuento aplicado
       notes: discountNotes || null, // Motivo del descuento
-      paymentMethod:
-        payments.length > 0
-          ? payments.length > 1
-            ? "Multiple"
-            : payments[0].method
-          : "Pendiente",
+      paymentMethod: currentPaymentMethod || null,
       date: new Date().toISOString(),
       status: isCredit ? "unpaid" : "paid",
       transactionType: isCredit ? "credito" : "contado",

@@ -52,7 +52,11 @@ export class IDGenerator {
     // Otros
     'pm': 'PME',
     'cat': 'CAT',
-    'ad': 'ADS'
+    'ad': 'ADS',
+    'ads': 'ADS',
+    'rates': 'RAT',
+    'currency': 'CUR',
+    
   };
 
   /**

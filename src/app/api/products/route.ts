@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
       cost: parseFloat(data.cost) || 0,
       stock: initialStock,
       min_stock: parseInt(data.minStock) || 0,
-      unit: data.unit || 'unidad',
+      unit: data.unit || null,
       type: data.type || 'product',
       status: data.status || 'active',
       image_url: data.imageUrl || null,
@@ -170,10 +170,6 @@ export async function POST(request: NextRequest) {
       createdAt: created.created_at,
       updatedAt: created.updated_at
     };
-
-    // Invalidar cache
-    revalidateTag(`products-${created.store_id}`);
-    revalidateTag('products');
 
     return NextResponse.json(response);
   } catch (error: any) {
@@ -265,10 +261,6 @@ export async function PUT(request: NextRequest) {
       updatedAt: updated.updated_at
     };
 
-    // Invalidar cache
-    revalidateTag(`products-${updated.store_id}`);
-    revalidateTag('products');
-
     return NextResponse.json(response);
   } catch (error: any) {
     console.error('❌ [Products API] Unexpected error:', error);
@@ -303,11 +295,6 @@ export async function DELETE(request: NextRequest) {
       }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-
-
-    // Invalidar cache 
-    revalidateTag(`products-${storeId}`);
-    revalidateTag('products');
 
     console.log('✅ [Products API] Product deleted:', id);
     return NextResponse.json({ message: 'Producto eliminado exitosamente' });

@@ -577,7 +577,7 @@ export default function ReportsPage() {
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 {sale.transactionType === 'credito' ? (
-                                                    <span className={(sale.total - sale.paidAmount) > 0 ? 'text-red-600 font-medium' : 'text-green-600 font-medium'}>
+                                                    <span className={(sale.total - sale.paidAmount) > 0 ? 'text-red-600 font-medium' : 'text-blue-600 font-medium'}>
                                                         {activeSymbol}{((sale.total - sale.paidAmount) * activeRate).toFixed(2)}
                                                     </span>
                                                 ) : (
@@ -988,14 +988,14 @@ export default function ReportsPage() {
                             </div>
                         )
                     })()}
-                    
+
                     {/* Payment Information for Credit Sales */}
                     {selectedSaleDetails && selectedSaleDetails.transactionType === 'credito' && (
                         <>
                             <Separator className="my-4" />
                             <div className="space-y-3">
                                 <h4 className="font-semibold text-sm">Información de Pagos:</h4>
-                                
+
                                 {/* Payment Summary */}
                                 <div className="grid grid-cols-2 gap-4 text-sm">
                                     <div className="space-y-1">
@@ -1059,16 +1059,16 @@ export default function ReportsPage() {
                     )}
                     <DialogFooter className="flex justify-between">
                         <div>
-                            {selectedSaleDetails && selectedSaleDetails.transactionType === 'credito' && 
-                             selectedSaleDetails.status === 'unpaid' && 
-                             (selectedSaleDetails.total - selectedSaleDetails.paidAmount) > 0 && (
-                                <Button 
-                                    onClick={() => handleAddPayment(selectedSaleDetails)}
-                                    className="bg-green-600 hover:bg-green-700"
-                                >
-                                    Abonar a Cuenta
-                                </Button>
-                            )}
+                            {selectedSaleDetails && selectedSaleDetails.transactionType === 'credito' &&
+                                selectedSaleDetails.status === 'unpaid' &&
+                                (selectedSaleDetails.total - selectedSaleDetails.paidAmount) > 0 && (
+                                    <Button
+                                        onClick={() => handleAddPayment(selectedSaleDetails)}
+                                        className="bg-green-600 hover:bg-green-700"
+                                    >
+                                        Abonar a Cuenta
+                                    </Button>
+                                )}
                         </div>
                         <DialogClose asChild>
                             <Button variant="outline">Cerrar</Button>
@@ -1116,7 +1116,7 @@ export default function ReportsPage() {
                             <Button variant="outline">Cerrar</Button>
                         </DialogClose>
                         <DialogClose asChild>
-                            <Button 
+                            <Button
                                 onClick={() => {
                                     // Redirect to credits page
                                     window.location.href = '/credits';

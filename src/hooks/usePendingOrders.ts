@@ -29,7 +29,7 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
   // Configuración del polling
   const POLLING_INTERVAL = 3000; // 3 segundos
   const MIN_FETCH_INTERVAL = 2000; // Mínimo 2 segundos entre fetches
-  const MAX_RETRIES = 5;
+  const MAX_RETRIES = 3;
 
   const fetchOrders = useCallback(async (showLoadingState = true) => {
     if (!storeId || !isActiveRef.current) {

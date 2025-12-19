@@ -11,6 +11,7 @@ export async function GET(request: Request) {
     const status = searchParams.get('status');
     const overdue = searchParams.get('overdue');
     const limit = parseInt(searchParams.get('limit') || '50');
+    const creditDays = parseInt(searchParams.get('creditDays') || '7');
 
     if (!storeId) {
       return NextResponse.json({ error: 'storeId es requerido' }, { status: 400 });
@@ -101,7 +102,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const data = await request.json();
-    const { saleId, creditDays = 30, createdBy } = data;
+    const { saleId, creditDays, createdBy } = data;
 
     if (!saleId || !createdBy) {
       return NextResponse.json({
@@ -278,9 +279,10 @@ export async function PUT(request: Request) {
 
     // Crear objeto de pago
     const newPayment = {
-      id: `pay_${Date.now()}`,
+      id: IDGenerator.generate('payment'),
+      date: new Date().toISOString(),
       amount: payment.amount,
-      paymentMethod: payment.paymentMethod,
+      method: payment.paymentMethod || 'cash',
       reference: payment.reference || null,
       type: payment.type || 'payment',
       notes: payment.notes || null,
@@ -292,8 +294,7 @@ export async function PUT(request: Request) {
     const updatedPayments = [...(account.payments || []), newPayment];
     const newPaidAmount = account.paid_amount + payment.amount;
     const newRemainingBalance = account.remaining_balance - payment.amount;
-    const newStatus = newRemainingBalance <= 0 ? 'paid' :
-      (new Date() > new Date(account.due_date) ? 'overdue' : 'pending');
+    const newStatus = newRemainingBalance === 0 ? 'paid' : (new Date() > new Date(account.due_date) ? 'overdue' : 'pending');
 
     const { data: updatedAccount, error: updateError } = await supabaseAdmin
       .from('account_receivables')

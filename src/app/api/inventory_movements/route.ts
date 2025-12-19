@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { MovementService, MovementType, ReferenceType } from '@/services/MovementService';
+import { IDGenerator } from '@/lib/id-generator';
 
 export async function POST(request: Request) {
     try {
@@ -39,14 +40,17 @@ export async function POST(request: Request) {
 
         const result = await MovementService.recordMovement({
             productId: data.product_id,
-            warehouseId: 'main', // Default to main warehouse
+            warehouseId: data.warehouse_id || 'main', // Default to main warehouse
             movementType,
             quantity,
             referenceType,
-            referenceId: data.sale_id || `mov_${Date.now()}`,
-            userId: 'system', // TODO: Get from session if possible, or pass in payload
+            referenceId: data.sale_id || data.purchase_id,
+            userId: data.user_id || 'system', // TODO: Get from session if possible, or pass in payload
             storeId: data.store_id,
-            notes: 'Movimiento registrado desde POS'
+            notes: 'Movimiento registrado desde POS',
+            previousStock: data.previous_stock,
+            newStock: data.new_stock,
+            batchId: data.batch_id
         });
 
         if (!result) {

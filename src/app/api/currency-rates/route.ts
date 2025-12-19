@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { IDGenerator } from '@/lib/id-generator';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
 
     // Crear nueva tasa
     const rateData = {
-      id: 'RAT-' + Date.now(),
+      id: IDGenerator.generate('rates'),
       store_id: storeId,
       from_currency: fromCurrency,
       to_currency: toCurrency,
