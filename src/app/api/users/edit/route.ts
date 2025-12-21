@@ -24,10 +24,15 @@ export async function PUT(request: NextRequest) {
     if (updateData.permissions !== undefined) supabaseUpdateData.permissions = updateData.permissions;
     if (updateData.storeId !== undefined) supabaseUpdateData.store_id = updateData.storeId;
 
-    // Si hay cambio de contraseña
-    if (updateData.password) {
+    // Si hay cambio de contraseña (soporta tanto 'password' como 'newPassword')
+    const passwordToUpdate = updateData.newPassword || updateData.password;
+    if (passwordToUpdate && passwordToUpdate.trim()) {
+      if (passwordToUpdate.length < 6) {
+        return NextResponse.json({ error: 'La contraseña debe tener al menos 6 caracteres' }, { status: 400 });
+      }
       const salt = await bcrypt.genSalt(10);
-      supabaseUpdateData.password = await bcrypt.hash(updateData.password, salt);
+      supabaseUpdateData.password = await bcrypt.hash(passwordToUpdate, salt);
+      console.log('🔐 [Users Edit API] Password will be updated');
     }
 
     const { data: updatedUser, error } = await supabaseAdmin

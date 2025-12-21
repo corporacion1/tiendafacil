@@ -44,6 +44,7 @@ export type Store = {
   tax1?: number;
   tax2?: number;
   useDemoData?: boolean;
+  colorPalette?: 'blue-orange' | 'purple-pink' | 'green-teal' | 'red-yellow' | 'indigo-cyan' | 'slate-amber';
   createdAt?: string; // ISO date string for store creation date
   updatedAt?: string; // ISO date string for last update
 };

@@ -37,7 +37,8 @@ export function EditUserModal({ user, open, onOpenChange, onUserUpdated }: EditU
     email: '',
     phone: '',
     role: 'user' as 'user' | 'admin' | 'pos' | 'su' | 'depositary',
-    storeId: ''
+    storeId: '',
+    newPassword: ''
   })
 
   const [storeSearchOpen, setStoreSearchOpen] = useState(false)
@@ -104,7 +105,8 @@ export function EditUserModal({ user, open, onOpenChange, onUserUpdated }: EditU
         email: user.email || '',
         phone: user.phone || '',
         role: validRole,
-        storeId: user.storeId?.trim() || ''
+        storeId: user.storeId?.trim() || '',
+        newPassword: ''
       };
 
       console.log('📝 [EditUserModal] Setting form data:', newFormData);
@@ -148,12 +150,21 @@ export function EditUserModal({ user, open, onOpenChange, onUserUpdated }: EditU
     try {
       setLoading(true)
 
-      const payload = {
+      const payload: any = {
         uid: user.uid,
-        ...formData
+        displayName: formData.displayName,
+        email: formData.email,
+        phone: formData.phone,
+        role: formData.role,
+        storeId: formData.storeId
       };
 
-      console.log('📤 [EditUserModal] Submitting update:', payload);
+      // Solo incluir password si se proporcionó uno nuevo
+      if (formData.newPassword && formData.newPassword.trim()) {
+        payload.newPassword = formData.newPassword;
+      }
+
+      console.log('📤 [EditUserModal] Submitting update:', { ...payload, newPassword: payload.newPassword ? '***' : undefined });
 
       const response = await fetch('/api/users/edit', {
         method: 'PUT',
@@ -292,6 +303,21 @@ export function EditUserModal({ user, open, onOpenChange, onUserUpdated }: EditU
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="newPassword">Nueva Contraseña (opcional)</Label>
+            <Input
+              id="newPassword"
+              type="password"
+              value={formData.newPassword}
+              onChange={(e) => setFormData(prev => ({ ...prev, newPassword: e.target.value }))}
+              placeholder="Dejar en blanco para no cambiar"
+              autoComplete="new-password"
+            />
+            <p className="text-xs text-muted-foreground">
+              Mínimo 6 caracteres. Dejar en blanco si no desea cambiar la contraseña.
+            </p>
           </div>
 
           <div className="space-y-2">

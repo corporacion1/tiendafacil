@@ -13,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import type { Unit, Family, Warehouse, CurrencyRate } from "@/lib/types";
-import { Pencil, PlusCircle, Trash2, AlertTriangle, Database, Package, ImageOff, Loader2 } from "lucide-react";
+import { Pencil, PlusCircle, Trash2, AlertTriangle, Database, Package, ImageOff, Loader2, Check } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, parseISO } from "date-fns";
 import { Separator } from "@/components/ui/separator";
@@ -1016,6 +1016,82 @@ export default function SettingsPage() {
                             <CardDescription>Impuesto especial o selectivo.</CardDescription>
                         </div>
                     </div>
+
+                    <Separator />
+                    <h3 className="text-lg font-medium">Apariencia</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="colorPalette">Paleta de Colores</Label>
+                            <Select
+                                value={settings?.colorPalette || 'blue-orange'}
+                                onValueChange={(value) => handleSelectChange('colorPalette', value)}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Selecciona una paleta" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="blue-orange">
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex gap-1">
+                                                <div className="h-4 w-4 rounded-full bg-blue-600"></div>
+                                                <div className="h-4 w-4 rounded-full bg-purple-600"></div>
+                                            </div>
+                                            <span>Azul & Naranja (Por defecto)</span>
+                                        </div>
+                                    </SelectItem>
+                                    <SelectItem value="purple-pink">
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex gap-1">
+                                                <div className="h-4 w-4 rounded-full bg-purple-600"></div>
+                                                <div className="h-4 w-4 rounded-full bg-pink-600"></div>
+                                            </div>
+                                            <span>Púrpura & Rosa</span>
+                                        </div>
+                                    </SelectItem>
+                                    <SelectItem value="green-teal">
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex gap-1">
+                                                <div className="h-4 w-4 rounded-full bg-green-600"></div>
+                                                <div className="h-4 w-4 rounded-full bg-teal-600"></div>
+                                            </div>
+                                            <span>Verde & Turquesa</span>
+                                        </div>
+                                    </SelectItem>
+                                    <SelectItem value="red-yellow">
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex gap-1">
+                                                <div className="h-4 w-4 rounded-full bg-red-600"></div>
+                                                <div className="h-4 w-4 rounded-full bg-orange-600"></div>
+                                            </div>
+                                            <span>Rojo & Amarillo</span>
+                                        </div>
+                                    </SelectItem>
+                                    <SelectItem value="indigo-cyan">
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex gap-1">
+                                                <div className="h-4 w-4 rounded-full bg-indigo-600"></div>
+                                                <div className="h-4 w-4 rounded-full bg-cyan-600"></div>
+                                            </div>
+                                            <span>Índigo & Cian</span>
+                                        </div>
+                                    </SelectItem>
+                                    <SelectItem value="slate-amber">
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex gap-1">
+                                                <div className="h-4 w-4 rounded-full bg-slate-600"></div>
+                                                <div className="h-4 w-4 rounded-full bg-amber-600"></div>
+                                            </div>
+                                            <span>Pizarra & Ámbar</span>
+                                        </div>
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <CardDescription>
+                                Los colores se aplicarán en el menú, botones y elementos destacados. Los cambios se verán al guardar.
+                            </CardDescription>
+                        </div>
+                    </div>
+
                     <Separator />
                     <h3 className="text-lg font-medium">Clasificación de Productos</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
@@ -1078,7 +1154,16 @@ export default function SettingsPage() {
                         <Button
                             onClick={handleSaveSettings}
                             disabled={!hasUnsavedChanges || saveStatus === 'saving'}
-                            className="bg-primary hover:bg-primary/90"
+                            className={`
+                                ${settings?.colorPalette === 'blue-orange' ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700' : ''}
+                                ${settings?.colorPalette === 'purple-pink' ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700' : ''}
+                                ${settings?.colorPalette === 'green-teal' ? 'bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700' : ''}
+                                ${settings?.colorPalette === 'red-yellow' ? 'bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700' : ''}
+                                ${settings?.colorPalette === 'indigo-cyan' ? 'bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-700 hover:to-cyan-700' : ''}
+                                ${settings?.colorPalette === 'slate-amber' ? 'bg-gradient-to-r from-slate-600 to-amber-600 hover:from-slate-700 hover:to-amber-700' : ''}
+                                ${!settings?.colorPalette ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700' : ''}
+                                text-white
+                            `}
                         >
                             {saveStatus === 'saving' ? (
                                 <div className="flex items-center gap-2">

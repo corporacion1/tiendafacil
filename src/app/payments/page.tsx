@@ -292,9 +292,9 @@ export default function PaymentsPage() {
     const isFormComplete = selectedRecipientId && category && amount && responsible && paymentMethod;
 
     return (
-        <div className="grid flex-1 auto-rows-max items-start gap-4 lg:grid-cols-5 lg:gap-8">
+        <div className="grid flex-1 auto-rows-max items-start gap-4 grid-cols-1 lg:grid-cols-5 lg:gap-8">
             {/* Payment Form */}
-            <div className="grid auto-rows-max items-start gap-4 lg:col-span-2">
+            <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 min-w-0">
                 <Card>
                     <CardHeader>
                         <CardTitle>Registrar Pago</CardTitle>
@@ -304,61 +304,63 @@ export default function PaymentsPage() {
                         {/* Recipient Selector */}
                         <div className="space-y-2">
                             <Label>Destinatario *</Label>
-                            <div className="flex gap-2">
-                                <Popover open={isRecipientSearchOpen} onOpenChange={setIsRecipientSearchOpen}>
-                                    <PopoverTrigger asChild>
-                                        <Button variant="outline" role="combobox" className="w-full justify-between">
-                                            {selectedRecipient ? selectedRecipient.name : "Seleccionar destinatario..."}
-                                            <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Buscar destinatario..." />
-                                            <CommandList>
-                                                <CommandEmpty>No se encontraron destinatarios.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {recipients.map((recipient) => (
-                                                        <CommandItem
-                                                            key={recipient.id}
-                                                            value={recipient.name}
-                                                            onSelect={() => {
-                                                                setSelectedRecipientId(recipient.id);
-                                                                setIsRecipientSearchOpen(false);
-                                                            }}
-                                                            className="flex items-center justify-between group"
-                                                        >
-                                                            <div className="flex items-center">
-                                                                <Check className={cn("mr-2 h-4 w-4", selectedRecipientId === recipient.id ? "opacity-100" : "opacity-0")} />
-                                                                {recipient.name}
-                                                            </div>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setNewRecipient({
-                                                                        name: recipient.name,
-                                                                        taxId: recipient.taxId || '',
-                                                                        phone: recipient.phone || '',
-                                                                        email: recipient.email || '',
-                                                                        address: recipient.address || '',
-                                                                        notes: recipient.notes || ''
-                                                                    });
-                                                                    setEditingRecipientId(recipient.id);
-                                                                    setIsRecipientDialogOpen(true);
+                            <div className="flex gap-2 w-full">
+                                <div className="flex-1 min-w-0">
+                                    <Popover open={isRecipientSearchOpen} onOpenChange={setIsRecipientSearchOpen}>
+                                        <PopoverTrigger asChild>
+                                            <Button variant="outline" role="combobox" className="w-full justify-between">
+                                                <span className="truncate">{selectedRecipient ? selectedRecipient.name : "Seleccionar destinatario..."}</span>
+                                                <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                            <Command>
+                                                <CommandInput placeholder="Buscar destinatario..." />
+                                                <CommandList>
+                                                    <CommandEmpty>No se encontraron destinatarios.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {recipients.map((recipient) => (
+                                                            <CommandItem
+                                                                key={recipient.id}
+                                                                value={recipient.name}
+                                                                onSelect={() => {
+                                                                    setSelectedRecipientId(recipient.id);
+                                                                    setIsRecipientSearchOpen(false);
                                                                 }}
+                                                                className="flex items-center justify-between group"
                                                             >
-                                                                <Pencil className="h-3 w-3" />
-                                                            </Button>
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                                                                <div className="flex items-center truncate">
+                                                                    <Check className={cn("mr-2 h-4 w-4 shrink-0", selectedRecipientId === recipient.id ? "opacity-100" : "opacity-0")} />
+                                                                    <span className="truncate">{recipient.name}</span>
+                                                                </div>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setNewRecipient({
+                                                                            name: recipient.name,
+                                                                            taxId: recipient.taxId || '',
+                                                                            phone: recipient.phone || '',
+                                                                            email: recipient.email || '',
+                                                                            address: recipient.address || '',
+                                                                            notes: recipient.notes || ''
+                                                                        });
+                                                                        setEditingRecipientId(recipient.id);
+                                                                        setIsRecipientDialogOpen(true);
+                                                                    }}
+                                                                >
+                                                                    <Pencil className="h-3 w-3" />
+                                                                </Button>
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                </div>
 
                                 <Dialog open={isRecipientDialogOpen} onOpenChange={setIsRecipientDialogOpen}>
                                     <DialogTrigger asChild>
@@ -528,19 +530,19 @@ export default function PaymentsPage() {
             </div>
 
             {/* Payments History */}
-            <div className="grid auto-rows-max items-start gap-4 lg:col-span-3">
+            <div className="grid auto-rows-max items-start gap-4 lg:col-span-3 min-w-0">
                 <Card>
                     <CardHeader>
                         <CardTitle>Historial de Pagos</CardTitle>
-                        <div className="mt-4 flex gap-4">
+                        <div className="mt-4 flex flex-col sm:flex-row gap-4">
                             <Input
                                 placeholder="Buscar..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="flex-1"
+                                className="w-full sm:flex-1"
                             />
                             <Select value={filterCategory} onValueChange={setFilterCategory}>
-                                <SelectTrigger className="w-[180px]">
+                                <SelectTrigger className="w-full sm:w-[180px]">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -553,13 +555,13 @@ export default function PaymentsPage() {
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="rounded-md border">
+                        <div className="rounded-md border overflow-x-auto invisible-scroll">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Fecha</TableHead>
                                         <TableHead>Destinatario</TableHead>
-                                        <TableHead>Categoría</TableHead>
+                                        <TableHead className="hidden md:table-cell">Categoría</TableHead>
                                         <TableHead className="text-right">Monto</TableHead>
                                         <TableHead></TableHead>
                                     </TableRow>
@@ -576,7 +578,7 @@ export default function PaymentsPage() {
                                             <TableRow key={payment.id}>
                                                 <TableCell>{format(new Date(payment.paymentDate), "dd/MM/yyyy")}</TableCell>
                                                 <TableCell>{payment.recipientName}</TableCell>
-                                                <TableCell>
+                                                <TableCell className="hidden md:table-cell">
                                                     {PAYMENT_CATEGORIES.find(c => c.value === payment.category)?.label}
                                                 </TableCell>
                                                 <TableCell className="text-right font-mono">
@@ -647,7 +649,7 @@ export default function PaymentsPage() {
 
                     {viewPayment && (
                         <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                     <Label className="text-muted-foreground">Fecha</Label>
                                     <p className="font-medium">{format(new Date(viewPayment.paymentDate), "PPP", { locale: es })}</p>
@@ -668,7 +670,7 @@ export default function PaymentsPage() {
                                 {viewPayment.recipientId && <p className="text-sm text-muted-foreground">ID: {viewPayment.recipientId}</p>}
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                     <Label className="text-muted-foreground">Categoría</Label>
                                     <p className="font-medium">
