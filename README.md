@@ -4,12 +4,32 @@
 
 ![TiendaFácil Logo](public/tienda_facil_logo.svg)
 
-**Versión 1.2.6** | **Diciembre 2024**
+**Versión 1.3.0** | **Diciembre 2025**
  
  *Sistema completo de Punto de Venta, Inventario y Comercio Electrónico*
 @@ -92,8 +92,19 @@
  
- ## 🚀 **Nuevas Características - Versión 1.2.6**
+ ## 🚀 **Nuevas Características - Versión 1.3.0**
+
+### 🏷️ **Sistema de Descuentos en POS**
+- **Flexibilidad Total**: Soporte para descuentos por monto fijo ($) o porcentaje (%).
+- **Seguridad Integrada**: Autorización mediante PIN para aplicar descuentos.
+- **Auditoría**: Campo de notas obligatorio para justificar descuentos.
+- **Registro Detallado**: Persistencia del monto descontado y notas en cada venta.
+
+### 📦 **Gestión de Inventario y Excel**
+- **Importación/Exportación Excel**: Funcionalidad robusta para manejo masivo de inventario mediante archivos `.xlsx` (Excel).
+- **Validación de Datos**: Detección de errores y duplicados al importar productos.
+- **Correcciones de Almacén**: Selección precisa de almacenes durante la edición de productos y correcciones visuales en historial.
+
+### 📊 **Visualización y Reportes**
+- **Gráfico de Ventas vs Pagos**: Nueva visualización comparativa en el Dashboard para análisis financiero rápido.
+- **Etiquetas de Impuestos**: Visualización clara de precios con impuesto en detalles del producto.
+
+### 💰 **Categorías de Pagos Expandidas**
+- **Nuevas Categorías**: Inclusión de 'Repuestos', 'Reparaciones' y 'Viáticos' para un mejor control de gastos operativos.
+
+### ✨ **Características Anteriores (v1.2.6)**
 
 ### 🏪 **Series de Venta Locales (Local POS Series)**
 - **Configuración por Dispositivo**: Cada caja/dispositivo puede tener su propia serie (ej. POS-A, CAJA-1) y correlativo independiente.
@@ -494,7 +514,7 @@ Este proyecto es propiedad de **Corporación 1 Plus, C.A.** y está protegido po
 
 <div align="center">
 
-**🚀 TiendaFácil v1.2.6 - Impulsando el Comercio Digital**
+**🚀 TiendaFácil v1.3.0 - Impulsando el Comercio Digital**
 
 *Desarrollado con ❤️ por Corporación 1 Plus, C.A.*
 
