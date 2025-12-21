@@ -550,7 +550,27 @@ export default function InventoryPage() {
       const response = await fetch(`/api/supabase/inventory/movements?productId=${productId}&storeId=${activeStoreId}`);
       if (response.ok) {
         const data = await response.json();
-        setProductMovements(data.movements || []);
+        // API returns array directly now
+        const movementsList = Array.isArray(data) ? data : (data.movements || []);
+
+        // Map snake_case to camelCase
+        const mappedMovements = movementsList.map((m: any) => ({
+          _id: m.id, // Compatibilidad con key={movement._id}
+          id: m.id,
+          createdAt: m.created_at,
+          movementType: m.movement_type,
+          quantity: m.quantity,
+          previousStock: m.previous_stock,
+          newStock: m.new_stock,
+          referenceId: m.reference_id || m.reference_type || 'N/A',
+          notes: m.notes,
+          productId: m.product_id,
+          warehouseId: m.warehouse_id,
+          userId: m.user_id,
+          storeId: m.store_id
+        }));
+
+        setProductMovements(mappedMovements);
       } else {
         console.error('Error cargando movimientos');
         setProductMovements([]);
