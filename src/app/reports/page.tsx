@@ -469,7 +469,7 @@ export default function ReportsPage() {
         <div className="w-full max-w-full overflow-x-hidden">
             <Tabs defaultValue="sales" onValueChange={setActiveTab}>
                 <div className="flex items-center mb-4 flex-wrap gap-2">
-                    <TabsList>
+                    <TabsList className="flex flex-wrap h-auto justify-start md:justify-center w-full md:w-auto gap-1">
                         <TabsTrigger value="sales">Ventas</TabsTrigger>
                         <TabsTrigger value="purchases">Compras</TabsTrigger>
                         <TabsTrigger value="payments">Pagos</TabsTrigger>
