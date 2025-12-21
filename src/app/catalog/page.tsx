@@ -3299,7 +3299,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
 
 
 
-        <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+        <div className="fixed bottom-24 right-6 z-50 flex flex-col gap-3">
           {currentStoreSettings?.whatsapp && (
             <Button asChild size="icon" className="rounded-full h-14 w-14 bg-[#25D366] hover:bg-[#128C7E] shadow-lg">
               <a href={`https://wa.me/${currentStoreSettings.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer">
