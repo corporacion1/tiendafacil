@@ -301,3 +301,16 @@ os mejorados para el scrollbar del sidebar */
     }
   }
 }
+
+/* Cards semi-transparentes para mostrar el gradiente de fondo */
+@layer components {
+  .card {
+    background-color: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .dark .card {
+    background-color: rgba(0, 0, 0, 0.5) !important;
+  }
+}
