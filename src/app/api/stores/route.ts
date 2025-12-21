@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
       secondaryCurrencySymbol: store.secondary_currency_symbol,
       tax1: store.tax1,
       tax2: store.tax2,
+      colorPalette: store.color_palette,
       status: store.status,
       createdAt: store.created_at,
       updatedAt: store.updated_at,
@@ -134,6 +135,7 @@ export async function POST(request: NextRequest) {
       secondary_currency_symbol: data.secondaryCurrencySymbol || 'Bs.',
       tax1: data.tax1 || 0,
       tax2: data.tax2 || 0,
+      color_palette: data.colorPalette || 'blue-orange',
       status: data.status || 'active',
       whatsapp: data.whatsapp || null,
       meta: data.meta || null,
@@ -226,6 +228,7 @@ export async function PUT(request: NextRequest) {
     if (data.secondaryCurrencySymbol !== undefined) updateData.secondary_currency_symbol = data.secondaryCurrencySymbol;
     if (data.tax1 !== undefined) updateData.tax1 = data.tax1;
     if (data.tax2 !== undefined) updateData.tax2 = data.tax2;
+    if (data.colorPalette !== undefined) updateData.color_palette = data.colorPalette;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.whatsapp !== undefined) updateData.whatsapp = data.whatsapp;
     if (data.meta !== undefined) updateData.meta = data.meta;
@@ -263,6 +266,7 @@ export async function PUT(request: NextRequest) {
       primaryCurrencySymbol: updated.primary_currency_symbol,
       secondaryCurrencyName: updated.secondary_currency,
       secondaryCurrencySymbol: updated.secondary_currency_symbol,
+      colorPalette: updated.color_palette,
       status: updated.status,
       createdAt: updated.created_at,
       updatedAt: updated.updated_at,

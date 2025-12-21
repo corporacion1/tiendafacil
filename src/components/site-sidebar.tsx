@@ -72,6 +72,22 @@ export function SiteSidebar({ isExpanded }: SiteSidebarProps) {
 
   const colors = getColorClasses();
 
+  // Get background gradient based on palette
+  const getBackgroundGradient = () => {
+    const palette = settings?.colorPalette || 'blue-orange';
+
+    const gradientMap = {
+      'blue-orange': 'bg-gradient-to-br from-blue-50 via-purple-50 to-orange-50',
+      'purple-pink': 'bg-gradient-to-br from-purple-50 via-pink-50 to-fuchsia-50',
+      'green-teal': 'bg-gradient-to-br from-green-50 via-teal-50 to-emerald-50',
+      'red-yellow': 'bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50',
+      'indigo-cyan': 'bg-gradient-to-br from-indigo-50 via-cyan-50 to-sky-50',
+      'slate-amber': 'bg-gradient-to-br from-slate-50 via-stone-50 to-amber-50'
+    };
+
+    return gradientMap[palette];
+  };
+
   const filteredNavItems = useMemo(() => {
     // Generar elementos de navegación con activeStoreId dinámico
     const currentStoreId = activeStoreId || 'ST-1234567890123';
@@ -128,8 +144,9 @@ export function SiteSidebar({ isExpanded }: SiteSidebarProps) {
 
   return (
     <aside className={cn(
-      "fixed inset-y-0 left-0 z-10 hidden flex-col border-r bg-background sm:flex transition-all duration-300",
-      isExpanded ? "w-56" : "w-20 sidebar-collapsed"
+      "fixed inset-y-0 left-0 z-10 hidden flex-col border-r sm:flex transition-all duration-300",
+      isExpanded ? "w-56" : "w-20 sidebar-collapsed",
+      getBackgroundGradient()
     )}>
       {/* Header fijo */}
       <div className={cn(

@@ -1016,6 +1016,65 @@ export default function SettingsPage() {
                             <CardDescription>Impuesto especial o selectivo.</CardDescription>
                         </div>
                     </div>
+                    
+                    <Separator />
+                    <h3 className="text-lg font-medium">Clasificación de Productos</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
+                        <ManagementCard title="Unidades de Medida" description="Gestiona las unidades para tus productos." items={units} type='unit' />
+                        <ManagementCard title="Familias de Productos" description="Organiza tus productos en familias." items={families} type='family' />
+                        <ManagementCard title="Almacenes" description="Gestiona los almacenes de destino." items={warehouses} type='warehouse' />
+                    </div>
+
+                    <Separator />
+                    <h3 className="text-lg font-medium">Configuración de Monedas</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="primaryCurrencyName">Nombre Moneda Principal</Label>
+                            <Input
+                                id="primaryCurrencyName"
+                                value={settings?.primaryCurrencyName || ''}
+                                onChange={handleSettingsChange}
+                                placeholder="Dólar"
+                                required
+                                className={!settings?.primaryCurrencyName?.trim() && hasUnsavedChanges ? "border-destructive" : ""}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="primaryCurrencySymbol">Símbolo</Label>
+                            <Input
+                                id="primaryCurrencySymbol"
+                                value={settings?.primaryCurrencySymbol || ''}
+                                onChange={handleSettingsChange}
+                                placeholder="$"
+                                maxLength={3}
+                                required
+                                className={!settings?.primaryCurrencySymbol?.trim() && hasUnsavedChanges ? "border-destructive" : ""}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="secondaryCurrencyName">Nombre Moneda Secundaria</Label>
+                            <Input
+                                id="secondaryCurrencyName"
+                                value={settings?.secondaryCurrencyName || ''}
+                                onChange={handleSettingsChange}
+                                placeholder="Bolívares"
+                                required
+                                className={!settings?.secondaryCurrencyName?.trim() && hasUnsavedChanges ? "border-destructive" : ""}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="secondaryCurrencySymbol">Símbolo</Label>
+                            <Input
+                                id="secondaryCurrencySymbol"
+                                value={settings?.secondaryCurrencySymbol || ''}
+                                onChange={handleSettingsChange}
+                                placeholder="Bs."
+                                maxLength={3}
+                                required
+                                className={!settings?.secondaryCurrencySymbol?.trim() && hasUnsavedChanges ? "border-destructive" : ""}
+                            />
+                        </div>
+                    </div>
 
                     <Separator />
                     <h3 className="text-lg font-medium">Apariencia</h3>
@@ -1091,65 +1150,7 @@ export default function SettingsPage() {
                             </CardDescription>
                         </div>
                     </div>
-
-                    <Separator />
-                    <h3 className="text-lg font-medium">Clasificación de Productos</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
-                        <ManagementCard title="Unidades de Medida" description="Gestiona las unidades para tus productos." items={units} type='unit' />
-                        <ManagementCard title="Familias de Productos" description="Organiza tus productos en familias." items={families} type='family' />
-                        <ManagementCard title="Almacenes" description="Gestiona los almacenes de destino." items={warehouses} type='warehouse' />
-                    </div>
-
-                    <Separator />
-                    <h3 className="text-lg font-medium">Configuración de Monedas</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="primaryCurrencyName">Nombre Moneda Principal</Label>
-                            <Input
-                                id="primaryCurrencyName"
-                                value={settings?.primaryCurrencyName || ''}
-                                onChange={handleSettingsChange}
-                                placeholder="Dólar"
-                                required
-                                className={!settings?.primaryCurrencyName?.trim() && hasUnsavedChanges ? "border-destructive" : ""}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="primaryCurrencySymbol">Símbolo</Label>
-                            <Input
-                                id="primaryCurrencySymbol"
-                                value={settings?.primaryCurrencySymbol || ''}
-                                onChange={handleSettingsChange}
-                                placeholder="$"
-                                maxLength={3}
-                                required
-                                className={!settings?.primaryCurrencySymbol?.trim() && hasUnsavedChanges ? "border-destructive" : ""}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="secondaryCurrencyName">Nombre Moneda Secundaria</Label>
-                            <Input
-                                id="secondaryCurrencyName"
-                                value={settings?.secondaryCurrencyName || ''}
-                                onChange={handleSettingsChange}
-                                placeholder="Bolívares"
-                                required
-                                className={!settings?.secondaryCurrencyName?.trim() && hasUnsavedChanges ? "border-destructive" : ""}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="secondaryCurrencySymbol">Símbolo</Label>
-                            <Input
-                                id="secondaryCurrencySymbol"
-                                value={settings?.secondaryCurrencySymbol || ''}
-                                onChange={handleSettingsChange}
-                                placeholder="Bs."
-                                maxLength={3}
-                                required
-                                className={!settings?.secondaryCurrencySymbol?.trim() && hasUnsavedChanges ? "border-destructive" : ""}
-                            />
-                        </div>
-                    </div>
+                    
                     <div className="flex justify-end mt-4">
                         <Button
                             onClick={handleSaveSettings}
