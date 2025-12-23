@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
 
     console.log(' [Families API] POST family:', body.name);
 
+    // Mapear a snake_case
     const familyData = {
       id: IDGenerator.generate('family'),
       store_id: body.storeId,
@@ -67,12 +68,13 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error(' [Families API] Error creating family:', error);
+      console.error('❌ [Families API] Error creating family:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    console.log(' [Families API] Family created:', created.id);
+    console.log('✅ [Families API] Family created:', created.id);
 
+    // Mapear a camelCase
     const response = {
       id: created.id,
       storeId: created.store_id,
@@ -98,8 +100,9 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'id es requerido' }, { status: 400 });
     }
 
-    console.log(' [Families API] PUT family:', id);
+    console.log('🔄 [Families API] PUT family:', id);
 
+    // Mapear campos a actualizar
     const dbUpdateData: any = {};
     if (updateData.name !== undefined) dbUpdateData.name = updateData.name;
     if (updateData.description !== undefined) dbUpdateData.description = updateData.description;
@@ -112,14 +115,14 @@ export async function PUT(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error(' [Families API] Error updating family:', error);
+      console.error('❌ [Families API] Error updating family:', error);
       if (error.code === 'PGRST116') {
         return NextResponse.json({ error: 'Familia no encontrada' }, { status: 404 });
       }
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    console.log(' [Families API] Family updated:', updated.id);
+    console.log('✅ [Families API] Family updated:', updated.id);
 
     const response = {
       id: updated.id,

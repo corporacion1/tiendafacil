@@ -8,7 +8,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const storeId = searchParams.get('storeId');
 
-    if (!storeId) return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
+    if (!storeId) {
+      return NextResponse.json({ error: 'storeId es requerido' }, { status: 400 });
+    }
 
     console.log(' [Warehouses API] GET warehouses for store:', storeId);
 
@@ -16,9 +18,9 @@ export async function GET(request: NextRequest) {
       .from('warehouses')
       .select('*')
       .eq('store_id', storeId)
-      .order('name', { ascending: false });
+      .order('name', { ascending: true });
 
-   if (error) {
+    if (error) {
       console.error(' [warehouses API] Error fetching warehouses:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -29,9 +31,8 @@ export async function GET(request: NextRequest) {
       storeId: w.store_id,
       name: w.name,
       location: w.location,
-      status: w.status,
       createdAt: w.created_at
-    })) || [];
+    }));
 
     console.log(` [Warehouses API] Returned ${transformedWarehouses.length} warehouses`);
     return NextResponse.json(transformedWarehouses);
@@ -68,18 +69,17 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('❌ [Warehouses API] Supabase error:', error);
-      throw error;
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    console.log('✅ [Warehouses API] Warehouse created:', created);
+    console.log('✅ [Warehouses API] Warehouse created:', created.id);
 
-    // Transformar respuesta
+    // Mapear a camelCase
     const response = {
       id: created.id,
       storeId: created.store_id,
       name: created.name,
       location: created.location,
-      status: created.status,
       createdAt: created.created_at
     };
 
@@ -100,12 +100,11 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Campos requeridos 'id'" }, { status: 400 });
     }
 
-    console.log('🔄 [Warehouses API] Updating warehouse:', body.id);
+    console.log('🔄 [Warehouses API] Updating warehouse:', id);
 
     // Mapear campos a actualizar
     const dbupdateData: any = {};
     if (updateData.name !== undefined) dbupdateData.name = updateData.name;
-    if (updateData.status !== undefined) dbupdateData.status = updateData.status;
     if (updateData.location !== undefined) dbupdateData.location = updateData.location;
 
     const { data: updated, error } = await supabaseAdmin
@@ -115,7 +114,7 @@ export async function PUT(request: NextRequest) {
       .select()
       .single();
 
-    if (error){
+    if (error) {
       console.error('❌ [Warehouses API] Error updating warehouse:', error);
       if (error.code === 'PGRST116') {
         return NextResponse.json({ error: 'Almacén no encontrado' }, { status: 404 });
@@ -130,7 +129,6 @@ export async function PUT(request: NextRequest) {
       storeId: updated.store_id,
       name: updated.name,
       location: updated.location,
-      status: updated.status,
       createdAt: updated.created_at
     };
 
@@ -146,15 +144,14 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-    const storeId = searchParams.get('storeId');
 
-    if (!id || !storeId) {
-      return NextResponse.json({ error: "Faltan parámetros 'id' y/o 'storeId'" }, { status: 400 });
+    if (!id) {
+      return NextResponse.json({ error: 'id es requerido' }, { status: 400 });
     }
 
     console.log(' [Warehouses API] DELETE warehouse:', id);
 
-    const { data,error } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from('warehouses')
       .delete()
       .eq('id', id)

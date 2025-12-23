@@ -63,14 +63,14 @@ export class IDGenerator {
    * Genera un ID único simple
    * 
    * @param type - Tipo de entidad (prod, sale, purchase, etc.)
-   * @param storeId - ID de la tienda (no se usa en el nuevo formato, mantenido por compatibilidad)
+   * @param _storeId - ID de la tienda (no se usa en el nuevo formato, mantenido por compatibilidad)
    * @returns ID único en formato: {PREFIX}-{13 números}
    * 
    * @example
    * IDGenerator.generate('sale', 'store_123')
    * // Returns: 'SAL-1234567890123'
    */
-  static generate(type: string, storeId?: string): string {
+  static generate(type: string, _storeId?: string): string {
     const prefix = this.PREFIXES[type as keyof typeof this.PREFIXES] || 'GEN';
     const numbers = this.generateRandomNumbers(13);
     return `${prefix}-${numbers}`;

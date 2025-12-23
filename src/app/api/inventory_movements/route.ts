@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 
         const result = await MovementService.recordMovement({
             productId: data.product_id,
-            warehouseId: data.warehouse_id || 'main', // Default to main warehouse
+            warehouseId: data.warehouse_id, // Default to main warehouse
             movementType,
             quantity,
             referenceType,

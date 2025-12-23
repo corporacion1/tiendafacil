@@ -640,8 +640,9 @@ export default function InventoryPage() {
         'Precio Mayor': parseFloat((p.wholesalePrice * activeRate).toFixed(2)),
         Costo: parseFloat((p.cost * activeRate).toFixed(2)),
         Stock: p.stock,
-        Unidad: p.unit || 'Unidad',
-        Familia: p.family || 'General',
+        Unidad: p.unit || '',
+        Familia: p.family || '',
+        Almacen: p.warehouse || '',
         Tipo: p.type === 'service' ? 'Servicio' : 'Producto',
         Descripcion: p.description || ''
       }));
@@ -664,6 +665,7 @@ export default function InventoryPage() {
       Stock: p.stock,
       Unidad: p.unit,
       Familia: p.family,
+      Almacen: p.warehouse,
       Tipo: p.type === 'service' ? 'Servicio' : 'Producto',
       Descripcion: p.description || '',
     }));
@@ -731,6 +733,9 @@ export default function InventoryPage() {
           const price = parseFloat(row['Precio Detal'] || row['Precio'] || row['price'] || 0);
           const cost = parseFloat(row['Costo'] || row['cost'] || 0);
           const stock = parseInt(row['Stock'] || row['stock'] || 0);
+          const warehouse = row['Almacen'] || row['almacen'] || row['Warehouse'] || row['warehouse'] || '';
+          const family = row['Familia'] || row['familia'] || row['Family'] || row['family'] || '';
+          const unit = row['Unidad'] || row['unidad'] || row['Unit'] || row['unit'] || '';
           const description = row['Descripcion'] || row['descripcion'] || row['Description'] || row['description'] || '';
 
           // Lógica para Tipo (Soporta String y Boolean)
@@ -760,6 +765,9 @@ export default function InventoryPage() {
             price,
             cost,
             stock,
+            warehouse,
+            family,
+            unit,
             description,
             type,
             storeId: activeStoreId
@@ -995,7 +1003,7 @@ export default function InventoryPage() {
 
             <Dialog>
               <DialogTrigger asChild>
-                <Button size="sm" className="h-8 gap-1 bg-accent hover:bg-accent/90">
+                <Button size="sm" className="h-8 gap-1 bg-accent text-white hover:bg-accent/90">
                   <PlusCircle className="h-3.5 w-3.5" />
                   <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                     Mover Inventario
@@ -1105,7 +1113,7 @@ export default function InventoryPage() {
               </DialogContent>
             </Dialog>
                     <Link href={`/products?storeId=${activeStoreId}`}>
-          <Button size="sm" className="h-8 gap-1 bg-green-500 hover:bg-green-600">
+          <Button size="sm" className="h-8 gap-1 bg-green-500 text-white hover:bg-green-600">
             <PackagePlus className="h-3.5 w-3.5" />
             <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
             Agregar Inventario

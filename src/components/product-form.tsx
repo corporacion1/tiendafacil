@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Package, ImageOff, ScanLine, X, AlertCircle, Eye, Loader2 } from "lucide-react";
+import { Package, ScanLine, X, AlertCircle, Loader2 } from "lucide-react";
 import dynamic from 'next/dynamic';
 
 // Importar el scanner dinámicamente para evitar problemas de SSR
@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import type { Product, Unit, Family, Warehouse } from "@/lib/types";
+import type { Product } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { cn, getDisplayImageUrl } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "./ui/alert-dialog";
@@ -27,7 +27,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useSettings } from "@/contexts/settings-context";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { MultiImageUpload } from "@/components/multi-image-upload";
-import { getAllProductImages, migrateProductToMultipleImages } from "@/lib/product-image-utils";
+import { migrateProductToMultipleImages } from "@/lib/product-image-utils";
 
 const productSchema = z.object({
   id: z.string().optional(),
@@ -402,7 +402,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                           </FormControl>
                           <SelectContent>
                             {(units || []).map(unit => (
-                              <SelectItem key={unit.id} value={unit.name}>{unit.name}</SelectItem>
+                              <SelectItem key={unit.id} value={unit.id}>{unit.name}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -424,7 +424,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                           </FormControl>
                           <SelectContent>
                             {(families || []).map(family => (
-                              <SelectItem key={family.id} value={family.name}>{family.name}</SelectItem>
+                              <SelectItem key={family.id} value={family.id}>{family.name}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -446,8 +446,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {(warehouses || []).map(wh => (
-                                <SelectItem key={wh.id} value={wh.name}>{wh.name}</SelectItem>
+                              {(warehouses || []).map(warehouse => (
+                                <SelectItem key={warehouse.id} value={warehouse.id}>{warehouse.name}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
