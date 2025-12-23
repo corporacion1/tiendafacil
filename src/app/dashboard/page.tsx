@@ -47,7 +47,7 @@ export default function Dashboard() {
 
   const isLoading = statsLoading || isLoadingSettings
 
-  const recentMovements: InventoryMovement[] = useMemo(() => {
+  const recentMovements: any[] = useMemo(() => {
     if (!sales || !purchases) return []
     const saleMovements = sales
       .filter(sale => sale.storeId === activeStoreId)

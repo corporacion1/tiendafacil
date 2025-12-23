@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     if (dateFrom) filters.dateFrom = new Date(dateFrom);
     if (dateTo) filters.dateTo = new Date(dateTo);
 
-    if (movementType) filters.movementTypes = [movementType];
+    if (movementType) filters.movementTypes = movementType;
 
     // Obtener movimientos
     const movements = await MovementService.getProductMovements(
@@ -127,7 +127,7 @@ export async function PUT(request: Request) {
       reason,
       userId,
       storeId,
-      warehouseId = 'wh-1'
+      warehouseId
     } = data;
 
     // Validar campos requeridos

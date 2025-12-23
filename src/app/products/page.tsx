@@ -84,9 +84,9 @@ export default function ProductsPage() {
     <RequireAuth>
       <Card>
         <CardHeader>
-          <CardTitle>Crear Producto</CardTitle>
+          <CardTitle>Crear Producto & Servicio</CardTitle>
           <CardDescription>
-            Completa el formulario para agregar un nuevo producto a tu inventario.
+            Completa el formulario para agregar un nuevo producto & servicio a tu inventario.
           </CardDescription>
         </CardHeader>
         <CardContent>

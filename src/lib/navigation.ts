@@ -3,7 +3,6 @@ import {
   Boxes,
   FileText,
   Home,
-  PackagePlus,
   Settings,
   ShoppingCart,
   Store,
@@ -20,10 +19,9 @@ import { defaultStoreId } from './data';
 export const getNavItems = (activeStoreId: string) => [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: `/catalog?storeId=${activeStoreId}`, label: 'Catálogo', icon: LayoutGrid },
-  { href: "/products", label: "Productos", icon: PackagePlus },
   { href: "/inventory", label: "Inventario", icon: Boxes },
   { href: "/purchases", label: "Compras", icon: Store },
-  { href: "/payments", label: "Pagos", icon: DollarSign },
+  { href: "/payments", label: "Pagos & Gastos", icon: DollarSign },
   { href: '/pos', label: 'Punto de Venta', icon: ShoppingCart },
   { href: "/credits", label: "Créditos", icon: CreditCard },
   { href: "/reports", label: "Reportes", icon: FileText },
@@ -33,7 +31,6 @@ export const getNavItems = (activeStoreId: string) => [
 export const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: Home },
   { href: `/catalog?storeId=${defaultStoreId}`, label: 'Catálogo', icon: LayoutGrid },
-  { href: "/products", label: "Productos", icon: PackagePlus },
   { href: "/inventory", label: "Inventario", icon: Boxes },
   { href: "/purchases", label: "Compras", icon: Store },
   { href: "/payments", label: "Pagos", icon: DollarSign },

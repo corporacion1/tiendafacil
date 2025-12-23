@@ -151,6 +151,8 @@ export type InventoryMovement = {
   updatedAt: string;
   responsible?: string;
   storeId: string;
+    productName?: string;
+      type?: string;
 };
 
 export type SalePayment = {

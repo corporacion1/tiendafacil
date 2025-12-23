@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import Image from "next/image";
-import { File, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X, Package, Check, ImageOff, FileText, FileSpreadsheet, FileJson, Filter, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { File, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X, Package, Check, ImageOff, FileText, FileSpreadsheet, FileJson, Filter, Loader2, Plus, PackagePlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1104,6 +1104,14 @@ export default function InventoryPage() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+                    <Link href={`/products?storeId=${activeStoreId}`}>
+          <Button size="sm" className="h-8 gap-1 bg-green-500 hover:bg-green-600">
+            <PackagePlus className="h-3.5 w-3.5" />
+            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+            Agregar Inventario
+            </span>
+          </Button>
+        </Link>
 
           </div>
         </div>
