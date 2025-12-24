@@ -1,15 +1,12 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { IDGenerator } from '@/lib/id-generator';
-import { unstable_cache, revalidateTag } from 'next/cache';
 
 // MODIFICAR el GET en /app/api/products/route.ts
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const storeId = searchParams.get('storeId');
-    const limit = searchParams.get('limit') || '1000'; // Límite por defecto
-    const offset = searchParams.get('offset') || '0'; // Offset por defecto
 
     if (!storeId) {
       return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
@@ -267,7 +264,7 @@ export async function PUT(request: NextRequest) {
       status: updated.status,
       imageUrl: updated.image_url,
       imageHint: updated.image_hint,
-      images: typeof updated.images === 'string' ? JSON.parse(updated.images) : updated.images || [],
+      images: typeof updated.images === 'string' ? JSON.parse(updated.images) : [],
       primaryImageIndex: updated.primary_image_index,
       tax1: updated.tax1,
       tax2: updated.tax2,

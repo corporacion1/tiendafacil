@@ -181,7 +181,7 @@ export default function InventoryPage() {
 
   const handleEdit = async (product: Product) => {
     logger.debug('✏️ [Inventory] Editando producto:', product);
-    
+
     const productId = product.id;
     const storeId = product.storeId || activeStoreId;
     if (!productId || !storeId) {
@@ -241,16 +241,16 @@ export default function InventoryPage() {
 
     // 1. Validar SKU único
     if (data.sku) {
-      const duplicate = products.find(p => 
-        p.sku && data.sku && 
-        p.sku.toLowerCase() === data.sku.toLowerCase() && 
+      const duplicate = products.find(p =>
+        p.sku && data.sku &&
+        p.sku.toLowerCase() === data.sku.toLowerCase() &&
         p.id !== data.id
       );
       if (duplicate) {
-        toast({ 
-          variant: 'destructive', 
-          title: 'SKU duplicado', 
-          description: `Ya existe un producto con SKU "${data.sku}" (${duplicate.name}).` 
+        toast({
+          variant: 'destructive',
+          title: 'SKU duplicado',
+          description: `Ya existe un producto con SKU "${data.sku}" (${duplicate.name}).`
         });
         return false;
       }
@@ -304,25 +304,25 @@ export default function InventoryPage() {
         } catch (e) {
           errorText = 'No se pudo leer el error';
         }
-        
-        logger.error('❌ [Inventory] Error PUT:', { 
-          status: response.status, 
+
+        logger.error('❌ [Inventory] Error PUT:', {
+          status: response.status,
           errorText,
           url: `/api/products/${data.id}`,
           payload
         });
-        
+
         if (response.status === 404) {
-          toast({ 
-            variant: 'destructive', 
-            title: 'Producto no encontrado', 
-            description: 'El producto no existe en la base de datos.' 
+          toast({
+            variant: 'destructive',
+            title: 'Producto no encontrado',
+            description: 'El producto no existe en la base de datos.'
           });
         } else {
-          toast({ 
-            variant: 'destructive', 
-            title: `Error ${response.status}`, 
-            description: errorText || 'Error al actualizar producto' 
+          toast({
+            variant: 'destructive',
+            title: `Error ${response.status}`,
+            description: errorText || 'Error al actualizar producto'
           });
         }
         return false;
@@ -336,7 +336,7 @@ export default function InventoryPage() {
       });
 
       // 3. ✅ ACTUALIZAR ESTADO LOCAL INMEDIATAMENTE
-      setProducts(prev => prev.map(p => 
+      setProducts(prev => prev.map(p =>
         p.id === updatedProduct.id ? updatedProduct : p
       ));
 
@@ -351,12 +351,13 @@ export default function InventoryPage() {
 
       // 5. Cerrar diálogo
       setProductToEdit(null);
-      
-      toast({ 
-        title: '✅ Producto Actualizado', 
-        description: `"${updatedProduct.name}" ha sido actualizado correctamente.` 
+      await reloadProducts();
+
+      toast({
+        title: '✅ Producto Actualizado',
+        description: `"${updatedProduct.name}" ha sido actualizado correctamente.`
       });
-      
+
       return true;
 
     } catch (err: any) {
@@ -365,10 +366,10 @@ export default function InventoryPage() {
         stack: err.stack,
         name: err.name
       });
-      toast({ 
-        variant: 'destructive', 
-        title: 'Error de conexión', 
-        description: err.message || 'No se pudo conectar con el servidor.' 
+      toast({
+        variant: 'destructive',
+        title: 'Error de conexión',
+        description: err.message || 'No se pudo conectar con el servidor.'
       });
       return false;
     }
@@ -1149,14 +1150,14 @@ export default function InventoryPage() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-                    <Link href={`/products?storeId=${activeStoreId}`}>
-          <Button size="sm" className="h-8 gap-1 bg-green-500 text-white hover:bg-green-600">
-            <PackagePlus className="h-3.5 w-3.5" />
-            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-            Agregar Inventario
-            </span>
-          </Button>
-        </Link>
+            <Link href={`/products?storeId=${activeStoreId}`}>
+              <Button size="sm" className="h-8 gap-1 bg-green-500 text-white hover:bg-green-600">
+                <PackagePlus className="h-3.5 w-3.5" />
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                  Agregar Inventario
+                </span>
+              </Button>
+            </Link>
 
           </div>
         </div>

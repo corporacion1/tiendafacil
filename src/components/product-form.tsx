@@ -168,7 +168,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
   const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
-    setImageError(false);
+    imageError && setImageError(false);
   }, [watchedImageUrl]);
 
   const displayUrl = useMemo(() => getDisplayImageUrl(watchedImageUrl), [watchedImageUrl]);
@@ -293,47 +293,47 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     }
   };
 
-// Estado para controlar si ya se cargaron los warehouses
-const [warehousesReady, setWarehousesReady] = useState(false);
+  // Estado para controlar si ya se cargaron los warehouses
+  const [warehousesReady, setWarehousesReady] = useState(false);
 
-useEffect(() => {
-  if (warehouses && warehouses.length > 0) {
-    setWarehousesReady(true);
-    
-    // Si hay producto y warehouses, sincronizar
-    if (product && product.warehouse) {
-      const exists = warehouses.some(w => w.id === product.warehouse);
-      if (exists) {
-        // Forzar actualización del valor
-        form.setValue('warehouse', product.warehouse, { shouldValidate: true });
+  useEffect(() => {
+    if (warehouses && warehouses.length > 0) {
+      setWarehousesReady(true);
+
+      // Si hay producto y warehouses, sincronizar
+      if (product && product.warehouse) {
+        const exists = warehouses.some(w => w.id === product.warehouse);
+        if (exists) {
+          // Forzar actualización del valor
+          form.setValue('warehouse', product.warehouse, { shouldValidate: true });
+        }
       }
     }
-  }
-}, [warehouses, product, form]);
+  }, [warehouses, product, form]);
 
   // Agrega esto después de los otros useEffect
-useEffect(() => {
-  // Cuando cambie el tipo, manejar warehouse
-  const productType = form.watch('type');
-  const currentWarehouse = form.getValues('warehouse');
-  
-  console.log('🔄 [ProductForm] Type changed:', {
-    type: productType,
-    currentWarehouse,
-    shouldHaveWarehouse: productType === 'product'
-  });
-  
-  if (productType === 'service' && currentWarehouse) {
-    // Si es servicio y tiene warehouse, mantenerlo pero no mostrar
-    console.log('📝 [ProductForm] Service with warehouse, keeping value:', currentWarehouse);
-  } else if (productType === 'product' && !currentWarehouse) {
-    // Si es producto y no tiene warehouse, setear uno por defecto
-    const defaultWarehouse = warehouses?.[0]?.id || '';
-    if (defaultWarehouse) {
-      form.setValue('warehouse', defaultWarehouse, { shouldDirty: false });
+  useEffect(() => {
+    // Cuando cambie el tipo, manejar warehouse
+    const productType = form.watch('type');
+    const currentWarehouse = form.getValues('warehouse');
+
+    console.log('🔄 [ProductForm] Type changed:', {
+      type: productType,
+      currentWarehouse,
+      shouldHaveWarehouse: productType === 'product'
+    });
+
+    if (productType === 'service') {
+      // Si es servicio y tiene warehouse, mantenerlo pero no mostrar
+      console.log('📝 [ProductForm] Service with warehouse, keeping value:', currentWarehouse);
+    } else if (productType === 'product' && !currentWarehouse) {
+      // Si es producto y no tiene warehouse, setear uno por defecto
+      const defaultWarehouse = warehouses?.[0]?.id || '';
+      if (defaultWarehouse) {
+        form.setValue('warehouse', defaultWarehouse, { shouldDirty: false });
+      }
     }
-  }
-}, [form.watch('type'), warehouses, form]);
+  }, [form.watch('type'), warehouses, form]);
 
   return (
     <>
