@@ -73,25 +73,37 @@ export async function GET(
     }
 }
 
-/**
+    /**
  * PUT - Actualizar un producto
  */
 export async function PUT(
     request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: { id: string } }
 ) {
     try {
-        const resolvedParams = await params;
-        const productId = resolvedParams.id;
-        const { searchParams } = new URL(request.url);
-        const storeId = searchParams.get('storeId');
+        const productId = params.id;
         const data = await request.json();
-
-        if (!storeId) {
-            return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
+        
+        console.log('🔍 [API PUT] Recibiendo actualización:', {
+            productId,
+            storeId: data.storeId,
+            warehouse: data.warehouse,
+            type: data.type
+        });
+        
+        if (!data.storeId) {
+            return NextResponse.json(
+                { error: 'storeId es requerido' }, 
+                { status: 400 }
+            );
         }
 
-        console.log('📝 [Products API] PUT product:', { productId, storeId });
+        console.log('📝 [Products API] PUT product:', { 
+            productId, 
+            storeId: data.storeId, // ✅ CORREGIDO: usar data.storeId
+            name: data.name,
+            warehouse: data.warehouse
+        });
 
         // Transformar camelCase a snake_case para Supabase
         const updateData: any = {
@@ -112,16 +124,20 @@ export async function PUT(
         if (data.status !== undefined) updateData.status = data.status;
         if (data.imageUrl !== undefined) updateData.image_url = data.imageUrl;
         if (data.imageHint !== undefined) updateData.image_hint = data.imageHint;
-        if (data.images !== undefined) updateData.images = data.images;
+        if (data.images !== undefined) updateData.images = JSON.stringify(data.images); // ✅ Asegurar stringify
         if (data.primaryImageIndex !== undefined) updateData.primary_image_index = data.primaryImageIndex;
         if (data.tax1 !== undefined) updateData.tax1 = data.tax1;
         if (data.tax2 !== undefined) updateData.tax2 = data.tax2;
+        
+        // ✅ AGREGAR ESTOS CAMPOS FALTANTES:
+        if (data.warehouse !== undefined) updateData.warehouse = data.warehouse;
+        if (data.affectsInventory !== undefined) updateData.affects_inventory = data.affectsInventory;
 
         const { data: updatedProduct, error } = await supabaseAdmin
             .from('products')
             .update(updateData)
             .eq('id', productId)
-            .eq('store_id', storeId)
+            .eq('store_id', data.storeId) // ✅ CORREGIDO: usar data.storeId
             .select()
             .single();
 
@@ -137,7 +153,7 @@ export async function PUT(
             return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 });
         }
 
-        // Transformar respuesta
+        // Transformar respuesta (incluir warehouse)
         const transformedProduct = {
             id: updatedProduct.id,
             storeId: updatedProduct.store_id,
@@ -159,21 +175,29 @@ export async function PUT(
             primaryImageIndex: updatedProduct.primary_image_index || 0,
             tax1: updatedProduct.tax1 || false,
             tax2: updatedProduct.tax2 || false,
+            // ✅ AGREGAR ESTOS CAMPOS A LA RESPUESTA:
+            warehouse: updatedProduct.warehouse,
+            affectsInventory: updatedProduct.affects_inventory,
             createdAt: updatedProduct.created_at,
             updatedAt: updatedProduct.updated_at
         };
 
+        console.log('✅ [API PUT] Producto actualizado exitosamente:', {
+            id: transformedProduct.id,
+            name: transformedProduct.name,
+            warehouse: transformedProduct.warehouse
+        });
+
         return NextResponse.json(transformedProduct);
 
-    } catch (error) {
-        console.error('❌ [Products API] Error in PUT:', error);
-        return NextResponse.json({
-            error: 'Error interno del servidor',
-            details: error instanceof Error ? error.message : String(error)
-        }, { status: 500 });
+    } catch (error: any) {
+        console.error('❌ [API PUT] Error:', error);
+        return NextResponse.json(
+            { error: error.message || 'Error interno del servidor' },
+            { status: 500 }
+        );
     }
 }
-
 /**
  * DELETE - Eliminar un producto
  */

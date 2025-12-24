@@ -677,44 +677,76 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     localStorage.setItem(CURRENCY_PREF_STORAGE_KEY, newPreference);
   }, [displayCurrency]);
 
-  const reloadProducts = useCallback(async () => {
-    if (!activeStoreId) return;
+    // FUNCIÓN reloadProducts
+    const reloadProducts = useCallback(async () => {
+      if (!activeStoreId) return;
 
-    try {
-      console.log('🔄 Recargando productos desde Supabase...');
-      const response = await fetch(`/api/products?storeId=${activeStoreId}&_t=${Date.now()}`);
-      
-      if (!response.ok) {
-        console.error('❌ Error en la respuesta de productos:', response.status);
-        return;
+      try {
+        console.log('🔄 [Context] Recargando productos para store:', activeStoreId);
+        
+        // Usar fetch SIN cache forzado
+        const response = await fetch(`/api/products?storeId=${activeStoreId}`, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, max-age=0',
+            'Pragma': 'no-cache'
+          }
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('❌ [Context] Error recargando productos:', {
+            status: response.status,
+            error: errorText
+          });
+          return;
+        }
+
+        const data = await response.json();
+        console.log('📦 [Context] Productos recibidos (tipo):', 
+          Array.isArray(data) ? 'Array directo' : 'Objeto con datos'
+        );
+
+        // ✅ SOLUCIÓN: Manejar ÚNICAMENTE el formato que devuelve TU API
+        // Según tu route.ts, devuelve un array directo (transformedProducts)
+        let productsData: Product[] = [];
+        
+        if (Array.isArray(data)) {
+          // Formato correcto según tu API
+          productsData = data;
+        } else {
+          // Loggear pero no fallar
+          console.warn('⚠️ [Context] Formato inesperado, intentando extraer:', data);
+          if (data.products) productsData = data.products;
+          else if (data.data) productsData = data.data;
+        }
+
+        console.log(`✅ [Context] Actualizando ${productsData.length} productos en estado`);
+        
+        // Actualizar estado de forma segura
+        setProducts(prev => {
+          // Si es el mismo número de productos, puede que sean los mismos
+          if (prev.length === productsData.length) {
+            // Verificar si realmente cambiaron
+            const changed = prev.some((p, i) => 
+              p.id !== productsData[i]?.id || 
+              p.stock !== productsData[i]?.stock ||
+              p.price !== productsData[i]?.price
+            );
+            if (!changed) {
+              console.log('📊 [Context] Productos no han cambiado, omitiendo actualización');
+              return prev;
+            }
+          }
+          return productsData;
+        });
+
+        return productsData;
+
+      } catch (error) {
+        console.error('❌ [Context] Error recargando productos:', error);
+        throw error;
       }
-
-      const data = await response.json();
-      console.log('📦 Datos crudos recibidos:', data);
-
-      // Manejar diferentes estructuras de respuesta
-      let productsData: Product[] = [];
-      
-      if (Array.isArray(data)) {
-        // Si la API devuelve directamente un array
-        productsData = data;
-      } else if (data.products && Array.isArray(data.products)) {
-        // Si la API devuelve { products: [...] }
-        productsData = data.products;
-      } else if (data.data && Array.isArray(data.data)) {
-        // Si la API devuelve { data: [...] }
-        productsData = data.data;
-      }
-
-      console.log(`✅ Productos procesados para actualizar estado: ${productsData.length} items`);
-      
-      // Actualizar el estado global de productos
-      setProducts(productsData);
-
-    } catch (error) {
-      console.error('❌ Error recargando productos:', error);
-    }
-  }, [activeStoreId]);
+    }, [activeStoreId]);
 
   const handleSetUserProfile = useCallback((user: UserProfile | null) => {
     setUserProfile(user);

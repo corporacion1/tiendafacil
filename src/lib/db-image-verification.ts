@@ -32,15 +32,6 @@ export interface DbImageVerificationResult {
 export async function verifyImagesInDatabase(productId: string, storeId: string): Promise<DbImageVerificationResult> {
   const issues: string[] = [];
   const recommendations: string[] = [];
-  const imageDetails: Array<{
-    index: number;
-    id: string;
-    isExternalUrl: boolean;
-    isValid: boolean;
-    size: number;
-    format: string;
-    error?: string;
-  }> = [];
 
   try {
     console.group(`🔍 [DB Verification] Checking images for product ${productId}`);
@@ -149,6 +140,15 @@ export async function verifyImagesInDatabase(productId: string, storeId: string)
           imagesHaveValidFormat = false;
         }
         
+        const imageDetails: Array<{
+            index: number;
+            id: string;
+            isExternalUrl: boolean;
+            isValid: boolean;
+            size: number;
+            format: string;
+            error?: string;
+          }> = [];
         imageDetails.push(imageDetail);
         console.log(`📊 Image ${i}:`, imageDetail);
       }
@@ -189,7 +189,7 @@ export async function verifyImagesInDatabase(productId: string, storeId: string)
       productName: productData.name || 'Unknown',
       storeId,
       verification,
-      imageDetails,
+      imageDetails: [],
       issues,
       recommendations
     };

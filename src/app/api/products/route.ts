@@ -3,41 +3,32 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { IDGenerator } from '@/lib/id-generator';
 import { unstable_cache, revalidateTag } from 'next/cache';
 
+// MODIFICAR el GET en /app/api/products/route.ts
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const storeId = searchParams.get('storeId');
+    const limit = searchParams.get('limit') || '1000'; // Límite por defecto
+    const offset = searchParams.get('offset') || '0'; // Offset por defecto
 
     if (!storeId) {
       return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
     }
 
-    // Definir la función de fetch cacheada
-    const getCachedProducts = unstable_cache(
-      async (id: string) => {
-        console.log(`🔌 [Products API] Fetching FRESH data from DB for store: ${id}`);
+    console.log(`🔍 [Products API] Fetching data for store: ${storeId}`);
+
         const { data: products, error } = await supabaseAdmin
-          .from('products')
-          .select('*')
-          .eq('store_id', id)
-          .order('created_at', { ascending: false });
+      .from('products')
+      .select('*')
+      .eq('store_id', storeId)
+      .order('created_at', { ascending: false });
 
-        if (error) throw error;
-        return products;
-      },
-      [`products-${storeId}`], // Key parts
-      {
-        tags: [`products-${storeId}`, 'products'], // Tags para invalidación
-        revalidate: 3 // Fallback: revalidar cada hora si no hay cambios
-      }
-    );
+    if (error) {
+      console.error('❌ [Products API] Supabase error:', error);
+      throw error;
+    }
 
-    console.log(`🔍 [Products API] Requesting products for store: ${storeId}`);
-    const products = await getCachedProducts(storeId);
-
-    // Transformar snake_case a camelCase para compatibilidad
-    // Nota: Mantenemos la transformación fuera del cache para permitir flexibilidad si el modelo cambia
-    // aunque idealmente se cachearía el objeto transformado para ahorrar CPU también.
+    // Transformar como ya tenías
     const transformedProducts = products?.map((p: any) => ({
       id: p.id,
       storeId: p.store_id,
@@ -55,30 +46,55 @@ export async function GET(request: NextRequest) {
       status: p.status,
       imageUrl: p.image_url,
       imageHint: p.image_hint,
+      // ✅ IMPORTANTE: Asegurar que warehouse se incluya
+      warehouse: p.warehouse,
       images: typeof p.images === 'string' ? JSON.parse(p.images) : (p.images || []),
       primaryImageIndex: p.primary_image_index || 0,
       tax1: p.tax1 || false,
       tax2: p.tax2 || false,
-      warehouse: p.warehouse,
       affectsInventory: p.affects_inventory !== undefined ? p.affects_inventory : true,
       createdAt: p.created_at,
       updatedAt: p.updated_at
     })) || [];
 
-    console.log(`✅ [Products API] Returned ${transformedProducts.length} products (Cache Status: Likely HIT if no 'Fresh data' log)`);
+    console.log(`✅ [Products API] Returned ${transformedProducts.length} products`);
 
-    // Agregar headers de cache HTTP para el navegador (Client-side cache)
-    // stale-while-revalidate permite usar datos "viejos" mientras se busca nuevo en background
-    return NextResponse.json(transformedProducts, {
-      headers: {
-        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=30',
-      }
-    });
+    return NextResponse.json(transformedProducts);
 
   } catch (error: any) {
     console.error('❌ [Products API] Unexpected error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+}
+
+// Función auxiliar para transformar
+function transformProducts(products: any[]) {
+  return products?.map((p: any) => ({
+    id: p.id,
+    storeId: p.store_id,
+    sku: p.sku,
+    name: p.name,
+    description: p.description || '',
+    family: p.family,
+    price: parseFloat(p.price) || 0,
+    wholesalePrice: parseFloat(p.wholesale_price) || 0,
+    cost: parseFloat(p.cost) || 0,
+    stock: p.stock || 0,
+    minStock: p.min_stock || 0,
+    unit: p.unit,
+    type: p.type,
+    status: p.status,
+    imageUrl: p.image_url,
+    imageHint: p.image_hint,
+    images: typeof p.images === 'string' ? JSON.parse(p.images) : (p.images || []),
+    primaryImageIndex: p.primary_image_index || 0,
+    tax1: p.tax1 || false,
+    tax2: p.tax2 || false,
+    warehouse: p.warehouse,
+    affectsInventory: p.affects_inventory !== undefined ? p.affects_inventory : true,
+    createdAt: p.created_at,
+    updatedAt: p.updated_at
+  })) || [];
 }
 
 export async function POST(request: NextRequest) {

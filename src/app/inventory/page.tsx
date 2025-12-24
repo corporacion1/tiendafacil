@@ -181,6 +181,7 @@ export default function InventoryPage() {
 
   const handleEdit = async (product: Product) => {
     logger.debug('✏️ [Inventory] Editando producto:', product);
+    
     const productId = product.id;
     const storeId = product.storeId || activeStoreId;
     if (!productId || !storeId) {
@@ -224,127 +225,154 @@ export default function InventoryPage() {
     setIsMovementsDialogOpen(true);
   };
 
-  // ✅ CORREGIDO: Función para actualizar productos - AHORA INCLUYE IMÁGENES
-  async function handleUpdateProduct(data: Omit<Product, 'id' | 'createdAt' | 'storeId'> & { id?: string }) {
-    if (!data.id) return false;
+  // REEMPLAZAR handleUpdateProduct EN inventory page.tsx
+  const handleUpdateProduct = async (data: Omit<Product, 'id' | 'createdAt' | 'storeId'> & { id?: string }) => {
+    if (!data.id) {
+      toast({ variant: 'destructive', title: 'Error', description: 'ID del producto no válido' });
+      return false;
+    }
 
     logger.info('🔄 [Inventory] Actualizando producto:', {
       id: data.id,
       name: data.name,
-      hasImages: !!data.images,
-      imagesCount: data.images?.length || 0,
-      imageUrl: data.imageUrl
+      type: data.type,
+      warehouse: data.warehouse // ✅ Debug específico
     });
 
-    // Validación: SKU único en la tienda (contra el estado local)
+    // 1. Validar SKU único
     if (data.sku) {
-      const duplicate = products.find(p => p.sku === data.sku && p.id !== data.id);
+      const duplicate = products.find(p => 
+        p.sku && data.sku && 
+        p.sku.toLowerCase() === data.sku.toLowerCase() && 
+        p.id !== data.id
+      );
       if (duplicate) {
-        toast({ variant: 'destructive', title: 'SKU duplicado', description: `Ya existe un producto con SKU "${data.sku}" (${duplicate.name}).` });
+        toast({ 
+          variant: 'destructive', 
+          title: 'SKU duplicado', 
+          description: `Ya existe un producto con SKU "${data.sku}" (${duplicate.name}).` 
+        });
         return false;
       }
     }
 
-    // ✅ CORREGIDO: AHORA INCLUIMOS LAS IMÁGENES en el payload
-    const storeIdForUpdate = (productToEdit as any)?.storeId || activeStoreId;
-    if (!storeIdForUpdate) {
-      toast({ variant: 'destructive', title: 'No se puede guardar', description: 'Falta Store ID. Intente recargar la página.' });
-      return false;
-    }
-
-    // ✅ CORREGIDO: Incluir todas las propiedades incluyendo imágenes
+    // 2. Preparar payload CORRECTO
     const payload = {
-      ...data,
-      store_id: storeIdForUpdate,
-      updated_at: new Date().toISOString()
+      id: data.id,
+      storeId: activeStoreId,
+      name: data.name,
+      sku: data.sku || '',
+      description: data.description || '',
+      price: data.price || 0,
+      wholesalePrice: data.wholesalePrice || 0,
+      cost: data.cost || 0,
+      stock: data.stock || 0,
+      unit: data.unit || '',
+      family: data.family || '',
+      warehouse: data.warehouse || null, // ✅ Asegurar null si está vacío
+      type: data.type || 'product',
+      status: data.status || 'active',
+      images: data.images || [],
+      imageUrl: data.imageUrl || '',
+      imageHint: data.imageHint || '',
+      primaryImageIndex: data.primaryImageIndex || 0,
+      tax1: data.tax1 || false,
+      tax2: data.tax2 || false,
+      affectsInventory: data.type === 'service' ? false : true // ✅ Importante
     };
 
+    logger.debug('📤 [Inventory] Payload para actualizar:', payload);
+
     try {
-      const response = await fetch(`/api/products/${data.id}?storeId=${encodeURIComponent(storeIdForUpdate)}`, {
+      const response = await fetch(`/api/products/${data.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
+      logger.debug('📥 [Inventory] Respuesta del API:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+
       if (!response.ok) {
-        const errorText = await response.text();
-        logger.error('❌ [Inventory] PUT /api/products error:', { status: response.status, errorText });
-
-        if (response.status === 404) {
-          // Verificar duplicados en el servidor
-          if (data.sku) {
-            try {
-              const listRes = await fetch(`/api/products?storeId=${encodeURIComponent(storeIdForUpdate)}`);
-              if (listRes.ok) {
-                const listJson = await listRes.json();
-                const serverProducts = Array.isArray(listJson) ? listJson : (listJson?.products || []);
-                const serverDuplicate = serverProducts.find((p: any) => p.sku === data.sku && p.id !== data.id);
-                if (serverDuplicate) {
-                  toast({ variant: 'destructive', title: 'SKU duplicado', description: `Ya existe un producto con SKU "${data.sku}" (${serverDuplicate.name}).` });
-                  return false;
-                }
-              }
-            } catch { }
-          }
-
-          // Intentar crear el producto si no existe
-          const createResp = await fetch(`/api/products?storeId=${encodeURIComponent(storeIdForUpdate)}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-
-          if (!createResp.ok) {
-            const createText = await createResp.text();
-            toast({ variant: 'destructive', title: `Error ${createResp.status} al crear`, description: createText || errorText || 'No se pudo crear/actualizar el producto.' });
-            return false;
-          }
-
-          const created = await createResp.json();
-          setProducts(prev => {
-            const exists = prev.find(p => p.id === created.id);
-            return exists ? prev.map(p => p.id === created.id ? created : p) : [created, ...prev];
-          });
-          setProductToEdit(null);
-          toast({ title: 'Producto Creado', description: `Se creó el producto "${created.name}" al no existir en la base de datos.` });
-          await reloadProducts();
-          return true;
+        let errorText = '';
+        try {
+          errorText = await response.text();
+        } catch (e) {
+          errorText = 'No se pudo leer el error';
         }
-
-        toast({ variant: 'destructive', title: `Error ${response.status} al guardar`, description: errorText || 'No se pudo actualizar el producto.' });
+        
+        logger.error('❌ [Inventory] Error PUT:', { 
+          status: response.status, 
+          errorText,
+          url: `/api/products/${data.id}`,
+          payload
+        });
+        
+        if (response.status === 404) {
+          toast({ 
+            variant: 'destructive', 
+            title: 'Producto no encontrado', 
+            description: 'El producto no existe en la base de datos.' 
+          });
+        } else {
+          toast({ 
+            variant: 'destructive', 
+            title: `Error ${response.status}`, 
+            description: errorText || 'Error al actualizar producto' 
+          });
+        }
         return false;
       }
 
       const updatedProduct = await response.json();
+      logger.info('✅ [Inventory] Producto actualizado:', {
+        name: updatedProduct.name,
+        warehouse: updatedProduct.warehouse, // ✅ Verificar
+        id: updatedProduct.id
+      });
 
-      // 1. Forzar recarga manual de productos
-      const freshProducts = await fetch(`/api/products?storeId=${activeStoreId}&_t=${Date.now()}`)
-        .then(res => res.json())
-        .catch(() => []);
+      // 3. ✅ ACTUALIZAR ESTADO LOCAL INMEDIATAMENTE
+      setProducts(prev => prev.map(p => 
+        p.id === updatedProduct.id ? updatedProduct : p
+      ));
 
-      // 2. Actualizar estado con la respuesta directa
-      setProducts(Array.isArray(freshProducts) ? freshProducts : (freshProducts?.products || []));
+      // 4. ✅ LLAMAR A reloadProducts y ESPERAR
+      try {
+        await reloadProducts();
+        logger.debug('✅ [Inventory] Productos recargados después de actualizar');
+      } catch (reloadError) {
+        logger.warn('⚠️ [Inventory] Error en reloadProducts:', reloadError);
+        // Continuar aunque falle reloadProducts
+      }
 
-      // 3. Cerrar diálogo
+      // 5. Cerrar diálogo
       setProductToEdit(null);
-      toast({ title: 'Producto Actualizado', description: `El producto "${updatedProduct.name}" ha sido actualizado.` });
-      reloadProducts();
+      
+      toast({ 
+        title: '✅ Producto Actualizado', 
+        description: `"${updatedProduct.name}" ha sido actualizado correctamente.` 
+      });
+      
       return true;
 
-    } catch (err) {
-      logger.error('❌ [Inventory] Error de red al actualizar producto:', err);
-      toast({ variant: 'destructive', title: 'No se pudo actualizar el producto', description: 'Error de red. Intenta nuevamente.' });
+    } catch (err: any) {
+      logger.error('❌ [Inventory] Error de red:', {
+        message: err.message,
+        stack: err.stack,
+        name: err.name
+      });
+      toast({ 
+        variant: 'destructive', 
+        title: 'Error de conexión', 
+        description: err.message || 'No se pudo conectar con el servidor.' 
+      });
       return false;
     }
-  }
-
-  // 🔥 EFECTO que se ejecuta CADA VEZ que se cierra el modal de edición
-  useEffect(() => {
-    if (!productToEdit) { // Cuando el modal se cierra
-      console.log('🔄 Modal cerrado, recargando productos...');
-      reloadProducts(); // Esto debería actualizar la lista
-    }
-  }, [productToEdit, reloadProducts]);
+  };
 
   const handleDelete = async (productId: string) => {
     const isProductInSale = sales.some(sale => sale.items.some(item => item.productId === productId));
@@ -605,7 +633,16 @@ export default function InventoryPage() {
     return baseFilter;
   }
 
-  // Paginación
+  // Al principio del componente, asegúrate de que products se carga
+  useEffect(() => {
+    console.log('📊 [Inventory] Productos en estado:', products.length);
+    if (products.length === 0 && activeStoreId) {
+      console.log('🔄 [Inventory] Cargando productos inicialmente...');
+      reloadProducts();
+    }
+  }, [activeStoreId]);
+
+  // Y en el render, usa paginatedProducts que depende de products
   const paginatedProducts = useMemo(() => {
     const visibleProducts = getVisibleProducts();
     const startIndex = (currentPage - 1) * itemsPerPage;
