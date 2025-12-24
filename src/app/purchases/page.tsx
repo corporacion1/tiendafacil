@@ -404,9 +404,9 @@ export default function PurchasesPage() {
                           </div>
                         </div>
                       )}
-                      {getDisplayImageUrl((product.images && product.images.length > 0 ? (product.images[0].thumbnailUrl || product.images[0].url) : product.imageUrl)) ? (
+                      {getDisplayImageUrl((product.images && product.images.length > 0 ? (product.images[0].thumbnailUrl || product.images[0].url) : "/tienda_facil_logo.svg")) ? (
                         <Image
-                          src={getDisplayImageUrl((product.images && product.images.length > 0 ? (product.images[0].thumbnailUrl || product.images[0].url) : product.imageUrl))}
+                          src={getDisplayImageUrl((product.images && product.images.length > 0 ? (product.images[0].thumbnailUrl || product.images[0].url) : "/tienda_facil_logo.svg"))}
                           alt={product.name}
                           fill
                           sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"

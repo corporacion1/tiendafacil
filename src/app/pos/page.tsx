@@ -3176,8 +3176,7 @@ export default function POSPage() {
             {productDetails && (
               <div className="grid gap-4">
                 <div className="relative aspect-square w-full flex items-center justify-center bg-muted rounded-md overflow-hidden">
-                  {getDisplayImageUrl(productDetails.imageUrl) &&
-                    !productImageError ? (
+                  {getDisplayImageUrl(productDetails.imageUrl) && !productImageError ? (
                     <Image
                       src={getDisplayImageUrl(productDetails.imageUrl)}
                       alt={productDetails.name}
