@@ -23,8 +23,12 @@ export async function GET(request: Request) {
     // Construir query
     let query = supabaseAdmin
       .from('account_receivables')
-      .select('*')
-      .eq('store_id', storeId);
+      .select(`
+        *,
+        sales!inner(transaction_type)  // Importante: Hacer join con la tabla sales para verificar el tipo de transacción
+      `)
+      .eq('store_id', storeId)
+      .eq('sales.transaction_type', 'credito');  // Filtrar solo ventas de crédito
 
     if (customerId) {
       query = query.eq('customer_id', customerId);

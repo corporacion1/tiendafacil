@@ -404,7 +404,9 @@ export class MovementService {
           batchId,
           userId,
           notes: `Venta: ${item.productName} x${item.quantity}`,
-          storeId
+          storeId,
+          previousStock: 0,
+          newStock: 0
         };
 
         const movement = await this.recordMovement(movementRequest);
@@ -451,7 +453,9 @@ export class MovementService {
           batchId,
           userId,
           notes: `Compra: ${item.productName} x${item.quantity}`,
-          storeId
+          storeId,
+          previousStock: 0,
+          newStock: 0
         };
 
         const movement = await this.recordMovement(movementRequest);
@@ -499,7 +503,9 @@ export class MovementService {
         referenceId: productId,
         userId,
         notes: `Stock inicial: ${productName}`,
-        storeId
+        storeId,
+        previousStock: 0,
+        newStock: 0
       };
 
       const movement = await this.recordMovement(movementRequest);
@@ -545,7 +551,9 @@ export class MovementService {
         referenceId: `adj_${Date.now()}`,
         userId,
         notes: `Ajuste: ${productName} - ${reason}`,
-        storeId
+        storeId,
+        previousStock: 0,
+        newStock: 0
       };
 
       const movement = await this.recordMovement(movementRequest);

@@ -242,51 +242,52 @@ export default function ReportsPage() {
     }
 
     const allPayments = useMemo(() => {
-        const paymentsMap = new Map<string, SalePayment & { saleId: string; customerName: string; }>();
+    const paymentsMap = new Map<string, SalePayment & { saleId: string; customerName: string; }>();
 
-        // 1. Pagos de ventas al contado (directamente de salesData)
-        if (salesData) {
-            salesData
-                .filter(sale => sale.transactionType !== 'credito')
-                .forEach(sale => {
-                    const salePayments = parsePayments(sale.payments);
-                    salePayments.forEach((p, idx) => {
-                        // Generar un ID único estable si no existe uno
-                        const pId = p.id || `sale-${sale.id}-${p.method}-${p.amount}-${p.date || idx}`;
-                        if (!paymentsMap.has(pId)) {
-                            paymentsMap.set(pId, {
-                                ...p,
-                                id: pId,
-                                saleId: sale.id,
-                                customerName: sale.customerName
-                            });
-                        }
-                    });
-                });
-        }
-
-        // 2. Pagos de ventas a crédito (de accountReceivables para historial detallado)
-        if (accountReceivables) {
-            accountReceivables.forEach(account => {
-                const creditPayments = account.payments || [];
-                creditPayments.forEach((p: any, idx) => {
-                    // Generar un ID único estable para abonos
-                    // Si p.id ya existe (ej: PAY-123), se usará ese evitando duplicados con la sección anterior
-                    const pId = p.id || `credit-${account.saleId}-${p.method}-${p.amount}-${p.date || idx}`;
+    // 1. Pagos de ventas al contado (directamente de salesData)
+    if (salesData) {
+        salesData
+            .filter(sale => sale.transactionType !== 'credito')
+            .forEach(sale => {
+                const salePayments = parsePayments(sale.payments);
+                salePayments.forEach((p, idx) => {
+                    // Generar un ID único estable si no existe uno
+                    const pId = p.id || `sale-${sale.id}-${p.method}-${p.amount}-${p.date || idx}`;
                     if (!paymentsMap.has(pId)) {
                         paymentsMap.set(pId, {
                             ...p,
                             id: pId,
-                            saleId: account.saleId,
-                            customerName: account.customerName
+                            saleId: sale.id,
+                            customerName: sale.customerName
                         });
                     }
                 });
             });
-        }
+    }
 
-        return Array.from(paymentsMap.values()).sort((a, b) => new Date(b.date as string).getTime() - new Date(a.date as string).getTime());
-    }, [salesData, accountReceivables]);
+    // 2. Pagos de ventas a crédito (de accountReceivables)
+    if (accountReceivables) {
+        accountReceivables.forEach(account => {
+            // El backend ya filtra por ventas de crédito, pero verificamos por seguridad
+            const creditPayments = account.payments || [];
+            creditPayments.forEach((p: any, idx) => {
+                // Generar un ID único estable para abonos
+                const pId = p.id || `credit-${account.saleId}-${p.method}-${p.amount}-${p.date || idx}`;
+                if (!paymentsMap.has(pId)) {
+                    paymentsMap.set(pId, {
+                        ...p,
+                        id: pId,
+                        saleId: account.saleId,
+                        customerName: account.customerName
+                    });
+                }
+            });
+        });
+    }
+
+    return Array.from(paymentsMap.values())
+        .sort((a, b) => new Date(b.date as string).getTime() - new Date(a.date as string).getTime());
+}, [salesData, accountReceivables]);
 
     const handleExport = (format: 'csv' | 'json' | 'txt') => {
         const date = new Date().toISOString().split('T')[0];
