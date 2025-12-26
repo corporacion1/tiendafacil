@@ -39,7 +39,7 @@ import {
     DialogClose,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Sale, CartItem, Customer, Product, InventoryMovement, Purchase, SalePayment, CashSession } from "@/lib/types";
+import { Sale, CartItem, Customer, Product, InventoryMovement, Purchase, SalePayment, CashSession, ExpensePayment } from "@/lib/types";
 import { TicketPreview } from "@/components/ticket-preview";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -95,7 +95,6 @@ export default function ReportsPage() {
                 quantity: item.quantity,
                 date: purchase.date,
                 storeId: purchase.storeId,
-                responsible: purchase.responsible,
             }))
         );
         return [...saleMovements, ...purchaseMovements].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -114,6 +113,9 @@ export default function ReportsPage() {
     const [isFetchingCredits, setIsFetchingCredits] = useState(false);
     const [fetchedPayments, setFetchedPayments] = useState<SalePayment[]>([]);
     const [isFetchingPayments, setIsFetchingPayments] = useState(false);
+    const [expensePayments, setExpensePayments] = useState<ExpensePayment[]>([]);
+    const [isFetchingExpenses, setIsFetchingExpenses] = useState(false);
+    const [paymentsSubTab, setPaymentsSubTab] = useState<'incomes' | 'expenses'>('incomes');
     const { toast } = useToast();
 
     // Estados para paginación
@@ -156,6 +158,7 @@ export default function ReportsPage() {
         if (settings?.id) {
             reloadSales();
             fetchAccountReceivables();
+            fetchExpensePayments();
         }
     }, [settings?.id]);
 
@@ -200,6 +203,22 @@ export default function ReportsPage() {
         }
     };
 
+    const fetchExpensePayments = async () => {
+        if (!settings?.id) return;
+        setIsFetchingExpenses(true);
+        try {
+            const response = await fetch(`/api/payments?storeId=${settings.id}`, { cache: 'no-store' });
+            if (response.ok) {
+                const data = await response.json();
+                setExpensePayments(data || []);
+            }
+        } catch (error) {
+            console.error('Error fetching expense payments:', error);
+        } finally {
+            setIsFetchingExpenses(false);
+        }
+    };
+
 
 
     const parsePayments = (payments: any): SalePayment[] => {
@@ -223,7 +242,7 @@ export default function ReportsPage() {
     }
 
     const allPayments = useMemo(() => {
-        const payments: (SalePayment & { saleId: string; customerName: string; })[] = [];
+        const paymentsMap = new Map<string, SalePayment & { saleId: string; customerName: string; }>();
 
         // 1. Pagos de ventas al contado (directamente de salesData)
         if (salesData) {
@@ -231,12 +250,17 @@ export default function ReportsPage() {
                 .filter(sale => sale.transactionType !== 'credito')
                 .forEach(sale => {
                     const salePayments = parsePayments(sale.payments);
-                    salePayments.forEach(p => {
-                        payments.push({
-                            ...p,
-                            saleId: sale.id,
-                            customerName: sale.customerName
-                        });
+                    salePayments.forEach((p, idx) => {
+                        // Generar un ID único estable si no existe uno
+                        const pId = p.id || `sale-${sale.id}-${p.method}-${p.amount}-${p.date || idx}`;
+                        if (!paymentsMap.has(pId)) {
+                            paymentsMap.set(pId, {
+                                ...p,
+                                id: pId,
+                                saleId: sale.id,
+                                customerName: sale.customerName
+                            });
+                        }
                     });
                 });
         }
@@ -245,17 +269,23 @@ export default function ReportsPage() {
         if (accountReceivables) {
             accountReceivables.forEach(account => {
                 const creditPayments = account.payments || [];
-                creditPayments.forEach((p: any) => {
-                    payments.push({
-                        ...p,
-                        saleId: account.saleId,
-                        customerName: account.customerName
-                    });
+                creditPayments.forEach((p: any, idx) => {
+                    // Generar un ID único estable para abonos
+                    // Si p.id ya existe (ej: PAY-123), se usará ese evitando duplicados con la sección anterior
+                    const pId = p.id || `credit-${account.saleId}-${p.method}-${p.amount}-${p.date || idx}`;
+                    if (!paymentsMap.has(pId)) {
+                        paymentsMap.set(pId, {
+                            ...p,
+                            id: pId,
+                            saleId: account.saleId,
+                            customerName: account.customerName
+                        });
+                    }
                 });
             });
         }
 
-        return payments.sort((a, b) => new Date(b.date as string).getTime() - new Date(a.date as string).getTime());
+        return Array.from(paymentsMap.values()).sort((a, b) => new Date(b.date as string).getTime() - new Date(a.date as string).getTime());
     }, [salesData, accountReceivables]);
 
     const handleExport = (format: 'csv' | 'json' | 'txt') => {
@@ -312,10 +342,10 @@ export default function ReportsPage() {
                     id: cs.id,
                     fecha_apertura: cs.openingDate ? getDate(cs.openingDate).toISOString() : '',
                     fecha_cierre: cs.closingDate ? getDate(cs.closingDate).toISOString() : '',
-                    abierto_por: cs.openedBy,
-                    cerrado_por: cs.closedBy,
-                    saldo_inicial: cs.openingBalance.toFixed(2),
-                    saldo_contado: cs.closingBalance?.toFixed(2) || '0.00',
+                    abierto_por: cs.opened_by,
+                    cerrado_por: cs.closed_by,
+                    saldo_inicial: cs.opening_balance.toFixed(2),
+                    saldo_contado: cs.closing_balance?.toFixed(2) || '0.00',
                     diferencia: cs.difference.toFixed(2),
                     estado: cs.status
                 }));
@@ -399,10 +429,11 @@ export default function ReportsPage() {
         return sale.status;
     };
 
-    const filterByDate = (data: (Sale | Purchase | InventoryMovement | (SalePayment & { saleId: string; customerName: string; }) | CashSession)[]) => {
+    const filterByDate = (data: any[]) => {
         if (!dateFilterQuery || !data) return data || [];
-        const filterDateKey = data.length > 0 && 'openingDate' in data[0] ? 'openingDate' : 'date';
         return data.filter(item => {
+            const filterDateKey = 'openingDate' in item ? 'openingDate' :
+                ('paymentDate' in item ? 'paymentDate' : 'date');
             const itemDate = (item as any)[filterDateKey];
             return itemDate ? getDate(itemDate) >= dateFilterQuery : false;
         });
@@ -476,6 +507,15 @@ export default function ReportsPage() {
         ) as (SalePayment & { saleId: string; customerName: string; })[];
     }, [allPayments, searchTerm, dateFilterQuery]);
 
+    const filteredExpenses = useMemo(() => {
+        const sortedExpenses = [...expensePayments].sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime());
+        return filterByDate(sortedExpenses).filter(p =>
+            ((p as any).recipientName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            ((p as any).notes || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            ((p as any).category || '').toLowerCase().includes(searchTerm.toLowerCase())
+        ) as ExpensePayment[];
+    }, [expensePayments, searchTerm, dateFilterQuery]);
+
     const sortedCashSessions = useMemo(() => {
         if (!cashSessionsData) return [];
         return [...cashSessionsData].sort((a, b) => new Date(b.openingDate).getTime() - new Date(a.openingDate).getTime());
@@ -515,6 +555,11 @@ export default function ReportsPage() {
         return filteredPayments.slice(startIndex, startIndex + itemsPerPage);
     }, [filteredPayments, currentPage, itemsPerPage]);
 
+    const paginatedExpenses = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return filteredExpenses.slice(startIndex, startIndex + itemsPerPage);
+    }, [filteredExpenses, currentPage, itemsPerPage]);
+
     const paginatedCashSessions = useMemo(() => {
         const startIndex = (currentPage - 1) * itemsPerPage;
         return filteredCashSessions.slice(startIndex, startIndex + itemsPerPage);
@@ -528,7 +573,8 @@ export default function ReportsPage() {
             case 'purchases': totalItems = filteredPurchases.length; break;
             case 'movements': totalItems = filteredMovements.length; break;
             case 'inventory': totalItems = filteredProducts.length; break;
-            case 'payments': totalItems = filteredPayments.length; break;
+            case 'cobros': totalItems = filteredPayments.length; break;
+            case 'payments': totalItems = filteredExpenses.length; break;
             case 'sessions': totalItems = filteredCashSessions.length; break;
         }
         return Math.ceil(totalItems / itemsPerPage);
@@ -540,7 +586,8 @@ export default function ReportsPage() {
             case 'purchases': return filteredPurchases.length;
             case 'movements': return filteredMovements.length;
             case 'inventory': return filteredProducts.length;
-            case 'payments': return filteredPayments.length;
+            case 'cobros': return filteredPayments.length;
+            case 'payments': return filteredExpenses.length;
             case 'sessions': return filteredCashSessions.length;
             default: return 0;
         }
@@ -563,6 +610,10 @@ export default function ReportsPage() {
     const paymentsTotal = useMemo(() => {
         return filteredPayments.reduce((acc, payment) => acc + payment.amount, 0);
     }, [filteredPayments]);
+
+    const expensesTotal = useMemo(() => {
+        return filteredExpenses.reduce((acc, payment) => acc + payment.amount, 0);
+    }, [filteredExpenses]);
 
     const inventoryTotals = useMemo(() => {
         if (!filteredProducts) return { totalStock: 0, totalValue: 0 };
@@ -610,8 +661,9 @@ export default function ReportsPage() {
                     <TabsList className="flex flex-wrap h-auto justify-start md:justify-center w-full md:w-auto gap-1">
                         <TabsTrigger value="sales">Ventas</TabsTrigger>
                         <TabsTrigger value="purchases">Compras</TabsTrigger>
+                        <TabsTrigger value="cobros">Cobros</TabsTrigger>
                         <TabsTrigger value="payments">Pagos</TabsTrigger>
-                        <TabsTrigger value="sessions">Cierres de Caja</TabsTrigger>
+                        <TabsTrigger value="sessions">Cierres</TabsTrigger>
                         <TabsTrigger value="movements">Movimientos</TabsTrigger>
                         <TabsTrigger value="inventory">Inventario</TabsTrigger>
                     </TabsList>
@@ -812,14 +864,14 @@ export default function ReportsPage() {
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="payments">
+                <TabsContent value="cobros">
                     <Card>
                         <CardHeader>
-                            <CardTitle>Reporte de Pagos</CardTitle>
-                            <CardDescription>Un resumen de todos los pagos y abonos recibidos.</CardDescription>
+                            <CardTitle>Reporte de Cobros</CardTitle>
+                            <CardDescription>Un resumen de todos los pagos y abonos recibidos de ventas.</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            {isLoadingSettings && <p className="text-center">Cargando pagos...</p>}
+                            {isLoadingSettings && <p className="text-center">Cargando cobros...</p>}
                             {!isLoadingSettings && <Table>
                                 <TableHeader>
                                     <TableRow>
@@ -868,6 +920,81 @@ export default function ReportsPage() {
                     </Card>
                 </TabsContent>
 
+                <TabsContent value="payments">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Reporte de Pagos / Egresos</CardTitle>
+                            <CardDescription>Información detallada de la tabla de pagos (gastos y egresos generales).</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {isFetchingExpenses && <p className="text-center">Cargando pagos...</p>}
+                            {!isFetchingExpenses && <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Fecha</TableHead>
+                                        <TableHead>Destinatario</TableHead>
+                                        <TableHead>Categoría</TableHead>
+                                        <TableHead>Documento</TableHead>
+                                        <TableHead className="text-right">Monto</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {paginatedExpenses.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                                                No se encontraron registros de pagos.
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        paginatedExpenses.map((p) => (
+                                            <TableRow key={p.id}>
+                                                <TableCell>
+                                                    {isClient && p.paymentDate && isValid(getDate(p.paymentDate))
+                                                        ? format(getDate(p.paymentDate), 'dd/MM/yyyy')
+                                                        : '...'}
+                                                </TableCell>
+                                                <TableCell className="font-medium">{p.recipientName}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant="outline" className="capitalize text-[10px]">
+                                                        {p.category === 'rent' ? 'Alquiler' :
+                                                            p.category === 'fuel' ? 'Combustible' :
+                                                                p.category === 'consumables' ? 'Consumibles' :
+                                                                    p.category === 'raw_materials' ? 'Materia Prima' :
+                                                                        p.category === 'utilities' ? 'Servicios' :
+                                                                            p.category === 'spare_parts' ? 'Repuestos' :
+                                                                                p.category === 'repairs' ? 'Reparaciones' :
+                                                                                    p.category === 'travel_expenses' ? 'Viáticos' : 'Otros'}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-xs text-muted-foreground">{p.documentNumber || 'N/A'}</TableCell>
+                                                <TableCell className="text-right font-bold text-red-600">
+                                                    {activeSymbol}{(p.amount * activeRate).toFixed(2)}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                                <TableFooter>
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="font-bold text-lg">Total Egresado</TableCell>
+                                        <TableCell className="text-right font-bold text-lg text-red-600">{activeSymbol}{(expensesTotal * activeRate).toFixed(2)}</TableCell>
+                                    </TableRow>
+                                </TableFooter>
+                            </Table>}
+                        </CardContent>
+                        <div className="px-6 pb-6">
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={getTotalPages()}
+                                totalItems={getTotalItems()}
+                                itemsPerPage={itemsPerPage}
+                                onPageChange={setCurrentPage}
+                                onItemsPerPageChange={setItemsPerPage}
+                            />
+                        </div>
+                    </Card>
+                </TabsContent>
+
                 <TabsContent value="sessions">
                     <Card>
                         <CardHeader>
@@ -894,16 +1021,16 @@ export default function ReportsPage() {
                                             <TableRow key={session.id}>
                                                 <TableCell className="font-medium">{session.id}</TableCell>
                                                 <TableCell>
-                                                    {isClient && session.openingDate && isValid(getDate(session.openingDate))
-                                                        ? format(getDate(session.openingDate), 'dd/MM/yy HH:mm')
+                                                    {isClient && session.opened_at && isValid(getDate(session.opened_at))
+                                                        ? format(getDate(session.opened_at), 'dd/MM/yy HH:mm')
                                                         : '...'}
                                                 </TableCell>
                                                 <TableCell>
-                                                    {isClient && session.closingDate && isValid(getDate(session.closingDate))
-                                                        ? format(getDate(session.closingDate), 'dd/MM/yy HH:mm')
+                                                    {isClient && session.closed_at && isValid(getDate(session.closed_at))
+                                                        ? format(getDate(session.closed_at), 'dd/MM/yy HH:mm')
                                                         : 'N/A'}
                                                 </TableCell>
-                                                <TableCell>{session.openedBy}</TableCell>
+                                                <TableCell>{session.opened_by}</TableCell>
                                                 <TableCell className={`text-right font-semibold ${session.difference !== 0 ? (session.difference > 0 ? 'text-green-600' : 'text-destructive') : ''}`}>
                                                     {activeSymbol}{(session.difference * activeRate).toFixed(2)}
                                                 </TableCell>
@@ -1124,65 +1251,71 @@ export default function ReportsPage() {
                         )
                     })()}
 
-                    {/* Payment Information for Credit Sales */}
-                    {selectedSaleDetails && selectedSaleDetails.transactionType === 'credito' && (
+                    {/* Información de Pagos para todas las ventas */}
+                    {selectedSaleDetails && (
                         <>
                             <Separator className="my-4" />
                             <div className="space-y-3">
                                 <h4 className="font-semibold text-sm">Información de Pagos:</h4>
 
-                                {/* Payment Summary */}
-                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div className="space-y-1">
-                                        <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Total Abonado:</span>
-                                            <span className="font-medium text-green-600">
-                                                {activeSymbol}{(getSalePaidAmount(selectedSaleDetails) * activeRate).toFixed(2)}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Saldo Pendiente:</span>
-                                            <span className={`font-medium ${(selectedSaleDetails.total - getSalePaidAmount(selectedSaleDetails)) > 0.01 ? 'text-red-600' : 'text-green-600'}`}>
-                                                {activeSymbol}{((selectedSaleDetails.total - getSalePaidAmount(selectedSaleDetails)) * activeRate).toFixed(2)}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Estado:</span>
-                                            <Badge variant={getSaleStatus(selectedSaleDetails) === 'paid' ? 'default' : 'destructive'} className="text-xs">
-                                                {getSaleStatus(selectedSaleDetails) === 'paid' ? 'Pagado' : 'Pendiente'}
-                                            </Badge>
-                                        </div>
-                                        {selectedSaleDetails.creditDays && (
+                                {/* Resumen de deuda solo para ventas a crédito */}
+                                {selectedSaleDetails.transactionType === 'credito' && (
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div className="space-y-1">
                                             <div className="flex justify-between">
-                                                <span className="text-muted-foreground">Días de Crédito:</span>
-                                                <span className="font-medium">{selectedSaleDetails.creditDays} días</span>
+                                                <span className="text-muted-foreground">Total Abonado:</span>
+                                                <span className="font-medium text-green-600">
+                                                    {activeSymbol}{(getSalePaidAmount(selectedSaleDetails) * activeRate).toFixed(2)}
+                                                </span>
                                             </div>
-                                        )}
+                                            <div className="flex justify-between">
+                                                <span className="text-muted-foreground">Saldo Pendiente:</span>
+                                                <span className={`font-medium ${(selectedSaleDetails.total - getSalePaidAmount(selectedSaleDetails)) > 0.01 ? 'text-red-600' : 'text-green-600'}`}>
+                                                    {activeSymbol}{((selectedSaleDetails.total - getSalePaidAmount(selectedSaleDetails)) * activeRate).toFixed(2)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <div className="flex justify-between">
+                                                <span className="text-muted-foreground">Estado:</span>
+                                                <Badge variant={getSaleStatus(selectedSaleDetails) === 'paid' ? 'default' : 'destructive'} className="text-xs">
+                                                    {getSaleStatus(selectedSaleDetails) === 'paid' ? 'Pagado' : 'Pendiente'}
+                                                </Badge>
+                                            </div>
+                                            {selectedSaleDetails.creditDays && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-muted-foreground">Días de Crédito:</span>
+                                                    <span className="font-medium">{selectedSaleDetails.creditDays} días</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
 
-                                {/* Payment History */}
-                                {(fetchedPayments.length > 0 || (selectedSaleDetails.payments && parsePayments(selectedSaleDetails.payments).length > 0)) && (
+                                {/* Historial de Pagos y Referencias */}
+                                {(fetchedPayments.length > 0 || (selectedSaleDetails.payments && parsePayments(selectedSaleDetails.payments).length > 0)) ? (
                                     <div className="mt-4">
                                         <h5 className="font-medium text-sm mb-2 flex items-center justify-between">
-                                            Historial de Pagos:
+                                            Historial de Pagos / Operaciones:
                                             {isFetchingPayments && <span className="text-xs font-normal animate-pulse text-primary italic">Actualizando...</span>}
                                         </h5>
                                         <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                                             {(fetchedPayments.length > 0 ? fetchedPayments : parsePayments(selectedSaleDetails.payments)).map((payment, index) => (
-                                                <div key={payment.id || index} className="flex justify-between items-center text-sm p-2 bg-muted/50 rounded">
+                                                <div key={payment.id || index} className="flex justify-between items-center text-sm p-2 bg-muted/50 rounded border border-border/50">
                                                     <div className="flex flex-col">
-                                                        <span className="font-medium italic">{payment.method}</span>
+                                                        <span className="font-medium italic flex items-center gap-2">
+                                                            {payment.method}
+                                                            {payment.reference && (
+                                                                <Badge variant="outline" className="text-[10px] py-0 h-4 bg-background">
+                                                                    Ref: {payment.reference}
+                                                                </Badge>
+                                                            )}
+                                                        </span>
                                                         <span className="text-xs text-muted-foreground">
                                                             {isClient && payment.date && isValid(getDate(payment.date))
                                                                 ? format(getDate(payment.date), 'dd/MM/yyyy HH:mm')
                                                                 : '...'}
                                                         </span>
-                                                        {payment.reference && (
-                                                            <span className="text-xs text-muted-foreground">Ref: {payment.reference}</span>
-                                                        )}
                                                     </div>
                                                     <span className="font-bold text-green-600">
                                                         {activeSymbol}{(payment.amount * activeRate).toFixed(2)}
@@ -1190,6 +1323,10 @@ export default function ReportsPage() {
                                                 </div>
                                             ))}
                                         </div>
+                                    </div>
+                                ) : selectedSaleDetails.transactionType === 'contado' && (
+                                    <div className="p-3 bg-muted/30 rounded text-sm text-muted-foreground italic text-center">
+                                        Venta pagada al contado el {isClient && selectedSaleDetails.date && isValid(getDate(selectedSaleDetails.date)) ? format(getDate(selectedSaleDetails.date), 'dd/MM/yyyy') : '...'}
                                     </div>
                                 )}
                             </div>
@@ -1277,7 +1414,7 @@ export default function ReportsPage() {
                     <DialogHeader>
                         <DialogTitle>Detalles del Cierre de Caja: {selectedSessionDetails?.id}</DialogTitle>
                         <DialogDescription>
-                            Cajero: {selectedSessionDetails?.openedBy} | Cerrado por: {selectedSessionDetails?.closedBy}
+                            Cajero: {selectedSessionDetails?.opened_by} | Cerrado por: {selectedSessionDetails?.closed_by}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="max-h-[60vh] overflow-y-auto space-y-4 p-1">
@@ -1286,11 +1423,11 @@ export default function ReportsPage() {
                                 <Card>
                                     <CardHeader><CardTitle>Resumen del Cierre</CardTitle></CardHeader>
                                     <CardContent className="space-y-2">
-                                        <div className="flex justify-between"><span>Fondo de Caja:</span> <span className="font-medium">{activeSymbol}{(selectedSessionDetails.openingBalance * activeRate).toFixed(2)}</span></div>
-                                        <div className="flex justify-between"><span>Efectivo Esperado:</span> <span className="font-medium">{activeSymbol}{(selectedSessionDetails.calculatedCash * activeRate).toFixed(2)}</span></div>
-                                        <div className="flex justify-between"><span>Efectivo Contado:</span> <span className="font-medium">{activeSymbol}{((selectedSessionDetails.closingBalance || 0) * activeRate).toFixed(2)}</span></div>
+                                        <div className="flex justify-between"><span>Fondo de Caja:</span> <span className="font-medium">{activeSymbol}{(selectedSessionDetails.opening_amount * activeRate).toFixed(2)}</span></div>
+                                        <div className="flex justify-between"><span>Efectivo Esperado:</span> <span className="font-medium">{activeSymbol}{(selectedSessionDetails.calculated_cash * activeRate).toFixed(2)}</span></div>
+                                        <div className="flex justify-between"><span>Efectivo Contado:</span> <span className="font-medium">{activeSymbol}{((selectedSessionDetails.closing_amount || 0) * activeRate).toFixed(2)}</span></div>
                                         <Separator />
-                                        <div className={`flex justify-between font-bold ${selectedSessionDetails.difference !== 0 ? 'text-destructive' : ''}`}><span>Diferencia:</span> <span>{activeSymbol}{(selectedSessionDetails.difference * activeRate).toFixed(2)}</span></div>
+                                        <div className={`flex justify-between font-bold ${selectedSessionDetails.difference !== 0 ? 'text-destructive' : ''}`}><span>Diferencia:</span> <span>{activeSymbol}{((selectedSessionDetails.difference || 0) * activeRate).toFixed(2)}</span></div>
                                     </CardContent>
                                 </Card>
                                 <Card>

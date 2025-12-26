@@ -93,7 +93,9 @@ export async function POST(request: Request) {
       referenceId,
       userId,
       notes,
-      storeId
+      storeId,
+      previousStock: 0,
+      newStock: 0
     });
 
     if (!movement) {
