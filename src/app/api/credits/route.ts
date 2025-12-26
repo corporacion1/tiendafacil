@@ -8,6 +8,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const storeId = searchParams.get('storeId');
     const customerId = searchParams.get('customerId');
+    const saleId = searchParams.get('saleId');
     const status = searchParams.get('status');
     const overdue = searchParams.get('overdue');
     const limit = parseInt(searchParams.get('limit') || '50');
@@ -29,8 +30,14 @@ export async function GET(request: Request) {
       query = query.eq('customer_id', customerId);
     }
 
-    if (status) {
+    if (saleId) {
+      query = query.eq('sale_id', saleId);
+    }
+
+    if (status && status !== 'all') {
       query = query.eq('status', status);
+    } else if (status === 'all') {
+      // No status filter
     } else {
       // Por defecto, excluir las pagadas y canceladas
       query = query.in('status', ['pending', 'overdue']);
@@ -38,6 +45,7 @@ export async function GET(request: Request) {
 
     if (overdue === 'true') {
       query = query.lt('due_date', new Date().toISOString());
+      query = query.neq('status', 'paid');
     }
 
     const { data: accounts, error } = await query
@@ -67,7 +75,7 @@ export async function GET(request: Request) {
       dueDate: account.due_date,
       creditDays: account.credit_days,
       lastPaymentDate: account.last_payment_date,
-      payments: account.payments || [],
+      payments: typeof account.payments === 'string' ? JSON.parse(account.payments) : (account.payments || []),
       notes: account.notes,
       createdBy: account.created_by,
       updatedBy: account.updated_by,
@@ -159,13 +167,13 @@ export async function POST(request: Request) {
       customer_id: sale.customer_id,
       customer_name: sale.customer_name,
       original_amount: sale.total,
-      paid_amount: sale.paidAmount || 0,
-      remaining_balance: sale.total - (sale.paidAmount || 0),
-      status: sale.paidAmount >= sale.total ? 'paid' : 'pending',
+      paid_amount: sale.paid_amount || 0,
+      remaining_balance: sale.total - (sale.paid_amount || 0),
+      status: sale.paid_amount >= sale.total ? 'paid' : 'pending',
       sale_date: sale.date,
       due_date: dueDate.toISOString(),
-      last_payment_date: sale.paidAmount > 0 ? new Date().toISOString() : null,
-      payments: sale.payments || [],
+      last_payment_date: (sale.paid_amount > 0) ? new Date().toISOString() : null,
+      payments: typeof sale.payments === 'string' ? JSON.parse(sale.payments) : (sale.payments || []),
       notes: null,
       created_by: createdBy,
       updated_by: createdBy
@@ -291,10 +299,24 @@ export async function PUT(request: Request) {
     };
 
     // Actualizar cuenta
-    const updatedPayments = [...(account.payments || []), newPayment];
-    const newPaidAmount = account.paid_amount + payment.amount;
-    const newRemainingBalance = account.remaining_balance - payment.amount;
-    const newStatus = newRemainingBalance === 0 ? 'paid' : (new Date() > new Date(account.due_date) ? 'overdue' : 'pending');
+    const currentPayments = typeof account.payments === 'string' ? JSON.parse(account.payments) : (account.payments || []);
+    const updatedPayments = [...currentPayments, newPayment];
+    const currentPaid = Number(account.paid_amount || 0);
+    const currentRemaining = Number(account.remaining_balance || 0);
+    const newPaidAmount = currentPaid + payment.amount;
+    const newRemainingBalance = Math.max(0, currentRemaining - payment.amount);
+
+    // Status para account_receivables
+    const newStatus = newRemainingBalance <= 0.01 ? 'paid' : (new Date() > new Date(account.due_date) ? 'overdue' : 'pending');
+
+    console.log('📝 [Credits API] Valores calculados:', {
+      currentPaid,
+      paymentAmount: payment.amount,
+      newPaidAmount,
+      newRemainingBalance,
+      newStatus,
+      paymentsCount: updatedPayments.length
+    });
 
     const { data: updatedAccount, error: updateError } = await supabaseAdmin
       .from('account_receivables')
@@ -316,19 +338,38 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
-    // Sincronizar con la venta
-    await supabaseAdmin
-      .from('sales')
-      .update({
-        paidAmount: newPaidAmount,
-        status: newStatus === 'paid' ? 'completed' : 'pending',
-        payments: updatedPayments,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', account.sale_id);
+    // Sincronizar con la venta (Uso de snake_case para columnas de la BD)
+    const saleIdToSync = account.sale_id || (account as any).saleId;
+    const finalStatus = newStatus === 'paid' ? 'paid' : 'unpaid';
 
-    console.log('🔄 [Credits API] Venta sincronizada:', account.sale_id);
-    console.log('✅ [Credits API] Pago agregado exitosamente');
+    if (saleIdToSync) {
+      console.log('🔄 [Credits API] Sincronizando venta:', {
+        saleId: saleIdToSync,
+        storeId: account.store_id,
+        newPaidAmount,
+        finalStatus
+      });
+
+      const { data: syncData, error: syncError, count } = await supabaseAdmin
+        .from('sales')
+        .update({
+          paid_amount: newPaidAmount,
+          status: finalStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', saleIdToSync)
+        .eq('store_id', account.store_id)
+        .select('id');
+
+      if (syncError) {
+        console.error('❌ [Credits API] Error sincronizando venta:', syncError);
+      } else {
+        console.log(`✅ [Credits API] Venta sincronizada exitosamente. Filas afectadas: ${syncData?.length || 0}`);
+        console.log(`📊 [Credits API] Nueva Info Venta - Paid: ${newPaidAmount}, Status: ${finalStatus}`);
+      }
+    }
+
+    console.log('✅ [Credits API] Operación de abono completada');
 
     // Transformar respuesta
     const response = {
@@ -344,7 +385,7 @@ export async function PUT(request: Request) {
       saleDate: updatedAccount.sale_date,
       dueDate: updatedAccount.due_date,
       lastPaymentDate: updatedAccount.last_payment_date,
-      payments: updatedAccount.payments || [],
+      payments: typeof updatedAccount.payments === 'string' ? JSON.parse(updatedAccount.payments) : (updatedAccount.payments || []),
       notes: updatedAccount.notes,
       createdBy: updatedAccount.created_by,
       updatedBy: updatedAccount.updated_by,

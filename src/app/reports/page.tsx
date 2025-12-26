@@ -58,6 +58,7 @@ export default function ReportsPage() {
         activeRate,
         isLoadingSettings,
         sales: salesData,
+        setSales,
         purchases: purchasesData,
         products,
         customers,
@@ -108,11 +109,15 @@ export default function ReportsPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [activeTab, setActiveTab] = useState("sales");
     const [timeRange, setTimeRange] = useState<TimeRange>(null);
+    const [itemsPerPage, setItemsPerPage] = useState(20);
+    const [accountReceivables, setAccountReceivables] = useState<any[]>([]);
+    const [isFetchingCredits, setIsFetchingCredits] = useState(false);
+    const [fetchedPayments, setFetchedPayments] = useState<SalePayment[]>([]);
+    const [isFetchingPayments, setIsFetchingPayments] = useState(false);
     const { toast } = useToast();
 
     // Estados para paginación
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(20);
 
     const dateFilterQuery = useMemo(() => {
         if (!timeRange) return null;
@@ -125,9 +130,34 @@ export default function ReportsPage() {
         return startDate;
     }, [timeRange]);
 
-    const handleViewDetails = (sale: Sale) => {
+    const handleViewDetails = async (sale: Sale) => {
         setSelectedSaleDetails(sale);
+        setFetchedPayments([]);
+
+        if (sale.transactionType === 'credito' && settings?.id) {
+            setIsFetchingPayments(true);
+            try {
+                const response = await fetch(`/api/credits?storeId=${settings.id}&saleId=${sale.id}`, { cache: 'no-store' });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.accounts && data.accounts.length > 0) {
+                        setFetchedPayments(data.accounts[0].payments || []);
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching credit payments:", error);
+            } finally {
+                setIsFetchingPayments(false);
+            }
+        }
     }
+
+    useEffect(() => {
+        if (settings?.id) {
+            reloadSales();
+            fetchAccountReceivables();
+        }
+    }, [settings?.id]);
 
     const handlePrintTicket = (sale: Sale) => {
         setSaleForTicket(sale);
@@ -139,6 +169,52 @@ export default function ReportsPage() {
         setIsPaymentModalOpen(true);
     }
 
+    const reloadSales = async () => {
+        if (!settings?.id) return;
+        try {
+            const response = await fetch(`/api/sales?storeId=${settings.id}`, { cache: 'no-store' });
+            if (response.ok) {
+                const data = await response.json();
+                setSales(data);
+            }
+        } catch (error) {
+            console.error('Error reloading sales:', error);
+        }
+    };
+
+    const fetchAccountReceivables = async () => {
+        if (!settings?.id) return;
+        setIsFetchingCredits(true);
+        try {
+            const response = await fetch(`/api/credits?storeId=${settings.id}&status=all&limit=1000`, { cache: 'no-store' });
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    setAccountReceivables(data.accounts || []);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching account receivables:', error);
+        } finally {
+            setIsFetchingCredits(false);
+        }
+    };
+
+
+
+    const parsePayments = (payments: any): SalePayment[] => {
+        if (!payments) return [];
+        if (typeof payments === 'string') {
+            try {
+                return JSON.parse(payments);
+            } catch (e) {
+                console.error('Error parsing payments JSON:', e);
+                return [];
+            }
+        }
+        return Array.isArray(payments) ? payments : [];
+    };
+
     const getDate = (date: any): Date => {
         if (!date) return new Date();
         if (typeof date === 'string') return parseISO(date);
@@ -147,14 +223,40 @@ export default function ReportsPage() {
     }
 
     const allPayments = useMemo(() => {
-        return (salesData || []).flatMap(sale =>
-            sale.payments?.map(payment => ({
-                ...payment,
-                saleId: sale.id,
-                customerName: sale.customerName
-            })) ?? []
-        ).sort((a, b) => new Date(b.date as string).getTime() - new Date(a.date as string).getTime());
-    }, [salesData]);
+        const payments: (SalePayment & { saleId: string; customerName: string; })[] = [];
+
+        // 1. Pagos de ventas al contado (directamente de salesData)
+        if (salesData) {
+            salesData
+                .filter(sale => sale.transactionType !== 'credito')
+                .forEach(sale => {
+                    const salePayments = parsePayments(sale.payments);
+                    salePayments.forEach(p => {
+                        payments.push({
+                            ...p,
+                            saleId: sale.id,
+                            customerName: sale.customerName
+                        });
+                    });
+                });
+        }
+
+        // 2. Pagos de ventas a crédito (de accountReceivables para historial detallado)
+        if (accountReceivables) {
+            accountReceivables.forEach(account => {
+                const creditPayments = account.payments || [];
+                creditPayments.forEach((p: any) => {
+                    payments.push({
+                        ...p,
+                        saleId: account.saleId,
+                        customerName: account.customerName
+                    });
+                });
+            });
+        }
+
+        return payments.sort((a, b) => new Date(b.date as string).getTime() - new Date(a.date as string).getTime());
+    }, [salesData, accountReceivables]);
 
     const handleExport = (format: 'csv' | 'json' | 'txt') => {
         const date = new Date().toISOString().split('T')[0];
@@ -281,6 +383,22 @@ export default function ReportsPage() {
         };
     }
 
+    const getSalePaidAmount = (sale: Sale) => {
+        if (sale.transactionType === 'credito' && accountReceivables) {
+            const account = accountReceivables.find(acc => acc.saleId === sale.id);
+            if (account) return Number(account.paidAmount || 0);
+        }
+        return Number(sale.paidAmount || 0);
+    };
+
+    const getSaleStatus = (sale: Sale) => {
+        if (sale.transactionType === 'credito' && accountReceivables) {
+            const account = accountReceivables.find(acc => acc.saleId === sale.id);
+            if (account) return account.status === 'paid' ? 'paid' : 'unpaid';
+        }
+        return sale.status;
+    };
+
     const filterByDate = (data: (Sale | Purchase | InventoryMovement | (SalePayment & { saleId: string; customerName: string; }) | CashSession)[]) => {
         if (!dateFilterQuery || !data) return data || [];
         const filterDateKey = data.length > 0 && 'openingDate' in data[0] ? 'openingDate' : 'date';
@@ -290,10 +408,30 @@ export default function ReportsPage() {
         });
     };
 
+    const salesWithCreditInfo = useMemo(() => {
+        if (!salesData) return [] as Sale[];
+        return salesData.map(sale => {
+            // Si es una venta a crédito, buscar información actualizada en accountReceivables
+            if (sale.transactionType === 'credito' && accountReceivables && accountReceivables.length > 0) {
+                // Soportar tanto saleId como sale_id
+                const account = accountReceivables.find(acc => acc.saleId === sale.id || acc.sale_id === sale.id);
+                if (account) {
+                    const status: 'paid' | 'unpaid' = account.status === 'paid' ? 'paid' : 'unpaid';
+                    return {
+                        ...sale,
+                        paidAmount: Number(account.paidAmount || account.paid_amount || 0),
+                        status
+                    } as Sale;
+                }
+            }
+            return sale;
+        }) as Sale[];
+    }, [salesData, accountReceivables]);
+
     const sortedSales = useMemo(() => {
-        if (!salesData) return [];
-        return [...salesData].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [salesData]);
+        if (!salesWithCreditInfo) return [];
+        return [...salesWithCreditInfo].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [salesWithCreditInfo]);
 
     const filteredSales = useMemo(() => {
         return filterByDate(sortedSales).filter(s =>
@@ -567,22 +705,14 @@ export default function ReportsPage() {
                                             </TableCell>
                                             <TableCell className="text-right">{activeSymbol}{(sale.total * activeRate).toFixed(2)}</TableCell>
                                             <TableCell className="text-right">
-                                                {sale.transactionType === 'credito' ? (
-                                                    <span className={sale.paidAmount > 0 ? 'text-green-600 font-medium' : 'text-muted-foreground'}>
-                                                        {activeSymbol}{(sale.paidAmount * activeRate).toFixed(2)}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-muted-foreground">-</span>
-                                                )}
+                                                <span className={Number(sale.paidAmount || 0) > 0 ? 'text-green-600 font-medium' : 'text-muted-foreground'}>
+                                                    {activeSymbol}{(Number(sale.paidAmount || 0) * activeRate).toFixed(2)}
+                                                </span>
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                {sale.transactionType === 'credito' ? (
-                                                    <span className={(sale.total - sale.paidAmount) > 0 ? 'text-red-600 font-medium' : 'text-blue-600 font-medium'}>
-                                                        {activeSymbol}{((sale.total - sale.paidAmount) * activeRate).toFixed(2)}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-muted-foreground">-</span>
-                                                )}
+                                                <span className={(Number(sale.total || 0) - Number(sale.paidAmount || 0)) > 0.01 ? 'text-red-600 font-medium' : 'text-blue-600 font-medium'}>
+                                                    {activeSymbol}{((Number(sale.total || 0) - Number(sale.paidAmount || 0)) * activeRate).toFixed(2)}
+                                                </span>
                                             </TableCell>
                                             <TableCell>
                                                 <DropdownMenu>
@@ -607,10 +737,10 @@ export default function ReportsPage() {
                                         <TableCell colSpan={4} className="font-bold text-lg">Total General</TableCell>
                                         <TableCell className="text-right font-bold text-lg">{activeSymbol}{(salesTotal * activeRate).toFixed(2)}</TableCell>
                                         <TableCell className="text-right font-bold text-lg">
-                                            {activeSymbol}{(filteredSales.reduce((acc, sale) => acc + sale.paidAmount, 0) * activeRate).toFixed(2)}
+                                            {activeSymbol}{(filteredSales.reduce((acc, sale) => acc + Number(sale.paidAmount || 0), 0) * activeRate).toFixed(2)}
                                         </TableCell>
                                         <TableCell className="text-right font-bold text-lg">
-                                            {activeSymbol}{(filteredSales.reduce((acc, sale) => acc + (sale.total - sale.paidAmount), 0) * activeRate).toFixed(2)}
+                                            {activeSymbol}{(filteredSales.reduce((acc, sale) => acc + (Number(sale.total || 0) - Number(sale.paidAmount || 0)), 0) * activeRate).toFixed(2)}
                                         </TableCell>
                                         <TableCell></TableCell>
                                     </TableRow>
@@ -928,7 +1058,12 @@ export default function ReportsPage() {
             </Tabs>
 
             {/* Details Dialog */}
-            <Dialog open={!!selectedSaleDetails} onOpenChange={(open) => !open && setSelectedSaleDetails(null)}>
+            <Dialog open={!!selectedSaleDetails} onOpenChange={(open) => {
+                if (!open) {
+                    setSelectedSaleDetails(null);
+                    reloadSales();
+                }
+            }}>
                 <DialogContent className="sm:max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>Detalles de la Venta: {selectedSaleDetails?.id}</DialogTitle>
@@ -1002,21 +1137,21 @@ export default function ReportsPage() {
                                         <div className="flex justify-between">
                                             <span className="text-muted-foreground">Total Abonado:</span>
                                             <span className="font-medium text-green-600">
-                                                {activeSymbol}{(selectedSaleDetails.paidAmount * activeRate).toFixed(2)}
+                                                {activeSymbol}{(getSalePaidAmount(selectedSaleDetails) * activeRate).toFixed(2)}
                                             </span>
                                         </div>
                                         <div className="flex justify-between">
                                             <span className="text-muted-foreground">Saldo Pendiente:</span>
-                                            <span className={`font-medium ${(selectedSaleDetails.total - selectedSaleDetails.paidAmount) > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                                {activeSymbol}{((selectedSaleDetails.total - selectedSaleDetails.paidAmount) * activeRate).toFixed(2)}
+                                            <span className={`font-medium ${(selectedSaleDetails.total - getSalePaidAmount(selectedSaleDetails)) > 0.01 ? 'text-red-600' : 'text-green-600'}`}>
+                                                {activeSymbol}{((selectedSaleDetails.total - getSalePaidAmount(selectedSaleDetails)) * activeRate).toFixed(2)}
                                             </span>
                                         </div>
                                     </div>
                                     <div className="space-y-1">
                                         <div className="flex justify-between">
                                             <span className="text-muted-foreground">Estado:</span>
-                                            <Badge variant={selectedSaleDetails.status === 'paid' ? 'default' : 'destructive'} className="text-xs">
-                                                {selectedSaleDetails.status === 'paid' ? 'Pagado' : 'Pendiente'}
+                                            <Badge variant={getSaleStatus(selectedSaleDetails) === 'paid' ? 'default' : 'destructive'} className="text-xs">
+                                                {getSaleStatus(selectedSaleDetails) === 'paid' ? 'Pagado' : 'Pendiente'}
                                             </Badge>
                                         </div>
                                         {selectedSaleDetails.creditDays && (
@@ -1029,14 +1164,17 @@ export default function ReportsPage() {
                                 </div>
 
                                 {/* Payment History */}
-                                {selectedSaleDetails.payments && selectedSaleDetails.payments.length > 0 && (
+                                {(fetchedPayments.length > 0 || (selectedSaleDetails.payments && parsePayments(selectedSaleDetails.payments).length > 0)) && (
                                     <div className="mt-4">
-                                        <h5 className="font-medium text-sm mb-2">Historial de Pagos:</h5>
-                                        <div className="space-y-2 max-h-32 overflow-y-auto">
-                                            {selectedSaleDetails.payments.map((payment, index) => (
+                                        <h5 className="font-medium text-sm mb-2 flex items-center justify-between">
+                                            Historial de Pagos:
+                                            {isFetchingPayments && <span className="text-xs font-normal animate-pulse text-primary italic">Actualizando...</span>}
+                                        </h5>
+                                        <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                                            {(fetchedPayments.length > 0 ? fetchedPayments : parsePayments(selectedSaleDetails.payments)).map((payment, index) => (
                                                 <div key={payment.id || index} className="flex justify-between items-center text-sm p-2 bg-muted/50 rounded">
                                                     <div className="flex flex-col">
-                                                        <span className="font-medium">{payment.method}</span>
+                                                        <span className="font-medium italic">{payment.method}</span>
                                                         <span className="text-xs text-muted-foreground">
                                                             {isClient && payment.date && isValid(getDate(payment.date))
                                                                 ? format(getDate(payment.date), 'dd/MM/yyyy HH:mm')
@@ -1046,7 +1184,7 @@ export default function ReportsPage() {
                                                             <span className="text-xs text-muted-foreground">Ref: {payment.reference}</span>
                                                         )}
                                                     </div>
-                                                    <span className="font-medium text-green-600">
+                                                    <span className="font-bold text-green-600">
                                                         {activeSymbol}{(payment.amount * activeRate).toFixed(2)}
                                                     </span>
                                                 </div>
@@ -1078,7 +1216,10 @@ export default function ReportsPage() {
             </Dialog>
 
             {/* Payment Modal */}
-            <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
+            <Dialog open={isPaymentModalOpen} onOpenChange={(open) => {
+                setIsPaymentModalOpen(open);
+                if (!open) reloadSales();
+            }}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>Abonar a Cuenta</DialogTitle>

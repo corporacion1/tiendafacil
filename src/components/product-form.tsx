@@ -40,9 +40,9 @@ const productSchema = z.object({
   status: z.enum(["active", "inactive", "promotion", "hidden"]),
   tax1: z.boolean(),
   tax2: z.boolean(),
-  unit: z.string().optional(),
-  family: z.string().optional(),
-  warehouse: z.string().optional(),
+  unit: z.preprocess((val) => val === null ? undefined : val, z.string().optional()),
+  family: z.preprocess((val) => val === null ? undefined : val, z.string().optional()),
+  warehouse: z.preprocess((val) => val === null ? undefined : val, z.string().optional()),
   description: z.string().optional(),
   imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
   imageHint: z.preprocess((val) => val === null ? undefined : val, z.string().optional()),
@@ -80,6 +80,9 @@ const getInitialValues = (product?: Product): ProductFormValues => {
       ...product,
       // Transform null to undefined for imageHint to match schema
       imageHint: product.imageHint ?? undefined,
+      unit: product.unit ?? undefined,
+      family: product.family ?? undefined,
+      warehouse: product.warehouse ?? undefined,
       // Ensure affectsInventory is set based on type
       affectsInventory: product.affectsInventory ?? (product.type === 'product'),
       // ✅ Asegurar que siempre tengamos un ID válido para Supabase
@@ -436,7 +439,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Unidad de Medida</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Selecciona una unidad" />
@@ -458,7 +461,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Familia de Producto</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Selecciona una familia" />
@@ -481,7 +484,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Almacén</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value || ""}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Selecciona un almacén" />
@@ -711,7 +714,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Estado del producto</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Selecciona un estado" />

@@ -240,7 +240,7 @@ export async function POST(request: Request) {
           due_date: creditDueDate,
           credit_days: creditDays || null,
           last_payment_date: (createdSale.paid_amount > 0) ? new Date().toISOString() : null,
-          payments: createdSale.payments || [],
+          payments: typeof createdSale.payments === 'string' ? JSON.parse(createdSale.payments) : (createdSale.payments || []),
           notes: null,
           created_by: createdSale.user_id,
           updated_by: createdSale.user_id,

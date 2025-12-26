@@ -58,6 +58,8 @@ export async function GET(
             primaryImageIndex: product.primary_image_index || 0,
             tax1: product.tax1 || false,
             tax2: product.tax2 || false,
+            warehouse: product.warehouse,
+            affectsInventory: product.affects_inventory !== undefined ? product.affects_inventory : true,
             createdAt: product.created_at,
             updatedAt: product.updated_at
         };
@@ -73,9 +75,9 @@ export async function GET(
     }
 }
 
-    /**
- * PUT - Actualizar un producto
- */
+/**
+* PUT - Actualizar un producto
+*/
 export async function PUT(
     request: NextRequest,
     { params }: { params: { id: string } }
@@ -83,23 +85,23 @@ export async function PUT(
     try {
         const productId = params.id;
         const data = await request.json();
-        
+
         console.log('🔍 [API PUT] Recibiendo actualización:', {
             productId,
             storeId: data.storeId,
             warehouse: data.warehouse,
             type: data.type
         });
-        
+
         if (!data.storeId) {
             return NextResponse.json(
-                { error: 'storeId es requerido' }, 
+                { error: 'storeId es requerido' },
                 { status: 400 }
             );
         }
 
-        console.log('📝 [Products API] PUT product:', { 
-            productId, 
+        console.log('📝 [Products API] PUT product:', {
+            productId,
             storeId: data.storeId, // ✅ CORREGIDO: usar data.storeId
             name: data.name,
             warehouse: data.warehouse
@@ -128,7 +130,7 @@ export async function PUT(
         if (data.primaryImageIndex !== undefined) updateData.primary_image_index = data.primaryImageIndex;
         if (data.tax1 !== undefined) updateData.tax1 = data.tax1;
         if (data.tax2 !== undefined) updateData.tax2 = data.tax2;
-        
+
         // ✅ AGREGAR ESTOS CAMPOS FALTANTES:
         if (data.warehouse !== undefined) updateData.warehouse = data.warehouse;
         if (data.affectsInventory !== undefined) updateData.affects_inventory = data.affectsInventory;
