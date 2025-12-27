@@ -7,13 +7,23 @@ export async function GET(request: NextRequest) {
     const storeId = searchParams.get('storeId');
     if (!storeId) return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
 
-    // Solo obtener órdenes con estado 'pending'
-    const { data: pendingOrders, error } = await supabaseAdmin
+    const status = searchParams.get('status'); // 'all', 'pending', 'processed', etc.
+
+    let query = supabaseAdmin
       .from('orders')
       .select('*')
-      .eq('store_id', storeId)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
+      .eq('store_id', storeId);
+
+    // Apply status filter if not 'all'
+    if (status && status !== 'all') {
+      // Support comma separated statuses if needed, but for now simple eq
+      query = query.eq('status', status);
+    } else if (!status) {
+      // Default strict to 'pending' to maintain backward compatibility unless specified
+      query = query.eq('status', 'pending');
+    }
+
+    const { data: pendingOrders, error } = await query.order('created_at', { ascending: false });
 
     if (error) throw error;
 

@@ -151,8 +151,8 @@ export type InventoryMovement = {
   updatedAt: string;
   responsible?: string;
   storeId: string;
-    productName?: string;
-      type?: string;
+  productName?: string;
+  type?: string;
 };
 
 export type SalePayment = {
@@ -318,20 +318,50 @@ export type AdClick = {
 };
 
 export type CashSession = {
+  // Identifiers
   id: string;
   storeId: string;
-  openingDate: string;
-  closingDate: string | null;
-  openingBalance: number;
-  closingBalance: number | null;
-  calculatedCash: number;
-  difference: number;
+  store_id?: string;
+  series?: string | null;
+
+  // Status and Notes
   status: 'open' | 'closed';
-  openedBy: string;
-  closedBy: string | null;
-  salesIds: string[];
+  notes?: string;
+
+  // User info (snake_case from DB, camelCase from mapped objects)
+  opened_by: string;
+  openedBy?: string;
+  closed_by: string | null;
+  closedBy?: string | null;
+
+  // Timestamps
+  opened_at: string; // Was incorrectly boolean
+  opening_date?: string;
+  openingDate?: string;
+
+  closed_at: string | null; // Was incorrectly boolean
+  closing_date?: string | null;
+  closingDate?: string | null;
+
+  // Financials
+  opening_balance: number;
+  openingBalance?: number;
+  opening_amount?: number; // Legacy/DB alias
+
+  closing_balance: number | null;
+  closingBalance?: number | null;
+  closing_amount?: number | null;
+
+  calculated_cash: number;
+  calculatedCash?: number;
+
+  difference: number;
+
+  // Relations
+  transaction_count?: number;
+  sales_ids?: string[];
+  salesIds?: string[];
   transactions: Record<string, number>;
-  series?: string | null; // Serie del punto de venta
 };
 
 // Stores Administration Types

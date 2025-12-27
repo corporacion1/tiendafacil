@@ -2,7 +2,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react";
-import { File, MoreHorizontal, Search, FileSpreadsheet, FileJson, FileText, Printer, Eye } from "lucide-react";
+import { File, MoreHorizontal, Search, FileSpreadsheet, FileJson, FileText, Printer, Eye, Copy, ShoppingCart } from "lucide-react";
 import { format, subDays, startOfWeek, startOfMonth, startOfYear, parseISO, isValid } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -39,7 +39,7 @@ import {
     DialogClose,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Sale, CartItem, Customer, Product, InventoryMovement, Purchase, SalePayment, CashSession, ExpensePayment } from "@/lib/types";
+import { Sale, CartItem, Customer, Product, Purchase, SalePayment, CashSession, ExpensePayment } from "@/lib/types";
 import { TicketPreview } from "@/components/ticket-preview";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -48,8 +48,18 @@ import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/contexts/settings-context";
 import { SessionReportPreview } from "@/components/session-report-preview";
 import { Pagination } from "@/components/ui/pagination";
+import { PendingOrder } from "@/lib/types";
 
 type TimeRange = 'day' | 'week' | 'month' | 'year' | null;
+
+interface ReportMovement {
+    id: string;
+    productName: string;
+    type: 'sale' | 'purchase';
+    quantity: number;
+    date: string;
+    storeId: string;
+}
 
 export default function ReportsPage() {
     const {
@@ -63,9 +73,11 @@ export default function ReportsPage() {
         products,
         customers,
         cashSessions: cashSessionsData,
+        pendingOrders: pendingOrdersData,
     } = useSettings();
 
     const [selectedSessionDetails, setSelectedSessionDetails] = useState<CashSession | null>(null);
+    const [selectedOrderDetails, setSelectedOrderDetails] = useState<PendingOrder | null>(null);
     const [sessionForReport, setSessionForReport] = useState<CashSession | null>(null);
     const [isReportPreviewOpen, setIsReportPreviewOpen] = useState(false);
 
@@ -75,7 +87,7 @@ export default function ReportsPage() {
         setIsClient(true)
     }, [])
 
-    const movementsData: InventoryMovement[] = useMemo(() => {
+    const movementsData: ReportMovement[] = useMemo(() => {
         if (!salesData || !purchasesData) return [];
         const saleMovements = salesData.flatMap(sale =>
             sale.items.map(item => ({
@@ -115,7 +127,6 @@ export default function ReportsPage() {
     const [isFetchingPayments, setIsFetchingPayments] = useState(false);
     const [expensePayments, setExpensePayments] = useState<ExpensePayment[]>([]);
     const [isFetchingExpenses, setIsFetchingExpenses] = useState(false);
-    const [paymentsSubTab, setPaymentsSubTab] = useState<'incomes' | 'expenses'>('incomes');
     const { toast } = useToast();
 
     // Estados para paginación
@@ -242,52 +253,52 @@ export default function ReportsPage() {
     }
 
     const allPayments = useMemo(() => {
-    const paymentsMap = new Map<string, SalePayment & { saleId: string; customerName: string; }>();
+        const paymentsMap = new Map<string, SalePayment & { saleId: string; customerName: string; }>();
 
-    // 1. Pagos de ventas al contado (directamente de salesData)
-    if (salesData) {
-        salesData
-            .filter(sale => sale.transactionType !== 'credito')
-            .forEach(sale => {
-                const salePayments = parsePayments(sale.payments);
-                salePayments.forEach((p, idx) => {
-                    // Generar un ID único estable si no existe uno
-                    const pId = p.id || `sale-${sale.id}-${p.method}-${p.amount}-${p.date || idx}`;
+        // 1. Pagos de ventas al contado (directamente de salesData)
+        if (salesData) {
+            salesData
+                .filter(sale => sale.transactionType !== 'credito')
+                .forEach(sale => {
+                    const salePayments = parsePayments(sale.payments);
+                    salePayments.forEach((p, idx) => {
+                        // Generar un ID único estable si no existe uno
+                        const pId = p.id || `sale-${sale.id}-${p.method}-${p.amount}-${p.date || idx}`;
+                        if (!paymentsMap.has(pId)) {
+                            paymentsMap.set(pId, {
+                                ...p,
+                                id: pId,
+                                saleId: sale.id,
+                                customerName: sale.customerName
+                            });
+                        }
+                    });
+                });
+        }
+
+        // 2. Pagos de ventas a crédito (de accountReceivables)
+        if (accountReceivables) {
+            accountReceivables.forEach(account => {
+                // El backend ya filtra por ventas de crédito, pero verificamos por seguridad
+                const creditPayments = account.payments || [];
+                creditPayments.forEach((p: any, idx: number) => {
+                    // Generar un ID único estable para abonos
+                    const pId = p.id || `credit-${account.saleId}-${p.method}-${p.amount}-${p.date || idx}`;
                     if (!paymentsMap.has(pId)) {
                         paymentsMap.set(pId, {
                             ...p,
                             id: pId,
-                            saleId: sale.id,
-                            customerName: sale.customerName
+                            saleId: account.saleId,
+                            customerName: account.customerName
                         });
                     }
                 });
             });
-    }
+        }
 
-    // 2. Pagos de ventas a crédito (de accountReceivables)
-    if (accountReceivables) {
-        accountReceivables.forEach(account => {
-            // El backend ya filtra por ventas de crédito, pero verificamos por seguridad
-            const creditPayments = account.payments || [];
-            creditPayments.forEach((p: any, idx) => {
-                // Generar un ID único estable para abonos
-                const pId = p.id || `credit-${account.saleId}-${p.method}-${p.amount}-${p.date || idx}`;
-                if (!paymentsMap.has(pId)) {
-                    paymentsMap.set(pId, {
-                        ...p,
-                        id: pId,
-                        saleId: account.saleId,
-                        customerName: account.customerName
-                    });
-                }
-            });
-        });
-    }
-
-    return Array.from(paymentsMap.values())
-        .sort((a, b) => new Date(b.date as string).getTime() - new Date(a.date as string).getTime());
-}, [salesData, accountReceivables]);
+        return Array.from(paymentsMap.values())
+            .sort((a, b) => new Date(b.date as string).getTime() - new Date(a.date as string).getTime());
+    }, [salesData, accountReceivables]);
 
     const handleExport = (format: 'csv' | 'json' | 'txt') => {
         const date = new Date().toISOString().split('T')[0];
@@ -345,8 +356,8 @@ export default function ReportsPage() {
                     fecha_cierre: cs.closingDate ? getDate(cs.closingDate).toISOString() : '',
                     abierto_por: cs.opened_by,
                     cerrado_por: cs.closed_by,
-                    saldo_inicial: cs.opening_balance.toFixed(2),
-                    saldo_contado: cs.closing_balance?.toFixed(2) || '0.00',
+                    saldo_inicial: (cs.opening_balance || cs.opening_amount || 0).toFixed(2),
+                    saldo_contado: (cs.closing_balance || cs.closing_amount || 0).toFixed(2),
                     diferencia: cs.difference.toFixed(2),
                     estado: cs.status
                 }));
@@ -433,8 +444,9 @@ export default function ReportsPage() {
     const filterByDate = (data: any[]) => {
         if (!dateFilterQuery || !data) return data || [];
         return data.filter(item => {
-            const filterDateKey = 'openingDate' in item ? 'openingDate' :
-                ('paymentDate' in item ? 'paymentDate' : 'date');
+            const filterDateKey = 'createdAt' in item ? 'createdAt' :
+                ('openingDate' in item ? 'openingDate' :
+                    ('paymentDate' in item ? 'paymentDate' : 'date'));
             const itemDate = (item as any)[filterDateKey];
             return itemDate ? getDate(itemDate) >= dateFilterQuery : false;
         });
@@ -488,7 +500,7 @@ export default function ReportsPage() {
         const sortedMovements = (movementsData || []).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         return filterByDate(sortedMovements).filter(m =>
             ((m as any).productName || '').toLowerCase().includes(searchTerm.toLowerCase())
-        ) as InventoryMovement[];
+        ) as ReportMovement[];
     }, [movementsData, searchTerm, dateFilterQuery]);
 
     const filteredProducts = useMemo(() => {
@@ -519,8 +531,27 @@ export default function ReportsPage() {
 
     const sortedCashSessions = useMemo(() => {
         if (!cashSessionsData) return [];
-        return [...cashSessionsData].sort((a, b) => new Date(b.openingDate).getTime() - new Date(a.openingDate).getTime());
+        return [...cashSessionsData].sort((a, b) => new Date(b.opened_at || b.openingDate || '').getTime() - new Date(a.opened_at || a.openingDate || '').getTime());
     }, [cashSessionsData]);
+
+    const handleDuplicateOrder = (order: PendingOrder) => {
+        // Guardar la orden en localStorage para que el POS la lea
+        localStorage.setItem('TIENDA_FACIL_DUPLICATE_ORDER', JSON.stringify(order));
+
+        toast({
+            title: "Redirigiendo al POS",
+            description: "La orden se cargará en el carrito...",
+        });
+
+        // Redirigir al POS
+        setTimeout(() => {
+            window.location.href = '/pos';
+        }, 500);
+    };
+
+    const handleViewOrderDetails = (order: PendingOrder) => {
+        setSelectedOrderDetails(order);
+    };
 
     const filteredCashSessions = useMemo(() => {
         return filterByDate(sortedCashSessions).filter(cs =>
@@ -529,6 +560,17 @@ export default function ReportsPage() {
             ((cs as any).closedBy && (cs as any).closedBy.toLowerCase().includes(searchTerm.toLowerCase()))
         ) as CashSession[];
     }, [sortedCashSessions, searchTerm, dateFilterQuery]);
+
+    const filteredPendingOrders = useMemo(() => {
+        if (!pendingOrdersData) return [];
+        const sortedOrders = [...pendingOrdersData].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        return (filterByDate(sortedOrders) as PendingOrder[]).filter(order =>
+            order.orderId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (order.customerPhone && order.customerPhone.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (order.saleId && order.saleId.toLowerCase().includes(searchTerm.toLowerCase()))
+        );
+    }, [pendingOrdersData, searchTerm, dateFilterQuery]);
 
     // Paginación para cada pestaña
     const paginatedSales = useMemo(() => {
@@ -566,6 +608,11 @@ export default function ReportsPage() {
         return filteredCashSessions.slice(startIndex, startIndex + itemsPerPage);
     }, [filteredCashSessions, currentPage, itemsPerPage]);
 
+    const paginatedOrders = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return filteredPendingOrders.slice(startIndex, startIndex + itemsPerPage);
+    }, [filteredPendingOrders, currentPage, itemsPerPage]);
+
     // Función para obtener el total de páginas según la pestaña activa
     const getTotalPages = () => {
         let totalItems = 0;
@@ -577,6 +624,7 @@ export default function ReportsPage() {
             case 'cobros': totalItems = filteredPayments.length; break;
             case 'payments': totalItems = filteredExpenses.length; break;
             case 'sessions': totalItems = filteredCashSessions.length; break;
+            case 'orders': totalItems = filteredPendingOrders.length; break;
         }
         return Math.ceil(totalItems / itemsPerPage);
     };
@@ -590,6 +638,7 @@ export default function ReportsPage() {
             case 'cobros': return filteredPayments.length;
             case 'payments': return filteredExpenses.length;
             case 'sessions': return filteredCashSessions.length;
+            case 'orders': return filteredPendingOrders.length;
             default: return 0;
         }
     };
@@ -652,7 +701,8 @@ export default function ReportsPage() {
     };
 
     const salesForSession = (session: CashSession) => {
-        return (salesData || []).filter(sale => session.salesIds.includes(sale.id));
+        const ids = session.salesIds || session.sales_ids || [];
+        return (salesData || []).filter(sale => ids.includes(sale.id));
     };
 
     return (
@@ -667,6 +717,7 @@ export default function ReportsPage() {
                         <TabsTrigger value="sessions">Cierres</TabsTrigger>
                         <TabsTrigger value="movements">Movimientos</TabsTrigger>
                         <TabsTrigger value="inventory">Inventario</TabsTrigger>
+                        <TabsTrigger value="orders">Pedidos</TabsTrigger>
                     </TabsList>
                     <div className="flex-grow flex justify-end items-center gap-2 flex-wrap">
                         <div className="relative">
@@ -1183,6 +1234,115 @@ export default function ReportsPage() {
                         </div>
                     </Card>
                 </TabsContent>
+
+                <TabsContent value="orders" className="space-y-4">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Reporte de Pedidos</CardTitle>
+                            <CardDescription>
+                                Listado de pedidos y cotizaciones registradas en el sistema.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="rounded-md border overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Fecha</TableHead>
+                                            <TableHead>ID Pedido</TableHead>
+                                            <TableHead>Cliente</TableHead>
+                                            <TableHead>Estado</TableHead>
+                                            <TableHead>Venta Asociada</TableHead>
+                                            <TableHead>Procesado Por</TableHead>
+                                            <TableHead className="text-right">Total</TableHead>
+                                            <TableHead className="text-right">Acciones</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {paginatedOrders.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={7} className="h-24 text-center">
+                                                    No se encontraron pedidos.
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            paginatedOrders.map((order) => (
+                                                <TableRow key={order.orderId}>
+                                                    <TableCell className="font-medium whitespace-nowrap">
+                                                        {format(parseISO(order.createdAt), "dd/MM/yyyy HH:mm")}
+                                                    </TableCell>
+                                                    <TableCell className="font-mono text-xs max-w-[120px] truncate" title={order.orderId}>
+                                                        {order.orderId}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex flex-col">
+                                                            <span className="font-medium">{order.customerName}</span>
+                                                            {order.customerPhone && <span className="text-xs text-muted-foreground">{order.customerPhone}</span>}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge variant={
+                                                            order.status === 'processed' ? 'default' :
+                                                                order.status === 'pending' ? 'secondary' :
+                                                                    order.status === 'cancelled' ? 'destructive' : 'outline'
+                                                        } className={
+                                                            order.status === 'processed' ? 'bg-green-100 text-green-800 hover:bg-green-100' :
+                                                                order.status === 'pending' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100' : ''
+                                                        }>
+                                                            {order.status === 'processed' ? 'Procesado' :
+                                                                order.status === 'pending' ? 'Pendiente' :
+                                                                    order.status === 'processing' ? 'En Proceso' :
+                                                                        order.status === 'cancelled' ? 'Cancelado' : order.status}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-xs font-mono">
+                                                        {order.saleId || '-'}
+                                                    </TableCell>
+                                                    <TableCell className="text-xs">
+                                                        {order.processedBy || '-'}
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-medium">
+                                                        {activeSymbol}{(order.total * activeRate).toFixed(2)}
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <div className="flex justify-end gap-2">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                onClick={() => handleViewOrderDetails(order)}
+                                                                title="Ver Detalles"
+                                                            >
+                                                                <Eye className="h-4 w-4 text-blue-500" />
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                onClick={() => handleDuplicateOrder(order)}
+                                                                title="Duplicar / Cargar en POS"
+                                                            >
+                                                                <Copy className="h-4 w-4 text-green-500" />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                            <div className="px-6 pb-6">
+                                <Pagination
+                                    currentPage={currentPage}
+                                    totalPages={getTotalPages()}
+                                    totalItems={getTotalItems()}
+                                    itemsPerPage={itemsPerPage}
+                                    onPageChange={setCurrentPage}
+                                    onItemsPerPageChange={setItemsPerPage}
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
             </Tabs>
 
             {/* Details Dialog */}
@@ -1409,6 +1569,81 @@ export default function ReportsPage() {
                 </DialogContent>
             </Dialog>
 
+            {/* Order Details Dialog */}
+            <Dialog open={!!selectedOrderDetails} onOpenChange={(open) => !open && setSelectedOrderDetails(null)}>
+                <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Detalles del Pedido: {selectedOrderDetails?.orderId}</DialogTitle>
+                        <DialogDescription>
+                            Fecha: {selectedOrderDetails && format(parseISO(selectedOrderDetails.createdAt), "dd/MM/yyyy HH:mm")} |
+                            Cliente: {selectedOrderDetails?.customerName}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center border-b pb-2">
+                            <div className="space-y-1">
+                                <p className="text-sm font-medium">Estado:
+                                    <Badge variant="outline" className="ml-2">
+                                        {selectedOrderDetails?.status}
+                                    </Badge>
+                                </p>
+                                {selectedOrderDetails?.saleId && (
+                                    <p className="text-sm text-muted-foreground">ID Venta: {selectedOrderDetails.saleId}</p>
+                                )}
+                            </div>
+                            <Button
+                                size="sm"
+                                onClick={() => selectedOrderDetails && handleDuplicateOrder(selectedOrderDetails)}
+                                className="bg-green-600 hover:bg-green-700"
+                            >
+                                <ShoppingCart className="mr-2 h-4 w-4" />
+                                Duplicar en POS
+                            </Button>
+                        </div>
+
+                        <div className="rounded-md border p-0 overflow-hidden">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="bg-muted/50">
+                                        <TableHead>Producto</TableHead>
+                                        <TableHead className="text-right">Cant.</TableHead>
+                                        <TableHead className="text-right">Precio</TableHead>
+                                        <TableHead className="text-right">Subtotal</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {selectedOrderDetails?.items.map((item, idx) => (
+                                        <TableRow key={idx}>
+                                            <TableCell className="font-medium">{item.productName}</TableCell>
+                                            <TableCell className="text-right">{item.quantity}</TableCell>
+                                            <TableCell className="text-right">{activeSymbol}{(item.price * activeRate).toFixed(2)}</TableCell>
+                                            <TableCell className="text-right">{activeSymbol}{(item.price * item.quantity * activeRate).toFixed(2)}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+
+                        <div className="flex justify-end pt-2">
+                            <div className="text-right">
+                                <p className="text-muted-foreground text-sm">Total Pedido</p>
+                                <p className="text-2xl font-bold text-primary">
+                                    {selectedOrderDetails && activeSymbol}
+                                    {selectedOrderDetails && (selectedOrderDetails.total * activeRate).toFixed(2)}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button variant="outline">Cerrar</Button>
+                        </DialogClose>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             {/* Cash Session Details Dialog */}
             <Dialog open={!!selectedSessionDetails} onOpenChange={(open) => !open && setSelectedSessionDetails(null)}>
                 <DialogContent className="sm:max-w-2xl">
@@ -1424,7 +1659,7 @@ export default function ReportsPage() {
                                 <Card>
                                     <CardHeader><CardTitle>Resumen del Cierre</CardTitle></CardHeader>
                                     <CardContent className="space-y-2">
-                                        <div className="flex justify-between"><span>Fondo de Caja:</span> <span className="font-medium">{activeSymbol}{(selectedSessionDetails.opening_amount * activeRate).toFixed(2)}</span></div>
+                                        <div className="flex justify-between"><span>Fondo de Caja:</span> <span className="font-medium">{activeSymbol}{((selectedSessionDetails.opening_balance || selectedSessionDetails.opening_amount || 0) * activeRate).toFixed(2)}</span></div>
                                         <div className="flex justify-between"><span>Efectivo Esperado:</span> <span className="font-medium">{activeSymbol}{(selectedSessionDetails.calculated_cash * activeRate).toFixed(2)}</span></div>
                                         <div className="flex justify-between"><span>Efectivo Contado:</span> <span className="font-medium">{activeSymbol}{((selectedSessionDetails.closing_amount || 0) * activeRate).toFixed(2)}</span></div>
                                         <Separator />

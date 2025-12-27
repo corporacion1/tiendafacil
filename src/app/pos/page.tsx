@@ -10,6 +10,7 @@ import {
   Trash2,
   ArrowUpDown,
   Check,
+  CheckCircle,
   ZoomIn,
   Tags,
   Package,
@@ -373,6 +374,55 @@ export default function POSPage() {
     isOnline,
   ]);
 
+  // Load duplicated order from localStorage
+  useEffect(() => {
+    const duplicateOrderJson = localStorage.getItem('TIENDA_FACIL_DUPLICATE_ORDER');
+    if (duplicateOrderJson) {
+      try {
+        const orderToDuplicate = JSON.parse(duplicateOrderJson) as PendingOrder;
+
+        if (orderToDuplicate && orderToDuplicate.items) {
+          // Map items to CartItem format
+          const newCartItems: CartItem[] = orderToDuplicate.items.map((item: any) => {
+            // Find full product details if possible, otherwise construct basic product object
+            const product = products.find(p => p.id === item.productId) || {
+              id: item.productId,
+              name: item.productName,
+              price: item.price,
+              stock: 9999, // Fallback
+              cost: 0,
+              type: 'product',
+              status: 'active',
+              storeId: activeStoreId || '',
+              // ... other required fields with defaults
+            } as Product;
+
+            return {
+              product: product,
+              quantity: item.quantity,
+              price: item.price // Use price from order to preserve historical price if needed
+            };
+          });
+
+          setCartItems(newCartItems);
+
+          if (orderToDuplicate.notes) {
+            // Potentially set notes state if it exists
+          }
+
+          toast({
+            title: "Pedido Duplicado/Cargado",
+            description: `Se han cargado ${newCartItems.length} items del pedido ${orderToDuplicate.orderId}`,
+          });
+        }
+      } catch (e) {
+        console.error("Error loading duplicated order", e);
+      } finally {
+        localStorage.removeItem('TIENDA_FACIL_DUPLICATE_ORDER');
+      }
+    }
+  }, [products, activeStoreId, toast]);
+
   // --- USE LOCAL DATA ---
   const isLoading = isLoadingSettings;
   // --- END LOCAL DATA ---
@@ -463,6 +513,48 @@ export default function POSPage() {
   const [isLocalConfigOpen, setIsLocalConfigOpen] = useState(false);
   const [newLocalSeries, setNewLocalSeries] = useState("");
   const [newLocalCorrelative, setNewLocalCorrelative] = useState("");
+
+  // -- Estado para marcar pedido como procesado manualmente --
+  const [orderToProcess, setOrderToProcess] = useState<PendingOrder | null>(null);
+  const [isProcessOrderDialogOpen, setIsProcessOrderDialogOpen] = useState(false);
+
+  const handleConfirmMarkAsProcessed = async () => {
+    if (!orderToProcess) return;
+
+    try {
+      const success = await updateOrderStatus(
+        orderToProcess.orderId,
+        "processed",
+        undefined,
+        userProfile?.displayName || (userProfile as any)?.name || "Usuario POS"
+      );
+
+      if (success) {
+        toast({
+          title: "Pedido procesado",
+          description: "El pedido se ha marcado como procesado y se ha removido de la lista.",
+        });
+        // Refrescar lista
+        refetchPendingOrders();
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "No se pudo actualizar el estado del pedido.",
+        });
+      }
+    } catch (error) {
+      console.error("Error marking order as processed:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Ocurrió un error al procesar el pedido.",
+      });
+    } finally {
+      setIsProcessOrderDialogOpen(false);
+      setOrderToProcess(null);
+    }
+  };
 
   // Load Local Series from localStorage
   useEffect(() => {
@@ -3618,6 +3710,22 @@ export default function POSPage() {
                                           </span>
                                         </Button>
                                       )}
+
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="text-muted-foreground hover:text-green-600 w-full sm:w-auto"
+                                        onClick={() => {
+                                          setOrderToProcess(order);
+                                          setIsProcessOrderDialogOpen(true);
+                                        }}
+                                        title="Marcar como Procesado"
+                                      >
+                                        <CheckCircle className="h-4 w-4 sm:mr-2" />
+                                        <span className="hidden sm:inline">
+                                          Procesado
+                                        </span>
+                                      </Button>
                                     </div>
                                   </div>
                                   <Separator className="my-2" />
@@ -3637,6 +3745,24 @@ export default function POSPage() {
                     </DialogContent>
                   </Dialog>
                 </div>
+
+                {/* Diálogo de Confirmación para Procesar Pedido Manualmente */}
+                <AlertDialog open={isProcessOrderDialogOpen} onOpenChange={setIsProcessOrderDialogOpen}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Marcar pedido como procesado?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Estás a punto de marcar el pedido <strong>{orderToProcess?.orderId}</strong> como procesado manualmente.
+                        Esto lo eliminará de la lista de pendientes.<br /><br />
+                        ¿Estás seguro de que deseas continuar?
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel onClick={() => setOrderToProcess(null)}>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleConfirmMarkAsProcessed}>Sí, Procesar</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
                 <div className="mt-4 flex gap-4">
                   <div className="relative flex-grow">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -4954,6 +5080,6 @@ export default function POSPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 }

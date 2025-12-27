@@ -207,8 +207,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
           .then(res => res.ok ? res.json() : [])
           .catch(() => []),
 
-        // Cargar órdenes pendientes
-        fetch(`/api/pending-orders?storeId=${storeId}`)
+        // Cargar órdenes pendientes (todas para reportes)
+        fetch(`/api/pending-orders?storeId=${storeId}&status=all`)
           .then(res => res.ok ? res.json() : [])
           .catch(() => []),
 
@@ -677,76 +677,76 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     localStorage.setItem(CURRENCY_PREF_STORAGE_KEY, newPreference);
   }, [displayCurrency]);
 
-    // FUNCIÓN reloadProducts
-    const reloadProducts = useCallback(async () => {
-      if (!activeStoreId) return;
+  // FUNCIÓN reloadProducts
+  const reloadProducts = useCallback(async () => {
+    if (!activeStoreId) return;
 
-      try {
-        console.log('🔄 [Context] Recargando productos para store:', activeStoreId);
-        
-        // Usar fetch SIN cache forzado
-        const response = await fetch(`/api/products?storeId=${activeStoreId}`, {
-          headers: {
-            'Cache-Control': 'no-cache, no-store, max-age=0',
-            'Pragma': 'no-cache'
-          }
-        });
-        
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('❌ [Context] Error recargando productos:', {
-            status: response.status,
-            error: errorText
-          });
-          return;
+    try {
+      console.log('🔄 [Context] Recargando productos para store:', activeStoreId);
+
+      // Usar fetch SIN cache forzado
+      const response = await fetch(`/api/products?storeId=${activeStoreId}`, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, max-age=0',
+          'Pragma': 'no-cache'
         }
+      });
 
-        const data = await response.json();
-        console.log('📦 [Context] Productos recibidos (tipo):', 
-          Array.isArray(data) ? 'Array directo' : 'Objeto con datos'
-        );
-
-        // ✅ SOLUCIÓN: Manejar ÚNICAMENTE el formato que devuelve TU API
-        // Según tu route.ts, devuelve un array directo (transformedProducts)
-        let productsData: Product[] = [];
-        
-        if (Array.isArray(data)) {
-          // Formato correcto según tu API
-          productsData = data;
-        } else {
-          // Loggear pero no fallar
-          console.warn('⚠️ [Context] Formato inesperado, intentando extraer:', data);
-          if (data.products) productsData = data.products;
-          else if (data.data) productsData = data.data;
-        }
-
-        console.log(`✅ [Context] Actualizando ${productsData.length} productos en estado`);
-        
-        // Actualizar estado de forma segura
-        setProducts(prev => {
-          // Si es el mismo número de productos, puede que sean los mismos
-          if (prev.length === productsData.length) {
-            // Verificar si realmente cambiaron
-            const changed = prev.some((p, i) => 
-              p.id !== productsData[i]?.id || 
-              p.stock !== productsData[i]?.stock ||
-              p.price !== productsData[i]?.price
-            );
-            if (!changed) {
-              console.log('📊 [Context] Productos no han cambiado, omitiendo actualización');
-              return prev;
-            }
-          }
-          return productsData;
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [Context] Error recargando productos:', {
+          status: response.status,
+          error: errorText
         });
-
-        return productsData;
-
-      } catch (error) {
-        console.error('❌ [Context] Error recargando productos:', error);
-        throw error;
+        return;
       }
-    }, [activeStoreId]);
+
+      const data = await response.json();
+      console.log('📦 [Context] Productos recibidos (tipo):',
+        Array.isArray(data) ? 'Array directo' : 'Objeto con datos'
+      );
+
+      // ✅ SOLUCIÓN: Manejar ÚNICAMENTE el formato que devuelve TU API
+      // Según tu route.ts, devuelve un array directo (transformedProducts)
+      let productsData: Product[] = [];
+
+      if (Array.isArray(data)) {
+        // Formato correcto según tu API
+        productsData = data;
+      } else {
+        // Loggear pero no fallar
+        console.warn('⚠️ [Context] Formato inesperado, intentando extraer:', data);
+        if (data.products) productsData = data.products;
+        else if (data.data) productsData = data.data;
+      }
+
+      console.log(`✅ [Context] Actualizando ${productsData.length} productos en estado`);
+
+      // Actualizar estado de forma segura
+      setProducts(prev => {
+        // Si es el mismo número de productos, puede que sean los mismos
+        if (prev.length === productsData.length) {
+          // Verificar si realmente cambiaron
+          const changed = prev.some((p, i) =>
+            p.id !== productsData[i]?.id ||
+            p.stock !== productsData[i]?.stock ||
+            p.price !== productsData[i]?.price
+          );
+          if (!changed) {
+            console.log('📊 [Context] Productos no han cambiado, omitiendo actualización');
+            return prev;
+          }
+        }
+        return productsData;
+      });
+
+      return productsData;
+
+    } catch (error) {
+      console.error('❌ [Context] Error recargando productos:', error);
+      throw error;
+    }
+  }, [activeStoreId]);
 
   const handleSetUserProfile = useCallback((user: UserProfile | null) => {
     setUserProfile(user);
