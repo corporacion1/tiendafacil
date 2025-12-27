@@ -710,14 +710,14 @@ export default function ReportsPage() {
             <Tabs defaultValue="sales" onValueChange={setActiveTab}>
                 <div className="flex items-center mb-4 flex-wrap gap-2">
                     <TabsList className="flex flex-wrap h-auto justify-start md:justify-center w-full md:w-auto gap-1">
-                        <TabsTrigger value="sales">Ventas</TabsTrigger>
                         <TabsTrigger value="purchases">Compras</TabsTrigger>
-                        <TabsTrigger value="cobros">Cobros</TabsTrigger>
                         <TabsTrigger value="payments">Pagos</TabsTrigger>
+                        <TabsTrigger value="orders">Pedidos</TabsTrigger>
+                        <TabsTrigger value="sales">Ventas</TabsTrigger>
+                        <TabsTrigger value="cobros">Cobros</TabsTrigger>
                         <TabsTrigger value="sessions">Cierres</TabsTrigger>
                         <TabsTrigger value="movements">Movimientos</TabsTrigger>
                         <TabsTrigger value="inventory">Inventario</TabsTrigger>
-                        <TabsTrigger value="orders">Pedidos</TabsTrigger>
                     </TabsList>
                     <div className="flex-grow flex justify-end items-center gap-2 flex-wrap">
                         <div className="relative">
