@@ -3714,7 +3714,7 @@ export default function POSPage() {
                                       <Button
                                         size="sm"
                                         variant="ghost"
-                                        className="text-muted-foreground hover:text-green-600 w-full sm:w-auto"
+                                        className="text-muted-foreground hover:text-white w-full sm:w-auto"
                                         onClick={() => {
                                           setOrderToProcess(order);
                                           setIsProcessOrderDialogOpen(true);

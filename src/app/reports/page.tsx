@@ -710,14 +710,14 @@ export default function ReportsPage() {
             <Tabs defaultValue="sales" onValueChange={setActiveTab}>
                 <div className="flex items-center mb-4 flex-wrap gap-2">
                     <TabsList className="flex flex-wrap h-auto justify-start md:justify-center w-full md:w-auto gap-1">
-                        <TabsTrigger value="purchases">Compras</TabsTrigger>
-                        <TabsTrigger value="payments">Pagos</TabsTrigger>
-                        <TabsTrigger value="orders">Pedidos</TabsTrigger>
-                        <TabsTrigger value="sales">Ventas</TabsTrigger>
-                        <TabsTrigger value="cobros">Cobros</TabsTrigger>
-                        <TabsTrigger value="sessions">Cierres</TabsTrigger>
-                        <TabsTrigger value="movements">Movimientos</TabsTrigger>
-                        <TabsTrigger value="inventory">Inventario</TabsTrigger>
+                        <TabsTrigger value="purchases" className="hover:bg-red-500 hover:text-white">Compras</TabsTrigger>
+                        <TabsTrigger value="payments" className="hover:bg-red-500 hover:text-white">Pagos</TabsTrigger>
+                        <TabsTrigger value="orders" className="hover:bg-red-500 hover:text-white">Pedidos</TabsTrigger>
+                        <TabsTrigger value="sales" className="hover:bg-red-500 hover:text-white">Ventas</TabsTrigger>
+                        <TabsTrigger value="cobros" className="hover:bg-red-500 hover:text-white">Cobros</TabsTrigger>
+                        <TabsTrigger value="sessions" className="hover:bg-red-500 hover:text-white">Cierres</TabsTrigger>
+                        <TabsTrigger value="movements" className="hover:bg-red-500 hover:text-white">Movimientos</TabsTrigger>
+                        <TabsTrigger value="inventory" className="hover:bg-red-500 hover:text-white">Inventario</TabsTrigger>
                     </TabsList>
                     <div className="flex-grow flex justify-end items-center gap-2 flex-wrap">
                         <div className="relative">

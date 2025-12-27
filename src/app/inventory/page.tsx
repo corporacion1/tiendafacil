@@ -989,10 +989,10 @@ export default function InventoryPage() {
       <Tabs defaultValue="all" onValueChange={setActiveTab}>
         <div className="flex items-center flex-wrap gap-2">
           <TabsList>
-            <TabsTrigger value="all">Todo</TabsTrigger>
-            <TabsTrigger value="active">Activo</TabsTrigger>
-            <TabsTrigger value="inactive">Inactivo</TabsTrigger>
-            <TabsTrigger value="promotion">Promoción</TabsTrigger>
+            <TabsTrigger value="all" className="hover:bg-red-500 hover:text-white">Todo</TabsTrigger>
+            <TabsTrigger value="active" className="hover:bg-red-500 hover:text-white">Activo</TabsTrigger>
+            <TabsTrigger value="inactive" className="hover:bg-red-500 hover:text-white">Inactivo</TabsTrigger>
+            <TabsTrigger value="promotion" className="hover:bg-red-500 hover:text-white">Promoción</TabsTrigger>
           </TabsList>
           <div className="ml-auto flex items-center gap-2">
             <input
