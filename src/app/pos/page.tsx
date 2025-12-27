@@ -3680,7 +3680,7 @@ export default function POSPage() {
                                       <Button
                                         size="sm"
                                         onClick={() => loadPendingOrder(order)}
-                                        className="w-full sm:w-auto"
+                                        className="w-full sm:w-auto hover:bg-red-500"
                                         title="Cargar pedido"
                                       >
                                         <ShoppingCart className="h-4 w-4 sm:mr-2" />
@@ -3692,7 +3692,7 @@ export default function POSPage() {
                                         <Button
                                           size="sm"
                                           variant="outline"
-                                          className="border-[#25D366] text-[#25D366] hover:bg-[#25D366] hover:text-white w-full sm:w-auto"
+                                          className="border-[#25D366] text-[#25D366] hover:bg-red-500 hover:text-white w-full sm:w-auto"
                                           onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();

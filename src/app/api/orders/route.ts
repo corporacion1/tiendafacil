@@ -61,7 +61,10 @@ export async function GET(request: NextRequest) {
       total: order.total,
       status: order.status,
       createdAt: order.created_at,
-      updatedAt: order.updated_at
+      updatedAt: order.updated_at,
+      latitude: order.latitude,
+      longitude: order.longitude,
+      customerAddress: order.customer_address
     };
 
     return NextResponse.json(formattedOrder);
@@ -73,14 +76,16 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Cache key parts
-    const cacheKey = ['orders', storeId, status || 'all'];
+    const customerEmail = searchParams.get('customerEmail');
+
+    // Cache key parts (include customerEmail in key to separate user caches)
+    const cacheKey = ['orders', storeId, status || 'all', customerEmail || 'all_emails'];
     const cacheTags = [`orders-${storeId}`, 'orders'];
 
     // Función cacheada
     const getCachedOrders = unstable_cache(
-      async (sId: string, sStatus: string | null) => {
-        console.log(`🔌 [Orders API] Fetching FRESH orders from DB for store: ${sId}, status: ${sStatus || 'all'}`);
+      async (sId: string, sStatus: string | null, cEmail: string | null) => {
+        console.log(`🔌 [Orders API] Fetching FRESH orders from DB for store: ${sId}, status: ${sStatus || 'all'}, user: ${cEmail || 'all'}`);
         let query = supabase
           .from('orders')
           .select('*')
@@ -96,6 +101,10 @@ export async function GET(request: NextRequest) {
           }
         }
 
+        if (cEmail) {
+          query = query.eq('customer_email', cEmail);
+        }
+
         const { data, error } = await query;
         if (error) throw error;
         return data;
@@ -107,7 +116,7 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    const orders = await getCachedOrders(storeId, status);
+    const orders = await getCachedOrders(storeId, status, customerEmail);
 
     // Transform snake_case to camelCase
     const formattedOrders = orders?.map((order: any) => ({
@@ -120,7 +129,10 @@ export async function GET(request: NextRequest) {
       total: order.total,
       status: order.status,
       createdAt: order.created_at,
-      updatedAt: order.updated_at
+      updatedAt: order.updated_at,
+      latitude: order.latitude,
+      longitude: order.longitude,
+      customerAddress: order.customer_address
     })) || [];
 
     console.log(`✅ [Orders API] Returned ${formattedOrders.length} orders (Cache Status: Likely HIT if no 'Fresh data' log)`);
@@ -164,8 +176,17 @@ export async function POST(request: NextRequest) {
       status: 'pending',
       notes: body.notes,
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      latitude: body.latitude,
+      longitude: body.longitude,
+      customer_address: body.customerAddress
     };
+
+    // Agregar link de ubicación a las notas si hay coordenadas (para compatibilidad)
+    if (body.latitude && body.longitude) {
+      const mapsLink = `\n📍 Ubicación: https://www.google.com/maps?q=${body.latitude},${body.longitude}`;
+      orderData.notes = (orderData.notes || '') + mapsLink;
+    }
 
     console.log('📦 [Orders API] Creando pedido en Supabase:', orderId);
 
@@ -201,7 +222,10 @@ export async function POST(request: NextRequest) {
         status: createdOrder.status,
         notes: createdOrder.notes,
         createdAt: createdOrder.created_at,
-        updatedAt: createdOrder.updated_at
+        updatedAt: createdOrder.updated_at,
+        latitude: createdOrder.latitude,
+        longitude: createdOrder.longitude,
+        customerAddress: createdOrder.customer_address
       }
     };
 
@@ -223,7 +247,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { orderId, status, processedBy, saleId, notes, storeId, items, total, customerName, customerPhone, customerEmail } = body;
+    const { orderId, status, processedBy, saleId, notes, storeId, items, total, customerName, customerPhone, customerEmail, latitude, longitude, customerAddress } = body;
 
     if (!orderId || !storeId) {
       return NextResponse.json({
@@ -246,6 +270,9 @@ export async function PUT(request: NextRequest) {
     if (customerPhone) updateData.customer_phone = customerPhone;
     if (customerEmail !== undefined) updateData.customer_email = customerEmail;
     if (notes !== undefined) updateData.notes = notes;
+    if (latitude !== undefined) updateData.latitude = latitude;
+    if (longitude !== undefined) updateData.longitude = longitude;
+    if (customerAddress !== undefined) updateData.customer_address = customerAddress;
 
     // Si se marca como procesado, agregar campos adicionales
     if (status === OrderStatus.PROCESSED) {
@@ -293,7 +320,10 @@ export async function PUT(request: NextRequest) {
       processedAt: updatedOrder.processed_at,
       processedBy: updatedOrder.processed_by,
       saleId: updatedOrder.sale_id,
-      notes: updatedOrder.notes
+      notes: updatedOrder.notes,
+      latitude: updatedOrder.latitude,
+      longitude: updatedOrder.longitude,
+      customerAddress: updatedOrder.customer_address
     };
 
     // Invalidar cache de pedidos

@@ -127,6 +127,9 @@ export type Order = {
   notes?: string;
   createdAt: string;
   updatedAt: string;
+  latitude?: number;
+  longitude?: number;
+  customerAddress?: string;
 };
 
 // Alias para compatibilidad con código existente

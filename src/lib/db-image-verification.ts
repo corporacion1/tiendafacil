@@ -35,7 +35,7 @@ export async function verifyImagesInDatabase(productId: string, storeId: string)
 
   try {
     console.group(`🔍 [DB Verification] Checking images for product ${productId}`);
-    
+
     // Guard: si no hay storeId, no intentamos consultar la API
     if (!storeId) {
       issues.push('Missing storeId for DB verification');
@@ -57,15 +57,18 @@ export async function verifyImagesInDatabase(productId: string, storeId: string)
         recommendations
       };
     }
-    
+
     // Obtener datos directamente de la API de debug
     const response = await fetch(`/api/products/${productId}/debug?storeId=${storeId}`);
-    
+
     if (!response.ok) {
-      issues.push(`Failed to fetch product from database: ${response.status}`);
-      console.error('❌ Failed to fetch product');
+      if (response.status !== 404) {
+        // Ignorar errores 404 (producto no encontrado en DB es esperado a veces)
+        issues.push(`Failed to fetch product from database: ${response.status} ${response.statusText}`);
+        console.error(`❌ Failed to fetch product ${productId} for store ${storeId}. Status: ${response.status}`);
+      }
       console.groupEnd();
-      
+
       return {
         productId,
         productName: 'Unknown',
@@ -82,20 +85,20 @@ export async function verifyImagesInDatabase(productId: string, storeId: string)
         recommendations
       };
     }
-    
+
     const productData = await response.json();
     console.log('📊 Raw product data from DB:', productData);
-    
+
     const hasImagesInDb = !!(productData.images && productData.images.length > 0);
     const imageCount = productData.images ? productData.images.length : 0;
-    
+
     console.log(`📊 Product has ${imageCount} images in database`);
-    
+
     if (!hasImagesInDb) {
       issues.push('Product has no images array in database');
       recommendations.push('Add images to this product using the image upload functionality');
     }
-    
+
     let allImagesAreExternal = true;
     let imagesHaveValidFormat = true;
 
@@ -112,7 +115,7 @@ export async function verifyImagesInDatabase(productId: string, storeId: string)
           format: 'unknown',
           error: undefined as string | undefined
         };
-        
+
         try {
           if (!image.url) {
             imageDetail.error = 'No URL provided';
@@ -139,38 +142,38 @@ export async function verifyImagesInDatabase(productId: string, storeId: string)
           imageDetail.error = `Error processing image: ${error}`;
           imagesHaveValidFormat = false;
         }
-        
+
         const imageDetails: Array<{
-            index: number;
-            id: string;
-            isExternalUrl: boolean;
-            isValid: boolean;
-            size: number;
-            format: string;
-            error?: string;
-          }> = [];
+          index: number;
+          id: string;
+          isExternalUrl: boolean;
+          isValid: boolean;
+          size: number;
+          format: string;
+          error?: string;
+        }> = [];
         imageDetails.push(imageDetail);
         console.log(`📊 Image ${i}:`, imageDetail);
       }
     }
-    
+
     // Verificar índice de imagen principal
-    const primaryImageIndexValid = productData.primaryImageIndex !== undefined && 
-                                  productData.primaryImageIndex >= 0 && 
-                                  productData.primaryImageIndex < imageCount;
-    
+    const primaryImageIndexValid = productData.primaryImageIndex !== undefined &&
+      productData.primaryImageIndex >= 0 &&
+      productData.primaryImageIndex < imageCount;
+
     if (imageCount > 1 && !primaryImageIndexValid) {
       issues.push('Primary image index is invalid for multiple images');
       recommendations.push('Set a valid primaryImageIndex');
     }
-    
+
     // Generar issues y recomendaciones
     // Ya no exigimos URLs externas: aceptamos data URLs como válidas.
     if (!imagesHaveValidFormat) {
       issues.push('Some images have invalid format or data');
       recommendations.push('Validate image data before saving to database');
     }
-    
+
     const verification = {
       hasImagesInDb,
       imageCount,
@@ -178,12 +181,12 @@ export async function verifyImagesInDatabase(productId: string, storeId: string)
       imagesHaveValidFormat,
       primaryImageIndexValid
     };
-    
+
     console.log('✅ Verification complete:', verification);
     console.log('Issues:', issues);
     console.log('Recommendations:', recommendations);
     console.groupEnd();
-    
+
     return {
       productId,
       productName: productData.name || 'Unknown',
@@ -193,12 +196,12 @@ export async function verifyImagesInDatabase(productId: string, storeId: string)
       issues,
       recommendations
     };
-    
+
   } catch (error) {
     console.error('❌ Error verifying images in database:', error);
     issues.push(`Error during verification: ${error}`);
     console.groupEnd();
-    
+
     return {
       productId,
       productName: 'Unknown',
@@ -232,14 +235,14 @@ export async function verifyMultipleProductsInDatabase(products: any[], storeId:
   };
 }> {
   console.group(`🔍 [DB Verification] Checking ${products.length} products`);
-  
+
   const results: DbImageVerificationResult[] = [];
-  
+
   for (const product of products) {
     const result = await verifyImagesInDatabase(product.id, storeId);
     results.push(result);
   }
-  
+
   const summary = {
     totalProducts: results.length,
     productsWithImages: results.filter(r => r.verification.hasImagesInDb).length,
@@ -248,7 +251,7 @@ export async function verifyMultipleProductsInDatabase(products: any[], storeId:
     totalIssues: results.reduce((sum, r) => sum + r.issues.length, 0),
     commonIssues: [] as string[]
   };
-  
+
   // Encontrar problemas comunes
   const issueCount = new Map<string, number>();
   results.forEach(result => {
@@ -256,14 +259,14 @@ export async function verifyMultipleProductsInDatabase(products: any[], storeId:
       issueCount.set(issue, (issueCount.get(issue) || 0) + 1);
     });
   });
-  
+
   summary.commonIssues = Array.from(issueCount.entries())
-    .sort(([,a], [,b]) => b - a)
+    .sort(([, a], [, b]) => b - a)
     .slice(0, 5)
     .map(([issue]) => issue);
-  
+
   console.log('Database verification summary:', summary);
   console.groupEnd();
-  
+
   return { results, summary };
 }

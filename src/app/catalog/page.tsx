@@ -5,7 +5,7 @@
 // Imports
 import { useState, useMemo, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Package, ShoppingBag, Plus, Minus, Trash2, Send, LayoutGrid, Instagram, Star, Search, UserCircle, LogOut, MoreHorizontal, Copy, AlertCircle, QrCode, Pencil, ArrowRight, Check, User, Phone, Mail, Eye, ScanLine, X, Store as StoreIcon, ArrowLeftRight, Share } from "lucide-react";
+import { Package, ShoppingBag, Plus, Minus, Trash2, Send, LayoutGrid, Instagram, Star, Search, UserCircle, LogOut, MoreHorizontal, Copy, AlertCircle, QrCode, Pencil, ArrowRight, Check, User, Phone, Mail, Eye, ScanLine, X, Store as StoreIcon, ArrowLeftRight, Share, MapPin, Truck } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
@@ -316,6 +316,8 @@ const CatalogProductCard = ({
       // Validación de consistencia
       const consistencyResult = validateImageUtilityConsistency(product);
 
+      /* 
+      // TEMPORARILY DISABLED TO REDUCE CONSOLE NOISE
       // Solo hacer la verificación de DB en desarrollo o con debug activado
       if ((process.env.NODE_ENV === 'development' ||
         (typeof window !== 'undefined' && window.location.search.includes('debug=db'))) && activeStoreId) {
@@ -356,7 +358,8 @@ const CatalogProductCard = ({
         } catch (error) {
           console.error(`❌ [CatalogCard] Error checking database consistency for ${product.name}:`, error);
         }
-      }
+      } 
+      */
     };
 
     runDebugOnce();
@@ -727,6 +730,11 @@ export default function CatalogPage() {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [isDeliveryVisible, setIsDeliveryVisible] = useState(false);
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [location, setLocation] = useState<{ lat: number, lng: number } | null>(null);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -1605,6 +1613,46 @@ export default function CatalogPage() {
     }
   }
 
+  const handleGetLocation = () => {
+    setIsGettingLocation(true);
+    setLocationError(null);
+
+    if (!navigator.geolocation) {
+      setLocationError('Geolocalización no soportada');
+      setIsGettingLocation(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        });
+        setIsGettingLocation(false);
+        toast({ title: '¡Ubicación guardada!', description: 'Se adjuntará a tu pedido.' });
+      },
+      (error) => {
+        console.error('Error getting location - Code:', error.code, 'Message:', error.message);
+        let errorMsg = `Error al obtener ubicación (${error.code}): ${error.message}`;
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMsg = 'Permiso denegado. Por favor habilita el GPS y los permisos del navegador.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMsg = 'Ubicación no disponible. Verifica tu señal GPS.';
+            break;
+          case error.TIMEOUT:
+            errorMsg = 'El tiempo de espera se agotó. Intenta de nuevo.';
+            break;
+        }
+        setLocationError(errorMsg);
+        setIsGettingLocation(false);
+      },
+      { enableHighAccuracy: false, timeout: 30000, maximumAge: Infinity }
+    );
+  };
+
   // NUEVA FUNCIÓN: Crear pedido usando API (evita problemas de RLS)
   const createOrderInSupabase = async (orderData: Order) => {
     try {
@@ -1720,7 +1768,10 @@ export default function CatalogPage() {
       })),
       total: subtotal,
       storeId: storeIdForCatalog,
-      status: 'pending'
+      status: 'pending',
+      latitude: location?.lat,
+      longitude: location?.lng,
+      customerAddress: customerAddress || undefined
     };
 
     // MODIFICADO: Guardar en Supabase en lugar de MongoDB
@@ -1741,6 +1792,9 @@ export default function CatalogPage() {
     setCart([]);
     setCustomerName('');
     setCustomerPhone('');
+    setCustomerAddress('');
+    setIsDeliveryVisible(false);
+    setLocation(null);
     setPhoneError(null);
     setIsEditingOrder(false);
 
@@ -2296,7 +2350,90 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                           </div>
                         )}
 
-                        {/* Empty state */}
+                        {/* Lista de Pedidos (Siempre visible si existen) */}
+                        {userOrders.length > 0 && (
+                          <div className="px-4 mb-6">
+                            <h3 className="text-sm font-medium text-muted-foreground mb-3 px-1">Mis Pedidos Recientes</h3>
+                            <div className="space-y-3">
+                              {userOrders.map((order, index) => (
+                                <div key={`${order.orderId}-${index}`} className="flex flex-col p-4 rounded-xl border-0 bg-gradient-to-r from-background/80 to-muted/20 shadow-sm hover:shadow-md transition-all duration-200">
+                                  <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <p className="font-semibold">{order.orderId}</p>
+                                        <Badge
+                                          variant={order.status === 'pending' ? 'secondary' :
+                                            order.status === 'processing' ? 'default' :
+                                              order.status === 'processed' ? 'default' : 'destructive'}
+                                          className="text-xs"
+                                        >
+                                          {order.status === 'pending' ? 'Pendiente' :
+                                            order.status === 'processing' ? 'Procesando' :
+                                              order.status === 'processed' ? 'Completado' : 'Cancelado'}
+                                        </Badge>
+                                      </div>
+                                      <p className="text-sm text-muted-foreground">{new Date(order.createdAt).toLocaleDateString()}</p>
+                                      {order.total > 0 && (
+                                        <p className="text-sm font-medium mt-1">{activeSymbol}{(order.total * activeRate).toFixed(2)}</p>
+                                      )}
+                                      <div className="mt-2 text-xs text-muted-foreground">
+                                        {order.items.length} items
+                                      </div>
+
+                                      {/* Mostrar ubicación adjunta si existe */}
+                                      {order.latitude && order.longitude && (
+                                        <div className="flex items-center gap-1 mt-2 text-xs text-green-600 font-medium">
+                                          <MapPin className="h-3 w-3" />
+                                          Ubicación adjunta
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Botones de acción */}
+                                    <div className="flex items-center">
+                                      {order.status === 'pending' && (
+                                        <div className="flex items-center">
+                                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted/50"
+                                            onClick={() => setOrderIdForQr(order.orderId)}
+                                            title="Ver código QR"
+                                          >
+                                            <QrCode className="h-4 w-4 text-blue-600" />
+                                          </Button>
+                                          <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted/50">
+                                                <MoreHorizontal className="h-4 w-4" />
+                                              </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                              <DropdownMenuItem onSelect={() => handleEditOrder(order)}>
+                                                <Pencil className="mr-2 h-4 w-4" /> Editar
+                                              </DropdownMenuItem>
+                                              <DropdownMenuSeparator />
+                                              <DropdownMenuItem onSelect={() => handleDeleteOrder(order.orderId)} className="text-destructive">
+                                                <Trash2 className="mr-2 h-4 w-4" /> Cancelar
+                                              </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                          </DropdownMenu>
+                                        </div>
+                                      )}
+                                      {/* Si no está pendiente, solo mostrar QR o Detalles si fuera necesario */}
+                                      {order.status !== 'pending' && (
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted/50"
+                                          onClick={() => setOrderIdForQr(order.orderId)}
+                                        >
+                                          <QrCode className="h-4 w-4 text-blue-600" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Empty state (Solo si NO hay orders y NO hay cart) */}
                         {cart.length === 0 && userOrders.length === 0 && !isLoadingOrders && (
                           <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
                             <div className="w-20 h-20 bg-gradient-to-br from-primary/10 to-accent/10 rounded-full flex items-center justify-center mb-6 shadow-lg">
@@ -2313,62 +2450,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                             </p>
                           </div>
                         )}
-                        {cart.length === 0 && userOrders.length > 0 && (
-                          <Card className="m-4 border-0 shadow-lg bg-gradient-to-br from-card to-card/80 rounded-2xl">
-                            <CardHeader className="pb-3">
-                              <CardTitle className="text-lg bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Mis Pedidos Recientes</CardTitle>
-                            </CardHeader>
-                            <CardContent className="p-4 pt-0">
-                              <div className="space-y-3">
-                                {userOrders.map((order, index) => (
-                                  <div key={`${order.orderId}-${index}`} className="flex flex-col p-4 rounded-xl border-0 bg-gradient-to-r from-background/80 to-muted/20 shadow-sm hover:shadow-md transition-all duration-200">
-                                    <div className="flex justify-between items-start">
-                                      <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                          <p className="font-semibold">{order.orderId}</p>
-                                          <Badge
-                                            variant={order.status === 'pending' ? 'secondary' :
-                                              order.status === 'processing' ? 'default' :
-                                                order.status === 'processed' ? 'default' : 'destructive'}
-                                            className="text-xs"
-                                          >
-                                            {order.status === 'pending' ? 'Pendiente' :
-                                              order.status === 'processing' ? 'Procesando' :
-                                                order.status === 'processed' ? 'Procesado' :
-                                                  order.status === 'cancelled' ? 'Cancelado' : order.status}
-                                          </Badge>
-                                        </div>
-                                        <p className="text-sm text-muted-foreground">{isClient ? format(new Date(order.createdAt), 'dd/MM/yyyy HH:mm') : '...'}</p>
-                                        <p className="text-sm font-medium text-primary">{activeSymbol}{(order.total * activeRate).toFixed(2)}</p>
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                        <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg border-0 bg-primary/10 hover:bg-primary/20 text-primary shadow-sm" onClick={() => handleReShowQR(order.orderId)}>
-                                          <QrCode className="h-4 w-4" />
-                                        </Button>
-                                        <DropdownMenu>
-                                          <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted/50">
-                                              <MoreHorizontal className="h-4 w-4" />
-                                            </Button>
-                                          </DropdownMenuTrigger>
-                                          <DropdownMenuContent>
-                                            <DropdownMenuItem onSelect={() => handleEditOrder(order)}>
-                                              <Pencil className="mr-2 h-4 w-4" /> Editar
-                                            </DropdownMenuItem>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem onSelect={() => handleDeleteOrder(order.orderId)} className="text-destructive">
-                                              <Trash2 className="mr-2 h-4 w-4" /> Cancelar
-                                            </DropdownMenuItem>
-                                          </DropdownMenuContent>
-                                        </DropdownMenu>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        )}
+
                         {cart.length > 0 && (
                           <div className="px-6 space-y-4">
                             {cart.map(item => (
@@ -2724,8 +2806,8 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
         </main>
 
         <Dialog open={isOrderDialogOpen} onOpenChange={setIsOrderDialogOpen}>
-          <DialogContent className="sm:max-w-md rounded-2xl border-0 shadow-2xl">
-            <DialogHeader className="text-center pb-2">
+          <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto invisible-scroll rounded-2xl border-0 shadow-2xl bg-gradient-to-br from-background via-background to-blue-50/20">
+            <DialogHeader className="pb-4 border-b border-border/50">
               <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
                 <Send className="w-6 h-6 text-blue-600" />
               </div>
@@ -2743,7 +2825,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
               {authUser && customerName && !isEditingOrder && (
                 <div className="flex items-center gap-2 p-3 bg-green-50 rounded-xl border border-green-200">
                   <Check className="h-4 w-4 text-green-600" />
-                  <p className="text-sm text-green-700">Datos cargados automáticamente desde tu perfil</p>
+                  <p className="text-xs text-green-700">Datos cargados automáticamente desde tu perfil</p>
                 </div>
               )}
               <div className="space-y-2">
@@ -2774,6 +2856,90 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                 )}
               </div>
 
+              {/* Botón para activar domicilio */}
+              <div className="pt-2">
+                <Button
+                  type="button"
+                  onClick={() => setIsDeliveryVisible(!isDeliveryVisible)}
+                  variant={isDeliveryVisible ? "default" : "outline"}
+                  className={cn(
+                    "w-full rounded-xl flex items-center gap-2 justify-center transition-all duration-300",
+                    isDeliveryVisible
+                      ? "bg-blue-600 hover:bg-blue-700 text-white border-0 shadow-md"
+                      : "border-blue-200 text-blue-600 hover:bg-blue-50"
+                  )}
+                >
+                  <Truck className="w-4 h-4" />
+                  {isDeliveryVisible ? 'Ocultar opciones de entrega' : 'Enviar a mi domicilio'}
+                </Button>
+              </div>
+
+              {/* Sección de Domicilio colapsable con animación */}
+              {isDeliveryVisible && (
+                <div className="space-y-4 pt-2 animate-in slide-in-from-top-4 fade-in duration-300">
+                  <div className="space-y-2">
+                    <Label htmlFor="customer-address" className="text-sm font-medium">Dirección / Referencia</Label>
+                    <Input
+                      id="customer-address"
+                      value={customerAddress}
+                      onChange={(e) => setCustomerAddress(e.target.value)}
+                      placeholder="Ej: Casa azul, frente a la plaza"
+                      className="rounded-xl border-0 bg-muted/50 focus-visible:ring-1 focus-visible:ring-primary/20"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Ubicación GPS</Label>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        type="button"
+                        variant={location ? "default" : "outline"}
+                        className={cn(
+                          "w-full rounded-xl flex items-center gap-2 justify-center",
+                          location ? "bg-green-600 hover:bg-green-700 text-white border-0" : "border-dashed border-2"
+                        )}
+                        onClick={handleGetLocation}
+                        disabled={isGettingLocation}
+                      >
+                        {isGettingLocation ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                            Obteniendo...
+                          </>
+                        ) : location ? (
+                          <>
+                            <Check className="w-4 h-4" />
+                            Ubicación Guardada
+                          </>
+                        ) : (
+                          <>
+                            <MapPin className="w-4 h-4 text-red-500" />
+                            Adjuntar mi Ubicación
+                          </>
+                        )}
+                      </Button>
+
+                      {location && (
+                        <div className="text-xs text-center text-green-600 font-medium">
+                          Lat: {location.lat.toFixed(5)}, Lng: {location.lng.toFixed(5)}
+                        </div>
+                      )}
+
+                      {locationError && (
+                        <div className="text-xs text-center text-red-500 font-medium flex items-center justify-center gap-1">
+                          <AlertCircle className="w-3 h-3" />
+                          {locationError}
+                        </div>
+                      )}
+
+                      <p className="text-[10px] text-muted-foreground text-center px-4">
+                        Al activar esto, guardaremos tu ubicación exacta para facilitar la entrega.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Input hidden para el email del usuario autenticado */}
               {authUser?.email && (
                 <input type="hidden" name="customerEmail" value={authUser.email} />
@@ -2802,7 +2968,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
         </Dialog>
 
         <Dialog open={!!orderIdForQr} onOpenChange={(isOpen) => !isOpen && setOrderIdForQr(null)}>
-          <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto invisible-scroll rounded-2xl border-0 shadow-2xl">
+          <DialogContent className="sm:max-w-md max-h-[95vh] overflow-y-auto rounded-2xl border-0 shadow-2xl p-4 sm:p-6">
             <DialogHeader className="text-center pb-2">
               <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
                 <Check className="w-8 h-8 text-green-600" />
@@ -2843,7 +3009,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
               </div>
             </div>
 
-            <DialogFooter className="pt-4 flex flex-col gap-4">
+            <DialogFooter className="pt-4 flex flex-col gap-2 pb-6">
               {currentStoreSettings?.whatsapp && (
                 <Button
                   asChild
@@ -2862,7 +3028,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                 </Button>
               )}
               <DialogClose asChild>
-                <Button className="w-full rounded-xl">Cerrar & Continuar</Button>
+                <Button className="w-full rounded-xl">Cerrar </Button>
               </DialogClose>
             </DialogFooter>
           </DialogContent>
