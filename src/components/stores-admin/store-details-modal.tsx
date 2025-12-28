@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X, User, Users, Settings, BarChart3, Building2, Phone, Mail, Calendar, MapPin } from "lucide-react"
+import { Image, Users, Settings, BarChart3, Building2, MapPin } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -35,6 +35,7 @@ export function StoreDetailsModal({ store, open, onOpenChange }: StoreDetailsMod
       }
       
       const data: StoreDetailedInfo = await response.json()
+      console.log("Datos recibidos de la API:", data) // Depuración
       setDetailedStore(data)
     } catch (err) {
       console.error('Error fetching store details:', err)
@@ -144,13 +145,13 @@ export function StoreDetailsModal({ store, open, onOpenChange }: StoreDetailsMod
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Estado</p>
                     <Badge className={getStatusColor(detailedStore.status)}>
-                      {detailedStore.status === 'active' ? 'Activa' : 'Inactiva'}
+                      {detailedStore.status === 'inactive' ? 'Inactiva' : 'Activa'}
                     </Badge>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Modo</p>
-                    <Badge variant={detailedStore.isProduction ? "secondary" : "outline"}>
-                      {detailedStore.isProduction ? 'Producción' : 'Demostración'}
+                    <Badge variant={detailedStore.status === 'active' ? "secondary" : "outline"}>
+                      {detailedStore.status === 'inProduction' ? 'inProducción' : 'Demostración'}
                     </Badge>
                   </div>
                   <div>
@@ -163,45 +164,35 @@ export function StoreDetailsModal({ store, open, onOpenChange }: StoreDetailsMod
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    Administrador
+                    <Image className="h-4 w-4" /> {/* Cambiamos el ícono a BarChart3 */}
+                    Logotipo
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  {detailedStore.adminInfo ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar>
-                          <AvatarFallback>
-                            {detailedStore.adminInfo.displayName?.charAt(0) || 'A'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{detailedStore.adminInfo.displayName}</p>
-                          <Badge className={getRoleColor(detailedStore.adminInfo.role)}>
-                            {detailedStore.adminInfo.role}
-                          </Badge>
-                        </div>
+                <CardContent className="flex justify-center">
+                  {detailedStore?.logoUrl ? (
+                    <div className="space-y-4">
+                      <div className="flex justify-center">
+                        <img 
+                          src={detailedStore.logoUrl} 
+                          alt={`Logo de ${detailedStore.name}`}
+                          className="max-h-40 max-w-full object-contain rounded-lg shadow-sm"
+                        />
                       </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-sm">
-                          <Mail className="h-4 w-4 text-muted-foreground" />
-                          {detailedStore.adminInfo.email}
-                        </div>
-                        {detailedStore.adminInfo.phone && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <Phone className="h-4 w-4 text-muted-foreground" />
-                            {detailedStore.adminInfo.phone}
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2 text-sm">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          Desde {new Date(detailedStore.adminInfo.createdAt).toLocaleDateString('es-ES')}
-                        </div>
-                      </div>
+                      <p className="text-center text-sm text-muted-foreground">
+                        {detailedStore.name}
+                      </p>
                     </div>
                   ) : (
-                    <p className="text-muted-foreground">Sin administrador asignado</p>
+                    <div className="text-center space-y-4">
+                      <div className="flex justify-center">
+                        <div className="w-32 h-32 bg-muted rounded-lg flex items-center justify-center">
+                          <Image className="h-12 w-12 text-muted-foreground" />
+                        </div>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        No hay logo disponible
+                      </p>
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -219,29 +210,17 @@ export function StoreDetailsModal({ store, open, onOpenChange }: StoreDetailsMod
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Tipo de Negocio</p>
-                    <p>{detailedStore.configuration.business.type || 'No especificado'}</p>
+                    <p>{detailedStore?.businessType || 'No especificado'}</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Teléfono</p>
-                    <p>{detailedStore.configuration.business.phone || 'No especificado'}</p>
+                    <p>{detailedStore?.phone || 'No especificado'}</p>
                   </div>
                   <div className="md:col-span-2">
                     <p className="text-sm font-medium text-muted-foreground">Dirección</p>
-                    <p>{detailedStore.configuration.business.address || 'No especificada'}</p>
+                    <p>{detailedStore?.address || 'No especificada'}</p>
                   </div>
-                  {(detailedStore.configuration.business.whatsapp || detailedStore.configuration.business.tiktok) && (
-                    <div className="md:col-span-2">
-                      <p className="text-sm font-medium text-muted-foreground">Redes Sociales</p>
-                      <div className="flex gap-2 mt-1">
-                        {detailedStore.configuration.business.whatsapp && (
-                          <Badge variant="outline">WhatsApp: {detailedStore.configuration.business.whatsapp}</Badge>
-                        )}
-                        {detailedStore.configuration.business.tiktok && (
-                          <Badge variant="outline">TikTok: {detailedStore.configuration.business.tiktok}</Badge>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                  {/* Los datos no incluyen redes sociales, así que omitimos esta sección */}
                 </div>
               </CardContent>
             </Card>
@@ -268,7 +247,7 @@ export function StoreDetailsModal({ store, open, onOpenChange }: StoreDetailsMod
                     <Separator />
                     <div className="space-y-1">
                       <p className="text-sm font-medium">Por Rol:</p>
-                      {Object.entries(detailedStore.usersByRole).map(([role, count]) => (
+                      {Object.entries(detailedStore?.usersByRole || {}).map(([role, count]) => (
                         <div key={role} className="flex justify-between text-sm">
                           <span className="capitalize">{role}:</span>
                           <span>{count}</span>
@@ -290,18 +269,24 @@ export function StoreDetailsModal({ store, open, onOpenChange }: StoreDetailsMod
                   <div className="space-y-2">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Moneda Principal</p>
-                      <p className="text-sm">{detailedStore.configuration.primaryCurrency.name} ({detailedStore.configuration.primaryCurrency.symbol})</p>
+                      <p className="text-sm">
+                        {detailedStore?.primaryCurrencyName || ''} 
+                        ({detailedStore?.primaryCurrencySymbol || ''})
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Moneda Secundaria</p>
-                      <p className="text-sm">{detailedStore.configuration.secondaryCurrency.name} ({detailedStore.configuration.secondaryCurrency.symbol})</p>
+                      <p className="text-sm">
+                        {detailedStore?.secondaryCurrencyName || ''} 
+                        ({detailedStore?.secondaryCurrencySymbol || ''})
+                      </p>
                     </div>
                     <Separator />
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Impuestos</p>
                       <div className="text-sm space-y-1">
-                        <div>Impuesto 1: {detailedStore.configuration.taxes.tax1 || 0}%</div>
-                        <div>Impuesto 2: {detailedStore.configuration.taxes.tax2 || 0}%</div>
+                        <div>Impuesto 1: {detailedStore?.tax1 || 0}%</div>
+                        <div>Impuesto 2: {detailedStore?.tax2 || 0}%</div>
                       </div>
                     </div>
                   </div>
@@ -319,11 +304,19 @@ export function StoreDetailsModal({ store, open, onOpenChange }: StoreDetailsMod
                   <div className="space-y-2">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Última Actividad</p>
-                      <p className="text-sm">{new Date(detailedStore.lastActivity).toLocaleString('es-ES')}</p>
+                      <p className="text-sm">
+                        {detailedStore?.updatedAt 
+                          ? new Date(detailedStore.updatedAt).toLocaleString('es-ES') 
+                          : 'No disponible'}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Última Actualización</p>
-                      <p className="text-sm">{new Date(detailedStore.updatedAt || '').toLocaleString('es-ES')}</p>
+                      <p className="text-sm">
+                        {detailedStore?.updatedAt 
+                          ? new Date(detailedStore.updatedAt).toLocaleString('es-ES') 
+                          : 'No disponible'}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -331,7 +324,7 @@ export function StoreDetailsModal({ store, open, onOpenChange }: StoreDetailsMod
             </div>
 
             {/* User Roles */}
-            {detailedStore.userRoles.length > 0 && (
+            {detailedStore?.userRoles?.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle>Roles de Usuario</CardTitle>

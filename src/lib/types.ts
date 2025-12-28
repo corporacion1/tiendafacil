@@ -24,8 +24,8 @@ export type Store = {
   name: string; // This will be used as storeName
   ownerIds: string[]; // UIDs of the store owners
   userRoles?: Array<{ uid: string; role: UserRole }>;
-  status: 'active' | 'inactive';
-  businessType: string;
+  status: 'active' | 'inactive' | 'inProduction';
+  business_type?: string;
   address?: string;
   phone?: string | null;
   taxId?: string | null; // Identificación fiscal (RIF, NIT, etc.)
@@ -127,9 +127,6 @@ export type Order = {
   notes?: string;
   createdAt: string;
   updatedAt: string;
-  latitude?: number;
-  longitude?: number;
-  customerAddress?: string;
 };
 
 // Alias para compatibilidad con código existente
@@ -504,11 +501,12 @@ export type StoreDetailedInfo = Store & {
       tax2: number;
     };
     business: {
-      type: string;
+      business_type: string;
       address: string;
       phone: string;
       whatsapp: string;
       tiktok: string;
+      meta: string;
     };
   };
 };

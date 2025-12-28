@@ -559,9 +559,7 @@ export default function POSPage() {
   // Load Local Series from localStorage
   useEffect(() => {
     const savedSeries = localStorage.getItem("TIENDA_FACIL_POS_SERIES");
-    const savedCorrelative = localStorage.getItem(
-      "TIENDA_FACIL_POS_CORRELATIVE",
-    );
+    const savedCorrelative = localStorage.getItem("TIENDA_FACIL_POS_CORRELATIVE");
 
     if (savedSeries) setLocalSeries(savedSeries);
     if (savedCorrelative) setLocalCorrelative(savedCorrelative);
@@ -625,12 +623,10 @@ export default function POSPage() {
             // Intentar crear automáticamente la sesión para la serie local con fondo 0
             try {
               const createPayload = {
-                id: `SES-${Date.now()}`,
+                id: IDGenerator.generate('session'),
                 storeId: activeStoreId,
                 openingBalance: 0,
-                openedBy:
-                  userProfile?.displayName || (userProfile as any)?.name ||
-                  "Usuario Desconocido",
+                openedBy: userProfile?.displayName || (userProfile as any)?.name || "Usuario Desconocido",
                 series: localSeries,
               };
 
@@ -763,13 +759,10 @@ export default function POSPage() {
     }
 
     const sessionData = {
-      id: `SES-${Date.now()}`,
+      id: IDGenerator.generate('session'),
       storeId: activeStoreId,
       openingBalance: balance,
-      openedBy:
-        userProfile?.displayName ||
-        (userProfile as any)?.name ||
-        "Usuario Desconocido",
+      openedBy: userProfile?.displayName || (userProfile as any)?.name || "Usuario Desconocido",
       series: localSeries || null,
     };
 

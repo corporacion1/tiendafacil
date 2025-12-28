@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
       const transformedStore = {
         storeId: store.id,
         name: store.name,
+        businessType: store.business_type,
         // description: store.description, // No existe en DB
         address: store.address,
         phone: store.phone,
@@ -47,6 +48,7 @@ export async function GET(request: NextRequest) {
     const transformedStores = (stores || []).map((s: any) => ({
       storeId: s.id,
       name: s.name,
+      businessType: s.business_type,
       // description: s.description,
       address: s.address,
       phone: s.phone,

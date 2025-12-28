@@ -947,7 +947,7 @@ export default function SettingsPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="businessType">Tipo de Negocio</Label>
-                                <Select value={settings?.businessType || ''} onValueChange={(value) => handleSelectChange('businessType', value)}>
+                                <Select value={settings?.business_type || ''} onValueChange={(value) => handleSelectChange('businessType', value)}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Selecciona un tipo de negocio" />
                                     </SelectTrigger>
