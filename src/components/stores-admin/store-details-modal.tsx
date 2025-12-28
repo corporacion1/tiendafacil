@@ -27,13 +27,13 @@ export function StoreDetailsModal({ store, open, onOpenChange }: StoreDetailsMod
     try {
       setLoading(true)
       setError(null)
-      
+
       const response = await fetch(`/api/stores-admin/${storeId}`)
-      
+
       if (!response.ok) {
         throw new Error('Error al cargar los detalles de la tienda')
       }
-      
+
       const data: StoreDetailedInfo = await response.json()
       console.log("Datos recibidos de la API:", data) // Depuración
       setDetailedStore(data)
@@ -50,14 +50,47 @@ export function StoreDetailsModal({ store, open, onOpenChange }: StoreDetailsMod
     }
   }
 
+  const [users, setUsers] = useState<any[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
+  const fetchStoreUsers = async (storeId: string) => {
+    try {
+      setLoadingUsers(true);
+      const response = await fetch(`/api/stores-admin/${storeId}/users`);
+
+      console.log('Response status:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error response:', errorData);
+        throw new Error(errorData.error || 'Error al cargar los usuarios de la tienda');
+      }
+
+      const data = await response.json();
+      console.log('Users data:', data);
+      setUsers(data.users || []);
+    } catch (err) {
+      console.error('Error fetching store users:', err);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err instanceof Error ? err.message : "No se pudieron cargar los usuarios de la tienda"
+      });
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
   useEffect(() => {
     if (open && store) {
-      fetchStoreDetails(store.storeId)
+      fetchStoreDetails(store.storeId);
+      fetchStoreUsers(store.storeId); // Agregar esta línea
     } else {
-      setDetailedStore(null)
-      setError(null)
+      setDetailedStore(null);
+      setError(null);
+      setUsers([]); // Limpiar usuarios al cerrar
     }
-  }, [open, store])
+  }, [open, store]);
 
   if (!store) return null
 
@@ -114,8 +147,8 @@ export function StoreDetailsModal({ store, open, onOpenChange }: StoreDetailsMod
               <p className="font-medium">Error al cargar los detalles</p>
               <p className="text-sm text-muted-foreground">{error}</p>
             </div>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => fetchStoreDetails(store.storeId)}
               className="mt-4"
             >
@@ -172,8 +205,8 @@ export function StoreDetailsModal({ store, open, onOpenChange }: StoreDetailsMod
                   {detailedStore?.logoUrl ? (
                     <div className="space-y-4">
                       <div className="flex justify-center">
-                        <img 
-                          src={detailedStore.logoUrl} 
+                        <img
+                          src={detailedStore.logoUrl}
                           alt={`Logo de ${detailedStore.name}`}
                           className="max-h-40 max-w-full object-contain rounded-lg shadow-sm"
                         />
@@ -225,38 +258,88 @@ export function StoreDetailsModal({ store, open, onOpenChange }: StoreDetailsMod
               </CardContent>
             </Card>
 
-            {/* Statistics */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Usuarios
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm">Total:</span>
-                      <Badge variant="outline">{detailedStore.userCount}</Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm">Activos:</span>
-                      <Badge variant="outline">{detailedStore.activeUsers}</Badge>
-                    </div>
-                    <Separator />
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">Por Rol:</p>
-                      {Object.entries(detailedStore?.usersByRole || {}).map(([role, count]) => (
-                        <div key={role} className="flex justify-between text-sm">
-                          <span className="capitalize">{role}:</span>
-                          <span>{count}</span>
-                        </div>
-                      ))}
-                    </div>
+            {/* Users Section - Full Width */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      Usuarios de la Tienda
+                    </CardTitle>
+                    <CardDescription>
+                      Usuarios con acceso a esta tienda
+                    </CardDescription>
                   </div>
-                </CardContent>
-              </Card>
+                  {!loadingUsers && users.length > 0 && (
+                    <Badge variant="secondary" className="text-sm">
+                      {users.length} {users.length === 1 ? 'usuario' : 'usuarios'}
+                    </Badge>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingUsers ? (
+                  <div className="space-y-2">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="flex items-center gap-3 p-3">
+                        <div className="w-9 h-9 bg-muted rounded-full animate-pulse"></div>
+                        <div className="flex-1">
+                          <div className="h-4 bg-muted animate-pulse rounded w-32 mb-2"></div>
+                          <div className="h-3 bg-muted animate-pulse rounded w-48"></div>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <div className="h-6 bg-muted animate-pulse rounded w-16"></div>
+                          <div className="h-5 bg-muted animate-pulse rounded w-16"></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : users.length > 0 ? (
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 invisible-scroll">
+                    {users.map((user) => (
+                      <div key={user.uid} className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <Avatar className="h-9 w-9 flex-shrink-0">
+                          <AvatarFallback className="text-xs">
+                            {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {user.displayName || 'Usuario sin nombre'}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {user.email}
+                              </p>
+                            </div>
+                            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                              <Badge className={getRoleColor(user.role)} variant="secondary">
+                                {user.role}
+                              </Badge>
+                              <Badge
+                                variant="outline"
+                                className={`text-xs ${user.status === 'active' ? 'border-green-500 text-green-700' : 'border-red-500 text-red-700'}`}
+                              >
+                                {user.status === 'active' ? 'Activo' : 'Inactivo'}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">
+                    No hay usuarios asignados a esta tienda
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Statistics */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
               <Card>
                 <CardHeader>
@@ -270,14 +353,14 @@ export function StoreDetailsModal({ store, open, onOpenChange }: StoreDetailsMod
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Moneda Principal</p>
                       <p className="text-sm">
-                        {detailedStore?.primaryCurrencyName || ''} 
+                        {detailedStore?.primaryCurrencyName || ''}
                         ({detailedStore?.primaryCurrencySymbol || ''})
                       </p>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Moneda Secundaria</p>
                       <p className="text-sm">
-                        {detailedStore?.secondaryCurrencyName || ''} 
+                        {detailedStore?.secondaryCurrencyName || ''}
                         ({detailedStore?.secondaryCurrencySymbol || ''})
                       </p>
                     </div>
@@ -305,16 +388,16 @@ export function StoreDetailsModal({ store, open, onOpenChange }: StoreDetailsMod
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Última Actividad</p>
                       <p className="text-sm">
-                        {detailedStore?.updatedAt 
-                          ? new Date(detailedStore.updatedAt).toLocaleString('es-ES') 
+                        {detailedStore?.updatedAt
+                          ? new Date(detailedStore.updatedAt).toLocaleString('es-ES')
                           : 'No disponible'}
                       </p>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Última Actualización</p>
                       <p className="text-sm">
-                        {detailedStore?.updatedAt 
-                          ? new Date(detailedStore.updatedAt).toLocaleString('es-ES') 
+                        {detailedStore?.updatedAt
+                          ? new Date(detailedStore.updatedAt).toLocaleString('es-ES')
                           : 'No disponible'}
                       </p>
                     </div>
@@ -336,17 +419,17 @@ export function StoreDetailsModal({ store, open, onOpenChange }: StoreDetailsMod
                   <div className="space-y-3">
                     {detailedStore.userRoles.map((userRole: any) => (
                       <div key={userRole.uid} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-4">
                           <Avatar>
                             <AvatarFallback>
                               {userRole.userInfo?.displayName?.charAt(0) || 'U'}
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="font-medium">
+                            <p className="text-sm">
                               {userRole.userInfo?.displayName || 'Usuario sin nombre'}
                             </p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-xs text-muted-foreground">
                               {userRole.userInfo?.email}
                             </p>
                           </div>
