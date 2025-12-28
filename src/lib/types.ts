@@ -125,6 +125,8 @@ export type Order = {
   processedBy?: string;
   saleId?: string;
   notes?: string;
+  includesDelivery?: boolean;  // Indica si el pedido incluye envío
+  deliveryAddress?: string;     // Dirección de envío si aplica
   createdAt: string;
   updatedAt: string;
 };
