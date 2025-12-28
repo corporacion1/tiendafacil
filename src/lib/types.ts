@@ -25,7 +25,7 @@ export type Store = {
   ownerIds: string[]; // UIDs of the store owners
   userRoles?: Array<{ uid: string; role: UserRole }>;
   status: 'active' | 'inactive' | 'inProduction';
-  business_type?: string;
+  businessType?: string;
   address?: string;
   phone?: string | null;
   taxId?: string | null; // Identificación fiscal (RIF, NIT, etc.)
