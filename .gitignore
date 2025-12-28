@@ -1,45 +1,293 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
+# ============================================
+# DATOS SENSIBLES Y CREDENCIALES
+# ============================================
+
+# Variables de entorno (CRÍTICO)
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+.env*.local
+*.env
+
+# Archivos de configuración con credenciales
+config.local.js
+config.local.json
+secrets.json
+credentials.json
+
+# Claves y certificados
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# Service Account Keys (Firebase, GCP, etc.)
+*-service-account.json
+serviceAccountKey.json
+firebase-adminsdk-*.json
+gcp-credentials.json
+
+# API Keys y tokens
+.api-keys
+api-keys.json
+.secrets
+secrets/
+
+# Archivos de sesión y autenticación
+.session
+session.json
+auth-tokens.json
+
+# ============================================
+# DEPENDENCIAS
+# ============================================
+
+# Node modules
 /node_modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+lerna-debug.log*
+
+# Package manager
 /.pnp
 .pnp.*
+.pnp.js
 .yarn/*
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+.yarn/install-state.gz
+package-lock.json.bak
 
-# testing
-/coverage
+# ============================================
+# NEXT.JS
+# ============================================
 
-# next.js
+# Next.js build output
 /.next/
 /out/
+.next/
+out/
 
-# production
+# Next.js cache
+.next/cache/
+
+# Static files
+/public/uploads/
+/public/temp/
+
+# ============================================
+# PRODUCCIÓN Y BUILD
+# ============================================
+
 /build
+/dist
+*.local
 
-# misc
-.DS_Store
-*.pem
+# ============================================
+# TESTING
+# ============================================
 
-# debug
+/coverage
+*.lcov
+.nyc_output
+/test-results/
+/playwright-report/
+/playwright/.cache/
+
+# ============================================
+# BASES DE DATOS
+# ============================================
+
+# SQLite
+*.sqlite
+*.sqlite3
+*.db
+
+# Database dumps
+*.sql
+*.dump
+/backups/
+/db-backups/
+
+# ============================================
+# FIREBASE
+# ============================================
+
+# Firebase
+firebase-debug.log
+firestore-debug.log
+firebase-debug.*.log
+firestore-debug.*.log
+.firebase/
+.firebaserc.local
+
+# Firebase emulator data
+firebase-export-*/
+ui-debug.log
+
+# ============================================
+# LOGS Y DEBUG
+# ============================================
+
+# Logs
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# vercel
-.vercel
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
 
-# typescript
+# ============================================
+# SISTEMA OPERATIVO
+# ============================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# ============================================
+# IDEs Y EDITORES
+# ============================================
+
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+.history/
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+
+# ============================================
+# TYPESCRIPT
+# ============================================
+
 *.tsbuildinfo
 next-env.d.ts
+*.d.ts.map
 
+# ============================================
+# DEPLOYMENT
+# ============================================
+
+# Vercel
+.vercel
+.vercel.json
+
+# Railway
+.railway/
+
+# Netlify
+.netlify
+
+# ============================================
+# OTROS
+# ============================================
+
+# Genkit
 .genkit/*
-.env*
 
-# firebase
-firebase-debug.log
-firestore-debug.log
+# Temporary files
+*.tmp
+*.temp
+/tmp/
+/temp/
+
+# Cache
+.cache/
+*.cache
+
+# Uploads y archivos de usuario
+/uploads/
+/user-uploads/
+/public/user-content/
+
+# Backups
+*.backup
+*.bak
+*.swp
+*.swo
+
+# Archivos de configuración local
+local.config.js
+local.settings.json
+
+# Documentación generada
+/docs/generated/
+
+# Coverage reports
+coverage/
+*.coverage
+
+# Sentry
+.sentryclirc
+
+# Misc
+*.orig
+.eslintcache
+.stylelintcache
