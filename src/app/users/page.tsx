@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import type { UserProfile } from "@/lib/types";
-import { MoreHorizontal, Search, UserPlus, Shield, Mail, Phone, ExternalLink, UserX, Armchair, Database, Users, Crown, Store, Loader2 } from "lucide-react";
+import { MoreHorizontal, Search, UserPlus, Shield, Mail, Phone, ExternalLink, UserX, Armchair, Database, Users, Crown, Store, Loader2, Building2, HandIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -402,8 +402,9 @@ export default function UsersPage() {
             <TableHead>Rol / Tienda</TableHead>
             <TableHead>Estado</TableHead>
             <TableHead>Contacto</TableHead>
-            <TableHead>Solicitud</TableHead>
-            <TableHead><span className="sr-only">Acciones</span></TableHead>
+            <TableHead>Ver</TableHead>
+            <TableHead><Building2 /></TableHead>
+            <TableHead>Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -443,10 +444,13 @@ export default function UsersPage() {
                 </div>
               </TableCell>
               <TableCell>
-                {user.storeRequest && (
-                  <Badge variant="outline" className="text-amber-500 border-amber-500">
-                    ¡Quiere una tienda!
-                  </Badge>
+                {user.storeId && (
+                  <ExternalLink className="mr-2 h-4 w-4" onClick={() => handleViewAsUser(user)} />
+                )}
+              </TableCell>
+              <TableCell>
+                {user.role === 'user' && user.storeRequest && (
+                  <HandIcon className="mr-2 h-6 w-6 text-amber-500 text-center" />
                 )}
               </TableCell>
               <TableCell>
