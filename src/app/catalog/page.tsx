@@ -2887,7 +2887,6 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
               {isDeliveryVisible && (
                 <div className="space-y-4 pt-2 animate-in slide-in-from-top-4 fade-in duration-300">
                   <div className="space-y-2">
-                    <Input id="isDeliveryVisible" type="hidden" value={isDeliveryVisible.toString() ? 'Delivery' : 'Pickup'} onChange={(e) => setIsDeliveryVisible(e.target.value)} />
                     <Input
                       id="customer-address"
                       value={customerAddress}
