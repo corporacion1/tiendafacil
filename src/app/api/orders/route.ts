@@ -135,6 +135,7 @@ export async function GET(request: NextRequest) {
       total: order.total,
       status: order.status,
       processedBy: order.user_id,
+      saleId: order.sale_id,
       createdAt: order.created_at,
       updatedAt: order.updated_at,
       customerAddress: order.customerAddress,
@@ -188,6 +189,7 @@ export async function POST(request: NextRequest) {
       status: 'pending',
       notes: body.notes,
       processed_by: body.user_id,
+      sale_id: body.saleId,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       customerAddress: body.customerAddress,
@@ -240,6 +242,7 @@ export async function POST(request: NextRequest) {
         status: createdOrder.status,
         notes: createdOrder.notes,
         processedBy: createdOrder.user_id,
+        saleId: createdOrder.sale_id,
         createdAt: createdOrder.created_at,
         updatedAt: createdOrder.updated_at,
         customerAddress: createdOrder.customerAddress,
@@ -293,6 +296,8 @@ export async function PUT(request: NextRequest) {
     if (customerName) updateData.customer_name = customerName;
     if (customerPhone) updateData.customer_phone = customerPhone;
     if (customerEmail !== undefined) updateData.customer_email = customerEmail;
+    if (processedBy !== undefined) updateData.processed_by = processedBy;
+    if (saleId !== undefined) updateData.sale_id = saleId;
     if (notes !== undefined) updateData.notes = notes;
     if (customerAddress !== undefined) updateData.customerAddress = customerAddress;
     if (latitude !== undefined) updateData.latitude = latitude;
@@ -344,6 +349,7 @@ export async function PUT(request: NextRequest) {
       storeId: updatedOrder.store_id,
       status: updatedOrder.status,
       processedBy: updatedOrder.user_id,
+      saleId: updatedOrder.sale_id,
       customerAddress: updatedOrder.customerAddress,
       deliveryMethod: updatedOrder.delivery_method,
       deliveryStatus: updatedOrder.delivery_status,
