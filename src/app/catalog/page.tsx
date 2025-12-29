@@ -46,6 +46,7 @@ import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { useProducts } from "@/hooks/useProducts";
 import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabase';
+import { date } from "zod";
 // FORCE REBUILD - Clear .next cache and rebuild: 2025-01-11-13:00
 
 // ========== CORRECCIONES - ERRORES FIJOS =========="
@@ -1755,8 +1756,6 @@ export default function CatalogPage() {
 
     const newPendingOrder: Order = {
       orderId: newOrderId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
       customerName: customerName,
       customerPhone: customerPhone,
       customerEmail: authUser?.email || undefined, // Use optional chaining and provide undefined fallback
@@ -1769,9 +1768,19 @@ export default function CatalogPage() {
       total: subtotal,
       storeId: storeIdForCatalog,
       status: 'pending',
+      processedBy: authUser?.displayName || undefined,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       latitude: location?.lat,
       longitude: location?.lng,
-      customerAddress: customerAddress || undefined
+      customerAddress: customerAddress || undefined,
+      deliveryMethod: isDeliveryVisible ? 'delivery' : 'pickup',
+      deliveryStatus: isDeliveryVisible ? 'pending' : 'processing',
+      deliveryFee: 0,
+      deliveryDate: '',
+      deliveryTime: '',
+      deliveryNotes: '',
+      deliveryProviderID: ''
     };
 
     // MODIFICADO: Guardar en Supabase en lugar de MongoDB
@@ -2878,7 +2887,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
               {isDeliveryVisible && (
                 <div className="space-y-4 pt-2 animate-in slide-in-from-top-4 fade-in duration-300">
                   <div className="space-y-2">
-                    <Label htmlFor="customer-address" className="text-sm font-medium">Dirección / Referencia</Label>
+                    <Input id="isDeliveryVisible" type="hidden" value={isDeliveryVisible.toString() ? 'Delivery' : 'Pickup'} onChange={(e) => setIsDeliveryVisible(e.target.value)} />
                     <Input
                       id="customer-address"
                       value={customerAddress}

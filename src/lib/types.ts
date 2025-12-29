@@ -121,14 +121,21 @@ export type Order = {
   total: number;
   storeId: string;
   status: 'pending' | 'processing' | 'processed' | 'cancelled' | 'expired';
-  processedAt?: string;
-  processedBy?: string;
   saleId?: string;
   notes?: string;
-  includesDelivery?: boolean;  // Indica si el pedido incluye envío
-  deliveryAddress?: string;     // Dirección de envío si aplica
+  processedBy?: string;
   createdAt: string;
   updatedAt: string;
+  latitude?: number;
+  longitude?: number;
+  customerAddress?: string;
+  deliveryMethod?: 'pickup' | 'delivery';
+  deliveryStatus?: 'pending' | 'processing' | 'processed' | 'shipped' | 'delivered' | 'cancelled' | 'expired';
+  deliveryProviderID?: string;
+  deliveryFee?: number;
+  deliveryDate?: string;
+  deliveryTime?: string;
+  deliveryNotes?: string;
 };
 
 // Alias para compatibilidad con código existente

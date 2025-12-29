@@ -60,11 +60,17 @@ export async function GET(request: NextRequest) {
       items: typeof order.items === 'string' ? JSON.parse(order.items) : order.items,
       total: order.total,
       status: order.status,
+      processedBy: order.user_id,
       createdAt: order.created_at,
       updatedAt: order.updated_at,
+      customerAddress: order.customerAddress,
+      deliveryMethod: order.deliveryMethod,
+      deliveryStatus: order.deliveryStatus,
+      deliveryFee: order.deliveryFee,
+      deliveryDate: order.deliveryDate,
+      deliveryTime: order.deliveryTime,
       latitude: order.latitude,
-      longitude: order.longitude,
-      customerAddress: order.customer_address
+      longitude: order.longitude
     };
 
     return NextResponse.json(formattedOrder);
@@ -128,11 +134,17 @@ export async function GET(request: NextRequest) {
       items: typeof order.items === 'string' ? JSON.parse(order.items) : order.items,
       total: order.total,
       status: order.status,
+      processedBy: order.user_id,
       createdAt: order.created_at,
       updatedAt: order.updated_at,
+      customerAddress: order.customerAddress,
+      deliveryMethod: order.deliveryMethod,
+      deliveryStatus: order.deliveryStatus,
+      deliveryFee: order.deliveryFee,
+      deliveryDate: order.deliveryDate,
+      deliveryTime: order.deliveryTime,
       latitude: order.latitude,
-      longitude: order.longitude,
-      customerAddress: order.customer_address
+      longitude: order.longitude
     })) || [];
 
     console.log(`✅ [Orders API] Returned ${formattedOrders.length} orders (Cache Status: Likely HIT if no 'Fresh data' log)`);
@@ -175,11 +187,17 @@ export async function POST(request: NextRequest) {
       store_id: body.storeId,
       status: 'pending',
       notes: body.notes,
+      processed_by: body.user_id,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      customerAddress: body.customerAddress,
+      deliveryMethod: body.deliveryMethod,
+      deliveryStatus: body.deliveryStatus,
+      deliveryFee: body.deliveryFee,
+      deliveryDate: body.deliveryDate,
+      deliveryTime: body.deliveryTime,
       latitude: body.latitude,
-      longitude: body.longitude,
-      customer_address: body.customerAddress
+      longitude: body.longitude
     };
 
     // Agregar link de ubicación a las notas si hay coordenadas (para compatibilidad)
@@ -221,11 +239,17 @@ export async function POST(request: NextRequest) {
         storeId: createdOrder.store_id,
         status: createdOrder.status,
         notes: createdOrder.notes,
+        processedBy: createdOrder.user_id,
         createdAt: createdOrder.created_at,
         updatedAt: createdOrder.updated_at,
+        customerAddress: createdOrder.customerAddress,
+        deliveryMethod: createdOrder.deliveryMethod,
+        deliveryStatus: createdOrder.deliveryStatus,
+        deliveryFee: createdOrder.deliveryFee,
+        deliveryDate: createdOrder.deliveryDate,
+        deliveryTime: createdOrder.deliveryTime,
         latitude: createdOrder.latitude,
-        longitude: createdOrder.longitude,
-        customerAddress: createdOrder.customer_address
+        longitude: createdOrder.longitude
       }
     };
 
@@ -270,9 +294,9 @@ export async function PUT(request: NextRequest) {
     if (customerPhone) updateData.customer_phone = customerPhone;
     if (customerEmail !== undefined) updateData.customer_email = customerEmail;
     if (notes !== undefined) updateData.notes = notes;
+    if (customerAddress !== undefined) updateData.customerAddress = customerAddress;
     if (latitude !== undefined) updateData.latitude = latitude;
     if (longitude !== undefined) updateData.longitude = longitude;
-    if (customerAddress !== undefined) updateData.customer_address = customerAddress;
 
     // Si se marca como procesado, agregar campos adicionales
     if (status === OrderStatus.PROCESSED) {
@@ -312,18 +336,22 @@ export async function PUT(request: NextRequest) {
       orderId: updatedOrder.order_id,
       date: updatedOrder.created_at,
       customerName: updatedOrder.customer_name,
+      customerEmail: updatedOrder.customer_email,
       customerPhone: updatedOrder.customer_phone,
+      notes: updatedOrder.notes,
       items: updatedOrder.items,
       total: updatedOrder.total,
       storeId: updatedOrder.store_id,
       status: updatedOrder.status,
-      processedAt: updatedOrder.processed_at,
-      processedBy: updatedOrder.processed_by,
-      saleId: updatedOrder.sale_id,
-      notes: updatedOrder.notes,
+      processedBy: updatedOrder.user_id,
+      customerAddress: updatedOrder.customerAddress,
+      deliveryMethod: updatedOrder.delivery_method,
+      deliveryStatus: updatedOrder.delivery_status,
+      deliveryFee: updatedOrder.delivery_fee,
+      deliveryDate: updatedOrder.delivery_date,
+      deliveryTime: updatedOrder.delivery_time,
       latitude: updatedOrder.latitude,
-      longitude: updatedOrder.longitude,
-      customerAddress: updatedOrder.customer_address
+      longitude: updatedOrder.longitude
     };
 
     // Invalidar cache de pedidos
