@@ -90,6 +90,10 @@ export async function GET(request: NextRequest) {
     // Cache key parts (include customerEmail in key to separate user caches)
     const cacheKey = ['orders', storeId, status || 'all', customerEmail || 'all_emails'];
     const cacheTags = [`orders-${storeId}`, 'orders'];
+    // Agregar tags específicos para invalidación más precisa
+    if (customerEmail) {
+      cacheTags.push(`orders-${storeId}-${customerEmail}`);
+    }
 
     // Función cacheada
     const getCachedOrders = unstable_cache(
@@ -121,7 +125,7 @@ export async function GET(request: NextRequest) {
       cacheKey,
       {
         tags: cacheTags,
-        revalidate: 20 // Check DB every 20s max if no revalidation event occurs
+        revalidate: 5 // Check DB every 5s max if no revalidation event occurs
       }
     );
 
@@ -300,9 +304,13 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    // Invalidar cache de pedidos
+    // Invalidar cache de pedidos para todas las combinaciones relevantes
     revalidateTag(`orders-${createdOrder.store_id}`);
     revalidateTag('orders');
+    if (createdOrder.customer_email) {
+      // Invalidar también la caché específica del cliente
+      revalidateTag(`orders-${createdOrder.store_id}-${createdOrder.customer_email}`);
+    }
 
     return NextResponse.json(formattedResponse);
 
@@ -442,9 +450,13 @@ export async function PUT(request: NextRequest) {
       longitude: updatedOrder.longitude
     };
 
-    // Invalidar cache de pedidos
+    // Invalidar cache de pedidos para todas las combinaciones relevantes
     revalidateTag(`orders-${updatedOrder.store_id}`);
     revalidateTag('orders');
+    if (updatedOrder.customer_email) {
+      // Invalidar también la caché específica del cliente
+      revalidateTag(`orders-${updatedOrder.store_id}-${updatedOrder.customer_email}`);
+    }
 
     return NextResponse.json(formattedOrder);
 
@@ -489,6 +501,14 @@ export async function DELETE(request: NextRequest) {
     }
 
     console.log('✅ [Orders API] Pedido eliminado:', orderId);
+
+    // Invalidar cache de pedidos para todas las combinaciones relevantes
+    revalidateTag(`orders-${deleted.store_id}`);
+    revalidateTag('orders');
+    if (deleted.customer_email) {
+      // Invalidar también la caché específica del cliente
+      revalidateTag(`orders-${deleted.store_id}-${deleted.customer_email}`);
+    }
 
     return NextResponse.json({
       success: true,

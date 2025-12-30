@@ -1,5 +1,3 @@
-
-// CRITICAL FIX v2 - Force complete rebuild - Timestamp: 2025-11-09-14:00:00-UTC
 "use client";
 
 // Imports
@@ -47,11 +45,8 @@ import { useProducts } from "@/hooks/useProducts";
 import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabase';
 import { date } from "zod";
-// FORCE REBUILD - Clear .next cache and rebuild: 2025-01-11-13:00
 
-// ========== CORRECCIONES - ERRORES FIJOS =========="
-
-// CORRECCIÓN #1: Sistema de fetch robusto con retry
+// Sistema de fetch robusto con retry
 const fetchWithRetry = async (
   url: string,
   options?: RequestInit,
@@ -90,9 +85,7 @@ const fetchWithRetry = async (
   throw lastError || new Error('Fetch failed after retries');
 };
 
-// CORRECCIÓN #2: Estado de error por producto (se agrega en el componente)
-
-// CORRECCIÓN #3: Validación de URLs y multi-fallback
+// Validación de URLs y multi-fallback
 const validateImageUrl = async (url: string): Promise<string> => {
   if (!url) return '/placeholder.png';
 
@@ -106,7 +99,7 @@ const validateImageUrl = async (url: string): Promise<string> => {
   return '/placeholder.png';
 };
 
-// CORRECCIÓN #4: Debug service con manejo de errores
+// Debug service con manejo de errores
 const safeDebugCall = async <T,>(
   fn: () => Promise<T>,
   fallback: T,
@@ -120,7 +113,6 @@ const safeDebugCall = async <T,>(
       )
     ]);
   } catch (error) {
-    // Fallback a localStorage
     try {
       const cached = localStorage.getItem('debug_cache');
       if (cached) return JSON.parse(cached);
@@ -129,7 +121,7 @@ const safeDebugCall = async <T,>(
   }
 };
 
-// CORRECCIÓN #5: Utilidades robustas para matching de SKU
+// Utilidades para matching de SKU
 const normalizeSkuForComparison = (sku: string | null | undefined): string => {
   if (!sku || typeof sku !== 'string') {
     return '';
@@ -196,11 +188,6 @@ const shouldAutoOpenProduct = (
   return { shouldOpen: true, product, reason: 'All conditions met for auto-opening' };
 };
 
-
-
-
-
-
 // Importar el scanner dinámicamente para evitar problemas de SSR
 const BarcodeScannerComponent = dynamic(
   () => import('react-qr-barcode-scanner'),
@@ -208,8 +195,6 @@ const BarcodeScannerComponent = dynamic(
 );
 
 // Cliente Supabase
-
-
 const AdCard = ({ ad, onAdClick }: { ad: Ad; onAdClick: (ad: Ad) => void }) => {
   const [adImageError, setAdImageError] = useState(false);
   const displayAdImageUrl = getDisplayImageUrl(ad.imageUrl || '');
@@ -295,8 +280,6 @@ const CatalogProductCard = ({
   const [retryCount, setRetryCount] = useState<Record<string, number>>({});
   const [fallbackToSingle, setFallbackToSingle] = useState(false);
 
-  // Usar las nuevas utilidades para múltiples imágenes con debugging
-  // Memoizar para evitar recalcular arrays en cada render y provocar re-renders innecesarios
   const images = useMemo(() => getAllProductImages(product), [product.id]);
   const hasMultiple = useMemo(() => hasMultipleImages(product), [product.id]);
   const imageCount = useMemo(() => getImageCount(product), [product.id]);
@@ -313,86 +296,32 @@ const CatalogProductCard = ({
 
       const debug = logProductImageDebug(product, 'CatalogProductCard');
       setDebugInfo(debug);
-
-      // Validación de consistencia
-      const consistencyResult = validateImageUtilityConsistency(product);
-
-      /* 
-      // TEMPORARILY DISABLED TO REDUCE CONSOLE NOISE
-      // Solo hacer la verificación de DB en desarrollo o con debug activado
-      if ((process.env.NODE_ENV === 'development' ||
-        (typeof window !== 'undefined' && window.location.search.includes('debug=db'))) && activeStoreId) {
-
-        try {
-          // Verificar que las imágenes estén correctamente guardadas en la DB
-          const dbVerification = await verifyImagesInDatabase(product.id, activeStoreId);
-          const dbComparison = await compareDbWithFrontend(product, activeStoreId);
-
-          console.group(`🔍 [CatalogCard] CRITICAL DB CHECK - ${product.name}`);
-          console.log('🌍 Environment:', detectEnvironment());
-          console.log('📊 Frontend Images array length:', images.length);
-          console.log('📊 Frontend Has multiple:', hasMultiple);
-          console.log('📊 Frontend Image count:', imageCount);
-          console.log('🗄️ DB Verification:', dbVerification);
-          console.log('🔄 DB vs Frontend Comparison:', dbComparison);
-          console.log('🔧 Consistency Result:', consistencyResult);
-
-          // ALERTAS CRÍTICAS
-          if (dbVerification.issues.length > 0) {
-            console.warn(`⚠️ [CatalogCard] Database storage issues for ${product.name}:`);
-            console.warn('⚠️ DB Issues:', dbVerification.issues);
-          }
-
-          if (dbComparison.discrepancies.length > 0) {
-            console.warn(`⚠️ [CatalogCard] Database/Frontend mismatch for ${product.name}:`);
-            console.warn('⚠️ Discrepancies:', dbComparison.discrepancies);
-          }
-
-          // Resumen del problema
-          if (hasMultiple && !dbVerification.verification.hasImagesInDb) {
-            console.warn(`⚠️ [CatalogCard] ROOT CAUSE: Frontend thinks product has ${imageCount} images but DB has none!`);
-          } else if (hasMultiple && dbVerification.verification.imageCount !== imageCount) {
-            console.warn(`⚠️ [CatalogCard] ROOT CAUSE: Image count mismatch - Frontend: ${imageCount}, DB: ${dbVerification.verification.imageCount}`);
-          }
-
-          console.groupEnd();
-        } catch (error) {
-          console.error(`❌ [CatalogCard] Error checking database consistency for ${product.name}:`, error);
-        }
-      } 
-      */
     };
 
     runDebugOnce();
-  }, [product.id]); // Solo cuando cambia el ID del producto
+  }, [product.id]);
 
-  // Auto-cambio de imagen en hover (solo desktop) - ARREGLADO para evitar bucles
+  // Auto-cambio de imagen en hover (solo desktop)
   useEffect(() => {
     let interval: NodeJS.Timeout;
 
-    // Don't cycle if we've fallen back to single image mode
     if (isHovering && hasMultiple && !fallbackToSingle && window.innerWidth >= 768) {
-      console.log(`🔄 [CatalogCard] Starting image cycling for ${product.name} (${images.length} images)`);
-
       interval = setInterval(() => {
         setCurrentImageIndex(prev => {
           const nextIndex = (prev + 1) % images.length;
-          console.log(`🖼️ [CatalogCard] Cycling image: ${prev} → ${nextIndex} for ${product.name}`);
           return nextIndex;
         });
-      }, 2000); // Cambiar cada 2 segundos para reducir carga
+      }, 2000);
     } else {
-      // Reset to first image when not hovering
       setCurrentImageIndex(0);
     }
 
     return () => {
       if (interval) {
-        console.log(`⏹️ [CatalogCard] Stopping image cycling for ${product.name}`);
         clearInterval(interval);
       }
     };
-  }, [isHovering, hasMultiple, fallbackToSingle, images.length]); // REMOVIDO: currentImageIndex, product.name, imageLoadStates
+  }, [isHovering, hasMultiple, fallbackToSingle, images.length]);
 
   // Tracking de estados de carga de imágenes con retry logic
   const handleImageLoad = (url: string) => {
@@ -683,12 +612,10 @@ export default function CatalogPage() {
     }
   };
 
-  // CORREGIDO: useEffect estabilizado para cargar settings de tienda
   useEffect(() => {
     const loadCatalogStoreSettings = async () => {
       if (!storeIdForCatalog) return;
 
-      // Si es la misma tienda del usuario logueado, usar esos settings
       if (loggedInUserSettings && loggedInUserSettings.storeId === storeIdForCatalog) {
         setCatalogStoreSettings(loggedInUserSettings);
         return;
@@ -710,7 +637,7 @@ export default function CatalogPage() {
     };
 
     loadCatalogStoreSettings();
-  }, [storeIdForCatalog, loggedInUserSettings?.storeId]); // Solo incluir storeId, no todo el objeto
+  }, [storeIdForCatalog, loggedInUserSettings?.storeId]);
 
   const currentStoreSettings = catalogStoreSettings || defaultStore;
 
@@ -748,11 +675,8 @@ export default function CatalogPage() {
 
   const [isEditingOrder, setIsEditingOrder] = useState(false);
 
-  // PASO 2: Aplicar SKU de la URL al buscador (UNA SOLA VEZ)
   useEffect(() => {
-    // Solo aplicar si hay SKU en URL y no lo hemos aplicado ya
     if (urlSku && urlSku.trim() !== '' && !urlSearchAppliedRef.current) {
-      // Esperar a que estemos en la tienda correcta si hay storeId en URL
       const isCorrectStore = !urlStoreId || activeStoreId === urlStoreId;
 
       if (isCorrectStore) {
@@ -762,7 +686,7 @@ export default function CatalogPage() {
         urlSearchAppliedRef.current = true;
       }
     }
-  }, [urlSku, urlStoreId, activeStoreId]); // Quitamos searchTerm y products.length para evitar bucles
+  }, [urlSku, urlStoreId, activeStoreId]);
 
   // Hook para manejar pedidos del usuario desde la base de datos
   const {
@@ -772,6 +696,40 @@ export default function CatalogPage() {
     refetch: refetchOrders,
     isPolling: isPollingOrders
   } = useUserOrders(authUser?.email || undefined, storeIdForCatalog);
+
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+    
+    const checkForOrderUpdates = async () => {
+      if (authUser?.email && storeIdForCatalog) {
+        try {
+          const response = await fetch(`/api/orders?customerEmail=${encodeURIComponent(authUser.email)}&storeId=${encodeURIComponent(storeIdForCatalog)}`);
+          
+          if (response.ok) {
+            const serverOrders = await response.json();
+            const serverOrderCount = Array.isArray(serverOrders) ? serverOrders.length : 0;
+            
+            if (serverOrderCount !== userOrders.length) {
+              console.log(`🔄 [Order Monitor] Diferencia detectada: servidor=${serverOrderCount}, local=${userOrders.length}`);
+              await refetchOrders(true);
+            }
+          }
+        } catch (error) {
+          console.error('❌ [Order Monitor] Error verificando actualizaciones de pedidos:', error);
+        }
+      }
+    };
+    
+    intervalId = setInterval(checkForOrderUpdates, 3000);
+    
+    checkForOrderUpdates();
+    
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [authUser?.email, storeIdForCatalog, userOrders.length, refetchOrders]);
 
   // Función para verificar si la tasa de cambio está actualizada (últimas 8 horas)
   const isCurrencyRateRecent = useMemo(() => {
@@ -938,19 +896,10 @@ export default function CatalogPage() {
     }
   }, [urlStoreId, urlSku, activeStoreId, products.length, searchTerm]);
 
-  // Ref para evitar múltiples intentos de auto-apertura del mismo SKU de la URL
   const urlParamsProcessedRef = useRef(false);
 
-  // CORREGIDO: useEffect estabilizado para inicialización
   useEffect(() => {
     setIsClient(true)
-
-    // COMENTADO: Enfocar el input de búsqueda al cargar (evita abrir teclado automáticamente)
-    // setTimeout(() => {
-    //   if (searchInputRef.current) {
-    //     searchInputRef.current.focus();
-    //   }
-    // }, 500);
   }, [])
 
   // Funciones de validación
@@ -987,7 +936,6 @@ export default function CatalogPage() {
     return Object.keys(errors).length === 0;
   };
 
-  // NUEVA FUNCIÓN: Crear cliente en Supabase
   const createCustomerInSupabase = async (customerData: any) => {
     try {
       const { data, error } = await supabase
@@ -1008,12 +956,10 @@ export default function CatalogPage() {
     }
   };
 
-  // MODIFICADO: Usar Supabase para registro
   const handleRegister = async () => {
     if (!validateForm()) return;
 
     try {
-      // Crear cliente en Supabase
       const newCustomer = await createCustomerInSupabase({
         id: IDGenerator.generate('customer', storeIdForCatalog),
         name: registerForm.name,
@@ -1040,15 +986,11 @@ export default function CatalogPage() {
     }
   };
 
-  // Función para manejar el escaneo de códigos de barras
-
-  // Función para manejar el resultado del escaneo
   const handleScan = (result: string) => {
     if (result && result !== lastScannedCode) {
       setLastScannedCode(result);
       setScannerError(null);
 
-      // Buscar producto por SKU o código de barras
       const foundProduct = sortedAndFilteredProducts.find(
         product =>
           product.sku?.toLowerCase() === result.toLowerCase() ||
@@ -1057,7 +999,6 @@ export default function CatalogPage() {
       );
 
       if (foundProduct) {
-        // Agregar producto al carrito automáticamente
         addToCart(foundProduct, 1);
         setShowScanner(false);
         toast({
@@ -1076,20 +1017,17 @@ export default function CatalogPage() {
   };
 
   const handleScanError = (error: any) => {
-    // Ignorar errores normales de "No MultiFormat Readers" que son esperados
     if (error && error.message && error.message.includes('No MultiFormat Readers')) {
-      return; // Este es un error normal cuando no hay código visible
+      return;
     }
 
     console.error('Scanner error:', error);
 
-    // Solo mostrar errores reales de permisos o cámara
     if (error && error.name === 'NotAllowedError') {
       setScannerError('Permisos de cámara denegados. Por favor, permite el acceso a la cámara.');
     } else if (error && error.name === 'NotFoundError') {
       setScannerError('No se encontró ninguna cámara en el dispositivo.');
     }
-    // No mostrar otros errores que son normales durante el escaneo
   };
 
 
@@ -1139,7 +1077,6 @@ export default function CatalogPage() {
     };
   }, [lastMouseMove]);
 
-  // CORREGIDO: Auto-scroll ads estabilizado
   useEffect(() => {
     const relevantAds = (allAds || []).filter(ad => {
       const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
@@ -1163,7 +1100,6 @@ export default function CatalogPage() {
     };
   }, [isAutoScrolling, allAds?.length, currentStoreSettings?.businessType]); // Solo longitud de ads, no array completo
 
-  // CORREGIDO: Reset ad index estabilizado
   useEffect(() => {
     const relevantAds = (allAds || []).filter(ad => {
       const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
@@ -1175,7 +1111,6 @@ export default function CatalogPage() {
     }
   }, [allAds?.length, currentStoreSettings?.businessType]); // Removido currentAdIndex para evitar loop
 
-  // Auto-scroll del contenedor de productos
   useEffect(() => {
     if (!isAutoScrolling || !productsContainerRef.current) {
       return;
@@ -1242,7 +1177,7 @@ export default function CatalogPage() {
     };
   }, [isAutoScrolling]);
 
-  // Los pedidos ahora se manejan directamente desde la base de datos via useUserOrders hook
+
 
   const sortedAndFilteredProducts = useMemo(() => {
     if (!products) {
@@ -1250,29 +1185,17 @@ export default function CatalogPage() {
       return [];
     }
 
-    console.group('📦 [Catalog] Product Filtering Debug');
-    console.log('📊 Filter State:', {
-      totalProducts: products.length,
-      storeIdForCatalog,
-      searchTerm,
-      selectedFamily
-    });
-
     const productsForStore = products.filter(product => product.storeId === storeIdForCatalog);
-    console.log('🎯 Productos para esta tienda:', productsForStore.length);
 
     const trimmedSearchTerm = searchTerm.trim().toLowerCase();
-    console.log('🔍 Trimmed search term:', `"${trimmedSearchTerm}"`);
 
     const filtered = productsForStore
       .filter(
         (product) => {
-          // Excluir productos con estado 'hidden', 'inactive' o stock = 0
           const isHidden = product.status === 'hidden';
           const isInactive = product.status === 'inactive';
           const hasNoStock = product.type !== 'service' && product.stock === 0;
 
-          // Si el producto está oculto, inactivo o sin stock, no mostrarlo en el catálogo
           if (isHidden || isInactive || hasNoStock) {
             return false;
           }
@@ -1286,20 +1209,6 @@ export default function CatalogPage() {
 
           const passes = statusOk && stockOk && familyOk && searchMatch;
 
-          // Log productos que coinciden con el término de búsqueda para debugging
-          if (trimmedSearchTerm && (nameMatch || skuMatch)) {
-            console.log('🎯 Product match found:', {
-              name: product.name,
-              sku: product.sku,
-              nameMatch,
-              skuMatch,
-              statusOk,
-              stockOk,
-              familyOk,
-              passes
-            });
-          }
-
           return passes;
         }
       )
@@ -1309,21 +1218,11 @@ export default function CatalogPage() {
         return a.name.localeCompare(b.name);
       });
 
-    console.log('✅ Productos filtrados finales:', filtered.length);
-
-    // Log productos exactos por SKU si hay término de búsqueda
-    if (trimmedSearchTerm) {
-      const exactSkuMatches = findExactSkuMatches(filtered, trimmedSearchTerm);
-      console.log('🎯 Exact SKU matches:', exactSkuMatches.length, exactSkuMatches.map(p => ({ name: p.name, sku: p.sku, normalized: normalizeSkuForComparison(p.sku) })));
-    }
-
-    console.groupEnd();
     return filtered;
   }, [products, searchTerm, selectedFamily, storeIdForCatalog]);
 
 
 
-  // PASO 3: Auto-open product desde URL (Prioridad Alta)
   useEffect(() => {
     // Si ya procesamos la URL, o no hay SKU, o los productos aún cargan, no hacer nada
     if (urlParamsProcessedRef.current || !urlSku || isLoadingProducts) return;
@@ -1368,7 +1267,6 @@ export default function CatalogPage() {
     console.groupEnd();
   }, [urlSku, products, storeIdForCatalog, isLoadingProducts]);
 
-  // PASO 4: Auto-open desde Búsqueda Manual (Exact SKU match)
   useEffect(() => {
     // Requisitos: hay búsqueda, los productos cargaron y no estamos ya abriendo algo
     if (!searchTerm || isLoadingProducts || isAutoOpening) return;
@@ -1397,8 +1295,6 @@ export default function CatalogPage() {
     }
   }, [searchTerm, products, storeIdForCatalog, isLoadingProducts, urlSku]);
 
-  // Resetear el tracker de auto-open cuando el usuario borra la búsqueda
-  // Esto permite que si borra y vuelve a escribir el mismo SKU, se vuelva a abrir.
   useEffect(() => {
     if (!searchTerm) {
       setLastAutoOpenedSku(null);
@@ -1430,7 +1326,6 @@ export default function CatalogPage() {
     return customerName.trim() !== '' && customerPhone.trim() !== '' && !validatePhoneNumber(customerPhone);
   }, [customerName, customerPhone]);
 
-  // Enfocar el botón de confirmar cuando se abre la modal y los datos están pre-cargados
   useEffect(() => {
     if (isOrderDialogOpen && authUser && isOrderFormValid) {
       // Pequeño delay para asegurar que la modal esté completamente renderizada
@@ -1442,7 +1337,6 @@ export default function CatalogPage() {
   }, [isOrderDialogOpen, authUser, isOrderFormValid]);
 
   const handleOpenAddToCartDialog = (product: Product) => {
-    // Permitir agregar productos sin autenticación
     setProductToAdd(product);
     setAddQuantity(1);
   };
@@ -1654,7 +1548,6 @@ export default function CatalogPage() {
     );
   };
 
-  // NUEVA FUNCIÓN: Crear pedido usando API (evita problemas de RLS)
   const createOrderInSupabase = async (orderData: Order) => {
     try {
       console.log('📦 [API] Creating order via API:', orderData.orderId);
@@ -1696,7 +1589,6 @@ export default function CatalogPage() {
     }
   };
 
-  // MODIFICADO: Usar Supabase para crear pedidos
   const handleGenerateOrder = async () => {
     if (cart.length === 0) {
       toast({
@@ -1707,7 +1599,6 @@ export default function CatalogPage() {
       return;
     }
 
-    // REQUERIR LOGIN OBLIGATORIO para generar pedidos
     if (!authUser || !authUser.email) {
       toast({
         variant: "destructive",
@@ -1717,7 +1608,6 @@ export default function CatalogPage() {
       return;
     }
 
-    // Validar datos básicos (aunque ya tenemos el email del usuario logueado)
     if (!customerName.trim() || !customerPhone.trim()) {
       toast({
         variant: "destructive",
@@ -1787,32 +1677,45 @@ export default function CatalogPage() {
     try {
       const savedOrder = await createOrderInSupabase(newPendingOrder);
 
-      // Pequeña pausa para asegurar que Supabase procese el cambio antes de recargar
+      await generateQrCode(newOrderId);
+      
+      setIsOrderDialogOpen(false);
+      setCart([]);
+      setCustomerName('');
+      setCustomerPhone('');
+      setCustomerAddress('');
+      setIsDeliveryVisible(false);
+      setLocation(null);
+      setPhoneError(null);
+      setIsEditingOrder(false);
+      
+      // Pequeña pausa para asegurar que la base de datos se actualice
       await new Promise(resolve => setTimeout(resolve, 500));
-      // Refrescar la lista de pedidos del usuario desde la DB
-      await refetchOrders();
+      
+      // Actualizar la lista de pedidos inmediatamente después de crear el pedido con fuerza
+      await refetchOrders(true);
+      
+      // Pequeña pausa para asegurar que los datos se hayan actualizado
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Abrir automáticamente el panel lateral para mostrar los pedidos recién creados
+      setTimeout(() => {
+        const cartSheetTrigger = document.getElementById('cart-sheet-trigger');
+        if (cartSheetTrigger) {
+          cartSheetTrigger.click();
+        }
+      }, 100);
+
+      toast({
+        title: isEditingOrder ? "¡Pedido Actualizado!" : "¡Pedido Generado!",
+        description: "Muestra el código QR para facturar. El pedido está pendiente en caja.",
+      });
 
     } catch (error) {
       console.error('Error:', error);
       toast({ variant: "destructive", title: 'Error al guardar pedido en Supabase' });
       return;
     }
-
-    await generateQrCode(newOrderId);
-    setIsOrderDialogOpen(false);
-    setCart([]);
-    setCustomerName('');
-    setCustomerPhone('');
-    setCustomerAddress('');
-    setIsDeliveryVisible(false);
-    setLocation(null);
-    setPhoneError(null);
-    setIsEditingOrder(false);
-
-    toast({
-      title: isEditingOrder ? "¡Pedido Actualizado!" : "¡Pedido Generado!",
-      description: "Muestra el código QR para facturar. El pedido está pendiente en caja.",
-    });
   };
 
   const handleImageClick = (product: Product) => {
@@ -2147,8 +2050,8 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
         updatedAt: new Date().toISOString()
       });
 
-      // Pequeña pausa para asegurar que Supabase procese el cambio antes de recargar
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Pausa más larga para asegurar que la caché se actualice antes de recargar
+      await new Promise(resolve => setTimeout(resolve, 1000));
       // Refrescar la lista de pedidos
       await refetchOrders();
 
@@ -2302,7 +2205,12 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                 </DialogContent>
               </Dialog>
               <AddOrderGuard>
-                <Sheet>
+                <Sheet onOpenChange={(open) => {
+                  if (open && cart.length === 0) {
+                    // Recargar pedidos cuando se abre el panel y el carrito está vacío
+                    refetchOrders();
+                  }
+                }}>
                   <SheetTrigger asChild>
                     <Button id="cart-sheet-trigger" variant="outline" size="icon" className="relative sm:h-auto sm:w-auto sm:px-3 sm:py-2 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-600">
                       <ShoppingBag className="h-4 w-4 sm:mr-2" />
@@ -3579,4 +3487,4 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
       <StoreRequestButton />
     </>
   );
-}
+};

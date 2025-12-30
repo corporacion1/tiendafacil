@@ -7,7 +7,7 @@ interface UseUserOrdersReturn {
   orders: PendingOrder[];
   isLoading: boolean;
   error: string | null;
-  refetch: () => Promise<void>;
+  refetch: (forceRefresh?: boolean) => Promise<void>;
   isPolling: boolean;
   startPolling: () => void;
   stopPolling: () => void;
@@ -32,19 +32,21 @@ export const useUserOrders = (userEmail?: string, storeId?: string): UseUserOrde
   const MIN_FETCH_INTERVAL = 2000; // Mínimo 2 segundos entre fetches
   const MAX_RETRIES = 3;
 
-  const fetchOrders = useCallback(async (showLoadingState = true) => {
+  const fetchOrders = useCallback(async (showLoadingState = true, forceRefresh = false) => {
     // CORREGIDO: No limpiar pedidos si faltan parámetros, solo no hacer fetch
     if (!userEmail || !storeId || !isActiveRef.current) {
       console.log('⏭️ Skipping fetch - missing parameters or inactive', { userEmail: !!userEmail, storeId: !!storeId, isActive: isActiveRef.current });
       return;
     }
 
-    // Evitar fetches muy frecuentes
+    // Evitar fetches muy frecuentes, a menos que se fuerce la actualización
     const now = Date.now();
-    if (now - lastFetchTimeRef.current < MIN_FETCH_INTERVAL) {
+    if (!forceRefresh && now - lastFetchTimeRef.current < MIN_FETCH_INTERVAL) {
       console.log('⏳ Skipping fetch - too frequent');
       return;
     }
+    
+    // Actualizar el tiempo para evitar limitaciones
     lastFetchTimeRef.current = now;
 
     if (showLoadingState) {
@@ -91,15 +93,9 @@ export const useUserOrders = (userEmail?: string, storeId?: string): UseUserOrde
         longitude: order.longitude
       })) : [];
 
-      // Solo actualizar si hay cambios reales
-      setOrders(prevOrders => {
-        const hasChanges = JSON.stringify(prevOrders) !== JSON.stringify(formattedOrders);
-        if (hasChanges) {
-          console.log('🔄 Orders updated - changes detected');
-          return formattedOrders;
-        }
-        return prevOrders;
-      });
+      // Actualizar siempre que haya nuevos datos, sin depender de comparaciones complejas
+      setOrders(formattedOrders);
+      console.log('🔄 Orders updated - new data received');
 
     } catch (err: any) {
       console.error('❌ Error fetching user orders:', err);
@@ -142,7 +138,7 @@ export const useUserOrders = (userEmail?: string, storeId?: string): UseUserOrde
 
     pollingIntervalRef.current = setInterval(() => {
       if (isActiveRef.current && isOnline) {
-        fetchOrders(false); // No mostrar loading state en polling
+        fetchOrders(false, false); // No mostrar loading state en polling y no forzar actualización
       }
     }, POLLING_INTERVAL);
   }, [userEmail, storeId, fetchOrders]);
@@ -159,7 +155,7 @@ export const useUserOrders = (userEmail?: string, storeId?: string): UseUserOrde
 
   // Fetch inicial
   useEffect(() => {
-    fetchOrders();
+    fetchOrders(true, false);
   }, [fetchOrders]);
 
   // Manejar reconexión de red
@@ -167,7 +163,7 @@ export const useUserOrders = (userEmail?: string, storeId?: string): UseUserOrde
     if (isOnline && wasOffline && userEmail && storeId) {
       console.log('🔄 Network reconnected - fetching orders');
       retryCountRef.current = 0; // Reset retry counter
-      fetchOrders(false);
+      fetchOrders(false, false);
     }
   }, [isOnline, wasOffline, userEmail, storeId, fetchOrders]);
 
@@ -200,7 +196,7 @@ export const useUserOrders = (userEmail?: string, storeId?: string): UseUserOrde
         stopPolling();
       } else if (userEmail && storeId) {
         console.log('📱 Page visible - resuming polling');
-        fetchOrders(false); // Fetch inmediato al volver
+        fetchOrders(false, false); // Fetch inmediato al volver
         startPolling();
       }
     };
@@ -216,7 +212,7 @@ export const useUserOrders = (userEmail?: string, storeId?: string): UseUserOrde
     orders,
     isLoading,
     error,
-    refetch: () => fetchOrders(true),
+    refetch: (forceRefresh = true) => fetchOrders(true, forceRefresh),
     isPolling,
     startPolling,
     stopPolling

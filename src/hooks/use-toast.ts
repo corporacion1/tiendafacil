@@ -179,7 +179,7 @@ function toast({ ...props }: Toast) {
       return {
         id: '',
         dismiss: () => {},
-        update: () => {},
+        update: (props: ToasterToast) => {},
       };
     }
   }
@@ -196,7 +196,7 @@ function toast({ ...props }: Toast) {
     return {
       id: '',
       dismiss: () => {},
-      update: () => {},
+      update: (props: ToasterToast) => {},
     }
   }
 
