@@ -144,7 +144,12 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
   // Función para actualizar estado de pedido
   const updateOrderStatus = useCallback(async (orderId: string, status: string, saleId?: string, processedBy?: string): Promise<boolean> => {
     try {
-      console.log('🔄 [POS] Updating order status:', orderId, 'to', status);
+      console.log('🔄 [POS] Updating order status:', orderId, 'to', status, 'storeId:', storeId);
+      
+      if (!storeId) {
+        console.error('❌ [POS] No storeId provided for order status update');
+        throw new Error('storeId es requerido para actualizar el estado del pedido');
+      }
 
       const processor = processedBy || 'POS';
       const response = await fetch('/api/orders', {
@@ -161,7 +166,9 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
       });
 
       if (!response.ok) {
-        throw new Error('Error al actualizar estado del pedido');
+        const errorText = await response.text();
+        console.error('❌ [POS] API Error response:', errorText);
+        throw new Error(`Error al actualizar estado del pedido: ${response.status} - ${errorText}`);
       }
 
       // Refrescar la lista de pedidos

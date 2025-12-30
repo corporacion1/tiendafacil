@@ -1241,6 +1241,7 @@ export default function POSPage() {
     setCartItems([]);
     setDiscountAmount(0);
     setDiscountNotes("");
+    setSelectedCustomerId("eventual");
     toast({
       title: "Carrito Vaciado",
       description: "Todos los productos han sido eliminados del carrito.",
@@ -2760,6 +2761,58 @@ export default function POSPage() {
     (newCustomer.phone?.trim() || "") !== "" ||
     (newCustomer.address?.trim() || "") !== "";
 
+  const updateOrderDeliveryMethod = async (orderId: string, newMethod: 'delivery' | 'pickup') => {
+    if (!activeStoreId) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No hay tienda activa",
+      });
+      return false;
+    }
+
+    try {
+      const response = await fetch('/api/orders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId,
+          storeId: activeStoreId,
+          deliveryMethod: newMethod,
+          updatedAt: new Date().toISOString(),
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al actualizar el método de entrega');
+      }
+
+      // Update local currentOrder if it matches
+      if (currentOrder && currentOrder.orderId === orderId) {
+        setCurrentOrder({
+          ...currentOrder,
+          deliveryMethod: newMethod
+        });
+      }
+
+      toast({
+        title: "Método de entrega actualizado",
+        description: `El método de entrega se cambió a ${newMethod === 'delivery' ? 'Entrega' : 'Recogida'}`,
+      });
+
+      return true;
+    } catch (error) {
+      console.error('❌ Error updating delivery method:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Error al actualizar el método de entrega",
+      });
+      return false;
+    }
+  };
+
   const loadPendingOrder = async (order: PendingOrder) => {
     console.log("📦 Intentando cargar pedido:", order);
     try {
@@ -2981,11 +3034,11 @@ export default function POSPage() {
         }
       }
 
-      // Marcar pedido como "procesado" usando el nuevo hook para que desaparezca de la lista
+      // Marcar pedido como "processing" usando el nuevo hook para que desaparezca de la lista
       try {
         await updateOrderStatus(
           order.orderId,
-          "processed",
+          "processing",
           undefined, // No hay saleId aún
           userProfile?.displayName || (userProfile as any)?.name || "Usuario POS",
         );
@@ -3019,10 +3072,11 @@ export default function POSPage() {
             : `Pedido ${order.orderId} cargado parcialmente (${loadedCount}/${totalCount} productos)`,
       });
 
-      // Actualizar estado del pedido de 'pending' a 'processing'
+      // Actualizar estado del pedido de 'pending' a 'processing' (ya se hizo arriba)
+      // Esta segunda llamada puede ser redundante, pero la mantenemos para asegurar
       try {
         console.log(
-          '🔄 Actualizando estado del pedido a "processing":',
+          '🔄 Verificando estado del pedido como "processing":',
           order.orderId,
         );
         await updateOrderStatus(
@@ -3033,10 +3087,10 @@ export default function POSPage() {
           (userProfile as any)?.name ||
           "Usuario POS",
         );
-        console.log("✅ Estado del pedido actualizado exitosamente");
+        console.log("✅ Estado del pedido verificado exitosamente");
       } catch (statusError) {
         console.error(
-          "⚠️ Error al actualizar estado del pedido (no crítico):",
+          "⚠️ Error al verificar estado del pedido (no crítico):",
           statusError,
         );
         // No mostramos error al usuario porque el pedido ya se cargó correctamente
@@ -3661,13 +3715,13 @@ export default function POSPage() {
                                           {order.deliveryMethod === "delivery" ? (
                                             <div className="flex items-center gap-1 text-blue-600">
                                               <Truck className="h-4 w-4" />
-                                              <span className="text-xs font-medium">Entrega</span>
+                                              <span className="text-xs font-medium">Delivery</span>
                                               <span className="sr-only">Método: entrega a domicilio</span>
                                             </div>
                                           ) : (
                                             <div className="flex items-center gap-1 text-orange-600">
                                               <Armchair className="h-4 w-4" />
-                                              <span className="text-xs font-medium">Recogida</span>
+                                              <span className="text-xs font-medium">Pickup</span>
                                               <span className="sr-only">Método: recogida en tienda</span>
                                             </div>
                                           )}
@@ -3961,42 +4015,43 @@ export default function POSPage() {
               )}
             >
               <CardHeader className="flex flex-row justify-between items-center p-2 sm:p-4 w-full max-w-full">
-                <div className="flex items-center gap-2 overflow-hidden">
-                  <CardTitle className="text-sm sm:text-base truncate">
-                    Carrito de Compra
-                  </CardTitle>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 overflow-hidden">
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-sm sm:text-base truncate">
+                      Carrito de Compra
+                    </CardTitle>
 
-                  {/* Serie Local Display & Config */}
-                  {/* Serie Local Display & Config */}
-                  <div className="flex items-center gap-1 ml-2">
-                    {/* DEBUG: Always show something to verify position */}
-                    <div
-                      className={cn(
-                        "text-[10px] sm:text-xs font-mono border px-1.5 py-0.5 rounded whitespace-nowrap",
-                        localSeries
-                          ? "bg-muted text-muted-foreground"
-                          : "bg-red-100 text-red-600 border-red-200",
-                      )}
-                    >
-                      {localSeries
-                        ? `${localSeries}-${localCorrelative?.padStart(6, "0")}`
-                        : isSuperUser
-                          ? "Sin Serie (Configurar)"
-                          : "Sin Serie"}
-                    </div>
-
-                    {/* Config Button - Visible for SU */}
-                    {isSuperUser && (
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setIsLocalConfigOpen(true)}
-                        className="h-6 w-6 text-muted-foreground hover:text-foreground shrink-0 ml-1"
-                        title="Configurar Serie Local"
+                    {/* Serie Local Display & Config */}
+                    <div className="flex items-center gap-1">
+                      {/* DEBUG: Always show something to verify position */}
+                      <div
+                        className={cn(
+                          "text-[10px] sm:text-xs font-mono border px-1.5 py-0.5 rounded whitespace-nowrap",
+                          localSeries
+                            ? "bg-muted text-muted-foreground"
+                            : "bg-red-100 text-red-600 border-red-200",
+                        )}
                       >
-                        <SettingsIcon className="h-3 w-3" />
-                      </Button>
-                    )}
+                        {localSeries
+                          ? `${localSeries}-${localCorrelative?.padStart(6, "0")}`
+                          : isSuperUser
+                            ? "Sin Serie (Configurar)"
+                            : "Sin Serie"}
+                      </div>
+
+                      {/* Config Button - Visible for SU */}
+                      {isSuperUser && (
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setIsLocalConfigOpen(true)}
+                          className="h-6 w-6 text-muted-foreground hover:text-foreground shrink-0"
+                          title="Configurar Serie Local"
+                        >
+                          <SettingsIcon className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -4393,6 +4448,37 @@ export default function POSPage() {
                     </div>
                   )}
                 </div>
+                
+                  {/* Display current order ID and delivery method if available */}
+                  {currentOrderId && currentOrder && (
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1 sm:mt-0">
+                      <div className="text-xs sm:text-sm bg-blue-100 text-blue-800 px-2.5 py-1 rounded-md whitespace-nowrap">
+                        <span className="font-medium">Pedido:</span> {currentOrderId}
+                      </div>
+                      <div className="text-xs sm:text-sm bg-green-100 text-green-800 px-2.5 py-1 rounded-md whitespace-nowrap cursor-pointer hover:bg-accent">
+                        <p 
+                          className="font-medium flex items-center gap-1 rounded px-1 transition-colors"
+                          onClick={async () => {
+                            if (currentOrderId && currentOrder) {
+                              const newMethod = currentOrder.deliveryMethod === 'delivery' ? 'pickup' : 'delivery';
+                              await updateOrderDeliveryMethod(currentOrderId, newMethod);
+                            }
+                          }}
+                        >
+                          Método: 
+                          {currentOrder.deliveryMethod === "delivery" ? (
+                            <span className="flex items-center gap-1">
+                              <Truck className="h-3 w-3 sm:h-4 sm:w-4" /> Entrega
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1">
+                              <Armchair className="h-3 w-3 sm:h-4 sm:w-4" /> Recogida
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  )}
               </CardContent>
               <CardFooter className="flex flex-col gap-2 mt-auto border-t pt-2 sm:pt-4 p-2 sm:p-4 w-full max-w-full">
                 {cartItems.length > 0 && (
