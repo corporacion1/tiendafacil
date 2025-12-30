@@ -29,6 +29,7 @@ import {
   Library,
   FilePieChart,
   LogOut,
+  ArrowUp,
   ArrowLeft,
   Armchair,
   ScanLine,
@@ -36,9 +37,10 @@ import {
   Share,
   Pencil,
   ShieldCheck,
+  MapPinCheckIcon,
   EyeOff,
 } from "lucide-react";
-import { FaWhatsapp } from "react-icons/fa";
+import { FaWhatsapp, FaTruckMoving } from "react-icons/fa";
 import dynamic from "next/dynamic";
 
 // Importar el scanner dinámicamente para evitar problemas de SSR
@@ -1310,6 +1312,17 @@ export default function POSPage() {
                     total: orderData.total,
                     storeId: orderData.storeId,
                     status: orderData.status,
+                    deliveryAddress: orderData.deliveryAddress,
+                    deliveryPhone: orderData.deliveryPhone,
+                    deliveryDate: orderData.deliveryDate,
+                    deliveryTime: orderData.deliveryTime,
+                    deliveryStatus: orderData.deliveryStatus,
+                    deliveryMethod: orderData.deliveryMethod,
+                    deliveryProviderID: orderData.deliveryProviderID,
+                    deliveryFee: orderData.deliveryFee,
+                    deliveryTip: orderData.deliveryTip,
+                    deliveryNotes: orderData.deliveryNotes,
+                    deliveryPerson: orderData.deliveryPerson,
                   };
                   await loadPendingOrder(formattedOrder);
                 } else {
@@ -2248,6 +2261,8 @@ export default function POSPage() {
       status: "pending",
       createdAt: new Date().toISOString(), // Esto no se actualizará en DB si es update
       updatedAt: new Date().toISOString(),
+      deliveryMethod: "pickup",
+      deliveryStatus: "processed"
     };
 
     // Usar el total correcto para la orden (con impuestos si aplican)
@@ -3641,6 +3656,9 @@ export default function POSPage() {
                                               ? "En Proceso"
                                               : order.status}
                                         </Badge>
+                                        {order.deliveryMethod === "delivery" && (
+                                          <FaTruckMoving className="w-6 h-6"/>
+                                        )}
                                       </div>
                                       <div className="space-y-1">
                                         <p className="text-sm font-medium text-blue-600">
@@ -3662,6 +3680,9 @@ export default function POSPage() {
                                             new Date(order.createdAt as string),
                                             "dd/MM/yyyy HH:mm",
                                           )}
+                                        </p>
+                                        <p>
+                                          <MapPinCheckIcon className="w-4 h-4" /> {order.deliveryNotes}
                                         </p>
                                       </div>
                                       <p className="text-sm font-medium text-primary mt-2">

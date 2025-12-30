@@ -66,9 +66,11 @@ export async function GET(request: NextRequest) {
       customerAddress: order.customerAddress,
       deliveryMethod: order.deliveryMethod,
       deliveryStatus: order.deliveryStatus,
+      deliveryProviderID: order.deliveryProviderID,
       deliveryFee: order.deliveryFee,
       deliveryDate: order.deliveryDate,
       deliveryTime: order.deliveryTime,
+      deliveryNotes: order.deliveryNotes,
       latitude: order.latitude,
       longitude: order.longitude
     };
@@ -118,7 +120,7 @@ export async function GET(request: NextRequest) {
       cacheKey,
       {
         tags: cacheTags,
-        revalidate: 30 // Check DB every 30s max if no revalidation event occurs
+        revalidate: 20 // Check DB every 20s max if no revalidation event occurs
       }
     );
 
@@ -134,6 +136,7 @@ export async function GET(request: NextRequest) {
       items: typeof order.items === 'string' ? JSON.parse(order.items) : order.items,
       total: order.total,
       status: order.status,
+      notes: order.notes,
       processedBy: order.user_id,
       saleId: order.sale_id,
       createdAt: order.created_at,
@@ -141,9 +144,11 @@ export async function GET(request: NextRequest) {
       customerAddress: order.customerAddress,
       deliveryMethod: order.deliveryMethod,
       deliveryStatus: order.deliveryStatus,
+      deliveryProviderID: order.deliveryProviderID,
       deliveryFee: order.deliveryFee,
       deliveryDate: order.deliveryDate,
       deliveryTime: order.deliveryTime,
+      deliveryNotes: order.deliveryNotes,
       latitude: order.latitude,
       longitude: order.longitude
     })) || [];
@@ -195,9 +200,11 @@ export async function POST(request: NextRequest) {
       customerAddress: body.customerAddress,
       deliveryMethod: body.deliveryMethod,
       deliveryStatus: body.deliveryStatus,
+      deliveryProviderID: body.deliveryProviderID,
       deliveryFee: body.deliveryFee,
       deliveryDate: body.deliveryDate,
       deliveryTime: body.deliveryTime,
+      deliveryNotes: body.deliveryNotes,
       latitude: body.latitude,
       longitude: body.longitude
     };
@@ -248,9 +255,11 @@ export async function POST(request: NextRequest) {
         customerAddress: createdOrder.customerAddress,
         deliveryMethod: createdOrder.deliveryMethod,
         deliveryStatus: createdOrder.deliveryStatus,
+        deliveryProviderID: createdOrder.deliveryProviderID,
         deliveryFee: createdOrder.deliveryFee,
         deliveryDate: createdOrder.deliveryDate,
         deliveryTime: createdOrder.deliveryTime,
+        deliveryNotes: createdOrder.deliveryNotes,
         latitude: createdOrder.latitude,
         longitude: createdOrder.longitude
       }
@@ -291,6 +300,7 @@ export async function PUT(request: NextRequest) {
 
     // Actualizar campos si se proporcionan
     if (status) updateData.status = status;
+    if (notes) updateData.notes = notes;
     if (items) updateData.items = items;
     if (total !== undefined) updateData.total = total;
     if (customerName) updateData.customer_name = customerName;
@@ -351,11 +361,12 @@ export async function PUT(request: NextRequest) {
       processedBy: updatedOrder.user_id,
       saleId: updatedOrder.sale_id,
       customerAddress: updatedOrder.customerAddress,
-      deliveryMethod: updatedOrder.delivery_method,
-      deliveryStatus: updatedOrder.delivery_status,
-      deliveryFee: updatedOrder.delivery_fee,
-      deliveryDate: updatedOrder.delivery_date,
-      deliveryTime: updatedOrder.delivery_time,
+      deliveryMethod: updatedOrder.deliveryMethod,
+      deliveryStatus: updatedOrder.deliveryStatus,
+      deliveryProviderID: updatedOrder.deliveryProviderID,
+      deliveryFee: updatedOrder.deliveryFee,
+      deliveryDate: updatedOrder.deliveryDate,
+      deliveryTime: updatedOrder.deliveryTime,
       latitude: updatedOrder.latitude,
       longitude: updatedOrder.longitude
     };

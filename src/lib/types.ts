@@ -120,9 +120,9 @@ export type Order = {
   }[];
   total: number;
   storeId: string;
-  status: 'pending' | 'processing' | 'processed' | 'cancelled' | 'expired';
-  saleId?: string;
+  status?: 'pending' | 'processing' | 'processed' | 'cancelled' | 'expired';
   notes?: string;
+  saleId?: string;
   processedBy?: string;
   createdAt: string;
   updatedAt: string;

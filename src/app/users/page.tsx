@@ -445,7 +445,7 @@ export default function UsersPage() {
               </TableCell>
               <TableCell>
                 {user.storeId && (
-                  <ExternalLink className="mr-2 h-4 w-4" onClick={() => handleViewAsUser(user)} />
+                  <ExternalLink className="mr-2 h-4 w-4 hover:cursor-pointer" onClick={() => handleViewAsUser(user)} />
                 )}
               </TableCell>
               <TableCell>
