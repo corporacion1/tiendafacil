@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import type { UserProfile } from "@/lib/types";
-import { MoreHorizontal, Search, UserPlus, Shield, Mail, Phone, ExternalLink, UserX, Armchair, Database, Users, Crown, Store, Loader2, Building2, HandIcon } from "lucide-react";
+import { MoreHorizontal, Search, UserPlus, Shield, Mail, Phone, ExternalLink, UserX, Armchair, Database, Users, Crown, Store, Loader2, Building2, HandIcon, CornerRightDown } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,6 +19,7 @@ import { useSettings } from "@/contexts/settings-context";
 import { ErrorBoundary, MinimalErrorFallback } from "@/components/error-boundary";
 import { useErrorHandler } from "@/hooks/use-error-handler";
 import { EditUserModal } from "@/components/edit-user-modal";
+import { FaCashRegister } from "react-icons/fa";
 
 // Interface para el resumen de usuarios
 interface UsersSummary {
@@ -403,7 +404,6 @@ export default function UsersPage() {
             <TableHead>Estado</TableHead>
             <TableHead>Contacto</TableHead>
             <TableHead>Ver</TableHead>
-            <TableHead><Building2 /></TableHead>
             <TableHead>Acciones</TableHead>
           </TableRow>
         </TableHeader>
@@ -444,13 +444,20 @@ export default function UsersPage() {
                 </div>
               </TableCell>
               <TableCell>
-                {user.storeId && (
-                  <ExternalLink className="mr-2 h-4 w-4 hover:cursor-pointer" onClick={() => handleViewAsUser(user)} />
-                )}
-              </TableCell>
-              <TableCell>
                 {user.role === 'user' && user.storeRequest && (
-                  <HandIcon className="mr-2 h-6 w-6 text-amber-500 text-center" />
+                  <Shield className="mr-2 h-6 w-6 text-amber-500 hover:cursor-pointer" onClick={() => handleViewAsUser(user)} />
+                )}
+                {user.role === 'admin' && (
+                  <Store className="mr-2 h-6 w-6 text-yellow-500 hover:cursor-pointer" onClick={() => handleViewAsUser(user)} />
+                )}
+                {user.role === 'su' && (
+                  <Crown className="mr-2 h-6 w-6 text-red-500 hover:cursor-pointer" onClick={() => handleViewAsUser(user)} />
+                )}
+                {user.role === 'depositary' && (
+                  <HandIcon className="mr-2 h-6 w-6 text-green-500 hover:cursor-pointer" onClick={() => handleViewAsUser(user)} />
+                )}
+                {user.role === 'pos' && (
+                  <FaCashRegister className="mr-2 h-6 w-6 text-blue-500 hover:cursor-pointer" onClick={() => handleViewAsUser(user)} />
                 )}
               </TableCell>
               <TableCell>
