@@ -3,7 +3,7 @@
 // Imports
 import { useState, useMemo, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Package, ShoppingBag, Plus, Minus, Trash2, Send, LayoutGrid, Instagram, Star, Search, UserCircle, LogOut, MoreHorizontal, Copy, AlertCircle, QrCode, Pencil, ArrowRight, Check, User, Phone, Mail, Eye, ScanLine, X, Store as StoreIcon, ArrowLeftRight, Share, MapPin, Truck, Armchair } from "lucide-react";
+import { Package, ShoppingBag, Plus, Minus, Trash2, Send, LayoutGrid, Instagram, Star, Search, UserCircle, LogOut, MoreHorizontal, Copy, AlertCircle, QrCode, Pencil, ArrowRight, Check, User, Phone, Mail, Eye, ScanLine, X, Store as StoreIcon, ArrowLeftRight, Share, MapPin, Truck, Armchair, RotateCcw } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
@@ -697,40 +697,19 @@ export default function CatalogPage() {
     isPolling: isPollingOrders
   } = useUserOrders(authUser?.email || undefined, storeIdForCatalog);
 
-  useEffect(() => {
-    let intervalId: NodeJS.Timeout;
-    
-    const checkForOrderUpdates = async () => {
-      if (authUser?.email && storeIdForCatalog) {
-        try {
-          const response = await fetch(`/api/orders?customerEmail=${encodeURIComponent(authUser.email)}&storeId=${encodeURIComponent(storeIdForCatalog)}`);
-          
-          if (response.ok) {
-            const serverOrders = await response.json();
-            const serverOrderCount = Array.isArray(serverOrders) ? serverOrders.length : 0;
-            
-            if (serverOrderCount !== userOrders.length) {
-              console.log(`🔄 [Order Monitor] Diferencia detectada: servidor=${serverOrderCount}, local=${userOrders.length}`);
-              await refetchOrders(true);
-            }
-          }
-        } catch (error) {
-          console.error('❌ [Order Monitor] Error verificando actualizaciones de pedidos:', error);
-        }
-      }
-    };
-    
-    intervalId = setInterval(checkForOrderUpdates, 3000);
-    
-    checkForOrderUpdates();
-    
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [authUser?.email, storeIdForCatalog, userOrders.length, refetchOrders]);
 
+
+  // Estado para forzar actualizaciones
+  const [, forceUpdate] = useState({});
+  
+  // useEffect para forzar actualización de pedidos después de crear un nuevo pedido
+  useEffect(() => {
+    console.log('🔄 [Order Update] Orders list updated, count:', userOrders.length);
+    
+    // Forzar actualización del UI para garantizar la re-renderización
+    forceUpdate({});
+  }, [userOrders.length]);
+  
   // Función para verificar si la tasa de cambio está actualizada (últimas 8 horas)
   const isCurrencyRateRecent = useMemo(() => {
     console.log('🔄 [Catalog] Evaluando currency rates disponibles:', currencyRates?.length || 0);
@@ -1689,22 +1668,22 @@ export default function CatalogPage() {
       setPhoneError(null);
       setIsEditingOrder(false);
       
-      // Pequeña pausa para asegurar que la base de datos se actualice
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
       // Actualizar la lista de pedidos inmediatamente después de crear el pedido con fuerza
       await refetchOrders(true);
       
       // Pequeña pausa para asegurar que los datos se hayan actualizado
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       // Abrir automáticamente el panel lateral para mostrar los pedidos recién creados
-      setTimeout(() => {
+      setTimeout(async () => {
+        // Asegurar que la lista de pedidos esté actualizada antes de abrir el panel
+        await refetchOrders(true);
+        
         const cartSheetTrigger = document.getElementById('cart-sheet-trigger');
         if (cartSheetTrigger) {
           cartSheetTrigger.click();
         }
-      }, 100);
+      }, 300);
 
       toast({
         title: isEditingOrder ? "¡Pedido Actualizado!" : "¡Pedido Generado!",
@@ -2205,10 +2184,10 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                 </DialogContent>
               </Dialog>
               <AddOrderGuard>
-                <Sheet onOpenChange={(open) => {
-                  if (open && cart.length === 0) {
-                    // Recargar pedidos cuando se abre el panel y el carrito está vacío
-                    refetchOrders();
+                <Sheet key={`cart-sheet-${userOrders.length}`} onOpenChange={(open) => {
+                  if (open) {
+                    // Recargar pedidos cuando se abre el panel
+                    refetchOrders(true);
                   }
                 }}>
                   <SheetTrigger asChild>
@@ -2274,10 +2253,21 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                         {/* Lista de Pedidos (Visible solo si el carrito está vacío) */}
                         {userOrders.length > 0 && cart.length === 0 && (
                           <div className="px-4 mb-6">
-                            <h3 className="text-sm font-medium text-muted-foreground mb-3 px-1">Mis Pedidos Recientes</h3>
+                            <div className="flex justify-between items-center mb-3 px-1">
+                              <h3 className="text-sm font-medium text-muted-foreground">Mis Pedidos Recientes ({userOrders.length})</h3>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => refetchOrders(true)}
+                                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                                title="Actualizar pedidos"
+                              >
+                                <RotateCcw className="w-4 h-4" />
+                              </Button>
+                            </div>
                             <div className="space-y-3">
-                              {userOrders.map((order, index) => (
-                                <div key={`${order.orderId}-${index}`} className="flex flex-col p-4 rounded-xl border-0 bg-gradient-to-r from-background/80 to-muted/20 shadow-sm hover:shadow-md transition-all duration-200">
+                              {userOrders.map((order) => (
+                                <div key={order.orderId} className="flex flex-col p-4 rounded-xl border-0 bg-gradient-to-r from-background/80 to-muted/20 shadow-sm hover:shadow-md transition-all duration-200">
                                   <div className="flex justify-between items-start">
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2 mb-1">
@@ -2300,7 +2290,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                                       <div className="mt-2 text-xs text-muted-foreground">
                                         {order.items.length} items
                                       </div>
-
+                        
                                       {/* Icono de entrega/pickup */}
                                       <div className="flex items-center gap-2 mt-2">
                                         {order.deliveryMethod === 'delivery' ? (
@@ -2317,7 +2307,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                                           </div>
                                         )}
                                       </div>
-
+                        
                                       {/* Mostrar ubicación adjunta si existe */}
                                       {order.latitude && order.longitude && (
                                         <div className="flex items-center gap-1 mt-2 text-xs text-green-600 font-medium">
@@ -2334,7 +2324,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                                         </div>
                                       )}
                                     </div>
-
+                        
                                     {/* Botones de acción */}
                                     <div className="flex items-center">
                                       {order.status === 'pending' && (
@@ -2399,6 +2389,18 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
 
                         {cart.length > 0 && (
                           <div className="px-6 space-y-4">
+                            <div className="flex justify-between items-center mb-2">
+                              <h3 className="text-sm font-medium">Artículos en Pedido</h3>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => refetchOrders(true)}
+                                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                                title="Actualizar pedidos"
+                              >
+                                <RotateCcw className="w-4 h-4" />
+                              </Button>
+                            </div>
                             {cart.map(item => (
                               <div key={item.product.id} className="flex items-start gap-4">
                                 <div className="relative h-16 w-16 rounded-md overflow-hidden bg-muted">
@@ -3487,4 +3489,4 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
       <StoreRequestButton />
     </>
   );
-};
+}

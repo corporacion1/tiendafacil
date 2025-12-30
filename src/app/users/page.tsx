@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { useSubmitState } from "@/hooks/useSubmitState";
 import type { UserProfile } from "@/lib/types";
 import { MoreHorizontal, Search, UserPlus, Shield, Mail, Phone, ExternalLink, UserX, Armchair, Database, Users, Crown, Store, Loader2, Building2, HandIcon, CornerRightDown } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,6 +92,9 @@ export default function UsersPage() {
   });
   const [confirmationText, setConfirmationText] = useState('');
   const [switchingContext, setSwitchingContext] = useState(false);
+  const { isSubmitting, withSubmitState } = useSubmitState();
+  const [isPromoting, setIsPromoting] = useState(false);
+  const [isDisabling, setIsDisabling] = useState(false);
 
   // Cargar todos los usuarios para administración (solo superadmin)
   useEffect(() => {
@@ -189,70 +193,75 @@ export default function UsersPage() {
   const confirmPromoteWithStore = async () => {
     if (!promotingUser) return;
 
-    try {
-      // 1. Crear la tienda con siembra
-      const createStoreResponse = await fetch('/api/stores/create-and-seed', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newStoreData.name,
-          ownerEmail: promotingUser.email,
-          businessType: 'General',
-          address: '',
-          phone: ''
-        })
-      });
+    await withSubmitState(async () => {
+      setIsPromoting(true);
+      try {
+        // 1. Crear la tienda con siembra
+        const createStoreResponse = await fetch('/api/stores/create-and-seed', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: newStoreData.name,
+            ownerEmail: promotingUser.email,
+            businessType: 'General',
+            address: '',
+            phone: ''
+          })
+        });
 
-      if (!createStoreResponse.ok) {
-        const errorData = await createStoreResponse.json();
-        throw new Error(errorData.error || 'Error al crear tienda');
+        if (!createStoreResponse.ok) {
+          const errorData = await createStoreResponse.json();
+          throw new Error(errorData.error || 'Error al crear tienda');
+        }
+
+        const storeData = await createStoreResponse.json();
+        const actualStoreId = storeData.store.storeId;
+
+        // 2. Actualizar el usuario con el nuevo rol y storeId
+        const updateUserResponse = await fetch('/api/users', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uid: promotingUser.uid,
+            role: 'admin',
+            storeId: actualStoreId,
+            storeRequest: false
+          }),
+        });
+
+        if (!updateUserResponse.ok) {
+          throw new Error('Error al actualizar usuario');
+        }
+
+        const updatedUser = await updateUserResponse.json();
+        setUsers(prevUsers => prevUsers.map(u => u.uid === promotingUser.uid ? updatedUser.user : u));
+
+        // 3. Cambiar el contexto activo a la nueva tienda
+        await switchStore(actualStoreId);
+
+        toast({
+          title: "¡Usuario Promovido Exitosamente!",
+          description: `${promotingUser.displayName} ahora es administrador de la tienda ${actualStoreId}. El contexto ha cambiado a su nueva tienda.`,
+        });
+
+        // Cerrar modal y limpiar estados
+        setShowPromoteModal(false);
+        setPromotingUser(null);
+        setNewStoreData({
+          name: '',
+          generatedStoreId: ''
+        });
+        setConfirmationText('');
+
+      } catch (e: any) {
+        handleError.api(e, {
+          action: 'promote_user_with_store',
+          component: 'UsersPage'
+        });
+      } finally {
+        setIsPromoting(false);
       }
-
-      const storeData = await createStoreResponse.json();
-      const actualStoreId = storeData.store.storeId;
-
-      // 2. Actualizar el usuario con el nuevo rol y storeId
-      const updateUserResponse = await fetch('/api/users', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          uid: promotingUser.uid,
-          role: 'admin',
-          storeId: actualStoreId,
-          storeRequest: false
-        }),
-      });
-
-      if (!updateUserResponse.ok) {
-        throw new Error('Error al actualizar usuario');
-      }
-
-      const updatedUser = await updateUserResponse.json();
-      setUsers(prevUsers => prevUsers.map(u => u.uid === promotingUser.uid ? updatedUser.user : u));
-
-      // 3. Cambiar el contexto activo a la nueva tienda
-      await switchStore(actualStoreId);
-
-      toast({
-        title: "¡Usuario Promovido Exitosamente!",
-        description: `${promotingUser.displayName} ahora es administrador de la tienda ${actualStoreId}. El contexto ha cambiado a su nueva tienda.`,
-      });
-
-      // Cerrar modal y limpiar estados
-      setShowPromoteModal(false);
-      setPromotingUser(null);
-      setNewStoreData({
-        name: '',
-        generatedStoreId: ''
-      });
-      setConfirmationText('');
-
-    } catch (e: any) {
-      handleError.api(e, {
-        action: 'promote_user_with_store',
-        component: 'UsersPage'
-      });
-    }
+    });
   };
 
   const handleViewAsUser = async (user: UserProfile) => {
@@ -305,37 +314,42 @@ export default function UsersPage() {
   const confirmAction = async () => {
     if (!userToAction) return;
 
-    try {
-      if (actionType === 'disable') {
-        const newStatus = userToAction.status === 'disabled' ? 'active' : 'disabled';
-        const response = await fetch('/api/users', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ uid: userToAction.uid, status: newStatus }),
-        });
+    await withSubmitState(async () => {
+      setIsDisabling(true);
+      try {
+        if (actionType === 'disable') {
+          const newStatus = userToAction.status === 'disabled' ? 'active' : 'disabled';
+          const response = await fetch('/api/users', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid: userToAction.uid, status: newStatus }),
+          });
 
-        if (!response.ok) {
-          throw new Error('Error al cambiar estado del usuario');
+          if (!response.ok) {
+            throw new Error('Error al cambiar estado del usuario');
+          }
+
+          const updatedUser = await response.json();
+          setUsers(prevUsers => prevUsers.map(u => u.uid === userToAction.uid ? updatedUser : u));
+
+          toast({
+            title: `Usuario ${newStatus === 'disabled' ? 'Deshabilitado' : 'Habilitado'}`,
+            description: `La cuenta de "${userToAction.displayName}" ha sido ${newStatus === 'disabled' ? 'deshabilitada' : 'habilitada'}.`,
+          });
         }
 
-        const updatedUser = await response.json();
-        setUsers(prevUsers => prevUsers.map(u => u.uid === userToAction.uid ? updatedUser : u));
-
+        setUserToAction(null);
+        setActionType(null);
+      } catch (e) {
         toast({
-          title: `Usuario ${newStatus === 'disabled' ? 'Deshabilitado' : 'Habilitado'}`,
-          description: `La cuenta de "${userToAction.displayName}" ha sido ${newStatus === 'disabled' ? 'deshabilitada' : 'habilitada'}.`,
+          variant: "destructive",
+          title: "Error",
+          description: "No se pudo completar la acción.",
         });
+      } finally {
+        setIsDisabling(false);
       }
-
-      setUserToAction(null);
-      setActionType(null);
-    } catch (e) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo completar la acción.",
-      });
-    }
+    });
   };
 
   const filteredUsers = useMemo(() => {
@@ -642,8 +656,19 @@ export default function UsersPage() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel onClick={() => setUserToAction(null)}>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={confirmAction}>
-                Sí, confirmar
+              <AlertDialogAction
+                onClick={confirmAction}
+                isSubmitting={isDisabling}
+                disabled={isDisabling}
+              >
+                {isDisabling ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Procesando...
+                  </>
+                ) : (
+                  "Sí, confirmar"
+                )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -723,11 +748,21 @@ export default function UsersPage() {
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={confirmPromoteWithStore}
-                disabled={!newStoreData.name || confirmationText !== 'CONFIRMAR'}
+                disabled={!newStoreData.name || confirmationText !== 'CONFIRMAR' || isPromoting}
+                isSubmitting={isPromoting}
                 className="bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
-                <Crown className="h-4 w-4 mr-2" />
-                Crear Tienda y Promover
+                {isPromoting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Procesando...
+                  </>
+                ) : (
+                  <>
+                    <Crown className="h-4 w-4 mr-2" />
+                    Crear Tienda y Promover
+                  </>
+                )}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
