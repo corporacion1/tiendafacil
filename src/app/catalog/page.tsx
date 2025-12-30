@@ -5,7 +5,7 @@
 // Imports
 import { useState, useMemo, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Package, ShoppingBag, Plus, Minus, Trash2, Send, LayoutGrid, Instagram, Star, Search, UserCircle, LogOut, MoreHorizontal, Copy, AlertCircle, QrCode, Pencil, ArrowRight, Check, User, Phone, Mail, Eye, ScanLine, X, Store as StoreIcon, ArrowLeftRight, Share, MapPin, Truck } from "lucide-react";
+import { Package, ShoppingBag, Plus, Minus, Trash2, Send, LayoutGrid, Instagram, Star, Search, UserCircle, LogOut, MoreHorizontal, Copy, AlertCircle, QrCode, Pencil, ArrowRight, Check, User, Phone, Mail, Eye, ScanLine, X, Store as StoreIcon, ArrowLeftRight, Share, MapPin, Truck, Armchair } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
@@ -1787,6 +1787,8 @@ export default function CatalogPage() {
     try {
       const savedOrder = await createOrderInSupabase(newPendingOrder);
 
+      // Pequeña pausa para asegurar que Supabase procese el cambio antes de recargar
+      await new Promise(resolve => setTimeout(resolve, 500));
       // Refrescar la lista de pedidos del usuario desde la DB
       await refetchOrders();
 
@@ -2145,6 +2147,8 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
         updatedAt: new Date().toISOString()
       });
 
+      // Pequeña pausa para asegurar que Supabase procese el cambio antes de recargar
+      await new Promise(resolve => setTimeout(resolve, 500));
       // Refrescar la lista de pedidos
       await refetchOrders();
 
@@ -2313,7 +2317,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                   <SheetContent className="flex w-full flex-col p-0 sm:max-w-lg bg-gradient-to-br from-background via-background to-muted/20 border-0 shadow-2xl">
                     <SheetHeader className="px-6 pt-6 pb-4 bg-gradient-to-r from-primary/5 to-accent/5 border-b border-border/50">
                       <div className="flex items-center justify-between">
-                        <SheetTitle className="text-xl font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Mi Pedido</SheetTitle>
+                        <SheetTitle className="text-xl font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Mis Pedidos</SheetTitle>
                         <div className="flex items-center gap-3 text-xs text-muted-foreground">
                           {/* Estado de conexión */}
                           {!isOnline ? (
@@ -2359,8 +2363,8 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                           </div>
                         )}
 
-                        {/* Lista de Pedidos (Siempre visible si existen) */}
-                        {userOrders.length > 0 && (
+                        {/* Lista de Pedidos (Visible solo si el carrito está vacío) */}
+                        {userOrders.length > 0 && cart.length === 0 && (
                           <div className="px-4 mb-6">
                             <h3 className="text-sm font-medium text-muted-foreground mb-3 px-1">Mis Pedidos Recientes</h3>
                             <div className="space-y-3">
@@ -2389,11 +2393,36 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                                         {order.items.length} items
                                       </div>
 
+                                      {/* Icono de entrega/pickup */}
+                                      <div className="flex items-center gap-2 mt-2">
+                                        {order.deliveryMethod === 'delivery' ? (
+                                          <div className="flex items-center gap-1 text-blue-600">
+                                            <Truck className="h-4 w-4" />
+                                            <span className="text-xs font-medium">Entrega</span>
+                                            <span className="sr-only">Método: entrega a domicilio</span>
+                                          </div>
+                                        ) : (
+                                          <div className="flex items-center gap-1 text-orange-600">
+                                            <Armchair className="h-4 w-4" />
+                                            <span className="text-xs font-medium">Recogida</span>
+                                            <span className="sr-only">Método: recogida en tienda</span>
+                                          </div>
+                                        )}
+                                      </div>
+
                                       {/* Mostrar ubicación adjunta si existe */}
                                       {order.latitude && order.longitude && (
                                         <div className="flex items-center gap-1 mt-2 text-xs text-green-600 font-medium">
                                           <MapPin className="h-3 w-3" />
-                                          Ubicación adjunta
+                                          <a 
+                                            href={`https://www.google.com/maps?q=${order.latitude},${order.longitude}`} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="underline hover:text-green-700 transition-colors"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            Ver mapa
+                                          </a>
                                         </div>
                                       )}
                                     </div>

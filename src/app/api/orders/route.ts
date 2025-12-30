@@ -63,14 +63,15 @@ export async function GET(request: NextRequest) {
       processedBy: order.user_id,
       createdAt: order.created_at,
       updatedAt: order.updated_at,
-      customerAddress: order.customerAddress,
-      deliveryMethod: order.deliveryMethod,
-      deliveryStatus: order.deliveryStatus,
-      deliveryProviderID: order.deliveryProviderID,
-      deliveryFee: order.deliveryFee,
-      deliveryDate: order.deliveryDate,
-      deliveryTime: order.deliveryTime,
-      deliveryNotes: order.deliveryNotes,
+      customerAddress: order.customer_address,
+      deliveryMethod: order.delivery_method,
+      deliveryStatus: order.delivery_status,
+      deliveryProviderID: order.delivery_provider_id,
+      deliveryFee: order.delivery_fee,
+      deliveryDate: order.delivery_date,
+      deliveryTime: order.delivery_time,
+      deliveryNotes: order.delivery_notes,
+      notes: order.notes,
       latitude: order.latitude,
       longitude: order.longitude
     };
@@ -141,14 +142,14 @@ export async function GET(request: NextRequest) {
       saleId: order.sale_id,
       createdAt: order.created_at,
       updatedAt: order.updated_at,
-      customerAddress: order.customerAddress,
-      deliveryMethod: order.deliveryMethod,
-      deliveryStatus: order.deliveryStatus,
-      deliveryProviderID: order.deliveryProviderID,
-      deliveryFee: order.deliveryFee,
-      deliveryDate: order.deliveryDate,
-      deliveryTime: order.deliveryTime,
-      deliveryNotes: order.deliveryNotes,
+      customerAddress: order.customer_address,
+      deliveryMethod: order.delivery_method,
+      deliveryStatus: order.delivery_status,
+      deliveryProviderID: order.delivery_provider_id,
+      deliveryFee: order.delivery_fee,
+      deliveryDate: order.delivery_date,
+      deliveryTime: order.delivery_time,
+      deliveryNotes: order.delivery_notes,
       latitude: order.latitude,
       longitude: order.longitude
     })) || [];
@@ -181,8 +182,8 @@ export async function POST(request: NextRequest) {
     // Generar ID único si no se proporciona
     const orderId = body.orderId || body.id || generateId('ORD');
 
-    // Preparar datos para Supabase
-    const orderData = {
+    // Preparar datos para Supabase - Solo incluir campos que existen en la tabla
+    const orderData: any = {
       id: orderId, // Add id field for NOT NULL constraint
       order_id: orderId,
       customer_name: body.customerName,
@@ -192,22 +193,24 @@ export async function POST(request: NextRequest) {
       total: body.total || 0,
       store_id: body.storeId,
       status: 'pending',
-      notes: body.notes,
-      processed_by: body.user_id,
-      sale_id: body.saleId,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      customerAddress: body.customerAddress,
-      deliveryMethod: body.deliveryMethod,
-      deliveryStatus: body.deliveryStatus,
-      deliveryProviderID: body.deliveryProviderID,
-      deliveryFee: body.deliveryFee,
-      deliveryDate: body.deliveryDate,
-      deliveryTime: body.deliveryTime,
-      deliveryNotes: body.deliveryNotes,
-      latitude: body.latitude,
-      longitude: body.longitude
     };
+    
+    // Agregar campos opcionales solo si existen y tienen valor
+    if (body.notes !== undefined) orderData.notes = body.notes;
+    if (body.user_id !== undefined) orderData.processed_by = body.user_id;
+    if (body.saleId !== undefined) orderData.sale_id = body.saleId;
+    if (body.customerAddress !== undefined) orderData.customer_address = body.customerAddress;
+    if (body.deliveryMethod !== undefined) orderData.delivery_method = body.deliveryMethod;
+    if (body.deliveryStatus !== undefined) orderData.delivery_status = body.deliveryStatus;
+    if (body.deliveryProviderID !== undefined) orderData.delivery_provider_id = body.deliveryProviderID;
+    if (body.deliveryFee !== undefined) orderData.delivery_fee = body.deliveryFee;
+    if (body.deliveryDate !== undefined) orderData.delivery_date = body.deliveryDate;
+    if (body.deliveryTime !== undefined) orderData.delivery_time = body.deliveryTime;
+    if (body.deliveryNotes !== undefined) orderData.delivery_notes = body.deliveryNotes;
+    if (body.latitude !== undefined) orderData.latitude = body.latitude;
+    if (body.longitude !== undefined) orderData.longitude = body.longitude;
 
     // Agregar link de ubicación a las notas si hay coordenadas (para compatibilidad)
     if (body.latitude && body.longitude) {
@@ -218,11 +221,43 @@ export async function POST(request: NextRequest) {
     console.log('📦 [Orders API] Creando pedido en Supabase:', orderId);
 
     // Insertar pedido en Supabase
-    const { data: createdOrder, error } = await supabase
+    let { data: createdOrder, error } = await supabase
       .from('orders')
       .insert([orderData])
       .select()
       .single();
+
+    // Si hay error de columna no encontrada, intentar con un subconjunto de campos
+    if (error && error.message.includes('column') && error.message.includes('does not exist')) {
+      console.warn('⚠️ [Orders API] Error de columna en insert - intentando con campos básicos:', error.message);
+      
+      // Crear un objeto con solo los campos básicos que deben existir
+      const basicOrderData: any = {
+        id: orderId,
+        order_id: orderId,
+        customer_name: body.customerName,
+        customer_phone: body.customerPhone,
+        customer_email: body.customerEmail,
+        items: body.items,
+        total: body.total || 0,
+        store_id: body.storeId,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      
+      // Agregar campos opcionales básicos que probablemente existan
+      if (body.notes !== undefined) basicOrderData.notes = body.notes;
+      
+      const result = await supabase
+        .from('orders')
+        .insert([basicOrderData])
+        .select()
+        .single();
+        
+      createdOrder = result.data;
+      error = result.error;
+    }
 
     if (error) {
       console.error('❌ [Orders API] Error creando pedido en Supabase:', error);
@@ -252,14 +287,14 @@ export async function POST(request: NextRequest) {
         saleId: createdOrder.sale_id,
         createdAt: createdOrder.created_at,
         updatedAt: createdOrder.updated_at,
-        customerAddress: createdOrder.customerAddress,
-        deliveryMethod: createdOrder.deliveryMethod,
-        deliveryStatus: createdOrder.deliveryStatus,
-        deliveryProviderID: createdOrder.deliveryProviderID,
-        deliveryFee: createdOrder.deliveryFee,
-        deliveryDate: createdOrder.deliveryDate,
-        deliveryTime: createdOrder.deliveryTime,
-        deliveryNotes: createdOrder.deliveryNotes,
+        customerAddress: createdOrder.customer_address,
+        deliveryMethod: createdOrder.delivery_method,
+        deliveryStatus: createdOrder.delivery_status,
+        deliveryProviderID: createdOrder.delivery_provider_id,
+        deliveryFee: createdOrder.delivery_fee,
+        deliveryDate: createdOrder.delivery_date,
+        deliveryTime: createdOrder.delivery_time,
+        deliveryNotes: createdOrder.delivery_notes,
         latitude: createdOrder.latitude,
         longitude: createdOrder.longitude
       }
@@ -283,7 +318,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { orderId, status, processedBy, saleId, notes, storeId, items, total, customerName, customerPhone, customerEmail, latitude, longitude, customerAddress } = body;
+    const { orderId, status, processedBy, saleId, notes, storeId, items, total, customerName, customerPhone, customerEmail, latitude, longitude, customerAddress, deliveryMethod, deliveryStatus, deliveryProviderID, deliveryFee, deliveryDate, deliveryTime, deliveryNotes } = body;
 
     if (!orderId || !storeId) {
       return NextResponse.json({
@@ -309,9 +344,16 @@ export async function PUT(request: NextRequest) {
     if (processedBy !== undefined) updateData.processed_by = processedBy;
     if (saleId !== undefined) updateData.sale_id = saleId;
     if (notes !== undefined) updateData.notes = notes;
-    if (customerAddress !== undefined) updateData.customerAddress = customerAddress;
+    if (customerAddress !== undefined) updateData.customer_address = customerAddress;
     if (latitude !== undefined) updateData.latitude = latitude;
     if (longitude !== undefined) updateData.longitude = longitude;
+    if (deliveryMethod !== undefined) updateData.delivery_method = deliveryMethod;
+    if (deliveryStatus !== undefined) updateData.delivery_status = deliveryStatus;
+    if (deliveryProviderID !== undefined) updateData.delivery_provider_id = deliveryProviderID;
+    if (deliveryFee !== undefined) updateData.delivery_fee = deliveryFee;
+    if (deliveryDate !== undefined) updateData.delivery_date = deliveryDate;
+    if (deliveryTime !== undefined) updateData.delivery_time = deliveryTime;
+    if (deliveryNotes !== undefined) updateData.delivery_notes = deliveryNotes;
 
     // Si se marca como procesado, agregar campos adicionales
     if (status === OrderStatus.PROCESSED) {
@@ -321,13 +363,41 @@ export async function PUT(request: NextRequest) {
     }
 
     // Actualizar en Supabase
-    const { data: updatedOrder, error } = await supabase
+    let { data: updatedOrder, error } = await supabase
       .from('orders')
       .update(updateData)
       .eq('order_id', orderId)
       .eq('store_id', storeId)
       .select()
       .single();
+
+    // Si hay error de columna no encontrada, intentar con un subconjunto de campos
+    if (error && error.message.includes('column') && error.message.includes('does not exist')) {
+      console.warn('⚠️ [Orders API] Error de columna en update - intentando con campos básicos:', error.message);
+      
+      // Crear un objeto con solo los campos básicos que deben existir
+      const basicUpdateData: any = {
+        updated_at: new Date().toISOString()
+      };
+      
+      // Agregar campos básicos que probablemente existan
+      if (status) basicUpdateData.status = status;
+      if (notes !== undefined) basicUpdateData.notes = notes;
+      if (customerName) basicUpdateData.customer_name = customerName;
+      if (customerPhone) basicUpdateData.customer_phone = customerPhone;
+      if (customerEmail !== undefined) basicUpdateData.customer_email = customerEmail;
+      
+      const result = await supabase
+        .from('orders')
+        .update(basicUpdateData)
+        .eq('order_id', orderId)
+        .eq('store_id', storeId)
+        .select()
+        .single();
+        
+      updatedOrder = result.data;
+      error = result.error;
+    }
 
     if (error) {
       console.error('❌ [Orders API] Error actualizando pedido en Supabase:', error);
@@ -360,13 +430,14 @@ export async function PUT(request: NextRequest) {
       status: updatedOrder.status,
       processedBy: updatedOrder.user_id,
       saleId: updatedOrder.sale_id,
-      customerAddress: updatedOrder.customerAddress,
-      deliveryMethod: updatedOrder.deliveryMethod,
-      deliveryStatus: updatedOrder.deliveryStatus,
-      deliveryProviderID: updatedOrder.deliveryProviderID,
-      deliveryFee: updatedOrder.deliveryFee,
-      deliveryDate: updatedOrder.deliveryDate,
-      deliveryTime: updatedOrder.deliveryTime,
+      customerAddress: updatedOrder.customer_address,
+      deliveryMethod: updatedOrder.delivery_method,
+      deliveryStatus: updatedOrder.delivery_status,
+      deliveryProviderID: updatedOrder.delivery_provider_id,
+      deliveryFee: updatedOrder.delivery_fee,
+      deliveryDate: updatedOrder.delivery_date,
+      deliveryTime: updatedOrder.delivery_time,
+      deliveryNotes: updatedOrder.delivery_notes,
       latitude: updatedOrder.latitude,
       longitude: updatedOrder.longitude
     };

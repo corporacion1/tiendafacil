@@ -41,6 +41,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { FaWhatsapp, FaTruckMoving } from "react-icons/fa";
+import { MapPin, Truck } from "lucide-react";
 import dynamic from "next/dynamic";
 
 // Importar el scanner dinámicamente para evitar problemas de SSR
@@ -834,7 +835,7 @@ export default function POSPage() {
     if (!activeSession || !sales) return [];
     if (!activeSession.salesIds || !Array.isArray(activeSession.salesIds))
       return [];
-    return sales.filter((s) => activeSession.salesIds.includes(s.id));
+    return sales.filter((s) => (activeSession.salesIds || []).includes(s.id));
   }, [sales, activeSession]);
 
   const handleShowReportX = () => {
@@ -2261,8 +2262,8 @@ export default function POSPage() {
       status: "pending",
       createdAt: new Date().toISOString(), // Esto no se actualizará en DB si es update
       updatedAt: new Date().toISOString(),
-      deliveryMethod: "pickup",
-      deliveryStatus: "processed"
+      deliveryMethod: "pickup", // Valor por defecto para el POS
+      deliveryStatus: "pending" // Valor por defecto para el POS
     };
 
     // Usar el total correcto para la orden (con impuestos si aplican)
@@ -3656,9 +3657,21 @@ export default function POSPage() {
                                               ? "En Proceso"
                                               : order.status}
                                         </Badge>
-                                        {order.deliveryMethod === "delivery" && (
-                                          <FaTruckMoving className="w-6 h-6"/>
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                          {order.deliveryMethod === "delivery" ? (
+                                            <div className="flex items-center gap-1 text-blue-600">
+                                              <Truck className="h-4 w-4" />
+                                              <span className="text-xs font-medium">Entrega</span>
+                                              <span className="sr-only">Método: entrega a domicilio</span>
+                                            </div>
+                                          ) : (
+                                            <div className="flex items-center gap-1 text-orange-600">
+                                              <Armchair className="h-4 w-4" />
+                                              <span className="text-xs font-medium">Recogida</span>
+                                              <span className="sr-only">Método: recogida en tienda</span>
+                                            </div>
+                                          )}
+                                        </div>
                                       </div>
                                       <div className="space-y-1">
                                         <p className="text-sm font-medium text-blue-600">
@@ -3681,9 +3694,31 @@ export default function POSPage() {
                                             "dd/MM/yyyy HH:mm",
                                           )}
                                         </p>
-                                        <p>
-                                          <MapPinCheckIcon className="w-4 h-4" /> {order.deliveryNotes}
-                                        </p>
+                                        {order.notes && (
+                                          <p className="text-sm">
+                                            <FileText className="w-4 h-4 inline mr-1" /> {order.notes}
+                                          </p>
+                                        )}
+                                        {order.deliveryNotes && (
+                                          <p className="text-sm">
+                                            <MapPinCheckIcon className="w-4 h-4 inline mr-1" /> {order.deliveryNotes}
+                                          </p>
+                                        )}
+                                        {/* Mostrar ubicación adjunta si existe */}
+                                        {order.latitude && order.longitude && (
+                                          <div className="flex items-center gap-1 mt-1 text-xs text-green-600 font-medium">
+                                            <MapPin className="h-3 w-3" />
+                                            <a 
+                                              href={`https://www.google.com/maps?q=${order.latitude},${order.longitude}`} 
+                                              target="_blank" 
+                                              rel="noopener noreferrer"
+                                              className="underline hover:text-green-700 transition-colors"
+                                              onClick={(e) => e.stopPropagation()}
+                                            >
+                                              Ver mapa
+                                            </a>
+                                          </div>
+                                        )}
                                       </div>
                                       <p className="text-sm font-medium text-primary mt-2">
                                         {activeSymbol}

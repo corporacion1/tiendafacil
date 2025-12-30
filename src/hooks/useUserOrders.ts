@@ -75,7 +75,20 @@ export const useUserOrders = (userEmail?: string, storeId?: string): UseUserOrde
         items: order.items,
         total: order.total,
         storeId: order.storeId,
-        status: order.status || 'pending'
+        status: order.status || 'pending',
+        notes: order.notes,
+        processedBy: order.processedBy,
+        saleId: order.saleId,
+        customerAddress: order.customerAddress,
+        deliveryMethod: order.deliveryMethod,
+        deliveryStatus: order.deliveryStatus,
+        deliveryProviderID: order.deliveryProviderID,
+        deliveryFee: order.deliveryFee,
+        deliveryDate: order.deliveryDate,
+        deliveryTime: order.deliveryTime,
+        deliveryNotes: order.deliveryNotes,
+        latitude: order.latitude,
+        longitude: order.longitude
       })) : [];
 
       // Solo actualizar si hay cambios reales
