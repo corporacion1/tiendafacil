@@ -657,6 +657,7 @@ export default function CatalogPage() {
   const [shareUrl, setShareUrl] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [isDeliveryVisible, setIsDeliveryVisible] = useState(false);
   const [customerAddress, setCustomerAddress] = useState('');
@@ -673,7 +674,9 @@ export default function CatalogPage() {
   // Refs para tracking de inicialización única
   const urlSearchAppliedRef = useRef(false);
 
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [isEditingOrder, setIsEditingOrder] = useState(false);
+  const [originalOrderEmail, setOriginalOrderEmail] = useState<string>('');
 
   useEffect(() => {
     if (urlSku && urlSku.trim() !== '' && !urlSearchAppliedRef.current) {
@@ -699,17 +702,6 @@ export default function CatalogPage() {
 
 
 
-  // Estado para forzar actualizaciones
-  const [, forceUpdate] = useState({});
-  
-  // useEffect para forzar actualización de pedidos después de crear un nuevo pedido
-  useEffect(() => {
-    console.log('🔄 [Order Update] Orders list updated, count:', userOrders.length);
-    
-    // Forzar actualización del UI para garantizar la re-renderización
-    forceUpdate({});
-  }, [userOrders.length]);
-  
   // Función para verificar si la tasa de cambio está actualizada (últimas 8 horas)
   const isCurrencyRateRecent = useMemo(() => {
     console.log('🔄 [Catalog] Evaluando currency rates disponibles:', currencyRates?.length || 0);
@@ -734,10 +726,10 @@ export default function CatalogPage() {
     // Convertir ambas fechas a timestamps UTC para comparación precisa
     const rateTimestamp = rateDate.getTime();
     const nowTimestamp = now.getTime();
-    const twentyFourHoursInMs = 24 * 60 * 60 * 1000; // 24 horas para mayor flexibilidad
+    const eightHoursInMs = 8 * 60 * 60 * 1000; // 8 horas como se indica en el comentario
 
     const timeDifference = nowTimestamp - rateTimestamp;
-    const isRecent = timeDifference <= twentyFourHoursInMs && timeDifference >= 0;
+    const isRecent = timeDifference <= eightHoursInMs && timeDifference >= 0;
 
     console.log('📊 [Catalog] Validación de tasa de cambio (hora local):', {
       rateDate: rateDate.toLocaleString(),
@@ -747,13 +739,13 @@ export default function CatalogPage() {
       timeDifferenceMs: timeDifference,
       hoursDifference: Math.round(timeDifference / (1000 * 60 * 60)),
       isRecent,
-      twentyFourHourLimitMs: twentyFourHoursInMs
+      eightHourLimitMs: eightHoursInMs
     });
 
     if (isRecent) {
-      console.log('✅ [Catalog] Tasa de cambio reciente (< 24 horas) - mostrando icono de cambio');
+      console.log('✅ [Catalog] Tasa de cambio reciente (< 8 horas) - mostrando icono de cambio');
     } else {
-      console.log('❌ [Catalog] Tasa de cambio antigua (> 24 horas) - ocultando icono de cambio');
+      console.log('❌ [Catalog] Tasa de cambio antigua (> 8 horas) - ocultando icono de cambio');
     }
 
     return isRecent;
@@ -770,6 +762,13 @@ export default function CatalogPage() {
   const { isOnline } = useNetworkStatus();
 
   const [isClient, setIsClient] = useState(false)
+  
+  // Estado para rastrear la última actualización de pedidos
+  // Estado para forzar actualización del componente
+  const [lastOrderUpdate, setLastOrderUpdate] = useState(0);
+  
+  // Función para forzar actualización del componente
+  const forceUpdate = () => setLastOrderUpdate(prev => prev + 1);
 
   // Estados para modal de ads y registro
   const [selectedAd, setSelectedAd] = useState<Ad | null>(null);
@@ -860,8 +859,6 @@ export default function CatalogPage() {
   const [scannerError, setScannerError] = useState<string | null>(null);
   const [lastScannedCode, setLastScannedCode] = useState<string | null>(null);
 
-
-
   // DEBUG: Logging del estado de URL params (DESPUÉS de definir todas las variables)
   useEffect(() => {
     if (urlStoreId || urlSku) {
@@ -874,6 +871,8 @@ export default function CatalogPage() {
       });
     }
   }, [urlStoreId, urlSku, activeStoreId, products.length, searchTerm]);
+
+
 
   const urlParamsProcessedRef = useRef(false);
 
@@ -1008,8 +1007,6 @@ export default function CatalogPage() {
       setScannerError('No se encontró ninguna cámara en el dispositivo.');
     }
   };
-
-
 
   // Auto-scroll functionality
   useEffect(() => {
@@ -1203,8 +1200,14 @@ export default function CatalogPage() {
 
 
   useEffect(() => {
-    // Si ya procesamos la URL, o no hay SKU, o los productos aún cargan, no hacer nada
-    if (urlParamsProcessedRef.current || !urlSku || isLoadingProducts) return;
+    // Si ya procesamos la URL o no hay SKU, no hacer nada
+    if (urlParamsProcessedRef.current || !urlSku) return;
+
+    // Solo procesar si los productos han terminado de cargar
+    if (isLoadingProducts) {
+      // Si los productos aún están cargando, esperar y no marcar como procesado
+      return;
+    }
 
     const targetUrlSku = normalizeSkuForComparison(urlSku);
     if (!targetUrlSku) {
@@ -1238,13 +1241,49 @@ export default function CatalogPage() {
       setTimeout(() => setIsAutoOpening(false), 800);
     } else {
       // Si no se encuentra después de que products terminó de cargar, marcar como procesado
-      if (products.length > 0) {
+      console.log('❌ [AutoOpen] Producto no encontrado con SKU:', targetUrlSku);
+      urlParamsProcessedRef.current = true;
+    }
+    console.groupEnd();
+  }, [urlSku, products, storeIdForCatalog, isLoadingProducts]);
+
+  // Efecto secundario para procesar SKU de URL cuando los productos terminan de cargar
+  useEffect(() => {
+    // Solo procesar si hay un SKU en la URL, productos terminaron de cargar, y aún no se ha procesado
+    if (urlSku && !isLoadingProducts && !urlParamsProcessedRef.current) {
+      const targetUrlSku = normalizeSkuForComparison(urlSku);
+      if (!targetUrlSku) {
+        urlParamsProcessedRef.current = true;
+        return;
+      }
+
+      console.log('🔍 [Catalog] Procesando SKU de URL después de carga de productos:', targetUrlSku);
+
+      // Buscar el producto en la lista completa
+      const product = products.find(p =>
+        p.storeId === storeIdForCatalog &&
+        normalizeSkuForComparison(p.sku) === targetUrlSku
+      );
+
+      if (product) {
+        console.log('✅ [AutoOpen] ¡PRODUCTO ENCONTRADO EN URL DESPUÉS DE CARGA!', product.name, product.sku);
+
+        // Bloquear futuros intentos de procesamiento de URL
+        urlParamsProcessedRef.current = true;
+
+        // Abrir modal inmediatamente
+        setProductDetails(product);
+        setLastAutoOpenedSku(product.sku || '');
+
+        // Marcamos que estamos en proceso de apertura automática
+        setIsAutoOpening(true);
+        setTimeout(() => setIsAutoOpening(false), 800);
+      } else {
         console.log('❌ [AutoOpen] Producto no encontrado con SKU:', targetUrlSku);
         urlParamsProcessedRef.current = true;
       }
     }
-    console.groupEnd();
-  }, [urlSku, products, storeIdForCatalog, isLoadingProducts]);
+  }, [urlSku, products, storeIdForCatalog, isLoadingProducts, urlParamsProcessedRef.current]);
 
   useEffect(() => {
     // Requisitos: hay búsqueda, los productos cargaron y no estamos ya abriendo algo
@@ -1611,84 +1650,136 @@ export default function CatalogPage() {
       return;
     }
 
-    const newOrderId = IDGenerator.generate('order', storeIdForCatalog);
-
-    console.log('🔍 [Order Creation] Validation:', {
-      hasAuthUser: !!authUser,
-      hasEmail: !!authUser?.email,
-      email: authUser?.email,
-      customerName,
-      customerPhone,
-      storeId: storeIdForCatalog,
-      cartLength: cart.length
-    });
-
-    const newPendingOrder: Order = {
-      orderId: newOrderId,
-      customerName: customerName,
-      customerPhone: customerPhone,
-      customerEmail: authUser?.email || undefined, // Use optional chaining and provide undefined fallback
-      items: cart.map(item => ({
-        productId: item.product.id,
-        productName: item.product.name,
-        quantity: item.quantity,
-        price: item.price,
-      })),
-      total: subtotal,
-      storeId: storeIdForCatalog,
-      status: 'pending',
-      processedBy: authUser?.displayName || undefined,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      latitude: location?.lat,
-      longitude: location?.lng,
-      customerAddress: customerAddress || undefined,
-      deliveryMethod: isDeliveryVisible ? 'delivery' : 'pickup',
-      deliveryStatus: isDeliveryVisible ? 'pending' : 'processing',
-      deliveryFee: 0,
-      deliveryDate: '',
-      deliveryTime: '',
-      deliveryNotes: '',
-      deliveryProviderID: ''
-    };
-
-    // MODIFICADO: Guardar en Supabase en lugar de MongoDB
     try {
-      const savedOrder = await createOrderInSupabase(newPendingOrder);
-
-      await generateQrCode(newOrderId);
+      let orderIdToUse;
       
-      setIsOrderDialogOpen(false);
-      setCart([]);
-      setCustomerName('');
-      setCustomerPhone('');
-      setCustomerAddress('');
-      setIsDeliveryVisible(false);
-      setLocation(null);
-      setPhoneError(null);
-      setIsEditingOrder(false);
-      
-      // Actualizar la lista de pedidos inmediatamente después de crear el pedido con fuerza
-      await refetchOrders(true);
-      
-      // Pequeña pausa para asegurar que los datos se hayan actualizado
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      // Abrir automáticamente el panel lateral para mostrar los pedidos recién creados
-      setTimeout(async () => {
-        // Asegurar que la lista de pedidos esté actualizada antes de abrir el panel
+      // Determine if we're updating an existing order or creating a new one
+      if (isEditingOrder && editingOrderId) {
+        // We're updating an existing order
+        orderIdToUse = editingOrderId;
+        
+        // Prepare update data
+        const updateData = {
+          customerName: customerName,
+          customerPhone: customerPhone,
+          // Only update customerEmail if we have a new value; otherwise preserve the original email when editing
+          customerEmail: (customerEmail && customerEmail.trim()) || (isEditingOrder ? originalOrderEmail : '') || authUser?.email || undefined,
+          items: cart.map(item => ({
+            productId: item.product.id,
+            productName: item.product.name,
+            quantity: item.quantity,
+            price: item.price,
+          })),
+          total: subtotal,
+          storeId: storeIdForCatalog,
+          status: 'pending',
+          processedBy: authUser?.displayName || undefined,
+          updatedAt: new Date().toISOString(),
+          latitude: location?.lat,
+          longitude: location?.lng,
+          customerAddress: customerAddress || undefined,
+          deliveryMethod: isDeliveryVisible ? 'delivery' : 'pickup',
+          deliveryStatus: isDeliveryVisible ? 'pending' : 'processing',
+          deliveryFee: 0,
+          deliveryDate: '',
+          deliveryTime: '',
+          deliveryNotes: '',
+          deliveryProviderID: ''
+        };
+        
+        console.log('🔍 [Order Update] Updating order:', orderIdToUse, 'with data:', updateData);
+        
+        const updatedOrder = await updateOrderInSupabase(orderIdToUse, updateData);
+        
+        // Forzar actualización de la lista de pedidos para reflejar el pedido actualizado
         await refetchOrders(true);
         
-        const cartSheetTrigger = document.getElementById('cart-sheet-trigger');
-        if (cartSheetTrigger) {
-          cartSheetTrigger.click();
-        }
-      }, 300);
+        // Forzar actualización del componente para asegurar renderizado
+        forceUpdate();
+      } else {
+        // We're creating a new order
+        const newOrderId = IDGenerator.generate('order', storeIdForCatalog);
+        orderIdToUse = newOrderId;
+        
+        console.log('🔍 [Order Creation] Validation:', {
+          hasAuthUser: !!authUser,
+          hasEmail: !!authUser?.email,
+          email: authUser?.email,
+          customerName,
+          customerPhone,
+          storeId: storeIdForCatalog,
+          cartLength: cart.length
+        });
 
-      toast({
-        title: isEditingOrder ? "¡Pedido Actualizado!" : "¡Pedido Generado!",
-        description: "Muestra el código QR para facturar. El pedido está pendiente en caja.",
-      });
+        const newPendingOrder: Order = {
+          orderId: newOrderId,
+          customerName: customerName,
+          customerPhone: customerPhone,
+          customerEmail: (customerEmail && customerEmail.trim()) || (isEditingOrder ? originalOrderEmail : '') || authUser?.email || undefined, // Preserve original customer email if editing, otherwise use current user's email
+          items: cart.map(item => ({
+            productId: item.product.id,
+            productName: item.product.name,
+            quantity: item.quantity,
+            price: item.price,
+          })),
+          total: subtotal,
+          storeId: storeIdForCatalog,
+          status: 'pending',
+          processedBy: authUser?.displayName || undefined,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          latitude: location?.lat,
+          longitude: location?.lng,
+          customerAddress: customerAddress || undefined,
+          deliveryMethod: isDeliveryVisible ? 'delivery' : 'pickup',
+          deliveryStatus: isDeliveryVisible ? 'pending' : 'processing',
+          deliveryFee: 0,
+          deliveryDate: '',
+          deliveryTime: '',
+          deliveryNotes: '',
+          deliveryProviderID: ''
+        };
+        
+        // MODIFICADO: Guardar en Supabase en lugar de MongoDB
+        const savedOrder = await createOrderInSupabase(newPendingOrder);
+      }
+
+      await generateQrCode(orderIdToUse);
+        
+        setIsOrderDialogOpen(false);
+        setCart([]);
+        setCustomerName('');
+        setCustomerPhone('');
+        setCustomerEmail('');
+        setOriginalOrderEmail('');
+        setCustomerAddress('');
+        setIsDeliveryVisible(false);
+        setLocation(null);
+        setPhoneError(null);
+        setIsEditingOrder(false);
+        setEditingOrderId(null);
+        
+        // Forzar actualización de la lista de pedidos para incluir el nuevo pedido
+        await refetchOrders(true);
+        
+        // Forzar actualización del componente para asegurar renderizado
+        forceUpdate();
+        
+        // Pequeña pausa para asegurar que los datos se hayan actualizado
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Abrir automáticamente el panel lateral para mostrar los pedidos recién creados
+        setTimeout(() => {
+          const cartSheetTrigger = document.getElementById('cart-sheet-trigger');
+          if (cartSheetTrigger) {
+            cartSheetTrigger.click();
+          }
+        }, 300);
+
+        toast({
+          title: isEditingOrder ? "¡Pedido Actualizado!" : "¡Pedido Generado!",
+          description: "Muestra el código QR para facturar. El pedido está pendiente en caja.",
+        });
 
     } catch (error) {
       console.error('Error:', error);
@@ -2033,6 +2124,9 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
       await new Promise(resolve => setTimeout(resolve, 1000));
       // Refrescar la lista de pedidos
       await refetchOrders();
+      
+      // Forzar actualización del componente para asegurar renderizado
+      forceUpdate();
 
       toast({
         title: "Pedido cancelado",
@@ -2060,7 +2154,14 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
     // Cargar datos del cliente
     setCustomerName(order.customerName);
     setCustomerPhone(order.customerPhone);
+    // Importantly: preserve the original customer email from the order
+    const originalEmail = order.customerEmail || '';
+    setCustomerEmail(originalEmail);
+    setOriginalOrderEmail(originalEmail); // Store original email for later use
 
+    // Set the order ID being edited
+    setEditingOrderId(order.orderId);
+    
     // Marcar como editando (el pedido original se mantendrá hasta que se genere uno nuevo)
     setIsEditingOrder(true);
 
@@ -2184,7 +2285,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                 </DialogContent>
               </Dialog>
               <AddOrderGuard>
-                <Sheet key={`cart-sheet-${userOrders.length}`} onOpenChange={(open) => {
+                <Sheet key={`cart-sheet-${userOrders.length}-${lastOrderUpdate}`} onOpenChange={(open) => {
                   if (open) {
                     // Recargar pedidos cuando se abre el panel
                     refetchOrders(true);
@@ -2258,7 +2359,9 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                               <Button 
                                 variant="ghost" 
                                 size="sm" 
-                                onClick={() => refetchOrders(true)}
+                                onClick={async () => {
+                                  await refetchOrders(true);
+                                }}
                                 className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
                                 title="Actualizar pedidos"
                               >
@@ -2394,7 +2497,11 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                               <Button 
                                 variant="ghost" 
                                 size="sm" 
-                                onClick={() => refetchOrders(true)}
+                                onClick={async () => {
+                                  console.log("🔄 [Catalog] Refresh button clicked");
+                                  await refetchOrders(true);
+                                  console.log("✅ [Catalog] Refresh completed");
+                                }}
                                 className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
                                 title="Actualizar pedidos"
                               >

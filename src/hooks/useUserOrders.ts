@@ -28,7 +28,7 @@ export const useUserOrders = (userEmail?: string, storeId?: string): UseUserOrde
   const retryCountRef = useRef<number>(0);
 
   // Configuración del polling
-  const POLLING_INTERVAL = 10000; // 10 segundos
+  const POLLING_INTERVAL = 3000; // 3 segundos
   const MIN_FETCH_INTERVAL = 2000; // Mínimo 2 segundos entre fetches
   const MAX_RETRIES = 3;
 
@@ -57,7 +57,14 @@ export const useUserOrders = (userEmail?: string, storeId?: string): UseUserOrde
     try {
       console.log('🔍 Fetching orders for user:', userEmail, 'store:', storeId);
 
-      const response = await fetch(`/api/orders?customerEmail=${encodeURIComponent(userEmail)}&storeId=${encodeURIComponent(storeId)}`);
+      const response = await fetch(`/api/orders?customerEmail=${encodeURIComponent(userEmail)}&storeId=${encodeURIComponent(storeId)}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);

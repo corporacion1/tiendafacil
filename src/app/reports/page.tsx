@@ -2,7 +2,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react";
-import { File, MoreHorizontal, Search, FileSpreadsheet, FileJson, FileText, Printer, Eye, Copy, ShoppingCart } from "lucide-react";
+import { File, MoreHorizontal, Search, FileSpreadsheet, FileJson, FileText, Printer, Eye, Copy, ShoppingCart, RefreshCw } from "lucide-react";
 import { format, subDays, startOfWeek, startOfMonth, startOfYear, parseISO, isValid } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -75,6 +75,98 @@ export default function ReportsPage() {
         cashSessions: cashSessionsData,
         pendingOrders: pendingOrdersData,
     } = useSettings();
+
+    // Get active store ID for order fetching
+    const activeStoreId = typeof window !== 'undefined' ? localStorage.getItem('TIENDA_FACIL_ACTIVE_STORE_ID') || 'default' : 'default';
+    
+    // Debug: Log the active store ID
+    useEffect(() => {
+        console.log('🏢 [Reports] Active Store ID:', activeStoreId);
+    }, [activeStoreId]);
+
+    // Fetch orders data directly since settings context might not have it
+    const [ordersData, setOrdersData] = useState<PendingOrder[]>([]);
+    const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+
+    // Force refresh orders data
+    const [forceRefresh, setForceRefresh] = useState(0);
+    
+    // Fetch orders data
+    useEffect(() => {
+        const fetchOrders = async () => {
+            if (!activeStoreId || activeStoreId === 'default') return;
+            
+            setIsLoadingOrders(true);
+            try {
+                const timestamp = Date.now();
+                const response = await fetch(`/api/orders?storeId=${encodeURIComponent(activeStoreId)}&noCache=true&t=${timestamp}`, { 
+                    cache: 'no-store',
+                    headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache',
+                        'Expires': '0'
+                    }
+                });
+                console.log('📊 [Reports] Orders API Response Status:', response.status);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('📊 [Reports] Raw orders data:', data);
+                    // Debug: Check first order if it has customer data
+                    if (Array.isArray(data) && data.length > 0) {
+                        console.log('📊 [Reports] First order data:', data[0]);
+                        console.log('📊 [Reports] First order keys:', Object.keys(data[0]));
+                    }
+                    // Convert to PendingOrder format if needed
+                    const formattedOrders: PendingOrder[] = Array.isArray(data) ? data.map(order => ({
+                        orderId: order.order_id || order.orderId || order.id,
+                        createdAt: order.created_at || order.createdAt || order.date,
+                        updatedAt: order.updated_at || order.updatedAt || order.createdAt || order.date,
+                        customerName: order.customer_name || order.customerName || 'Cliente no especificado',
+                        customerPhone: order.customer_phone || order.customerPhone || '',
+                        customerEmail: order.customer_email || order.customerEmail || '',
+                        items: typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []),
+                        total: order.total || 0,
+                        storeId: order.store_id || order.storeId || activeStoreId,
+                        status: order.status || 'pending',
+                        notes: order.notes || '',
+                        processedBy: order.user_id || order.processedBy || '',
+                        saleId: order.sale_id || order.saleId || '',
+                        customerAddress: order.customer_address || order.customerAddress || '',
+                        deliveryMethod: order.delivery_method || order.deliveryMethod || 'pickup',
+                        deliveryStatus: order.delivery_status || order.deliveryStatus || '',
+                        deliveryProviderID: order.delivery_provider_id || order.deliveryProviderID || '',
+                        deliveryFee: order.delivery_fee || order.deliveryFee || 0,
+                        deliveryDate: order.delivery_date || order.deliveryDate || '',
+                        deliveryTime: order.delivery_time || order.deliveryTime || '',
+                        deliveryNotes: order.delivery_notes || order.deliveryNotes || '',
+                        latitude: order.latitude || null,
+                        longitude: order.longitude || null
+                    })) : [];
+                    console.log('📊 [Reports] Formatted orders:', formattedOrders);
+                    // Debug: Check first formatted order
+                    if (formattedOrders.length > 0) {
+                        console.log('📊 [Reports] First formatted order:', formattedOrders[0]);
+                        console.log('📊 [Reports] First formatted order customerName:', formattedOrders[0].customerName);
+                        console.log('📊 [Reports] First formatted order customerPhone:', formattedOrders[0].customerPhone);
+                        console.log('📊 [Reports] First formatted order processedBy:', formattedOrders[0].processedBy);
+                    }
+                    setOrdersData(formattedOrders);
+                }
+            } catch (error) {
+                console.error('Error fetching orders:', error);
+            } finally {
+                setIsLoadingOrders(false);
+            }
+        };
+
+        fetchOrders();
+    }, [activeStoreId, forceRefresh]);
+
+    // Add manual refresh function
+    const refreshOrders = () => {
+        console.log('🔄 [Reports] Manual refresh triggered');
+        setForceRefresh(prev => prev + 1);
+    };
 
     const [selectedSessionDetails, setSelectedSessionDetails] = useState<CashSession | null>(null);
     const [selectedOrderDetails, setSelectedOrderDetails] = useState<PendingOrder | null>(null);
@@ -562,15 +654,18 @@ export default function ReportsPage() {
     }, [sortedCashSessions, searchTerm, dateFilterQuery]);
 
     const filteredPendingOrders = useMemo(() => {
-        if (!pendingOrdersData) return [];
-        const sortedOrders = [...pendingOrdersData].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        // Use fetched orders data first, fallback to settings data
+        const ordersToUse = ordersData.length > 0 ? ordersData : (pendingOrdersData || []);
+        if (ordersToUse.length === 0) return [];
+        
+        const sortedOrders = [...ordersToUse].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         return (filterByDate(sortedOrders) as PendingOrder[]).filter(order =>
             order.orderId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (order.customerName && order.customerName.toLowerCase().includes(searchTerm.toLowerCase())) ||
             (order.customerPhone && order.customerPhone.toLowerCase().includes(searchTerm.toLowerCase())) ||
             (order.saleId && order.saleId.toLowerCase().includes(searchTerm.toLowerCase()))
         );
-    }, [pendingOrdersData, searchTerm, dateFilterQuery]);
+    }, [ordersData, pendingOrdersData, searchTerm, dateFilterQuery]);
 
     // Paginación para cada pestaña
     const paginatedSales = useMemo(() => {
@@ -1237,109 +1332,132 @@ export default function ReportsPage() {
 
                 <TabsContent value="orders" className="space-y-4">
                     <Card>
-                        <CardHeader>
-                            <CardTitle>Reporte de Pedidos</CardTitle>
-                            <CardDescription>
-                                Listado de pedidos y cotizaciones registradas en el sistema.
-                            </CardDescription>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <div>
+                                <CardTitle>Reporte de Pedidos</CardTitle>
+                                <CardDescription>
+                                    Listado de pedidos y cotizaciones registradas en el sistema.
+                                </CardDescription>
+                            </div>
+                            <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={refreshOrders}
+                                disabled={isLoadingOrders}
+                                className="h-8 gap-1"
+                            >
+                                <svg className={`h-3.5 w-3.5 ${isLoadingOrders ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                <span className="sr-only sm:not-sr-only">Actualizar</span>
+                            </Button>
                         </CardHeader>
                         <CardContent>
-                            <div className="rounded-md border overflow-x-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Fecha</TableHead>
-                                            <TableHead>ID Pedido</TableHead>
-                                            <TableHead>Cliente</TableHead>
-                                            <TableHead>Estado</TableHead>
-                                            <TableHead>Venta Asociada</TableHead>
-                                            <TableHead>Procesado Por</TableHead>
-                                            <TableHead className="text-right">Total</TableHead>
-                                            <TableHead className="text-right">Acciones</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {paginatedOrders.length === 0 ? (
-                                            <TableRow>
-                                                <TableCell colSpan={7} className="h-24 text-center">
-                                                    No se encontraron pedidos.
-                                                </TableCell>
-                                            </TableRow>
-                                        ) : (
-                                            paginatedOrders.map((order) => (
-                                                <TableRow key={order.orderId}>
-                                                    <TableCell className="font-medium whitespace-nowrap">
-                                                        {format(parseISO(order.createdAt), "dd/MM/yyyy HH:mm")}
-                                                    </TableCell>
-                                                    <TableCell className="font-mono text-xs max-w-[120px] truncate" title={order.orderId}>
-                                                        {order.orderId}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="flex flex-col">
-                                                            <span className="font-medium">{order.customerName}</span>
-                                                            {order.customerPhone && <span className="text-xs text-muted-foreground">{order.customerPhone}</span>}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Badge variant={
-                                                            order.status === 'processed' ? 'default' :
-                                                                order.status === 'pending' ? 'secondary' :
-                                                                    order.status === 'cancelled' ? 'destructive' : 'outline'
-                                                        } className={
-                                                            order.status === 'processed' ? 'bg-green-100 text-green-800 hover:bg-green-100' :
-                                                                order.status === 'pending' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100' : ''
-                                                        }>
-                                                            {order.status === 'processed' ? 'Procesado' :
-                                                                order.status === 'pending' ? 'Pendiente' :
-                                                                    order.status === 'processing' ? 'En Proceso' :
-                                                                        order.status === 'cancelled' ? 'Cancelado' : order.status}
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell className="text-xs font-mono">
-                                                        {order.saleId || '-'}
-                                                    </TableCell>
-                                                    <TableCell className="text-xs">
-                                                        {order.processedBy || '-'}
-                                                    </TableCell>
-                                                    <TableCell className="text-right font-medium">
-                                                        {activeSymbol}{(order.total * activeRate).toFixed(2)}
-                                                    </TableCell>
-                                                    <TableCell className="text-right">
-                                                        <div className="flex justify-end gap-2">
-                                                            <Button
-                                                                size="sm"
-                                                                variant="ghost"
-                                                                onClick={() => handleViewOrderDetails(order)}
-                                                                title="Ver Detalles"
-                                                            >
-                                                                <Eye className="h-4 w-4 text-blue-500" />
-                                                            </Button>
-                                                            <Button
-                                                                size="sm"
-                                                                variant="ghost"
-                                                                onClick={() => handleDuplicateOrder(order)}
-                                                                title="Duplicar / Cargar en POS"
-                                                            >
-                                                                <Copy className="h-4 w-4 text-green-500" />
-                                                            </Button>
-                                                        </div>
-                                                    </TableCell>
+                            {(isLoadingSettings || isLoadingOrders) ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mr-3"></div>
+                                    <span className="text-muted-foreground">Cargando pedidos...</span>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="rounded-md border overflow-x-auto">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Fecha</TableHead>
+                                                    <TableHead>ID Pedido</TableHead>
+                                                    <TableHead>Cliente</TableHead>
+                                                    <TableHead>Estado</TableHead>
+                                                    <TableHead>Venta Asociada</TableHead>
+                                                    <TableHead>Procesado Por</TableHead>
+                                                    <TableHead className="text-right">Total</TableHead>
+                                                    <TableHead className="text-right">Acciones</TableHead>
                                                 </TableRow>
-                                            ))
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                            <div className="px-6 pb-6">
-                                <Pagination
-                                    currentPage={currentPage}
-                                    totalPages={getTotalPages()}
-                                    totalItems={getTotalItems()}
-                                    itemsPerPage={itemsPerPage}
-                                    onPageChange={setCurrentPage}
-                                    onItemsPerPageChange={setItemsPerPage}
-                                />
-                            </div>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {paginatedOrders.length === 0 ? (
+                                                    <TableRow>
+                                                        <TableCell colSpan={7} className="h-24 text-center">
+                                                            No se encontraron pedidos.
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : (
+                                                    paginatedOrders.map((order) => (
+                                                        <TableRow key={order.orderId}>
+                                                            <TableCell className="font-medium whitespace-nowrap">
+                                                                {format(parseISO(order.createdAt), "dd/MM/yyyy HH:mm")}
+                                                            </TableCell>
+                                                            <TableCell className="font-mono text-xs max-w-[120px] truncate" title={order.orderId}>
+                                                                {order.orderId}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <div className="flex flex-col">
+                                                                    <span className="font-medium">{order.customerName || 'Cliente no especificado'}</span>
+                                                                    {order.customerPhone && <span className="text-xs text-muted-foreground">{order.customerPhone}</span>}
+                                                                </div>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Badge variant={
+                                                                    order.status === 'processed' ? 'default' :
+                                                                        order.status === 'pending' ? 'secondary' :
+                                                                            order.status === 'cancelled' ? 'destructive' : 'outline'
+                                                                } className={
+                                                                    order.status === 'processed' ? 'bg-green-100 text-green-800 hover:bg-green-100' :
+                                                                        order.status === 'pending' ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-100' : ''
+                                                                }>
+                                                                    {order.status === 'processed' ? 'Procesado' :
+                                                                        order.status === 'pending' ? 'Pendiente' :
+                                                                            order.status === 'processing' ? 'En Proceso' :
+                                                                                order.status === 'cancelled' ? 'Cancelado' : order.status}
+                                                                </Badge>
+                                                            </TableCell>
+                                                            <TableCell className="text-xs font-mono">
+                                                                {order.saleId || '-'}
+                                                            </TableCell>
+                                                            <TableCell className="text-xs">
+                                                                {order.processedBy || '-'}
+                                                            </TableCell>
+                                                            <TableCell className="text-right font-medium">
+                                                                {activeSymbol}{(order.total * activeRate).toFixed(2)}
+                                                            </TableCell>
+                                                            <TableCell className="text-right">
+                                                                <div className="flex justify-end gap-2">
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="ghost"
+                                                                        onClick={() => handleViewOrderDetails(order)}
+                                                                        title="Ver Detalles"
+                                                                    >
+                                                                        <Eye className="h-4 w-4 text-blue-500" />
+                                                                    </Button>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="ghost"
+                                                                        onClick={() => handleDuplicateOrder(order)}
+                                                                        title="Duplicar / Cargar en POS"
+                                                                    >
+                                                                        <Copy className="h-4 w-4 text-green-500" />
+                                                                    </Button>
+                                                                </div>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                    <div className="px-6 pb-6">
+                                        <Pagination
+                                            currentPage={currentPage}
+                                            totalPages={getTotalPages()}
+                                            totalItems={getTotalItems()}
+                                            itemsPerPage={itemsPerPage}
+                                            onPageChange={setCurrentPage}
+                                            onItemsPerPageChange={setItemsPerPage}
+                                        />
+                                    </div>
+                                </>
+                            )}
                         </CardContent>
                     </Card>
                 </TabsContent>

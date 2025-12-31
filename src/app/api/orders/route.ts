@@ -31,8 +31,9 @@ export async function GET(request: NextRequest) {
   const id = searchParams.get('id');
   const storeId = searchParams.get('storeId');
   const status = searchParams.get('status');
-
-  // Si se busca por ID específico, no cacheamos por ahora
+  const noCache = searchParams.get('noCache');
+  
+  // Si se busca por ID específico, buscar orden individual
   if (id) {
     console.log('🔍 [Orders API] Buscando orden por ID:', id);
     const { data: order, error } = await supabase
@@ -129,7 +130,39 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    const orders = await getCachedOrders(storeId, status, customerEmail);
+    let orders;
+    if (noCache) {
+      // Fetch directly from database without cache
+      console.log('🔍 [Orders API] Fetching orders without cache for store:', storeId);
+      
+      let query = supabase
+        .from('orders')
+        .select('*')
+        .eq('store_id', storeId);
+
+      // Apply status filter if provided
+      if (status) {
+        const statuses = status.split(',');
+        const sStatus = statuses[0]; // Use first status for now
+        
+        if (statuses.length > 1) {
+          query = query.in('status', statuses);
+        } else {
+          query = query.eq('status', sStatus);
+        }
+      }
+
+      if (customerEmail) {
+        query = query.eq('customer_email', customerEmail);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      orders = data;
+    } else {
+      // Use cached version
+      orders = await getCachedOrders(storeId, status, customerEmail);
+    }
 
     // Transform snake_case to camelCase
     const formattedOrders = orders?.map((order: any) => ({
@@ -348,7 +381,8 @@ export async function PUT(request: NextRequest) {
     if (total !== undefined) updateData.total = total;
     if (customerName) updateData.customer_name = customerName;
     if (customerPhone) updateData.customer_phone = customerPhone;
-    if (customerEmail !== undefined) updateData.customer_email = customerEmail;
+    // Solo actualizar customer_email si tiene un valor válido (no vacío)
+    if (customerEmail !== undefined && customerEmail !== "") updateData.customer_email = customerEmail;
     if (processedBy !== undefined) updateData.processed_by = processedBy;
     if (saleId !== undefined) updateData.sale_id = saleId;
     if (notes !== undefined) updateData.notes = notes;
@@ -393,7 +427,8 @@ export async function PUT(request: NextRequest) {
       if (notes !== undefined) basicUpdateData.notes = notes;
       if (customerName) basicUpdateData.customer_name = customerName;
       if (customerPhone) basicUpdateData.customer_phone = customerPhone;
-      if (customerEmail !== undefined) basicUpdateData.customer_email = customerEmail;
+      // Solo actualizar customer_email si tiene un valor válido (no vacío)
+      if (customerEmail !== undefined && customerEmail !== "") basicUpdateData.customer_email = customerEmail;
       
       const result = await supabase
         .from('orders')
