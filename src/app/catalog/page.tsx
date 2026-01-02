@@ -2376,14 +2376,14 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                                       <div className="flex items-center gap-2 mb-1">
                                         <p className="font-semibold">{order.orderId}</p>
                                         <Badge
-                                          variant={order.status === 'pending' ? 'secondary' :
-                                            order.status === 'processing' ? 'default' :
-                                              order.status === 'processed' ? 'default' : 'destructive'}
+                                          variant={order.status?.toLowerCase() === 'pending' ? 'secondary' :
+                                            order.status?.toLowerCase() === 'processing' ? 'default' :
+                                              order.status?.toLowerCase() === 'processed' ? 'default' : 'destructive'}
                                           className="text-xs"
                                         >
-                                          {order.status === 'pending' ? 'Pendiente' :
-                                            order.status === 'processing' ? 'Procesando' :
-                                              order.status === 'processed' ? 'Completado' : 'Cancelado'}
+                                          {order.status?.toLowerCase() === 'pending' ? 'Pendiente' :
+                                            order.status?.toLowerCase() === 'processing' ? 'Procesando' :
+                                              order.status?.toLowerCase() === 'processed' ? 'Completado' : 'Cancelado'}
                                         </Badge>
                                       </div>
                                       <p className="text-sm text-muted-foreground">{new Date(order.createdAt).toLocaleDateString()}</p>
@@ -2428,9 +2428,9 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                                       )}
                                     </div>
                         
-                                    {/* Botones de acción */}
-                                    <div className="flex items-center">
-                                      {order.status === 'pending' && (
+                                      {/* Botones de acción */}
+                                      <div className="flex items-center">
+                                        {order.status?.toLowerCase() === 'pending' && (
                                         <div className="flex items-center">
                                           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted/50"
                                             onClick={() => setOrderIdForQr(order.orderId)}
@@ -2457,7 +2457,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                                         </div>
                                       )}
                                       {/* Si no está pendiente, solo mostrar QR o Detalles si fuera necesario */}
-                                      {order.status !== 'pending' && (
+                                      {order.status?.toLowerCase() !== 'pending' && (
                                         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted/50"
                                           onClick={() => setOrderIdForQr(order.orderId)}
                                         >

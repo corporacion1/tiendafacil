@@ -521,6 +521,9 @@ export default function POSPage() {
   const [orderToProcess, setOrderToProcess] = useState<PendingOrder | null>(null);
   const [isProcessOrderDialogOpen, setIsProcessOrderDialogOpen] = useState(false);
 
+  // -- Estado para filtro de estatus en modal de pedidos --
+  const [pendingOrdersStatusFilter, setPendingOrdersStatusFilter] = useState<string>("all");
+
   const handleConfirmMarkAsProcessed = async () => {
     if (!orderToProcess) return;
 
@@ -3629,13 +3632,32 @@ export default function POSPage() {
                     </DialogTrigger>
                     <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col w-full mx-2 sm:mx-auto">
                       <DialogHeader className="flex-shrink-0">
-                        <DialogTitle>
-                          Pedidos Pendientes - Todos los Clientes
-                        </DialogTitle>
-                        <p className="text-sm text-muted-foreground">
-                          Pedidos generados por clientes desde sus dispositivos,
-                          listos para procesar
-                        </p>
+                        <div className="flex items-center justify-between gap-4">
+                          <div>
+                            <DialogTitle>
+                              Pedidos Pendientes - Todos los Clientes
+                            </DialogTitle>
+                            <p className="text-sm text-muted-foreground">
+                              Pedidos generados por clientes desde sus dispositivos,
+                              listos para procesar
+                            </p>
+                          </div>
+                          <Select
+                            value={pendingOrdersStatusFilter}
+                            onValueChange={setPendingOrdersStatusFilter}
+                          >
+                            <SelectTrigger className="w-[180px]">
+                              <SelectValue placeholder="Filtrar por estatus" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Todos los estatus</SelectItem>
+                              <SelectItem value="pending">Pendiente</SelectItem>
+                              <SelectItem value="processing">En Proceso</SelectItem>
+                              <SelectItem value="processed">Completado</SelectItem>
+                              <SelectItem value="cancelled">Cancelado</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </DialogHeader>
                       <div className="py-4 flex-1 overflow-y-auto">
                         {isLoadingPendingOrders && <p>Cargando pedidos...</p>}
@@ -3678,11 +3700,11 @@ export default function POSPage() {
                           </div>
                         ) : (
                           <div className="space-y-4">
-                            {pendingOrdersFromDB
-                              .filter(
-                                (order) =>
-                                  order.status === "pending" ||
-                                  order.status === "processing",
+                             {pendingOrdersFromDB
+                              .filter((order) =>
+                                pendingOrdersStatusFilter === "all"
+                                  ? true
+                                  : order.status?.toLowerCase() === pendingOrdersStatusFilter.toLowerCase()
                               )
                               .map((order) => (
                                 <div
@@ -3695,21 +3717,21 @@ export default function POSPage() {
                                         <h4 className="font-semibold">
                                           {order.orderId}
                                         </h4>
-                                        <Badge
-                                          variant={
-                                            order.status === "pending"
-                                              ? "secondary"
-                                              : order.status === "processing"
-                                                ? "default"
-                                                : "outline"
-                                          }
-                                          className="text-xs"
-                                        >
-                                          {order.status === "pending"
-                                            ? "Pendiente"
-                                            : order.status === "processing"
-                                              ? "En Proceso"
-                                              : order.status}
+                                         <Badge
+                                           variant={
+                                             order.status?.toLowerCase() === "pending"
+                                               ? "secondary"
+                                               : order.status?.toLowerCase() === "processing"
+                                                 ? "default"
+                                                 : "outline"
+                                           }
+                                           className="text-xs"
+                                         >
+                                           {order.status?.toLowerCase() === "pending"
+                                             ? "Pendiente"
+                                             : order.status?.toLowerCase() === "processing"
+                                               ? "En Proceso"
+                                               : order.status}
                                         </Badge>
                                         <div className="flex items-center gap-2">
                                           {order.deliveryMethod === "delivery" ? (

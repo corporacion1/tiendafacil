@@ -3,16 +3,17 @@ import { PendingOrder } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useNetworkStatus } from './useNetworkStatus';
 
-interface UsePendingOrdersReturn {
+interface UseAllOrdersReturn {
   orders: PendingOrder[];
   isLoading: boolean;
   error: string | null;
-  refetch: () => Promise<void>;
+  refetch: (forceRefresh?: boolean) => Promise<void>;
   isPolling: boolean;
-  updateOrderStatus: (orderId: string, status: string, saleId?: string, processedBy?: string) => Promise<boolean>;
+  startPolling: () => void;
+  stopPolling: () => void;
 }
 
-export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
+export const useAllOrders = (storeId?: string, statusFilter?: string): UseAllOrdersReturn => {
   const [orders, setOrders] = useState<PendingOrder[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +41,6 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
     // Evitar fetches muy frecuentes
     const now = Date.now();
     if (now - lastFetchTimeRef.current < MIN_FETCH_INTERVAL) {
-      console.log('⏳ [POS] Skipping fetch - too frequent');
       return;
     }
     lastFetchTimeRef.current = now;
@@ -51,11 +51,15 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
     setError(null);
 
     try {
-      console.log('🔍 [POS] Fetching pending orders for store:', storeId);
 
-      // Obtener TODOS los pedidos (sin filtro de status)
-      const url = `/api/orders?storeId=${encodeURIComponent(storeId)}`;
-      console.log('🔗 [POS] API URL:', url);
+      // Obtener todas las órdenes, con filtro opcional de status
+      let url = `/api/orders?storeId=${encodeURIComponent(storeId)}`;
+      if (statusFilter && statusFilter !== 'all') {
+        url += `&status=${encodeURIComponent(statusFilter)}`;
+      }
+      // Asegurar que no se use caché para datos actualizados
+      url += `&noCache=true&t=${Date.now()}`;
+      
 
       const response = await fetch(url);
 
@@ -64,13 +68,10 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
       }
 
       const data = await response.json();
-      console.log('📦 [POS] Pending orders fetched:', data.length);
-      console.log('📋 [POS] Orders data:', data);
 
       // Log de clientes únicos para confirmar que son de diferentes usuarios
       if (Array.isArray(data) && data.length > 0) {
         const uniqueCustomers = [...new Set(data.map(order => order.customerName))];
-        console.log('👥 [POS] Clientes únicos en pedidos:', uniqueCustomers.length, uniqueCustomers);
       }
 
       // Convertir formato de respuesta a PendingOrder si es necesario
@@ -100,21 +101,14 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
         longitude: order.longitude
       })) : [];
 
-      // Solo actualizar si hay cambios reales
-      setOrders(prevOrders => {
-        const hasChanges = JSON.stringify(prevOrders) !== JSON.stringify(formattedOrders);
-        if (hasChanges) {
-          console.log('🔄 [POS] Orders updated - changes detected');
-          return formattedOrders;
-        }
-        return prevOrders;
-      });
+      // Actualizar siempre que haya nuevos datos
+      setOrders(formattedOrders);
 
       // Reset retry counter on success
       retryCountRef.current = 0;
 
     } catch (err: any) {
-      console.error('❌ [POS] Error fetching pending orders:', err);
+      console.error('❌ [AllOrders] Error fetching orders:', err);
       setError(err.message);
 
       // Incrementar contador de reintentos
@@ -126,7 +120,7 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
           variant: "destructive",
           title: "Error al cargar pedidos",
           description: isOnline
-            ? "No se pudieron cargar los pedidos pendientes."
+            ? "No se pudieron cargar los pedidos."
             : "Sin conexión. Los pedidos se actualizarán cuando vuelvas a estar online."
         });
       }
@@ -139,15 +133,14 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
         setIsLoading(false);
       }
     }
-  }, [storeId, toast, isOnline]);
+  }, [storeId, statusFilter, toast, isOnline]);
 
   // Función para actualizar estado de pedido
   const updateOrderStatus = useCallback(async (orderId: string, status: string, saleId?: string, processedBy?: string): Promise<boolean> => {
     try {
-      console.log('🔄 [POS] Updating order status:', orderId, 'to', status, 'storeId:', storeId);
       
       if (!storeId) {
-        console.error('❌ [POS] No storeId provided for order status update');
+        console.error('❌ [AllOrders] No storeId provided for order status update');
         throw new Error('storeId es requerido para actualizar el estado del pedido');
       }
 
@@ -167,18 +160,17 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ [POS] API Error response:', errorText);
+        console.error('❌ [AllOrders] API Error response:', errorText);
         throw new Error(`Error al actualizar estado del pedido: ${response.status} - ${errorText}`);
       }
 
       // Refrescar la lista de pedidos
       await fetchOrders(false);
 
-      console.log('✅ [POS] Order status updated successfully');
       return true;
 
     } catch (error) {
-      console.error('❌ [POS] Error updating order status:', error);
+      console.error('❌ [AllOrders] Error updating order status:', error);
       throw error; // Re-throw para que el caller pueda manejar el error
     }
   }, [fetchOrders, storeId]);
@@ -189,7 +181,6 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
       return;
     }
 
-    console.log('🔄 [POS] Starting order polling...');
     setIsPolling(true);
 
     pollingIntervalRef.current = setInterval(() => {
@@ -202,7 +193,6 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
   // Función para detener polling
   const stopPolling = useCallback(() => {
     if (pollingIntervalRef.current) {
-      console.log('⏹️ [POS] Stopping order polling...');
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
       setIsPolling(false);
@@ -217,7 +207,6 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
   // Manejar reconexión de red
   useEffect(() => {
     if (isOnline && wasOffline && storeId) {
-      console.log('🔄 [POS] Network reconnected - fetching orders');
       retryCountRef.current = 0; // Reset retry counter
       fetchOrders(false);
     }
@@ -244,34 +233,13 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
     };
   }, [stopPolling]);
 
-  // Manejo de visibilidad de la página para optimizar polling
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        console.log('📱 [POS] Page hidden - stopping polling');
-        stopPolling();
-      } else if (storeId) {
-        console.log('📱 [POS] Page visible - resuming polling');
-        fetchOrders(false); // Fetch inmediato al volver
-        startPolling();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [storeId, fetchOrders, startPolling, stopPolling]);
-
-  const refetch = useCallback(() => fetchOrders(true), [fetchOrders]);
-
   return {
     orders,
     isLoading,
     error,
-    refetch,
+    refetch: fetchOrders,
     isPolling,
-    updateOrderStatus
+    startPolling,
+    stopPolling
   };
 };

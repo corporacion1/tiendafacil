@@ -17,6 +17,22 @@ const generateId = (prefix: string) => {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };
 
+/**
+ * Normalizar estatus: lowercase y trim
+ */
+const normalizeStatus = (status: string | null | undefined): string => {
+  if (!status) return 'pending';
+  return status.toString().toLowerCase().trim();
+};
+
+/**
+ * Validar estatus
+ */
+const isValidStatus = (status: string): boolean => {
+  const validStatuses = ['pending', 'processing', 'processed', 'cancelled', 'expired'];
+  return validStatuses.includes(status.toLowerCase().trim());
+};
+
 // Estados de pedidos compatibles
 const OrderStatus = {
   PENDING: 'pending',
@@ -60,7 +76,7 @@ export async function GET(request: NextRequest) {
       customerEmail: order.customer_email,
       items: typeof order.items === 'string' ? JSON.parse(order.items) : order.items,
       total: order.total,
-      status: order.status,
+      status: normalizeStatus(order.status), // Normalizar estatus al leer
       processedBy: order.user_id,
       createdAt: order.created_at,
       updatedAt: order.updated_at,
@@ -173,7 +189,7 @@ export async function GET(request: NextRequest) {
       customerEmail: order.customer_email,
       items: typeof order.items === 'string' ? JSON.parse(order.items) : order.items,
       total: order.total,
-      status: order.status,
+      status: normalizeStatus(order.status), // Normalizar estatus al leer
       notes: order.notes,
       processedBy: order.user_id,
       saleId: order.sale_id,
@@ -219,6 +235,14 @@ export async function POST(request: NextRequest) {
     // Generar ID único si no se proporciona
     const orderId = body.orderId || body.id || generateId('ORD');
 
+    // Normalizar estatus al crear
+    const normalizedStatus = normalizeStatus(body.status) || 'pending';
+    if (!isValidStatus(normalizedStatus)) {
+      return NextResponse.json({
+        error: `Estatus inválido: ${body.status}`
+      }, { status: 400 });
+    }
+
     // Preparar datos para Supabase - Solo incluir campos que existen en la tabla
     const orderData: any = {
       id: orderId, // Add id field for NOT NULL constraint
@@ -229,7 +253,7 @@ export async function POST(request: NextRequest) {
       items: body.items,
       total: body.total || 0,
       store_id: body.storeId,
-      status: 'pending',
+      status: normalizedStatus, // Usar estatus normalizado
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -318,7 +342,7 @@ export async function POST(request: NextRequest) {
         items: createdOrder.items,
         total: createdOrder.total,
         storeId: createdOrder.store_id,
-        status: createdOrder.status,
+        status: normalizeStatus(createdOrder.status), // Normalizar estatus en respuesta
         notes: createdOrder.notes,
         processedBy: createdOrder.user_id,
         saleId: createdOrder.sale_id,
@@ -375,7 +399,15 @@ export async function PUT(request: NextRequest) {
     };
 
     // Actualizar campos si se proporcionan
-    if (status) updateData.status = status;
+    if (status) {
+      const normalizedStatus = normalizeStatus(status);
+      if (!isValidStatus(normalizedStatus)) {
+        return NextResponse.json({
+          error: `Estatus inválido: ${status}`
+        }, { status: 400 });
+      }
+      updateData.status = normalizedStatus; // Usar estatus normalizado
+    }
     if (notes) updateData.notes = notes;
     if (items) updateData.items = items;
     if (total !== undefined) updateData.total = total;
@@ -470,7 +502,7 @@ export async function PUT(request: NextRequest) {
       items: updatedOrder.items,
       total: updatedOrder.total,
       storeId: updatedOrder.store_id,
-      status: updatedOrder.status,
+      status: normalizeStatus(updatedOrder.status), // Normalizar estatus en respuesta
       processedBy: updatedOrder.user_id,
       saleId: updatedOrder.sale_id,
       customerAddress: updatedOrder.customer_address,
