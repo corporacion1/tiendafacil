@@ -519,3 +519,160 @@ export type StoreDetailedInfo = Store & {
     };
   };
 };
+
+// ==================== DELIVERY TYPES ====================
+
+export type DeliveryProviderType = 'internal' | 'external';
+
+export type CommissionType = 'fixed' | 'percentage' | 'combination';
+
+export type DeliveryProvider = {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  providerType: DeliveryProviderType;
+  externalServiceName?: string;
+  externalProviderId?: string;
+  vehicleType?: 'moto' | 'bicycle' | 'car' | 'walking';
+  vehiclePlate?: string;
+  commissionType: CommissionType;
+  commissionFixedAmount: number;
+  commissionPercentage: number;
+  paymentMethod?: 'cash' | 'transfer' | 'external_platform';
+  bankAccountInfo?: Record<string, any>;
+  status: 'active' | 'inactive' | 'suspended';
+  photoUrl?: string;
+  storeId: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string;
+  notes?: string;
+};
+
+export type DeliveryZone = {
+  id: string;
+  name: string;
+  description?: string;
+  storeId: string;
+  centerLatitude: number;
+  centerLongitude: number;
+  radiusKm: number;
+  baseFee: number;
+  perKmFee: number;
+  perKmFeeOutsideZone: number;
+  estimatedMinutesPerKm: number;
+  priority: number;
+  status: 'active' | 'inactive';
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type FeeType = 'fixed' | 'by_zone' | 'by_distance' | 'combination';
+
+export type DeliveryFeeRule = {
+  id: string;
+  name: string;
+  description?: string;
+  storeId: string;
+  feeType: FeeType;
+  fixedFeeAmount?: number;
+  distanceBaseFee?: number;
+  distanceThresholdKm?: number;
+  perKmFee?: number;
+  maxDistanceKm?: number;
+  zoneId?: string;
+  minimumOrderAmount?: number;
+  freeDeliveryThreshold?: number;
+  applyToProviderType?: 'all' | 'internal' | 'external';
+  isPeakHours: boolean;
+  peakHoursStart?: string;
+  peakHoursEnd?: string;
+  peakHoursMultiplier: number;
+  applicableDays?: number[];
+  status: 'active' | 'inactive';
+  priority: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DeliveryStatus = 'pending' | 'picked_up' | 'in_transit' | 'delivered' | 'cancelled';
+
+export type PaymentStatus = 'pending' | 'paid' | 'cancelled';
+
+export type DeliveryAssignment = {
+  id: string;
+  orderId: string;
+  storeId: string;
+  deliveryProviderId: string;
+  orderCustomerName: string;
+  orderCustomerPhone?: string;
+  orderCustomerEmail?: string;
+  orderCustomerAddress?: string;
+  orderTotal: number;
+  orderItems: any[];
+  deliveryFee: number;
+  deliveryFeeRuleId?: string;
+  deliveryZoneId?: string;
+  distanceKm?: number;
+  providerCommissionAmount: number;
+  providerPaymentStatus: PaymentStatus;
+  providerPaymentDate?: string;
+  providerPaymentMethod?: string;
+  providerPaymentReference?: string;
+  storeLatitude?: number;
+  storeLongitude?: number;
+  destinationLatitude?: number;
+  destinationLongitude?: number;
+  pickupLatitude?: number;
+  pickupLongitude?: number;
+  currentLatitude?: number;
+  currentLongitude?: number;
+  estimatedDurationMinutes?: number;
+  actualDurationMinutes?: number;
+  deliveryStatus: DeliveryStatus;
+  pickupTime?: string;
+  deliveryTime?: string;
+  deliveryNotes?: string;
+  proofOfDeliveryUrl?: string;
+  customerRating?: number;
+  customerFeedback?: string;
+  whatsappNotificationSent: boolean;
+  whatsappNotificationTime?: string;
+  assignedAt: string;
+  assignedBy?: string;
+  completedAt?: string;
+  cancelledAt?: string;
+  cancellationReason?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DeliveryPayment = {
+  id: string;
+  storeId: string;
+  deliveryProviderId: string;
+  deliveryAssignmentIds: string[];
+  totalAssignments: number;
+  totalCommissionAmount: number;
+  paymentAmount: number;
+  paymentDate: string;
+  paymentMethod: 'cash' | 'transfer' | 'check' | 'external_platform';
+  bankName?: string;
+  accountNumber?: string;
+  referenceNumber?: string;
+  status: 'pending' | 'completed' | 'cancelled';
+  notes?: string;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DeliveryFeeCalculationResult = {
+  fee: number;
+  distanceKm: number;
+  ruleId?: string;
+  zoneId?: string;
+  estimatedMinutes?: number;
+};
