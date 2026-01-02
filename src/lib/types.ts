@@ -1,6 +1,6 @@
 // User Roles and Statuses
 
-export type UserRole = 'su' | 'admin' | 'user' | 'pos' | 'depositary';
+export type UserRole = 'su' | 'admin' | 'user' | 'pos' | 'depositary' | 'delivery';
 export type UserStatus = 'active' | 'disabled';
 
 export type UserProfile = {

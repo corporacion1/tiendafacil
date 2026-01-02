@@ -20,6 +20,7 @@ const ROLE_PERMISSIONS = {
     canViewAds: false,
     canViewReports: false,
     canViewStoresAdmin: false,
+    canViewDeliveries: false,
   },
 
   // Role: user - acceso al catálogo y para agregar pedidos (requiere login)
@@ -38,6 +39,7 @@ const ROLE_PERMISSIONS = {
     canViewAds: false,
     canViewReports: false,
     canViewStoresAdmin: false,
+    canViewDeliveries: false,
   },
 
   // Role: depositary - acceso a Catálogo, Productos e Inventario
@@ -56,6 +58,7 @@ const ROLE_PERMISSIONS = {
     canViewAds: false,
     canViewReports: false,
     canViewStoresAdmin: false,
+    canViewDeliveries: true,
   },
 
   // Role: pos - acceso a Catálogo y POS
@@ -74,6 +77,7 @@ const ROLE_PERMISSIONS = {
     canViewAds: false,
     canViewReports: false,
     canViewStoresAdmin: false,
+    canViewDeliveries: false,
   },
 
   // Role: admin - acceso a Dashboard, Catálogo, Inventario, Compras, POS, Créditos y Configuración
@@ -92,6 +96,26 @@ const ROLE_PERMISSIONS = {
     canViewAds: false,
     canViewReports: true,
     canViewStoresAdmin: false,
+    canViewDeliveries: true,
+  },
+
+  // Role: delivery - acceso a módulo de deliveries
+  delivery: {
+    canViewCatalog: true,
+    canAddOrder: false,
+    canViewProducts: false,
+    canViewInventory: false,
+    canViewPurchases: false,
+    canViewPayments: false,
+    canViewPOS: false,
+    canViewCredits: false,
+    canViewDashboard: false,
+    canViewSettings: false,
+    canViewUsers: false,
+    canViewAds: false,
+    canViewReports: false,
+    canViewStoresAdmin: false,
+    canViewDeliveries: true,
   },
 
   // Role: su - acceso total
@@ -110,6 +134,7 @@ const ROLE_PERMISSIONS = {
     canViewAds: true,
     canViewReports: true,
     canViewStoresAdmin: true,
+    canViewDeliveries: true,
   },
 } as const;
 
@@ -190,6 +215,9 @@ export function usePermissions() {
         break;
       case '/stores-admin':
         result = hasPermission('canViewStoresAdmin');
+        break;
+      case '/deliveries':
+        result = hasPermission('canViewDeliveries');
         break;
       default:
         // Si no coincide con ninguna ruta específica, permitir acceso

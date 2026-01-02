@@ -12,6 +12,7 @@ import {
   Users,
   Building2,
   DollarSign,
+  Truck,
 } from 'lucide-react';
 import { defaultStoreId } from './data';
 
@@ -23,6 +24,7 @@ export const getNavItems = (activeStoreId: string) => [
   { href: "/purchases", label: "Compras", icon: Store },
   { href: "/payments", label: "Pagos & Gastos", icon: DollarSign },
   { href: '/pos', label: 'Punto de Venta', icon: ShoppingCart },
+  { href: "/deliveries", label: "Entregas", icon: Truck, permission: "canViewDeliveries" },
   { href: "/credits", label: "Créditos", icon: CreditCard },
   { href: "/reports", label: "Reportes", icon: FileText },
 ];
@@ -35,12 +37,13 @@ export const navItems = [
   { href: "/purchases", label: "Compras", icon: Store },
   { href: "/payments", label: "Pagos", icon: DollarSign },
   { href: '/pos', label: 'Punto de Venta', icon: ShoppingCart },
+  { href: "/deliveries", label: "Entregas", icon: Truck, permission: "canViewDeliveries" },
   { href: "/credits", label: "Créditos", icon: CreditCard },
   { href: "/reports", label: "Reportes", icon: FileText },
 ];
 
 export const adminNavItems = [
-  { href: "/stores-admin", label: "Administrar Tiendas", icon: Building2, role: "su" },
+  { href: "/stores-admin", label: "Adm Tiendas", icon: Building2, role: "su" },
   { href: "/ads", label: "Anuncios", icon: Megaphone, role: "su" },
   { href: "/users", label: "Usuarios", icon: Users, role: "su" },
 ];
