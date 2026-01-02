@@ -80,10 +80,11 @@ export async function GET(
 */
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const productId = params.id;
+        const resolvedParams = await params;
+        const productId = resolvedParams.id;
         const data = await request.json();
 
         console.log('🔍 [API PUT] Recibiendo actualización:', {

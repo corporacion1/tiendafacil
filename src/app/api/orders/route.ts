@@ -51,7 +51,6 @@ export async function GET(request: NextRequest) {
   
   // Si se busca por ID específico, buscar orden individual
   if (id) {
-    console.log('🔍 [Orders API] Buscando orden por ID:', id);
     const { data: order, error } = await supabase
       .from('orders')
       .select('*')
@@ -77,7 +76,7 @@ export async function GET(request: NextRequest) {
       items: typeof order.items === 'string' ? JSON.parse(order.items) : order.items,
       total: order.total,
       status: normalizeStatus(order.status), // Normalizar estatus al leer
-      processedBy: order.user_id,
+      processedBy: order.processed_by || order.user_id, // Usar processed_by primero, fallback a user_id
       createdAt: order.created_at,
       updatedAt: order.updated_at,
       customerAddress: order.customer_address,
@@ -115,7 +114,6 @@ export async function GET(request: NextRequest) {
     // Función cacheada
     const getCachedOrders = unstable_cache(
       async (sId: string, sStatus: string | null, cEmail: string | null) => {
-        console.log(`🔌 [Orders API] Fetching FRESH orders from DB for store: ${sId}, status: ${sStatus || 'all'}, user: ${cEmail || 'all'}`);
         let query = supabase
           .from('orders')
           .select('*')
@@ -149,7 +147,6 @@ export async function GET(request: NextRequest) {
     let orders;
     if (noCache) {
       // Fetch directly from database without cache
-      console.log('🔍 [Orders API] Fetching orders without cache for store:', storeId);
       
       let query = supabase
         .from('orders')
@@ -191,7 +188,7 @@ export async function GET(request: NextRequest) {
       total: order.total,
       status: normalizeStatus(order.status), // Normalizar estatus al leer
       notes: order.notes,
-      processedBy: order.user_id,
+      processedBy: order.processed_by || order.user_id, // Usar processed_by primero, fallback a user_id
       saleId: order.sale_id,
       createdAt: order.created_at,
       updatedAt: order.updated_at,
@@ -207,7 +204,6 @@ export async function GET(request: NextRequest) {
       longitude: order.longitude
     })) || [];
 
-    console.log(`✅ [Orders API] Returned ${formattedOrders.length} orders (Cache Status: Likely HIT if no 'Fresh data' log)`);
 
     return NextResponse.json(formattedOrders, {
       headers: {
@@ -279,7 +275,6 @@ export async function POST(request: NextRequest) {
       orderData.notes = (orderData.notes || '') + mapsLink;
     }
 
-    console.log('📦 [Orders API] Creando pedido en Supabase:', orderId);
 
     // Insertar pedido en Supabase
     let { data: createdOrder, error } = await supabase
@@ -328,7 +323,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('✅ [Orders API] Pedido creado exitosamente:', orderId);
 
     // Formatear respuesta para mantener compatibilidad
     const formattedResponse = {
@@ -344,7 +338,7 @@ export async function POST(request: NextRequest) {
         storeId: createdOrder.store_id,
         status: normalizeStatus(createdOrder.status), // Normalizar estatus en respuesta
         notes: createdOrder.notes,
-        processedBy: createdOrder.user_id,
+        processedBy: createdOrder.processed_by || createdOrder.user_id, // Usar processed_by primero, fallback a user_id
         saleId: createdOrder.sale_id,
         createdAt: createdOrder.created_at,
         updatedAt: createdOrder.updated_at,
@@ -391,7 +385,6 @@ export async function PUT(request: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log('🔄 [Orders API] Actualizando pedido:', orderId, 'store:', storeId);
 
     // Preparar datos para actualización
     const updateData: any = {
@@ -488,7 +481,6 @@ export async function PUT(request: NextRequest) {
       }, { status: 404 });
     }
 
-    console.log('✅ [Orders API] Pedido actualizado:', updatedOrder.order_id);
 
     // Convertir formato para compatibilidad
     const formattedOrder = {
@@ -503,7 +495,7 @@ export async function PUT(request: NextRequest) {
       total: updatedOrder.total,
       storeId: updatedOrder.store_id,
       status: normalizeStatus(updatedOrder.status), // Normalizar estatus en respuesta
-      processedBy: updatedOrder.user_id,
+      processedBy: updatedOrder.processed_by || updatedOrder.user_id, // Usar processed_by primero, fallback a user_id
       saleId: updatedOrder.sale_id,
       customerAddress: updatedOrder.customer_address,
       deliveryMethod: updatedOrder.delivery_method,
@@ -548,7 +540,6 @@ export async function DELETE(request: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log('🗑️ [Orders API] Eliminando pedido:', orderId);
 
     const { data: deleted, error } = await supabase
       .from('orders')
@@ -567,7 +558,6 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Orden no existe" }, { status: 404 });
     }
 
-    console.log('✅ [Orders API] Pedido eliminado:', orderId);
 
     // Invalidar cache de pedidos para todas las combinaciones relevantes
     revalidateTag(`orders-${deleted.store_id}`);

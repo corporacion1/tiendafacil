@@ -81,7 +81,6 @@ export default function ReportsPage() {
     
     // Debug: Log the active store ID
     useEffect(() => {
-        console.log('🏢 [Reports] Active Store ID:', activeStoreId);
     }, [activeStoreId]);
 
     // Fetch orders data directly since settings context might not have it
@@ -107,14 +106,11 @@ export default function ReportsPage() {
                         'Expires': '0'
                     }
                 });
-                console.log('📊 [Reports] Orders API Response Status:', response.status);
                 if (response.ok) {
                     const data = await response.json();
-                    console.log('📊 [Reports] Raw orders data:', data);
                     // Debug: Check first order if it has customer data
                     if (Array.isArray(data) && data.length > 0) {
-                        console.log('📊 [Reports] First order data:', data[0]);
-                        console.log('📊 [Reports] First order keys:', Object.keys(data[0]));
+                        console.log('📊 [Reports] First raw order from /api/orders:', data[0]);
                     }
                     // Convert to PendingOrder format if needed
                     const formattedOrders: PendingOrder[] = Array.isArray(data) ? data.map(order => ({
@@ -129,7 +125,7 @@ export default function ReportsPage() {
                         storeId: order.store_id || order.storeId || activeStoreId,
                         status: order.status || 'pending',
                         notes: order.notes || '',
-                        processedBy: order.user_id || order.processedBy || '',
+                        processedBy: order.processed_by || order.processedBy || order.user_id || '',
                         saleId: order.sale_id || order.saleId || '',
                         customerAddress: order.customer_address || order.customerAddress || '',
                         deliveryMethod: order.delivery_method || order.deliveryMethod || 'pickup',
@@ -142,13 +138,9 @@ export default function ReportsPage() {
                         latitude: order.latitude || null,
                         longitude: order.longitude || null
                     })) : [];
-                    console.log('📊 [Reports] Formatted orders:', formattedOrders);
                     // Debug: Check first formatted order
                     if (formattedOrders.length > 0) {
                         console.log('📊 [Reports] First formatted order:', formattedOrders[0]);
-                        console.log('📊 [Reports] First formatted order customerName:', formattedOrders[0].customerName);
-                        console.log('📊 [Reports] First formatted order customerPhone:', formattedOrders[0].customerPhone);
-                        console.log('📊 [Reports] First formatted order processedBy:', formattedOrders[0].processedBy);
                     }
                     setOrdersData(formattedOrders);
                 }
@@ -164,7 +156,6 @@ export default function ReportsPage() {
 
     // Add manual refresh function
     const refreshOrders = () => {
-        console.log('🔄 [Reports] Manual refresh triggered');
         setForceRefresh(prev => prev + 1);
     };
 
@@ -657,7 +648,14 @@ export default function ReportsPage() {
         // Use fetched orders data first, fallback to settings data
         const ordersToUse = ordersData.length > 0 ? ordersData : (pendingOrdersData || []);
         if (ordersToUse.length === 0) return [];
-        
+
+        // Debug: log which data source is being used
+        if (ordersData.length > 0 && pendingOrdersData.length > 0) {
+            console.log('📊 [Reports] Using ordersData from /api/orders (direct fetch)');
+        } else if (pendingOrdersData.length > 0) {
+            console.log('📊 [Reports] Using pendingOrdersData from settings context (/api/pending-orders)');
+        }
+
         const sortedOrders = [...ordersToUse].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         return (filterByDate(sortedOrders) as PendingOrder[]).filter(order =>
             order.orderId.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -742,6 +740,13 @@ export default function ReportsPage() {
     useEffect(() => {
         setCurrentPage(1);
     }, [searchTerm, activeTab, timeRange]);
+
+    // Debug: log orders when they change
+    useEffect(() => {
+        if (paginatedOrders.length > 0) {
+            console.log('📊 [Reports] First order in paginatedOrders:', paginatedOrders[0]);
+        }
+    }, [paginatedOrders]);
 
 
     const salesTotal = useMemo(() => {

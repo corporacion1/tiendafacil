@@ -31,12 +31,27 @@ export async function GET(request: NextRequest) {
     const transformedOrders = pendingOrders?.map((o: any) => ({
       orderId: o.order_id,
       storeId: o.store_id,
-      items: o.items,
+      items: typeof o.items === 'string' ? JSON.parse(o.items) : (o.items || []),
       status: o.status,
       total: o.total,
-      customer: o.customer,
+      customerName: o.customer_name || o.customer || '',
+      customerPhone: o.customer_phone || '',
+      customerEmail: o.customer_email || '',
+      notes: o.notes || '',
+      processedBy: o.processed_by || o.user_id || '',
+      saleId: o.sale_id || '',
       createdAt: o.created_at,
-      updatedAt: o.updated_at
+      updatedAt: o.updated_at,
+      customerAddress: o.customer_address || '',
+      deliveryMethod: o.delivery_method || '',
+      deliveryStatus: o.delivery_status || '',
+      deliveryProviderID: o.delivery_provider_id || '',
+      deliveryFee: o.delivery_fee || 0,
+      deliveryDate: o.delivery_date || '',
+      deliveryTime: o.delivery_time || '',
+      deliveryNotes: o.delivery_notes || '',
+      latitude: o.latitude || null,
+      longitude: o.longitude || null
     })) || [];
 
     return NextResponse.json(transformedOrders);

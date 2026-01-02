@@ -40,7 +40,6 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
     // Evitar fetches muy frecuentes
     const now = Date.now();
     if (now - lastFetchTimeRef.current < MIN_FETCH_INTERVAL) {
-      console.log('⏳ [POS] Skipping fetch - too frequent');
       return;
     }
     lastFetchTimeRef.current = now;
@@ -51,11 +50,9 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
     setError(null);
 
     try {
-      console.log('🔍 [POS] Fetching pending orders for store:', storeId);
 
       // Obtener TODOS los pedidos (sin filtro de status)
       const url = `/api/orders?storeId=${encodeURIComponent(storeId)}`;
-      console.log('🔗 [POS] API URL:', url);
 
       const response = await fetch(url);
 
@@ -64,13 +61,10 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
       }
 
       const data = await response.json();
-      console.log('📦 [POS] Pending orders fetched:', data.length);
-      console.log('📋 [POS] Orders data:', data);
 
       // Log de clientes únicos para confirmar que son de diferentes usuarios
       if (Array.isArray(data) && data.length > 0) {
         const uniqueCustomers = [...new Set(data.map(order => order.customerName))];
-        console.log('👥 [POS] Clientes únicos en pedidos:', uniqueCustomers.length, uniqueCustomers);
       }
 
       // Convertir formato de respuesta a PendingOrder si es necesario
@@ -104,7 +98,6 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
       setOrders(prevOrders => {
         const hasChanges = JSON.stringify(prevOrders) !== JSON.stringify(formattedOrders);
         if (hasChanges) {
-          console.log('🔄 [POS] Orders updated - changes detected');
           return formattedOrders;
         }
         return prevOrders;
@@ -144,7 +137,6 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
   // Función para actualizar estado de pedido
   const updateOrderStatus = useCallback(async (orderId: string, status: string, saleId?: string, processedBy?: string): Promise<boolean> => {
     try {
-      console.log('🔄 [POS] Updating order status:', orderId, 'to', status, 'storeId:', storeId);
       
       if (!storeId) {
         console.error('❌ [POS] No storeId provided for order status update');
@@ -174,7 +166,6 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
       // Refrescar la lista de pedidos
       await fetchOrders(false);
 
-      console.log('✅ [POS] Order status updated successfully');
       return true;
 
     } catch (error) {
@@ -189,7 +180,6 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
       return;
     }
 
-    console.log('🔄 [POS] Starting order polling...');
     setIsPolling(true);
 
     pollingIntervalRef.current = setInterval(() => {
@@ -202,7 +192,6 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
   // Función para detener polling
   const stopPolling = useCallback(() => {
     if (pollingIntervalRef.current) {
-      console.log('⏹️ [POS] Stopping order polling...');
       clearInterval(pollingIntervalRef.current);
       pollingIntervalRef.current = null;
       setIsPolling(false);
@@ -217,7 +206,6 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
   // Manejar reconexión de red
   useEffect(() => {
     if (isOnline && wasOffline && storeId) {
-      console.log('🔄 [POS] Network reconnected - fetching orders');
       retryCountRef.current = 0; // Reset retry counter
       fetchOrders(false);
     }
@@ -248,10 +236,8 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        console.log('📱 [POS] Page hidden - stopping polling');
         stopPolling();
       } else if (storeId) {
-        console.log('📱 [POS] Page visible - resuming polling');
         fetchOrders(false); // Fetch inmediato al volver
         startPolling();
       }

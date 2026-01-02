@@ -122,38 +122,52 @@ export default function CreditsPage() {
         try {
             setIsLoading(true);
 
+            // Validar que tengamos storeId
+            if (!activeStoreId || activeStoreId === 'default') {
+                setAccounts([]);
+                setSummary(null);
+                return;
+            }
+
             // Construir parámetros de consulta
             const accountsParams = new URLSearchParams({
                 storeId: activeStoreId,
                 ...(selectedStatus !== 'all' && { status: selectedStatus })
             });
 
+
             // Cargar cuentas por cobrar y resumen en paralelo
             const [accountsResponse, summaryResponse] = await Promise.all([
-                fetch(`/api/credits?${accountsParams}`),
-                fetch(`/api/credits/summary?storeId=${activeStoreId}`)
+                fetch(`/api/credits?${accountsParams}`, { cache: 'no-store' }),
+                fetch(`/api/credits/summary?storeId=${activeStoreId}`, { cache: 'no-store' })
             ]);
+
 
             if (accountsResponse.ok) {
                 const accountsData = await accountsResponse.json();
                 setAccounts(accountsData.accounts || []);
             } else {
                 const errorData = await accountsResponse.json().catch(() => ({}));
-                console.error('Error fetching accounts:', errorData);
-                throw new Error(errorData.error || 'Error cargando cuentas por cobrar');
+                const errorMessage = errorData.error || errorData.message || errorData.details || 'Error cargando cuentas por cobrar';
+                throw new Error(errorMessage);
             }
 
             if (summaryResponse.ok) {
                 const summaryData = await summaryResponse.json();
                 setSummary(summaryData.summary);
             } else {
-                console.warn('No se pudo cargar el resumen de créditos');
             }
 
-        } catch (error) {
+        } catch (error: any) {
             handleError.api(error, {
                 action: 'load_credits_data',
                 component: 'CreditsPage'
+            });
+            // No lanzar el error para que la UI no se rompa completamente
+            toast({
+                variant: "destructive",
+                title: "Error al cargar créditos",
+                description: error.message || "Ocurrió un error al cargar las cuentas por cobrar"
             });
         } finally {
             setIsLoading(false);
@@ -162,14 +176,8 @@ export default function CreditsPage() {
 
     // Función para procesar pagos usando la API
     const handleProcessPayment = async () => {
-        console.log('🔄 [handleProcessPayment] Iniciando proceso de pago', {
-            selectedAccount: selectedAccount?.id,
-            amount: paymentAmount,
-            method: paymentMethod
-        });
 
         if (!selectedAccount || !paymentAmount || !paymentMethod) {
-            console.warn('❌ [handleProcessPayment] Datos incompletos');
             toast({
                 variant: "destructive",
                 title: "Datos incompletos",
@@ -228,7 +236,6 @@ export default function CreditsPage() {
                 }
             };
 
-            console.log('📤 [handleProcessPayment] Enviando datos a API:', paymentData);
 
             const response = await fetch('/api/credits', {
                 method: 'PUT',
@@ -243,7 +250,6 @@ export default function CreditsPage() {
             }
 
             const updatedAccount = await response.json();
-            console.log('✅ [handleProcessPayment] Pago exitoso, cuenta actualizada:', updatedAccount);
 
             // Actualizar la cuenta en el estado local
             setAccounts(prev => prev.map(acc =>

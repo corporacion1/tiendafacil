@@ -20,15 +20,11 @@ export async function GET(request: Request) {
 
     console.log('🔍 [Credits API] Buscando cuentas por cobrar:', { storeId, customerId, status, overdue });
 
-    // Construir query
+    // Construir query - Simplificado sin JOIN complejo
     let query = supabaseAdmin
       .from('account_receivables')
-      .select(`
-        *,
-        sales!inner(transaction_type)  // Importante: Hacer join con la tabla sales para verificar el tipo de transacción
-      `)
-      .eq('store_id', storeId)
-      .eq('sales.transaction_type', 'credito');  // Filtrar solo ventas de crédito
+      .select('*')
+      .eq('store_id', storeId);
 
     if (customerId) {
       query = query.eq('customer_id', customerId);
@@ -59,7 +55,7 @@ export async function GET(request: Request) {
 
     if (error) {
       console.error('❌ [Credits API] Error fetching accounts:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: error.message, details: 'Error al consultar la tabla account_receivables' }, { status: 500 });
     }
 
     console.log('📊 [Credits API] Cuentas encontradas:', accounts?.length || 0);
