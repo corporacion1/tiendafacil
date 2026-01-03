@@ -55,6 +55,9 @@ export default function PurchasesPage() {
   const [documentNumberError, setDocumentNumberError] = useState<string | null>(null);
   const [responsible, setResponsible] = useState('');
 
+  // Submit protection
+  const [isSubmittingSupplier, setIsSubmittingSupplier] = useState(false);
+
   const selectedSupplier = (suppliers || []).find(s => s.id === selectedSupplierId) ?? null;
 
   // Efecto para detectar cliente
@@ -223,6 +226,8 @@ export default function PurchasesPage() {
     }
 
     try {
+      setIsSubmittingSupplier(true);
+
       const url = editingSupplierId ? '/api/suppliers' : '/api/suppliers';
       const method = editingSupplierId ? 'PUT' : 'POST';
 
@@ -271,13 +276,15 @@ export default function PurchasesPage() {
       setIsSupplierDialogOpen(false);
 
     } catch (error: any) {
-      console.error('❌ [Purchases Page] Error saving supplier:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: error.message || "No se pudo guardar el proveedor"
-      });
-    }
+        console.error('❌ [Purchases Page] Error saving supplier:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error.message || "No se pudo guardar el proveedor"
+        });
+      } finally {
+        setIsSubmittingSupplier(false);
+      }
   };
 
   const handleProcessPurchase = () => {
@@ -576,8 +583,17 @@ export default function PurchasesPage() {
                         </div>
                       </div>
                       <DialogFooter>
-                        <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-                        <Button onClick={handleSaveSupplier} disabled={!isNewSupplierFormDirty || !newSupplier.name.trim()}>Guardar Proveedor</Button>
+                        <DialogClose asChild><Button variant="outline" disabled={isSubmittingSupplier}>Cancelar</Button></DialogClose>
+                        <Button onClick={handleSaveSupplier} disabled={!isNewSupplierFormDirty || !newSupplier.name.trim() || isSubmittingSupplier}>
+                          {isSubmittingSupplier ? (
+                            <>
+                              <div className="h-4 w-4 mr-2 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              Guardando...
+                            </>
+                          ) : (
+                            'Guardar Proveedor'
+                          )}
+                        </Button>
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>

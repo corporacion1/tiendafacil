@@ -77,6 +77,10 @@ export default function PaymentsPage() {
     const [filterCategory, setFilterCategory] = useState<string>('all');
     const [searchTerm, setSearchTerm] = useState('');
 
+    // Submit protection
+    const [isSubmittingRecipient, setIsSubmittingRecipient] = useState(false);
+    const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
+
     // Detail View State
     const [viewPayment, setViewPayment] = useState<ExpensePayment | null>(null);
     const [isViewOpen, setIsViewOpen] = useState(false);
@@ -124,6 +128,8 @@ export default function PaymentsPage() {
         }
 
         try {
+            setIsSubmittingRecipient(true);
+
             const url = editingRecipientId
                 ? '/api/payment-recipients' // PUT
                 : '/api/payment-recipients'; // POST
@@ -171,6 +177,8 @@ export default function PaymentsPage() {
                 title: "Error",
                 description: error.message || "No se pudo guardar el destinatario"
             });
+        } finally {
+            setIsSubmittingRecipient(false);
         }
     };
 
@@ -195,6 +203,8 @@ export default function PaymentsPage() {
         }
 
         try {
+            setIsSubmittingPayment(true);
+
             const paymentData = {
                 storeId: activeStoreId,
                 recipientName: selectedRecipient.name,
@@ -243,6 +253,8 @@ export default function PaymentsPage() {
                 title: "Error",
                 description: error.message || "No se pudo registrar el pago"
             });
+        } finally {
+            setIsSubmittingPayment(false);
         }
     };
 
@@ -413,8 +425,17 @@ export default function PaymentsPage() {
                                             </div>
                                         </div>
                                         <DialogFooter>
-                                            <DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose>
-                                            <Button onClick={handleSaveRecipient}>Guardar</Button>
+                                            <DialogClose asChild><Button variant="outline" disabled={isSubmittingRecipient}>Cancelar</Button></DialogClose>
+                                            <Button onClick={handleSaveRecipient} disabled={isSubmittingRecipient}>
+                                                {isSubmittingRecipient ? (
+                                                    <>
+                                                        <div className="h-4 w-4 mr-2 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                        Guardando...
+                                                    </>
+                                                ) : (
+                                                    'Guardar'
+                                                )}
+                                            </Button>
                                         </DialogFooter>
                                     </DialogContent>
                                 </Dialog>
@@ -521,9 +542,18 @@ export default function PaymentsPage() {
                         </div>
                     </CardContent>
                     <CardFooter>
-                        <Button className="w-full" onClick={handleCreatePayment} disabled={!isFormComplete}>
-                            <DollarSign className="mr-2 h-4 w-4" />
-                            Registrar Pago
+                        <Button className="w-full" onClick={handleCreatePayment} disabled={!isFormComplete || isSubmittingPayment}>
+                            {isSubmittingPayment ? (
+                                <>
+                                    <div className="h-4 w-4 mr-2 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    Registrando...
+                                </>
+                            ) : (
+                                <>
+                                    <DollarSign className="mr-2 h-4 w-4" />
+                                    Registrar Pago
+                                </>
+                            )}
                         </Button>
                     </CardFooter>
                 </Card>

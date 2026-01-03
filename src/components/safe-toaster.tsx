@@ -43,22 +43,16 @@ function SafeToaster() {
   const memoizedToasts = React.useMemo(() => {
     return limitedToasts.map(function ({ id, title, description, action, ...props }) {
       return (
-        <ErrorBoundary 
-          key={id} 
-          context="Toast Individual"
-          fallback={MinimalErrorFallback}
-        >
-          <Toast key={id} {...props}>
-            <div className="grid gap-1">
-              {title && <ToastTitle>{title}</ToastTitle>}
-              {description && (
-                <ToastDescription>{description}</ToastDescription>
-              )}
-            </div>
-            {action}
-            <ToastClose />
-          </Toast>
-        </ErrorBoundary>
+        <Toast key={id} {...props}>
+          <div className="grid gap-1">
+            {title && <ToastTitle>{title}</ToastTitle>}
+            {description && (
+              <ToastDescription>{description}</ToastDescription>
+            )}
+          </div>
+          {action}
+          <ToastClose />
+        </Toast>
       );
     });
   }, [limitedToasts]);

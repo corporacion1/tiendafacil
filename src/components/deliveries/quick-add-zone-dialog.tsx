@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -14,18 +14,16 @@ import { useSettings } from '@/contexts/settings-context';
 import ZoneMap from './zone-map';
 import type { DeliveryZone } from '@/lib/types';
 
-interface ZoneFormProps {
+interface QuickAddZoneDialogProps {
   open: boolean;
   onClose: () => void;
-  zone?: DeliveryZone | null;
-  onSave?: () => void;
+  onSuccess?: () => void;
 }
 
-export const ZoneForm = ({ open, onClose, zone, onSave }: ZoneFormProps) => {
+export const QuickAddZoneDialog = ({ open, onClose, onSuccess }: QuickAddZoneDialogProps) => {
   const { toast } = useToast();
   const { activeStoreId, activeSymbol, activeRate } = useSettings();
-  const { createZone: create, updateZone: update } = useDeliveryZones(activeStoreId || '');
-  const isEditing = !!zone;
+  const { createZone } = useDeliveryZones(activeStoreId || '');
 
   const [showZoneMapModal, setShowZoneMapModal] = useState(false);
 
@@ -57,63 +55,64 @@ export const ZoneForm = ({ open, onClose, zone, onSave }: ZoneFormProps) => {
   };
 
   const [formData, setFormData] = useState({
-    name: zone?.name || '',
-    description: zone?.description || '',
-    centerLatitude: zone?.centerLatitude || 0,
-    centerLongitude: zone?.centerLongitude || 0,
-    radiusKm: zone?.radiusKm || 0,
-    baseFee: zone?.baseFee || 0,
-    perKmFee: zone?.perKmFee || 0,
-    perKmFeeOutsideZone: zone?.perKmFeeOutsideZone || 0,
-    estimatedMinutesPerKm: zone?.estimatedMinutesPerKm || 0,
-    priority: zone?.priority || 0,
-    status: zone?.status || 'active' as 'active' | 'inactive',
+    name: '',
+    description: '',
+    centerLatitude: 0,
+    centerLongitude: 0,
+    radiusKm: 0,
+    baseFee: 0,
+    perKmFee: 0,
+    perKmFeeOutsideZone: 0,
+    estimatedMinutesPerKm: 0,
+    priority: 1,
+    status: 'active' as 'active' | 'inactive',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
-      const dataToSave = {
+      await createZone({
         ...formData,
         storeId: activeStoreId || '',
         baseFee: formData.baseFee / activeRate,
         perKmFee: formData.perKmFee / activeRate,
         perKmFeeOutsideZone: formData.perKmFeeOutsideZone / activeRate,
-      };
-
-      if (isEditing && zone) {
-        await update(zone.id, dataToSave);
-        toast({
-          title: 'Zona actualizada',
-          description: 'La zona se actualizó exitosamente',
-        });
-      } else {
-        await create(dataToSave);
-        toast({
-          title: 'Zona creada',
-          description: 'La zona se creó exitosamente',
-        });
-      }
-
-      onSave?.();
+      });
+      toast({
+        title: 'Zona creada',
+        description: `La zona ${formData.name} se creó exitosamente`
+      });
       onClose();
+      onSuccess?.();
+      setFormData({
+        name: '',
+        description: '',
+        centerLatitude: 0,
+        centerLongitude: 0,
+        radiusKm: 0,
+        baseFee: 0,
+        perKmFee: 0,
+        perKmFeeOutsideZone: 0,
+        estimatedMinutesPerKm: 0,
+        priority: 1,
+        status: 'active',
+      });
     } catch (error) {
-      console.error('Error al guardar zona:', error);
+      console.error('Error al crear zona:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: error instanceof Error ? error.message : 'No se pudo guardar la zona',
+        description: error instanceof Error ? error.message : 'No se pudo crear la zona'
       });
     }
   };
 
   return (
-    <React.Fragment>
-      <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Editar Zona' : 'Nueva Zona'}</DialogTitle>
+          <DialogTitle>Agregar Nueva Zona</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           <div className="grid grid-cols-2 gap-4">
@@ -168,15 +167,6 @@ export const ZoneForm = ({ open, onClose, zone, onSave }: ZoneFormProps) => {
                   title="Seleccionar en mapa"
                 >
                   <MapPinned className="h-4 w-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleGetMyLocation}
-                  className="shrink-0"
-                  title="Usar mi ubicación"
-                >
-                  <Navigation className="h-4 w-4" />
                 </Button>
                 <Button
                   type="button"
@@ -253,7 +243,7 @@ export const ZoneForm = ({ open, onClose, zone, onSave }: ZoneFormProps) => {
                 min="0"
                 placeholder="Ej: 3"
                 value={formData.estimatedMinutesPerKm}
-                onChange={(e) => setFormData({ ...formData, estimatedMinutesPerKm: parseInt(e.target.value) || 0 })}
+                onChange={(e) => setFormData({ ...formData, estimatedMinutesPerKm: Number(e.target.value) || 0 })}
               />
             </div>
 
@@ -263,10 +253,10 @@ export const ZoneForm = ({ open, onClose, zone, onSave }: ZoneFormProps) => {
                 id="priority"
                 type="number"
                 step="1"
-                min="0"
+                min="1"
                 placeholder="Ej: 1"
                 value={formData.priority}
-                onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) || 0 })}
+                onChange={(e) => setFormData({ ...formData, priority: Number(e.target.value) || 1 })}
               />
             </div>
 
@@ -291,30 +281,27 @@ export const ZoneForm = ({ open, onClose, zone, onSave }: ZoneFormProps) => {
             <DialogClose asChild>
               <Button variant="outline">Cancelar</Button>
             </DialogClose>
-            <Button type="submit">
-              {isEditing ? 'Actualizar' : 'Crear'}
-            </Button>
+            <Button type="submit">Crear Zona</Button>
           </DialogFooter>
         </form>
-      </DialogContent>
-    </Dialog>
 
-    <Dialog open={showZoneMapModal} onOpenChange={setShowZoneMapModal}>
-      <DialogContent className="max-w-4xl">
-        <DialogHeader>
-          <DialogTitle>Seleccionar Centro de la Zona en el Mapa</DialogTitle>
-        </DialogHeader>
-        <ZoneMap
-          currentLat={formData.centerLatitude}
-          currentLon={formData.centerLongitude}
-          onSave={(lat: number, lon: number) => {
-            setFormData({ ...formData, centerLatitude: lat, centerLongitude: lon });
-            setShowZoneMapModal(false);
-          }}
-          onCancel={() => setShowZoneMapModal(false)}
-        />
+        <Dialog open={showZoneMapModal} onOpenChange={setShowZoneMapModal}>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>Seleccionar Centro de la Zona en el Mapa</DialogTitle>
+            </DialogHeader>
+            <ZoneMap
+              currentLat={formData.centerLatitude}
+              currentLon={formData.centerLongitude}
+              onSave={(lat: number, lon: number) => {
+                setFormData({ ...formData, centerLatitude: lat, centerLongitude: lon });
+                setShowZoneMapModal(false);
+              }}
+              onCancel={() => setShowZoneMapModal(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
-    </React.Fragment>
   );
 };

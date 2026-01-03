@@ -64,22 +64,22 @@ export default function LoginModal({ children }: { children: React.ReactNode }) 
     }}>
       <div onClick={() => setIsOpen(true)}>{children}</div>
       <DialogContent className="w-[95vw] max-w-[450px] mobile-modal-height overflow-y-auto invisible-scroll modal-scroll touch-modal rounded-2xl border-0 shadow-2xl bg-gradient-to-br from-background via-background to-primary/5 mx-auto my-4">
-        <ErrorBoundary 
+        <DialogHeader className="text-center pb-2">
+          <div className="mx-auto mb-6 p-4 bg-gradient-to-br from-primary/10 to-accent/10 rounded-full shadow-lg ring-4 ring-primary/5">
+            <Logo className="h-20 w-20" />
+          </div>
+          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            Iniciar Sesión
+          </DialogTitle>
+          <DialogDescription className="text-muted-foreground mt-2">
+            Ingresa tu correo y contraseña para acceder a tu cuenta
+          </DialogDescription>
+        </DialogHeader>
+
+        <ErrorBoundary
           fallback={MinimalErrorFallback}
           context="Formulario de Login"
         >
-          <DialogHeader className="text-center pb-2">
-            <div className="mx-auto mb-6 p-4 bg-gradient-to-br from-primary/10 to-accent/10 rounded-full shadow-lg ring-4 ring-primary/5">
-              <Logo className="h-20 w-20" />
-            </div>
-            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Iniciar Sesión
-            </DialogTitle>
-            <DialogDescription className="text-muted-foreground mt-2">
-              Ingresa tu correo y contraseña para acceder a tu cuenta
-            </DialogDescription>
-          </DialogHeader>
-          
           <form onSubmit={handleSubmit} className="space-y-5 py-4">
             <div className="space-y-2">
               <Label htmlFor="login-email" className="text-sm font-medium">

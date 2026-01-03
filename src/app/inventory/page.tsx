@@ -177,6 +177,7 @@ export default function InventoryPage() {
   const [movementResponsible, setMovementResponsible] = useState('');
   const [movementNotes, setMovementNotes] = useState('');
   const [isProcessingMovement, setIsProcessingMovement] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
 
   const handleEdit = async (product: Product) => {
@@ -387,18 +388,22 @@ export default function InventoryPage() {
       return;
     }
 
-    const success = await deleteWithSync('/api/products', productId, {
-      successMessage: "El producto ha sido eliminado exitosamente.",
-      errorMessage: "No se pudo eliminar el producto. Intenta nuevamente.",
-      syncType: 'products',
-      updateState: (deletedId) => {
-        // Remover el producto del estado local
-        setProducts(prev => prev.filter(p => p.id !== deletedId));
-      }
-    });
+    try {
+      setIsDeleting(true);
+      const success = await deleteWithSync('/api/products', productId, {
+        successMessage: "El producto ha sido eliminado exitosamente.",
+        errorMessage: "No se pudo eliminar el producto. Intenta nuevamente.",
+        syncType: 'products',
+        updateState: (deletedId) => {
+          setProducts(prev => prev.filter(p => p.id !== deletedId));
+        }
+      });
 
-    if (success) {
-      setProductToDelete(null);
+      if (success) {
+        setProductToDelete(null);
+      }
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -1215,8 +1220,19 @@ export default function InventoryPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => productToDelete && handleDelete(productToDelete.id)} className="bg-destructive hover:bg-destructive/90">
-              Sí, eliminar
+            <AlertDialogAction 
+              onClick={() => productToDelete && handleDelete(productToDelete.id)} 
+              disabled={isDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Eliminando...
+                </span>
+              ) : (
+                'Sí, eliminar'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

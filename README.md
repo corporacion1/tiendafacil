@@ -4,12 +4,78 @@
 
 ![TiendaFácil Logo](public/tienda_facil_logo.svg)
 
-**Versión 1.3.0** | **Diciembre 2025**
- 
+**Versión 1.4.0** | **Enero 2026**
+  
  *Sistema completo de Punto de Venta, Inventario y Comercio Electrónico*
-@@ -92,8 +92,19 @@
- 
- ## 🚀 **Nuevas Características - Versión 1.3.0**
+
+## 🚀 **Nuevas Características - Versión 1.4.0**
+
+### 🚚 **Sistema Integral de Entregas (Deliveries)**
+- **Gestión de Zonas**: Definición de zonas de entrega con nombres, coordenadas y tarifas base
+- **Proveedores de Delivery**: Registro y administración de proveedores de mensajería
+- **Reglas de Tarifa**: Configuración dinámica de fees por zonas, pesos y condiciones especiales
+- **Historial de Entregas**: Seguimiento completo de cada entrega con estado en tiempo real
+- **Notificaciones**: Sistema de notificaciones para clientes y proveedores
+
+### 💳 **Sistema de Créditos y Cuentas por Cobrar**
+- **Gestión de Créditos**: Registro y seguimiento de ventas a crédito
+- **Pagos Parciales**: Soporte para abonos y saldo pendiente
+- **Días de Crédito**: Configuración flexible de plazos de pago
+- **Reportes de Cartera**: Análisis de cuentas por cobrar con antigüedad
+- **Vencimientos**: Seguimiento automático de fechas de vencimiento
+
+### 📊 **Módulo de Reportes Avanzado**
+- **Reportes de Ventas**: Análisis detallado por período, producto y categoría
+- **Reporte de Inventario**: Stock actual, movimientos y valoraciones
+- **Reporte de Créditos**: Estado de cartera y morosidad
+- **Reportes de Gastos**: Análisis de pagos y categorización
+- **Exportación**: Generación de reportes en múltiples formatos
+
+### 📢 **Sistema de Publicidades (Ads)**
+- **Gestión de Anuncios**: Creación y administración de campañas publicitarias
+- **Posiciones Múltiples**: Anuncios en diferentes secciones de la aplicación
+- **Programación**: Fechas de inicio y fin para campañas
+- **Estadísticas**: Seguimiento de impresiones y clics
+- **Imagenes**: Soporte para múltiples imágenes por anuncio
+
+### 📦 **Mejoras en Inventario**
+- **Historial de Movimientos**: Registro detallado de todas las operaciones
+- **Categorización**: Clasificación mejorada de productos
+- **Alertas de Stock**: Notificaciones por stock mínimo
+- **Valoración de Inventario**: Cálculo de valor total del inventario
+
+### 🛒 **Módulo de Compras (Purchases)**
+- **Órdenes de Compra**: Registro de compras a proveedores
+- **Entrada de Inventario**: Vinculación automática con movimientos
+- **Historial de Precios**: Seguimiento de costos por producto
+- **Proveedores**: Gestión completa de proveedores
+
+### 👥 **Gestión de Usuarios Avanzada**
+- **Listado Completo**: Vista tabular de todos los usuarios
+- **Edición de Perfiles**: Modificación de datos de usuarios
+- **Roles y Permisos**: Control granular de accesos
+- **Promoción de Usuarios**: Conversión de usuarios a administradores
+- **Búsqueda y Filtros**: Búsqueda rápida por nombre o email
+
+### 🛠️ **Mejoras Técnicas**
+
+#### **Sistema de Migraciones**
+- **Migraciones Automáticas**: Herramienta para migrar datos de MongoDB a Supabase
+- **Validación de Datos**: Verificación de integridad durante migración
+- **Logs de Progreso**: Seguimiento detallado del proceso
+- **Rollback**: Posibilidad de revertir migraciones
+
+#### **Optimización de Base de Datos**
+- **Índices Optimizados**: Mejora en rendimiento de consultas
+- **Limpieza de Datos**: Eliminación de registros huérfanos
+- **Tipos de Datos**: Corrección de tipos para Supabase
+
+#### **Mejoras en el POS**
+- **Auto-Sync**: Sincronización automática de pedidos pendientes
+- **Validaciones**: Verificación mejorada de estados
+- **UX Optimizada**: Flujo más fluido en el punto de venta
+
+### ✨ **Características Anteriores (v1.3.0)**
 
 ### 🏷️ **Sistema de Descuentos en POS**
 - **Flexibilidad Total**: Soporte para descuentos por monto fijo ($) o porcentaje (%).
@@ -193,11 +259,12 @@
 ## 🛠️ **Stack Tecnológico**
 
 ### **Frontend**
-- **Next.js 15.5.5**: Framework React con App Router
-- **TypeScript 5.0**: Tipado estático para mayor robustez
+- **Next.js 15.5.7**: Framework React con App Router
+- **TypeScript 5.x**: Tipado estático para mayor robustez
 - **Tailwind CSS 3.4**: Framework de estilos utilitarios
 - **ShadCN/UI**: Componentes de interfaz modernos
 - **Lucide React**: Iconografía consistente y moderna
+- **Sonner**: Sistema de notificaciones toast
 
 ### **Backend y Base de Datos**
 - **Supabase**: Base de datos PostgreSQL en la nube
@@ -217,12 +284,12 @@
 ### **Desarrollo Local**
 - **Node.js**: 18.0 o superior
 - **npm**: 9.0 o superior
-- **MongoDB**: 7.0 o superior (local o Atlas)
+- **Supabase**: Cuenta en supabase.com (base de datos PostgreSQL en la nube)
 - **Memoria RAM**: Mínimo 4GB recomendado
 
 ### **Producción**
 - **Vercel/Netlify**: Para despliegue frontend
-- **MongoDB Atlas**: Base de datos en la nube
+- **Supabase**: Base de datos PostgreSQL en la nube
 - **CDN**: Para assets estáticos (opcional)
 
 ## 🚀 **Instalación y Configuración**
@@ -402,16 +469,39 @@ docker run -p 3000:3000 tienda-facil
 
 ## 👥 **Roles y Permisos**
 
-| Rol | Catálogo | Productos | Inventario | POS | Compras | Pagos | Créditos | Dashboard | Admin | Promoción |
-|-----|----------|-----------|------------|-----|---------|-------|----------|-----------|-------|-----------|
-| **Guest** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **User** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Depositary** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **POS** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Admin** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| **SuperUser** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Rol | Catálogo | Productos | Inventario | POS | Compras | Pagos | Créditos | Entregas | Reportes | Ads | Dashboard | Admin | Promoción |
+|-----|----------|-----------|------------|-----|---------|-------|----------|----------|----------|-----|-----------|-------|-----------|
+| **Guest** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **User** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Depositary** | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **POS** | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Admin** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **SuperUser** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
-## 🔄 **Changelog - Versión 1.2.0**
+## 🔄 **Changelog - Versión 1.4.0**
+
+### ✨ **Nuevas Características**
+- **Sistema de Entregas**: Módulo completo de gestión de deliveries con zonas, proveedores y tarifas
+- **Sistema de Créditos**: Gestión de cuentas por cobrar con pagos parciales y vencimientos
+- **Módulo de Reportes**: Reportes avanzados de ventas, inventario, créditos y gastos
+- **Sistema de Publicidades**: Gestión de campañas publicitarias con imágenes y programación
+- **Módulo de Compras**: Registro de compras a proveedores con entrada de inventario
+- **Gestión de Usuarios**: Panel avanzado de usuarios con edición y promoción
+
+### 🛠️ **Mejoras Técnicas**
+- **Sistema de Migraciones**: Herramienta para migrar datos de MongoDB a Supabase
+- **Optimización de Base de Datos**: Índices mejorados y limpieza de datos
+- **Auto-Sync en POS**: Sincronización automática de pedidos pendientes
+- **Validaciones Mejoradas**: Verificación de estados y datos
+
+### 📚 **Documentación**
+- **README Actualizado**: Información completa de nuevos módulos
+- **Configuración Supabase**: Instrucciones actualizadas de conexión
+- **GUIDEs**: Documentación de migraciones y deployment
+
+---
+
+## 🔄 **Changelog - Versión 1.3.0**
 
 ### ✨ **Nuevas Características**
 - **Módulo de Pagos**: Sistema completo para registrar gastos generales del negocio
@@ -514,7 +604,7 @@ Este proyecto es propiedad de **Corporación 1 Plus, C.A.** y está protegido po
 
 <div align="center">
 
-**🚀 TiendaFácil v1.3.0 - Impulsando el Comercio Digital**
+**🚀 TiendaFácil v1.4.0 - Impulsando el Comercio Digital**
 
 *Desarrollado con ❤️ por Corporación 1 Plus, C.A.*
 

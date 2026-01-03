@@ -3,7 +3,7 @@
 // Imports
 import { useState, useMemo, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Package, ShoppingBag, Plus, Minus, Trash2, Send, LayoutGrid, Instagram, Star, Search, UserCircle, LogOut, MoreHorizontal, Copy, AlertCircle, QrCode, Pencil, ArrowRight, Check, User, Phone, Mail, Eye, ScanLine, X, Store as StoreIcon, ArrowLeftRight, Share, MapPin, Truck, Armchair, RotateCcw } from "lucide-react";
+import { Package, ShoppingBag, Plus, Minus, Trash2, Send, LayoutGrid, Instagram, Star, Search, UserCircle, LogOut, MoreHorizontal, Copy, AlertCircle, QrCode, Pencil, ArrowRight, Check, User, Phone, Mail, Eye, ScanLine, X, Store as StoreIcon, ArrowLeftRight, Share, MapPin, Truck, Armchair } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
@@ -36,15 +36,16 @@ import LoginModal from '@/components/login-modal';
 import { useSettings } from "@/contexts/settings-context";
 import { useAuth } from "@/contexts/AuthContext";
 import { AddOrderGuard } from "@/components/permission-guard";
-import { IDGenerator } from "@/lib/id-generator";
-import { usePermissions } from "@/hooks/use-permissions";
 import { StoreRequestButton } from "@/components/store-request-button";
 import { useUserOrders } from "@/hooks/useUserOrders";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { useProducts } from "@/hooks/useProducts";
+import { usePermissions } from "@/hooks/use-permissions";
 import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabase';
 import { date } from "zod";
+import { IDGenerator } from "@/lib/id-generator";
+import DeliveryMap from '@/components/deliveries/delivery-map';
 
 // Sistema de fetch robusto con retry
 const fetchWithRetry = async (
@@ -664,6 +665,15 @@ export default function CatalogPage() {
   const [location, setLocation] = useState<{ lat: number, lng: number } | null>(null);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [departureLocation, setDepartureLocation] = useState<{ latitude: number; longitude: number; address?: string }>({
+    latitude: 0,
+    longitude: 0,
+    address: ''
+  });
+
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const [isSubmittingRegister, setIsSubmittingRegister] = useState(false);
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -691,6 +701,23 @@ export default function CatalogPage() {
     }
   }, [urlSku, urlStoreId, activeStoreId]);
 
+  // Cargar ubicación de partida desde localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('TIENDA_FACIL_DEPARTURE_LOCATION');
+      if (saved) {
+        const location = JSON.parse(saved);
+        setDepartureLocation({
+          latitude: location.latitude || 0,
+          longitude: location.longitude || 0,
+          address: location.address || ''
+        });
+      }
+    } catch (error) {
+      console.error('Error loading departure location:', error);
+    }
+  }, []);
+
   // Hook para manejar pedidos del usuario desde la base de datos
   const {
     orders: userOrders,
@@ -699,6 +726,14 @@ export default function CatalogPage() {
     refetch: refetchOrders,
     isPolling: isPollingOrders
   } = useUserOrders(authUser?.email || undefined, storeIdForCatalog);
+
+  // Hacer refetch cuando el email del usuario cambie (ej: después del login)
+  useEffect(() => {
+    if (authUser?.email && storeIdForCatalog) {
+      refetchOrders(true);
+    }
+  }, [authUser?.email, storeIdForCatalog, refetchOrders]);
+
 
 
 
@@ -938,6 +973,7 @@ export default function CatalogPage() {
     if (!validateForm()) return;
 
     try {
+      setIsSubmittingRegister(true);
       const newCustomer = await createCustomerInSupabase({
         id: IDGenerator.generate('customer', storeIdForCatalog),
         name: registerForm.name,
@@ -961,6 +997,8 @@ export default function CatalogPage() {
         title: "Error",
         description: "No se pudo completar el registro en Supabase."
       });
+    } finally {
+      setIsSubmittingRegister(false);
     }
   };
 
@@ -1651,6 +1689,7 @@ export default function CatalogPage() {
     }
 
     try {
+      setIsSubmittingOrder(true);
       let orderIdToUse;
       
       // Determine if we're updating an existing order or creating a new one
@@ -1784,7 +1823,8 @@ export default function CatalogPage() {
     } catch (error) {
       console.error('Error:', error);
       toast({ variant: "destructive", title: 'Error al guardar pedido en Supabase' });
-      return;
+    } finally {
+      setIsSubmittingOrder(false);
     }
   };
 
@@ -2341,7 +2381,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                     <div className="flex-1 overflow-y-auto invisible-scroll">
                       <div className="py-6">
                         {/* Loading state */}
-                        {cart.length === 0 && isLoadingOrders && (
+                        {cart.length === 0 && isLoadingOrders && userOrders.length === 0 && (
                           <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
                             <div className="w-20 h-20 bg-gradient-to-br from-primary/10 to-accent/10 rounded-full flex items-center justify-center mb-6 shadow-lg">
                               <div className="w-8 h-8 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
@@ -2351,22 +2391,22 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                           </div>
                         )}
 
-                        {/* Lista de Pedidos (Visible solo si el carrito está vacío) */}
+                        {/* Empty state - no pedidos */}
+                        {cart.length === 0 && !isLoadingOrders && userOrders.length === 0 && (
+                          <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
+                            <div className="w-20 h-20 bg-gradient-to-br from-muted/20 to-muted/10 rounded-full flex items-center justify-center mb-6 shadow-sm">
+                              <Package className="w-10 h-10 text-muted-foreground/50" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-foreground mb-2">No tienes pedidos aún</h3>
+                            <p className="text-sm text-muted-foreground">Agrega productos al carrito para realizar tu primer pedido</p>
+                          </div>
+                        )}
+
+                        {/* Lista de Pedidos (Visible solo si hay pedidos y el carrito está vacío) */}
                         {userOrders.length > 0 && cart.length === 0 && (
                           <div className="px-4 mb-6">
                             <div className="flex justify-between items-center mb-3 px-1">
-                              <h3 className="text-sm font-medium text-muted-foreground">Mis Pedidos Recientes ({userOrders.length})</h3>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                onClick={async () => {
-                                  await refetchOrders(true);
-                                }}
-                                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                                title="Actualizar pedidos"
-                              >
-                                <RotateCcw className="w-4 h-4" />
-                              </Button>
+                              <h3 className="text-sm font-medium text-muted-foreground">Mis Pedidos ({userOrders.length})</h3>
                             </div>
                             <div className="space-y-3">
                               {userOrders.map((order) => (
@@ -2494,19 +2534,6 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                           <div className="px-6 space-y-4">
                             <div className="flex justify-between items-center mb-2">
                               <h3 className="text-sm font-medium">Artículos en Pedido</h3>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                onClick={async () => {
-                                  console.log("🔄 [Catalog] Refresh button clicked");
-                                  await refetchOrders(true);
-                                  console.log("✅ [Catalog] Refresh completed");
-                                }}
-                                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                                title="Actualizar pedidos"
-                              >
-                                <RotateCcw className="w-4 h-4" />
-                              </Button>
                             </div>
                             {cart.map(item => (
                               <div key={item.product.id} className="flex items-start gap-4">
@@ -2943,35 +2970,50 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">Ubicación GPS</Label>
+                    <Label className="text-sm font-medium">Ubicación de Entrega</Label>
                     <div className="flex flex-col gap-2">
-                      <Button
-                        type="button"
-                        variant={location ? "default" : "outline"}
-                        className={cn(
-                          "w-full rounded-xl flex items-center gap-2 justify-center",
-                          location ? "bg-green-600 hover:bg-green-700 text-white border-0" : "border-dashed border-2"
-                        )}
-                        onClick={handleGetLocation}
-                        disabled={isGettingLocation}
-                      >
-                        {isGettingLocation ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                            Obteniendo...
-                          </>
-                        ) : location ? (
-                          <>
-                            <Check className="w-4 h-4" />
-                            Ubicación Guardada
-                          </>
-                        ) : (
-                          <>
-                            <MapPin className="w-4 h-4 text-red-500" />
-                            Adjuntar mi Ubicación
-                          </>
-                        )}
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant={location ? "default" : "outline"}
+                          className={cn(
+                            "flex-1 rounded-xl flex items-center gap-2 justify-center",
+                            location ? "bg-green-600 hover:bg-green-700 text-white border-0" : "border-dashed border-2"
+                          )}
+                          onClick={handleGetLocation}
+                          disabled={isGettingLocation}
+                        >
+                          {isGettingLocation ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                              Obteniendo...
+                            </>
+                          ) : location ? (
+                            <>
+                              <Check className="w-4 h-4" />
+                              GPS Guardado
+                            </>
+                          ) : (
+                            <>
+                              <MapPin className="w-4 h-4 text-red-500" />
+                              GPS
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={location ? "outline" : "default"}
+                          className={cn(
+                            "flex-1 rounded-xl flex items-center gap-2 justify-center",
+                            !location && "bg-blue-600 hover:bg-blue-700 text-white border-0"
+                          )}
+                          onClick={() => setShowMapModal(true)}
+                          disabled={!departureLocation.latitude || !departureLocation.longitude}
+                        >
+                          <MapPin className="w-4 h-4" />
+                          Seleccionar en Mapa
+                        </Button>
+                      </div>
 
                       {location && (
                         <div className="text-xs text-center text-green-600 font-medium">
@@ -2984,6 +3026,12 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                           <AlertCircle className="w-3 h-3" />
                           {locationError}
                         </div>
+                      )}
+
+                      {!departureLocation.latitude && !departureLocation.longitude && (
+                        <p className="text-xs text-muted-foreground text-center">
+                          La tienda no tiene ubicación configurada
+                        </p>
                       )}
 
                       <p className="text-[10px] text-muted-foreground text-center px-4">
@@ -3007,17 +3055,52 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
             </div>
             <DialogFooter className="gap-2 pt-4">
               <DialogClose asChild>
-                <Button variant="outline" className="rounded-xl">Cancelar</Button>
+                <Button variant="outline" className="rounded-xl" disabled={isSubmittingOrder}>Cancelar</Button>
               </DialogClose>
               <Button
                 ref={confirmOrderButtonRef}
                 onClick={handleGenerateOrder}
-                disabled={!isOrderFormValid}
+                disabled={!isOrderFormValid || isSubmittingOrder}
                 className="rounded-xl bg-primary hover:bg-primary/90"
               >
-                {isEditingOrder ? 'Actualizar' : 'Confirmar Pedido'}
+                {isSubmittingOrder ? (
+                  <>
+                    <div className="w-4 h-4 mr-2 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Procesando...
+                  </>
+                ) : (
+                  isEditingOrder ? 'Actualizar' : 'Confirmar Pedido'
+                )}
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de mapa para seleccionar ubicación de entrega */}
+        <Dialog open={showMapModal} onOpenChange={setShowMapModal}>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>Seleccionar Ubicación de Entrega en el Mapa</DialogTitle>
+            </DialogHeader>
+            {departureLocation.latitude && departureLocation.longitude ? (
+              <DeliveryMap
+                departureLat={departureLocation.latitude}
+                departureLon={departureLocation.longitude}
+                destinationLat={location?.lat || 0}
+                destinationLon={location?.lng || 0}
+                onSave={(lat, lon) => {
+                  setLocation({ lat, lng: lon });
+                  setShowMapModal(false);
+                }}
+                onCancel={() => setShowMapModal(false)}
+              />
+            ) : (
+              <div className="text-center p-8 text-muted-foreground">
+                <MapPin className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>La tienda no tiene ubicación configurada.</p>
+                <p className="text-sm">No se puede mostrar el mapa de selección.</p>
+              </div>
+            )}
           </DialogContent>
         </Dialog>
 
@@ -3506,11 +3589,18 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
               </div>
 
               <div className="flex gap-2 pt-4">
-                <Button variant="outline" onClick={() => setShowRegisterModal(false)} className="flex-1">
+                <Button variant="outline" onClick={() => setShowRegisterModal(false)} className="flex-1" disabled={isSubmittingRegister}>
                   Cancelar
                 </Button>
-                <Button onClick={handleRegister} className="flex-1">
-                  Registrarse
+                <Button onClick={handleRegister} className="flex-1" disabled={isSubmittingRegister}>
+                  {isSubmittingRegister ? (
+                    <>
+                      <div className="w-4 h-4 mr-2 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Registrando...
+                    </>
+                  ) : (
+                    'Registrarse'
+                  )}
                 </Button>
               </div>
             </div>

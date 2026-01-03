@@ -190,7 +190,7 @@ export const useUserOrders = (userEmail?: string, storeId?: string): UseUserOrde
   // Cleanup al desmontar
   useEffect(() => {
     return () => {
-      isActiveRef.current = false;
+      isActiveRef.current = true;  // Reiniciar a true para permitir fetches en proximos montajes
       stopPolling();
     };
   }, [stopPolling]);

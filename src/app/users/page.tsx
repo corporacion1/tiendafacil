@@ -20,7 +20,7 @@ import { useSettings } from "@/contexts/settings-context";
 import { ErrorBoundary, MinimalErrorFallback } from "@/components/error-boundary";
 import { useErrorHandler } from "@/hooks/use-error-handler";
 import { EditUserModal } from "@/components/edit-user-modal";
-import { FaCashRegister } from "react-icons/fa";
+import { FaCashRegister, FaTruck } from "react-icons/fa";
 
 // Interface para el resumen de usuarios
 interface UsersSummary {
@@ -472,6 +472,9 @@ export default function UsersPage() {
                 )}
                 {user.role === 'pos' && (
                   <FaCashRegister className="mr-2 h-6 w-6 text-blue-500 hover:cursor-pointer" onClick={() => handleViewAsUser(user)} />
+                )}
+                {user.role === 'delivery' && (
+                  <FaTruck className="mr-2 h-6 w-6 text-black-500 hover:cursor-pointer" onClick={() => handleViewAsUser(user)} />
                 )}
               </TableCell>
               <TableCell>

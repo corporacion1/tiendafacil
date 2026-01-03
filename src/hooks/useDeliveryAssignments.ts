@@ -34,6 +34,7 @@ export const useDeliveryAssignments = (storeId: string) => {
   const fetchPendingOrders = async () => {
     if (!storeId) {
       setLoading(false);
+      setAssignments([]);
       return [];
     }
 
@@ -41,9 +42,11 @@ export const useDeliveryAssignments = (storeId: string) => {
       const response = await fetch(`/api/delivery-assignments/pending?storeId=${encodeURIComponent(storeId)}`);
       if (!response.ok) throw new Error('Error fetching pending orders');
       const data = await response.json();
+      setAssignments([]);
       return data;
     } catch (err) {
       console.error('Error fetching pending orders:', err);
+      setAssignments([]);
       return [];
     } finally {
       setLoading(false);
@@ -53,6 +56,7 @@ export const useDeliveryAssignments = (storeId: string) => {
   const fetchActiveAssignments = async () => {
     if (!storeId) {
       setLoading(false);
+      setAssignments([]);
       return [];
     }
 
@@ -61,8 +65,10 @@ export const useDeliveryAssignments = (storeId: string) => {
       if (!response.ok) throw new Error('Error fetching active assignments');
       const data = await response.json();
       setAssignments(data);
+      return data;
     } catch (err) {
       console.error('Error fetching active assignments:', err);
+      setAssignments([]);
       return [];
     } finally {
       setLoading(false);

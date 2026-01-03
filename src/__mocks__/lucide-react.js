@@ -37,4 +37,6 @@ module.exports = {
   Share: make('Share'),
   Pencil: make('Pencil'),
   ShieldCheck: make('ShieldCheck'),
+  MapPinned: make('MapPinned'),
+  Navigation: make('Navigation'),
 };

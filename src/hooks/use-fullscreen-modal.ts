@@ -1,23 +1,32 @@
 // src/hooks/use-fullscreen-modal.ts
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 export function useFullscreenModal() {
   const [showModal, setShowModal] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [hasShownModal, setHasShownModal] = useState(false);
   const [hasTriedSilentActivation, setHasTriedSilentActivation] = useState(false);
+  const isMountedRef = useRef(false);
 
   // Detectar si es dispositivo móvil o tablet
   useEffect(() => {
+    if (isMountedRef.current) return;
+    isMountedRef.current = true;
+
     const checkIfMobile = () => {
-      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
-      const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
-      const isTablet = /tablet|ipad|playbook|silk/i.test(userAgent.toLowerCase());
-      const isSmallScreen = window.innerWidth <= 1024; // Aumentado para incluir tablets
-      
-      return isMobileDevice || isTablet || isSmallScreen;
+      try {
+        const userAgent = navigator?.userAgent || navigator?.vendor || (window as any)?.opera || '';
+        const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
+        const isTablet = /tablet|ipad|playbook|silk/i.test(userAgent.toLowerCase());
+        const isSmallScreen = window?.innerWidth <= 1024;
+
+        return isMobileDevice || isTablet || isSmallScreen;
+      } catch (error) {
+        console.error('Error detecting mobile device:', error);
+        return false;
+      }
     };
 
     const handleResize = () => {
@@ -26,18 +35,21 @@ export function useFullscreenModal() {
 
     // Verificar inicialmente
     setIsMobile(checkIfMobile());
-    
+
     // Escuchar cambios de tamaño de ventana
-    window.addEventListener('resize', handleResize);
-    
-    return () => window.removeEventListener('resize', handleResize);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
   }, []);
 
   // Función para activar pantalla completa silenciosamente
   const activateFullscreenSilently = useCallback(async () => {
     try {
+      if (typeof document === 'undefined') return false;
+
       const docElement = document.documentElement;
-      
+
       if (docElement.requestFullscreen) {
         await docElement.requestFullscreen();
       } else if ((docElement as any).webkitRequestFullscreen) {
@@ -47,13 +59,15 @@ export function useFullscreenModal() {
       } else if ((docElement as any).msRequestFullscreen) {
         await (docElement as any).msRequestFullscreen();
       }
-      
+
       console.log('🔄 Pantalla completa activada silenciosamente');
-      
+
       // Marcar que ya se intentó la activación silenciosa
-      localStorage.setItem('silent-fullscreen-attempted', 'true');
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('silent-fullscreen-attempted', 'true');
+      }
       setHasTriedSilentActivation(true);
-      
+
       return true;
     } catch (error) {
       console.log('❌ No se pudo activar pantalla completa silenciosamente:', error);
@@ -63,9 +77,12 @@ export function useFullscreenModal() {
 
   // Manejar el primer click/touch en dispositivos móviles
   useEffect(() => {
-    if (!isMobile) return;
+    if (!isMobile || typeof document === 'undefined') return;
 
-    const silentAttempted = localStorage.getItem('silent-fullscreen-attempted');
+    const silentAttempted = typeof localStorage !== 'undefined'
+      ? localStorage.getItem('silent-fullscreen-attempted')
+      : null;
+
     if (silentAttempted) {
       setHasTriedSilentActivation(true);
       return;
@@ -76,34 +93,38 @@ export function useFullscreenModal() {
       if (hasTriedSilentActivation) return;
 
       console.log('🔍 Primer click detectado en dispositivo móvil');
-      
+
       const success = await activateFullscreenSilently();
-      
+
       if (success) {
         // Mostrar un toast sutil indicando que se activó
-        const toast = document.createElement('div');
-        toast.innerHTML = '📱 Modo pantalla completa activado';
-        toast.style.cssText = `
-          position: fixed;
-          bottom: 20px;
-          left: 50%;
-          transform: translateX(-50%);
-          background: rgba(0, 0, 0, 0.8);
-          color: white;
-          padding: 8px 16px;
-          border-radius: 20px;
-          font-size: 14px;
-          z-index: 10000;
-          pointer-events: none;
-        `;
-        document.body.appendChild(toast);
-        
-        // Remover el toast después de 3 segundos
-        setTimeout(() => {
-          if (document.body.contains(toast)) {
-            document.body.removeChild(toast);
-          }
-        }, 3000);
+        try {
+          const toast = document.createElement('div');
+          toast.innerHTML = '📱 Modo pantalla completa activado';
+          toast.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 10000;
+            pointer-events: none;
+          `;
+          document.body.appendChild(toast);
+
+          // Remover el toast después de 3 segundos
+          setTimeout(() => {
+            if (document.body.contains(toast)) {
+              document.body.removeChild(toast);
+            }
+          }, 3000);
+        } catch (err) {
+          console.error('Error showing toast:', err);
+        }
       }
 
       // Remover los event listeners después del primer intento
@@ -139,6 +160,8 @@ export function useFullscreenModal() {
 
   // Función para verificar si está en pantalla completa
   const isFullscreen = () => {
+    if (typeof document === 'undefined') return false;
+
     return !!(
       document.fullscreenElement ||
       (document as any).webkitFullscreenElement ||
@@ -150,6 +173,8 @@ export function useFullscreenModal() {
   // Función para salir de pantalla completa
   const exitFullscreen = async () => {
     try {
+      if (typeof document === 'undefined') return;
+
       if (document.exitFullscreen) {
         await document.exitFullscreen();
       } else if ((document as any).webkitExitFullscreen) {

@@ -501,6 +501,9 @@ export default function POSPage() {
   const [isSessionModalOpen, setIsSessionModalOpen] = useState(false);
   const [openingBalance, setOpeningBalance] = useState<number | string>("");
   const [isLoadingSession, setIsLoadingSession] = useState(true);
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
+  const [isSubmittingCustomer, setIsSubmittingCustomer] = useState(false);
+  const [isSubmittingConfig, setIsSubmittingConfig] = useState(false);
 
   const [isClosingModalOpen, setIsClosingModalOpen] = useState(false);
   const [closingBalance, setClosingBalance] = useState<number | string>("");
@@ -2595,6 +2598,8 @@ export default function POSPage() {
     }
 
     try {
+      setIsSubmittingCustomer(true);
+
       const url = editingCustomerId ? "/api/costumers" : "/api/costumers"; // Using same endpoint with different method
       const method = editingCustomerId ? "PUT" : "POST";
 
@@ -2706,6 +2711,8 @@ export default function POSPage() {
       setNewCustomer({ name: "", phone: "", address: "", rif_nit: "" });
       setEditingCustomerId(null);
       setIsCustomerDialogOpen(false);
+    } finally {
+      setIsSubmittingCustomer(false);
     }
   };
 
@@ -4316,10 +4323,18 @@ export default function POSPage() {
                             onClick={handleSaveCustomer}
                             disabled={
                               !isNewCustomerFormDirty ||
-                              !newCustomer.name?.trim()
+                              !newCustomer.name?.trim() ||
+                              isSubmittingCustomer
                             }
                           >
-                            Guardar Cliente
+                            {isSubmittingCustomer ? (
+                              <>
+                                <div className="w-4 h-4 mr-2 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                Guardando...
+                              </>
+                            ) : (
+                              'Guardar Cliente'
+                            )}
                           </Button>
                         </DialogFooter>
                       </DialogContent>

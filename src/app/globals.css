@@ -296,14 +296,19 @@
     background-color: rgba(0, 0, 0, 0.5) !important;
   }
 
-  /* Prevenir doble submit en botones */
+  /* Prevenir doble submit en botones - MEJORADO */
   .submitting {
-    pointer-events: none;
-    opacity: 0.7;
+    pointer-events: none !important;
     position: relative;
+    overflow: hidden;
   }
 
-  .submitting::after {
+  /* Estado: Procesando (loading) */
+  .submitting.processing {
+    opacity: 0.8;
+  }
+
+  .submitting.processing::after {
     content: '';
     position: absolute;
     top: 50%;
@@ -312,14 +317,105 @@
     height: 16px;
     margin-left: -8px;
     margin-top: -8px;
-    border: 2px solid transparent;
+    border: 2px solid rgba(255, 255, 255, 0.3);
     border-top: 2px solid currentColor;
     border-radius: 50%;
-    animation: spin 1s linear infinite;
+    animation: spin 0.8s linear infinite;
   }
 
+  /* Estado: Éxito */
+  .submitting.success {
+    background-color: rgb(34 197 94) !important; /* green-500 */
+    border-color: rgb(34 197 94) !important;
+  }
+
+  .submitting.success::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    animation: checkmark 0.3s ease-out;
+  }
+
+  /* Estado: Error */
+  .submitting.error {
+    background-color: rgb(239 68 68) !important; /* red-500 */
+    border-color: rgb(239 68 68) !important;
+    animation: shake 0.5s ease-in-out;
+  }
+
+  /* Animación para checkmark */
+  @keyframes checkmark {
+    0% {
+      transform: translate(-50%, -50%) scale(0);
+      opacity: 0;
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(1.2);
+    }
+    100% {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+    }
+  }
+
+  /* Animación de shake para errores */
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+    20%, 40%, 60%, 80% { transform: translateX(4px); }
+  }
+
+  /* Animación de spin */
   @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
   }
+
+  /* Ripple effect para click feedback */
+  .btn-ripple {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-ripple::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.5);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s ease-out, height 0.6s ease-out;
+  }
+
+  .btn-ripple:active::before {
+    width: 200px;
+    height: 200px;
+  }
+}
+
+/* Leaflet Map Styles */
+.leaflet-container {
+  font-family: inherit;
+}
+
+.custom-marker {
+  background: transparent;
+  border: none;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.leaflet-popup-content {
+  margin: 12px 16px;
 }

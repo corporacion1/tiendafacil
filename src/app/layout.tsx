@@ -49,11 +49,13 @@ export default function RootLayout({
                     <ErrorBoundary context="Sistema de Seguridad">
                       <SecurityProvider>
                         <ErrorBoundary context="Interfaz Principal">
-                          <FullscreenProvider>
-                            <AppShell>
-                              {children}
-                            </AppShell>
-                          </FullscreenProvider>
+                          <div className="app-root">
+                            <FullscreenProvider>
+                              <AppShell>
+                                {children}
+                              </AppShell>
+                            </FullscreenProvider>
+                          </div>
                         </ErrorBoundary>
                       </SecurityProvider>
                     </ErrorBoundary>
