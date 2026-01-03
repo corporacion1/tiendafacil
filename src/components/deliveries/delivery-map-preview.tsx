@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useId } from 'react';
 
 interface DeliveryMapPreviewProps {
   destinationLat: number;
@@ -21,6 +21,7 @@ const DeliveryMapPreview = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
+  const mapId = useId(); // ID único para cada instancia
 
   const initMap = useCallback((L: any) => {
     if (!containerRef.current) return; 
@@ -37,7 +38,7 @@ const DeliveryMapPreview = ({
       mapInstanceRef.current = null;
     }
 
-    const mapInstance = L.map('delivery-map-preview', {
+    const mapInstance = L.map(containerRef.current, {
       zoomControl: true,
       attributionControl: false,
       dragging: true,
@@ -125,7 +126,6 @@ const DeliveryMapPreview = ({
 
   return (
     <div 
-      id="delivery-map-preview"
       ref={containerRef}
       className={`rounded-lg hover:ring-2 hover:ring-primary/50 transition-all ${className}`}
       style={{ height: '100%' }}
