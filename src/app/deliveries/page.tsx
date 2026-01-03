@@ -10,9 +10,11 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Separator } from '@/components/ui/separator';
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem, CommandDialog } from '@/components/ui/command';
-import { Truck, Phone, MapPin, Package, Plus, CheckCircle, XCircle, Star, Clock, DollarSign, User, ArrowUpDown, Check, Settings as SettingsIcon, Navigation, Save, MapPinned, Pencil, Trash2 } from 'lucide-react';
+import { Truck, Phone, MapPin, Package, Plus, CheckCircle, XCircle, Star, Clock, DollarSign, User, ArrowUpDown, Check, Settings as SettingsIcon, Navigation, Save, MapPinned, Pencil, Trash2, ShoppingCart, X } from 'lucide-react';
+import { FaWhatsapp, FaTruckMoving } from "react-icons/fa";
 import { useDeliveryAssignments } from '@/hooks/useDeliveryAssignments';
 import { useDeliveryProviders } from '@/hooks/useDeliveryProviders';
 import { useDeliveryZones } from '@/hooks/useDeliveryZones';
@@ -22,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import DeliveryMap from '@/components/deliveries/delivery-map';
 import DepartureMap from '@/components/deliveries/departure-map';
 import ZoneMap from '@/components/deliveries/zone-map';
+import DeliveryMapPreview from '@/components/deliveries/delivery-map-preview';
 import type { DeliveryAssignment, DeliveryStatus, DeliveryProvider, DeliveryZone, DeliveryFeeRule } from '@/lib/types';
 
 interface DepartureLocation {
@@ -161,6 +164,14 @@ export default function DdeliveriesPage() {
   const [pendingOrders, setPendingOrders] = useState<any[]>([]);
   const [activeAssignments, setActiveAssignments] = useState<DeliveryAssignment[]>([]);
 
+  // -- Estado para modal de detalle de pedido con mapa --
+  const [selectedOrderForDetail, setSelectedOrderForDetail] = useState<any | null>(null);
+  const [isOrderDetailModalOpen, setIsOrderDetailModalOpen] = useState(false);
+
+  // -- Estado para cancelar pedido --
+  const [orderToCancel, setOrderToCancel] = useState<any | null>(null);
+  const [isCancelOrderDialogOpen, setIsCancelOrderDialogOpen] = useState(false);
+
   // Cargar ubicación de partida desde localStorage
   useEffect(() => {
     loadDepartureLocation();
@@ -288,6 +299,28 @@ export default function DdeliveriesPage() {
         title: 'Error',
         description: 'No se pudo cancelar el reparto'
       });
+    }
+  };
+
+  const handleConfirmCancelOrder = async () => {
+    if (!orderToCancel) return;
+    try {
+      await cancelDelivery(orderToCancel.orderId || orderToCancel.id, 'Cancelado por el operador');
+      toast({
+        title: 'Pedido cancelado',
+        description: 'El pedido ha sido cancelado exitosamente'
+      });
+      await loadData();
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'No se pudo cancelar el pedido'
+      });
+    } finally {
+      setIsCancelOrderDialogOpen(false);
+      setOrderToCancel(null);
     }
   };
 
@@ -797,16 +830,10 @@ export default function DdeliveriesPage() {
                     <div 
                       key={order.orderId}
                       className="p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
-                      onClick={() => handleSelectAssignment({
-                        id: order.orderId,
-                        orderId: order.orderId,
-                        orderCustomerName: order.customerName,
-                        orderCustomerPhone: order.customerPhone,
-                        orderCustomerAddress: order.customerAddress,
-                        orderTotal: order.total,
-                        deliveryStatus: 'pending',
-                        deliveryFee: order.deliveryFee,
-                      } as DeliveryAssignment)}
+                      onClick={() => {
+                        setSelectedOrderForDetail(order);
+                        setIsOrderDetailModalOpen(true);
+                      }}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -837,6 +864,60 @@ export default function DdeliveriesPage() {
                             </p>
                           )}
                         </div>
+                      </div>
+                      <Separator className="my-3" />
+                      <div className="flex flex-wrap gap-2 justify-end">
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectAssignment({
+                              id: order.orderId,
+                              orderId: order.orderId,
+                              orderCustomerName: order.customerName,
+                              orderCustomerPhone: order.customerPhone,
+                              orderCustomerAddress: order.customerAddress,
+                              orderTotal: order.total,
+                              deliveryStatus: 'pending',
+                              deliveryFee: order.deliveryFee,
+                            } as DeliveryAssignment);
+                          }}
+                          className="w-full sm:w-auto"
+                        >
+                          <ShoppingCart className="h-4 w-4 sm:mr-2" />
+                          <span className="hidden sm:inline">Cargar</span>
+                        </Button>
+                        {order.customerPhone && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-[#25D366] text-[#25D366] hover:bg-red-500 hover:text-white w-full sm:w-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(
+                                `https://wa.me/${order.customerPhone.replace(/\D/g, '')}`,
+                                "_blank",
+                                "noopener,noreferrer",
+                              );
+                            }}
+                          >
+                            <FaWhatsapp className="h-4 w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">WhatsApp</span>
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-destructive text-destructive hover:bg-destructive hover:text-white w-full sm:w-auto"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOrderToCancel(order);
+                            setIsCancelOrderDialogOpen(true);
+                          }}
+                        >
+                          <X className="h-4 w-4 sm:mr-2" />
+                          <span className="hidden sm:inline">Cancelar</span>
+                        </Button>
                       </div>
                     </div>
                   ))
@@ -888,6 +969,55 @@ export default function DdeliveriesPage() {
                             </p>
                           )}
                         </div>
+                      </div>
+                      <Separator className="my-3" />
+                      <div className="flex flex-wrap gap-2 justify-end">
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectAssignment(assignment);
+                          }}
+                          className="w-full sm:w-auto"
+                        >
+                          <ShoppingCart className="h-4 w-4 sm:mr-2" />
+                          <span className="hidden sm:inline">Cargar</span>
+                        </Button>
+                        {assignment.orderCustomerPhone && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-[#25D366] text-[#25D366] hover:bg-red-500 hover:text-white w-full sm:w-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(
+                                `https://wa.me/${assignment.orderCustomerPhone?.replace(/\D/g, '')}`,
+                                "_blank",
+                                "noopener,noreferrer",
+                              );
+                            }}
+                          >
+                            <FaWhatsapp className="h-4 w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">WhatsApp</span>
+                          </Button>
+                        )}
+                        {(assignment.deliveryStatus === 'pending' || 
+                          assignment.deliveryStatus === 'picked_up' || 
+                          assignment.deliveryStatus === 'in_transit') && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-destructive text-destructive hover:bg-destructive hover:text-white w-full sm:w-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOrderToCancel(assignment);
+                              setIsCancelOrderDialogOpen(true);
+                            }}
+                          >
+                            <X className="h-4 w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">Cancelar</span>
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))
@@ -2056,6 +2186,160 @@ export default function DdeliveriesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de detalle de pedido con mapa */}
+      <Dialog open={isOrderDetailModalOpen} onOpenChange={setIsOrderDetailModalOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden p-0">
+          <div className="p-3 pb-0">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                <Package className="h-4 w-4 text-primary" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="mb-0 text-base">Pedido #{selectedOrderForDetail?.orderId}</DialogTitle>
+                <p className="text-xs text-muted-foreground truncate">{selectedOrderForDetail?.customerName}</p>
+              </div>
+              <Badge className="bg-green-500 text-white text-xs shrink-0">Pendiente</Badge>
+            </div>
+          </div>
+
+          {selectedOrderForDetail && (
+            <div className="h-[55vh] min-h-[400px]">
+              {/* Mapa grande - ocupa todo el espacio disponible */}
+              <div className="h-full">
+                {selectedOrderForDetail.latitude && selectedOrderForDetail.longitude ? (
+                  <DeliveryMapPreview
+                    destinationLat={selectedOrderForDetail.latitude}
+                    destinationLon={selectedOrderForDetail.longitude}
+                    className="h-full w-full"
+                  />
+                ) : (
+                  <div className="h-full flex items-center justify-center bg-muted">
+                    <div className="text-center text-muted-foreground">
+                      <MapPin className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                      <p className="text-lg">Sin ubicación registrada</p>
+                      <p className="text-sm">No hay coordenadas disponibles</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Footer compacto - info a la izquierda fija, botones a la derecha fijos */}
+          <DialogFooter className="flex flex-wrap gap-2 justify-between items-center p-3 border-t bg-background w-full">
+            <div className="flex flex-wrap gap-3 items-center min-w-0">
+              <div className="flex items-center gap-1.5 shrink-0">
+                <User className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-xs font-medium truncate max-w-[100px]">{selectedOrderForDetail?.customerName}</span>
+              </div>
+              {selectedOrderForDetail?.customerPhone && (
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs truncate">{selectedOrderForDetail.customerPhone}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-xs font-semibold">
+                  {activeSymbol}{(selectedOrderForDetail?.total * activeRate).toFixed(2)}
+                </span>
+              </div>
+              {selectedOrderForDetail?.latitude && selectedOrderForDetail?.longitude && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs shrink-0"
+                  onClick={() => window.open(
+                    `https://www.google.com/maps/dir/?api=1&destination=${selectedOrderForDetail.latitude},${selectedOrderForDetail.longitude}`,
+                    "_blank"
+                  )}
+                >
+                  <Navigation className="h-3 w-3 mr-1" />
+                  Navegar
+                </Button>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-2 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs border-destructive text-destructive hover:bg-destructive hover:text-white"
+                onClick={() => {
+                  setOrderToCancel(selectedOrderForDetail);
+                  setIsOrderDetailModalOpen(false);
+                  setIsCancelOrderDialogOpen(true);
+                }}
+              >
+                <X className="h-3 w-3 mr-1" />
+                Cancelar
+              </Button>
+
+              {selectedOrderForDetail?.customerPhone && (
+                <Button
+                  size="sm"
+                  className="h-8 text-xs bg-[#25D366] text-white hover:bg-[#20bd5a]"
+                  onClick={() => window.open(
+                    `https://wa.me/${selectedOrderForDetail.customerPhone?.replace(/\D/g, '')}`,
+                    "_blank",
+                    "noopener,noreferrer",
+                  )}
+                >
+                  <FaWhatsapp className="h-3 w-3 mr-1" />
+                  WhatsApp
+                </Button>
+              )}
+
+              <Button
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => {
+                  if (selectedOrderForDetail) {
+                    handleSelectAssignment({
+                      id: selectedOrderForDetail.orderId,
+                      orderId: selectedOrderForDetail.orderId,
+                      orderCustomerName: selectedOrderForDetail.customerName,
+                      orderCustomerPhone: selectedOrderForDetail.customerPhone,
+                      orderCustomerAddress: selectedOrderForDetail.customerAddress,
+                      orderTotal: selectedOrderForDetail.total,
+                      deliveryStatus: 'pending',
+                      deliveryFee: selectedOrderForDetail.deliveryFee,
+                    } as DeliveryAssignment);
+                  }
+                  setIsOrderDetailModalOpen(false);
+                }}
+              >
+                <ShoppingCart className="h-3 w-3 mr-1" />
+                Cargar
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de confirmación para cancelar pedido */}
+      <AlertDialog open={isCancelOrderDialogOpen} onOpenChange={setIsCancelOrderDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">¿Cancelar pedido?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Estás a punto de cancelar el pedido <strong>{orderToCancel?.orderId || orderToCancel?.id}</strong>.<br /><br />
+              Esta acción no se puede deshacer y el pedido será marcado como cancelado.<br /><br />
+              ¿Estás seguro de que deseas continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setOrderToCancel(null)}>No, mantener</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmCancelOrder}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Sí, cancelar pedido
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

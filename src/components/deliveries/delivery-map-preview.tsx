@@ -23,11 +23,11 @@ const DeliveryMapPreview = ({
   const markerRef = useRef<any>(null);
 
   const initMap = useCallback((L: any) => {
-    if (!containerRef.current) return;
+    if (!containerRef.current) return; 
 
     const hasDestination = destinationLat && destinationLon;
 
-    if (!hasDestination) return;
+    if (!hasDestination) return; 
 
     const centerLat = destinationLat;
     const centerLon = destinationLon;
@@ -38,13 +38,13 @@ const DeliveryMapPreview = ({
     }
 
     const mapInstance = L.map('delivery-map-preview', {
-      zoomControl: false,
+      zoomControl: true,
       attributionControl: false,
-      dragging: false,
-      scrollWheelZoom: false,
-      doubleClickZoom: false,
-      boxZoom: false,
-      keyboard: false
+      dragging: true,
+      scrollWheelZoom: true,
+      doubleClickZoom: true,
+      boxZoom: true,
+      keyboard: true
     }).setView([centerLat, centerLon], 15);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -109,8 +109,8 @@ const DeliveryMapPreview = ({
   if (!destinationLat || !destinationLon) {
     return (
       <div 
-        className={`bg-muted rounded-lg flex items-center justify-center cursor-pointer hover:bg-muted/80 transition-colors ${className}`}
-        style={{ height: '150px', minHeight: '150px' }}
+        className={`bg-muted rounded-lg flex items-center justify-center ${className}`}
+        style={{ height: '100%' }}
         onClick={onClick}
       >
         <div className="text-center text-muted-foreground p-4">
@@ -118,7 +118,6 @@ const DeliveryMapPreview = ({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
           </svg>
           <p className="text-sm">Sin ubicación</p>
-          <p className="text-xs opacity-75">Click para seleccionar en mapa</p>
         </div>
       </div>
     );
@@ -128,8 +127,8 @@ const DeliveryMapPreview = ({
     <div 
       id="delivery-map-preview"
       ref={containerRef}
-      className={`rounded-lg cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all ${className}`}
-      style={{ height: '150px', minHeight: '150px' }}
+      className={`rounded-lg hover:ring-2 hover:ring-primary/50 transition-all ${className}`}
+      style={{ height: '100%' }}
       onClick={onClick}
       title="Click para modificar ubicación"
     />

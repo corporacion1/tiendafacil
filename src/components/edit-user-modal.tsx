@@ -36,7 +36,7 @@ export function EditUserModal({ user, open, onOpenChange, onUserUpdated }: EditU
     displayName: '',
     email: '',
     phone: '',
-    role: 'user' as 'user' | 'admin' | 'pos' | 'su' | 'depositary',
+    role: 'user' as 'user' | 'admin' | 'pos' | 'su' | 'depositary' | 'delivery',
     storeId: '',
     newPassword: ''
   })
@@ -96,8 +96,8 @@ export function EditUserModal({ user, open, onOpenChange, onUserUpdated }: EditU
       console.log('👤 [EditUserModal] Loading user data:', user);
 
       // Asegurar que el rol siempre tenga un valor válido
-      const validRole = user.role && ['user', 'admin', 'pos', 'su', 'depositary'].includes(user.role)
-        ? (user.role as 'user' | 'su' | 'admin' | 'pos' | 'depositary')
+      const validRole = user.role && ['user', 'admin', 'pos', 'su', 'depositary', 'delivery'].includes(user.role)
+        ? (user.role as 'user' | 'su' | 'admin' | 'pos' | 'depositary' | 'delivery')
         : 'user';
 
       const newFormData = {
@@ -288,7 +288,7 @@ export function EditUserModal({ user, open, onOpenChange, onUserUpdated }: EditU
               <Label htmlFor="role">Rol *</Label>
               <Select
                 value={formData.role}
-                onValueChange={(value: 'user' | 'admin' | 'pos' | 'su' | 'depositary') => setFormData(prev => ({ ...prev, role: value }))}
+                onValueChange={(value: 'user' | 'admin' | 'pos' | 'su' | 'depositary' | 'delivery') => setFormData(prev => ({ ...prev, role: value }))}
                 required
               >
                 <SelectTrigger>
@@ -298,6 +298,7 @@ export function EditUserModal({ user, open, onOpenChange, onUserUpdated }: EditU
                   <SelectItem value="user">Usuario</SelectItem>
                   <SelectItem value="pos">POS</SelectItem>
                   <SelectItem value="depositary">Depositario</SelectItem>
+                  <SelectItem value="delivery">Repartidor</SelectItem>
                   <SelectItem value="admin">Administrador</SelectItem>
                   <SelectItem value="su">Super Admin</SelectItem>
                 </SelectContent>

@@ -33,6 +33,8 @@ interface UsersSummary {
     su: number;
     admin: number;
     pos: number;
+    depositary: number;
+    delivery: number;
     user: number;
   };
   recentUsers: UserProfile[];
@@ -44,21 +46,13 @@ const getRoleVariant = (role: UserProfile['role']) => {
     case 'admin': return 'default';
     case 'pos' as any: return 'secondary';
     case 'depositary' as any: return 'secondary';
+    case 'delivery' as any: return 'secondary';
     case 'user':
     default: return 'outline';
   }
 };
 
-const getRoleIcon = (role: UserProfile['role']) => {
-  switch (role) {
-    case 'su': return <Shield className="h-4 w-4 mr-2" />;
-    case 'admin': return <UserPlus className="h-4 w-4 mr-2" />;
-    case 'pos' as any: return <Armchair className="h-4 w-4 mr-2" />;
-    case 'depositary' as any: return <Database className="h-4 w-4 mr-2" />;
-    case 'user':
-    default: return <UserPlus className="h-4 w-4 mr-2" />;
-  }
-};
+
 
 const getStatusVariant = (status: UserProfile['status'] | undefined) => {
   return status === 'disabled' ? 'destructive' : 'outline';
@@ -127,7 +121,7 @@ export default function UsersPage() {
         disabledUsers: 0,
         adminUsers: 0,
         storeRequests: 0,
-        byRole: { su: 0, admin: 0, pos: 0, user: 0 },
+        byRole: { su: 0, admin: 0, pos: 0, depositary: 0, delivery: 0, user: 0 },
         recentUsers: []
       };
     }
@@ -144,6 +138,8 @@ export default function UsersPage() {
       su: users.filter(u => u.role === 'su').length,
       admin: users.filter(u => u.role === 'admin').length,
       pos: users.filter(u => (u as any).role === 'pos').length,
+      depositary: users.filter(u => (u as any).role === 'depositary').length,
+      delivery: users.filter(u => (u as any).role === 'delivery').length,
       user: users.filter(u => u.role === 'user').length,
     };
 
@@ -440,7 +436,7 @@ export default function UsersPage() {
               <TableCell>
                 <Badge variant={getRoleVariant(user.role)}>
                   {getRoleIcon(user.role)}
-                  {user.role}
+                  {user.role === 'delivery' ? 'repartidor' : user.role}
                 </Badge>
                 {user.storeId && (
                   <div className="text-xs text-muted-foreground mt-1">{user.storeId}</div>

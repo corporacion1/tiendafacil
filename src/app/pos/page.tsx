@@ -524,6 +524,10 @@ export default function POSPage() {
   const [orderToProcess, setOrderToProcess] = useState<PendingOrder | null>(null);
   const [isProcessOrderDialogOpen, setIsProcessOrderDialogOpen] = useState(false);
 
+  // -- Estado para cancelar pedido --
+  const [orderToCancel, setOrderToCancel] = useState<PendingOrder | null>(null);
+  const [isCancelOrderDialogOpen, setIsCancelOrderDialogOpen] = useState(false);
+
   // -- Estado para filtro de estatus en modal de pedidos --
   const [pendingOrdersStatusFilter, setPendingOrdersStatusFilter] = useState<string>("all");
 
@@ -562,6 +566,43 @@ export default function POSPage() {
     } finally {
       setIsProcessOrderDialogOpen(false);
       setOrderToProcess(null);
+    }
+  };
+
+  const handleConfirmCancelOrder = async () => {
+    if (!orderToCancel) return;
+
+    try {
+      const success = await updateOrderStatus(
+        orderToCancel.orderId,
+        "cancelled",
+        undefined,
+        userProfile?.displayName || (userProfile as any)?.name || "Usuario POS"
+      );
+
+      if (success) {
+        toast({
+          title: "Pedido cancelado",
+          description: "El pedido ha sido cancelado y removido de la lista.",
+        });
+        refetchPendingOrders();
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "No se pudo cancelar el pedido.",
+        });
+      }
+    } catch (error) {
+      console.error("Error cancelling order:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Ocurrió un error al cancelar el pedido.",
+      });
+    } finally {
+      setIsCancelOrderDialogOpen(false);
+      setOrderToCancel(null);
     }
   };
 
@@ -3635,18 +3676,21 @@ export default function POSPage() {
                             Sin conexión
                           </Badge>
                         )}
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col w-full mx-2 sm:mx-auto">
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col w-full mx-2 sm:mx-auto">
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      handleProcessSale(false);
+                    }}>
                       <DialogHeader className="flex-shrink-0">
                         <div className="flex items-center justify-between gap-4">
                           <div>
                             <DialogTitle>
-                              Pedidos Pendientes - Todos los Clientes
+                              Pedidos de Clientes
                             </DialogTitle>
                             <p className="text-sm text-muted-foreground">
-                              Pedidos generados por clientes desde sus dispositivos,
-                              listos para procesar
+                              Pedidos generados por clientes, listos para procesar
                             </p>
                           </div>
                           <Select
@@ -3657,10 +3701,10 @@ export default function POSPage() {
                               <SelectValue placeholder="Filtrar por estatus" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="all">Todos los estatus</SelectItem>
+                              <SelectItem value="all">Todos</SelectItem>
                               <SelectItem value="pending">Pendiente</SelectItem>
                               <SelectItem value="processing">En Proceso</SelectItem>
-                              <SelectItem value="processed">Completado</SelectItem>
+                              <SelectItem value="processed">Procesado</SelectItem>
                               <SelectItem value="cancelled">Cancelado</SelectItem>
                             </SelectContent>
                           </Select>
@@ -3671,7 +3715,7 @@ export default function POSPage() {
                         {!isLoadingPendingOrders &&
                           pendingOrdersFromDB.length === 0 ? (
                           <div className="text-center text-muted-foreground py-8">
-                            <p>No hay pedidos pendientes de clientes.</p>
+                            <p>No hay pedidos disponibles.</p>
                             <p className="text-xs mt-1">
                               Los pedidos aparecerán aquí cuando los clientes
                               los generen desde el catálogo.
@@ -3707,7 +3751,7 @@ export default function POSPage() {
                           </div>
                         ) : (
                           <div className="space-y-4">
-                             {pendingOrdersFromDB
+                            {pendingOrdersFromDB
                               .filter((order) =>
                                 pendingOrdersStatusFilter === "all"
                                   ? true
@@ -3724,22 +3768,27 @@ export default function POSPage() {
                                         <h4 className="font-semibold">
                                           {order.orderId}
                                         </h4>
-                                         <Badge
-                                           variant={
-                                             order.status?.toLowerCase() === "pending"
-                                               ? "secondary"
-                                               : order.status?.toLowerCase() === "processing"
-                                                 ? "default"
-                                                 : "outline"
-                                           }
-                                           className="text-xs"
-                                         >
-                                           {order.status?.toLowerCase() === "pending"
-                                             ? "Pendiente"
-                                             : order.status?.toLowerCase() === "processing"
-                                               ? "En Proceso"
-                                               : order.status}
-                                        </Badge>
+                                       <Badge
+                                            variant={
+                                              order.status?.toLowerCase() === "pending"
+                                                ? "secondary"
+                                                : order.status?.toLowerCase() === "processing"
+                                                  ? "default"
+                                                  : order.status?.toLowerCase() === "cancelled"
+                                                    ? "destructive"
+                                                    : "outline"
+                                            }
+                                            className="text-xs"
+                                          >
+                                            {order.status?.toLowerCase() === "pending"
+                                              ? "Pendiente"
+                                              : order.status?.toLowerCase() === "processing"
+                                                ? "En Proceso"
+                                                : order.status?.toLowerCase() === "cancelled"
+                                                  ? "Cancelado"
+                                                  : "Procesado"
+                                            }
+                                          </Badge>
                                         <div className="flex items-center gap-2">
                                           {order.deliveryMethod === "delivery" ? (
                                             <div className="flex items-center gap-1 text-blue-600">
@@ -3812,12 +3861,13 @@ export default function POSPage() {
                                       <Button
                                         size="sm"
                                         onClick={() => loadPendingOrder(order)}
-                                        className="w-full sm:w-auto hover:bg-red-500"
-                                        title="Cargar pedido"
+                                        disabled={order.status === "processed" || order.status === "cancelled"}
+                                        className="w-full sm:w-auto"
+                                        title={order.status === "processed" || order.status === "cancelled" ? "No se puede cargar un pedido ya procesado" : "Cargar pedido"}
                                       >
                                         <ShoppingCart className="h-4 w-4 sm:mr-2" />
                                         <span className="hidden sm:inline">
-                                          Cargar
+                                          {order.status === "processed" || order.status === "cancelled" ? "Procesado" : "Cargar"}
                                         </span>
                                       </Button>
                                       {order.customerPhone && (
@@ -3843,21 +3893,22 @@ export default function POSPage() {
                                         </Button>
                                       )}
 
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="text-muted-foreground hover:text-white w-full sm:w-auto"
-                                        onClick={() => {
-                                          setOrderToProcess(order);
-                                          setIsProcessOrderDialogOpen(true);
-                                        }}
-                                        title="Marcar como Procesado"
-                                      >
-                                        <CheckCircle className="h-4 w-4 sm:mr-2" />
-                                        <span className="hidden sm:inline">
-                                          Procesado
-                                        </span>
-                                      </Button>
+                                       <Button
+                                         size="sm"
+                                         variant="outline"
+                                         className="border-destructive text-destructive hover:bg-destructive hover:text-white w-full sm:w-auto"
+                                         onClick={() => {
+                                           setOrderToCancel(order);
+                                           setIsCancelOrderDialogOpen(true);
+                                         }}
+                                         title="Cancelar pedido"
+                                         disabled={order.status === "processed" || order.status === "cancelled"}
+                                       >
+                                         <X className="h-4 w-4 sm:mr-2" />
+                                         <span className="hidden sm:inline">
+                                           {order.status === "cancelled" ? "Cancelado" : order.status === "processed" ? "Procesado" : "Cancelar"}
+                                         </span>
+                                       </Button>
                                     </div>
                                   </div>
                                   <Separator className="my-2" />
@@ -3869,11 +3920,12 @@ export default function POSPage() {
                           </div>
                         )}
                       </div>
-                      <DialogFooter>
-                        <DialogClose asChild id="pending-orders-close-button">
-                          <Button variant="outline">Cerrar</Button>
-                        </DialogClose>
-                      </DialogFooter>
+                        <DialogFooter>
+                          <DialogClose asChild id="pending-orders-close-button">
+                            <Button variant="outline">Cerrar</Button>
+                          </DialogClose>
+                        </DialogFooter>
+                      </form>
                     </DialogContent>
                   </Dialog>
                 </div>
@@ -3892,6 +3944,29 @@ export default function POSPage() {
                     <AlertDialogFooter>
                       <AlertDialogCancel onClick={() => setOrderToProcess(null)}>Cancelar</AlertDialogCancel>
                       <AlertDialogAction onClick={handleConfirmMarkAsProcessed}>Sí, Procesar</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                {/* Diálogo de Confirmación para Cancelar Pedido */}
+                <AlertDialog open={isCancelOrderDialogOpen} onOpenChange={setIsCancelOrderDialogOpen}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="text-destructive">¿Cancelar pedido?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Estás a punto de cancelar el pedido <strong>{orderToCancel?.orderId}</strong>.<br /><br />
+                        Esta acción no se puede deshacer y el pedido será marcado como cancelado.<br /><br />
+                        ¿Estás seguro de que deseas continuar?
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel onClick={() => setOrderToCancel(null)}>No, mantener</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={handleConfirmCancelOrder}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Sí, cancelar pedido
+                      </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
@@ -4574,7 +4649,8 @@ export default function POSPage() {
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col w-full mx-2 sm:mx-auto">
-                    <DialogHeader className="flex-shrink-0">
+                    <form onSubmit={(e) => { e.preventDefault(); handleProcessSale(false); }}>
+                      <DialogHeader className="flex-shrink-0">
                       <DialogTitle className="text-lg sm:text-xl flex items-center gap-2">
                         Finalizar Venta
                         <span className="text-sm font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
@@ -4810,8 +4886,8 @@ export default function POSPage() {
                     </div>
                     <DialogFooter className="gap-2 sm:gap-1 mt-3 sm:mt-4 flex-shrink-0 flex-col sm:flex-row">
                       <Button
+                        type="submit"
                         variant="outline"
-                        onClick={() => handleProcessSale(false)}
                         disabled={
                           !localSeries ||
                           !localCorrelative ||
@@ -4830,46 +4906,49 @@ export default function POSPage() {
                         </span>
                         <span className="sm:hidden">Guardar</span>
                       </Button>
-                      <Button
-                        variant="secondary"
-                        onClick={() => handleProcessSale(false, true)}
-                        disabled={
-                          !localSeries ||
-                          !localCorrelative ||
-                          (remainingBalance > 0 && !isCreditSale) ||
-                          (isCreditSale &&
-                            (selectedCustomerId === "eventual" ||
-                              !selectedCustomer?.phone))
-                        }
-                        className="flex-1 h-8 sm:h-10 text-xs sm:text-sm"
-                      >
-                        <Share className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
-                        <span className="hidden sm:inline">
-                          Guardar & Compartir
-                        </span>
-                        <span className="sm:hidden">Compartir</span>
-                      </Button>
-                      <Button
-                        onClick={() => handleProcessSale(true)}
-                        disabled={
-                          !localSeries ||
-                          !localCorrelative ||
-                          (remainingBalance > 0 && !isCreditSale) ||
-                          (isCreditSale &&
-                            (selectedCustomerId === "eventual" ||
-                              !selectedCustomer?.phone))
-                        }
-                        className="flex-1 h-8 sm:h-10 text-xs sm:text-sm"
-                      >
-                        <Printer className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
-                        <span className="hidden sm:inline">
-                          Guardar & Imprimir
-                        </span>
-                        <span className="sm:hidden">Imprimir</span>
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                        <Button
+                          type="submit"
+                          variant="secondary"
+                          onClick={() => handleProcessSale(false, true)}
+                          disabled={
+                            !localSeries ||
+                            !localCorrelative ||
+                            (remainingBalance > 0 && !isCreditSale) ||
+                            (isCreditSale &&
+                              (selectedCustomerId === "eventual" ||
+                                !selectedCustomer?.phone))
+                          }
+                          className="flex-1 h-8 sm:h-10 text-xs sm:text-sm"
+                        >
+                          <Share className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                          <span className="hidden sm:inline">
+                            Guardar & Compartir
+                          </span>
+                          <span className="sm:hidden">Compartir</span>
+                        </Button>
+                        <Button
+                          type="submit"
+                          onClick={() => handleProcessSale(true)}
+                          disabled={
+                            !localSeries ||
+                            !localCorrelative ||
+                            (remainingBalance > 0 && !isCreditSale) ||
+                            (isCreditSale &&
+                              (selectedCustomerId === "eventual" ||
+                                !selectedCustomer?.phone))
+                          }
+                          className="flex-1 h-8 sm:h-10 text-xs sm:text-sm"
+                        >
+                          <Printer className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                          <span className="hidden sm:inline">
+                            Guardar & Imprimir
+                          </span>
+                            <span className="sm:hidden">Imprimir</span>
+                          </Button>
+                        </DialogFooter>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
                 <div className="flex flex-col sm:flex-row gap-2 w-full">
                   <Button
                     className="w-full text-sm sm:text-base"
