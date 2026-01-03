@@ -464,7 +464,7 @@ export default function POSPage() {
   const salesInCurrentSession = useMemo(() => {
     if (!activeSession || !sales) return [];
     if (!activeSession.salesIds || !Array.isArray(activeSession.salesIds)) return [];
-    return sales.filter(s => activeSession.salesIds.includes(s.id));
+    return sales.filter(s => activeSession.salesIds!.includes(s.id));
   }, [sales, activeSession]);
 
   const handleShowReportX = () => {
@@ -1265,6 +1265,7 @@ export default function POSPage() {
 
     const finalPayments: SalePayment[] = payments.map((p) => ({
       ...p,
+      id: IDGenerator.generate('payment'),
       date: new Date().toISOString(),
     }));
 
@@ -1421,11 +1422,11 @@ export default function POSPage() {
     }
 
     // Update active session
-    const updatedSession = {
-      ...activeSession,
-      salesIds: [...(activeSession.salesIds || []), saleId],
+    const updatedSession: CashSession = {
+      ...activeSession!,
+      salesIds: saleId ? [...(activeSession!.salesIds || []), saleId] : (activeSession!.salesIds || []),
       transactions: {
-        ...activeSession.transactions,
+        ...activeSession!.transactions,
         ...finalPayments.reduce((acc, p) => {
           acc[p.method] = (acc[p.method] || 0) + p.amount;
           return acc;
@@ -1895,7 +1896,7 @@ export default function POSPage() {
       const url = editingCustomerId ? '/api/costumers' : '/api/costumers'; // Using same endpoint with different method
       const method = editingCustomerId ? 'PUT' : 'POST';
 
-      const newId = `cust-${Date.now()}`;
+      const newId = IDGenerator.generate("customer");
       const customerData: Customer = {
         id: editingCustomerId || newCustomer.id || newId,
         name: newCustomer.name.trim(),
@@ -1968,7 +1969,7 @@ export default function POSPage() {
           description: `El cliente ha sido actualizado localmente.`,
         });
       } else {
-        const newId = `cust-${Date.now()}`;
+        const newId = IDGenerator.generate("customer");
         const customerToAdd: Customer = {
           id: newId,
           name: newCustomer.name.trim(),
@@ -2191,31 +2192,9 @@ export default function POSPage() {
         }
       }
 
-      // Marcar pedido como "procesado" usando el nuevo hook para que desaparezca de la lista
-      try {
-        await updateOrderStatus(
-          order.orderId,
-          'processed',
-          saleId,
-          userProfile?.displayName || (userProfile as any)?.name || 'Usuario POS'
-        );
-        // Refrescar lista para que desaparezca inmediatamente
-        setTimeout(() => refetchPendingOrders(), 100);
+      // El estado del pedido se actualizará a 'processing' más abajo (línea 2233)
+      // para evitar redundancia y errores de referencia.
 
-        console.log('✅ Pedido marcado como en procesamiento:', order.orderId);
-
-        toast({
-          title: "Pedido cargado",
-          description: `Pedido ${order.orderId} cargado y marcado como en procesamiento.`
-        });
-      } catch (error) {
-        console.warn('⚠️ Error actualizando estado del pedido:', error);
-        toast({
-          variant: "destructive",
-          title: "Advertencia",
-          description: "El pedido se cargó pero no se pudo actualizar su estado en la base de datos."
-        });
-      }
 
       const loadedCount = orderCartItems.length;
       const totalCount = order.items.length;

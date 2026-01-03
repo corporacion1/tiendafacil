@@ -727,12 +727,13 @@ export default function CatalogPage() {
     isPolling: isPollingOrders
   } = useUserOrders(authUser?.email || undefined, storeIdForCatalog);
 
-  // Hacer refetch cuando el email del usuario cambie (ej: después del login)
+  // Hacer refetch inicial SOLO cuando el email y storeId están disponibles
   useEffect(() => {
     if (authUser?.email && storeIdForCatalog) {
-      refetchOrders(true);
+      console.log('🔄 [Catalog] Fetch inicial de pedidos del usuario');
+      refetchOrders(false); // No forzar refresh en el fetch inicial
     }
-  }, [authUser?.email, storeIdForCatalog, refetchOrders]);
+    }, [authUser?.email, storeIdForCatalog, refetchOrders]);
 
 
 

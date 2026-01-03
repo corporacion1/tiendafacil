@@ -26,28 +26,31 @@ export const useUserOrders = (userEmail?: string, storeId?: string): UseUserOrde
   const lastFetchTimeRef = useRef<number>(0);
   const isActiveRef = useRef(true);
   const retryCountRef = useRef<number>(0);
+  const isPageVisibleRef = useRef(true);
 
-  // Configuración del polling
-  const POLLING_INTERVAL = 3000; // 3 segundos
-  const MIN_FETCH_INTERVAL = 2000; // Mínimo 2 segundos entre fetches
+  // Configuración del polling - INCREMENTADO para evitar consultas excesivas
+  const POLLING_INTERVAL = 10000; // 10 segundos (de 3 segundos)
+  const MIN_FETCH_INTERVAL = 5000; // Mínimo 5 segundos entre fetches (de 2 segundos)
   const MAX_RETRIES = 3;
 
   const fetchOrders = useCallback(async (showLoadingState = true, forceRefresh = false) => {
     // CORREGIDO: No limpiar pedidos si faltan parámetros, solo no hacer fetch
-    if (!userEmail || !storeId || !isActiveRef.current) {
-      console.log('⏭️ Skipping fetch - missing parameters or inactive', { userEmail: !!userEmail, storeId: !!storeId, isActive: isActiveRef.current });
+    if (!userEmail || !storeId || !isActiveRef.current || !isPageVisibleRef.current) {
+      console.log('⏭️ Skipping fetch - missing parameters or inactive', {
+        userEmail: !!userEmail,
+        storeId: !!storeId,
+        isActive: isActiveRef.current,
+        isPageVisible: isPageVisibleRef.current
+      });
       return;
     }
 
-    // Evitar fetches muy frecuentes, a menos que se fuerce la actualización
+    // Evitar fetches muy frecuentes
     const now = Date.now();
     if (!forceRefresh && now - lastFetchTimeRef.current < MIN_FETCH_INTERVAL) {
       console.log('⏳ Skipping fetch - too frequent');
       return;
     }
-    
-    // Actualizar el tiempo para evitar limitaciones
-    lastFetchTimeRef.current = now;
 
     if (showLoadingState) {
       setIsLoading(true);
@@ -71,7 +74,7 @@ export const useUserOrders = (userEmail?: string, storeId?: string): UseUserOrde
       }
 
       const data = await response.json();
-      console.log('📦 Orders fetched:', data.length);
+      console.log('✅ Orders fetched:', data.length);
 
       // Convertir formato de respuesta a PendingOrder si es necesario
       const formattedOrders: PendingOrder[] = Array.isArray(data) ? data.map(order => ({
@@ -104,6 +107,9 @@ export const useUserOrders = (userEmail?: string, storeId?: string): UseUserOrde
       setOrders(formattedOrders);
       console.log('🔄 Orders updated - new data received');
 
+      // Solo actualizar el tiempo si el fetch fue exitoso
+      lastFetchTimeRef.current = Date.now();
+
     } catch (err: any) {
       console.error('❌ Error fetching user orders:', err);
       setError(err.message);
@@ -132,7 +138,7 @@ export const useUserOrders = (userEmail?: string, storeId?: string): UseUserOrde
         setIsLoading(false);
       }
     }
-  }, [userEmail, storeId, toast]);
+  }, [userEmail, storeId, orders.length, toast, isOnline]);
 
   // Función para iniciar polling
   const startPolling = useCallback(() => {
@@ -198,6 +204,8 @@ export const useUserOrders = (userEmail?: string, storeId?: string): UseUserOrde
   // Manejo de visibilidad de la página para optimizar polling
   useEffect(() => {
     const handleVisibilityChange = () => {
+      isPageVisibleRef.current = !document.hidden;
+
       if (document.hidden) {
         console.log('📱 Page hidden - stopping polling');
         stopPolling();
