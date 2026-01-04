@@ -85,6 +85,10 @@ export default function DdeliveriesPage() {
   const [editingZone, setEditingZone] = useState<DeliveryZone | null>(null);
   const [showDeleteZoneConfirm, setShowDeleteZoneConfirm] = useState(false);
   const [zoneToDelete, setZoneToDelete] = useState<DeliveryZone | null>(null);
+  const [showEditProviderModal, setShowEditProviderModal] = useState(false);
+  const [editingProvider, setEditingProvider] = useState<DeliveryProvider | null>(null);
+  const [showDeleteProviderConfirm, setShowDeleteProviderConfirm] = useState(false);
+  const [providerToDelete, setProviderToDelete] = useState<DeliveryProvider | null>(null);
   const [showQuickAddFeeRuleModal, setShowQuickAddFeeRuleModal] = useState(false);
   const [showMapModal, setShowMapModal] = useState(false);
   const [mapDestination, setMapDestination] = useState<{ lat: number; lng: number } | null>(null);
@@ -99,7 +103,11 @@ export default function DdeliveriesPage() {
   const [isSubmittingProvider, setIsSubmittingProvider] = useState(false);
   const [isProviderSuccess, setIsProviderSuccess] = useState(false);
   const [isDeletingZone, setIsDeletingZone] = useState(false);
+  const [isDeletingProvider, setIsDeletingProvider] = useState(false);
+  const [isUpdatingProvider, setIsUpdatingProvider] = useState(false);
+  const [isUpdateProviderSuccess, setIsUpdateProviderSuccess] = useState(false);
   const [isSubmittingConfig, setIsSubmittingConfig] = useState(false);
+  const [isFormValid, setIsFormValid] = useState(false);
 
   // Modales de gestión (zones y fee rules)
   const [showManageZonesModal, setShowManageZonesModal] = useState(false);
@@ -114,7 +122,7 @@ export default function DdeliveriesPage() {
     completeDelivery,
     cancelDelivery 
   } = useDeliveryAssignments(activeStoreId || '');
-  const { providers, createProvider } = useDeliveryProviders(activeStoreId || '');
+  const { providers, createProvider, updateProvider, deleteProvider } = useDeliveryProviders(activeStoreId || '');
   const { zones, createZone, updateZone, deleteZone } = useDeliveryZones(activeStoreId || '');
   const { rules, createRule } = useDeliveryFeeRules(activeStoreId || '');
 
@@ -157,6 +165,18 @@ export default function DdeliveriesPage() {
     estimatedMinutesPerKm: 5,
     priority: 1,
     status: 'active' as 'active' | 'inactive',
+  });
+
+  const [editProviderFormData, setEditProviderFormData] = useState({
+    name: '',
+    phone: '',
+    providerType: 'internal' as 'internal' | 'external',
+    vehicleType: 'moto' as 'moto' | 'bicycle' | 'car' | 'walking',
+    vehiclePlate: '',
+    commissionType: 'fixed' as 'fixed' | 'percentage' | 'combination',
+    commissionFixedAmount: 0,
+    commissionPercentage: 0,
+    status: 'active' as 'active' | 'inactive' | 'suspended',
   });
 
   const [showEditZoneMapModal, setShowEditZoneMapModal] = useState(false);
@@ -227,8 +247,13 @@ export default function DdeliveriesPage() {
     loadData();
   }, [activeStoreId]);
 
-  const handleSelectAssignment = (assignment: DeliveryAssignment) => {
+  const handleSelectAssignment = (assignment: DeliveryAssignment, isFromPendingOrders: boolean = false) => {
     setSelectedAssignment(assignment);
+
+    // Marcar pedido como processing si viene de la lista de pedidos pendientes
+    if (isFromPendingOrders && assignment.orderId) {
+      markOrderAsProcessing(assignment.orderId);
+    }
 
     // NO actualizar departureLocation o configFormData al cargar un pedido
     // Solo usarlos para calcular distancias, no modificarlos
@@ -279,6 +304,22 @@ export default function DdeliveriesPage() {
           setDeliveryFee(assignment.deliveryFee);
         }
       }
+    }
+  };
+
+  // Marcar pedido como processing cuando se carga de la lista de pedidos pendientes
+  const markOrderAsProcessing = async (orderId: string) => {
+    try {
+      await fetch('/api/orders/delivery-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId,
+          status: 'processing'
+        })
+      });
+    } catch (error) {
+      console.error('Error marking order as processing:', error);
     }
   };
 
@@ -366,9 +407,10 @@ export default function DdeliveriesPage() {
 
     try {
       await createProvider({
+        storeId: activeStoreId || '',
         ...quickProviderFormData,
-        // Convertir a moneda principal antes de guardar
-        commissionFixedAmount: quickProviderFormData.commissionFixedAmount / activeRate,
+        // Convertir a moneda principal antes de guardar (evitar división por cero)
+        commissionFixedAmount: activeRate > 0 ? quickProviderFormData.commissionFixedAmount / activeRate : quickProviderFormData.commissionFixedAmount,
       });
 
       // Mostrar estado de éxito
@@ -499,6 +541,17 @@ export default function DdeliveriesPage() {
       setSelectedZoneId(selectedAssignment.deliveryZoneId || '');
     }
   }, [selectedAssignment, selectedZoneId]);
+
+  // Validar formulario: debe tener dirección O (latitud Y longitud)
+  useEffect(() => {
+    const hasAddress = formData.deliveryAddress && formData.deliveryAddress.trim() !== '';
+    const lat = formData.destinationLatitude as number;
+    const lng = formData.destinationLongitude as number;
+    const hasCoordinates = Boolean(lat && lat !== 0 && lng && lng !== 0);
+
+    // El formulario es válido si tiene dirección O coordenadas
+    setIsFormValid(hasAddress || hasCoordinates);
+  }, [formData.deliveryAddress, formData.destinationLatitude, formData.destinationLongitude]);
 
   // Función para agregar nueva zona
   const handleQuickAddZone = async (e: React.FormEvent) => {
@@ -633,6 +686,97 @@ export default function DdeliveriesPage() {
     }
   };
 
+  const handleEditProvider = (provider: DeliveryProvider, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setEditingProvider(provider);
+    setEditProviderFormData({
+      name: provider.name,
+      phone: provider.phone,
+      providerType: provider.providerType || 'internal',
+      vehicleType: provider.vehicleType || 'moto',
+      vehiclePlate: provider.vehiclePlate || '',
+      commissionType: provider.commissionType || 'fixed',
+      commissionFixedAmount: provider.commissionFixedAmount || 0,
+      commissionPercentage: provider.commissionPercentage || 0,
+      status: provider.status || 'active',
+    });
+    setShowEditProviderModal(true);
+  };
+
+  const handleDeleteProvider = (provider: DeliveryProvider, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setProviderToDelete(provider);
+    setShowDeleteProviderConfirm(true);
+  };
+
+  const confirmDeleteProvider = async () => {
+    if (!providerToDelete) return;
+    setIsDeletingProvider(true);
+
+    try {
+      await deleteProvider(providerToDelete.id);
+      toast({
+        title: 'Repartidor eliminado',
+        description: `El repartidor ${providerToDelete.name} se eliminó exitosamente`
+      });
+      setShowDeleteProviderConfirm(false);
+      setProviderToDelete(null);
+      setIsDeletingProvider(false);
+
+      if (selectedProviderId === providerToDelete.id) {
+        setSelectedProviderId('');
+      }
+    } catch (error) {
+      console.error('Error deleting provider:', error);
+      setIsDeletingProvider(false);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'No se pudo eliminar el repartidor'
+      });
+    }
+  };
+
+  const handleUpdateProvider = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!editingProvider) return;
+
+    setIsUpdatingProvider(true);
+    setIsUpdateProviderSuccess(false);
+
+    try {
+      await updateProvider(editingProvider.id, {
+        ...editProviderFormData,
+        storeId: activeStoreId || '',
+        commissionFixedAmount: activeRate > 0 ? editProviderFormData.commissionFixedAmount / activeRate : editProviderFormData.commissionFixedAmount,
+      });
+
+      setIsUpdateProviderSuccess(true);
+      setTimeout(() => {
+        setIsUpdateProviderSuccess(false);
+        setShowEditProviderModal(false);
+        setEditingProvider(null);
+        setIsUpdatingProvider(false);
+      }, 1500);
+
+      toast({
+        title: 'Repartidor actualizado',
+        description: `El repartidor ${editProviderFormData.name} se actualizó exitosamente`
+      });
+    } catch (error) {
+      console.error('Error updating provider:', error);
+      setIsUpdatingProvider(false);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'No se pudo actualizar el repartidor'
+      });
+    }
+  };
+
   // Configuración de ubicación de partida
   const handleSaveConfig = async () => {
     if (!configFormData.latitude || !configFormData.longitude) {
@@ -693,11 +837,16 @@ export default function DdeliveriesPage() {
 
   // Crear o actualizar asignación de delivery
   const handleSubmitDelivery = async () => {
-    if (!formData.customerName || !formData.deliveryAddress) {
+    // Validar: nombre del cliente obligatorio, y (dirección O coordenadas)
+    const hasAddress = formData.deliveryAddress && formData.deliveryAddress.trim() !== '';
+    const hasCoordinates = Boolean(formData.destinationLatitude && formData.destinationLatitude !== 0 &&
+                           formData.destinationLongitude && formData.destinationLongitude !== 0);
+
+    if (!formData.customerName || (!hasAddress && !hasCoordinates)) {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Debes ingresar nombre del cliente y dirección de entrega'
+        description: 'Debes ingresar nombre del cliente y dirección o coordenadas de entrega'
       });
       return;
     }
@@ -959,7 +1108,7 @@ export default function DdeliveriesPage() {
                               assignedAt: new Date().toISOString(),
                               createdAt: new Date().toISOString(),
                               updatedAt: new Date().toISOString(),
-                            } as DeliveryAssignment);
+                            } as DeliveryAssignment, true);
                           }}
                           className="w-full sm:w-auto"
                         >
@@ -1126,10 +1275,10 @@ export default function DdeliveriesPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="deliveryAddress">Dirección de Entrega *</Label>
+                  <Label htmlFor="deliveryAddress">Dirección de Entrega</Label>
                   <Input
                     id="deliveryAddress"
-                    placeholder="Dirección completa de entrega"
+                    placeholder="Dirección completa de entrega (opcional si hay coordenadas)"
                     value={formData.deliveryAddress}
                     onChange={(e) => setFormData({ ...formData, deliveryAddress: e.target.value })}
                   />
@@ -1213,14 +1362,19 @@ export default function DdeliveriesPage() {
                     value={selectedZoneId}
                     onValueChange={setSelectedZoneId}
                   >
-                    <SelectTrigger id="zone-select" className="w-full h-10">
+                    <SelectTrigger id="zone-select" className="w-full h-10 pl-3">
                       {selectedZoneId ? (
-                        <div className="flex items-center justify-between">
-                          <span>{zones.find(z => z.id === selectedZoneId)?.name || 'Zona seleccionada'}</span>
-                          <ArrowUpDown className="ml-1 sm:ml-2 h-3 w-3 shrink-0 opacity-50" />
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <MapPin className="h-4 w-4 shrink-0 text-primary" />
+                          <span className="truncate">{zones.find(z => z.id === selectedZoneId)?.name || 'Zona seleccionada'}</span>
+                          <ArrowUpDown className="h-3 w-3 shrink-0 opacity-50 ml-auto" />
                         </div>
                       ) : (
-                        <span>Selecciona una zona...</span>
+                        <div className="flex items-center gap-2 w-full">
+                          <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <span className="truncate">Selecciona una zona...</span>
+                          <ArrowUpDown className="h-3 w-3 shrink-0 opacity-50 ml-auto" />
+                        </div>
                       )}
                     </SelectTrigger>
                     <SelectContent>
@@ -1233,18 +1387,24 @@ export default function DdeliveriesPage() {
                           <SelectItem
                             key={zone.id}
                             value={zone.id}
-                            className="flex items-center justify-between py-2 pr-2 pl-8 group"
-                            style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}
+                            className="flex items-center justify-between py-2 pr-2 pl-3 group cursor-pointer"
                           >
-                            <span className="font-medium text-sm truncate" style={{ flex: 1, marginRight: '12px' }}>{zone.name}</span>
-                            <div style={{ display: 'flex', gap: '4px', flexShrink: 0, alignItems: 'center' }}>
+                            <div className="flex flex-col min-w-0 flex-1 mr-2">
+                              <span className="font-medium text-sm truncate flex items-center gap-1.5">
+                                <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" />
+                                {zone.name}
+                              </span>
+                              <span className="text-xs text-muted-foreground truncate ml-5">
+                                {zone.radiusKm}km • {activeSymbol}{(zone.baseFee * activeRate).toFixed(2)} base
+                              </span>
+                            </div>
+                            <div className="flex gap-1 shrink-0">
                               <Button
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                className="h-6 w-6 p-0 hover:bg-accent hover:text-white text-black/70"
+                                className="h-6 w-6 p-0 hover:bg-accent hover:text-white text-black/70 opacity-0 group-hover:opacity-100 transition-opacity"
                                 onMouseDown={(e) => {
-                                  console.log('Click en editar zona:', zone);
                                   e.preventDefault();
                                   e.stopPropagation();
                                   handleEditZone(zone, e);
@@ -1257,9 +1417,8 @@ export default function DdeliveriesPage() {
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                className="h-6 w-6 p-0 hover:bg-destructive hover:text-white text-black/70"
+                                className="h-6 w-6 p-0 hover:bg-destructive hover:text-white text-black/70 opacity-0 group-hover:opacity-100 transition-opacity"
                                 onMouseDown={(e) => {
-                                  console.log('Click en eliminar zona:', zone);
                                   e.preventDefault();
                                   e.stopPropagation();
                                   handleDeleteZone(zone, e);
@@ -1295,14 +1454,22 @@ export default function DdeliveriesPage() {
                     value={selectedProviderId}
                     onValueChange={setSelectedProviderId}
                   >
-                    <SelectTrigger id="provider-select" className="w-full h-10">
+                    <SelectTrigger id="provider-select" className="w-full h-10 pl-3">
                       {selectedProvider ? (
-                        <div className="flex items-center justify-between">
-                          <span>{selectedProvider.name}</span>
-                          <ArrowUpDown className="ml-1 sm:ml-2 h-3 w-3 shrink-0 opacity-50" />
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <User className="h-4 w-4 shrink-0 text-primary" />
+                          <span className="truncate">{selectedProvider.name}</span>
+                          <span className="text-xs text-muted-foreground truncate hidden sm:inline ml-1">
+                            {selectedProvider.vehicleType === 'moto' ? '🏍️' : selectedProvider.vehicleType === 'car' ? '🚗' : selectedProvider.vehicleType === 'bicycle' ? '🚴' : '🚶'}
+                          </span>
+                          <ArrowUpDown className="h-3 w-3 shrink-0 opacity-50 ml-auto" />
                         </div>
                       ) : (
-                        <span>Selecciona un repartidor...</span>
+                        <div className="flex items-center gap-2 w-full">
+                          <User className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <span className="truncate">Selecciona un repartidor...</span>
+                          <ArrowUpDown className="h-3 w-3 shrink-0 opacity-50 ml-auto" />
+                        </div>
                       )}
                     </SelectTrigger>
                     <SelectContent>
@@ -1315,13 +1482,47 @@ export default function DdeliveriesPage() {
                           <SelectItem
                             key={provider.id}
                             value={provider.id}
-                            className="flex items-center justify-between group"
+                            className="flex items-center justify-between py-2 pr-2 pl-3 group cursor-pointer"
                           >
-                            <div className="flex flex-col min-w-0">
-                              <span className="truncate">{provider.name}</span>
-                              <span className="text-xs text-muted-foreground">{provider.phone}</span>
+                            <div className="flex flex-col min-w-0 flex-1 mr-2">
+                              <span className="font-medium text-sm truncate flex items-center gap-1.5">
+                                <User className="h-3.5 w-3.5 shrink-0 text-primary" />
+                                {provider.name}
+                              </span>
+                              <span className="text-xs text-muted-foreground truncate ml-5">
+                                {provider.phone} • {provider.vehicleType === 'moto' ? '🏍️ Moto' : provider.vehicleType === 'car' ? '🚗 Auto' : provider.vehicleType === 'bicycle' ? '🚴 Bicicleta' : '🚶 Caminando'}
+                              </span>
                             </div>
-                            <Check className="h-4 w-4 opacity-50 ml-auto" />
+                            <div className="flex gap-1 shrink-0">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 hover:bg-accent hover:text-white text-black/70 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleEditProvider(provider, e);
+                                }}
+                                title="Editar repartidor"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 hover:bg-destructive hover:text-white text-black/70 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleDeleteProvider(provider, e);
+                                }}
+                                title="Eliminar repartidor"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
                           </SelectItem>
                         ))
                       )}
@@ -1340,9 +1541,9 @@ export default function DdeliveriesPage() {
 
               {/* Botón para procesar/guardar */}
               <Button
-                className="w-full"
+                className="w-full submit"
                 onClick={handleSubmitDelivery}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !isFormValid || !selectedProviderId}
               >
                 <Save className="mr-2 h-4 w-4" />
                 {isSubmitting ? 'Procesando...' : selectedAssignment ? 'Actualizar Asignación' : 'Crear Asignación'}
@@ -1625,6 +1826,7 @@ export default function DdeliveriesPage() {
               </DialogClose>
               <SubmitButton
                 type="submit"
+                className="submit"
                 isSubmitting={isSubmittingProvider}
                 isSuccess={isProviderSuccess}
                 submittingText="Guardando..."
@@ -2235,6 +2437,190 @@ export default function DdeliveriesPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Modal para editar repartidor */}
+      <Dialog open={showEditProviderModal} onOpenChange={(open) => {
+        if (!open) {
+          setEditingProvider(null);
+        }
+        setShowEditProviderModal(open);
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Repartidor</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleUpdateProvider} className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <Label htmlFor="editProviderName">Nombre del Repartidor *</Label>
+                <Input
+                  id="editProviderName"
+                  required
+                  placeholder="Ej: Juan Pérez"
+                  value={editProviderFormData.name}
+                  onChange={(e) => setEditProviderFormData({ ...editProviderFormData, name: e.target.value })}
+                />
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="editProviderPhone">Teléfono *</Label>
+                <Input
+                  id="editProviderPhone"
+                  required
+                  placeholder="+58 412 34567"
+                  value={editProviderFormData.phone}
+                  onChange={(e) => setEditProviderFormData({ ...editProviderFormData, phone: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="editProviderType">Tipo de Proveedor *</Label>
+                <Select
+                  value={editProviderFormData.providerType}
+                  onValueChange={(value) => setEditProviderFormData({ ...editProviderFormData, providerType: value as 'internal' | 'external' })}
+                >
+                  <SelectTrigger id="editProviderType">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="internal">Interno (Propio)</SelectItem>
+                    <SelectItem value="external">Externo (Uber, Rappi, etc.)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="editVehicleType">Tipo de Vehículo *</Label>
+                <Select
+                  value={editProviderFormData.vehicleType}
+                  onValueChange={(value) => setEditProviderFormData({ ...editProviderFormData, vehicleType: value as 'moto' | 'bicycle' | 'car' | 'walking' })}
+                >
+                  <SelectTrigger id="editVehicleType">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="moto">🏍️ Moto</SelectItem>
+                    <SelectItem value="bicycle">🚴 Bicicleta</SelectItem>
+                    <SelectItem value="car">🚗 Auto</SelectItem>
+                    <SelectItem value="walking">🚶 Caminando</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="editVehiclePlate">Placa del Vehículo</Label>
+                <Input
+                  id="editVehiclePlate"
+                  placeholder="Ej: ABC-123"
+                  value={editProviderFormData.vehiclePlate}
+                  onChange={(e) => setEditProviderFormData({ ...editProviderFormData, vehiclePlate: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="editCommissionType">Tipo de Comisión *</Label>
+                <Select
+                  value={editProviderFormData.commissionType}
+                  onValueChange={(value) => setEditProviderFormData({ ...editProviderFormData, commissionType: value as 'fixed' | 'percentage' | 'combination' })}
+                >
+                  <SelectTrigger id="editCommissionType">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fixed">💰 Fija</SelectItem>
+                    <SelectItem value="percentage">📊 Porcentaje</SelectItem>
+                    <SelectItem value="combination">💰📊 Combinada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="editCommissionFixedAmount">Monto Fijo ({activeSymbol})</Label>
+                <Input
+                  id="editCommissionFixedAmount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={editProviderFormData.commissionFixedAmount || ''}
+                  onChange={(e) => setEditProviderFormData({ ...editProviderFormData, commissionFixedAmount: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="editCommissionPercentage">Porcentaje (%)</Label>
+                <Input
+                  id="editCommissionPercentage"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  placeholder="0"
+                  value={editProviderFormData.commissionPercentage || ''}
+                  onChange={(e) => setEditProviderFormData({ ...editProviderFormData, commissionPercentage: parseFloat(e.target.value) || 0 })}
+                />
+              </div>
+              <div className="col-span-2">
+                <Label htmlFor="editProviderStatus">Estado</Label>
+                <Select
+                  value={editProviderFormData.status}
+                  onValueChange={(value) => setEditProviderFormData({ ...editProviderFormData, status: value as 'active' | 'inactive' | 'suspended' })}
+                >
+                  <SelectTrigger id="editProviderStatus">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Activo</SelectItem>
+                    <SelectItem value="inactive">Inactivo</SelectItem>
+                    <SelectItem value="suspended">Suspendido</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline">Cancelar</Button>
+              </DialogClose>
+              <SubmitButton
+                type="submit"
+                isSubmitting={isUpdatingProvider}
+                isSuccess={isUpdateProviderSuccess}
+                submittingText="Actualizando..."
+                successText="¡Actualizado!"
+              >
+                Actualizar Repartidor
+              </SubmitButton>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de confirmación para eliminar repartidor */}
+      <Dialog open={showDeleteProviderConfirm} onOpenChange={setShowDeleteProviderConfirm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>¿Eliminar Repartidor?</DialogTitle>
+            <div className="flex items-center gap-2 py-4">
+              <div className="h-12 w-12 bg-destructive/10 rounded-full flex items-center justify-center">
+                <Trash2 className="h-6 w-6 text-destructive" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium">¿Estás seguro?</p>
+                <p className="text-sm text-muted-foreground">
+                  {providerToDelete && `Esta acción eliminará al repartidor "${providerToDelete.name}" de forma permanente.`}
+                </p>
+              </div>
+            </div>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancelar</Button>
+            </DialogClose>
+            <SubmitButton
+              onClick={confirmDeleteProvider}
+              isSubmitting={isDeletingProvider}
+              submittingText="Eliminando..."
+              successText="¡Eliminado!"
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Eliminar
+            </SubmitButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Modal de detalle de pedido con mapa */}
       <Dialog open={isOrderDetailModalOpen} onOpenChange={setIsOrderDetailModalOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden p-0">
@@ -2350,7 +2736,7 @@ export default function DdeliveriesPage() {
                       assignedAt: new Date().toISOString(),
                       createdAt: new Date().toISOString(),
                       updatedAt: new Date().toISOString(),
-                    } as DeliveryAssignment);
+                    } as DeliveryAssignment, true);
                   }
                   setIsOrderDetailModalOpen(false);
                 }}

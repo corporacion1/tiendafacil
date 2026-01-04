@@ -38,7 +38,8 @@ export const useDeliveryProviders = (storeId: string) => {
       });
 
       if (!response.ok) {
-        throw new Error('Error creating provider');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error creating provider');
       }
 
       const newProvider = await response.json();

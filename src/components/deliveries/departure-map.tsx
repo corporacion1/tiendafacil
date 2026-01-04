@@ -107,7 +107,11 @@ const DepartureMap = ({
           icon: customIcon,
           draggable: true
         }).addTo(mapInstance);
-        marker.bindPopup('<b>📍 Ubicación de Partida</b><br>Arrastra para mover').openPopup();
+        marker.bindPopup('<b>📍 Ubicación de Partida</b><br>Arrastra para mover');
+
+        setTimeout(() => {
+          marker.openPopup();
+        }, 50);
       }
 
       const handleDragEnd = (e: any) => {
@@ -148,7 +152,12 @@ const DepartureMap = ({
             icon: customIcon,
             draggable: true
           }).addTo(mapInstance);
-          newMarker.bindPopup('<b>📍 Ubicación de Partida</b><br>Arrastra para mover').openPopup();
+          newMarker.bindPopup('<b>📍 Ubicación de Partida</b><br>Arrastra para mover');
+
+          setTimeout(() => {
+            newMarker.openPopup();
+          }, 50);
+
           marker = newMarker;
           marker.off('dragend');
           marker.on('dragend', handleDragEnd);

@@ -99,9 +99,9 @@ export async function POST(request: NextRequest) {
       assignedBy
     } = body;
 
-    if (!orderId || !storeId || !deliveryProviderId || !customerName || !orderTotal) {
+    if (!orderId || !storeId || !deliveryProviderId || !customerName) {
       return NextResponse.json({
-        error: 'Campos requeridos: orderId, storeId, deliveryProviderId, customerName, orderTotal'
+        error: 'Campos requeridos: orderId, storeId, deliveryProviderId, customerName'
       }, { status: 400 });
     }
 
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
         order_customer_phone: customerPhone,
         order_customer_email: customerEmail,
         order_customer_address: customerAddress,
-        order_total: orderTotal,
+        order_total: orderTotal || 0,
         order_items: orderItems,
         delivery_fee: deliveryFee || 0,
         delivery_fee_rule_id: deliveryFeeRuleId,
@@ -139,12 +139,18 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error;
 
-    // Actualizar la orden con el delivery_provider_id
+    // Actualizar la orden con los datos de delivery
     await supabaseAdmin
       .from('orders')
       .update({
         delivery_provider_id: deliveryProviderId,
-        delivery_fee: deliveryFee || 0
+        delivery_fee: deliveryFee || 0,
+        delivery_status: 'pending',
+        delivery_method: 'delivery',
+        latitude: destinationLat || null,
+        longitude: destinationLon || null,
+        customer_address: customerAddress || null,
+        delivery_notes: deliveryNotes || null
       })
       .eq('order_id', orderId);
 

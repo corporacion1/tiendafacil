@@ -529,7 +529,8 @@ export default function POSPage() {
   const [isCancelOrderDialogOpen, setIsCancelOrderDialogOpen] = useState(false);
 
   // -- Estado para filtro de estatus en modal de pedidos --
-  const [pendingOrdersStatusFilter, setPendingOrdersStatusFilter] = useState<string>("all");
+  const [pendingOrdersStatusFilter, setPendingOrdersStatusFilter] =
+    useState<string>("pending");
 
   const handleConfirmMarkAsProcessed = async () => {
     if (!orderToProcess) return;
@@ -3676,99 +3677,99 @@ export default function POSPage() {
                             Sin conexión
                           </Badge>
                         )}
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col w-full mx-2 sm:mx-auto">
-                    <form onSubmit={(e) => {
-                      e.preventDefault();
-                      handleProcessSale(false);
-                    }}>
-                      <DialogHeader className="flex-shrink-0">
-                        <div className="flex items-center justify-between gap-4">
-                          <div>
-                            <DialogTitle>
-                              Pedidos de Clientes
-                            </DialogTitle>
-                            <p className="text-sm text-muted-foreground">
-                              Pedidos generados por clientes, listos para procesar
-                            </p>
-                          </div>
-                          <Select
-                            value={pendingOrdersStatusFilter}
-                            onValueChange={setPendingOrdersStatusFilter}
-                          >
-                            <SelectTrigger className="w-[180px]">
-                              <SelectValue placeholder="Filtrar por estatus" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">Todos</SelectItem>
-                              <SelectItem value="pending">Pendiente</SelectItem>
-                              <SelectItem value="processing">En Proceso</SelectItem>
-                              <SelectItem value="processed">Procesado</SelectItem>
-                              <SelectItem value="cancelled">Cancelado</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </DialogHeader>
-                      <div className="py-4 flex-1 overflow-y-auto">
-                        {isLoadingPendingOrders && <p>Cargando pedidos...</p>}
-                        {!isLoadingPendingOrders &&
-                          pendingOrdersFromDB.length === 0 ? (
-                          <div className="text-center text-muted-foreground py-8">
-                            <p>No hay pedidos disponibles.</p>
-                            <p className="text-xs mt-1">
-                              Los pedidos aparecerán aquí cuando los clientes
-                              los generen desde el catálogo.
-                            </p>
-                            {!isOnline && (
-                              <p className="text-xs mt-2">
-                                Sin conexión - algunos pedidos pueden no estar
-                                visibles
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col w-full mx-2 sm:mx-auto">
+                      <form onSubmit={(e) => {
+                        e.preventDefault();
+                        handleProcessSale(false);
+                      }}>
+                        <DialogHeader className="flex-shrink-0">
+                          <div className="flex items-center justify-between gap-4">
+                            <div>
+                              <DialogTitle>
+                                Pedidos de Clientes
+                              </DialogTitle>
+                              <p className="text-sm text-muted-foreground">
+                                Pedidos generados por clientes, listos para procesar
                               </p>
-                            )}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="mt-4"
-                              onClick={async () => {
-                                try {
-                                  const response = await fetch(
-                                    `/api/debug/orders?storeId=${activeStoreId}`,
-                                  );
-                                  const data = await response.json();
-                                  console.log("🔍 [Debug] Orders info:", data);
-                                  toast({
-                                    title: "Debug Info",
-                                    description: `Total: ${data.totalOrders} pedidos. Ver consola para detalles.`,
-                                  });
-                                } catch (error) {
-                                  console.error("Debug error:", error);
-                                }
-                              }}
+                            </div>
+                            <Select
+                              value={pendingOrdersStatusFilter}
+                              onValueChange={setPendingOrdersStatusFilter}
                             >
-                              🔍 Debug Orders
-                            </Button>
+                              <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="Filtrar por estatus" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">Todos</SelectItem>
+                                <SelectItem value="pending">Pendiente</SelectItem>
+                                <SelectItem value="processing">En Proceso</SelectItem>
+                                <SelectItem value="processed">Procesado</SelectItem>
+                                <SelectItem value="cancelled">Cancelado</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
-                        ) : (
-                          <div className="space-y-4">
-                            {pendingOrdersFromDB
-                              .filter((order) =>
-                                pendingOrdersStatusFilter === "all"
-                                  ? true
-                                  : order.status?.toLowerCase() === pendingOrdersStatusFilter.toLowerCase()
-                              )
-                              .map((order) => (
-                                <div
-                                  key={order.orderId}
-                                  className="p-4 border rounded-lg"
-                                >
-                                  <div className="flex justify-between items-start">
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <h4 className="font-semibold">
-                                          {order.orderId}
-                                        </h4>
-                                       <Badge
+                        </DialogHeader>
+                        <div className="py-4 flex-1 overflow-y-auto">
+                          {isLoadingPendingOrders && <p>Cargando pedidos...</p>}
+                          {!isLoadingPendingOrders &&
+                            pendingOrdersFromDB.length === 0 ? (
+                            <div className="text-center text-muted-foreground py-8">
+                              <p>No hay pedidos disponibles.</p>
+                              <p className="text-xs mt-1">
+                                Los pedidos aparecerán aquí cuando los clientes
+                                los generen desde el catálogo.
+                              </p>
+                              {!isOnline && (
+                                <p className="text-xs mt-2">
+                                  Sin conexión - algunos pedidos pueden no estar
+                                  visibles
+                                </p>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="mt-4"
+                                onClick={async () => {
+                                  try {
+                                    const response = await fetch(
+                                      `/api/debug/orders?storeId=${activeStoreId}`,
+                                    );
+                                    const data = await response.json();
+                                    console.log("🔍 [Debug] Orders info:", data);
+                                    toast({
+                                      title: "Debug Info",
+                                      description: `Total: ${data.totalOrders} pedidos. Ver consola para detalles.`,
+                                    });
+                                  } catch (error) {
+                                    console.error("Debug error:", error);
+                                  }
+                                }}
+                              >
+                                🔍 Debug Orders
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              {pendingOrdersFromDB
+                                .filter((order) =>
+                                  pendingOrdersStatusFilter === "all"
+                                    ? true
+                                    : order.status?.toLowerCase() === pendingOrdersStatusFilter.toLowerCase()
+                                )
+                                .map((order) => (
+                                  <div
+                                    key={order.orderId}
+                                    className="p-4 border rounded-lg"
+                                  >
+                                    <div className="flex justify-between items-start">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <h4 className="font-semibold">
+                                            {order.orderId}
+                                          </h4>
+                                          <Badge
                                             variant={
                                               order.status?.toLowerCase() === "pending"
                                                 ? "secondary"
@@ -3789,137 +3790,137 @@ export default function POSPage() {
                                                   : "Procesado"
                                             }
                                           </Badge>
-                                        <div className="flex items-center gap-2">
-                                          {order.deliveryMethod === "delivery" ? (
-                                            <div className="flex items-center gap-1 text-blue-600">
-                                              <Truck className="h-4 w-4" />
-                                              <span className="text-xs font-medium">Delivery</span>
-                                              <span className="sr-only">Método: entrega a domicilio</span>
-                                            </div>
-                                          ) : (
-                                            <div className="flex items-center gap-1 text-orange-600">
-                                              <Armchair className="h-4 w-4" />
-                                              <span className="text-xs font-medium">Pickup</span>
-                                              <span className="sr-only">Método: recogida en tienda</span>
+                                          <div className="flex items-center gap-2">
+                                            {order.deliveryMethod === "delivery" ? (
+                                              <div className="flex items-center gap-1 text-blue-600">
+                                                <Truck className="h-4 w-4" />
+                                                <span className="text-xs font-medium">Delivery</span>
+                                                <span className="sr-only">Método: entrega a domicilio</span>
+                                              </div>
+                                            ) : (
+                                              <div className="flex items-center gap-1 text-orange-600">
+                                                <Armchair className="h-4 w-4" />
+                                                <span className="text-xs font-medium">Pickup</span>
+                                                <span className="sr-only">Método: recogida en tienda</span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <div className="space-y-1">
+                                          <p className="text-sm font-medium text-blue-600">
+                                            👤 {order.customerName}
+                                          </p>
+                                          {order.customerPhone && (
+                                            <p className="text-xs text-muted-foreground">
+                                              📞 {order.customerPhone}
+                                            </p>
+                                          )}
+                                          {order.customerEmail && (
+                                            <p className="text-xs text-muted-foreground">
+                                              📧 {order.customerEmail}
+                                            </p>
+                                          )}
+                                          <p className="text-xs text-muted-foreground">
+                                            🕒{" "}
+                                            {format(
+                                              new Date(order.createdAt as string),
+                                              "dd/MM/yyyy HH:mm",
+                                            )}
+                                          </p>
+                                          {order.notes && (
+                                            <p className="text-sm">
+                                              <FileText className="w-4 h-4 inline mr-1" /> {order.notes}
+                                            </p>
+                                          )}
+                                          {order.deliveryNotes && (
+                                            <p className="text-sm">
+                                              <MapPinCheckIcon className="w-4 h-4 inline mr-1" /> {order.deliveryNotes}
+                                            </p>
+                                          )}
+                                          {/* Mostrar ubicación adjunta si existe */}
+                                          {order.latitude && order.longitude && (
+                                            <div className="flex items-center gap-1 mt-1 text-xs text-green-600 font-medium">
+                                              <MapPin className="h-3 w-3" />
+                                              <a
+                                                href={`https://www.google.com/maps?q=${order.latitude},${order.longitude}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="underline hover:text-green-700 transition-colors"
+                                                onClick={(e) => e.stopPropagation()}
+                                              >
+                                                Ver mapa
+                                              </a>
                                             </div>
                                           )}
                                         </div>
-                                      </div>
-                                      <div className="space-y-1">
-                                        <p className="text-sm font-medium text-blue-600">
-                                          👤 {order.customerName}
+                                        <p className="text-sm font-medium text-primary mt-2">
+                                          {activeSymbol}
+                                          {(order.total * activeRate).toFixed(2)}
                                         </p>
+                                      </div>
+                                      <div className="flex flex-col gap-2">
+                                        <Button
+                                          size="sm"
+                                          onClick={() => loadPendingOrder(order)}
+                                          disabled={order.status === "processed" || order.status === "cancelled"}
+                                          className="w-full sm:w-auto"
+                                          title={order.status === "processed" || order.status === "cancelled" ? "No se puede cargar un pedido ya procesado" : "Cargar pedido"}
+                                        >
+                                          <ShoppingCart className="h-4 w-4 sm:mr-2" />
+                                          <span className="hidden sm:inline">
+                                            {order.status === "processed" || order.status === "cancelled" ? "Procesado" : "Cargar"}
+                                          </span>
+                                        </Button>
                                         {order.customerPhone && (
-                                          <p className="text-xs text-muted-foreground">
-                                            📞 {order.customerPhone}
-                                          </p>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="border-[#25D366] text-[#25D366] hover:bg-red-500 hover:text-white w-full sm:w-auto"
+                                            onClick={(e) => {
+                                              e.preventDefault();
+                                              e.stopPropagation();
+                                              window.open(
+                                                `https://wa.me/${formatPhoneForWhatsApp(order.customerPhone)}`,
+                                                "_blank",
+                                                "noopener,noreferrer",
+                                              );
+                                            }}
+                                            title="Contactar por WhatsApp"
+                                          >
+                                            <FaWhatsapp className="h-4 w-4 sm:mr-2" />
+                                            <span className="hidden sm:inline">
+                                              WhatsApp
+                                            </span>
+                                          </Button>
                                         )}
-                                        {order.customerEmail && (
-                                          <p className="text-xs text-muted-foreground">
-                                            📧 {order.customerEmail}
-                                          </p>
-                                        )}
-                                        <p className="text-xs text-muted-foreground">
-                                          🕒{" "}
-                                          {format(
-                                            new Date(order.createdAt as string),
-                                            "dd/MM/yyyy HH:mm",
-                                          )}
-                                        </p>
-                                        {order.notes && (
-                                          <p className="text-sm">
-                                            <FileText className="w-4 h-4 inline mr-1" /> {order.notes}
-                                          </p>
-                                        )}
-                                        {order.deliveryNotes && (
-                                          <p className="text-sm">
-                                            <MapPinCheckIcon className="w-4 h-4 inline mr-1" /> {order.deliveryNotes}
-                                          </p>
-                                        )}
-                                        {/* Mostrar ubicación adjunta si existe */}
-                                        {order.latitude && order.longitude && (
-                                          <div className="flex items-center gap-1 mt-1 text-xs text-green-600 font-medium">
-                                            <MapPin className="h-3 w-3" />
-                                            <a 
-                                              href={`https://www.google.com/maps?q=${order.latitude},${order.longitude}`} 
-                                              target="_blank" 
-                                              rel="noopener noreferrer"
-                                              className="underline hover:text-green-700 transition-colors"
-                                              onClick={(e) => e.stopPropagation()}
-                                            >
-                                              Ver mapa
-                                            </a>
-                                          </div>
-                                        )}
-                                      </div>
-                                      <p className="text-sm font-medium text-primary mt-2">
-                                        {activeSymbol}
-                                        {(order.total * activeRate).toFixed(2)}
-                                      </p>
-                                    </div>
-                                    <div className="flex flex-col gap-2">
-                                      <Button
-                                        size="sm"
-                                        onClick={() => loadPendingOrder(order)}
-                                        disabled={order.status === "processed" || order.status === "cancelled"}
-                                        className="w-full sm:w-auto"
-                                        title={order.status === "processed" || order.status === "cancelled" ? "No se puede cargar un pedido ya procesado" : "Cargar pedido"}
-                                      >
-                                        <ShoppingCart className="h-4 w-4 sm:mr-2" />
-                                        <span className="hidden sm:inline">
-                                          {order.status === "processed" || order.status === "cancelled" ? "Procesado" : "Cargar"}
-                                        </span>
-                                      </Button>
-                                      {order.customerPhone && (
+
                                         <Button
                                           size="sm"
                                           variant="outline"
-                                          className="border-[#25D366] text-[#25D366] hover:bg-red-500 hover:text-white w-full sm:w-auto"
-                                          onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            window.open(
-                                              `https://wa.me/${formatPhoneForWhatsApp(order.customerPhone)}`,
-                                              "_blank",
-                                              "noopener,noreferrer",
-                                            );
+                                          className="border-destructive text-destructive hover:bg-destructive hover:text-white w-full sm:w-auto"
+                                          onClick={() => {
+                                            setOrderToCancel(order);
+                                            setIsCancelOrderDialogOpen(true);
                                           }}
-                                          title="Contactar por WhatsApp"
+                                          title="Cancelar pedido"
+                                          disabled={order.status === "processed" || order.status === "cancelled"}
                                         >
-                                          <FaWhatsapp className="h-4 w-4 sm:mr-2" />
+                                          <X className="h-4 w-4 sm:mr-2" />
                                           <span className="hidden sm:inline">
-                                            WhatsApp
+                                            {order.status === "cancelled" ? "Cancelado" : order.status === "processed" ? "Procesado" : "Cancelar"}
                                           </span>
                                         </Button>
-                                      )}
-
-                                       <Button
-                                         size="sm"
-                                         variant="outline"
-                                         className="border-destructive text-destructive hover:bg-destructive hover:text-white w-full sm:w-auto"
-                                         onClick={() => {
-                                           setOrderToCancel(order);
-                                           setIsCancelOrderDialogOpen(true);
-                                         }}
-                                         title="Cancelar pedido"
-                                         disabled={order.status === "processed" || order.status === "cancelled"}
-                                       >
-                                         <X className="h-4 w-4 sm:mr-2" />
-                                         <span className="hidden sm:inline">
-                                           {order.status === "cancelled" ? "Cancelado" : order.status === "processed" ? "Procesado" : "Cancelar"}
-                                         </span>
-                                       </Button>
+                                      </div>
                                     </div>
+                                    <Separator className="my-2" />
+                                    <p className="text-right font-bold">
+                                      Total: ${order.total.toFixed(2)}
+                                    </p>
                                   </div>
-                                  <Separator className="my-2" />
-                                  <p className="text-right font-bold">
-                                    Total: ${order.total.toFixed(2)}
-                                  </p>
-                                </div>
-                              ))}
-                          </div>
-                        )}
-                      </div>
+                                ))}
+                            </div>
+                          )}
+                        </div>
                         <DialogFooter>
                           <DialogClose asChild id="pending-orders-close-button">
                             <Button variant="outline">Cerrar</Button>
@@ -3961,7 +3962,7 @@ export default function POSPage() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel onClick={() => setOrderToCancel(null)}>No, mantener</AlertDialogCancel>
-                      <AlertDialogAction 
+                      <AlertDialogAction
                         onClick={handleConfirmCancelOrder}
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       >
@@ -4560,37 +4561,37 @@ export default function POSPage() {
                     </div>
                   )}
                 </div>
-                
-                  {/* Display current order ID and delivery method if available */}
-                  {currentOrderId && currentOrder && (
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1 sm:mt-0">
-                      <div className="text-xs sm:text-sm bg-blue-100 text-blue-800 px-2.5 py-1 rounded-md whitespace-nowrap">
-                        <span className="font-medium">Pedido:</span> {currentOrderId}
-                      </div>
-                      <div className="text-xs sm:text-sm bg-green-100 text-green-800 px-2.5 py-1 rounded-md whitespace-nowrap cursor-pointer hover:bg-accent">
-                        <p 
-                          className="font-medium flex items-center gap-1 rounded px-1 transition-colors"
-                          onClick={async () => {
-                            if (currentOrderId && currentOrder) {
-                              const newMethod = currentOrder.deliveryMethod === 'delivery' ? 'pickup' : 'delivery';
-                              await updateOrderDeliveryMethod(currentOrderId, newMethod);
-                            }
-                          }}
-                        >
-                          Método: 
-                          {currentOrder.deliveryMethod === "delivery" ? (
-                            <span className="flex items-center gap-1">
-                              <Truck className="h-3 w-3 sm:h-4 sm:w-4" /> Entrega
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-1">
-                              <Armchair className="h-3 w-3 sm:h-4 sm:w-4" /> Recogida
-                            </span>
-                          )}
-                        </p>
-                      </div>
+
+                {/* Display current order ID and delivery method if available */}
+                {currentOrderId && currentOrder && (
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1 sm:mt-0">
+                    <div className="text-xs sm:text-sm bg-blue-100 text-blue-800 px-2.5 py-1 rounded-md whitespace-nowrap">
+                      <span className="font-medium">Pedido:</span> {currentOrderId}
                     </div>
-                  )}
+                    <div className="text-xs sm:text-sm bg-green-100 text-green-800 px-2.5 py-1 rounded-md whitespace-nowrap cursor-pointer hover:bg-accent">
+                      <p
+                        className="font-medium flex items-center gap-1 rounded px-1 transition-colors"
+                        onClick={async () => {
+                          if (currentOrderId && currentOrder) {
+                            const newMethod = currentOrder.deliveryMethod === 'delivery' ? 'pickup' : 'delivery';
+                            await updateOrderDeliveryMethod(currentOrderId, newMethod);
+                          }
+                        }}
+                      >
+                        Método:
+                        {currentOrder.deliveryMethod === "delivery" ? (
+                          <span className="flex items-center gap-1">
+                            <Truck className="h-3 w-3 sm:h-4 sm:w-4" /> Entrega
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1">
+                            <Armchair className="h-3 w-3 sm:h-4 sm:w-4" /> Recogida
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </CardContent>
               <CardFooter className="flex flex-col gap-2 mt-auto border-t pt-2 sm:pt-4 p-2 sm:p-4 w-full max-w-full">
                 {cartItems.length > 0 && (
@@ -4656,261 +4657,261 @@ export default function POSPage() {
                   <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col w-full mx-2 sm:mx-auto">
                     <form onSubmit={(e) => { e.preventDefault(); handleProcessSale(false); }}>
                       <DialogHeader className="flex-shrink-0">
-                      <DialogTitle className="text-lg sm:text-xl flex items-center gap-2">
-                        Finalizar Venta
-                        <span className="text-sm font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                          ID: {generateSaleId()}
-                        </span>
-                      </DialogTitle>
-                      <DialogDescription className="text-sm sm:text-base">
-                        Total a Pagar:{" "}
-                        <span className="font-bold text-primary">
-                          {activeSymbol}
-                          {(total * activeRate).toFixed(2)}
-                        </span>
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide">
-                      <div className="grid md:grid-cols-2 gap-4 sm:gap-6 items-start p-1">
-                        <div className="space-y-3 sm:space-y-4">
-                          <h4 className="font-medium text-center md:text-left text-sm sm:text-base">
-                            Registrar Pagos
-                          </h4>
-                          <div className="space-y-2">
-                            <Label className="text-xs sm:text-sm">
-                              Método de Pago
-                            </Label>
-                            <Select
-                              value={currentPaymentMethod}
-                              onValueChange={setCurrentPaymentMethod}
-                            >
-                              <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {paymentMethods.map((m) => (
-                                  <SelectItem
-                                    key={m.id}
-                                    value={m.id}
-                                    className="text-xs sm:text-sm"
-                                  >
-                                    {m.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-xs sm:text-sm">
-                              Monto a Pagar ({activeSymbol})
-                            </Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              placeholder="0.00"
-                              value={currentPaymentAmount}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                // Permitir valores vacíos o con hasta 2 decimales
-                                if (
-                                  value === "" ||
-                                  /^\d*\.?\d{0,2}$/.test(value)
-                                ) {
-                                  setCurrentPaymentAmount(value);
-                                }
-                              }}
-                              onBlur={(e) => {
-                                // Formatear a 2 decimales al perder el foco
-                                const value = parseFloat(e.target.value);
-                                if (!isNaN(value)) {
-                                  setCurrentPaymentAmount(value.toFixed(2));
-                                }
-                              }}
-                              className="h-8 sm:h-10 text-xs sm:text-sm"
-                            />
-                          </div>
-                          {paymentMethods.find(
-                            (m) => m.id === currentPaymentMethod,
-                          )?.requiresRef && (
-                              <div className="space-y-2">
-                                <Label className="text-xs sm:text-sm">
-                                  Referencia
-                                </Label>
-                                <Input
-                                  placeholder="Nro. de referencia"
-                                  value={currentPaymentRef}
-                                  onChange={(e) =>
-                                    setCurrentPaymentRef(e.target.value)
+                        <DialogTitle className="text-lg sm:text-xl flex items-center gap-2">
+                          Finalizar Venta
+                          <span className="text-sm font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                            ID: {generateSaleId()}
+                          </span>
+                        </DialogTitle>
+                        <DialogDescription className="text-sm sm:text-base">
+                          Total a Pagar:{" "}
+                          <span className="font-bold text-primary">
+                            {activeSymbol}
+                            {(total * activeRate).toFixed(2)}
+                          </span>
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide">
+                        <div className="grid md:grid-cols-2 gap-4 sm:gap-6 items-start p-1">
+                          <div className="space-y-3 sm:space-y-4">
+                            <h4 className="font-medium text-center md:text-left text-sm sm:text-base">
+                              Registrar Pagos
+                            </h4>
+                            <div className="space-y-2">
+                              <Label className="text-xs sm:text-sm">
+                                Método de Pago
+                              </Label>
+                              <Select
+                                value={currentPaymentMethod}
+                                onValueChange={setCurrentPaymentMethod}
+                              >
+                                <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {paymentMethods.map((m) => (
+                                    <SelectItem
+                                      key={m.id}
+                                      value={m.id}
+                                      className="text-xs sm:text-sm"
+                                    >
+                                      {m.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-xs sm:text-sm">
+                                Monto a Pagar ({activeSymbol})
+                              </Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                placeholder="0.00"
+                                value={currentPaymentAmount}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  // Permitir valores vacíos o con hasta 2 decimales
+                                  if (
+                                    value === "" ||
+                                    /^\d*\.?\d{0,2}$/.test(value)
+                                  ) {
+                                    setCurrentPaymentAmount(value);
                                   }
-                                  className="h-8 sm:h-10 text-xs sm:text-sm"
-                                />
-                              </div>
-                            )}
-                          <Button
-                            className="w-full h-8 sm:h-10 text-xs sm:text-sm"
-                            onClick={handleAddPayment}
-                            disabled={
-                              !currentPaymentAmount ||
-                              Number(currentPaymentAmount) <= 0
-                            }
-                          >
-                            <Plus className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />{" "}
-                            Agregar Pago
-                          </Button>
-
-                          {remainingBalance > 0 && (
-                            <div className="space-y-2 pt-4">
-                              <div className="flex items-center space-x-2">
-                                <Switch
-                                  id="credit-sale-switch"
-                                  checked={isCreditSale}
-                                  onCheckedChange={setIsCreditSale}
-                                  disabled={remainingBalance <= 0}
-                                />
-                                <Label htmlFor="credit-sale-switch">
-                                  Cambiar Días de Crédito
-                                </Label>
-                              </div>
-
-                              {isCreditSale && (
-                                <div className="space-y-2 pl-8 pt-2">
-                                  <Label htmlFor="credit-days">
-                                    Días de Crédito
+                                }}
+                                onBlur={(e) => {
+                                  // Formatear a 2 decimales al perder el foco
+                                  const value = parseFloat(e.target.value);
+                                  if (!isNaN(value)) {
+                                    setCurrentPaymentAmount(value.toFixed(2));
+                                  }
+                                }}
+                                className="h-8 sm:h-10 text-xs sm:text-sm"
+                              />
+                            </div>
+                            {paymentMethods.find(
+                              (m) => m.id === currentPaymentMethod,
+                            )?.requiresRef && (
+                                <div className="space-y-2">
+                                  <Label className="text-xs sm:text-sm">
+                                    Referencia
                                   </Label>
                                   <Input
-                                    id="credit-days"
-                                    type="number"
-                                    value={creditDays}
-                                    onChange={(e) => {
-                                      const days = Math.max(
-                                        1,
-                                        Math.min(30, Number(e.target.value)),
-                                      );
-                                      setCreditDays(days);
-                                    }}
-                                    min="1"
-                                    max="30"
+                                    placeholder="Nro. de referencia"
+                                    value={currentPaymentRef}
+                                    onChange={(e) =>
+                                      setCurrentPaymentRef(e.target.value)
+                                    }
                                     className="h-8 sm:h-10 text-xs sm:text-sm"
                                   />
-                                  <p className="text-xs text-muted-foreground">
-                                    La venta se marcará como no pagada y se
-                                    registrará el crédito.
-                                  </p>
                                 </div>
                               )}
-                            </div>
-                          )}
-                        </div>
-                        <div className="space-y-3 sm:space-y-4">
-                          <h4 className="font-medium text-center md:text-left text-sm sm:text-base">
-                            Pagos Realizados
-                          </h4>
-                          <div className="space-y-2 p-2 sm:p-3 bg-muted/50 rounded-lg min-h-[120px] sm:min-h-[150px] max-h-[200px] overflow-y-auto scrollbar-hide">
-                            {payments.length === 0 ? (
-                              <p className="text-xs sm:text-sm text-muted-foreground text-center pt-6 sm:pt-8">
-                                Aún no hay pagos registrados.
-                              </p>
-                            ) : (
-                              payments.map((p, i) => (
-                                <div
-                                  key={i}
-                                  className="flex justify-between items-center text-xs sm:text-sm gap-2"
-                                >
-                                  <span className="truncate flex-1 min-w-0">
-                                    {p.method}{" "}
-                                    {p.reference && `(${p.reference})`}
-                                  </span>
-                                  <span className="font-medium flex-shrink-0">
-                                    {activeSymbol}
-                                    {(p.amount * activeRate).toFixed(2)}
-                                  </span>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0"
-                                    onClick={() => removePayment(i)}
-                                  >
-                                    <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 text-destructive" />
-                                  </Button>
+                            <Button
+                              className="w-full h-8 sm:h-10 text-xs sm:text-sm"
+                              onClick={handleAddPayment}
+                              disabled={
+                                !currentPaymentAmount ||
+                                Number(currentPaymentAmount) <= 0
+                              }
+                            >
+                              <Plus className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />{" "}
+                              Agregar Pago
+                            </Button>
+
+                            {remainingBalance > 0 && (
+                              <div className="space-y-2 pt-4">
+                                <div className="flex items-center space-x-2">
+                                  <Switch
+                                    id="credit-sale-switch"
+                                    checked={isCreditSale}
+                                    onCheckedChange={setIsCreditSale}
+                                    disabled={remainingBalance <= 0}
+                                  />
+                                  <Label htmlFor="credit-sale-switch">
+                                    Cambiar Días de Crédito
+                                  </Label>
                                 </div>
-                              ))
+
+                                {isCreditSale && (
+                                  <div className="space-y-2 pl-8 pt-2">
+                                    <Label htmlFor="credit-days">
+                                      Días de Crédito
+                                    </Label>
+                                    <Input
+                                      id="credit-days"
+                                      type="number"
+                                      value={creditDays}
+                                      onChange={(e) => {
+                                        const days = Math.max(
+                                          1,
+                                          Math.min(30, Number(e.target.value)),
+                                        );
+                                        setCreditDays(days);
+                                      }}
+                                      min="1"
+                                      max="30"
+                                      className="h-8 sm:h-10 text-xs sm:text-sm"
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                      La venta se marcará como no pagada y se
+                                      registrará el crédito.
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
                             )}
                           </div>
-                          <Separator />
-                          <div className="space-y-1 sm:space-y-2 text-sm sm:text-lg font-bold">
-                            <div className="flex justify-between">
-                              <span>Total Pagado:</span>
-                              <span>
-                                {activeSymbol}
-                                {(totalPaid * activeRate).toFixed(2)}
-                              </span>
-                            </div>
-                            <div
-                              className={cn(
-                                "flex justify-between",
-                                remainingBalance > 0
-                                  ? "text-destructive"
-                                  : "text-green-600",
+                          <div className="space-y-3 sm:space-y-4">
+                            <h4 className="font-medium text-center md:text-left text-sm sm:text-base">
+                              Pagos Realizados
+                            </h4>
+                            <div className="space-y-2 p-2 sm:p-3 bg-muted/50 rounded-lg min-h-[120px] sm:min-h-[150px] max-h-[200px] overflow-y-auto scrollbar-hide">
+                              {payments.length === 0 ? (
+                                <p className="text-xs sm:text-sm text-muted-foreground text-center pt-6 sm:pt-8">
+                                  Aún no hay pagos registrados.
+                                </p>
+                              ) : (
+                                payments.map((p, i) => (
+                                  <div
+                                    key={i}
+                                    className="flex justify-between items-center text-xs sm:text-sm gap-2"
+                                  >
+                                    <span className="truncate flex-1 min-w-0">
+                                      {p.method}{" "}
+                                      {p.reference && `(${p.reference})`}
+                                    </span>
+                                    <span className="font-medium flex-shrink-0">
+                                      {activeSymbol}
+                                      {(p.amount * activeRate).toFixed(2)}
+                                    </span>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0"
+                                      onClick={() => removePayment(i)}
+                                    >
+                                      <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 text-destructive" />
+                                    </Button>
+                                  </div>
+                                ))
                               )}
-                            >
-                              <span>
-                                {remainingBalance > 0 ? "Faltante:" : "Cambio:"}
-                              </span>
-                              <span>
-                                {activeSymbol}
-                                {(
-                                  Math.abs(remainingBalance) * activeRate
-                                ).toFixed(2)}
-                              </span>
+                            </div>
+                            <Separator />
+                            <div className="space-y-1 sm:space-y-2 text-sm sm:text-lg font-bold">
+                              <div className="flex justify-between">
+                                <span>Total Pagado:</span>
+                                <span>
+                                  {activeSymbol}
+                                  {(totalPaid * activeRate).toFixed(2)}
+                                </span>
+                              </div>
+                              <div
+                                className={cn(
+                                  "flex justify-between",
+                                  remainingBalance > 0
+                                    ? "text-destructive"
+                                    : "text-green-600",
+                                )}
+                              >
+                                <span>
+                                  {remainingBalance > 0 ? "Faltante:" : "Cambio:"}
+                                </span>
+                                <span>
+                                  {activeSymbol}
+                                  {(
+                                    Math.abs(remainingBalance) * activeRate
+                                  ).toFixed(2)}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                      {remainingBalance > 0 &&
-                        (selectedCustomerId === "eventual" ||
-                          !selectedCustomer?.phone) && (
+                        {remainingBalance > 0 &&
+                          (selectedCustomerId === "eventual" ||
+                            !selectedCustomer?.phone) && (
+                            <div className="text-destructive text-xs sm:text-sm font-medium flex items-center gap-2 mt-3 p-2 bg-destructive/10 rounded-md">
+                              <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                              <span className="text-xs sm:text-sm">
+                                Para guardar como crédito a ({creditDays}) días,
+                                debe seleccionar un cliente debidamente registrado
+                              </span>
+                            </div>
+                          )}
+                        {(!localSeries || !localCorrelative) && (
                           <div className="text-destructive text-xs sm:text-sm font-medium flex items-center gap-2 mt-3 p-2 bg-destructive/10 rounded-md">
                             <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                             <span className="text-xs sm:text-sm">
-                              Para guardar como crédito a ({creditDays}) días,
-                              debe seleccionar un cliente debidamente registrado
+                              Debe configurar la Serie y Correlativo antes de
+                              procesar ventas. Use el botón de configuración en la
+                              parte superior.
                             </span>
                           </div>
                         )}
-                      {(!localSeries || !localCorrelative) && (
-                        <div className="text-destructive text-xs sm:text-sm font-medium flex items-center gap-2 mt-3 p-2 bg-destructive/10 rounded-md">
-                          <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                          <span className="text-xs sm:text-sm">
-                            Debe configurar la Serie y Correlativo antes de
-                            procesar ventas. Use el botón de configuración en la
-                            parte superior.
+                      </div>
+                      <DialogFooter className="gap-2 sm:gap-1 mt-3 sm:mt-4 flex-shrink-0 flex-col sm:flex-row">
+                        <Button
+                          type="submit"
+                          variant="outline"
+                          disabled={
+                            !localSeries ||
+                            !localCorrelative ||
+                            (remainingBalance > 0 && !isCreditSale) ||
+                            (isCreditSale &&
+                              (selectedCustomerId === "eventual" ||
+                                !selectedCustomer?.phone))
+                          }
+                          className="flex-1 h-8 sm:h-10 text-xs sm:text-sm"
+                        >
+                          <Check className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+                          <span className="hidden sm:inline">
+                            {isCreditSale && remainingBalance > 0
+                              ? "Guardar a Crédito"
+                              : "Guardar"}
                           </span>
-                        </div>
-                      )}
-                    </div>
-                    <DialogFooter className="gap-2 sm:gap-1 mt-3 sm:mt-4 flex-shrink-0 flex-col sm:flex-row">
-                      <Button
-                        type="submit"
-                        variant="outline"
-                        disabled={
-                          !localSeries ||
-                          !localCorrelative ||
-                          (remainingBalance > 0 && !isCreditSale) ||
-                          (isCreditSale &&
-                            (selectedCustomerId === "eventual" ||
-                              !selectedCustomer?.phone))
-                        }
-                        className="flex-1 h-8 sm:h-10 text-xs sm:text-sm"
-                      >
-                        <Check className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
-                        <span className="hidden sm:inline">
-                          {isCreditSale && remainingBalance > 0
-                            ? "Guardar a Crédito"
-                            : "Guardar"}
-                        </span>
-                        <span className="sm:hidden">Guardar</span>
-                      </Button>
+                          <span className="sm:hidden">Guardar</span>
+                        </Button>
                         <Button
                           type="submit"
                           variant="secondary"
@@ -4948,12 +4949,12 @@ export default function POSPage() {
                           <span className="hidden sm:inline">
                             Guardar & Imprimir
                           </span>
-                            <span className="sm:hidden">Imprimir</span>
-                          </Button>
-                        </DialogFooter>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
+                          <span className="sm:hidden">Imprimir</span>
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
                 <div className="flex flex-col sm:flex-row gap-2 w-full">
                   <Button
                     className="w-full text-sm sm:text-base"

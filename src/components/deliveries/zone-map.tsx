@@ -110,7 +110,11 @@ const ZoneMap = ({
           icon: customIcon,
           draggable: true
         }).addTo(mapInstance);
-        marker.bindPopup('<b>📍 Centro de la Zona</b><br>Arrastra para mover').openPopup();
+        marker.bindPopup('<b>📍 Centro de la Zona</b><br>Arrastra para mover');
+
+        setTimeout(() => {
+          marker.openPopup();
+        }, 50);
       }
 
       mapInstance.on('click', (e: any) => {
@@ -133,7 +137,12 @@ const ZoneMap = ({
             icon: customIcon,
             draggable: true
           }).addTo(mapInstance);
-          newMarker.bindPopup('<b>📍 Centro de la Zona</b><br>Arrastra para mover').openPopup();
+          newMarker.bindPopup('<b>📍 Centro de la Zona</b><br>Arrastra para mover');
+
+          setTimeout(() => {
+            newMarker.openPopup();
+          }, 50);
+
           marker = newMarker;
           setSelectedCoords({ lat, lng } as any);
         }

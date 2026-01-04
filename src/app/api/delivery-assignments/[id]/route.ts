@@ -97,3 +97,95 @@ export async function DELETE(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const resolvedParams = await params;
+    const body = await request.json();
+    const {
+      orderCustomerName,
+      orderCustomerPhone,
+      orderCustomerAddress,
+      deliveryNotes,
+      storeLatitude,
+      storeLongitude,
+      deliveryProviderId,
+      deliveryZoneId,
+      distanceKm,
+      deliveryFee
+    } = body;
+
+    // Actualizar la asignación
+    const { data, error } = await supabaseAdmin
+      .from('delivery_assignments')
+      .update({
+        order_customer_name: orderCustomerName,
+        order_customer_phone: orderCustomerPhone,
+        order_customer_address: orderCustomerAddress,
+        delivery_notes: deliveryNotes,
+        store_latitude: storeLatitude,
+        store_longitude: storeLongitude,
+        delivery_provider_id: deliveryProviderId,
+        delivery_zone_id: deliveryZoneId,
+        distance_km: distanceKm,
+        delivery_fee: deliveryFee,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', resolvedParams.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Obtener el order_id para actualizar la tabla orders
+    const assignmentData = await supabaseAdmin
+      .from('delivery_assignments')
+      .select('order_id')
+      .eq('id', resolvedParams.id)
+      .single();
+
+    if (assignmentData.data?.order_id) {
+      // Actualizar la tabla orders con los datos de delivery
+      await supabaseAdmin
+        .from('orders')
+        .update({
+          delivery_provider_id: deliveryProviderId,
+          delivery_fee: deliveryFee || 0,
+          delivery_status: 'pending',
+          delivery_method: 'delivery',
+          latitude: data.destination_latitude || null,
+          longitude: data.destination_longitude || null,
+          customer_address: orderCustomerAddress || null,
+          delivery_notes: deliveryNotes || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('order_id', assignmentData.data.order_id);
+    }
+
+    return NextResponse.json({
+      id: data.id,
+      orderId: data.order_id,
+      storeId: data.store_id,
+      deliveryProviderId: data.delivery_provider_id,
+      orderCustomerName: data.order_customer_name,
+      orderCustomerPhone: data.order_customer_phone,
+      orderCustomerAddress: data.order_customer_address,
+      deliveryFee: data.delivery_fee,
+      deliveryZoneId: data.delivery_zone_id,
+      distanceKm: data.distance_km,
+      deliveryStatus: data.delivery_status,
+      storeLatitude: data.store_latitude,
+      storeLongitude: data.store_longitude,
+      destinationLatitude: data.destination_latitude,
+      destinationLongitude: data.destination_longitude,
+      deliveryNotes: data.delivery_notes,
+      updatedAt: data.updated_at,
+    });
+  } catch (error: any) {
+    console.error('❌ Error updating delivery assignment:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

@@ -111,16 +111,23 @@ export default function DeliveryMap({
         popupAnchor: [0, -12]
       });
 
-      L.marker([departureLat, departureLon], { icon: redIcon })
+      const departureMarker = L.marker([departureLat, departureLon], { icon: redIcon })
         .addTo(map)
-        .bindPopup('<b>📍 Partida</b>')
-        .openPopup();
+        .bindPopup('<b>📍 Partida</b>');
+
+      setTimeout(() => {
+        departureMarker.openPopup();
+      }, 50);
 
       if (hasDestination) {
         destMarkerRef.current = L.marker([destinationLat, destinationLon], { icon: greenIcon, draggable: true })
           .addTo(map)
-          .bindPopup('<b>🎯 Destino</b><br>Arrastra para mover')
-          .openPopup();
+          .bindPopup('<b>🎯 Destino</b><br>Arrastra para mover');
+
+        setTimeout(() => {
+          destMarkerRef.current.openPopup();
+        }, 50);
+
         setDestinationCoords({ lat: destinationLat, lng: destinationLon });
 
         destMarkerRef.current.on('dragend', () => {
@@ -139,8 +146,11 @@ export default function DeliveryMap({
         } else {
           destMarkerRef.current = L.marker([lat, lng], { icon: greenIcon, draggable: true })
             .addTo(map)
-            .bindPopup('<b>🎯 Destino</b><br>Arrastra para mover')
-            .openPopup();
+            .bindPopup('<b>🎯 Destino</b><br>Arrastra para mover');
+
+          setTimeout(() => {
+            destMarkerRef.current.openPopup();
+          }, 50);
 
           destMarkerRef.current.on('dragend', () => {
             if (destMarkerRef.current) {
