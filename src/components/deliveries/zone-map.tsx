@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useId } from 'react';
 import { Button } from '@/components/ui/button';
 
 interface ZoneMapProps {
@@ -16,28 +16,51 @@ const ZoneMap = ({
   onSave,
   onCancel
 }: ZoneMapProps) => {
-  const isMountedRef = useRef(false);
+  const mapId = useId().replace(/:/g, '-');
+  const mapContainerId = `zone-map-${mapId}`;
   const [isLoaded, setIsLoaded] = useState(false);
   const [selectedCoords, setSelectedCoords] = useState<any>(
     (currentLat && currentLon) ? { lat: currentLat, lng: currentLon } : null
   );
   const [L, setL] = useState<any>(null);
+  const mapInstanceRef = useRef<any>(null);
 
-  const initMap = (L: any) => {
-    // Clean up existing map
-    const existingMap = (window as any).zoneMapInstance;
-    if (existingMap) {
-      existingMap.remove();
-      (window as any).zoneMapInstance = null;
+  useEffect(() => {
+    const loadZoneLeaflet = async () => {
+      try {
+        if (!document.querySelector('link[href*="leaflet.css"]')) {
+          const link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+          document.head.appendChild(link);
+        }
+
+        const leaflet = await import('leaflet');
+        setL(leaflet);
+        setIsLoaded(true);
+      } catch (error) {
+        console.error('Error loading Leaflet:', error);
+      }
+    };
+
+    loadZoneLeaflet();
+  }, []);
+
+  useEffect(() => {
+    if (!isLoaded || !L) return;
+
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.remove();
+      mapInstanceRef.current = null;
     }
 
     const startLat = currentLat || 10.4806;
     const startLon = currentLon || -66.9036;
 
-    const mapContainer = document.getElementById('zone-map');
+    const mapContainer = document.getElementById(mapContainerId);
     if (!mapContainer) return;
 
-    const mapInstance = L.map('zone-map').setView([startLat, startLon], 13);
+    const mapInstance = L.map(mapContainerId).setView([startLat, startLon], 13);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -86,7 +109,6 @@ const ZoneMap = ({
       }
     });
 
-    // Handle dragend event for marker
     const handleDragEnd = (e: any) => {
       if (!e || !e.target) return;
       const m = e.target as L.Marker;
@@ -105,54 +127,19 @@ const ZoneMap = ({
       marker.on('dragend', handleDragEnd);
     }
 
-    (window as any).zoneMapInstance = mapInstance;
-  };
+    mapInstanceRef.current = mapInstance;
 
-  useEffect(() => {
-    if (isMountedRef.current) return;
-    isMountedRef.current = true;
-
-    const loadZoneLeaflet = async () => {
-      try {
-        // Load Leaflet CSS from CDN only if not already loaded
-        if (!document.querySelector('link[href*="leaflet.css"]')) {
-          const link = document.createElement('link');
-          link.rel = 'stylesheet';
-          link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-          document.head.appendChild(link);
-        }
-
-        // Import Leaflet
-        const leaflet = await import('leaflet');
-        setL(leaflet.default);
-
-        // Initialize map after short delay
-        setTimeout(() => {
-          initMap(leaflet.default);
-        }, 100);
-
-        setIsLoaded(true);
-      } catch (error) {
-        console.error('Error loading Leaflet:', error);
-      }
-    };
-
-    loadZoneLeaflet();
-  }, [initMap]);
-
-  useEffect(() => {
-    if (!isLoaded || !L) return;
-
-    initMap(L);
+    setTimeout(() => {
+      mapInstance.invalidateSize();
+    }, 100);
 
     return () => {
-      const existingMap = (window as any).zoneMapInstance;
-      if (existingMap) {
-        existingMap.remove();
-        (window as any).zoneMapInstance = null;
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
       }
     };
-  }, [currentLat, currentLon, L, isLoaded, initMap]);
+  }, [currentLat, currentLon, L, isLoaded, mapContainerId]);
 
   const handleSave = () => {
     if (selectedCoords) {
@@ -167,7 +154,7 @@ const ZoneMap = ({
       <div className="text-sm text-muted-foreground">
         <p>Haz clic en el mapa para seleccionar el centro de la zona o arrastra el marcador azul.</p>
       </div>
-      <div id="zone-map" style={{ height: '400px', width: '100%', borderRadius: '8px', border: '1px solid #e5e7eb' }} />
+      <div id={mapContainerId} style={{ height: '400px', width: '100%', borderRadius: '8px', border: '1px solid #e5e7eb' }} />
       <div className="flex gap-2 justify-end">
         <Button variant="outline" onClick={onCancel}>
           Cancelar

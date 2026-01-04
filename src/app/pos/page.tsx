@@ -4641,7 +4641,12 @@ export default function POSPage() {
                     <Button
                       className="w-full bg-primary hover:bg-primary/90 text-sm sm:text-base"
                       size="lg"
-                      disabled={cartItems.length === 0}
+                      disabled={
+                        cartItems.length === 0 ||
+                        !isSessionReady ||
+                        !localSeries ||
+                        !localCorrelative
+                      }
                     >
                       <ShoppingCart className="h-4 w-4 sm:mr-2" />
                       <span className="hidden sm:inline">Procesar Venta</span>

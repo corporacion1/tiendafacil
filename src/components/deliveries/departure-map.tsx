@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useId } from 'react';
 import { Button } from '@/components/ui/button';
 
 interface DepartureMapProps {
@@ -16,20 +16,18 @@ const DepartureMap = ({
   onSave,
   onCancel
 }: DepartureMapProps) => {
-  const isMountedRef = useRef(false);
+  const mapId = useId().replace(/:/g, '-');
+  const mapContainerId = `departure-map-${mapId}`;
   const [isLoaded, setIsLoaded] = useState(false);
   const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(
     (currentLat && currentLon) ? { lat: currentLat, lng: currentLon } : null
   );
   const [L, setL] = useState<any>(null);
+  const mapInstanceRef = useRef<any>(null);
 
   useEffect(() => {
-    if (isMountedRef.current) return;
-    isMountedRef.current = true;
-
     const loadDepartureLeaflet = async () => {
       try {
-        // Load Leaflet CSS from CDN only if not already loaded
         if (!document.querySelector('link[href*="leaflet.css"]')) {
           const link = document.createElement('link');
           link.rel = 'stylesheet';
@@ -37,15 +35,8 @@ const DepartureMap = ({
           document.head.appendChild(link);
         }
 
-        // Import Leaflet
         const leaflet = await import('leaflet');
-        setL(leaflet.default);
-
-        // Initialize map after short delay
-        setTimeout(() => {
-          initMap(leaflet.default);
-        }, 100);
-
+        setL(leaflet);
         setIsLoaded(true);
       } catch (error) {
         console.error('Error loading Leaflet:', error);
@@ -56,33 +47,17 @@ const DepartureMap = ({
   }, []);
 
   useEffect(() => {
-    if (!isLoaded || !L) return;
+    if (!isLoaded || !L || !currentLat || !currentLon) return;
 
-    initMap(L);
-
-    return () => {
-      const existingMap = (window as any).departureMapDepartureInstance;
-      if (existingMap) {
-        existingMap.remove();
-        (window as any).departureMapDepartureInstance = null;
-      }
-    };
-  }, [currentLat, currentLon, L]);
-
-  const initMap = (L: any) => {
-    // Clean up existing map
-    const existingMap = (window as any).departureMapDepartureInstance;
-    if (existingMap) {
-      existingMap.remove();
-      (window as any).departureMapDepartureInstance = null;
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.remove();
+      mapInstanceRef.current = null;
     }
 
-    if (!currentLat || !currentLon) return;
-
-    const mapContainer = document.getElementById('departure-map');
+    const mapContainer = document.getElementById(mapContainerId);
     if (!mapContainer) return;
 
-    const mapInstance = L.map('departure-map').setView([currentLat, currentLon], 13);
+    const mapInstance = L.map(mapContainerId).setView([currentLat, currentLon], 13);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -105,7 +80,6 @@ const DepartureMap = ({
       marker.bindPopup('<b>📍 Ubicación de Partida</b><br>Arrastra para mover').openPopup();
     }
 
-    // Handle dragend event for marker
     const handleDragEnd = (e: any) => {
       if (!e || !e.target) return;
       const m = e.target as L.Marker;
@@ -152,8 +126,19 @@ const DepartureMap = ({
       }
     });
 
-    (window as any).departureMapDepartureInstance = mapInstance;
-  };
+    mapInstanceRef.current = mapInstance;
+
+    setTimeout(() => {
+      mapInstance.invalidateSize();
+    }, 100);
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, [currentLat, currentLon, L, isLoaded, mapContainerId]);
 
   const handleSave = () => {
     if (selectedCoords) {
@@ -168,7 +153,7 @@ const DepartureMap = ({
       <div className="text-sm text-muted-foreground">
         <p>Haz clic en el mapa para seleccionar la ubicación de partida o arrastra el marcador azul.</p>
       </div>
-      <div id="departure-map" style={{ height: '400px', width: '100%', borderRadius: '8px', border: '1px solid #e5e7eb' }} />
+      <div id={mapContainerId} style={{ height: '400px', width: '100%', borderRadius: '8px', border: '1px solid #e5e7eb' }} />
       <div className="flex gap-2 justify-end">
         <Button variant="outline" onClick={onCancel}>
           Cancelar

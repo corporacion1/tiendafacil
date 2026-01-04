@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback, useId } from 'react';
+import { useEffect, useState, useRef, useId, useCallback } from 'react';
 
 interface DeliveryMapPreviewProps {
   destinationLat: number;
@@ -15,20 +15,17 @@ const DeliveryMapPreview = ({
   onClick,
   className = ''
 }: DeliveryMapPreviewProps) => {
-  const isMountedRef = useRef(false);
+  const mapId = useId().replace(/:/g, '-');
+  const mapContainerId = `delivery-preview-map-${mapId}`;
   const [isLoaded, setIsLoaded] = useState(false);
   const [L, setL] = useState<any>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
-  const mapId = useId(); // ID único para cada instancia
 
   const initMap = useCallback((L: any) => {
-    if (!containerRef.current) return; 
-
     const hasDestination = destinationLat && destinationLon;
 
-    if (!hasDestination) return; 
+    if (!hasDestination) return;
 
     const centerLat = destinationLat;
     const centerLon = destinationLon;
@@ -38,7 +35,10 @@ const DeliveryMapPreview = ({
       mapInstanceRef.current = null;
     }
 
-    const mapInstance = L.map(containerRef.current, {
+    const mapContainer = document.getElementById(mapContainerId);
+    if (!mapContainer) return;
+
+    const mapInstance = L.map(mapContainerId, {
       zoomControl: true,
       attributionControl: false,
       dragging: true,
@@ -68,12 +68,13 @@ const DeliveryMapPreview = ({
     }).addTo(mapInstance);
 
     mapInstanceRef.current = mapInstance;
-  }, [destinationLat, destinationLon]);
+
+    setTimeout(() => {
+      mapInstance.invalidateSize();
+    }, 100);
+  }, [destinationLat, destinationLon, mapContainerId]);
 
   useEffect(() => {
-    if (isMountedRef.current) return;
-    isMountedRef.current = true;
-
     const loadLeaflet = async () => {
       try {
         if (!document.querySelector('link[href*="leaflet.css"]')) {
@@ -84,7 +85,7 @@ const DeliveryMapPreview = ({
         }
 
         const leaflet = await import('leaflet');
-        setL(leaflet.default);
+        setL(leaflet);
         setIsLoaded(true);
       } catch (error) {
         console.error('Error loading Leaflet:', error);
@@ -109,7 +110,7 @@ const DeliveryMapPreview = ({
 
   if (!destinationLat || !destinationLon) {
     return (
-      <div 
+      <div
         className={`bg-muted rounded-lg flex items-center justify-center ${className}`}
         style={{ height: '100%' }}
         onClick={onClick}
@@ -125,8 +126,8 @@ const DeliveryMapPreview = ({
   }
 
   return (
-    <div 
-      ref={containerRef}
+    <div
+      id={mapContainerId}
       className={`rounded-lg hover:ring-2 hover:ring-primary/50 transition-all ${className}`}
       style={{ height: '100%' }}
       onClick={onClick}

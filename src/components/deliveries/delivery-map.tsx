@@ -120,6 +120,10 @@ export default function DeliveryMap({
 
     mapInstanceRef.current = map;
 
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+
     return () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
