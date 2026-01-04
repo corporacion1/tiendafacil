@@ -1087,7 +1087,7 @@ export default function DdeliveriesPage() {
                         )}
                         <Button
                           size="sm"
-                          className="h-8 w-full sm:w-auto text-xs hover:bg-accent hover:text-white"
+                          className="w-full sm:w-auto hover:bg-accent hover:text-white"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleSelectAssignment({
