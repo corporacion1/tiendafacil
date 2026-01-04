@@ -21,6 +21,7 @@ const DeliveryMapPreview = ({
   const [L, setL] = useState<any>(null);
   const mapInstanceRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
+  const initTimeoutRef = useRef<any>(null);
 
   const initMap = useCallback((L: any) => {
     const hasDestination = destinationLat && destinationLon;
@@ -35,43 +36,67 @@ const DeliveryMapPreview = ({
       mapInstanceRef.current = null;
     }
 
-    const mapContainer = document.getElementById(mapContainerId);
-    if (!mapContainer) return;
+    if (initTimeoutRef.current) {
+      clearTimeout(initTimeoutRef.current);
+    }
 
-    const mapInstance = L.map(mapContainerId, {
-      zoomControl: true,
-      attributionControl: false,
-      dragging: true,
-      scrollWheelZoom: true,
-      doubleClickZoom: true,
-      boxZoom: true,
-      keyboard: true
-    }).setView([centerLat, centerLon], 15);
+    const initMapInternal = () => {
+      const mapContainer = document.getElementById(mapContainerId);
+      if (!mapContainer) return;
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap'
-    }).addTo(mapInstance);
+      const rect = mapContainer.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) {
+        initTimeoutRef.current = setTimeout(initMapInternal, 100);
+        return;
+      }
 
-    const destIcon = L.divIcon({
-      html: `<div style="background-color: #22c55e; width: 28px; height: 28px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
-          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-        </svg>
-      </div>`,
-      className: 'custom-marker',
-      iconSize: [28, 28],
-      iconAnchor: [14, 28]
-    });
+      mapContainer.style.position = 'relative';
+      mapContainer.style.zIndex = '1';
 
-    markerRef.current = L.marker([destinationLat, destinationLon], {
-      icon: destIcon
-    }).addTo(mapInstance);
+      const mapInstance = L.map(mapContainerId, {
+        zoomControl: true,
+        attributionControl: false,
+        dragging: true,
+        scrollWheelZoom: true,
+        doubleClickZoom: true,
+        boxZoom: true,
+        keyboard: true,
+        preferCanvas: true
+      }).setView([centerLat, centerLon], 15);
 
-    mapInstanceRef.current = mapInstance;
+      const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap',
+        maxZoom: 19,
+        minZoom: 1,
+        zIndex: 1
+      }).addTo(mapInstance);
 
-    setTimeout(() => {
-      mapInstance.invalidateSize();
-    }, 100);
+      tileLayer.getContainer().style.position = 'absolute';
+
+      const destIcon = L.divIcon({
+        html: `<div style="background-color: #22c55e; width: 28px; height: 28px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; position: relative; z-index: 1000;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+          </svg>
+        </div>`,
+        className: 'custom-marker',
+        iconSize: [28, 28],
+        iconAnchor: [14, 28],
+        popupAnchor: [0, -28]
+      });
+
+      markerRef.current = L.marker([destinationLat, destinationLon], {
+        icon: destIcon
+      }).addTo(mapInstance);
+
+      mapInstanceRef.current = mapInstance;
+
+      setTimeout(() => {
+        mapInstance.invalidateSize();
+      }, 300);
+    };
+
+    initTimeoutRef.current = setTimeout(initMapInternal, 300);
   }, [destinationLat, destinationLon, mapContainerId]);
 
   useEffect(() => {
@@ -101,6 +126,9 @@ const DeliveryMapPreview = ({
     initMap(L);
 
     return () => {
+      if (initTimeoutRef.current) {
+        clearTimeout(initTimeoutRef.current);
+      }
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
@@ -129,7 +157,7 @@ const DeliveryMapPreview = ({
     <div
       id={mapContainerId}
       className={`rounded-lg hover:ring-2 hover:ring-primary/50 transition-all ${className}`}
-      style={{ height: '100%' }}
+      style={{ height: '100%', position: 'relative', zIndex: 1 }}
       onClick={onClick}
       title="Click para modificar ubicación"
     />

@@ -229,6 +229,10 @@ export default function DdeliveriesPage() {
 
   const handleSelectAssignment = (assignment: DeliveryAssignment) => {
     setSelectedAssignment(assignment);
+
+    // NO actualizar departureLocation o configFormData al cargar un pedido
+    // Solo usarlos para calcular distancias, no modificarlos
+
     if (assignment.orderCustomerName) {
       setFormData({
         customerName: assignment.orderCustomerName,
@@ -238,11 +242,42 @@ export default function DdeliveriesPage() {
         destinationLatitude: assignment.destinationLatitude || 0,
         destinationLongitude: assignment.destinationLongitude || 0
       });
+
       if (assignment.destinationLatitude && assignment.destinationLongitude) {
         setMapDestination({
           lat: assignment.destinationLatitude,
           lng: assignment.destinationLongitude
         });
+      }
+
+      // Calcular distancia si no está pre-calculada
+      if (assignment.destinationLatitude && assignment.destinationLongitude &&
+          departureLocation.latitude && departureLocation.longitude &&
+          !assignment.distanceKm) {
+        const distance = calculateDistance(
+          departureLocation.latitude,
+          departureLocation.longitude,
+          assignment.destinationLatitude,
+          assignment.destinationLongitude
+        );
+        setCalculatedDistance(distance);
+
+        // Calcular tarifa si no está pre-calculada
+        const selectedZone = zones.find(z => z.id === assignment.deliveryZoneId);
+        if (selectedZone && assignment.deliveryZoneId) {
+          setSelectedZoneId(assignment.deliveryZoneId);
+          const fee = distance * selectedZone.perKmFee;
+          setDeliveryFee(fee);
+        }
+      } else if (assignment.distanceKm) {
+        // Usar distancia pre-calculada
+        setCalculatedDistance(assignment.distanceKm);
+        if (assignment.deliveryZoneId) {
+          setSelectedZoneId(assignment.deliveryZoneId as string);
+        }
+        if (assignment.deliveryFee) {
+          setDeliveryFee(assignment.deliveryFee);
+        }
       }
     }
   };
@@ -423,7 +458,7 @@ export default function DdeliveriesPage() {
     // Seleccionar zona según: zona.rango >= distancia.entrega
     // Se selecciona la zona con el menor radio que sea >= distancia
     const activeZones = zones.filter(z => z.status === 'active');
-    
+
     // Filtrar zonas donde radiusKm >= distancia y ordenar por radio menor
     const eligibleZones = activeZones
       .filter(zone => zone.radiusKm >= tripDistance)
@@ -437,11 +472,14 @@ export default function DdeliveriesPage() {
       }
     } else if (activeZones.length > 0 && !selectedZoneId) {
       // Si ninguna zona cubre la distancia, seleccionar la zona con mayor radio
-      const maxRadiusZone = activeZones.reduce((prev, current) => 
+      const maxRadiusZone = activeZones.reduce((prev, current) =>
         (prev.radiusKm > current.radiusKm) ? prev : current
       );
       setSelectedZoneId(maxRadiusZone.id);
     }
+
+    // IMPORTANTE: NO modificar departureLocation ni configFormData aquí
+    // La ubicación de partida debe mantenerse de localStorage
   }, [departureLocation, zones, formData.destinationLatitude, formData.destinationLongitude]);
 
   // Calcular tarifa de delivery cuando cambia la zona o la distancia
@@ -455,12 +493,12 @@ export default function DdeliveriesPage() {
     }
   }, [selectedZoneId, calculatedDistance, zones]);
 
-  // Actualizar zona cuando se selecciona una asignación
+  // Actualizar zona cuando se selecciona una asignación (solo si no se ha establecido desde handleSelectAssignment)
   useEffect(() => {
-    if (selectedAssignment?.deliveryZoneId) {
-      setSelectedZoneId(selectedAssignment.deliveryZoneId);
+    if (selectedAssignment?.deliveryZoneId && selectedZoneId === '') {
+      setSelectedZoneId(selectedAssignment.deliveryZoneId || '');
     }
-  }, [selectedAssignment]);
+  }, [selectedAssignment, selectedZoneId]);
 
   // Función para agregar nueva zona
   const handleQuickAddZone = async (e: React.FormEvent) => {
@@ -869,23 +907,16 @@ export default function DdeliveriesPage() {
                       <div className="flex flex-wrap gap-2 justify-end">
                         <Button
                           size="sm"
+                          variant="outline"
+                          className="border-destructive text-destructive hover:bg-destructive hover:text-white w-full sm:w-auto"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleSelectAssignment({
-                              id: order.orderId,
-                              orderId: order.orderId,
-                              orderCustomerName: order.customerName,
-                              orderCustomerPhone: order.customerPhone,
-                              orderCustomerAddress: order.customerAddress,
-                              orderTotal: order.total,
-                              deliveryStatus: 'pending',
-                              deliveryFee: order.deliveryFee,
-                            } as DeliveryAssignment);
+                            setOrderToCancel(order);
+                            setIsCancelOrderDialogOpen(true);
                           }}
-                          className="w-full sm:w-auto"
                         >
-                          <ShoppingCart className="h-4 w-4 sm:mr-2" />
-                          <span className="hidden sm:inline">Cargar</span>
+                          <X className="h-4 w-4 sm:mr-2" />
+                          <span className="hidden sm:inline">Cancelar</span>
                         </Button>
                         {order.customerPhone && (
                           <Button
@@ -907,16 +938,33 @@ export default function DdeliveriesPage() {
                         )}
                         <Button
                           size="sm"
-                          variant="outline"
-                          className="border-destructive text-destructive hover:bg-destructive hover:text-white w-full sm:w-auto"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setOrderToCancel(order);
-                            setIsCancelOrderDialogOpen(true);
+                            handleSelectAssignment({
+                              id: order.orderId,
+                              orderId: order.orderId,
+                              storeId: order.storeId || activeStoreId || '',
+                              deliveryProviderId: '',
+                              orderCustomerName: order.customerName,
+                              orderCustomerPhone: order.customerPhone,
+                              orderCustomerAddress: order.customerAddress,
+                              orderTotal: order.total,
+                              orderItems: order.items || [],
+                              deliveryFee: order.deliveryFee || 0,
+                              destinationLatitude: order.latitude || 0,
+                              destinationLongitude: order.longitude || 0,
+                              deliveryStatus: 'pending' as DeliveryStatus,
+                              deliveryNotes: order.deliveryNotes || order.notes || '',
+                              whatsappNotificationSent: false,
+                              assignedAt: new Date().toISOString(),
+                              createdAt: new Date().toISOString(),
+                              updatedAt: new Date().toISOString(),
+                            } as DeliveryAssignment);
                           }}
+                          className="w-full sm:w-auto"
                         >
-                          <X className="h-4 w-4 sm:mr-2" />
-                          <span className="hidden sm:inline">Cancelar</span>
+                          <ShoppingCart className="h-4 w-4 sm:mr-2" />
+                          <span className="hidden sm:inline">Cargar</span>
                         </Button>
                       </div>
                     </div>
@@ -1988,7 +2036,7 @@ export default function DdeliveriesPage() {
 
       {/* Modal de mapa para seleccionar centro de la zona en edición */}
       <Dialog open={showEditZoneMapModal} onOpenChange={setShowEditZoneMapModal}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-4xl min-h-[600px] flex flex-col">
           <DialogHeader>
             <DialogTitle>Seleccionar Centro de la Zona en el Mapa</DialogTitle>
           </DialogHeader>
@@ -2006,7 +2054,7 @@ export default function DdeliveriesPage() {
 
       {/* Modal de mapa para seleccionar centro de la zona */}
       <Dialog open={showZoneMapModal} onOpenChange={setShowZoneMapModal}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-4xl min-h-[600px] flex flex-col">
           <DialogHeader>
             <DialogTitle>Seleccionar Centro de la Zona en el Mapa</DialogTitle>
           </DialogHeader>
@@ -2024,7 +2072,7 @@ export default function DdeliveriesPage() {
 
       {/* Modal de mapa para seleccionar ubicación de destino */}
       <Dialog key="delivery-map-dialog" open={showMapModal} onOpenChange={setShowMapModal}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-4xl min-h-[600px] flex flex-col">
           <DialogHeader>
             <DialogTitle>Seleccionar Ubicación de Destino en el Mapa</DialogTitle>
           </DialogHeader>
@@ -2046,7 +2094,7 @@ export default function DdeliveriesPage() {
       {/* Modal de mapa para seleccionar ubicación de partida */}
       {canConfigureDeparture && (
         <Dialog open={showDepartureMapModal} onOpenChange={setShowDepartureMapModal}>
-          <DialogContent className="max-w-4xl">
+          <DialogContent className="max-w-4xl min-h-[600px] flex flex-col">
             <DialogHeader>
               <DialogTitle>Seleccionar Ubicación de Partida en el Mapa</DialogTitle>
             </DialogHeader>
@@ -2245,36 +2293,23 @@ export default function DdeliveriesPage() {
                   {activeSymbol}{(selectedOrderForDetail?.total * activeRate).toFixed(2)}
                 </span>
               </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2 shrink-0">
               {selectedOrderForDetail?.latitude && selectedOrderForDetail?.longitude && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 px-2 text-xs shrink-0"
+                  className="h-8 px-3 text-xs"
                   onClick={() => window.open(
                     `https://www.google.com/maps/dir/?api=1&destination=${selectedOrderForDetail.latitude},${selectedOrderForDetail.longitude}`,
                     "_blank"
                   )}
                 >
-                  <Navigation className="h-3 w-3 mr-1" />
+                  <Navigation className="h-3.5 w-3.5 mr-1" />
                   Navegar
                 </Button>
               )}
-            </div>
-
-            <div className="flex flex-wrap gap-2 shrink-0">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs border-destructive text-destructive hover:bg-destructive hover:text-white"
-                onClick={() => {
-                  setOrderToCancel(selectedOrderForDetail);
-                  setIsOrderDetailModalOpen(false);
-                  setIsCancelOrderDialogOpen(true);
-                }}
-              >
-                <X className="h-3 w-3 mr-1" />
-                Cancelar
-              </Button>
 
               {selectedOrderForDetail?.customerPhone && (
                 <Button
@@ -2299,12 +2334,22 @@ export default function DdeliveriesPage() {
                     handleSelectAssignment({
                       id: selectedOrderForDetail.orderId,
                       orderId: selectedOrderForDetail.orderId,
+                      storeId: selectedOrderForDetail.storeId || activeStoreId || '',
+                      deliveryProviderId: '',
                       orderCustomerName: selectedOrderForDetail.customerName,
                       orderCustomerPhone: selectedOrderForDetail.customerPhone,
                       orderCustomerAddress: selectedOrderForDetail.customerAddress,
                       orderTotal: selectedOrderForDetail.total,
-                      deliveryStatus: 'pending',
-                      deliveryFee: selectedOrderForDetail.deliveryFee,
+                      orderItems: selectedOrderForDetail.items || [],
+                      deliveryFee: selectedOrderForDetail.deliveryFee || 0,
+                      destinationLatitude: selectedOrderForDetail.latitude || 0,
+                      destinationLongitude: selectedOrderForDetail.longitude || 0,
+                      deliveryStatus: 'pending' as DeliveryStatus,
+                      deliveryNotes: selectedOrderForDetail.deliveryNotes || selectedOrderForDetail.notes || '',
+                      whatsappNotificationSent: false,
+                      assignedAt: new Date().toISOString(),
+                      createdAt: new Date().toISOString(),
+                      updatedAt: new Date().toISOString(),
                     } as DeliveryAssignment);
                   }
                   setIsOrderDetailModalOpen(false);
