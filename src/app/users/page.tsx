@@ -40,17 +40,29 @@ interface UsersSummary {
   recentUsers: UserProfile[];
 }
 
-const getRoleVariant = (role: UserProfile['role']) => {
-  switch (role) {
-    case 'su': return 'destructive';
-    case 'admin': return 'default';
-    case 'pos' as any: return 'secondary';
-    case 'depositary' as any: return 'secondary';
-    case 'delivery' as any: return 'secondary';
-    case 'user':
-    default: return 'outline';
-  }
-};
+  const getRoleVariant = (role: UserProfile['role']) => {
+    switch (role) {
+      case 'su': return 'default';
+      case 'admin': return 'default';
+      case 'pos' as any: return 'secondary';
+      case 'depositary' as any: return 'secondary';
+      case 'delivery' as any: return 'secondary';
+      case 'user':
+      default: return 'outline';
+    }
+  };
+
+  const getRoleIcon = (role: UserProfile['role']) => {
+    switch (role) {
+      case 'su': return <Crown className="h-4 w-4 text-red-500" />;
+      case 'admin': return <Store className="h-4 w-4 text-yellow-500" />;
+      case 'pos' as any: return <FaCashRegister className="h-4 w-4 text-blue-500" />;
+      case 'depositary' as any: return <HandIcon className="h-4 w-4 text-green-500" />;
+      case 'delivery' as any: return <FaTruck className="h-4 w-4 text-black" />;
+      case 'user':
+      default: return <UserX className="h-4 w-4 p-1 text-gray-500" />;
+    }
+  };
 
 
 
@@ -398,7 +410,7 @@ export default function UsersPage() {
           <Users className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-2 text-sm font-semibold text-muted-foreground">No hay usuarios</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            {selectedFilter === 'all' ? 'No se encontraron usuarios.' : `No hay usuarios ${selectedFilter === 'active' ? 'activos' : selectedFilter === 'disabled' ? 'deshabilitados' : selectedFilter === 'admins' ? 'administradores' : 'con solicitudes'}.`}
+              {selectedFilter === 'all' ? 'No se encontraron usuarios.' : `No hay usuarios ${selectedFilter === 'active' ? 'activos' : selectedFilter === 'disabled' ? 'deshabilitados' : selectedFilter === 'admins' ? 'Administradores' : 'con solicitudes'}.`}
           </p>
         </div>
       );
@@ -457,8 +469,8 @@ export default function UsersPage() {
                 {user.role === 'user' && user.storeRequest && (
                   <Shield className="mr-2 h-6 w-6 text-amber-500 hover:cursor-pointer" onClick={() => handleViewAsUser(user)} />
                 )}
-                {user.role === 'admin' && (
-                  <Store className="mr-2 h-6 w-6 text-yellow-500 hover:cursor-pointer" onClick={() => handleViewAsUser(user)} />
+                 {user.role === 'admin' && (
+                  <Store className="mr-2 h-6 w-6 text-yellow-400 hover:cursor-pointer" onClick={() => handleViewAsUser(user)} />
                 )}
                 {user.role === 'su' && (
                   <Crown className="mr-2 h-6 w-6 text-red-500 hover:cursor-pointer" onClick={() => handleViewAsUser(user)} />
@@ -554,7 +566,7 @@ export default function UsersPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Administradores</CardTitle>
-                <Crown className="h-4 w-4 text-yellow-500" />
+                <Crown className="h-4 w-4 text-yellow-400" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-yellow-600">{summary.adminUsers}</div>

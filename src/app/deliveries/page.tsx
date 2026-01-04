@@ -1016,7 +1016,7 @@ export default function DdeliveriesPage() {
                   pendingOrders.map((order: any) => (
                     <div 
                       key={order.orderId}
-                      className="p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
+                      className="p-4 border transition-colors cursor-pointer"
                       onClick={() => {
                         setSelectedOrderForDetail(order);
                         setIsOrderDetailModalOpen(true);
@@ -1087,6 +1087,7 @@ export default function DdeliveriesPage() {
                         )}
                         <Button
                           size="sm"
+                          className="h-8 w-full sm:w-auto text-xs hover:bg-accent hover:text-white"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleSelectAssignment({
@@ -1110,7 +1111,6 @@ export default function DdeliveriesPage() {
                               updatedAt: new Date().toISOString(),
                             } as DeliveryAssignment, true);
                           }}
-                          className="w-full sm:w-auto"
                         >
                           <ShoppingCart className="h-4 w-4 sm:mr-2" />
                           <span className="hidden sm:inline">Cargar</span>
@@ -2686,7 +2686,7 @@ export default function DdeliveriesPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-8 px-3 text-xs"
+                  className="h-8 px-3 text-xs border border-gray-300 rounded-full"
                   onClick={() => window.open(
                     `https://www.google.com/maps/dir/?api=1&destination=${selectedOrderForDetail.latitude},${selectedOrderForDetail.longitude}`,
                     "_blank"
@@ -2700,7 +2700,7 @@ export default function DdeliveriesPage() {
               {selectedOrderForDetail?.customerPhone && (
                 <Button
                   size="sm"
-                  className="h-8 text-xs bg-[#25D366] text-white hover:bg-[#20bd5a]"
+                  className="h-8 text-xs bg-[#25D366] text-white hover:bg-accent"
                   onClick={() => window.open(
                     `https://wa.me/${selectedOrderForDetail.customerPhone?.replace(/\D/g, '')}`,
                     "_blank",
@@ -2714,7 +2714,7 @@ export default function DdeliveriesPage() {
 
               <Button
                 size="sm"
-                className="h-8 text-xs"
+                className="h-8 text-xs hover:bg-accent hover:text-white"
                 onClick={() => {
                   if (selectedOrderForDetail) {
                     handleSelectAssignment({
