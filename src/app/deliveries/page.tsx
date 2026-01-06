@@ -1484,9 +1484,25 @@ export default function DeliveriesPage() {
                         </div>
                       </div>
                       {selectedAssignment.orderCustomerAddress && (
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-xs">{selectedAssignment.orderCustomerAddress}</span>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 overflow-hidden">
+                            <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
+                            <span className="text-xs truncate">{selectedAssignment.orderCustomerAddress}</span>
+                          </div>
+                          {selectedAssignment.destinationLatitude && selectedAssignment.destinationLongitude && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-primary hover:bg-primary/10 shrink-0"
+                              onClick={() => window.open(
+                                `https://www.google.com/maps/dir/?api=1&destination=${selectedAssignment.destinationLatitude},${selectedAssignment.destinationLongitude}`,
+                                "_blank"
+                              )}
+                            >
+                              <Navigation className="h-4 w-4 mr-1" />
+                              <span className="text-[10px]">Navegar</span>
+                            </Button>
+                          )}
                         </div>
                       )}
                       <div className="flex items-center justify-between p-3 bg-accent/50 rounded-lg">
