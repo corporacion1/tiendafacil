@@ -505,6 +505,28 @@ export default function DeliveriesPage() {
 
   const activeProviders = providers.filter(p => p.status === 'active');
 
+  // Calcular comisión del repartidor basado en su tipo de comisión
+  const calculateProviderCommission = (providerId: string, deliveryFee: number): number => {
+    const provider = providers.find(p => p.id === providerId);
+    if (!provider) return 0;
+
+    switch (provider.commissionType) {
+      case 'fixed':
+        return provider.commissionFixedAmount || 0;
+
+      case 'percentage':
+        return (deliveryFee * (provider.commissionPercentage || 0)) / 100;
+
+      case 'combination':
+        const fixedPart = provider.commissionFixedAmount || 0;
+        const percentagePart = (deliveryFee * (provider.commissionPercentage || 0)) / 100;
+        return fixedPart + percentagePart;
+
+      default:
+        return 0;
+    }
+  };
+
   const fetchProviderStats = async (providerId: string) => {
     if (!providerId || !activeStoreId) return;
     setLoadingStats(true);
@@ -977,6 +999,9 @@ export default function DeliveriesPage() {
         // Crear nueva asignación (sea pedido nuevo o cargado de pendientes)
         const orderId = selectedAssignment?.orderId || `ORD-${Date.now()}`;
 
+        // Calcular comisión del repartidor
+        const providerCommission = calculateProviderCommission(selectedProviderId, deliveryFee);
+
         const response = await fetch('/api/delivery-assignments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -997,6 +1022,7 @@ export default function DeliveriesPage() {
             distanceKm: calculatedDistance,
             estimatedDurationMinutes: estimatedMinutes,
             deliveryNotes: formData.notes,
+            providerCommissionAmount: providerCommission,
             assignedBy: userProfile?.displayName || userProfile?.email || 'Usuario'
           })
         });

@@ -173,7 +173,7 @@ export async function POST(request: NextRequest) {
       delivery_notes: body.deliveryNotes || null,
       assigned_by: body.assignedBy || null,
       estimated_duration_minutes: body.estimatedDurationMinutes !== undefined ? body.estimatedDurationMinutes : (body.distanceKm ? Math.ceil(body.distanceKm * 5) : null),
-      provider_commission_amount: 0,
+      provider_commission_amount: body.providerCommissionAmount || 0,
       provider_payment_status: 'pending',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
         details: insertError.details,
         hint: insertError.hint
       });
-      
+
       return NextResponse.json({
         error: insertError.message || 'Error al crear la asignación de delivery',
         code: insertError.code,
@@ -229,7 +229,7 @@ export async function POST(request: NextRequest) {
         details: insertError.details,
         hint: insertError.hint
       });
-      
+
       return NextResponse.json({
         error: insertError.message || 'Error al crear la asignación de delivery',
         code: insertError.code,
