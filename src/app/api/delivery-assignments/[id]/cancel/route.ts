@@ -12,11 +12,12 @@ export async function POST(
     const body = await request.json();
     const { cancellationReason } = body;
 
-    console.log('🔄 [CANCEL] Cancelando asignación:', resolvedParams.id);
+    const id = resolvedParams.id.trim();
+    console.log('🔄 [CANCEL] Cancelando asignación (trimmed ID):', id);
 
     // Paso 1: Resetear montos explícitamente antes de cancelar
     console.log('🔄 [CANCEL] Paso 1: Reseteando montos a 0...');
-    const { error: resetError } = await supabaseAdmin
+    const { data: step1Data, error: resetError } = await supabaseAdmin
       .from('delivery_assignments')
       .update({
         delivery_fee: 0,
@@ -24,13 +25,19 @@ export async function POST(
         delivery_zone_id: null,
         delivery_fee_rule_id: null
       })
-      .eq('id', resolvedParams.id);
+      .eq('id', id)
+      .select()
+      .maybeSingle();
 
     if (resetError) {
       console.error('❌ [CANCEL] Error en paso 1 (reset montos):', resetError);
-      // No lanzamos error, intentamos cancelar de todas formas
+    } else if (!step1Data) {
+      console.warn('⚠️ [CANCEL] Paso 1: No se encontró la asignación (o update no hizo cambios) para ID:', id);
     } else {
-      console.log('✅ [CANCEL] Paso 1 completado');
+      console.log('✅ [CANCEL] Paso 1 completado. Fees reseteados:', {
+        fee: step1Data.delivery_fee,
+        commission: step1Data.provider_commission_amount
+      });
     }
 
     // Paso 2: Actualizar estado
