@@ -18,6 +18,8 @@ export async function POST(
       cancelled_at: new Date().toISOString(),
       delivery_fee: 0,
       provider_commission_amount: 0,
+      delivery_zone_id: null,
+      delivery_fee_rule_id: null,
       updated_at: new Date().toISOString()
     };
 
