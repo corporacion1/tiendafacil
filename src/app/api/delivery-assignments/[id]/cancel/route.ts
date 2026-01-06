@@ -13,32 +13,35 @@ export async function POST(
     const { cancellationReason } = body;
 
     const id = resolvedParams.id.trim();
-    console.log('🔄 [CANCEL] Cancelando asignación (trimmed ID):', id);
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
-    // Paso 1: Resetear montos explícitamente antes de cancelar
-    // Intentamos buscar por ID o por order_id para asegurar que lo encontramos
-    console.log('🔄 [CANCEL] Paso 1: Reseteando montos a 0 (buscando por id OR order_id)...');
-    const { data: step1Data, error: resetError } = await supabaseAdmin
+    console.log(`🔄 [CANCEL] ID: ${id}, Es UUID: ${isUuid}`);
+
+    // Paso 1: Resetear montos
+    console.log('🔄 [CANCEL] Paso 1: Reseteando montos a 0...');
+    let step1Query = supabaseAdmin
       .from('delivery_assignments')
       .update({
         delivery_fee: 0,
         provider_commission_amount: 0,
         delivery_zone_id: null,
         delivery_fee_rule_id: null
-      })
-      .or(`id.eq.${id},order_id.eq.${id}`)
-      .select()
-      .maybeSingle();
+      });
+
+    if (isUuid) {
+      step1Query = step1Query.eq('id', id);
+    } else {
+      step1Query = step1Query.eq('order_id', id);
+    }
+
+    const { data: step1Data, error: resetError } = await step1Query.select().maybeSingle();
 
     if (resetError) {
-      console.error('❌ [CANCEL] Error en paso 1 (reset montos):', resetError);
+      console.error('❌ [CANCEL] Error en paso 1:', resetError);
     } else if (!step1Data) {
-      console.warn('⚠️ [CANCEL] Paso 1: No se encontró la asignación (o update no hizo cambios) para ID:', id);
+      console.warn('⚠️ [CANCEL] Paso 1: No se encontró asignación para resetear montos.');
     } else {
-      console.log('✅ [CANCEL] Paso 1 completado. Fees reseteados:', {
-        fee: step1Data.delivery_fee,
-        commission: step1Data.provider_commission_amount
-      });
+      console.log('✅ [CANCEL] Paso 1 completado.');
     }
 
     // Paso 2: Actualizar estado
@@ -50,14 +53,17 @@ export async function POST(
       updated_at: new Date().toISOString()
     };
 
-    console.log('🔄 [CANCEL] Payload de actualización:', JSON.stringify(updatePayload, null, 2));
-
-    const { data: updateData, error: updateError } = await supabaseAdmin
+    let step2Query = supabaseAdmin
       .from('delivery_assignments')
-      .update(updatePayload)
-      .or(`id.eq.${id},order_id.eq.${id}`)
-      .select()
-      .single();
+      .update(updatePayload);
+
+    if (isUuid) {
+      step2Query = step2Query.eq('id', id);
+    } else {
+      step2Query = step2Query.eq('order_id', id);
+    }
+
+    const { data: updateData, error: updateError } = await step2Query.select().single();
 
     if (updateError) {
       console.error('❌ [CANCEL] Error actualizando asignación:', updateError);
