@@ -12,16 +12,20 @@ export async function POST(
 
     console.log('🔄 [CANCEL] Cancelando asignación:', resolvedParams.id);
 
+    const updatePayload = {
+      delivery_status: 'cancelled',
+      cancellation_reason: cancellationReason || '',
+      cancelled_at: new Date().toISOString(),
+      delivery_fee: 0,
+      provider_commission_amount: 0,
+      updated_at: new Date().toISOString()
+    };
+
+    console.log('🔄 [CANCEL] Payload de actualización:', JSON.stringify(updatePayload, null, 2));
+
     const { data: updateData, error: updateError } = await supabaseAdmin
       .from('delivery_assignments')
-      .update({
-        delivery_status: 'cancelled',
-        cancellation_reason: cancellationReason || '',
-        cancelled_at: new Date().toISOString(),
-        delivery_fee: 0,
-        provider_commission_amount: 0,
-        updated_at: new Date().toISOString()
-      })
+      .update(updatePayload)
       .eq('id', resolvedParams.id)
       .select()
       .single();
