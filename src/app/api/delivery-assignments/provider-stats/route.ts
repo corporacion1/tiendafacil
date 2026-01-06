@@ -21,17 +21,22 @@ export async function GET(request: NextRequest) {
             .select('delivery_status, provider_commission_amount')
             .eq('delivery_provider_id', providerId)
             .eq('store_id', storeId)
-            .gte('assigned_at', startOfDay);
+            .gte('created_at', startOfDay);  // Usar created_at que es seguro
 
         if (error) throw error;
 
+        // Filtrar cancelados para no ensuciar las estadísticas
+        const activeAssignmentsList = assignments?.filter((a: any) => a.delivery_status !== 'cancelled') || [];
+
         const stats = {
-            total: assignments?.length || 0,
-            completed: assignments?.filter((a: any) => a.delivery_status === 'delivered').length || 0,
-            pending: assignments?.filter((a: any) => ['pending', 'picked_up', 'in_transit'].includes(a.delivery_status)).length || 0,
-            earnings: assignments?.filter((a: any) => a.delivery_status === 'delivered')
-                .reduce((sum: number, a: any) => sum + (a.provider_commission_amount || 0), 0) || 0,
+            total: activeAssignmentsList.length,
+            completed: activeAssignmentsList.filter((a: any) => a.delivery_status === 'delivered').length,
+            pending: activeAssignmentsList.filter((a: any) => ['pending', 'picked_up', 'in_transit'].includes(a.delivery_status)).length,
+            earnings: activeAssignmentsList.filter((a: any) => a.delivery_status === 'delivered')
+                .reduce((sum: number, a: any) => sum + (a.provider_commission_amount || 0), 0),
         };
+
+        console.log('📊 [STATS] Stats calculados:', stats);
 
         return NextResponse.json(stats);
     } catch (error: any) {
