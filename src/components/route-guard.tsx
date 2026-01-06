@@ -14,10 +14,10 @@ interface RouteGuardProps {
   fallbackRoute?: string;
 }
 
-export function RouteGuard({ 
-  children, 
-  requiredPermission, 
-  fallbackRoute = '/catalog' 
+export function RouteGuard({
+  children,
+  requiredPermission,
+  fallbackRoute = '/catalog'
 }: RouteGuardProps) {
   const { canAccess, isLoggedIn, userRole } = usePermissions();
   const router = useRouter();
@@ -28,7 +28,8 @@ export function RouteGuard({
     // Verificar si el usuario puede acceder a la ruta actual
     if (!canAccess(pathname)) {
       // Si es una ruta que requiere login y no está logueado
-      if (!isLoggedIn && (pathname !== '/catalog' && pathname !== '/login' && pathname !== '/register')) {
+      const isPublicPath = pathname.startsWith('/catalog') || pathname === '/' || pathname.startsWith('/register');
+      if (!isLoggedIn && !isPublicPath) {
         toast({
           variant: "destructive",
           title: "Acceso restringido",
@@ -37,7 +38,7 @@ export function RouteGuard({
         router.push('/catalog');
         return;
       }
-      
+
       // Si está logueado pero no tiene permisos
       if (isLoggedIn && pathname !== '/catalog') {
         toast({
@@ -62,7 +63,7 @@ export function RouteGuard({
             </div>
             <CardTitle className="text-xl">Acceso Restringido</CardTitle>
             <CardDescription>
-              {!isLoggedIn 
+              {!isLoggedIn
                 ? "Debes iniciar sesión para acceder a esta página."
                 : `Tu rol (${userRole}) no tiene permisos para acceder a esta página.`
               }
@@ -72,7 +73,7 @@ export function RouteGuard({
             <div className="flex items-center gap-2 rounded-lg bg-muted p-3">
               <AlertCircle className="h-4 w-4 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
-                {!isLoggedIn 
+                {!isLoggedIn
                   ? "Inicia sesión para acceder a más funciones."
                   : "Contacta al administrador si necesitas más permisos."
                 }
@@ -81,23 +82,23 @@ export function RouteGuard({
             <div className="flex gap-2">
               {!isLoggedIn ? (
                 <>
-                  <Button 
-                    onClick={() => router.push('/catalog')} 
+                  <Button
+                    onClick={() => router.push('/catalog')}
                     className="flex-1"
                   >
                     Iniciar Sesión
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => router.push('/catalog')} 
+                  <Button
+                    variant="outline"
+                    onClick={() => router.push('/catalog')}
                     className="flex-1"
                   >
                     Ver Catálogo
                   </Button>
                 </>
               ) : (
-                <Button 
-                  onClick={() => router.push(fallbackRoute)} 
+                <Button
+                  onClick={() => router.push(fallbackRoute)}
                   className="w-full"
                 >
                   Ir al Catálogo

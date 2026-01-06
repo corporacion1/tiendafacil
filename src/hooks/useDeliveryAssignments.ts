@@ -105,7 +105,15 @@ export const useDeliveryAssignments = (storeId: string) => {
       });
 
       if (!response.ok) {
-        throw new Error('Error updating status');
+        const errorText = await response.text();
+        console.error('❌ Error updating status:', response.status, errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { error: errorText };
+        }
+        throw new Error(errorData.error || `Error ${response.status}: updating status`);
       }
 
       const updated = await response.json();
@@ -152,7 +160,15 @@ export const useDeliveryAssignments = (storeId: string) => {
       });
 
       if (!response.ok) {
-        throw new Error('Error completing delivery');
+        const errorText = await response.text();
+        console.error('❌ Error completing delivery:', response.status, errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { error: errorText };
+        }
+        throw new Error(errorData.error || `Error ${response.status}: completing delivery`);
       }
 
       const updated = await response.json();

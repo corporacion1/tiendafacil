@@ -8,7 +8,6 @@ import { UserRole } from '@/lib/types';
 // Routes that are exempt from store validation
 const EXEMPT_ROUTES = [
   '/',
-  '/login',
   '/register',
   '/catalog',
   '/unauthorized',
@@ -46,8 +45,8 @@ export default function StoreAccessGuard({ children }: { children: React.ReactNo
     try {
       // If no user, redirect to login
       if (!user) {
-        console.log(`🔒 No user session, redirecting to login from: ${pathname}`);
-        router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+        console.log(`🔒 No user session, redirecting to catalog from: ${pathname}`);
+        router.push(`/catalog?redirect=${encodeURIComponent(pathname)}`);
         return;
       }
 
@@ -64,11 +63,11 @@ export default function StoreAccessGuard({ children }: { children: React.ReactNo
       }
 
       // For administrative users, validate store access
-      const administrativeRoles = ['admin', 'pos', 'depositary'];
+      const administrativeRoles = ['admin', 'pos', 'depositary', 'delivery'];
       const isAdministrativeUser = administrativeRoles.includes(user.role);
       if (isAdministrativeUser) {
         console.log(`🔍 [StoreAccessGuard] Validating administrative user: ${user.email} (${user.role}) on ${pathname}`);
-        
+
         // Check if user has a store assigned
         if (!user.storeId) {
           console.error(`❌ Administrative user ${user.email} has no store assigned`);
@@ -81,20 +80,20 @@ export default function StoreAccessGuard({ children }: { children: React.ReactNo
         // Check if active store matches user's assigned store
         if (!activeStoreId || activeStoreId !== user.storeId) {
           console.warn(`🚫 Store access denied for ${user.email}: activeStoreId(${activeStoreId}) !== userStoreId(${user.storeId}) on ${pathname}`);
-          
+
           // CRITICAL FIX: Give a brief grace period for activeStoreId to sync after login
           // This prevents false positives during the login process
           const isLikelyLoginSync = !activeStoreId || activeStoreId === process.env.NEXT_PUBLIC_DEFAULT_STORE_ID;
-          
+
           if (isLikelyLoginSync) {
             console.log('⏳ [StoreAccessGuard] Possible login sync in progress, giving grace period...');
-            
+
             // Wait a moment for activeStoreId to sync, then check again
             setTimeout(() => {
               // Re-check after a brief delay
               const currentActiveStoreId = localStorage.getItem('activeStoreId');
               console.log('🔍 [StoreAccessGuard] Grace period check - localStorage activeStoreId:', currentActiveStoreId);
-              
+
               if (currentActiveStoreId && currentActiveStoreId === user.storeId) {
                 console.log('✅ [StoreAccessGuard] Store sync completed during grace period');
                 // Force a re-render by triggering a state change
@@ -105,10 +104,10 @@ export default function StoreAccessGuard({ children }: { children: React.ReactNo
                 router.push('/unauthorized?reason=store_mismatch');
               }
             }, 1000); // 1 second grace period
-            
+
             return; // Don't redirect immediately
           }
-          
+
           // Log unauthorized access attempt
           const logData = {
             timestamp: new Date().toISOString(),
@@ -120,7 +119,7 @@ export default function StoreAccessGuard({ children }: { children: React.ReactNo
             reason: 'store_mismatch'
           };
           console.warn('🚨 Unauthorized access attempt:', logData);
-          
+
           router.push('/unauthorized?reason=store_mismatch');
           return;
         }

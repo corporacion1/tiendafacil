@@ -7,6 +7,8 @@ export async function POST(
 ) {
   try {
     const resolvedParams = await params;
+    console.log('🔄 [POST /delivery-assignments/complete] ID:', resolvedParams.id);
+    
     const body = await request.json();
     const { customerRating, customerFeedback, proofOfDeliveryUrl, actualDurationMinutes } = body;
 
@@ -34,23 +36,44 @@ export async function POST(
       updateData.actual_duration_minutes = actualDurationMinutes;
     }
 
+    console.log('📤 Datos a actualizar:', JSON.stringify(updateData, null, 2));
+
     const { data, error } = await supabaseAdmin
       .from('delivery_assignments')
       .update(updateData)
       .eq('id', resolvedParams.id)
       .select()
-      .single();
+      .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Error en Supabase:', error);
+      throw error;
+    }
+
+    if (!data) {
+      console.error('❌ No se encontró la asignación:', resolvedParams.id);
+      return NextResponse.json({ error: 'Asignación no encontrada' }, { status: 404 });
+    }
+
+    console.log('✅ Asignación encontrada:', data.id, 'order_id:', data.order_id);
 
     // Actualizar orden a 'delivered'
-    await supabaseAdmin
+    console.log('🔄 Actualizando order:', data.order_id);
+    
+    const { error: orderError } = await supabaseAdmin
       .from('orders')
       .update({
         delivery_status: 'delivered',
         updated_at: new Date().toISOString()
       })
       .eq('order_id', data.order_id);
+
+    if (orderError) {
+      console.error('❌ Error actualizando order:', orderError);
+      // No lanzamos error para no fallar todo el proceso
+    } else {
+      console.log('✅ Order actualizado');
+    }
 
     return NextResponse.json({
       id: data.id,

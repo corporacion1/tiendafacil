@@ -597,7 +597,7 @@ export type DeliveryFeeRule = {
   updatedAt: string;
 };
 
-export type DeliveryStatus = 'pending' | 'picked_up' | 'in_transit' | 'delivered' | 'cancelled';
+export type DeliveryStatus = 'pending' | 'in_transit' | 'picked_up' | 'delivered' | 'cancelled';
 
 export type PaymentStatus = 'pending' | 'paid' | 'cancelled';
 

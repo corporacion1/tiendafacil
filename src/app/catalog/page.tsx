@@ -733,7 +733,7 @@ export default function CatalogPage() {
       console.log('🔄 [Catalog] Fetch inicial de pedidos del usuario');
       refetchOrders(false); // No forzar refresh en el fetch inicial
     }
-    }, [authUser?.email, storeIdForCatalog, refetchOrders]);
+  }, [authUser?.email, storeIdForCatalog, refetchOrders]);
 
 
 
@@ -798,11 +798,11 @@ export default function CatalogPage() {
   const { isOnline } = useNetworkStatus();
 
   const [isClient, setIsClient] = useState(false)
-  
+
   // Estado para rastrear la última actualización de pedidos
   // Estado para forzar actualización del componente
   const [lastOrderUpdate, setLastOrderUpdate] = useState(0);
-  
+
   // Función para forzar actualización del componente
   const forceUpdate = () => setLastOrderUpdate(prev => prev + 1);
 
@@ -1692,12 +1692,12 @@ export default function CatalogPage() {
     try {
       setIsSubmittingOrder(true);
       let orderIdToUse;
-      
+
       // Determine if we're updating an existing order or creating a new one
       if (isEditingOrder && editingOrderId) {
         // We're updating an existing order
         orderIdToUse = editingOrderId;
-        
+
         // Prepare update data
         const updateData = {
           customerName: customerName,
@@ -1726,21 +1726,21 @@ export default function CatalogPage() {
           deliveryNotes: '',
           deliveryProviderID: ''
         };
-        
+
         console.log('🔍 [Order Update] Updating order:', orderIdToUse, 'with data:', updateData);
-        
+
         const updatedOrder = await updateOrderInSupabase(orderIdToUse, updateData);
-        
+
         // Forzar actualización de la lista de pedidos para reflejar el pedido actualizado
         await refetchOrders(true);
-        
+
         // Forzar actualización del componente para asegurar renderizado
         forceUpdate();
       } else {
         // We're creating a new order
         const newOrderId = IDGenerator.generate('order', storeIdForCatalog);
         orderIdToUse = newOrderId;
-        
+
         console.log('🔍 [Order Creation] Validation:', {
           hasAuthUser: !!authUser,
           hasEmail: !!authUser?.email,
@@ -1779,47 +1779,47 @@ export default function CatalogPage() {
           deliveryNotes: '',
           deliveryProviderID: ''
         };
-        
+
         // MODIFICADO: Guardar en Supabase en lugar de MongoDB
         const savedOrder = await createOrderInSupabase(newPendingOrder);
       }
 
       await generateQrCode(orderIdToUse);
-        
-        setIsOrderDialogOpen(false);
-        setCart([]);
-        setCustomerName('');
-        setCustomerPhone('');
-        setCustomerEmail('');
-        setOriginalOrderEmail('');
-        setCustomerAddress('');
-        setIsDeliveryVisible(false);
-        setLocation(null);
-        setPhoneError(null);
-        setIsEditingOrder(false);
-        setEditingOrderId(null);
-        
-        // Forzar actualización de la lista de pedidos para incluir el nuevo pedido
-        await refetchOrders(true);
-        
-        // Forzar actualización del componente para asegurar renderizado
-        forceUpdate();
-        
-        // Pequeña pausa para asegurar que los datos se hayan actualizado
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        // Abrir automáticamente el panel lateral para mostrar los pedidos recién creados
-        setTimeout(() => {
-          const cartSheetTrigger = document.getElementById('cart-sheet-trigger');
-          if (cartSheetTrigger) {
-            cartSheetTrigger.click();
-          }
-        }, 300);
 
-        toast({
-          title: isEditingOrder ? "¡Pedido Actualizado!" : "¡Pedido Generado!",
-          description: "Muestra el código QR para facturar. El pedido está pendiente en caja.",
-        });
+      setIsOrderDialogOpen(false);
+      setCart([]);
+      setCustomerName('');
+      setCustomerPhone('');
+      setCustomerEmail('');
+      setOriginalOrderEmail('');
+      setCustomerAddress('');
+      setIsDeliveryVisible(false);
+      setLocation(null);
+      setPhoneError(null);
+      setIsEditingOrder(false);
+      setEditingOrderId(null);
+
+      // Forzar actualización de la lista de pedidos para incluir el nuevo pedido
+      await refetchOrders(true);
+
+      // Forzar actualización del componente para asegurar renderizado
+      forceUpdate();
+
+      // Pequeña pausa para asegurar que los datos se hayan actualizado
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Abrir automáticamente el panel lateral para mostrar los pedidos recién creados
+      setTimeout(() => {
+        const cartSheetTrigger = document.getElementById('cart-sheet-trigger');
+        if (cartSheetTrigger) {
+          cartSheetTrigger.click();
+        }
+      }, 300);
+
+      toast({
+        title: isEditingOrder ? "¡Pedido Actualizado!" : "¡Pedido Generado!",
+        description: "Muestra el código QR para facturar. El pedido está pendiente en caja.",
+      });
 
     } catch (error) {
       console.error('Error:', error);
@@ -2165,7 +2165,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
       await new Promise(resolve => setTimeout(resolve, 1000));
       // Refrescar la lista de pedidos
       await refetchOrders();
-      
+
       // Forzar actualización del componente para asegurar renderizado
       forceUpdate();
 
@@ -2202,7 +2202,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
 
     // Set the order ID being edited
     setEditingOrderId(order.orderId);
-    
+
     // Marcar como editando (el pedido original se mantendrá hasta que se genere uno nuevo)
     setIsEditingOrder(true);
 
@@ -2434,7 +2434,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                                       <div className="mt-2 text-xs text-muted-foreground">
                                         {order.items.length} items
                                       </div>
-                        
+
                                       {/* Icono de entrega/pickup */}
                                       <div className="flex items-center gap-2 mt-2">
                                         {order.deliveryMethod === 'delivery' ? (
@@ -2451,14 +2451,14 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                                           </div>
                                         )}
                                       </div>
-                        
+
                                       {/* Mostrar ubicación adjunta si existe */}
                                       {order.latitude && order.longitude && (
                                         <div className="flex items-center gap-1 mt-2 text-xs text-green-600 font-medium">
                                           <MapPin className="h-3 w-3" />
-                                          <a 
-                                            href={`https://www.google.com/maps?q=${order.latitude},${order.longitude}`} 
-                                            target="_blank" 
+                                          <a
+                                            href={`https://www.google.com/maps?q=${order.latitude},${order.longitude}`}
+                                            target="_blank"
                                             rel="noopener noreferrer"
                                             className="underline hover:text-green-700 transition-colors"
                                             onClick={(e) => e.stopPropagation()}
@@ -2468,10 +2468,10 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                                         </div>
                                       )}
                                     </div>
-                        
-                                      {/* Botones de acción */}
-                                      <div className="flex items-center">
-                                        {order.status?.toLowerCase() === 'pending' && (
+
+                                    {/* Botones de acción */}
+                                    <div className="flex items-center">
+                                      {order.status?.toLowerCase() === 'pending' && (
                                         <div className="flex items-center">
                                           <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted/50"
                                             onClick={() => setOrderIdForQr(order.orderId)}

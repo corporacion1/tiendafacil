@@ -33,9 +33,8 @@ export async function GET(request: NextRequest) {
 
     const { data: orders, error: ordersError } = await supabaseAdmin
       .from('orders')
-      .select('order_id, customer_name, customer_phone, customer_email, customer_address, items, total, delivery_method, delivery_status, delivery_fee, delivery_fee, created_at, updated_at, latitude, longitude')
+      .select('order_id, customer_name, customer_phone, customer_email, customer_address, items, total, delivery_method, delivery_status, delivery_fee, created_at, updated_at, latitude, longitude')
       .eq('store_id', storeId)
-      .eq('status', 'processed')
       .eq('delivery_method', 'delivery');
 
     if (ordersError) throw ordersError;

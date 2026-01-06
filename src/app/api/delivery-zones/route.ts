@@ -1,5 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { IDGenerator } from '@/lib/id-generator';
 
 export async function GET(request: NextRequest) {
   try {
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const id = `ZONE-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const id = IDGenerator.generate('zone');
 
     const { data, error } = await supabaseAdmin
       .from('delivery_zones')

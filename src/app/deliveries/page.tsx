@@ -9,12 +9,14 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Separator } from '@/components/ui/separator';
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem, CommandDialog } from '@/components/ui/command';
 import { Truck, Phone, MapPin, Package, Plus, CheckCircle, XCircle, Star, Clock, DollarSign, User, ArrowUpDown, Check, Settings as SettingsIcon, Navigation, Save, MapPinned, Pencil, Trash2, ShoppingCart, X } from 'lucide-react';
 import { FaWhatsapp, FaTruckMoving } from "react-icons/fa";
+import { useAuth } from '@/contexts/AuthContext';
 import { useDeliveryAssignments } from '@/hooks/useDeliveryAssignments';
 import { useDeliveryProviders } from '@/hooks/useDeliveryProviders';
 import { useDeliveryZones } from '@/hooks/useDeliveryZones';
@@ -42,8 +44,11 @@ interface DeliveryFormData {
   destinationLongitude: number;
 }
 
-export default function DdeliveriesPage() {
-  const { activeStoreId, userProfile, activeSymbol, activeRate } = useSettings();
+export default function DeliveriesPage() {
+  const { activeStoreId: authStoreId, user: authUser } = useAuth();
+  const { activeStoreId: settingsStoreId, activeSymbol, activeRate } = useSettings();
+  const activeStoreId = authStoreId || authUser?.storeId || settingsStoreId;
+  const userProfile = authUser;
   const { toast } = useToast();
 
   const canConfigureDeparture = userProfile?.role === 'su' || userProfile?.role === 'admin';
@@ -77,6 +82,7 @@ export default function DdeliveriesPage() {
   const [selectedZoneId, setSelectedZoneId] = useState<string>('');
   const [calculatedDistance, setCalculatedDistance] = useState<number>(0);
   const [deliveryFee, setDeliveryFee] = useState<number>(0);
+  const [estimatedMinutes, setEstimatedMinutes] = useState<number>(0);
 
   // Modales
   const [showQuickAddProviderModal, setShowQuickAddProviderModal] = useState(false);
@@ -112,15 +118,15 @@ export default function DdeliveriesPage() {
   // Modales de gestión (zones y fee rules)
   const [showManageZonesModal, setShowManageZonesModal] = useState(false);
   const [showManageFeeRulesModal, setShowManageFeeRulesModal] = useState(false);
-  
+
   // Hooks
-  const { 
-    fetchPendingOrders, 
+  const {
+    fetchPendingOrders,
     fetchActiveAssignments,
     createAssignment,
     updateAssignmentStatus,
     completeDelivery,
-    cancelDelivery 
+    cancelDelivery
   } = useDeliveryAssignments(activeStoreId || '');
   const { providers, createProvider, updateProvider, deleteProvider } = useDeliveryProviders(activeStoreId || '');
   const { zones, createZone, updateZone, deleteZone } = useDeliveryZones(activeStoreId || '');
@@ -191,6 +197,11 @@ export default function DdeliveriesPage() {
   // -- Estado para cancelar pedido --
   const [orderToCancel, setOrderToCancel] = useState<any | null>(null);
   const [isCancelOrderDialogOpen, setIsCancelOrderDialogOpen] = useState(false);
+  const [cancellationReason, setCancellationReason] = useState('');
+
+  // -- Estadísticas del repartidor --
+  const [fetchedProviderStats, setFetchedProviderStats] = useState<any>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
 
   // Cargar ubicación de partida desde localStorage
   useEffect(() => {
@@ -230,21 +241,33 @@ export default function DdeliveriesPage() {
   };
 
   const loadData = async () => {
+    if (!activeStoreId) {
+      console.log('⚠️ Aún no hay activeStoreId, omitiendo loadData');
+      return;
+    }
+
     try {
+      console.log('🔄 [DEBUG] Intentando cargar datos para storeId:', activeStoreId);
       const [pendingData, activeData] = await Promise.all([
         fetchPendingOrders(),
         fetchActiveAssignments()
       ]);
-      setPendingOrders(pendingData);
-      setActiveAssignments(activeData);
+      console.log('✅ [DEBUG] Datos recibidos:', {
+        pendientes: pendingData?.length || 0,
+        activos: activeData?.length || 0,
+        storeId: activeStoreId
+      });
+      setPendingOrders(pendingData || []);
+      setActiveAssignments(activeData || []);
     } catch (error) {
-      console.error('Error loading delivery data:', error);
+      console.error('❌ Error al cargar datos de entrega:', error);
     }
   };
 
   useEffect(() => {
-    if (!activeStoreId) return;
-    loadData();
+    if (activeStoreId) {
+      loadData();
+    }
   }, [activeStoreId]);
 
   const handleSelectAssignment = (assignment: DeliveryAssignment, isFromPendingOrders: boolean = false) => {
@@ -277,8 +300,8 @@ export default function DdeliveriesPage() {
 
       // Calcular distancia si no está pre-calculada
       if (assignment.destinationLatitude && assignment.destinationLongitude &&
-          departureLocation.latitude && departureLocation.longitude &&
-          !assignment.distanceKm) {
+        departureLocation.latitude && departureLocation.longitude &&
+        !assignment.distanceKm) {
         const distance = calculateDistance(
           departureLocation.latitude,
           departureLocation.longitude,
@@ -291,8 +314,12 @@ export default function DdeliveriesPage() {
         const selectedZone = zones.find(z => z.id === assignment.deliveryZoneId);
         if (selectedZone && assignment.deliveryZoneId) {
           setSelectedZoneId(assignment.deliveryZoneId);
-          const fee = distance * selectedZone.perKmFee;
+          const fee = selectedZone.baseFee + (distance * selectedZone.perKmFee);
           setDeliveryFee(fee);
+
+          // Calcular tiempo estimado: dist * minutesPerKm
+          const minutes = Math.ceil(distance * (selectedZone.estimatedMinutesPerKm || 5));
+          setEstimatedMinutes(minutes);
         }
       } else if (assignment.distanceKm) {
         // Usar distancia pre-calculada
@@ -302,6 +329,9 @@ export default function DdeliveriesPage() {
         }
         if (assignment.deliveryFee) {
           setDeliveryFee(assignment.deliveryFee);
+        }
+        if (assignment.estimatedDurationMinutes) {
+          setEstimatedMinutes(assignment.estimatedDurationMinutes);
         }
       }
     }
@@ -381,7 +411,28 @@ export default function DdeliveriesPage() {
   const handleConfirmCancelOrder = async () => {
     if (!orderToCancel) return;
     try {
-      await cancelDelivery(orderToCancel.orderId || orderToCancel.id, 'Cancelado por el operador');
+      if (orderToCancel.id && orderToCancel.id.length > 20) {
+        // Es una asignación (UUID de Supabase suele ser largo)
+        await cancelDelivery(orderToCancel.id, cancellationReason || 'Cancelado por el operador');
+      } else {
+        // Es un pedido pendiente (no asignado aún)
+        const response = await fetch('/api/orders', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: orderToCancel.orderId,
+            storeId: activeStoreId,
+            status: 'cancelled',
+            deliveryStatus: 'cancelled',
+            deliveryNotes: `CANCELADO: ${cancellationReason || 'Sin motivo'}`
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Error al cancelar el pedido');
+        }
+      }
+
       toast({
         title: 'Pedido cancelado',
         description: 'El pedido ha sido cancelado exitosamente'
@@ -397,6 +448,7 @@ export default function DdeliveriesPage() {
     } finally {
       setIsCancelOrderDialogOpen(false);
       setOrderToCancel(null);
+      setCancellationReason('');
     }
   };
 
@@ -449,22 +501,32 @@ export default function DdeliveriesPage() {
 
   const activeProviders = providers.filter(p => p.status === 'active');
 
-  const getProviderStats = (providerId: string) => {
-    const providerAssignments = activeAssignments.filter(a => a.deliveryProviderId === providerId);
-    const completed = providerAssignments.filter(a => a.deliveryStatus === 'delivered');
-    const pending = providerAssignments.filter(a => ['pending', 'picked_up', 'in_transit'].includes(a.deliveryStatus));
-    const totalEarnings = completed.reduce((sum, a) => sum + (a.providerCommissionAmount || 0), 0);
-    
-    return {
-      total: providerAssignments.length,
-      completed: completed.length,
-      pending: pending.length,
-      earnings: totalEarnings,
-    };
+  const fetchProviderStats = async (providerId: string) => {
+    if (!providerId || !activeStoreId) return;
+    setLoadingStats(true);
+    try {
+      const response = await fetch(`/api/delivery-assignments/provider-stats?providerId=${providerId}&storeId=${activeStoreId}`);
+      if (response.ok) {
+        const stats = await response.json();
+        setFetchedProviderStats(stats);
+      }
+    } catch (error) {
+      console.error('Error fetching provider stats:', error);
+    } finally {
+      setLoadingStats(false);
+    }
   };
 
+  useEffect(() => {
+    if (selectedProviderId) {
+      fetchProviderStats(selectedProviderId);
+    } else {
+      setFetchedProviderStats(null);
+    }
+  }, [selectedProviderId, activeAssignments]);
+
   const selectedProvider = providers.find(p => p.id === selectedProviderId);
-  const providerStats = selectedProviderId ? getProviderStats(selectedProviderId) : null;
+  const providerStats = fetchedProviderStats;
 
   const handleAddProvider = (provider: DeliveryProvider) => {
     setSelectedProviderId(provider.id);
@@ -530,8 +592,12 @@ export default function DdeliveriesPage() {
 
     const selectedZone = zones.find(z => z.id === selectedZoneId);
     if (selectedZone && calculatedDistance > 0) {
-      const calculatedFee = calculatedDistance * selectedZone.perKmFee;
+      const calculatedFee = (selectedZone.baseFee || 0) + (calculatedDistance * selectedZone.perKmFee);
       setDeliveryFee(calculatedFee);
+
+      // Calcular tiempo estimado: dist * minutesPerKm
+      const calculatedMinutes = Math.ceil(calculatedDistance * (selectedZone.estimatedMinutesPerKm || 5));
+      setEstimatedMinutes(calculatedMinutes);
     }
   }, [selectedZoneId, calculatedDistance, zones]);
 
@@ -840,7 +906,7 @@ export default function DdeliveriesPage() {
     // Validar: nombre del cliente obligatorio, y (dirección O coordenadas)
     const hasAddress = formData.deliveryAddress && formData.deliveryAddress.trim() !== '';
     const hasCoordinates = Boolean(formData.destinationLatitude && formData.destinationLatitude !== 0 &&
-                           formData.destinationLongitude && formData.destinationLongitude !== 0);
+      formData.destinationLongitude && formData.destinationLongitude !== 0);
 
     if (!formData.customerName || (!hasAddress && !hasCoordinates)) {
       toast({
@@ -872,8 +938,11 @@ export default function DdeliveriesPage() {
     setIsSubmitting(true);
 
     try {
-      if (selectedAssignment) {
-        // Actualizar asignación existente
+      // Verificar si es una asignación existente o una nueva
+      const isExistingAssignment = selectedAssignment?.id && activeAssignments.some(a => a.id === selectedAssignment.id);
+
+      if (isExistingAssignment && selectedAssignment) {
+        // Actualizar asignación existente (ya tiene ID de base de datos)
         const response = await fetch(`/api/delivery-assignments/${selectedAssignment.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -886,7 +955,8 @@ export default function DdeliveriesPage() {
             storeLongitude: departureLocation.longitude,
             deliveryProviderId: selectedProviderId,
             deliveryZoneId: selectedZoneId || null,
-            distanceKm: calculatedDistance
+            distanceKm: calculatedDistance,
+            estimatedDurationMinutes: estimatedMinutes
           })
         });
 
@@ -897,31 +967,31 @@ export default function DdeliveriesPage() {
 
         toast({
           title: 'Asignación actualizada',
-          description: `La asignación ${selectedAssignment.id} se actualizó exitosamente`
+          description: `La asignación se actualizó exitosamente`
         });
       } else {
-        // Usar la tarifa editable del estado
+        // Crear nueva asignación (sea pedido nuevo o cargado de pendientes)
+        const orderId = selectedAssignment?.orderId || `ORD-${Date.now()}`;
 
-        // Crear nueva asignación
         const response = await fetch('/api/delivery-assignments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            orderId: `ORD-${Date.now()}`,
+            orderId: orderId,
             storeId: activeStoreId,
             deliveryProviderId: selectedProviderId,
             customerName: formData.customerName,
             customerPhone: formData.customerPhone,
             customerAddress: formData.deliveryAddress,
-            orderTotal: 0,
-            orderItems: [],
-            destinationLat: formData.destinationLatitude || 0,
-            destinationLon: formData.destinationLongitude || 0,
+            orderTotal: selectedAssignment?.orderTotal || 0,
+            orderItems: selectedAssignment?.orderItems || [],
             storeLat: departureLocation.latitude,
             storeLon: departureLocation.longitude,
             deliveryFee: deliveryFee,
+            deliveryStatus: 'in_transit', // Flujo: in_transit -> picked_up -> delivered
             deliveryZoneId: selectedZoneId || null,
             distanceKm: calculatedDistance,
+            estimatedDurationMinutes: estimatedMinutes,
             deliveryNotes: formData.notes,
             assignedBy: userProfile?.displayName || userProfile?.email || 'Usuario'
           })
@@ -937,7 +1007,7 @@ export default function DdeliveriesPage() {
 
         toast({
           title: 'Asignación creada',
-          description: `La asignación ${data.id} se creó exitosamente`
+          description: `Asignación creada para el pedido ${orderId}`
         });
 
         setFormData({
@@ -948,13 +1018,16 @@ export default function DdeliveriesPage() {
           destinationLatitude: 0,
           destinationLongitude: 0
         });
-        setMapDestination(null);
+        setSelectedProviderId('');
+        setSelectedZoneId('');
         setCalculatedDistance(0);
         setDeliveryFee(0);
+        setEstimatedMinutes(0);
+        setMapDestination(null);
       }
-
       await loadData();
     } catch (error: any) {
+      console.error('Error processing delivery:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -979,251 +1052,6 @@ export default function DdeliveriesPage() {
 
       {/* Layout 60-40% */}
       <div className="grid lg:grid-cols-5 gap-6 w-full">
-        {/* Tarjeta 1: Pedidos/Asignaciones (60% = col-span-3) */}
-        <div className="lg:col-span-3 space-y-4">
-          <Card className="w-full">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Pedidos de Delivery</CardTitle>
-                <div className="flex gap-2">
-                  <Button 
-                    variant={viewMode === 'pending' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setViewMode('pending')}
-                  >
-                    Pendientes
-                  </Button>
-                  <Button
-                    variant={viewMode === 'active' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setViewMode('active')}
-                  >
-                    Activos
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <Separator />
-            <CardContent className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto">
-              {viewMode === 'pending' ? (
-                pendingOrders.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-                    <Package className="w-16 h-16 mb-4 opacity-50" />
-                    <p>No hay pedidos pendientes</p>
-                    <p className="text-sm">Los pedidos nuevos aparecerán aquí</p>
-                  </div>
-                ) : (
-                  pendingOrders.map((order: any) => (
-                    <div 
-                      key={order.orderId}
-                      className="p-4 border transition-colors cursor-pointer"
-                      onClick={() => {
-                        setSelectedOrderForDetail(order);
-                        setIsOrderDetailModalOpen(true);
-                      }}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="font-semibold">#{order.orderId}</span>
-                            <Badge>pendiente</Badge>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm">
-                            <User className="w-4 h-4" />
-                            <span>{order.customerName}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Phone className="w-4 h-4" />
-                            <span>{order.customerPhone || 'N/A'}</span>
-                          </div>
-                          {order.customerAddress && (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <MapPin className="w-4 h-4" />
-                              <span className="line-clamp-1">{order.customerAddress}</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <p className="text-lg font-semibold">{activeSymbol}{(order.total * activeRate).toFixed(2)}</p>
-                          {order.deliveryFee > 0 && (
-                            <p className="text-sm text-muted-foreground">
-                              +{activeSymbol}{(order.deliveryFee * activeRate).toFixed(2)} delivery
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <Separator className="my-3" />
-                      <div className="flex flex-wrap gap-2 justify-end">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-destructive text-destructive hover:bg-destructive hover:text-white w-full sm:w-auto"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOrderToCancel(order);
-                            setIsCancelOrderDialogOpen(true);
-                          }}
-                        >
-                          <X className="h-4 w-4 sm:mr-2" />
-                          <span className="hidden sm:inline">Cancelar</span>
-                        </Button>
-                        {order.customerPhone && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-[#25D366] text-[#25D366] hover:bg-red-500 hover:text-white w-full sm:w-auto"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              window.open(
-                                `https://wa.me/${order.customerPhone.replace(/\D/g, '')}`,
-                                "_blank",
-                                "noopener,noreferrer",
-                              );
-                            }}
-                          >
-                            <FaWhatsapp className="h-4 w-4 sm:mr-2" />
-                            <span className="hidden sm:inline">WhatsApp</span>
-                          </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          className="w-full sm:w-auto hover:bg-accent hover:text-white"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSelectAssignment({
-                              id: order.orderId,
-                              orderId: order.orderId,
-                              storeId: order.storeId || activeStoreId || '',
-                              deliveryProviderId: '',
-                              orderCustomerName: order.customerName,
-                              orderCustomerPhone: order.customerPhone,
-                              orderCustomerAddress: order.customerAddress,
-                              orderTotal: order.total,
-                              orderItems: order.items || [],
-                              deliveryFee: order.deliveryFee || 0,
-                              destinationLatitude: order.latitude || 0,
-                              destinationLongitude: order.longitude || 0,
-                              deliveryStatus: 'pending' as DeliveryStatus,
-                              deliveryNotes: order.deliveryNotes || order.notes || '',
-                              whatsappNotificationSent: false,
-                              assignedAt: new Date().toISOString(),
-                              createdAt: new Date().toISOString(),
-                              updatedAt: new Date().toISOString(),
-                            } as DeliveryAssignment, true);
-                          }}
-                        >
-                          <ShoppingCart className="h-4 w-4 sm:mr-2" />
-                          <span className="hidden sm:inline">Cargar</span>
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                )
-              ) : (
-                activeAssignments.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-                    <Truck className="w-16 h-16 mb-4 opacity-50" />
-                    <p>No hay asignaciones activas</p>
-                    <p className="text-sm">Los repartidores asignados aparecerán aquí</p>
-                  </div>
-                ) : (
-                  activeAssignments.map((assignment: DeliveryAssignment) => (
-                    <div 
-                      key={assignment.id}
-                      className="p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
-                      onClick={() => handleSelectAssignment(assignment)}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="font-semibold">#{assignment.orderId}</span>
-                            <Badge variant={assignment.deliveryStatus === 'in_transit' ? 'default' : 'secondary'}>
-                              {assignment.deliveryStatus === 'pending' && 'pendiente'}
-                              {assignment.deliveryStatus === 'picked_up' && 'recogido'}
-                              {assignment.deliveryStatus === 'in_transit' && 'en ruta'}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm">
-                            <User className="w-4 h-4" />
-                            <span>{assignment.orderCustomerName}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Phone className="w-4 h-4" />
-                            <span>{assignment.orderCustomerPhone || 'N/A'}</span>
-                          </div>
-                          {assignment.orderCustomerAddress && (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <MapPin className="w-4 h-4" />
-                              <span className="line-clamp-1">{assignment.orderCustomerAddress}</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <p className="text-lg font-semibold">{activeSymbol}{(assignment.orderTotal * activeRate).toFixed(2)}</p>
-                          {assignment.deliveryFee > 0 && (
-                            <p className="text-sm text-muted-foreground">
-                              +{activeSymbol}{(assignment.deliveryFee * activeRate).toFixed(2)} delivery
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <Separator className="my-3" />
-                      <div className="flex flex-wrap gap-2 justify-end">
-                        <Button
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSelectAssignment(assignment);
-                          }}
-                          className="w-full sm:w-auto"
-                        >
-                          <ShoppingCart className="h-4 w-4 sm:mr-2" />
-                          <span className="hidden sm:inline">Cargar</span>
-                        </Button>
-                        {assignment.orderCustomerPhone && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-[#25D366] text-[#25D366] hover:bg-red-500 hover:text-white w-full sm:w-auto"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              window.open(
-                                `https://wa.me/${assignment.orderCustomerPhone?.replace(/\D/g, '')}`,
-                                "_blank",
-                                "noopener,noreferrer",
-                              );
-                            }}
-                          >
-                            <FaWhatsapp className="h-4 w-4 sm:mr-2" />
-                            <span className="hidden sm:inline">WhatsApp</span>
-                          </Button>
-                        )}
-                        {(assignment.deliveryStatus === 'pending' || 
-                          assignment.deliveryStatus === 'picked_up' || 
-                          assignment.deliveryStatus === 'in_transit') && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-destructive text-destructive hover:bg-destructive hover:text-white w-full sm:w-auto"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOrderToCancel(assignment);
-                              setIsCancelOrderDialogOpen(true);
-                            }}
-                          >
-                            <X className="h-4 w-4 sm:mr-2" />
-                            <span className="hidden sm:inline">Cancelar</span>
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Tarjeta 2: Control de Reparto (40% = col-span-2) */}
         <div className="lg:col-span-2 space-y-4">
           <Card className="w-full sticky top-6">
@@ -1345,7 +1173,27 @@ export default function DdeliveriesPage() {
                         />
                       </div>
                       <span className="text-sm text-muted-foreground text-xs">
-                        ({selectedZoneId ? `${((zones.find(z => z.id === selectedZoneId)?.perKmFee || 0) * activeRate).toFixed(2)} ${activeSymbol}/km)` : '0'}
+                        ({selectedZoneId ? `${((zones.find(z => z.id === selectedZoneId)?.perKmFee || 0) * activeRate).toFixed(2)} ${activeSymbol}/km)` : '0'})
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {calculatedDistance > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="estimatedMinutes" className="text-sm whitespace-nowrap">Tiempo Estimado (min):</Label>
+                      <div className="relative flex-1 max-w-32">
+                        <Input
+                          id="estimatedMinutes"
+                          type="number"
+                          value={estimatedMinutes}
+                          onChange={(e) => setEstimatedMinutes(parseInt(e.target.value) || 0)}
+                          className="w-full h-9"
+                        />
+                      </div>
+                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                        ({selectedZoneId ? `${zones.find(z => z.id === selectedZoneId)?.estimatedMinutesPerKm || 5} min/km` : '5 min/km'})
                       </span>
                     </div>
                   </div>
@@ -1389,13 +1237,11 @@ export default function DdeliveriesPage() {
                             value={zone.id}
                             className="flex items-center justify-between py-2 pr-2 pl-3 group cursor-pointer"
                           >
-                            <div className="flex flex-col min-w-0 flex-1 mr-2">
-                              <span className="font-medium text-sm truncate flex items-center gap-1.5">
-                                <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" />
-                                {zone.name}
-                              </span>
-                              <span className="text-xs text-muted-foreground truncate ml-5">
-                                {zone.radiusKm}km • {activeSymbol}{(zone.baseFee * activeRate).toFixed(2)} base
+                            <div className="flex items-center min-w-0 flex-1 mr-2 gap-1.5">
+                              <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" />
+                              <span className="font-medium text-sm truncate">{zone.name}</span>
+                              <span className="text-[10px] text-muted-foreground truncate mt-0.5 shrink-0">
+                                ({zone.radiusKm}km • {activeSymbol}{(zone.baseFee * activeRate).toFixed(2)})
                               </span>
                             </div>
                             <div className="flex gap-1 shrink-0">
@@ -1484,13 +1330,11 @@ export default function DdeliveriesPage() {
                             value={provider.id}
                             className="flex items-center justify-between py-2 pr-2 pl-3 group cursor-pointer"
                           >
-                            <div className="flex flex-col min-w-0 flex-1 mr-2">
-                              <span className="font-medium text-sm truncate flex items-center gap-1.5">
-                                <User className="h-3.5 w-3.5 shrink-0 text-primary" />
-                                {provider.name}
-                              </span>
-                              <span className="text-xs text-muted-foreground truncate ml-5">
-                                {provider.phone} • {provider.vehicleType === 'moto' ? '🏍️ Moto' : provider.vehicleType === 'car' ? '🚗 Auto' : provider.vehicleType === 'bicycle' ? '🚴 Bicicleta' : '🚶 Caminando'}
+                            <div className="flex items-center min-w-0 flex-1 mr-2 gap-1.5">
+                              <User className="h-3.5 w-3.5 shrink-0 text-primary" />
+                              <span className="font-medium text-sm truncate">{provider.name}</span>
+                              <span className="text-[10px] text-muted-foreground truncate mt-0.5 shrink-0">
+                                ({provider.vehicleType === 'moto' ? '🏍️' : provider.vehicleType === 'car' ? '🚗' : provider.vehicleType === 'bicycle' ? '🚴' : '🚶'})
                               </span>
                             </div>
                             <div className="flex gap-1 shrink-0">
@@ -1546,7 +1390,7 @@ export default function DdeliveriesPage() {
                 disabled={isSubmitting || !isFormValid || !selectedProviderId}
               >
                 <Save className="mr-2 h-4 w-4" />
-                {isSubmitting ? 'Procesando...' : selectedAssignment ? 'Actualizar Asignación' : 'Crear Asignación'}
+                {isSubmitting ? 'Procesando...' : (selectedAssignment?.id && activeAssignments.some(a => a.id === selectedAssignment.id)) ? 'Actualizar Asignación' : 'Crear Asignación'}
               </Button>
 
               {/* Estadísticas del repartidor seleccionado */}
@@ -1621,9 +1465,22 @@ export default function DdeliveriesPage() {
                           <User className="w-4 h-4 text-muted-foreground" />
                           <span>{selectedAssignment.orderCustomerName}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-muted-foreground" />
-                          <span>{selectedAssignment.orderCustomerPhone || 'N/A'}</span>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <Phone className="w-4 h-4 text-muted-foreground" />
+                            <span>{selectedAssignment.orderCustomerPhone || 'N/A'}</span>
+                          </div>
+                          {selectedAssignment.orderCustomerPhone && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-[#25D366] hover:text-[#25D366] hover:bg-[#25D366]/10"
+                              onClick={() => window.open(`https://wa.me/${selectedAssignment.orderCustomerPhone?.replace(/\D/g, '')}`, '_blank')}
+                            >
+                              <FaWhatsapp className="h-4 w-4 mr-1" />
+                              <span className="text-[10px]">WhatsApp</span>
+                            </Button>
+                          )}
                         </div>
                       </div>
                       {selectedAssignment.orderCustomerAddress && (
@@ -1646,8 +1503,8 @@ export default function DdeliveriesPage() {
 
                     {/* Acciones según estado */}
                     <div className="space-y-2 pt-2">
-                      {selectedAssignment.deliveryStatus === 'pending' && (
-                        <Button 
+                      {selectedAssignment.deliveryStatus === 'in_transit' && (
+                        <Button
                           className="w-full"
                           onClick={() => handleUpdateStatus(selectedAssignment.id, 'picked_up')}
                         >
@@ -1656,38 +1513,283 @@ export default function DdeliveriesPage() {
                         </Button>
                       )}
                       {selectedAssignment.deliveryStatus === 'picked_up' && (
-                        <Button 
+                        <Button
                           className="w-full"
-                          onClick={() => handleUpdateStatus(selectedAssignment.id, 'in_transit')}
-                        >
-                          <Truck className="mr-2 h-4" />
-                          Enviar en Ruta
-                        </Button>
-                      )}
-                      {selectedAssignment.deliveryStatus === 'in_transit' && (
-                        <Button 
-                          className="w-full"
-                          onClick={handleMarkComplete}
+                          onClick={() => handleMarkComplete()}
                         >
                           <CheckCircle className="mr-2 h-4" />
                           Marcar como Entregado
                         </Button>
                       )}
-                      {(selectedAssignment.deliveryStatus === 'pending' || 
-                        selectedAssignment.deliveryStatus === 'picked_up' || 
-                        selectedAssignment.deliveryStatus === 'in_transit') && (
-                        <Button 
-                          className="w-full"
-                          variant="destructive"
-                          onClick={() => handleCancel(selectedAssignment.id, 'Cancelado por el operador')}
-                        >
-                          <XCircle className="mr-2 h-4" />
-                          Cancelar Reparto
-                        </Button>
-                      )}
+                      {(selectedAssignment.deliveryStatus === 'in_transit' ||
+                        selectedAssignment.deliveryStatus === 'picked_up' ||
+                        selectedAssignment.deliveryStatus === 'pending') && (
+                          <Button
+                            className="w-full"
+                            variant="destructive"
+                            onClick={() => {
+                              setOrderToCancel(selectedAssignment);
+                              setIsCancelOrderDialogOpen(true);
+                            }}
+                          >
+                            <XCircle className="mr-2 h-4" />
+                            Cancelar Reparto
+                          </Button>
+                        )}
                     </div>
                   </div>
                 </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Tarjeta 1: Pedidos/Asignaciones (60% = col-span-3) */}
+        <div className="lg:col-span-3 space-y-4">
+          <Card className="w-full">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Pedidos de Delivery</CardTitle>
+                <div className="flex gap-2">
+                  <Button
+                    variant={viewMode === 'pending' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('pending')}
+                  >
+                    Pendientes
+                  </Button>
+                  <Button
+                    variant={viewMode === 'active' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('active')}
+                  >
+                    Activos
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <Separator />
+            <CardContent className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto">
+              {viewMode === 'pending' ? (
+                pendingOrders.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+                    <Package className="w-16 h-16 mb-4 opacity-50" />
+                    <p>No hay pedidos pendientes</p>
+                    <p className="text-sm">Los pedidos nuevos aparecerán aquí</p>
+                  </div>
+                ) : (
+                  pendingOrders.map((order: any) => (
+                    <div
+                      key={order.orderId}
+                      className="p-4 border transition-colors cursor-pointer"
+                      onClick={() => {
+                        setSelectedOrderForDetail(order);
+                        setIsOrderDetailModalOpen(true);
+                      }}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="font-semibold">#{order.orderId}</span>
+                            <Badge variant={order.deliveryStatus === 'processing' ? 'secondary' : (order.deliveryStatus === 'processed' ? 'default' : 'outline')}>
+                              {order.deliveryStatus || 'pendiente'}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <User className="w-4 h-4" />
+                            <span>{order.customerName}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Phone className="w-4 h-4" />
+                            <span>{order.customerPhone || 'N/A'}</span>
+                          </div>
+                          {order.customerAddress && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <MapPin className="w-4 h-4" />
+                              <span className="line-clamp-1">{order.customerAddress}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-semibold">{activeSymbol}{(order.total * activeRate).toFixed(2)}</p>
+                          {order.deliveryFee > 0 && (
+                            <p className="text-sm text-muted-foreground">
+                              +{activeSymbol}{(order.deliveryFee * activeRate).toFixed(2)} delivery
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <Separator className="my-3" />
+                      <div className="flex flex-wrap gap-2 justify-end">
+                        <Button
+                          size="sm"
+                          className="w-full sm:w-auto hover:bg-accent hover:text-white"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectAssignment({
+                              id: order.orderId,
+                              orderId: order.orderId,
+                              storeId: order.storeId || activeStoreId || '',
+                              deliveryProviderId: '',
+                              orderCustomerName: order.customerName,
+                              orderCustomerPhone: order.customerPhone,
+                              orderCustomerAddress: order.customerAddress,
+                              orderTotal: order.total,
+                              orderItems: order.items || [],
+                              deliveryFee: order.deliveryFee || 0,
+                              destinationLatitude: order.latitude || 0,
+                              destinationLongitude: order.longitude || 0,
+                              deliveryStatus: 'pending' as DeliveryStatus,
+                              deliveryNotes: order.deliveryNotes || order.notes || '',
+                              whatsappNotificationSent: false,
+                              assignedAt: new Date().toISOString(),
+                              createdAt: new Date().toISOString(),
+                              updatedAt: new Date().toISOString(),
+                              orderDeliveryStatus: order.deliveryStatus || 'pending'
+                            } as any, true);
+                          }}
+                        >
+                          <ShoppingCart className="h-4 w-4 sm:mr-2" />
+                          <span className="hidden sm:inline">Cargar</span>
+                        </Button>
+                        {order.customerPhone && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-[#25D366] text-[#25D366] hover:bg-red-500 hover:text-white w-full sm:w-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(
+                                `https://wa.me/${order.customerPhone.replace(/\D/g, '')}`,
+                                "_blank",
+                                "noopener,noreferrer",
+                              );
+                            }}
+                          >
+                            <FaWhatsapp className="h-4 w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">WhatsApp</span>
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-destructive text-destructive hover:bg-destructive hover:text-white w-full sm:w-auto"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOrderToCancel(order);
+                            setIsCancelOrderDialogOpen(true);
+                          }}
+                        >
+                          <X className="h-4 w-4 sm:mr-2" />
+                          <span className="hidden sm:inline">Cancelar</span>
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )
+              ) : (
+                activeAssignments.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+                    <Truck className="w-16 h-16 mb-4 opacity-50" />
+                    <p>No hay asignaciones activas</p>
+                    <p className="text-sm">Los repartidores asignados aparecerán aquí</p>
+                  </div>
+                ) : (
+                  activeAssignments.map((assignment: DeliveryAssignment) => (
+                    <div
+                      key={assignment.id}
+                      className="p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
+                      onClick={() => handleSelectAssignment(assignment)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="font-semibold">#{assignment.orderId}</span>
+                            <Badge variant={assignment.deliveryStatus === 'in_transit' ? 'default' : 'secondary'}>
+                              {assignment.deliveryStatus === 'pending' && 'pendiente'}
+                              {assignment.deliveryStatus === 'picked_up' && 'recogido'}
+                              {assignment.deliveryStatus === 'in_transit' && 'en ruta'}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <User className="w-4 h-4" />
+                            <span>{assignment.orderCustomerName}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Phone className="w-4 h-4" />
+                            <span>{assignment.orderCustomerPhone || 'N/A'}</span>
+                          </div>
+                          {assignment.orderCustomerAddress && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <MapPin className="w-4 h-4" />
+                              <span className="line-clamp-1">{assignment.orderCustomerAddress}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-semibold">{activeSymbol}{(assignment.orderTotal * activeRate).toFixed(2)}</p>
+                          {assignment.deliveryFee > 0 && (
+                            <p className="text-sm text-muted-foreground">
+                              +{activeSymbol}{(assignment.deliveryFee * activeRate).toFixed(2)} delivery
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <Separator className="my-3" />
+                      <div className="flex flex-wrap gap-2 justify-end">
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectAssignment({
+                              ...assignment,
+                              orderDeliveryStatus: 'processed' // Si ya es una asignación activa, asumimos que está procesada o al menos asignada
+                            } as any);
+                          }}
+                          className="w-full sm:w-auto"
+                        >
+                          <ShoppingCart className="h-4 w-4 sm:mr-2" />
+                          <span className="hidden sm:inline">Cargar</span>
+                        </Button>
+                        {assignment.orderCustomerPhone && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-[#25D366] text-[#25D366] hover:bg-red-500 hover:text-white w-full sm:w-auto"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(
+                                `https://wa.me/${assignment.orderCustomerPhone?.replace(/\D/g, '')}`,
+                                "_blank",
+                                "noopener,noreferrer",
+                              );
+                            }}
+                          >
+                            <FaWhatsapp className="h-4 w-4 sm:mr-2" />
+                            <span className="hidden sm:inline">WhatsApp</span>
+                          </Button>
+                        )}
+                        {(assignment.deliveryStatus === 'pending' ||
+                          assignment.deliveryStatus === 'picked_up' ||
+                          assignment.deliveryStatus === 'in_transit') && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-destructive text-destructive hover:bg-destructive hover:text-white w-full sm:w-auto"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOrderToCancel(assignment);
+                                setIsCancelOrderDialogOpen(true);
+                              }}
+                            >
+                              <X className="h-4 w-4 sm:mr-2" />
+                              <span className="hidden sm:inline">Cancelar</span>
+                            </Button>
+                          )}
+                      </div>
+                    </div>
+                  ))
+                )
               )}
             </CardContent>
           </Card>
@@ -2749,28 +2851,61 @@ export default function DdeliveriesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Diálogo de confirmación para cancelar pedido */}
-      <AlertDialog open={isCancelOrderDialogOpen} onOpenChange={setIsCancelOrderDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-destructive">¿Cancelar pedido?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Estás a punto de cancelar el pedido <strong>{orderToCancel?.orderId || orderToCancel?.id}</strong>.<br /><br />
-              Esta acción no se puede deshacer y el pedido será marcado como cancelado.<br /><br />
-              ¿Estás seguro de que deseas continuar?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setOrderToCancel(null)}>No, mantener</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleConfirmCancelOrder}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+      {/* Modal de confirmación para cancelar pedido/reparto */}
+      <Dialog open={isCancelOrderDialogOpen} onOpenChange={(open) => {
+        setIsCancelOrderDialogOpen(open);
+        if (!open) {
+          setOrderToCancel(null);
+          setCancellationReason('');
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-2">
+              <XCircle className="h-5 w-5" />
+              ¿Cancelar pedido/reparto?
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4">
+            <div className="p-3 bg-destructive/10 rounded-lg text-sm text-destructive border border-destructive/20">
+              <p className="font-medium">Estás a punto de cancelar:</p>
+              <p className="font-bold">#{orderToCancel?.orderId || orderToCancel?.id}</p>
+              <p className="mt-1 text-xs opacity-80">Esta acción no se puede deshacer y liberará al repartidor.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cancellationReason">Motivo de la cancelación *</Label>
+              <Textarea
+                id="cancellationReason"
+                placeholder="Indica por qué se está cancelando este reparto..."
+                className="min-h-[100px] resize-none"
+                value={cancellationReason}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCancellationReason(e.target.value)}
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Este motivo se guardará en el historial del pedido.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setIsCancelOrderDialogOpen(false)}
             >
-              Sí, cancelar pedido
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              No, mantener
+            </Button>
+            <Button
+              onClick={handleConfirmCancelOrder}
+              disabled={!cancellationReason.trim()}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              Confirmar Cancelación
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

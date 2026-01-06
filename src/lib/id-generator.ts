@@ -56,6 +56,15 @@ export class IDGenerator {
     'ads': 'ADS',
     'rates': 'RAT',
     'currency': 'CUR',
+    'assign': 'ASS',
+    'assignment': 'ASS',
+    'assignation': 'ASS',
+    'provider': 'PRO',
+    'delivery-provider': 'PRO',
+    'delivery': 'DEL',
+    'delivery-zone': 'DZO',
+    'delivery-fee-rule': 'DFR',
+    'zone': 'ZON',
     
   };
 

@@ -763,7 +763,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const latestRate = currencyRates.length > 0 ? currencyRates[0].rate : 1;
   const activeRate = displayCurrency === 'primary' ? 1 : (latestRate > 0 ? latestRate : 1);
 
-  const isPublicPath = pathname.startsWith('/catalog') || pathname === '/' || pathname.startsWith('/login');
+  const isPublicPath = pathname.startsWith('/catalog') || pathname === '/' || pathname.startsWith('/register');
 
   // CONTEXT VALUE ESTABILIZADO - Solo dependencias esenciales
   const contextValue: SettingsContextType = useMemo(() => {

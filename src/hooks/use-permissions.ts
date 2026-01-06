@@ -171,7 +171,7 @@ export function usePermissions() {
     console.log(`🔍 [canAccess] Checking access to route: ${route}`);
 
     // Rutas públicas que no requieren permisos
-    const publicRoutes = ['/', '/catalog', '/login', '/register'];
+    const publicRoutes = ['/', '/catalog', '/register'];
     if (publicRoutes.includes(route)) {
       console.log(`✅ [canAccess] Public route allowed: ${route}`);
       return true;

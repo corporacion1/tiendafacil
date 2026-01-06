@@ -7,8 +7,12 @@ export async function PATCH(
 ) {
   try {
     const resolvedParams = await params;
+    console.log('🔄 [PATCH /delivery-assignments/status] ID:', resolvedParams.id);
+    
     const body = await request.json();
     const { status } = body;
+    
+    console.log('📤 Status a actualizar:', status);
 
     if (!status) {
       return NextResponse.json({ error: 'status es requerido' }, { status: 400 });
@@ -46,32 +50,61 @@ export async function PATCH(
       .update(updateData)
       .eq('id', resolvedParams.id)
       .select()
-      .single();
+      .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Error en Supabase update:', error);
+      throw error;
+    }
 
-    // Actualizar estado en la orden
+    if (!data) {
+      console.error('❌ No se encontró la asignación:', resolvedParams.id);
+      return NextResponse.json({ error: 'Asignación no encontrada' }, { status: 404 });
+    }
+
+    console.log('✅ Asignación actualizada:', data.id);
+
     await supabaseAdmin
       .from('orders')
       .update({
-        delivery_status: status === 'delivered' ? 'delivered' : status === 'cancelled' ? 'cancelled' : 'processed',
+        delivery_status: status,  // Mantener el mismo status que delivery_assignments
         updated_at: new Date().toISOString()
       })
       .eq('order_id', data.order_id);
 
+    // Calcular actual_duration_minutes si es picked_up o delivered
+    if ((status === 'picked_up' || status === 'delivered') && data.assigned_at) {
+      const assignedAt = new Date(data.assigned_at);
+      const now = new Date();
+      const durationMinutes = Math.round((now.getTime() - assignedAt.getTime()) / 60000);
+      
+      await supabaseAdmin
+        .from('delivery_assignments')
+        .update({ actual_duration_minutes: durationMinutes })
+        .eq('id', resolvedParams.id);
+    }
+
+    // Recargar los datos actualizados
+    const { data: updatedData } = await supabaseAdmin
+      .from('delivery_assignments')
+      .select('*')
+      .eq('id', resolvedParams.id)
+      .maybeSingle();
+
     return NextResponse.json({
-      id: data.id,
-      orderId: data.order_id,
-      storeId: data.store_id,
-      deliveryProviderId: data.delivery_provider_id,
-      orderCustomerName: data.order_customer_name,
-      orderCustomerPhone: data.order_customer_phone,
-      orderTotal: data.order_total,
-      deliveryStatus: data.delivery_status,
-      pickupTime: data.pickup_time,
-      deliveryTime: data.delivery_time,
-      assignedAt: data.assigned_at,
-      updatedAt: data.updated_at,
+      id: updatedData?.id || data.id,
+      orderId: updatedData?.order_id || data.order_id,
+      storeId: updatedData?.store_id || data.store_id,
+      deliveryProviderId: updatedData?.delivery_provider_id || data.delivery_provider_id,
+      orderCustomerName: updatedData?.order_customer_name || data.order_customer_name,
+      orderCustomerPhone: updatedData?.order_customer_phone || data.order_customer_phone,
+      orderTotal: updatedData?.order_total || data.order_total,
+      deliveryStatus: updatedData?.delivery_status || data.delivery_status,
+      pickupTime: updatedData?.pickup_time || data.pickup_time,
+      deliveryTime: updatedData?.delivery_time || data.delivery_time,
+      actualDurationMinutes: updatedData?.actual_duration_minutes || data.actual_duration_minutes,
+      assignedAt: updatedData?.assigned_at || data.assigned_at,
+      updatedAt: updatedData?.updated_at || data.updated_at,
     });
   } catch (error: any) {
     console.error('❌ Error updating delivery status:', error);
