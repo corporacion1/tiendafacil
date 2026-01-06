@@ -1754,7 +1754,7 @@ export default function DeliveriesPage() {
                   activeAssignments.map((assignment: DeliveryAssignment) => (
                     <div
                       key={assignment.id}
-                      className="p-4 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer"
+                      className="p-4 border rounded-lg"
                       onClick={() => handleSelectAssignment(assignment)}
                     >
                       <div className="flex items-start justify-between">
@@ -1802,7 +1802,7 @@ export default function DeliveriesPage() {
                               orderDeliveryStatus: 'processed' // Si ya es una asignación activa, asumimos que está procesada o al menos asignada
                             } as any);
                           }}
-                          className="w-full sm:w-auto"
+                          className="w-full sm:w-auto hover:bg-accent hover:text-white"
                         >
                           <ShoppingCart className="h-4 w-4 sm:mr-2" />
                           <span className="hidden sm:inline">Cargar</span>

@@ -13,39 +13,74 @@ export async function POST(
     const { cancellationReason } = body;
 
     const id = resolvedParams.id.trim();
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
-    console.log(`🔄 [CANCEL] ID: ${id}, Es UUID: ${isUuid}`);
+    // NOTA: El ID puede ser un formato personalizado (EJ: ASS-...) o UUID.
+    // La columna 'id' en DB parece ser TEXT, por lo que podemos buscar cualquier string sin error de tipo.
 
-    // Paso 1: Resetear montos
-    console.log('🔄 [CANCEL] Paso 1: Reseteando montos a 0...');
-    let step1Query = supabaseAdmin
+    console.log(`🔄 [CANCEL] Buscando asignación para input: ${id}`);
+
+    let foundAssignment = null;
+
+    // Intento 1: Buscar por ID (PK) SIEMPRE.
+    // Asumimos que la columna 'id' es texto y acepta cualquier valor.
+    const { data: dataById, error: errorById } = await supabaseAdmin
+      .from('delivery_assignments')
+      .select('id, delivery_status')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (!errorById && dataById) {
+      foundAssignment = dataById;
+      console.log('✅ Encontrado por ID directo');
+    } else if (errorById) {
+      // Si errorById es 'invalid input syntax for type uuid', significa que la columna SI es uuid. 
+      // Pero si insertamos ASS-..., entonces es TEXT. Ignoramos error y seguimos.
+      console.warn('⚠️ Error buscando por ID directo (posible mismatch de tipo, ignorando):', errorById.message);
+    }
+
+    // Intento 2: Buscar por order_id si no se encontró por ID
+    if (!foundAssignment) {
+      console.log('🔄 No encontrado por ID, buscando por order_id...');
+      const { data: dataByOrder, error: errorByOrder } = await supabaseAdmin
+        .from('delivery_assignments')
+        .select('id, delivery_status')
+        .eq('order_id', id)
+        .maybeSingle();
+
+      if (!errorByOrder && dataByOrder) {
+        foundAssignment = dataByOrder;
+        console.log('✅ Encontrado por order_id');
+      } else if (errorByOrder) {
+        console.warn('⚠️ Error buscando por order_id:', errorByOrder.message);
+      }
+    }
+
+    if (!foundAssignment) {
+      console.warn(`⚠️ Asignación no encontrada en DB para: ${id}`);
+      return NextResponse.json({
+        error: `Asignación no encontrada. Input: ${id}`
+      }, { status: 404 });
+    }
+
+    const realId = foundAssignment.id;
+    console.log(`✅ Asignación confirmada. ID Real: ${realId}`);
+
+    // Paso 1: Resetear montos usando el ID Real
+    const { error: resetError } = await supabaseAdmin
       .from('delivery_assignments')
       .update({
         delivery_fee: 0,
         provider_commission_amount: 0,
         delivery_zone_id: null,
         delivery_fee_rule_id: null
-      });
-
-    if (isUuid) {
-      step1Query = step1Query.eq('id', id);
-    } else {
-      step1Query = step1Query.eq('order_id', id);
-    }
-
-    const { data: step1Data, error: resetError } = await step1Query.select().maybeSingle();
+      })
+      .eq('id', realId);
 
     if (resetError) {
-      console.error('❌ [CANCEL] Error en paso 1:', resetError);
-    } else if (!step1Data) {
-      console.warn('⚠️ [CANCEL] Paso 1: No se encontró asignación para resetear montos.');
-    } else {
-      console.log('✅ [CANCEL] Paso 1 completado.');
+      console.error('❌ Error resetting amounts:', resetError);
     }
 
-    // Paso 2: Actualizar estado
-    console.log('🔄 [CANCEL] Paso 2: Cambiando estado a cancelled...');
+    // Paso 2: Actualizar estado usando el ID Real
     const updatePayload = {
       delivery_status: 'cancelled',
       cancellation_reason: cancellationReason || '',
@@ -53,27 +88,23 @@ export async function POST(
       updated_at: new Date().toISOString()
     };
 
-    let step2Query = supabaseAdmin
+    const { data: updateData, error: updateError } = await supabaseAdmin
       .from('delivery_assignments')
-      .update(updatePayload);
-
-    if (isUuid) {
-      step2Query = step2Query.eq('id', id);
-    } else {
-      step2Query = step2Query.eq('order_id', id);
-    }
-
-    const { data: updateData, error: updateError } = await step2Query.select().single();
+      .update(updatePayload)
+      .eq('id', realId)
+      .select()
+      .single();
 
     if (updateError) {
-      console.error('❌ [CANCEL] Error actualizando asignación:', updateError);
+      console.error('❌ Error updating assignment status:', updateError);
       throw updateError;
     }
 
-    console.log('✅ [CANCEL] Asignación actualizada:', updateData);
+    if (!updateData) {
+      return NextResponse.json({ error: 'Error post-update: Datos no retornados' }, { status: 500 });
+    }
 
     if (updateData && updateData.order_id) {
-      console.log('🔄 [CANCEL] Cancelando orden asociada:', updateData.order_id);
       // Actualizar orden a 'cancelled' y resetear delivery_fee
       const { error: orderError } = await supabaseAdmin
         .from('orders')
@@ -85,9 +116,7 @@ export async function POST(
         .eq('order_id', updateData.order_id);
 
       if (orderError) {
-        console.error('❌ [CANCEL] Error actualizando orden:', orderError);
-      } else {
-        console.log('✅ [CANCEL] Orden actualizada correctamente');
+        console.error('❌ Error updating order status:', orderError);
       }
     }
 

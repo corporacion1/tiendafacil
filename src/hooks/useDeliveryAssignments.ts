@@ -189,7 +189,8 @@ export const useDeliveryAssignments = (storeId: string) => {
       });
 
       if (!response.ok) {
-        throw new Error('Error cancelling delivery');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Error cancelling delivery (${response.status})`);
       }
 
       const updated = await response.json();
