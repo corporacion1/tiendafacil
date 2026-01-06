@@ -443,7 +443,7 @@ const CatalogProductCard = ({
         </Badge>
 
         {/* Nombre del producto - Superior izquierda */}
-        <div className="absolute top-3 left-3 z-20 max-w-[70%]">
+        <div className="absolute top-3 left-3 z-20 max-w-[60%] opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <div className="bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-lg">
             <h3 className="text-sm font-bold text-white drop-shadow-lg truncate">{product.name}</h3>
           </div>
