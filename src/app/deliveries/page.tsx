@@ -298,6 +298,10 @@ export default function DeliveriesPage() {
         });
       }
 
+      if (assignment.deliveryProviderId) {
+        setSelectedProviderId(assignment.deliveryProviderId);
+      }
+
       // Calcular distancia si no está pre-calculada
       if (assignment.destinationLatitude && assignment.destinationLongitude &&
         departureLocation.latitude && departureLocation.longitude &&
@@ -1018,7 +1022,8 @@ export default function DeliveriesPage() {
           destinationLatitude: 0,
           destinationLongitude: 0
         });
-        setSelectedProviderId('');
+        // Mantener el proveedor seleccionado para ver sus estadísticas actualizadas
+        // setSelectedProviderId(''); 
         setSelectedZoneId('');
         setCalculatedDistance(0);
         setDeliveryFee(0);
