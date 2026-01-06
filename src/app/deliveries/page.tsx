@@ -428,6 +428,7 @@ export default function DeliveriesPage() {
             storeId: activeStoreId,
             status: 'cancelled',
             deliveryStatus: 'cancelled',
+            deliveryFee: 0,
             deliveryNotes: `CANCELADO: ${cancellationReason || 'Sin motivo'}`
           })
         });
@@ -1552,7 +1553,7 @@ export default function DeliveriesPage() {
                     <div className="space-y-2 pt-2">
                       {selectedAssignment.deliveryStatus === 'in_transit' && (
                         <Button
-                          className="w-full"
+                          className="w-full bg-[#25D366] hover:bg-[#25D366]/10 submit"
                           onClick={() => handleUpdateStatus(selectedAssignment.id, 'picked_up')}
                         >
                           <CheckCircle className="mr-2 h-4" />

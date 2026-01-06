@@ -16,6 +16,8 @@ export async function POST(
         delivery_status: 'cancelled',
         cancellation_reason: cancellationReason || '',
         cancelled_at: new Date().toISOString(),
+        delivery_fee: 0,
+        provider_commission_amount: 0,
         updated_at: new Date().toISOString()
       })
       .eq('id', resolvedParams.id)
@@ -24,11 +26,12 @@ export async function POST(
 
     if (error) throw error;
 
-    // Actualizar orden a 'cancelled'
+    // Actualizar orden a 'cancelled' y resetear delivery_fee
     await supabaseAdmin
       .from('orders')
       .update({
         delivery_status: 'cancelled',
+        delivery_fee: 0,
         updated_at: new Date().toISOString()
       })
       .eq('order_id', data.order_id);
