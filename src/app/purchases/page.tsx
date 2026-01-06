@@ -445,15 +445,15 @@ export default function PurchasesPage() {
                       )}
                     </CardContent>
                     <CardFooter className={cn(
-                      "p-2 backdrop-blur-sm",
-                      product.status === "inactive" 
-                        ? "bg-destructive/20" 
+                      "p-1.5 backdrop-blur-sm",
+                      product.status === "inactive"
+                        ? "bg-destructive/20"
                         : product.status === "hidden"
                         ? "bg-muted/20"
                         : "bg-background/80"
                     )}>
                       <h3 className={cn(
-                        "text-sm font-medium truncate",
+                        "text-[10px] font-medium truncate",
                         (product.status === "inactive" || product.status === "hidden") && "text-muted-foreground"
                       )}>
                         {product.name}

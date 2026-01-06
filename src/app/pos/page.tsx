@@ -235,7 +235,7 @@ const ProductCard = ({
         )}
       </CardContent>
       <CardFooter className={cn(
-        "p-1 sm:p-2 backdrop-blur-sm w-full max-w-full",
+        "p-1 backdrop-blur-sm w-full max-w-full",
         product.status === "inactive"
           ? "bg-destructive/20"
           : product.status === "hidden"
@@ -243,7 +243,7 @@ const ProductCard = ({
             : "bg-background/80"
       )}>
         <h3 className={cn(
-          "text-xs sm:text-sm font-medium truncate w-full",
+          "text-[10px] font-medium truncate w-full",
           (product.status === "inactive" || product.status === "hidden") && "text-muted-foreground"
         )}>
           {product.name}
