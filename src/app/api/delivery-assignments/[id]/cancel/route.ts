@@ -16,7 +16,8 @@ export async function POST(
     console.log('🔄 [CANCEL] Cancelando asignación (trimmed ID):', id);
 
     // Paso 1: Resetear montos explícitamente antes de cancelar
-    console.log('🔄 [CANCEL] Paso 1: Reseteando montos a 0...');
+    // Intentamos buscar por ID o por order_id para asegurar que lo encontramos
+    console.log('🔄 [CANCEL] Paso 1: Reseteando montos a 0 (buscando por id OR order_id)...');
     const { data: step1Data, error: resetError } = await supabaseAdmin
       .from('delivery_assignments')
       .update({
@@ -25,7 +26,7 @@ export async function POST(
         delivery_zone_id: null,
         delivery_fee_rule_id: null
       })
-      .eq('id', id)
+      .or(`id.eq.${id},order_id.eq.${id}`)
       .select()
       .maybeSingle();
 
@@ -54,7 +55,7 @@ export async function POST(
     const { data: updateData, error: updateError } = await supabaseAdmin
       .from('delivery_assignments')
       .update(updatePayload)
-      .eq('id', resolvedParams.id)
+      .or(`id.eq.${id},order_id.eq.${id}`)
       .select()
       .single();
 
