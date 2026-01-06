@@ -17,6 +17,30 @@ export async function GET(request: NextRequest) {
       if (error) throw error;
       if (!store) return NextResponse.json({ error: 'Tienda no encontrada' }, { status: 404 });
 
+      // Get admin info (user with role 'admin' and matching store_id)
+      let adminName = 'Sin administrador';
+      let adminContact = '';
+      
+      const { data: userData } = await supabaseAdmin
+        .from('users')
+        .select('display_name, email, phone')
+        .eq('store_id', storeId)
+        .eq('role', 'admin')
+        .limit(1)
+        .single();
+
+      if (userData) {
+        adminName = userData.display_name || userData.email || 'Sin administrador';
+        adminContact = userData.email || userData.phone || '';
+      }
+
+      // Get user count for this store (only admin users with matching store_id)
+      const { count: userCount } = await supabaseAdmin
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .eq('store_id', storeId)
+        .eq('role', 'admin');
+
       // Transformar snake_case a camelCase
       const transformedStore = {
         storeId: store.id,
@@ -30,7 +54,13 @@ export async function GET(request: NextRequest) {
         status: store.status,
         // subscriptionPlan: store.subscription_plan, // No existe en DB
         createdAt: store.created_at,
-        updatedAt: store.updated_at
+        updatedAt: store.updated_at,
+        // Campos adicionales para la administración
+        adminName,
+        adminContact,
+        userCount: userCount || 0,
+        isProduction: store.status === 'inProduction' || !store.use_demo_data,
+        ownerIds: store.owner_ids || []
       };
 
       return NextResponse.json(transformedStore);
@@ -44,28 +74,62 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error;
 
-    // Transformar snake_case a camelCase y agregar stats básicas
-    const transformedStores = (stores || []).map((s: any) => ({
-      storeId: s.id,
-      name: s.name,
-      businessType: s.business_type,
-      // description: s.description,
-      address: s.address,
-      phone: s.phone,
-      // email: s.email,
-      logoUrl: s.logo_url,
-      status: s.status || 'active',
-      // subscriptionPlan: s.subscription_plan || 'free',
-      createdAt: s.created_at,
-      updatedAt: s.updated_at,
-      // Stats básicas (se pueden mejorar con queries adicionales)
-      stats: {
-        totalProducts: 0,
-        totalSales: 0,
-        totalRevenue: 0,
-        activeUsers: 0
-      }
-    }));
+    // Transformar snake_case a camelCase y agregar stats completas
+    const transformedStores = await Promise.all(
+      (stores || []).map(async (s: any) => {
+        // Get admin info (user with role 'admin' and matching store_id)
+        let adminName = 'Sin administrador';
+        let adminContact = '';
+        
+        const { data: userData } = await supabaseAdmin
+          .from('users')
+          .select('display_name, email, phone')
+          .eq('store_id', s.id)
+          .eq('role', 'admin')
+          .limit(1)
+          .single();
+
+        if (userData) {
+          adminName = userData.display_name || userData.email || 'Sin administrador';
+          adminContact = userData.email || userData.phone || '';
+        }
+
+        // Get user count for this store (only admin users with matching store_id)
+        const { count: userCount } = await supabaseAdmin
+          .from('users')
+          .select('*', { count: 'exact', head: true })
+          .eq('store_id', s.id)
+          .eq('role', 'admin');
+
+        return {
+          storeId: s.id,
+          name: s.name,
+          businessType: s.business_type,
+          // description: s.description,
+          address: s.address,
+          phone: s.phone,
+          // email: s.email,
+          logoUrl: s.logo_url,
+          status: s.status || 'active',
+          // subscriptionPlan: s.subscription_plan || 'free',
+          createdAt: s.created_at,
+          updatedAt: s.updated_at,
+          // Campos adicionales para la administración
+          adminName,
+          adminContact,
+          userCount: userCount || 0,
+          isProduction: s.status === 'inProduction' || !s.use_demo_data,
+          ownerIds: s.owner_ids || [],
+          // Stats básicas (se pueden mejorar con queries adicionales)
+          stats: {
+            totalProducts: 0,
+            totalSales: 0,
+            totalRevenue: 0,
+            activeUsers: 0
+          }
+        };
+      })
+    );
 
     // Retornar en formato StoresAdminResponse
     return NextResponse.json({
