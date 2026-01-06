@@ -423,16 +423,24 @@ const CatalogProductCard = ({
           </Badge>
         )}
 
-        {/* Botón de Compartir - Inferior izquierda */}
-        <Badge
-          className="absolute bottom-3 left-3 z-30 shadow-lg bg-white/90 hover:bg-white text-blue-600 border border-blue-100 cursor-pointer p-1.5 transition-all duration-200"
-          onClick={(e) => {
-            e.stopPropagation();
-            onShare(product);
-          }}
-        >
-          <Share className="w-4 h-4" />
-        </Badge>
+        {/* Botón de Compartir y Contador de Imágenes - Inferior izquierda */}
+        <div className="absolute bottom-3 left-3 z-30 flex gap-2 items-center">
+          <Badge
+            className="shadow-lg bg-white/90 hover:bg-white text-blue-600 border border-blue-100 cursor-pointer p-1.5 transition-all duration-200"
+            onClick={(e) => {
+              e.stopPropagation();
+              onShare(product);
+            }}
+          >
+            <Share className="w-4 h-4" />
+          </Badge>
+
+          {hasMultiple && !fallbackToSingle && (
+            <Badge className="shadow-lg bg-black/60 text-white border-0 text-xs pointer-events-none">
+              {currentImageIndex + 1}/{imageCount}
+            </Badge>
+          )}
+        </div>
 
         {/* Nombre del producto - Superior izquierda */}
         <div className="absolute top-3 left-3 z-20 max-w-[90%]">
