@@ -446,9 +446,6 @@ const CatalogProductCard = ({
         <div className="absolute top-3 left-3 z-20 max-w-[70%]">
           <div className="bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-lg">
             <h3 className="text-sm font-bold text-white drop-shadow-lg truncate">{product.name}</h3>
-            {product.family && (
-              <p className="text-xs text-white/80 drop-shadow-md truncate">{product.family}</p>
-            )}
           </div>
         </div>
 
