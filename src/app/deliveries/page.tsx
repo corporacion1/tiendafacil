@@ -421,18 +421,20 @@ export default function DeliveriesPage() {
   const handleConfirmCancelOrder = async () => {
     if (!orderToCancel) return;
     try {
-      if (orderToCancel.id && orderToCancel.id.length > 20) {
-        // Es una asignación (UUID de Supabase suele ser largo)
+      // Si tiene deliveryProviderId es una asignación activa, si no, es un pedido pendiente
+      if (orderToCancel.deliveryProviderId) {
+        // Es una asignación - Usamos su ID de asignación (o orderId si es lo que tenemos)
         await cancelDelivery(orderToCancel.id, cancellationReason || 'Cancelado por el operador');
       } else {
-        // Es un pedido pendiente (no asignado aún)
+        // Es un pedido pendiente (no asignado aún, o sin provider)
         const response = await fetch('/api/orders', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            orderId: orderToCancel.orderId,
+            orderId: orderToCancel.orderId || orderToCancel.id, // Fallback por si id es orderId
             storeId: activeStoreId,
-            status: 'cancelled',
+            // NO cambiamos status a 'cancelled', solo deliveryStatus
+            // status: 'cancelled', 
             deliveryStatus: 'cancelled',
             deliveryFee: 0,
             deliveryNotes: `CANCELADO: ${cancellationReason || 'Sin motivo'}`
