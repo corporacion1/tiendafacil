@@ -14,14 +14,31 @@ export async function POST(
 
     console.log('🔄 [CANCEL] Cancelando asignación:', resolvedParams.id);
 
+    // Paso 1: Resetear montos explícitamente antes de cancelar
+    console.log('🔄 [CANCEL] Paso 1: Reseteando montos a 0...');
+    const { error: resetError } = await supabaseAdmin
+      .from('delivery_assignments')
+      .update({
+        delivery_fee: 0,
+        provider_commission_amount: 0,
+        delivery_zone_id: null,
+        delivery_fee_rule_id: null
+      })
+      .eq('id', resolvedParams.id);
+
+    if (resetError) {
+      console.error('❌ [CANCEL] Error en paso 1 (reset montos):', resetError);
+      // No lanzamos error, intentamos cancelar de todas formas
+    } else {
+      console.log('✅ [CANCEL] Paso 1 completado');
+    }
+
+    // Paso 2: Actualizar estado
+    console.log('🔄 [CANCEL] Paso 2: Cambiando estado a cancelled...');
     const updatePayload = {
       delivery_status: 'cancelled',
       cancellation_reason: cancellationReason || '',
       cancelled_at: new Date().toISOString(),
-      delivery_fee: 0,
-      provider_commission_amount: 0,
-      delivery_zone_id: null,
-      delivery_fee_rule_id: null,
       updated_at: new Date().toISOString()
     };
 
