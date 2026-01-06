@@ -10,7 +10,9 @@ export async function POST(
     const body = await request.json();
     const { cancellationReason } = body;
 
-    const { data, error } = await supabaseAdmin
+    console.log('🔄 [CANCEL] Cancelando asignación:', resolvedParams.id);
+
+    const { data: updateData, error: updateError } = await supabaseAdmin
       .from('delivery_assignments')
       .update({
         delivery_status: 'cancelled',
@@ -24,25 +26,39 @@ export async function POST(
       .select()
       .single();
 
-    if (error) throw error;
+    if (updateError) {
+      console.error('❌ [CANCEL] Error actualizando asignación:', updateError);
+      throw updateError;
+    }
 
-    // Actualizar orden a 'cancelled' y resetear delivery_fee
-    await supabaseAdmin
-      .from('orders')
-      .update({
-        delivery_status: 'cancelled',
-        delivery_fee: 0,
-        updated_at: new Date().toISOString()
-      })
-      .eq('order_id', data.order_id);
+    console.log('✅ [CANCEL] Asignación actualizada:', updateData);
+
+    if (updateData && updateData.order_id) {
+      console.log('🔄 [CANCEL] Cancelando orden asociada:', updateData.order_id);
+      // Actualizar orden a 'cancelled' y resetear delivery_fee
+      const { error: orderError } = await supabaseAdmin
+        .from('orders')
+        .update({
+          delivery_status: 'cancelled',
+          delivery_fee: 0,
+          updated_at: new Date().toISOString()
+        })
+        .eq('order_id', updateData.order_id);
+
+      if (orderError) {
+        console.error('❌ [CANCEL] Error actualizando orden:', orderError);
+      } else {
+        console.log('✅ [CANCEL] Orden actualizada correctamente');
+      }
+    }
 
     return NextResponse.json({
-      id: data.id,
-      orderId: data.order_id,
-      deliveryStatus: data.delivery_status,
-      cancellationReason: data.cancellation_reason,
-      cancelledAt: data.cancelled_at,
-      updatedAt: data.updated_at,
+      id: updateData.id,
+      orderId: updateData.order_id,
+      deliveryStatus: updateData.delivery_status,
+      cancellationReason: updateData.cancellation_reason,
+      cancelledAt: updateData.cancelled_at,
+      updatedAt: updateData.updated_at,
     });
   } catch (error: any) {
     console.error('❌ Error cancelling delivery:', error);
