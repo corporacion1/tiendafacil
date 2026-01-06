@@ -39,7 +39,7 @@ import {
     DialogClose,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Sale, CartItem, Customer, Product, Purchase, SalePayment, CashSession, ExpensePayment } from "@/lib/types";
+import { Sale, CartItem, Customer, Product, Purchase, SalePayment, CashSession, ExpensePayment, DeliveryAssignment } from "@/lib/types";
 import { TicketPreview } from "@/components/ticket-preview";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -78,7 +78,7 @@ export default function ReportsPage() {
 
     // Get active store ID for order fetching
     const activeStoreId = typeof window !== 'undefined' ? localStorage.getItem('TIENDA_FACIL_ACTIVE_STORE_ID') || 'default' : 'default';
-    
+
     // Debug: Log the active store ID
     useEffect(() => {
     }, [activeStoreId]);
@@ -89,16 +89,16 @@ export default function ReportsPage() {
 
     // Force refresh orders data
     const [forceRefresh, setForceRefresh] = useState(0);
-    
+
     // Fetch orders data
     useEffect(() => {
         const fetchOrders = async () => {
             if (!activeStoreId || activeStoreId === 'default') return;
-            
+
             setIsLoadingOrders(true);
             try {
                 const timestamp = Date.now();
-                const response = await fetch(`/api/orders?storeId=${encodeURIComponent(activeStoreId)}&noCache=true&t=${timestamp}`, { 
+                const response = await fetch(`/api/orders?storeId=${encodeURIComponent(activeStoreId)}&noCache=true&t=${timestamp}`, {
                     cache: 'no-store',
                     headers: {
                         'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -210,6 +210,8 @@ export default function ReportsPage() {
     const [isFetchingPayments, setIsFetchingPayments] = useState(false);
     const [expensePayments, setExpensePayments] = useState<ExpensePayment[]>([]);
     const [isFetchingExpenses, setIsFetchingExpenses] = useState(false);
+    const [deliveriesData, setDeliveriesData] = useState<DeliveryAssignment[]>([]);
+    const [isFetchingDeliveries, setIsFetchingDeliveries] = useState(false);
     const { toast } = useToast();
 
     // Estados para paginación
@@ -253,6 +255,7 @@ export default function ReportsPage() {
             reloadSales();
             fetchAccountReceivables();
             fetchExpensePayments();
+            fetchDeliveries();
         }
     }, [settings?.id]);
 
@@ -310,6 +313,22 @@ export default function ReportsPage() {
             console.error('Error fetching expense payments:', error);
         } finally {
             setIsFetchingExpenses(false);
+        }
+    };
+
+    const fetchDeliveries = async () => {
+        if (!settings?.id) return;
+        setIsFetchingDeliveries(true);
+        try {
+            const response = await fetch(`/api/delivery-assignments?storeId=${settings.id}`, { cache: 'no-store' });
+            if (response.ok) {
+                const data = await response.json();
+                setDeliveriesData(data);
+            }
+        } catch (error) {
+            console.error('Error fetching deliveries:', error);
+        } finally {
+            setIsFetchingDeliveries(false);
         }
     };
 
@@ -444,6 +463,18 @@ export default function ReportsPage() {
                     diferencia: cs.difference.toFixed(2),
                     estado: cs.status
                 }));
+                break;
+            case 'deliveries':
+                dataToExport = filteredDeliveries.map(d => ({
+                    id: d.id,
+                    fecha: getDate(d.assignedAt).toISOString(),
+                    cliente: d.orderCustomerName,
+                    estado: d.deliveryStatus,
+                    fee: d.deliveryFee.toFixed(2),
+                    comision: d.providerCommissionAmount.toFixed(2),
+                    total_orden: d.orderTotal.toFixed(2)
+                }));
+                break;
         }
 
         if (dataToExport.length === 0) {
@@ -665,6 +696,19 @@ export default function ReportsPage() {
         );
     }, [ordersData, pendingOrdersData, searchTerm, dateFilterQuery]);
 
+    const sortedDeliveries = useMemo(() => {
+        if (!deliveriesData) return [];
+        return [...deliveriesData].sort((a, b) => new Date(b.assignedAt).getTime() - new Date(a.assignedAt).getTime());
+    }, [deliveriesData]);
+
+    const filteredDeliveries = useMemo(() => {
+        return filterByDate(sortedDeliveries).filter(d =>
+            (d.id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (d.orderCustomerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (d.deliveryStatus || '').toLowerCase().includes(searchTerm.toLowerCase())
+        ) as DeliveryAssignment[];
+    }, [sortedDeliveries, searchTerm, dateFilterQuery]);
+
     // Paginación para cada pestaña
     const paginatedSales = useMemo(() => {
         const startIndex = (currentPage - 1) * itemsPerPage;
@@ -706,6 +750,11 @@ export default function ReportsPage() {
         return filteredPendingOrders.slice(startIndex, startIndex + itemsPerPage);
     }, [filteredPendingOrders, currentPage, itemsPerPage]);
 
+    const paginatedDeliveries = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return filteredDeliveries.slice(startIndex, startIndex + itemsPerPage);
+    }, [filteredDeliveries, currentPage, itemsPerPage]);
+
     // Función para obtener el total de páginas según la pestaña activa
     const getTotalPages = () => {
         let totalItems = 0;
@@ -717,7 +766,9 @@ export default function ReportsPage() {
             case 'cobros': totalItems = filteredPayments.length; break;
             case 'payments': totalItems = filteredExpenses.length; break;
             case 'sessions': totalItems = filteredCashSessions.length; break;
+            case 'sessions': totalItems = filteredCashSessions.length; break;
             case 'orders': totalItems = filteredPendingOrders.length; break;
+            case 'deliveries': totalItems = filteredDeliveries.length; break;
         }
         return Math.ceil(totalItems / itemsPerPage);
     };
@@ -731,7 +782,9 @@ export default function ReportsPage() {
             case 'cobros': return filteredPayments.length;
             case 'payments': return filteredExpenses.length;
             case 'sessions': return filteredCashSessions.length;
+            case 'sessions': return filteredCashSessions.length;
             case 'orders': return filteredPendingOrders.length;
+            case 'deliveries': return filteredDeliveries.length;
             default: return 0;
         }
     };
@@ -818,6 +871,7 @@ export default function ReportsPage() {
                         <TabsTrigger value="sessions" className="hover:bg-red-500 hover:text-white">Cierres</TabsTrigger>
                         <TabsTrigger value="movements" className="hover:bg-red-500 hover:text-white">Movimientos</TabsTrigger>
                         <TabsTrigger value="inventory" className="hover:bg-red-500 hover:text-white">Inventario</TabsTrigger>
+                        <TabsTrigger value="deliveries" className="hover:bg-red-500 hover:text-white">Entregas</TabsTrigger>
                     </TabsList>
                     <div className="flex-grow flex justify-end items-center gap-2 flex-wrap">
                         <div className="relative">
@@ -1344,9 +1398,9 @@ export default function ReportsPage() {
                                     Listado de pedidos y cotizaciones registradas en el sistema.
                                 </CardDescription>
                             </div>
-                            <Button 
-                                size="sm" 
-                                variant="outline" 
+                            <Button
+                                size="sm"
+                                variant="outline"
                                 onClick={refreshOrders}
                                 disabled={isLoadingOrders}
                                 className="h-8 gap-1"
@@ -1466,6 +1520,78 @@ export default function ReportsPage() {
                         </CardContent>
                     </Card>
                 </TabsContent>
+                <TabsContent value="deliveries">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Reporte de Entregas</CardTitle>
+                            <CardDescription>Resumen de todas las asignaciones de delivery.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {isFetchingDeliveries && <p className="text-center">Cargando entregas...</p>}
+                            {!isFetchingDeliveries && <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Fecha</TableHead>
+                                        <TableHead>Cliente</TableHead>
+                                        <TableHead>Estado</TableHead>
+                                        <TableHead className="text-right">Total Pedido</TableHead>
+                                        <TableHead className="text-right">Tarifa Delivery</TableHead>
+                                        <TableHead className="text-right">Comisión</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {paginatedDeliveries.map((d) => (
+                                        <TableRow key={d.id}>
+                                            <TableCell>
+                                                {isClient && d.assignedAt && isValid(getDate(d.assignedAt))
+                                                    ? format(getDate(d.assignedAt), 'dd/MM/yyyy HH:mm')
+                                                    : '...'}
+                                            </TableCell>
+                                            <TableCell>{d.orderCustomerName}</TableCell>
+                                            <TableCell>
+                                                <Badge variant={d.deliveryStatus === 'delivered' ? 'default' : (d.deliveryStatus === 'cancelled' ? 'destructive' : 'secondary')}>
+                                                    {d.deliveryStatus === 'delivered' ? 'Entregado' : (d.deliveryStatus === 'cancelled' ? 'Cancelado' : d.deliveryStatus)}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-right">{activeSymbol}{(d.orderTotal * activeRate).toFixed(2)}</TableCell>
+                                            <TableCell className="text-right">{activeSymbol}{(d.deliveryFee * activeRate).toFixed(2)}</TableCell>
+                                            <TableCell className="text-right">
+                                                <span className="text-muted-foreground">
+                                                    {activeSymbol}{(d.providerCommissionAmount * activeRate).toFixed(2)}
+                                                </span>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                                <TableFooter>
+                                    <TableRow>
+                                        <TableCell colSpan={3} className="font-bold text-lg">Total General</TableCell>
+                                        <TableCell className="text-right font-bold text-lg">
+                                            {activeSymbol}{(filteredDeliveries.reduce((acc, d) => acc + d.orderTotal, 0) * activeRate).toFixed(2)}
+                                        </TableCell>
+                                        <TableCell className="text-right font-bold text-lg">
+                                            {activeSymbol}{(filteredDeliveries.reduce((acc, d) => acc + d.deliveryFee, 0) * activeRate).toFixed(2)}
+                                        </TableCell>
+                                        <TableCell className="text-right font-bold text-lg">
+                                            {activeSymbol}{(filteredDeliveries.reduce((acc, d) => acc + d.providerCommissionAmount, 0) * activeRate).toFixed(2)}
+                                        </TableCell>
+                                    </TableRow>
+                                </TableFooter>
+                            </Table>}
+                        </CardContent>
+                        <div className="px-6 pb-6">
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={getTotalPages()}
+                                totalItems={getTotalItems()}
+                                itemsPerPage={itemsPerPage}
+                                onPageChange={setCurrentPage}
+                                onItemsPerPageChange={setItemsPerPage}
+                            />
+                        </div>
+                    </Card>
+                </TabsContent>
+
             </Tabs>
 
             {/* Details Dialog */}

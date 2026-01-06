@@ -414,15 +414,7 @@ const CatalogProductCard = ({
           </div>
         )}
 
-        {/* Indicador de múltiples imágenes con debug info */}
-        {hasMultiple && !fallbackToSingle && (
-          <Badge
-            className="absolute top-3 right-3 z-20 shadow-lg bg-gradient-to-r from-blue-500 to-purple-500 border-0 text-white text-xs"
-            title={`Environment: ${detectEnvironment()}, Images: ${images.length}, Current: ${currentImageIndex + 1}`}
-          >
-            {currentImageIndex + 1}/{imageCount}
-          </Badge>
-        )}
+
 
         {/* Fallback indicator */}
         {fallbackToSingle && hasMultiple && (
@@ -443,7 +435,7 @@ const CatalogProductCard = ({
         </Badge>
 
         {/* Nombre del producto - Superior izquierda */}
-        <div className="absolute top-3 left-3 z-20 max-w-[60%]">
+        <div className="absolute top-3 left-3 z-20 max-w-[90%]">
           <div className="bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-lg shadow-lg">
             <h3 className="text-sm font-bold text-white drop-shadow-lg truncate">{product.name}</h3>
           </div>
