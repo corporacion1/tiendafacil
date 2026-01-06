@@ -360,6 +360,12 @@ export default function DeliveriesPage() {
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     try {
       await updateAssignmentStatus(id, newStatus as DeliveryStatus);
+      toast({
+        title: 'Estado actualizado',
+        description: `El estado se cambió a ${newStatus === 'picked_up' ? 'Recogido' : newStatus}`
+      });
+      setSelectedAssignment(null);
+      setSelectedProviderId('');
       await loadData();
     } catch (error) {
       console.error('Error updating delivery status:', error);
