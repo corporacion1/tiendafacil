@@ -1562,7 +1562,7 @@ export default function DeliveriesPage() {
                       )}
                       {selectedAssignment.deliveryStatus === 'picked_up' && (
                         <Button
-                          className="w-full"
+                          className="w-full submit"
                           onClick={() => handleMarkComplete()}
                         >
                           <CheckCircle className="mr-2 h-4" />
