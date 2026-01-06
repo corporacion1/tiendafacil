@@ -584,6 +584,8 @@ export default function CatalogPage() {
 
   // CORRECCIÓN #2: Estado de error por producto
   const [imageErrorState, setImageErrorState] = useState<Record<string, number>>({});
+
+
   const [catalogStoreSettings, setCatalogStoreSettings] = useState<Store | null>(null);
   const [loadingCatalogStore, setLoadingCatalogStore] = useState(false);
   const isLoading = isLoadingSettings || loadingCatalogStore;
@@ -2697,7 +2699,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
 
           {/* Banner de Ads con Auto-scroll */}
           {allAds && allAds.length > 0 && (
-            <div className="mb-8">
+            <div className="mb-8 hidden md:block">
               <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-green-50 to-blue-50 border border-green-100 shadow-sm">
                 <div className="relative h-48 sm:h-64" ref={containerRef}>
                   {allAds
