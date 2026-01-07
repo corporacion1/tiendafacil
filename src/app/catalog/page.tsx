@@ -3,7 +3,7 @@
 // Imports
 import { useState, useMemo, useEffect, useRef } from "react";
 import Image from "next/image";
-import { Package, ShoppingBag, Plus, Minus, Trash2, Send, LayoutGrid, Instagram, Star, Search, UserCircle, LogOut, MoreHorizontal, Copy, AlertCircle, QrCode, Pencil, ArrowRight, Check, User, Phone, Mail, Eye, ScanLine, X, Store as StoreIcon, ArrowLeftRight, Share, MapPin, Truck, Armchair } from "lucide-react";
+import { Package, ShoppingBag, Plus, Minus, Trash2, Send, LayoutGrid, Instagram, Star, Search, UserCircle, LogOut, MoreHorizontal, Copy, AlertCircle, QrCode, Pencil, ArrowRight, Check, User, Phone, Mail, Eye, ScanLine, X, Store as StoreIcon, ArrowLeftRight, Share, MapPin, Truck, Armchair, UserRound, Camera } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
@@ -46,6 +46,7 @@ import { supabase } from '@/lib/supabase';
 import { date } from "zod";
 import { IDGenerator } from "@/lib/id-generator";
 import DeliveryMap from '@/components/deliveries/delivery-map';
+import { EditProfileModal } from '@/components/edit-profile-modal';
 
 // Sistema de fetch robusto con retry
 const fetchWithRetry = async (
@@ -816,6 +817,17 @@ export default function CatalogPage() {
     phone: ''
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+
+  // Estados para edición de perfil
+  const [showProfileEditModal, setShowProfileEditModal] = useState(false);
+  const [isSubmittingProfile, setIsSubmittingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    displayName: '',
+    phone: '',
+    photoURL: '',
+    newPassword: '',
+    confirmNewPassword: ''
+  });
 
   // NUEVA FUNCIÓN: Incrementar vistas de anuncios en Supabase
   const incrementAdViewsSupabase = async (adId: string) => {
@@ -2599,6 +2611,11 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
+                    <DropdownMenuItem onSelect={() => setShowProfileEditModal(true)}>
+                      <UserRound className="mr-2 h-4 w-4" />
+                      Editar Perfil
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     {userRole === 'seller' && (
                       <DropdownMenuItem asChild>
                         <Link href="/pos">
@@ -3684,6 +3701,13 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
 
       {/* Botón flotante para solicitar tienda */}
       <StoreRequestButton />
+
+      {/* Modal de edición de perfil */}
+      <EditProfileModal
+        open={showProfileEditModal}
+        onOpenChange={setShowProfileEditModal}
+        currentUser={authUser}
+      />
     </>
   );
 }

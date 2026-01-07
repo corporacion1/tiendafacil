@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Loader2, Check, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { UserProfile } from "@/lib/types"
+import { ImageUpload } from "@/components/image-upload"
 
 interface EditUserModalProps {
   user: UserProfile | null
@@ -38,7 +39,8 @@ export function EditUserModal({ user, open, onOpenChange, onUserUpdated }: EditU
     phone: '',
     role: 'user' as 'user' | 'admin' | 'pos' | 'su' | 'depositary' | 'delivery',
     storeId: '',
-    newPassword: ''
+    newPassword: '',
+    photoURL: ''
   })
 
   const [storeSearchOpen, setStoreSearchOpen] = useState(false)
@@ -106,7 +108,8 @@ export function EditUserModal({ user, open, onOpenChange, onUserUpdated }: EditU
         phone: user.phone || '',
         role: validRole,
         storeId: user.storeId?.trim() || '',
-        newPassword: ''
+        newPassword: '',
+        photoURL: user.photoURL || ''
       };
 
       console.log('📝 [EditUserModal] Setting form data:', newFormData);
@@ -156,7 +159,8 @@ export function EditUserModal({ user, open, onOpenChange, onUserUpdated }: EditU
         email: formData.email,
         phone: formData.phone,
         role: formData.role,
-        storeId: formData.storeId
+        storeId: formData.storeId,
+        photoURL: formData.photoURL
       };
 
       // Solo incluir password si se proporcionó uno nuevo
@@ -164,8 +168,7 @@ export function EditUserModal({ user, open, onOpenChange, onUserUpdated }: EditU
         payload.newPassword = formData.newPassword;
       }
 
-      console.log('📤 [EditUserModal] Submitting update:', { ...payload, newPassword: payload.newPassword ? '***' : undefined });
-
+      console.log('📤 [EditUserModal] Submitting update:', { ...payload, newPassword: payload.newPassword ? '***' : undefined, photoURL: payload.photoURL ? 'HAS_PHOTO' : 'NO_PHOTO' });
       const response = await fetch('/api/users/edit', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -248,6 +251,14 @@ export function EditUserModal({ user, open, onOpenChange, onUserUpdated }: EditU
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="photoURL">Foto de Perfil</Label>
+            <ImageUpload
+              currentImage={user?.photoURL || undefined}
+              onImageUploaded={(url) => setFormData(prev => ({ ...prev, photoURL: url }))}
+            />
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="displayName">Nombre *</Label>

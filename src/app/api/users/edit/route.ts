@@ -23,6 +23,7 @@ export async function PUT(request: NextRequest) {
     if (updateData.status !== undefined) supabaseUpdateData.status = updateData.status;
     if (updateData.permissions !== undefined) supabaseUpdateData.permissions = updateData.permissions;
     if (updateData.storeId !== undefined) supabaseUpdateData.store_id = updateData.storeId;
+    if (updateData.photoURL !== undefined) supabaseUpdateData.photo_url = updateData.photoURL;
 
     // Si hay cambio de contraseña (soporta tanto 'password' como 'newPassword')
     const passwordToUpdate = updateData.newPassword || updateData.password;
@@ -63,6 +64,7 @@ export async function PUT(request: NextRequest) {
       storeId: updatedUser.store_id,
       status: updatedUser.status,
       permissions: updatedUser.permissions,
+      photoURL: updatedUser.photo_url,
       createdAt: updatedUser.created_at
     };
 
