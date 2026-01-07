@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Share } from "lucide-react";
 import type { CartItem, Customer, Product, SalePayment } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
+import QRCode from "qrcode";
 
 interface TicketPreviewProps {
   isOpen: boolean;
@@ -36,6 +37,7 @@ export function TicketPreview({
 }: TicketPreviewProps) {
   const ticketRef = useRef<HTMLDivElement>(null);
   const [fetchedSale, setFetchedSale] = useState<any>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const { settings, activeSymbol, activeRate } = useSettings();
   // Debug logs to help trace why ticketNumber might not appear
   useEffect(() => {
@@ -68,6 +70,27 @@ export function TicketPreview({
     tryFetch();
     return () => { mounted = false; };
   }, [saleObj, saleId, settings?.id]);
+
+  // Generate QR code for quotes
+  useEffect(() => {
+    const generateQR = async () => {
+      if (ticketType === 'quote' && saleId && isOpen) {
+        try {
+          const qrUrl = await QRCode.toDataURL(saleId, {
+            width: 100,
+            margin: 1,
+            errorCorrectionLevel: 'L'
+          });
+          setQrCodeUrl(qrUrl);
+        } catch (error) {
+          console.error('Error generating QR code:', error);
+        }
+      } else {
+        setQrCodeUrl(null);
+      }
+    };
+    generateQR();
+  }, [ticketType, saleId, isOpen]);
 
   const effectiveSaleObj = saleObj || fetchedSale;
   const resolvedTicket = ticketNumber || (Array.isArray(effectiveSaleObj) ? (effectiveSaleObj[0]?.ticketNumber || effectiveSaleObj[0]?.ticket_number) : (effectiveSaleObj?.ticketNumber || effectiveSaleObj?.ticket_number)) || null;
@@ -266,6 +289,14 @@ export function TicketPreview({
           <div className="overflow-y-auto p-2 border rounded-md bg-gray-50 dark:bg-gray-800">
             <div ref={ticketRef} className="ticket font-mono" style={{ fontFamily: "'Inconsolata', monospace", width: '100%', color: '#000', backgroundColor: '#fff', padding: '5px' }}>
               <div className="header" style={{ textAlign: 'center' }}>
+                {ticketType === 'quote' && qrCodeUrl && (
+                  <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'center' }}>
+                    <img src={qrCodeUrl} alt="QR Cotización" style={{ width: '80px', height: '80px' }} />
+                  </div>
+                )}
+                {ticketType === 'quote' && saleId && (
+                  <p style={{ margin: '2px 0', fontSize: '10px', fontWeight: 'bold' }}>ORDEN #: {saleId}</p>
+                )}
                 <h1 style={{ fontSize: '16px', margin: '0', fontWeight: 'bold', textTransform: 'uppercase' }}>{(settings?.name || '').toUpperCase()}</h1>
                 {
                   // RIF/Tax ID and phone on the next line
@@ -408,7 +439,7 @@ export function TicketPreview({
             </Button>
           )}
           <Button type="button" onClick={handlePrint} disabled={!displayInfo}>
-            Confirmar e Imprimir
+            {ticketType === 'quote' ? 'Imprimir Cotización' : 'Confirmar e Imprimir'}
           </Button>
         </DialogFooter>
       </DialogContent>

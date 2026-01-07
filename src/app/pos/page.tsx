@@ -2341,8 +2341,8 @@ export default function POSPage() {
             : "La cotización se ha guardado como pedido pendiente.",
         });
 
-        // Guardar copia del carrito antes de limpiarlo para el TicketPreview
-        const savedCartItems = [...cartItems];
+        // Guardar copia del carrito en el estado antes de limpiarlo para el TicketPreview
+        setSavedCartItems([...cartItems]);
 
         // Convertir a estructura Sale para TicketPreview
         // Esto permite reutilizar la lógica de visualización de items en TicketPreview
@@ -2394,7 +2394,8 @@ export default function POSPage() {
     }
   };
 
-  const generateShareText = (type: "quote" | "sale", saleData?: any) => {
+  const generateShareText = (type: "quote" | "sale", saleData?: any, itemsToShare?: CartItem[]) => {
+    const cartItemsToUse = itemsToShare || cartItems;
     const customer = selectedCustomer?.name || "Cliente Eventual";
     const date = new Date().toLocaleDateString("es-ES");
     const time = new Date().toLocaleTimeString("es-ES", {
@@ -2411,7 +2412,7 @@ export default function POSPage() {
       text += `🏪 ${settings?.name || "Mi Tienda"}\n\n`;
       text += `📋 *PRODUCTOS:*\n`;
 
-      cartItems.forEach((item, index) => {
+      cartItemsToUse.forEach((item, index) => {
         text += `${index + 1}. ${item.product.name}\n`;
         text += `   Cant: ${item.quantity} x ${activeSymbol}${(item.price * activeRate).toFixed(2)}\n`;
         text += `   Subtotal: ${activeSymbol}${(item.price * item.quantity * activeRate).toFixed(2)}\n\n`;
@@ -5008,9 +5009,9 @@ export default function POSPage() {
                     }))
                   : cartItems
             }
-            saleId={ticketType === "sale" ? lastSale?.id : undefined}
+            saleId={lastSale?.id}
             ticketNumber={ticketType === "sale" ? lastTicketNumber : undefined}
-            saleObj={ticketType === "sale" ? lastSale : undefined}
+            saleObj={lastSale}
             customer={selectedCustomer}
             payments={ticketType === "sale" ? lastSale?.payments : undefined}
             onShare={ticketType === "quote" ? handleShareQuote : undefined}
