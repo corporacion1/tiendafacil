@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { Eye, MoreHorizontal, RefreshCw, Search } from "lucide-react"
+import { Eye, MoreHorizontal, RefreshCw, Search, Store, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
 import { CreateStoreModal } from "@/components/create-store-modal"
+import { useSettings } from "@/contexts/settings-context"
+import Image from "next/image"
 import type { StoreWithStats, StoreFilters, StoresAdminResponse } from "@/lib/types"
 
 interface StoresManagementProps {
@@ -23,7 +25,9 @@ export function StoresManagement({ onStoreSelect, onStatusChange }: StoresManage
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [switchingStore, setSwitchingStore] = useState<string | null>(null)
   const { toast } = useToast()
+  const { switchStore } = useSettings()
 
   const [filters, setFilters] = useState<StoreFilters>({
     search: '',
@@ -110,6 +114,26 @@ export function StoresManagement({ onStoreSelect, onStatusChange }: StoresManage
         title: "Error",
         description: "No se pudo actualizar el estado de la tienda"
       })
+    }
+  }
+
+  const handleSwitchStore = async (storeId: string) => {
+    try {
+      setSwitchingStore(storeId)
+      await switchStore(storeId)
+      toast({
+        title: "Contexto cambiado",
+        description: `Ahora estás viendo la tienda ${storeId}`
+      })
+    } catch (err) {
+      console.error('Error switching store:', err)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo cambiar a la tienda"
+      })
+    } finally {
+      setSwitchingStore(null)
     }
   }
 
@@ -265,12 +289,11 @@ export function StoresManagement({ onStoreSelect, onStatusChange }: StoresManage
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ID de Tienda</TableHead>
+                    <TableHead className="w-16">Logo</TableHead>
                     <TableHead>Nombre</TableHead>
                     <TableHead>Administrador</TableHead>
                     <TableHead>Contacto</TableHead>
-                    <TableHead className="text-center">Usuarios</TableHead>
-                    <TableHead>Estado</TableHead>
+                    <TableHead className="text-center w-20">Ver</TableHead>
                     <TableHead>Creada</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
@@ -295,8 +318,20 @@ export function StoresManagement({ onStoreSelect, onStatusChange }: StoresManage
                   ) : (
                     filteredStores.map((store) => (
                       <TableRow key={store.storeId} className="hover:bg-muted/50">
-                        <TableCell className="font-mono text-sm">
-                          {store.storeId}
+                        <TableCell className="p-2">
+                          <div className="w-12 h-12 bg-muted rounded-lg overflow-hidden flex items-center justify-center">
+                            {store.logoUrl ? (
+                              <Image
+                                src={store.logoUrl}
+                                alt={store.name}
+                                width={48}
+                                height={48}
+                                className="object-cover w-full h-full"
+                              />
+                            ) : (
+                              <Store className="h-6 w-6 text-muted-foreground" />
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div>
@@ -322,12 +357,14 @@ export function StoresManagement({ onStoreSelect, onStatusChange }: StoresManage
                           )}
                         </TableCell>
                         <TableCell className="text-center">
-                          <Badge variant="outline">
-                            {store.userCount}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {getStatusBadge(store.status, store.isProduction)}
+                          {switchingStore === store.storeId ? (
+                            <Loader2 className="h-6 w-6 animate-spin text-yellow-600" />
+                          ) : (
+                            <Store
+                              className="h-6 w-6 text-yellow-600 hover:text-yellow-700 hover:cursor-pointer"
+                              onClick={() => handleSwitchStore(store.storeId)}
+                            />
+                          )}
                         </TableCell>
                         <TableCell>
                           {new Date(store.createdAt || '').toLocaleDateString('es-ES')}
