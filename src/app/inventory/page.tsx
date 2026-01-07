@@ -52,10 +52,22 @@ const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewM
   setProductToDelete: (product: Product | null) => void;
 }) => {
   const [imageError, setImageError] = useState(false);
+
+  // Reset imageError when product changes (especially when imageUrl changes)
+  useEffect(() => {
+    setImageError(false);
+  }, [product.id, product.imageUrl, product.images?.length]);
+
   const primaryImage = (product.images && product.images.length > 0)
     ? (product.images[0].thumbnailUrl || product.images[0].url)
     : product.imageUrl;
-  const imageUrl = getDisplayImageUrl(primaryImage);
+
+  // Add timestamp to prevent caching when image is updated
+  // Use a combination of product.id and images.length as cache buster
+  const cacheBust = `${product.id}-${product.images?.length || 0}`;
+  const imageUrl = primaryImage
+    ? `${getDisplayImageUrl(primaryImage)}?v=${cacheBust}`
+    : null;
 
   const getStatusVariant = (status: Product['status']) => {
     switch (status) {
