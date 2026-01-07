@@ -220,11 +220,26 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    console.log('📦 [Orders API] Creando pedido:', body);
 
-    // Validar campos requeridos
-    if (!body.storeId || !body.customerName || !body.customerPhone || !body.items) {
+    // Validar campos requeridos - customerPhone puede ser string vacío para cliente eventual
+    if (!body.storeId || !body.customerName || !body.items) {
+      console.error('❌ [Orders API] Campos faltantes:', { 
+        hasStoreId: !!body.storeId,
+        hasCustomerName: !!body.customerName,
+        hasCustomerPhone: !!body.customerPhone,
+        hasItems: !!body.items
+      });
       return NextResponse.json({
-        error: 'Campos requeridos: storeId, customerName, customerPhone, items'
+        error: 'Campos requeridos: storeId, customerName, items'
+      }, { status: 400 });
+    }
+
+    // Validar items
+    if (!Array.isArray(body.items) || body.items.length === 0) {
+      console.error('❌ [Orders API] Items inválidos:', body.items);
+      return NextResponse.json({
+        error: 'Se debe incluir al menos un producto en el pedido'
       }, { status: 400 });
     }
 

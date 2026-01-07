@@ -580,16 +580,27 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     try {
       const res = await fetch(`/api/currency-rates?storeId=${activeStoreId}`);
 
+      // Verificar si la respuesta es válida
+      if (!res) {
+        throw new Error('No se recibió respuesta del servidor');
+      }
+
+      if (!res.ok) {
+        throw new Error(`Error del servidor: ${res.status} ${res.statusText}`);
+      }
+
       // Verificar si la respuesta es JSON
       const contentType = res.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('API returned non-JSON response');
+        throw new Error('La API devolvió una respuesta que no es JSON');
       }
 
       const data = await res.json();
       console.log('🔄 [fetchCurrencyRates] Respuesta de API:', data);
 
-      if (!res.ok) throw new Error(data.error);
+      if (data.error) {
+        throw new Error(data.error);
+      }
 
       // Manejar diferentes estructuras de respuesta
       let rates = [];
@@ -612,7 +623,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       const processedRates = rates.map((rate: Record<string, unknown>) => ({
         ...rate,
         id: (rate._id as string) || (rate.id as string) || `rate-${(rate.date as string) || Date.now()}`,
-        rate: rate.rate || rate.value || 1,
+        rate: rate.rate || rate.value ||1,
         date: (rate.date as string) || new Date().toISOString(),
         createdBy: rate.createdBy || rate.userId || 'Sistema'
       }));
@@ -622,7 +633,10 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       return data.current || data.data?.current || null;
 
     } catch (error) {
-      console.error("Error fetching rates:", error);
+      console.error("❌ [fetchCurrencyRates] Error fetching rates:", error);
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        console.error("❌ [fetchCurrencyRates] Error de red - el endpoint puede no estar disponible");
+      }
       setCurrencyRates([]); // Asegurar que siempre sea array
       return null;
     }

@@ -492,9 +492,10 @@ export default function POSPage() {
   const [productImageError, setImageError] = useState(false);
 
   const [scannedOrderId, setScannedOrderId] = useState("");
-  // Estado para rastrear el pedido actual que se está editando (para evitar duplicados al guardar cotización)
+   // Estado para rastrear el pedido actual que se está editando (para evitar duplicados al guardar cotización)
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
   const [currentOrder, setCurrentOrder] = useState<any | null>(null);
+  const [savedCartItems, setSavedCartItems] = useState<CartItem[] | null>(null);
 
   // --- Cash Session State ---
   const [activeSession, setActiveSession] = useState<CashSession | null>(null);
@@ -2324,6 +2325,7 @@ export default function POSPage() {
         `📦 [POS] ${isUpdate ? "Actualizando" : "Creando"} cotización/pedido:`,
         orderIdToUse,
       );
+      console.log('📦 [POS] Datos de la cotización:', newOrder);
 
       const response = await fetch("/api/orders", {
         method: method,
@@ -2339,8 +2341,12 @@ export default function POSPage() {
             : "La cotización se ha guardado como pedido pendiente.",
         });
 
+        // Guardar copia del carrito antes de limpiarlo para el TicketPreview
+        const savedCartItems = [...cartItems];
+
         // Convertir a estructura Sale para TicketPreview
         // Esto permite reutilizar la lógica de visualización de items en TicketPreview
+        // Pero TicketPreview espera SalePayment[] para pagos, array vacío está bien.
         const quoteAsSale: Sale = {
           id: orderIdToUse,
           customerId: selectedCustomer?.id ?? null,
@@ -2371,9 +2377,11 @@ export default function POSPage() {
         refetchPendingOrders();
       } else {
         const err = await response.json();
+        console.error('❌ [POS] Error al guardar cotización:', err);
         toast({
           variant: "destructive",
           title: "Error al guardar",
+          description: err.error || err.detalles || err.message || "Error desconocido"
         });
       }
     } catch (error) {
@@ -2492,12 +2500,14 @@ export default function POSPage() {
     return text;
   };
 
-  const handleShareQuote = async () => {
-    if (cartItems.length === 0) {
+   const handleShareQuote = async () => {
+    const cartItemsToUse = savedCartItems || cartItems;
+    
+    if (cartItemsToUse.length === 0) {
       toast({
         variant: "destructive",
         title: "Carrito vacío",
-        description: "Agrega productos para generar una cotización.",
+        description: "No hay productos para compartir.",
       });
       return;
     }
@@ -4975,22 +4985,27 @@ export default function POSPage() {
           </div>
         </div>
 
-        {isPrintPreviewOpen && (cartItems.length > 0 || lastSale) && (
+        {isPrintPreviewOpen && (lastSale || (ticketType === 'quote' && savedCartItems)) && (
           <TicketPreview
             isOpen={isPrintPreviewOpen}
-            onOpenChange={setIsPrintPreviewOpen}
+            onOpenChange={(open) => {
+              setIsPrintPreviewOpen(open);
+              if (!open && savedCartItems) {
+                setSavedCartItems(null);
+              }
+            }}
             ticketType={ticketType}
             cartItems={
-              !lastSale && ticketType === "quote"
-                ? cartItems
+              ticketType === 'quote'
+                ? (savedCartItems || cartItems)
                 : lastSale
                   ? lastSale.items.map((item) => ({
-                    product: (products || []).find(
-                      (p) => p.id === item.productId,
-                    )!,
-                    quantity: item.quantity,
-                    price: item.price,
-                  }))
+                      product: (products || []).find(
+                        (p) => p.id === item.productId,
+                      )!,
+                      quantity: item.quantity,
+                      price: item.price,
+                    }))
                   : cartItems
             }
             saleId={ticketType === "sale" ? lastSale?.id : undefined}
