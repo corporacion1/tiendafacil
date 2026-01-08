@@ -2,6 +2,7 @@ import type { QuotePrintOptions, IndustryType } from './types';
 
 const QUOTE_PREFS_KEY = 'tienda_facil_quote_preferences';
 const QUOTE_CONDITIONS_KEY = 'tienda_facil_quote_conditions';
+const QUOTE_NOTES_KEY = 'tienda_facil_quote_notes';
 
 export const DEFAULT_QUOTE_OPTIONS: QuotePrintOptions = {
   template: 'minimalist',
@@ -13,25 +14,21 @@ export const DEFAULT_QUOTE_OPTIONS: QuotePrintOptions = {
 };
 
 export const INDUSTRY_TEMPLATES = {
-  retail: `Esta cotización es válida por 7 días.
-Garantía de 30 días en defectos de fábrica.
+  retail: `Garantía de 30 días en defectos de fábrica.
 Devoluciones hasta 30 días con producto sin uso.
 Precios sujetos a cambios sin previo aviso.`,
 
-  services: `Vigencia: 15 días.
-Incluye garantía por 1 año en mano de obra.
+  services: `Incluye garantía por 1 año en mano de obra.
 Materiales garantizados por fabricante.
 Cambios requieren aprobación previa.
 Precios pueden variar según complejidad del servicio.`,
 
-  technology: `Cotización válida por 10 días.
-Garantía de 1 año en equipos y 6 meses en accesorios.
+  technology: `Garantía de 1 año en equipos y 6 meses en accesorios.
 No cubre daños por mal uso o manipulación no autorizada.
 Soporte técnico disponible 9am-6pm.
 Precios sujetos a disponibilidad de stock.`,
 
-  general: `Esta cotización es válida por 7 días.
-Garantía de 30 días en defectos de fábrica.
+  general: `Garantía de 30 días en defectos de fábrica.
 Precios sujetos a cambios sin previo aviso.
 Para confirmar tu pedido, contáctanos.`,
 };

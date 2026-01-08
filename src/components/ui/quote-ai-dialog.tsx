@@ -11,8 +11,9 @@ import { useToast } from "@/hooks/use-toast";
 import type { QuoteTemplate, IndustryType, QuotePrintOptions, QuoteAIDialogProps } from '../quote-generator/types';
 import { QuoteTemplates } from '../quote-generator/quote-templates';
 import { loadQuotePreferences, saveQuotePreferences, loadIndustryConditions, saveIndustryConditions, INDUSTRY_TEMPLATES, DEFAULT_QUOTE_OPTIONS } from '../quote-generator/quote-storage';
-import { generateQuotePDF } from '../quote-generator/quote-pdf-generator';
+import { generateQuotePDF, downloadQuotePDF } from '../quote-generator/quote-pdf-generator';
 import QRCode from 'qrcode';
+import { Plus, Minus } from 'lucide-react';
 
 export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleId, settings }: QuoteAIDialogProps) {
   const { toast } = useToast();
@@ -25,6 +26,7 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
   const [includeSignature, setIncludeSignature] = useState(true);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(0.8);
 
   const previewRef = useRef<HTMLDivElement>(null);
 
@@ -63,15 +65,14 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
   }, [saleId, isOpen]);
 
   const handlePresetClick = (industry: IndustryType) => {
-    const template = INDUSTRY_TEMPLATES[industry];
-    setConditionsText(template);
     setIndustryType(industry);
-    saveIndustryConditions(industry, template);
+    const industryConditions = loadIndustryConditions(industry);
+    setConditionsText(industryConditions);
   };
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
-  
+
   let tax1Amount = 0;
   let tax2Amount = 0;
 
@@ -86,6 +87,14 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
 
   const total = subtotal + tax1Amount + tax2Amount;
 
+  const handleZoomIn = () => {
+    setZoomLevel(prev => Math.min(prev + 0.1, 1.0));
+  };
+
+  const handleZoomOut = () => {
+    setZoomLevel(prev => Math.max(prev - 0.1, 0.2));
+  };
+
   const handlePrint = async () => {
     const element = previewRef.current;
     if (!element) return;
@@ -96,7 +105,7 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
       const options: QuotePrintOptions = {
         template: selectedTemplate,
         validDays,
-        conditionsText,
+        conditionsText: conditionsText,
         industryType,
         showWatermark,
         includeSignature
@@ -132,6 +141,52 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
     }
   };
 
+  const handleDownloadPDF = async () => {
+    const element = previewRef.current;
+    if (!element) return;
+
+    try {
+      setIsGenerating(true);
+
+      const options: QuotePrintOptions = {
+        template: selectedTemplate,
+        validDays,
+        conditionsText: conditionsText,
+        industryType,
+        showWatermark,
+        includeSignature
+      };
+
+      saveQuotePreferences(options);
+      saveIndustryConditions(industryType, conditionsText);
+
+      await downloadQuotePDF({
+        element,
+        settings,
+        cartItems,
+        customer,
+        saleId,
+        options
+      });
+
+      toast({
+        title: '✅ PDF descargado',
+        description: 'El PDF se ha descargado correctamente.'
+      });
+
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'No se pudo descargar el PDF.'
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const templates = [
     { id: 'corporate' as QuoteTemplate, name: 'Corporativa', description: 'Profesional y equilibrado' },
     { id: 'minimalist' as QuoteTemplate, name: 'Minimalista', description: 'Limpio y elegante' },
@@ -140,7 +195,13 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-4xl max-h-[90vh] overflow-y-auto scrollbar-hide"
+        style={{
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none'
+        }}
+      >
         <DialogHeader>
           <DialogTitle>✨ Mejorar Cotización con IA</DialogTitle>
           <DialogDescription>
@@ -157,8 +218,8 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
                   key={template.id}
                   onClick={() => setSelectedTemplate(template.id)}
                   className={`p-4 rounded-lg border-2 transition-all ${
-                    selectedTemplate === template.id 
-                      ? 'border-primary bg-primary/5' 
+                    selectedTemplate === template.id
+                      ? 'border-primary bg-primary/5'
                       : 'border-border hover:border-primary/50'
                   }`}
                 >
@@ -204,13 +265,17 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-2 block">Condiciones y Garantías</label>
+            <label className="text-sm font-medium mb-3 block">Condiciones y Garantías</label>
+
             <Textarea
               value={conditionsText}
-              onChange={(e) => setConditionsText(e.target.value)}
+              onChange={(e) => {
+                setConditionsText(e.target.value);
+              }}
               placeholder="Ingresa las condiciones de venta y garantías..."
               rows={6}
             />
+
             <div className="flex flex-wrap gap-2 mt-2">
               <span className="text-sm text-muted-foreground">Plantillas rápidas:</span>
               {Object.keys(INDUSTRY_TEMPLATES).map(ind => (
@@ -218,8 +283,8 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
                   key={ind}
                   onClick={() => handlePresetClick(ind as IndustryType)}
                   className={`px-3 py-1 text-xs rounded-full ${
-                    industryType === ind 
-                      ? 'bg-primary text-primary-foreground' 
+                    industryType === ind
+                      ? 'bg-primary text-primary-foreground'
                       : 'bg-secondary hover:bg-secondary/80'
                   }`}
                 >
@@ -250,35 +315,94 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
 
           <div>
             <label className="text-sm font-medium mb-3 block">Vista Previa en Tiempo Real</label>
-            <div className="border rounded-lg overflow-hidden bg-white" style={{ maxHeight: '700px', overflow: 'auto' }}>
-              <div className="preview-header p-2 border-b bg-muted text-xs text-center text-muted-foreground">
-                Vista Previa - {selectedTemplate === 'minimalist' ? 'Minimalista' : selectedTemplate === 'corporate' ? 'Corporativa' : 'Vibrante'}
+
+            <div className="border rounded-lg overflow-hidden bg-white" style={{
+              maxHeight: '700px',
+              overflow: 'hidden'
+            }}>
+              <div className="preview-header p-2 border-b bg-muted text-xs text-center text-muted-foreground flex items-center justify-between">
+                <span>Vista Previa - {selectedTemplate === 'minimalist' ? 'Minimalista' : selectedTemplate === 'corporate' ? 'Corporativa' : 'Vibrante'}</span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleZoomOut}
+                    className="h-6 w-6 p-0"
+                    title="Reducir zoom"
+                  >
+                    −
+                  </Button>
+                  <span className="text-xs w-12 text-center">{Math.round(zoomLevel * 100)}%</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleZoomIn}
+                    className="h-6 w-6 p-0"
+                    title="Aumentar zoom"
+                  >
+                    +
+                  </Button>
+                </div>
               </div>
-              <div ref={previewRef} className="origin-top" style={{ transform: 'scale(0.4)' }}>
-                {settings && (
-                  <QuoteTemplates
-                    template={selectedTemplate}
-                    settings={settings as any}
-                    cartItems={cartItems}
-                    customer={customer}
-                    saleId={saleId}
-                    options={{
-                      template: selectedTemplate,
-                      validDays,
-                      conditionsText,
-                      industryType,
-                      showWatermark,
-                      includeSignature
-                    }}
-                    subtotal={subtotal}
-                    totalItems={totalItems}
-                    tax1Amount={tax1Amount}
-                    tax2Amount={tax2Amount}
-                    total={total}
-                    qrCodeUrl={qrCodeUrl}
-                  />
-                )}
+
+              <div
+                style={{
+                  maxHeight: '640px',
+                  overflowY: 'auto',
+                  overflowX: 'hidden',
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none'
+                }}
+                onScroll={(e) => {
+                  const target = e.target as HTMLDivElement;
+                  target.style.setProperty('--scroll-position', target.scrollTop.toString());
+                }}
+              >
+                <div
+                  ref={previewRef}
+                  className="origin-top flex justify-center py-8"
+                  style={{
+                    transform: `scale(${zoomLevel})`,
+                    transformOrigin: 'top center'
+                  }}
+                >
+                  {settings && (
+                    <QuoteTemplates
+                      template={selectedTemplate}
+                      settings={settings as any}
+                      cartItems={cartItems}
+                      customer={customer}
+                      saleId={saleId}
+                      options={{
+                        template: selectedTemplate,
+                        validDays,
+                        conditionsText: conditionsText,
+                        industryType,
+                        showWatermark,
+                        includeSignature
+                      }}
+                      subtotal={subtotal}
+                      totalItems={totalItems}
+                      tax1Amount={tax1Amount}
+                      tax2Amount={tax2Amount}
+                      total={total}
+                      qrCodeUrl={qrCodeUrl}
+                    />
+                  )}
+                </div>
               </div>
+
+              <style jsx global>{`
+                .scrollbar-hide::-webkit-scrollbar {
+                  display: none;
+                }
+                .scrollbar-hide {
+                  -ms-overflow-style: none;
+                  scrollbar-width: none;
+                }
+              `}</style>
             </div>
           </div>
         </div>
@@ -287,13 +411,22 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
           <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
+          <Button type="button" variant="default" onClick={handleDownloadPDF} disabled={isGenerating}>
+            {isGenerating ? (
+              <span className="inline-flex items-center gap-2">
+                Descargando...
+              </span>
+            ) : (
+              'Descargar PDF'
+            )}
+          </Button>
           <Button type="button" onClick={handlePrint} disabled={isGenerating}>
             {isGenerating ? (
               <span className="inline-flex items-center gap-2">
-                Generando...
+                Imprimiendo...
               </span>
             ) : (
-              'Imprimir Cotización'
+              'Imprimir'
             )}
           </Button>
         </DialogFooter>

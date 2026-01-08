@@ -103,31 +103,31 @@ export function TicketPreview({
   // Resolve customer info: prefer `saleObj` (server record) if present, otherwise use explicit `customer` prop
   const resolvedCustomer = Array.isArray(saleObj)
     ? {
-        id: saleObj[0]?.customerId || customer?.id || 'temp-customer',
-        storeId: saleObj[0]?.storeId || customer?.storeId || settings?.id || '',
-        name: saleObj[0]?.customerName || saleObj[0]?.customer_name || customer?.name || null,
-        phone: saleObj[0]?.customerPhone || saleObj[0]?.customer_phone || customer?.phone || null,
-        address: saleObj[0]?.customerAddress || saleObj[0]?.customer_address || (customer as any)?.address || null,
-        rif_nit: saleObj[0]?.customerRifNit || saleObj[0]?.customer_rif_nit || (customer as any)?.rif_nit || (customer as any)?.rif_nit || null
-      }
+      id: saleObj[0]?.customerId || customer?.id || 'temp-customer',
+      storeId: saleObj[0]?.storeId || customer?.storeId || settings?.id || '',
+      name: saleObj[0]?.customerName || saleObj[0]?.customer_name || customer?.name || null,
+      phone: saleObj[0]?.customerPhone || saleObj[0]?.customer_phone || customer?.phone || null,
+      address: saleObj[0]?.customerAddress || saleObj[0]?.customer_address || (customer as any)?.address || null,
+      rif_nit: saleObj[0]?.customerRifNit || saleObj[0]?.customer_rif_nit || (customer as any)?.rif_nit || (customer as any)?.rif_nit || null
+    }
     : saleObj
       ? {
-          id: saleObj?.customerId || customer?.id || 'temp-customer',
-          storeId: saleObj?.storeId || customer?.storeId || settings?.id || '',
-          name: saleObj?.customerName || saleObj?.customer_name || customer?.name || null,
-          phone: saleObj?.customerPhone || saleObj?.customer_phone || customer?.phone || null,
-          address: saleObj?.customerAddress || saleObj?.customer_address || (customer as any)?.address || null,
-          rif_nit: saleObj?.customerRifNit || saleObj?.customer_rif_nit || (customer as any)?.rif_nit || (customer as any)?.rif_nit || null
-        }
+        id: saleObj?.customerId || customer?.id || 'temp-customer',
+        storeId: saleObj?.storeId || customer?.storeId || settings?.id || '',
+        name: saleObj?.customerName || saleObj?.customer_name || customer?.name || null,
+        phone: saleObj?.customerPhone || saleObj?.customer_phone || customer?.phone || null,
+        address: saleObj?.customerAddress || saleObj?.customer_address || (customer as any)?.address || null,
+        rif_nit: saleObj?.customerRifNit || saleObj?.customer_rif_nit || (customer as any)?.rif_nit || (customer as any)?.rif_nit || null
+      }
       : customer
         ? {
-            id: customer.id || 'temp-customer',
-            storeId: customer.storeId || settings?.id || '',
-            name: customer.name,
-            phone: customer.phone,
-            address: (customer as any).address || null,
-            rif_nit: (customer as any).rif_nit || (customer as any).rif_nit || null
-          }
+          id: customer.id || 'temp-customer',
+          storeId: customer.storeId || settings?.id || '',
+          name: customer.name,
+          phone: customer.phone,
+          address: (customer as any).address || null,
+          rif_nit: (customer as any).rif_nit || (customer as any).rif_nit || null
+        }
         : null;
   // Ensure we resolve address from several possible keys (snake/camel/alt names)
   const resolveAddress = () => {
