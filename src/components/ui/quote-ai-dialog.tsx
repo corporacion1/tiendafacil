@@ -10,10 +10,31 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import type { QuoteTemplate, IndustryType, QuotePrintOptions, QuoteAIDialogProps } from '../quote-generator/types';
 import { QuoteTemplates } from '../quote-generator/quote-templates';
-import { loadQuotePreferences, saveQuotePreferences, loadIndustryConditions, saveIndustryConditions, INDUSTRY_TEMPLATES, DEFAULT_QUOTE_OPTIONS } from '../quote-generator/quote-storage';
+import { loadQuotePreferences, saveQuotePreferences, DEFAULT_QUOTE_OPTIONS } from '../quote-generator/quote-storage';
 import { generateQuotePDF, downloadQuotePDF } from '../quote-generator/quote-pdf-generator';
 import QRCode from 'qrcode';
 import { Plus, Minus } from 'lucide-react';
+
+const QUOTE_GLOBAL_CONDITIONS_KEY = 'tienda_facil_quote_global_conditions';
+
+function loadGlobalConditions(): string {
+  if (typeof window === 'undefined') return '';
+  try {
+    const saved = localStorage.getItem(QUOTE_GLOBAL_CONDITIONS_KEY);
+    return saved || '';
+  } catch (e) {
+    return '';
+  }
+}
+
+function saveGlobalConditions(text: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(QUOTE_GLOBAL_CONDITIONS_KEY, text);
+  } catch (e) {
+    console.error('Error saving global conditions:', e);
+  }
+}
 
 export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleId, settings }: QuoteAIDialogProps) {
   const { toast } = useToast();
@@ -21,8 +42,6 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
   const [selectedTemplate, setSelectedTemplate] = useState<QuoteTemplate>('minimalist');
   const [validDays, setValidDays] = useState(3);
   const [conditionsText, setConditionsText] = useState('');
-  const [industryType, setIndustryType] = useState<IndustryType>('general');
-  const [previousIndustryType, setPreviousIndustryType] = useState<IndustryType>('general');
   const [showWatermark, setShowWatermark] = useState(true);
   const [includeSignature, setIncludeSignature] = useState(true);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
@@ -36,32 +55,19 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
       const prefs = loadQuotePreferences();
       setSelectedTemplate(prefs.template);
       setValidDays(prefs.validDays);
-      setIndustryType(prefs.industryType);
-      setPreviousIndustryType(prefs.industryType);
       setShowWatermark(prefs.showWatermark);
       setIncludeSignature(prefs.includeSignature);
 
-      const savedConditions = loadIndustryConditions(prefs.industryType);
+      const savedConditions = loadGlobalConditions();
       setConditionsText(savedConditions);
     }
   }, [isOpen]);
 
   useEffect(() => {
     if (isOpen && conditionsText) {
-      saveIndustryConditions(industryType, conditionsText);
+      saveGlobalConditions(conditionsText);
     }
-  }, [industryType, conditionsText, isOpen]);
-
-  useEffect(() => {
-    if (isOpen && previousIndustryType !== industryType) {
-      if (previousIndustryType) {
-        saveIndustryConditions(previousIndustryType, conditionsText);
-      }
-      const newConditions = loadIndustryConditions(industryType);
-      setConditionsText(newConditions);
-      setPreviousIndustryType(industryType);
-    }
-  }, [industryType, isOpen, previousIndustryType, conditionsText]);
+  }, [conditionsText, isOpen]);
 
   useEffect(() => {
     const generateQR = async () => {
@@ -82,10 +88,6 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
     };
     generateQR();
   }, [saleId, isOpen]);
-
-  const handlePresetClick = (industry: IndustryType) => {
-    setIndustryType(industry);
-  };
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const totalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);
@@ -123,13 +125,12 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
         template: selectedTemplate,
         validDays,
         conditionsText: conditionsText,
-        industryType,
+        industryType: 'general',
         showWatermark,
         includeSignature
       };
 
       saveQuotePreferences(options);
-      saveIndustryConditions(industryType, conditionsText);
 
       await generateQuotePDF({
         element,
@@ -169,13 +170,12 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
         template: selectedTemplate,
         validDays,
         conditionsText: conditionsText,
-        industryType,
+        industryType: 'general',
         showWatermark,
         includeSignature
       };
 
       saveQuotePreferences(options);
-      saveIndustryConditions(industryType, conditionsText);
 
       await downloadQuotePDF({
         element,
@@ -254,31 +254,15 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Vigencia de la Cotización (días)</label>
-              <Input
-                type="number"
-                value={validDays}
-                onChange={(e) => setValidDays(parseInt(e.target.value) || 3)}
-                min={1}
-                max={365}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">Tipo de Industria</label>
-              <Select value={industryType} onValueChange={(value: IndustryType) => setIndustryType(value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="retail">Retail</SelectItem>
-                  <SelectItem value="services">Servicios</SelectItem>
-                  <SelectItem value="technology">Tecnología</SelectItem>
-                  <SelectItem value="general">General</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div>
+            <label className="text-sm font-medium mb-2 block">Vigencia de la Cotización (días)</label>
+            <Input
+              type="number"
+              value={validDays}
+              onChange={(e) => setValidDays(parseInt(e.target.value) || 3)}
+              min={1}
+              max={365}
+            />
           </div>
 
           <div>
@@ -292,23 +276,6 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
               placeholder="Ingresa las condiciones de venta y garantías..."
               rows={6}
             />
-
-            <div className="flex flex-wrap gap-2 mt-2">
-              <span className="text-sm text-muted-foreground">Plantillas rápidas:</span>
-              {Object.keys(INDUSTRY_TEMPLATES).map(ind => (
-                <button
-                  key={ind}
-                  onClick={() => handlePresetClick(ind as IndustryType)}
-                  className={`px-3 py-1 text-xs rounded-full ${
-                    industryType === ind
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-secondary hover:bg-secondary/80'
-                  }`}
-                >
-                  {ind}
-                </button>
-              ))}
-            </div>
           </div>
 
           <div className="flex gap-4">
@@ -396,7 +363,7 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
                         template: selectedTemplate,
                         validDays,
                         conditionsText: conditionsText,
-                        industryType,
+                        industryType: 'general',
                         showWatermark,
                         includeSignature
                       }}
