@@ -22,6 +22,7 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
   const [validDays, setValidDays] = useState(3);
   const [conditionsText, setConditionsText] = useState('');
   const [industryType, setIndustryType] = useState<IndustryType>('general');
+  const [previousIndustryType, setPreviousIndustryType] = useState<IndustryType>('general');
   const [showWatermark, setShowWatermark] = useState(true);
   const [includeSignature, setIncludeSignature] = useState(true);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
@@ -36,6 +37,7 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
       setSelectedTemplate(prefs.template);
       setValidDays(prefs.validDays);
       setIndustryType(prefs.industryType);
+      setPreviousIndustryType(prefs.industryType);
       setShowWatermark(prefs.showWatermark);
       setIncludeSignature(prefs.includeSignature);
 
@@ -43,6 +45,23 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
       setConditionsText(savedConditions);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen && conditionsText) {
+      saveIndustryConditions(industryType, conditionsText);
+    }
+  }, [industryType, conditionsText, isOpen]);
+
+  useEffect(() => {
+    if (isOpen && previousIndustryType !== industryType) {
+      if (previousIndustryType) {
+        saveIndustryConditions(previousIndustryType, conditionsText);
+      }
+      const newConditions = loadIndustryConditions(industryType);
+      setConditionsText(newConditions);
+      setPreviousIndustryType(industryType);
+    }
+  }, [industryType, isOpen, previousIndustryType, conditionsText]);
 
   useEffect(() => {
     const generateQR = async () => {
@@ -66,8 +85,6 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
 
   const handlePresetClick = (industry: IndustryType) => {
     setIndustryType(industry);
-    const industryConditions = loadIndustryConditions(industry);
-    setConditionsText(industryConditions);
   };
 
   const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
