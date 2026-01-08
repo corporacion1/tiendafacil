@@ -53,20 +53,17 @@ const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewM
 }) => {
   const [imageError, setImageError] = useState(false);
 
-  // Reset imageError when product changes (especially when imageUrl changes)
-  useEffect(() => {
-    setImageError(false);
-  }, [product.id, product.imageUrl, product.images?.length]);
-
   const primaryImage = (product.images && product.images.length > 0)
     ? (product.images[0].thumbnailUrl || product.images[0].url)
     : product.imageUrl;
 
-  // Add timestamp to prevent caching when image is updated
-  // Use a combination of product.id and images.length as cache buster
-  const cacheBust = `${product.id}-${product.images?.length || 0}`;
+  // Reset imageError when the primary image URL changes
+  useEffect(() => {
+    setImageError(false);
+  }, [primaryImage]);
+
   const imageUrl = primaryImage
-    ? `${getDisplayImageUrl(primaryImage)}?v=${cacheBust}`
+    ? getDisplayImageUrl(primaryImage)
     : null;
 
   const getStatusVariant = (status: Product['status']) => {

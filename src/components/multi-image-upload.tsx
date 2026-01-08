@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Upload, X, Image as ImageIcon, AlertCircle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -49,6 +49,11 @@ const SafeImage = ({
   sizes?: string;
 }) => {
   const [imageError, setImageError] = useState(false);
+
+  // Reset imageError when src changes (especially important for image updates)
+  useEffect(() => {
+    setImageError(false);
+  }, [src]);
 
   if (!src || imageError) {
     return (
@@ -288,12 +293,15 @@ export function MultiImageUpload({
 
     if (productId && effectiveStoreId) {
       try {
-        const imageIds = reorderedImages.map(img => img.id || (img as any)?._id);
-        // ✅ CORREGIDO: Endpoint actualizado para Supabase
+        // ✅ CORREGIDO: Enviar el array completo de imágenes, no solo los IDs
         const response = await fetch(`/api/products/${productId}/images`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageIds, storeId: effectiveStoreId })
+          body: JSON.stringify({
+            images: reorderedImages,
+            primaryImageIndex: 0,
+            storeId: effectiveStoreId
+          })
         });
         if (!response.ok) throw new Error('Error al establecer imagen principal en el servidor');
         const result = await response.json();
@@ -313,20 +321,23 @@ export function MultiImageUpload({
     }
     const currentIndex = existingImages.findIndex(img => img.id === imageId);
     if (currentIndex === -1) return;
-    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    const newIndex = direction === 'up' ? currentIndex -1 : currentIndex +1;
     if (newIndex < 0 || newIndex >= existingImages.length) return;
     const updatedImages = [...existingImages];
     [updatedImages[currentIndex], updatedImages[newIndex]] = [updatedImages[newIndex], updatedImages[currentIndex]];
     const reorderedImages = updatedImages.map((img, index) => ({ ...img, order: index }));
 
-    if (productId && activeStoreId) {
+    if (productId && effectiveStoreId) {
       try {
-        const imageIds = reorderedImages.map(img => img.id);
-        // ✅ CORREGIDO: Endpoint actualizado para Supabase
+        // ✅ CORREGIDO: Enviar el array completo de imágenes, no solo los IDs
         const response = await fetch(`/api/products/${productId}/images`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageIds, storeId: activeStoreId })
+          body: JSON.stringify({
+            images: reorderedImages,
+            primaryImageIndex: 0,
+            storeId: effectiveStoreId
+          })
         });
         if (!response.ok) throw new Error('Error al reordenar imágenes en el servidor');
         const result = await response.json();
@@ -336,7 +347,7 @@ export function MultiImageUpload({
         onError('Error al reordenar las imágenes en el servidor.');
       }
     }
-  }, [existingImages, productId, activeStoreId, onImagesChange, onError]);
+  }, [existingImages, productId, effectiveStoreId, onImagesChange, onError]);
 
   return (
     <div className={cn('space-y-4 w-full max-w-full overflow-hidden', className)}>
@@ -440,11 +451,21 @@ export function MultiImageUpload({
               <Card key={image.id} className="relative group hover:shadow-lg transition-shadow w-full">
                 <CardContent className="p-3">
                   <div className="aspect-square relative rounded-lg overflow-hidden bg-muted shadow-sm max-h-[180px] w-full">
-                    <SafeImage
-                      src={image.thumbnailUrl || image.url}
-                      alt={image.alt || `Imagen ${index + 1}`}
-                      className="w-full h-full hover:scale-105 transition-transform duration-200"
-                    />
+                    {(() => {
+                      // Generate cache-buster URL for each image
+                      const imageUrl = image.thumbnailUrl || image.url;
+                      const cacheBuster = image.uploadedAt || Date.now();
+                      const imageWithCacheBuster = imageUrl.includes('?') 
+                        ? `${imageUrl}&v=${cacheBuster}` 
+                        : `${imageUrl}?v=${cacheBuster}`;
+                      return (
+                        <SafeImage
+                          src={imageWithCacheBuster}
+                          alt={image.alt || `Imagen ${index + 1}`}
+                          className="w-full h-full hover:scale-105 transition-transform duration-200"
+                        />
+                      );
+                    })()}
 
                     {index === 0 && (
                       <Badge className="absolute top-3 left-3 text-xs bg-green-500 hover:bg-green-600 shadow-lg">⭐ Principal</Badge>
