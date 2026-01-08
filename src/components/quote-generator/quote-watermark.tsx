@@ -8,7 +8,7 @@ interface QuoteWatermarkProps {
 export function QuoteWatermark({ logoUrl, opacity = 0.05 }: QuoteWatermarkProps) {
   return (
     <div className="watermark" style={{
-      position: 'fixed',
+      position: 'absolute',
       top: '50%',
       left: '50%',
       transform: 'translate(-50%, -50%) rotate(-30deg)',
@@ -20,7 +20,7 @@ export function QuoteWatermark({ logoUrl, opacity = 0.05 }: QuoteWatermarkProps)
       filter: 'grayscale(100%)',
     }}>
       {logoUrl ? (
-        <img src={logoUrl} alt="" style={{ width: '100%', height: 'auto', display: 'block', margin: '0 auto' }} />
+        <img src={logoUrl} alt="" style={{ width: '100%', height: 'auto', maxWidth: '100%', display: 'block', margin: '0 auto' }} />
       ) : null}
     </div>
   );

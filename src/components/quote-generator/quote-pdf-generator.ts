@@ -31,6 +31,7 @@ export async function generateQuotePDF({
         scale: 2,
         useCORS: true,
         logging: false,
+        allowTaint: true,
       },
       jsPDF: {
         unit: 'mm',
@@ -66,6 +67,7 @@ export async function downloadQuotePDF({
         scale: 2,
         useCORS: true,
         logging: false,
+        allowTaint: true,
       },
       jsPDF: {
         unit: 'mm',

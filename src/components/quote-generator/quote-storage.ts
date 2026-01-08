@@ -14,22 +14,18 @@ export const DEFAULT_QUOTE_OPTIONS: QuotePrintOptions = {
 };
 
 export const INDUSTRY_TEMPLATES = {
-  retail: `Garantía de 30 días en defectos de fábrica.
-Devoluciones hasta 30 días con producto sin uso.
+  retail: `Devoluciones hasta 30 días con producto sin uso.
 Precios sujetos a cambios sin previo aviso.`,
 
-  services: `Incluye garantía por 1 año en mano de obra.
-Materiales garantizados por fabricante.
+  services: `Materiales garantizados por fabricante.
 Cambios requieren aprobación previa.
 Precios pueden variar según complejidad del servicio.`,
 
-  technology: `Garantía de 1 año en equipos y 6 meses en accesorios.
-No cubre daños por mal uso o manipulación no autorizada.
+  technology: `No cubre daños por mal uso o manipulación no autorizada.
 Soporte técnico disponible 9am-6pm.
 Precios sujetos a disponibilidad de stock.`,
 
-  general: `Garantía de 30 días en defectos de fábrica.
-Precios sujetos a cambios sin previo aviso.
+  general: `Precios sujetos a cambios sin previo aviso.
 Para confirmar tu pedido, contáctanos.`,
 };
 
