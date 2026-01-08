@@ -9,6 +9,7 @@ import { Share } from "lucide-react";
 import type { CartItem, Customer, Product, SalePayment } from "@/lib/types";
 import { useSettings } from "@/contexts/settings-context";
 import QRCode from "qrcode";
+import { QuoteAIDialog } from "@/components/ui/quote-ai-dialog";
 
 interface TicketPreviewProps {
   isOpen: boolean;
@@ -38,7 +39,12 @@ export function TicketPreview({
   const ticketRef = useRef<HTMLDivElement>(null);
   const [fetchedSale, setFetchedSale] = useState<any>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [isQuoteAIDialogOpen, setIsQuoteAIDialogOpen] = useState(false);
   const { settings, activeSymbol, activeRate } = useSettings();
+
+  const openQuoteAIDialog = () => {
+    setIsQuoteAIDialogOpen(true);
+  };
   // Debug logs to help trace why ticketNumber might not appear
   useEffect(() => {
     if (isOpen && ticketType === 'sale') {
@@ -97,25 +103,31 @@ export function TicketPreview({
   // Resolve customer info: prefer `saleObj` (server record) if present, otherwise use explicit `customer` prop
   const resolvedCustomer = Array.isArray(saleObj)
     ? {
-      name: saleObj[0]?.customerName || saleObj[0]?.customer_name || customer?.name || null,
-      phone: saleObj[0]?.customerPhone || saleObj[0]?.customer_phone || customer?.phone || null,
-      address: saleObj[0]?.customerAddress || saleObj[0]?.customer_address || (customer as any)?.address || null,
-      rif_nit: saleObj[0]?.customerRifNit || saleObj[0]?.customer_rif_nit || (customer as any)?.rif_nit || (customer as any)?.rif_nit || null
-    }
+        id: saleObj[0]?.customerId || customer?.id || 'temp-customer',
+        storeId: saleObj[0]?.storeId || customer?.storeId || settings?.id || '',
+        name: saleObj[0]?.customerName || saleObj[0]?.customer_name || customer?.name || null,
+        phone: saleObj[0]?.customerPhone || saleObj[0]?.customer_phone || customer?.phone || null,
+        address: saleObj[0]?.customerAddress || saleObj[0]?.customer_address || (customer as any)?.address || null,
+        rif_nit: saleObj[0]?.customerRifNit || saleObj[0]?.customer_rif_nit || (customer as any)?.rif_nit || (customer as any)?.rif_nit || null
+      }
     : saleObj
       ? {
-        name: saleObj?.customerName || saleObj?.customer_name || customer?.name || null,
-        phone: saleObj?.customerPhone || saleObj?.customer_phone || customer?.phone || null,
-        address: saleObj?.customerAddress || saleObj?.customer_address || (customer as any)?.address || null,
-        rif_nit: saleObj?.customerRifNit || saleObj?.customer_rif_nit || (customer as any)?.rif_nit || (customer as any)?.rif_nit || null
-      }
+          id: saleObj?.customerId || customer?.id || 'temp-customer',
+          storeId: saleObj?.storeId || customer?.storeId || settings?.id || '',
+          name: saleObj?.customerName || saleObj?.customer_name || customer?.name || null,
+          phone: saleObj?.customerPhone || saleObj?.customer_phone || customer?.phone || null,
+          address: saleObj?.customerAddress || saleObj?.customer_address || (customer as any)?.address || null,
+          rif_nit: saleObj?.customerRifNit || saleObj?.customer_rif_nit || (customer as any)?.rif_nit || (customer as any)?.rif_nit || null
+        }
       : customer
         ? {
-          name: customer.name,
-          phone: customer.phone,
-          address: (customer as any).address || null,
-          rif_nit: (customer as any).rif_nit || (customer as any).rif_nit || null
-        }
+            id: customer.id || 'temp-customer',
+            storeId: customer.storeId || settings?.id || '',
+            name: customer.name,
+            phone: customer.phone,
+            address: (customer as any).address || null,
+            rif_nit: (customer as any).rif_nit || (customer as any).rif_nit || null
+          }
         : null;
   // Ensure we resolve address from several possible keys (snake/camel/alt names)
   const resolveAddress = () => {
@@ -435,13 +447,32 @@ export function TicketPreview({
           {ticketType === 'quote' && onShare && (
             <Button type="button" variant="outline" onClick={onShare} disabled={!displayInfo}>
               <Share className="h-4 w-4 mr-2" />
-              Compartir Cotización
+              Compartir
             </Button>
           )}
-          <Button type="button" onClick={handlePrint} disabled={!displayInfo}>
-            {ticketType === 'quote' ? 'Imprimir Cotización' : 'Confirmar e Imprimir'}
+          <Button type="button" variant="default" onClick={handlePrint} disabled={!displayInfo}>
+            Imprimir
           </Button>
+          {ticketType === 'quote' && (
+            <Button type="button" variant="secondary" onClick={openQuoteAIDialog} disabled={!displayInfo}>
+              ✨ Mejorar con IA
+            </Button>
+          )}
         </DialogFooter>
+
+        {ticketType === 'quote' && (
+          <QuoteAIDialog
+            isOpen={isQuoteAIDialogOpen}
+            onOpenChange={setIsQuoteAIDialogOpen}
+            cartItems={cartItems}
+            customer={resolvedCustomer}
+            saleId={saleId || ''}
+            settings={settings}
+            onPrint={(options) => {
+              console.log('Quote options:', options);
+            }}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
