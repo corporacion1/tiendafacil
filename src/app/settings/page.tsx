@@ -970,14 +970,33 @@ export default function SettingsPage() {
                             </div>
                         </div>
                         <div className="md:col-span-1 space-y-4">
-                            <div className="space-y-2">
+                             <div className="space-y-2">
                                 <Label htmlFor="logoUrl">Logo de la Tienda</Label>
                                 <ImageUpload
                                     currentImage={settings?.logoUrl || ''}
-                                    onImageUploaded={(url) => {
+                                    onImageUploaded={async (url) => {
                                         handleSettingsChange({
                                             target: { id: 'logoUrl', value: url }
                                         } as React.ChangeEvent<HTMLInputElement>);
+
+                                        // Auto-guardar el logoUrl en la base de datos
+                                        try {
+                                            const success = await saveSettings({ logoUrl: url });
+                                            if (success) {
+                                                setHasUnsavedChanges(false);
+                                                toast({
+                                                    title: "Logo guardado",
+                                                    description: "El logo se ha guardado correctamente"
+                                                });
+                                            }
+                                        } catch (error) {
+                                            console.error('Error guardando logo:', error);
+                                            toast({
+                                                variant: "destructive",
+                                                title: "Error al guardar logo",
+                                                description: "El logo se subió pero no se pudo guardar. Presiona 'Guardar Configuración'."
+                                            });
+                                        }
                                     }}
                                 />
                                 <p className="text-sm text-muted-foreground">

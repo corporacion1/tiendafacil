@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       case 'depositary':
         return '/inventory';
       case 'su':
-        return '/dashboard'; // Super usuarios van al dashboard
+        return '/stores-admin'; // Super usuarios van a administración de tiendas
       case 'user':
         return '/catalog'; // Usuarios regulares van al catálogo
       default:
@@ -170,6 +170,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // STEP 3: Redirect to appropriate page based on role
         const redirectUrl = getStoreRedirectUrl(data.user.role);
         console.log('🚀 [Login] Redirecting to:', redirectUrl);
+        console.log('🔍 [Login] Redirect URL for role:', data.user.role);
 
         toast({
           title: "Inicio de sesión exitoso",
@@ -184,9 +185,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           console.log('🚀 [Login] Executing redirect to:', redirectUrl);
           console.log('🔍 [Login] Final activeStoreId check:', localStorage.getItem('activeStoreId'));
 
-          // Force full page reload to ensure all contexts (Settings, etc.) are re-initialized 
-          // with the correct store ID from localStorage. This prevents stale state issues.
-          // SPA navigation to avoid full page reloads
+          // Use SPA navigation to avoid full page reloads
           router.push(redirectUrl);
         }, redirectDelay); // Longer delay for administrative users
 

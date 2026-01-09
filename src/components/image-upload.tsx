@@ -87,10 +87,7 @@ export function ImageUpload({ onImageUploaded, currentImage, className }: ImageU
       setPreviewUrl(data.url);
       onImageUploaded(data.url);
 
-      toast({
-        title: "Imagen subida",
-        description: "La imagen se ha subido correctamente"
-      });
+      // El toast de éxito se maneja en el componente padre si se necesita
 
     } catch (error) {
       console.error('Error uploading image:', error);

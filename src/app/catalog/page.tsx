@@ -393,7 +393,7 @@ const CatalogProductCard = ({
               unoptimized
               onLoad={() => handleImageLoad(displayImageUrl)}
               onError={(e) => {
-console.error(`❌ [CatalogCard] Image load failed for ${product.name} (url=${displayImageUrl})`);
+                console.error(`❌ [CatalogCard] Image load failed for ${product.name} (url=${displayImageUrl})`);
                 handleImageError(displayImageUrl, e);
               }}
             />
@@ -2692,8 +2692,8 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                       <span className="sr-only sm:not-sr-only font-medium">Tiendas</span>
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-2xl max-h-[80vh] rounded-2xl border-0 shadow-2xl bg-gradient-to-br from-background via-background to-purple-50/30">
-                    <DialogHeader className="text-center pb-4">
+                   <DialogContent className="sm:max-w-2xl max-h-[90vh] rounded-2xl border-0 shadow-2xl bg-gradient-to-br from-background via-background to-purple-50/30 flex flex-col p-0">
+                    <DialogHeader className="text-center pb-4 px-6 pt-6 shrink-0">
                       <div className="mx-auto w-16 h-16 bg-gradient-to-br from-purple-100 to-purple-200 rounded-full flex items-center justify-center mb-4 shadow-lg ring-4 ring-purple-100/50">
                         <StoreIcon className="w-8 h-8 text-purple-600" />
                       </div>
@@ -2703,7 +2703,16 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                       </DialogDescription>
                     </DialogHeader>
 
-                    <div className="flex-1 overflow-y-auto py-4 px-2">
+                    <div
+                      id="stores-dialog-scroll"
+                      className="overflow-y-auto px-6 py-4 flex-1"
+                      style={{
+                        scrollbarWidth: 'none',
+                        msOverflowStyle: 'none',
+                        WebkitOverflowScrolling: 'touch',
+                        maxHeight: 'calc(90vh - 200px)'
+                      }}
+                    >
                       {isLoadingProductionStores ? (
                         <div className="flex flex-col items-center justify-center py-12">
                           <div className="w-12 h-12 animate-spin rounded-full border-3 border-purple-200 border-t-purple-600 mb-4" />
@@ -2717,7 +2726,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                       ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {productionStores.map((store) => (
-                            <Card
+                             <Card
                               key={store.id}
                               className={cn(
                                 "cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] border-2",
@@ -2728,11 +2737,11 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                               onClick={() => handleVisitStore(store.id)}
                             >
                               <CardHeader className="pb-3">
-                                <div className="flex items-start justify-between">
-                                  <div className="flex-1">
-                                    <CardTitle className="text-base font-semibold text-purple-900">{store.name}</CardTitle>
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <CardTitle className="text-sm sm:text-base font-semibold text-purple-900 truncate">{store.name}</CardTitle>
                                     {store.businessType && (
-                                      <Badge variant="secondary" className="mt-1 text-xs">
+                                      <Badge variant="secondary" className="mt-1 text-xs inline-block max-w-full truncate">
                                         {store.businessType}
                                       </Badge>
                                     )}
@@ -2746,23 +2755,23 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                                 {store.address && (
                                   <p className="text-xs text-muted-foreground mb-2 flex items-start gap-1">
                                     <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                                    <span className="line-clamp-2">{store.address}</span>
+                                    <span className="line-clamp-2 break-words">{store.address}</span>
                                   </p>
                                 )}
                                 {store.phone && (
                                   <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
                                     <Phone className="w-3 h-3 flex-shrink-0" />
-                                    <span>{store.phone}</span>
+                                    <span className="break-all">{store.phone}</span>
                                   </p>
                                 )}
-                                <div className="flex items-center gap-2 mt-2 pt-2 border-t border-purple-100">
+                                <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-2 border-t border-purple-100">
                                   {store.primaryCurrencySymbol && (
-                                    <Badge variant="outline" className="text-xs">
+                                    <Badge variant="outline" className="text-xs flex-shrink-0">
                                       {store.primaryCurrencySymbol}
                                     </Badge>
                                   )}
                                   {store.secondaryCurrencySymbol && (
-                                    <Badge variant="outline" className="text-xs">
+                                    <Badge variant="outline" className="text-xs flex-shrink-0">
                                       {store.secondaryCurrencySymbol}
                                     </Badge>
                                   )}
@@ -2773,7 +2782,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                                   variant={store.id === activeStoreId ? "default" : "outline"}
                                   size="sm"
                                   className={cn(
-                                    "w-full",
+                                    "w-full text-xs sm:text-sm",
                                     store.id === activeStoreId
                                       ? "bg-purple-600 hover:bg-purple-700"
                                       : "hover:bg-purple-50"
@@ -2791,10 +2800,10 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                         </div>
                       )}
                     </div>
-
-                    <DialogFooter className="pt-4">
+                    
+                    <DialogFooter className="px-6 pt-4 pb-6 shrink-0">
                       <DialogClose asChild>
-                        <Button variant="outline" className="w-full rounded-xl">
+                        <Button variant="outline" className="w-full sm:w-auto rounded-xl">
                           Cerrar
                         </Button>
                       </DialogClose>
@@ -2803,7 +2812,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                 </Dialog>
               )}
 
-                            {isLoadingSettings ? (
+              {isLoadingSettings ? (
                 <div className="h-9 w-9 sm:w-24 bg-muted rounded-md animate-pulse" />
               ) : authUser ? (
                 <DropdownMenu>
@@ -2865,8 +2874,8 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                     <UserCircle className="h-4 w-4 sm:mr-2" />
                     <span className="sr-only sm:not-sr-only">Login</span>
                   </Button>
-                 </LoginModal>
-               )}
+                </LoginModal>
+              )}
             </div>
           </div>
 

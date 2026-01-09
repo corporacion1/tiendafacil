@@ -238,17 +238,32 @@
     padding-right: env(safe-area-inset-right);
   }
   
-  /* Altura de viewport móvil */
-  .mobile-vh {
-    height: 100vh;
-    height: 100dvh; /* Dynamic viewport height para móviles */
-  }
-  
-  /* Máxima altura para modales en móviles */
-  .mobile-modal-height {
-    max-height: 90vh;
-    max-height: 90dvh;
-  }
+   /* Altura de viewport móvil */
+   .mobile-vh {
+     height: 100vh;
+     height: 100dvh; /* Dynamic viewport height para móviles */
+   }
+
+   /* Máxima altura para modales en móviles */
+   .mobile-modal-height {
+     max-height: 90vh;
+     max-height: 90dvh;
+   }
+
+   /* Scrollbar invisible para modal de tiendas */
+   #stores-dialog-scroll::-webkit-scrollbar {
+     display: none !important;
+     width: 0 !important;
+     height: 0 !important;
+   }
+
+   #stores-dialog-scroll::-webkit-scrollbar-track {
+     display: none !important;
+   }
+
+   #stores-dialog-scroll::-webkit-scrollbar-thumb {
+     display: none !important;
+   }
 }
 
 /* Animaciones suaves para modales */
