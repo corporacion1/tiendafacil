@@ -297,6 +297,7 @@ export default function POSPage() {
 
   // Verificar si es SuperUsuario para la configuración local
   const isSuperUser = userProfile?.role === "su";
+  const canEditPrice = userProfile?.role === "su" || userProfile?.role === "admin";
 
   // Hook para productos con sincronización automática
   const {
@@ -1538,6 +1539,22 @@ export default function POSPage() {
       title: "Precio Actualizado",
       description: `Precio de "${itemToUpdate.product.name}" cambiado a ${isRetail ? "mayorista" : "detal"}.`,
     });
+
+    setCartItems((prevItems) =>
+      prevItems.map((item) => {
+        if (item.product.id === productId && item.price === currentPrice) {
+          return { ...item, price: newPrice };
+        }
+        return item;
+      }),
+    );
+  };
+
+  const updateItemPrice = (productId: string, currentPrice: number, newPrice: number) => {
+    const itemToUpdate = cartItems.find(
+      (item) => item.product.id === productId && item.price === currentPrice,
+    );
+    if (!itemToUpdate) return;
 
     setCartItems((prevItems) =>
       prevItems.map((item) => {
@@ -4463,17 +4480,58 @@ export default function POSPage() {
                                   <p className="font-medium text-xs sm:text-sm truncate">
                                     {item.product.name}
                                   </p>
-                                  <p
-                                    className={cn(
-                                      "text-[10px] sm:text-xs truncate",
-                                      item.price === item.product.wholesalePrice
-                                        ? "text-accent-foreground font-semibold"
-                                        : "text-muted-foreground",
-                                    )}
-                                  >
-                                    {activeSymbol}
-                                    {(item.price * activeRate).toFixed(2)}
-                                  </p>
+                                  {canEditPrice ? (
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-[10px] sm:text-xs text-muted-foreground">
+                                        {activeSymbol}
+                                      </span>
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={(item.price * activeRate).toFixed(2)}
+                                        onChange={(e) => {
+                                          const value = e.target.value;
+                                          if (value === "" || /^\d*\.?\d{0,2}$/.test(value)) {
+                                            const newPrice = value === "" ? 0 : parseFloat(value) / activeRate;
+                                            updateItemPrice(
+                                              item.product.id,
+                                              item.price,
+                                              newPrice,
+                                            );
+                                          }
+                                        }}
+                                        onBlur={(e) => {
+                                          const value = parseFloat(e.target.value);
+                                          if (isNaN(value) || value <= 0) {
+                                            updateItemPrice(
+                                              item.product.id,
+                                              item.price,
+                                              item.product.price,
+                                            );
+                                          }
+                                        }}
+                                        className={cn(
+                                          "h-5 sm:h-6 w-16 sm:w-20 text-[10px] sm:text-xs px-1 py-0.5",
+                                          item.price === item.product.wholesalePrice
+                                            ? "text-accent-foreground font-semibold"
+                                            : "",
+                                        )}
+                                      />
+                                    </div>
+                                  ) : (
+                                    <p
+                                      className={cn(
+                                        "text-[10px] sm:text-xs truncate",
+                                        item.price === item.product.wholesalePrice
+                                          ? "text-accent-foreground font-semibold"
+                                          : "text-muted-foreground",
+                                      )}
+                                    >
+                                      {activeSymbol}
+                                      {(item.price * activeRate).toFixed(2)}
+                                    </p>
+                                  )}
                                 </div>
                               </TableCell>
                               <TableCell className="p-1 sm:p-2">
