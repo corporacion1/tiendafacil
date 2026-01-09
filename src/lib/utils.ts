@@ -29,7 +29,7 @@ export const getDisplayImageUrl = (url?: string): string => {
     if (DEBUG_URLS) {
       console.warn(`🔗 [getDisplayImageUrl] Empty URL provided`);
     }
-    return '/api/images/placeholder'; // Fallback to placeholder
+    return '/placeholder.svg'; // Fallback to placeholder
   }
   
   let processedUrl = url;
@@ -136,7 +136,7 @@ export function validateAndFixImageUrl(url: string | undefined): string {
     if (DEBUG_URLS) {
       console.warn(`🔗 [validateAndFixImageUrl] Empty URL provided`);
     }
-    return '/api/images/placeholder'; // Fallback to placeholder
+    return '/placeholder.svg'; // Fallback to placeholder
   }
   
   let fixedUrl = url;

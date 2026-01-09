@@ -393,12 +393,7 @@ const CatalogProductCard = ({
               unoptimized
               onLoad={() => handleImageLoad(displayImageUrl)}
               onError={(e) => {
-                console.error(`❌ [CatalogCard] Image load error for ${product.name}:`, {
-                  src: displayImageUrl,
-                  currentImage,
-                  error: e,
-                  imageIndex: currentImageIndex
-                });
+console.error(`❌ [CatalogCard] Image load failed for ${product.name} (url=${displayImageUrl})`);
                 handleImageError(displayImageUrl, e);
               }}
             />
@@ -2878,7 +2873,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
           {/* Segunda fila - Búsqueda y filtros */}
           <div className="container border-t border-blue-100/50 bg-gradient-to-r from-blue-50/50 to-green-50/50 relative">
 
-            <div className="flex flex-col sm:flex-row gap-3 items-center py-3">
+            <div className="flex flex-col sm:flex-row gap-3 items-center pt-3 pb-0">
               <div className="relative flex-grow w-full">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500" />
                 <Input
@@ -2921,13 +2916,13 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
           </div>
         </header>
 
-        <main className="container py-6">
+        <main className="container pt-0 pb-6">
 
           {/* Banner de Ads con Auto-scroll */}
           {allAds && allAds.length > 0 && (
-            <div className="mb-8 hidden md:block">
-              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-green-50 to-blue-50 border border-green-100 shadow-sm">
-                <div className="relative h-48 sm:h-64" ref={containerRef}>
+            <div className="hidden md:block">
+              <div className="relative overflow-hidden bg-gradient-to-r from-green-50 to-blue-50 border border-green-100 shadow-sm rounded-b-2xl">
+                <div className="relative h-48 sm:h-64 pt-0" ref={containerRef}>
                   {allAds
                     .filter(ad => {
                       const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
@@ -3076,7 +3071,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
           {/* Contenedor con scroll para productos */}
           <div
             ref={productsContainerRef}
-            className="max-h-[calc(100vh-200px)] overflow-y-auto invisible-scroll"
+            className="max-h-[calc(100vh-200px)] overflow-y-auto invisible-scroll pt-4"
           >
             {isLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-6 p-1">

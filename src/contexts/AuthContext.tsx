@@ -109,7 +109,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } catch (error) {
         console.error('Error restoring session:', error);
         localStorage.removeItem('authToken');
-        localStorage.removeItem('activeStoreId');
       } finally {
         setIsLoading(false);
         setSessionRestored(true);
@@ -187,7 +186,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
           // Force full page reload to ensure all contexts (Settings, etc.) are re-initialized 
           // with the correct store ID from localStorage. This prevents stale state issues.
-          window.location.href = redirectUrl;
+          // SPA navigation to avoid full page reloads
+          router.push(redirectUrl);
         }, redirectDelay); // Longer delay for administrative users
 
       } else {
