@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { PinModal } from "@/components/pin-modal";
+import { CartExitModal } from "@/components/CartExitModal";
 import Image from "next/image";
 import {
   PlusCircle,
@@ -493,10 +494,146 @@ export default function POSPage() {
   const [productImageError, setImageError] = useState(false);
 
   const [scannedOrderId, setScannedOrderId] = useState("");
-   // Estado para rastrear el pedido actual que se está editando (para evitar duplicados al guardar cotización)
-  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
-  const [currentOrder, setCurrentOrder] = useState<any | null>(null);
-  const [savedCartItems, setSavedCartItems] = useState<CartItem[] | null>(null);
+    // Estado para rastrear el pedido actual que se está editando (para evitar duplicados al guardar cotización)
+   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
+   const [currentOrder, setCurrentOrder] = useState<any | null>(null);
+   const [savedCartItems, setSavedCartItems] = useState<any | null>(null);
+   const [savedCustomerId, setSavedCustomerId] = useState<string | null>(null);
+
+  const CART_STORAGE_KEY = `TIENDA_FACIL_CART_${activeStoreId}`;
+
+  const getMinimalCart = (items: CartItem[], customerId?: string) => ({
+    customerId: customerId || null,
+    items: items.map(item => ({
+      productId: item.product.id,
+      productName: item.product.name,
+      quantity: item.quantity,
+      price: item.price,
+      sku: item.product.sku,
+    })),
+  });
+
+  useEffect(() => {
+    const saved = localStorage.getItem(CART_STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as any;
+        const items = parsed.items || [];
+        const customerId = parsed.customerId || null;
+        setSavedCartItems({ customerId, items });
+        setSavedCustomerId(customerId);
+      } catch {
+        setSavedCartItems(null);
+        setSavedCustomerId(null);
+      }
+    }
+  }, [CART_STORAGE_KEY]);
+
+  const handleSaveCart = () => {
+    if (cartItems.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Carrito vacío",
+        description: "No hay productos para guardar.",
+      });
+      return;
+    }
+
+    const minimalData = getMinimalCart(cartItems, selectedCustomerId);
+
+    try {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(minimalData));
+      setSavedCartItems(minimalData);
+      setSavedCustomerId(minimalData.customerId);
+      toast({
+        title: "Venta guardada",
+        description: "Carrito guardado en memoria local.",
+      });
+    } catch (error) {
+      console.error('Error guardando en localStorage:', error);
+      toast({
+        variant: "destructive",
+        title: "Error al guardar",
+        description: "Memoria local llena. Procesa la venta o reduce el número de productos.",
+      });
+    }
+  };
+
+  const handleRestoreCart = () => {
+    if (savedCartItems) {
+      const itemsArray = Array.isArray(savedCartItems) ? savedCartItems : (savedCartItems as any).items || [];
+      const customerId = (savedCartItems as any).customerId || savedCustomerId;
+
+      const restoredItems: CartItem[] = itemsArray.map((item: any) => {
+        const product = products.find((p: Product) => p.id === item.productId);
+        return {
+          product: product || {
+            id: item.productId,
+            name: item.productName,
+            price: item.price,
+            wholesalePrice: item.price,
+            stock: 9999,
+            cost: 0,
+            type: 'product',
+            status: 'active',
+            storeId: activeStoreId || '',
+            sku: item.sku || '',
+            barcode: '',
+            images: [],
+            affectsInventory: false,
+            tax1: false,
+            tax2: false,
+            createdAt: new Date().toISOString(),
+            description: '',
+            category: '',
+            familyId: '',
+          } as Product,
+          quantity: item.quantity,
+          price: item.price,
+        };
+      }).filter((item: CartItem) => item.product.id);
+
+      if (restoredItems.length > 0) {
+        setCartItems(restoredItems);
+        if (customerId) {
+          setSelectedCustomerId(customerId);
+        }
+        toast({
+          title: "Venta recuperada",
+          description: `${restoredItems.length} productos restaurados.`,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "No se encontraron los productos en el inventario actual.",
+        });
+      }
+    }
+  };
+
+  const handleClearCart = () => {
+    localStorage.removeItem(CART_STORAGE_KEY);
+    setSavedCartItems(null);
+    setSavedCustomerId(null);
+    setSelectedCustomerId("eventual");
+    clearCart();
+    toast({
+      title: "Carrito limpiado",
+      description: "Venta eliminada de memoria local.",
+    });
+  };
+
+  const currentMinimalCart = getMinimalCart(cartItems, selectedCustomerId);
+  const savedMinimalCart = savedCartItems || { customerId: null, items: [] };
+  const savedItems = savedMinimalCart.items || [];
+
+  const cartMatchesSaved = savedItems.length > 0 &&
+    JSON.stringify(currentMinimalCart) === JSON.stringify(savedMinimalCart);
+
+  const shouldShowRestore = savedItems.length > 0 && cartItems.length === 0;
+  const shouldShowSave = cartItems.length > 0 && !cartMatchesSaved;
+  const shouldShowClear = cartItems.length > 0 && cartMatchesSaved;
 
   // --- Cash Session State ---
   const [activeSession, setActiveSession] = useState<CashSession | null>(null);
@@ -4105,7 +4242,7 @@ export default function POSPage() {
                     <SelectContent>
                       <SelectItem value="all">Todas las familias</SelectItem>
                       {(families || []).map((family) => (
-                        <SelectItem key={family.id} value={family.name}>
+                        <SelectItem key={family.id} value={family.id}>
                           {family.name}
                         </SelectItem>
                       ))}
@@ -4188,7 +4325,27 @@ export default function POSPage() {
                   </div>
                 </div>
 
-                {cartItems.length > 0 && (
+                {shouldShowRestore ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleRestoreCart}
+                    className="flex-shrink-0 h-7 text-xs px-2"
+                  >
+                    <Archive className="h-3 w-3 sm:mr-1" />
+                    <span className="hidden sm:inline">Recuperar</span>
+                  </Button>
+                ) : shouldShowSave ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSaveCart}
+                    className="flex-shrink-0 h-7 text-xs px-2"
+                  >
+                    <Library className="h-3 w-3 sm:mr-1" />
+                    <span className="hidden sm:inline">Guardar</span>
+                  </Button>
+                ) : shouldShowClear ? (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
@@ -4211,17 +4368,14 @@ export default function POSPage() {
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
                         <AlertDialogAction
-                          onClick={() => {
-                            clearCart();
-                            setCurrentOrderId(null);
-                          }}
+                          onClick={handleClearCart}
                         >
                           Sí, vaciar
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
-                )}
+                ) : null}
               </CardHeader>
               <CardContent className="flex-1 flex flex-col gap-2 sm:gap-4 overflow-y-auto p-2 sm:p-6 pt-0 w-full max-w-full overflow-x-hidden">
                 <div className="space-y-2">
@@ -4961,8 +5115,9 @@ export default function POSPage() {
                       </div>
                       <DialogFooter className="gap-2 sm:gap-1 mt-3 sm:mt-4 flex-shrink-0 flex-col sm:flex-row">
                         <Button
-                          type="submit"
+                          type="button"
                           variant="outline"
+                          onClick={() => handleProcessSale(false, false)}
                           disabled={
                             !localSeries ||
                             !localCorrelative ||
@@ -4976,10 +5131,10 @@ export default function POSPage() {
                           <Check className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
                           <span className="hidden sm:inline">
                             {isCreditSale && remainingBalance > 0
-                              ? "Guardar a Crédito"
-                              : "Guardar"}
+                              ? "Procesar a Crédito"
+                              : "Procesar"}
                           </span>
-                          <span className="sm:hidden">Guardar</span>
+                          <span className="sm:hidden">Procesar</span>
                         </Button>
                         <Button
                           type="submit"
@@ -5414,3 +5569,4 @@ export default function POSPage() {
     </div >
   );
 }
+ 
