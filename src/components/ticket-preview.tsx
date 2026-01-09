@@ -22,6 +22,7 @@ interface TicketPreviewProps {
   ticketType?: 'sale' | 'quote';
   payments?: SalePayment[];
   onShare?: () => void;
+  enableTaxCalculation?: boolean;
 }
 
 export function TicketPreview({
@@ -35,6 +36,7 @@ export function TicketPreview({
   ticketType = 'sale',
   payments,
   onShare,
+  enableTaxCalculation = true,
 }: TicketPreviewProps) {
   const ticketRef = useRef<HTMLDivElement>(null);
   const [fetchedSale, setFetchedSale] = useState<any>(null);
@@ -156,18 +158,17 @@ export function TicketPreview({
     let tax1Amount = 0;
     let tax2Amount = 0;
 
-    cartItems.forEach(item => {
-      // The product might not exist if it was deleted, so we check for it.
-      if (!item.product) return;
-
-      const itemSubtotal = item.price * item.quantity;
-      if (item.product.tax1 && settings && settings.tax1 && settings.tax1 > 0) {
-        tax1Amount += itemSubtotal * (settings.tax1 / 100);
-      }
-      if (item.product.tax2 && settings && settings.tax2 && settings.tax2 > 0) {
-        tax2Amount += itemSubtotal * (settings.tax2 / 100);
-      }
-    });
+    if (enableTaxCalculation) {
+      cartItems.forEach((item) => {
+        const itemSubtotal = item.price * item.quantity;
+        if (item.product.tax1 && settings && settings.tax1 && settings.tax1 > 0) {
+          tax1Amount += itemSubtotal * (settings.tax1 / 100);
+        }
+        if (item.product.tax2 && settings && settings.tax2 && settings.tax2 > 0) {
+          tax2Amount += itemSubtotal * (settings.tax2 / 100);
+        }
+      });
+    }
 
     return { tax1Amount, tax2Amount, totalTaxes: tax1Amount + tax2Amount };
   };

@@ -507,9 +507,27 @@ export default function CatalogPage() {
 
 
 
-  // PASO 0: Manejar cambio de tienda por LOGIN (usuario administrativo)
+  // PASO 0: SEGURIDAD - Verificar que usuario administrativo no acceda a tienda incorrecta
   useEffect(() => {
-    // Cuando un usuario administrativo hace login, debe cambiar a su tienda
+    if (authUser && authUser.storeId && authUser.role !== 'user' && urlStoreId) {
+      // Si usuario administrativo intenta acceder a tienda diferente a la suya
+      if (urlStoreId !== authUser.storeId) {
+        console.warn('🚨 [Catalog] SEGURIDAD: Usuario administrativo intentando acceder a tienda no autorizada:', {
+          userEmail: authUser.email,
+          userRole: authUser.role,
+          userStoreId: authUser.storeId,
+          attemptedStoreId: urlStoreId,
+          action: 'Redirecting to user store'
+        });
+        // Redirigir a la tienda del usuario
+        router.replace(`/catalog?storeId=${authUser.storeId}`);
+        return;
+      }
+    }
+  }, [authUser?.email, authUser?.storeId, authUser?.role, urlStoreId, router]);
+
+  // PASO 1: Manejar cambio de tienda por LOGIN (usuario administrativo)
+  useEffect(() => {
     if (authUser && authUser.storeId && authUser.role !== 'user') {
       // Solo cambiar si no hay storeId en URL (para no interferir con links compartidos)
       if (!urlStoreId && authUser.storeId !== activeStoreId) {
@@ -523,11 +541,22 @@ export default function CatalogPage() {
     }
   }, [authUser?.storeId, authUser?.role, activeStoreId, urlStoreId, switchStore]);
 
-  // PASO 1: Cambiar tienda PRIMERO si es necesario (CRÍTICO para multitienda)
+  // PASO 2: Cambiar tienda PRIMERO si es necesario (CRÍTICO para multitienda)
   useEffect(() => {
     // IMPORTANTE: El storeId de la URL SIEMPRE debe cambiar el activeStoreId
     // Esto es fundamental para el correcto funcionamiento de la multitienda
+    // PERO con seguridad: usuarios administrativos solo pueden acceder a su tienda
     if (urlStoreId && urlStoreId !== activeStoreId) {
+      const isUnauthorizedAdminUser = authUser && authUser.role !== 'user' && urlStoreId !== authUser.storeId;
+      
+      if (isUnauthorizedAdminUser) {
+        console.warn('🚨 [Catalog] Intento de cambio de tienda no autorizado:', {
+          userStoreId: authUser.storeId,
+          requestedStoreId: urlStoreId
+        });
+        return;
+      }
+      
       console.log('🏪 [Catalog] CAMBIO DE TIENDA REQUERIDO desde URL:', {
         urlStoreId,
         currentActiveStoreId: activeStoreId,
@@ -537,7 +566,7 @@ export default function CatalogPage() {
     } else if (urlStoreId) {
       console.log('✅ [Catalog] Ya estamos en la tienda correcta:', urlStoreId);
     }
-  }, [urlStoreId, activeStoreId, switchStore]);
+  }, [urlStoreId, activeStoreId, switchStore, authUser?.storeId, authUser?.role]);
 
   // IMPORTANTE: Usar activeStoreId (que ya fue actualizado por switchStore) para consistencia
   const storeIdForCatalog = activeStoreId;
@@ -900,6 +929,13 @@ export default function CatalogPage() {
     setShowStoresDialog(false);
   };
 
+  // Cargar tiendas de producción cuando se abre el diálogo
+  useEffect(() => {
+    if (showStoresDialog) {
+      loadProductionStores();
+    }
+  }, [showStoresDialog]);
+
   // NUEVA FUNCIÓN: Incrementar vistas de anuncios en Supabase
   const incrementAdViewsSupabase = async (adId: string) => {
     try {
@@ -997,13 +1033,6 @@ export default function CatalogPage() {
   useEffect(() => {
     setIsClient(true)
   }, [])
-
-  // Cargar tiendas de producción cuando no hay usuario autenticado
-  useEffect(() => {
-    if (!authUser && showStoresDialog) {
-      loadProductionStores();
-    }
-  }, [authUser, showStoresDialog])
 
   // Funciones de validación
   const validateEmail = (email: string) => {
@@ -2678,139 +2707,128 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                 </Sheet>
               </AddOrderGuard>
 
-              {/* Botón para ver otras tiendas (solo cuando no está logueado) */}
-              {!authUser && (
-                <Dialog open={showStoresDialog} onOpenChange={setShowStoresDialog}>
-                  <DialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="sm:h-auto sm:w-auto sm:px-3 sm:py-2 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700"
-                      onClick={() => setShowStoresDialog(true)}
-                    >
-                      <StoreIcon className="h-4 w-4 sm:mr-2" />
-                      <span className="sr-only sm:not-sr-only font-medium">Tiendas</span>
-                    </Button>
-                  </DialogTrigger>
-                   <DialogContent className="sm:max-w-2xl max-h-[90vh] rounded-2xl border-0 shadow-2xl bg-gradient-to-br from-background via-background to-purple-50/30 flex flex-col p-0">
-                    <DialogHeader className="text-center pb-4 px-6 pt-6 shrink-0">
-                      <div className="mx-auto w-16 h-16 bg-gradient-to-br from-purple-100 to-purple-200 rounded-full flex items-center justify-center mb-4 shadow-lg ring-4 ring-purple-100/50">
-                        <StoreIcon className="w-8 h-8 text-purple-600" />
-                      </div>
-                      <DialogTitle className="text-xl font-semibold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">Tiendas Disponibles</DialogTitle>
-                      <DialogDescription className="text-muted-foreground">
-                        Explora otras tiendas en producción
-                      </DialogDescription>
-                    </DialogHeader>
-
-                    <div
-                      id="stores-dialog-scroll"
-                      className="overflow-y-auto px-6 py-4 flex-1"
-                      style={{
-                        scrollbarWidth: 'none',
-                        msOverflowStyle: 'none',
-                        WebkitOverflowScrolling: 'touch',
-                        maxHeight: 'calc(90vh - 200px)'
-                      }}
-                    >
-                      {isLoadingProductionStores ? (
-                        <div className="flex flex-col items-center justify-center py-12">
-                          <div className="w-12 h-12 animate-spin rounded-full border-3 border-purple-200 border-t-purple-600 mb-4" />
-                          <p className="text-sm text-muted-foreground">Cargando tiendas...</p>
-                        </div>
-                      ) : productionStores.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12">
-                          <StoreIcon className="w-16 h-16 text-muted-foreground/30 mb-4" />
-                          <p className="text-sm text-muted-foreground">No hay tiendas disponibles en este momento.</p>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {productionStores.map((store) => (
-                             <Card
-                              key={store.id}
-                              className={cn(
-                                "cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] border-2",
-                                store.id === activeStoreId
-                                  ? "border-purple-500 bg-purple-50/50"
-                                  : "border-purple-100 hover:border-purple-300"
-                              )}
-                              onClick={() => handleVisitStore(store.id)}
-                            >
-                              <CardHeader className="pb-3">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="flex-1 min-w-0">
-                                    <CardTitle className="text-sm sm:text-base font-semibold text-purple-900 truncate">{store.name}</CardTitle>
-                                    {store.businessType && (
-                                      <Badge variant="secondary" className="mt-1 text-xs inline-block max-w-full truncate">
-                                        {store.businessType}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  {store.id === activeStoreId && (
-                                    <Check className="w-5 h-5 text-purple-600 flex-shrink-0" />
-                                  )}
-                                </div>
-                              </CardHeader>
-                              <CardContent className="pb-3">
-                                {store.address && (
-                                  <p className="text-xs text-muted-foreground mb-2 flex items-start gap-1">
-                                    <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                                    <span className="line-clamp-2 break-words">{store.address}</span>
-                                  </p>
-                                )}
-                                {store.phone && (
-                                  <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
-                                    <Phone className="w-3 h-3 flex-shrink-0" />
-                                    <span className="break-all">{store.phone}</span>
-                                  </p>
-                                )}
-                                <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-2 border-t border-purple-100">
-                                  {store.primaryCurrencySymbol && (
-                                    <Badge variant="outline" className="text-xs flex-shrink-0">
-                                      {store.primaryCurrencySymbol}
-                                    </Badge>
-                                  )}
-                                  {store.secondaryCurrencySymbol && (
-                                    <Badge variant="outline" className="text-xs flex-shrink-0">
-                                      {store.secondaryCurrencySymbol}
-                                    </Badge>
-                                  )}
-                                </div>
-                              </CardContent>
-                              <CardFooter className="pt-0">
-                                <Button
-                                  variant={store.id === activeStoreId ? "default" : "outline"}
-                                  size="sm"
-                                  className={cn(
-                                    "w-full text-xs sm:text-sm",
-                                    store.id === activeStoreId
-                                      ? "bg-purple-600 hover:bg-purple-700"
-                                      : "hover:bg-purple-50"
-                                  )}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleVisitStore(store.id);
-                                  }}
-                                >
-                                  {store.id === activeStoreId ? "Tienda Actual" : "Visitar Tienda"}
-                                </Button>
-                              </CardFooter>
-                            </Card>
-                          ))}
-                        </div>
-                      )}
+              {/* Botón para ver otras tiendas (visible para todos) */}
+              <Dialog open={showStoresDialog} onOpenChange={setShowStoresDialog}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="sm:h-auto sm:w-auto sm:px-3 sm:py-2 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700"
+                    onClick={() => setShowStoresDialog(true)}
+                  >
+                    <StoreIcon className="h-4 w-4 sm:mr-2" />
+                    <span className="sr-only sm:not-sr-only font-medium">Tiendas</span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-2xl max-h-[80vh] rounded-2xl border-0 shadow-2xl bg-gradient-to-br from-background via-background to-purple-50/30">
+                  <DialogHeader className="text-center pb-4">
+                    <div className="mx-auto w-16 h-16 bg-gradient-to-br from-purple-100 to-purple-200 rounded-full flex items-center justify-center mb-4 shadow-lg ring-4 ring-purple-100/50">
+                      <StoreIcon className="w-8 h-8 text-purple-600" />
                     </div>
-                    
-                    <DialogFooter className="px-6 pt-4 pb-6 shrink-0">
-                      <DialogClose asChild>
-                        <Button variant="outline" className="w-full sm:w-auto rounded-xl">
-                          Cerrar
-                        </Button>
-                      </DialogClose>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              )}
+                    <DialogTitle className="text-xl font-semibold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">Tiendas Disponibles</DialogTitle>
+                    <DialogDescription className="text-muted-foreground">
+                      Explora otras tiendas disponibles !!!
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="flex-1 overflow-y-auto py-4 px-2">
+                    {isLoadingProductionStores ? (
+                      <div className="flex flex-col items-center justify-center py-12">
+                        <div className="w-12 h-12 animate-spin rounded-full border-3 border-purple-200 border-t-purple-600 mb-4" />
+                        <p className="text-sm text-muted-foreground">Cargando tiendas...</p>
+                      </div>
+                    ) : productionStores.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12">
+                        <StoreIcon className="w-16 h-16 text-muted-foreground/30 mb-4" />
+                        <p className="text-sm text-muted-foreground">No hay tiendas disponibles en este momento.</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {productionStores.map((store) => (
+                          <Card
+                            key={store.id}
+                            className={cn(
+                              "cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] border-2",
+                              store.id === activeStoreId
+                                ? "border-purple-500 bg-purple-50/50"
+                                : "border-purple-100 hover:border-purple-300"
+                            )}
+                            onClick={() => handleVisitStore(store.id)}
+                          >
+                            <CardHeader className="pb-3">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <CardTitle className="text-base font-semibold text-purple-900">{store.name}</CardTitle>
+                                  {store.businessType && (
+                                    <Badge variant="secondary" className="mt-1 text-xs">
+                                      {store.businessType}
+                                    </Badge>
+                                  )}
+                                </div>
+                                {store.id === activeStoreId && (
+                                  <Check className="w-5 h-5 text-purple-600 flex-shrink-0" />
+                                )}
+                              </div>
+                            </CardHeader>
+                            <CardContent className="pb-3">
+                              {store.address && (
+                                <p className="text-xs text-muted-foreground mb-2 flex items-start gap-1">
+                                  <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                  <span className="line-clamp-2">{store.address}</span>
+                                </p>
+                              )}
+                              {store.phone && (
+                                <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                                  <Phone className="w-3 h-3 flex-shrink-0" />
+                                  <span>{store.phone}</span>
+                                </p>
+                              )}
+                              <div className="flex items-center gap-2 mt-2 pt-2 border-t border-purple-100">
+                                {store.primaryCurrencySymbol && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {store.primaryCurrencySymbol}
+                                  </Badge>
+                                )}
+                                {store.secondaryCurrencySymbol && (
+                                  <Badge variant="outline" className="text-xs">
+                                    {store.secondaryCurrencySymbol}
+                                  </Badge>
+                                )}
+                              </div>
+                            </CardContent>
+                            <CardFooter className="pt-0">
+                              <Button
+                                variant={store.id === activeStoreId ? "default" : "outline"}
+                                size="sm"
+                                className={cn(
+                                  "w-full",
+                                  store.id === activeStoreId
+                                    ? "bg-purple-600 hover:bg-purple-700"
+                                    : "hover:bg-purple-50"
+                                )}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleVisitStore(store.id);
+                                }}
+                              >
+                                {store.id === activeStoreId ? "Tienda Actual" : "Visitar Tienda"}
+                              </Button>
+                            </CardFooter>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <DialogFooter className="pt-4">
+                    <DialogClose asChild>
+                      <Button variant="outline" className="w-full rounded-xl">
+                        Cerrar
+                      </Button>
+                    </DialogClose>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
               {isLoadingSettings ? (
                 <div className="h-9 w-9 sm:w-24 bg-muted rounded-md animate-pulse" />
@@ -3111,8 +3129,8 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
           {itemsForGrid.length === 0 && !isLoading && (
             <div className="text-center py-16 text-gray-500">
               <Package className="mx-auto h-12 w-12 mb-4 text-blue-300" />
-              <h3 className="text-lg font-semibold text-gray-700">No se encontraron productos</h3>
-              <p className="text-gray-500">Intenta ajustar tu búsqueda o filtros.</p>
+              <h3 className="text-lg font-semibold text-gray-700">Estamos buscando tus productos</h3>
+              <p className="text-gray-500">Por favor espera un momento...</p>
             </div>
           )}
         </main>

@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Bar, BarChart, Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from "recharts"
 import { subDays, parseISO, format } from "date-fns"
 
+import { useStoreSecurity } from "@/hooks/use-store-security"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -30,6 +31,8 @@ const getDate = (d: any): Date => {
 }
 
 export default function Dashboard() {
+  useStoreSecurity()
+  
   const { activeSymbol, activeRate, isLoadingSettings, activeStoreId, userProfile, sales, purchases, products, expensePayments } = useSettings()
   const { stats, loading: statsLoading } = useDashboardStats()
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week')

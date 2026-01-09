@@ -38,6 +38,7 @@ import { ProductForm } from "@/components/product-form";
 import { useSettings } from "@/contexts/settings-context";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAutoSync } from "@/hooks/use-auto-sync";
+import { useStoreSecurity } from "@/hooks/use-store-security";
 import { format, parseISO } from "date-fns";
 import { Pagination } from "@/components/ui/pagination";
 import * as XLSX from 'xlsx';
@@ -153,6 +154,8 @@ const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewM
 }
 
 export default function InventoryPage() {
+  useStoreSecurity();
+  
   const { hasPermission } = usePermissions();
   const { toast } = useToast();
   const { activeSymbol, activeRate, activeStoreId, products, setProducts, sales, reloadProducts } = useSettings();

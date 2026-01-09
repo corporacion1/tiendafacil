@@ -139,6 +139,7 @@ import { usePendingOrders } from "@/hooks/usePendingOrders";
 import { useProducts } from "@/hooks/useProducts";
 import { RouteGuard } from "@/components/route-guard";
 import { usePermissions } from "@/hooks/use-permissions";
+import { useStoreSecurity } from "@/hooks/use-store-security";
 import { IDGenerator } from "@/lib/id-generator";
 
 const ProductCard = ({
@@ -276,6 +277,8 @@ const formatPhoneForWhatsApp = (phone: string): string => {
 };
 
 export default function POSPage() {
+  useStoreSecurity();
+  
   const { hasPermission } = usePermissions();
   const { toast } = useToast();
   const {
@@ -483,6 +486,17 @@ export default function POSPage() {
   const [discountNotes, setDiscountNotes] = useState<string>("");
   const [isDiscountDialogOpen, setIsDiscountDialogOpen] = useState(false);
   const [discountPin, setDiscountPin] = useState("");
+
+  // Estado para habilitar/deshabilitar cálculo de impuestos (solo admin/su)
+  const TAX_CALCULATION_KEY = `TIENDA_FACIL_TAX_CALC_${activeStoreId}`;
+  const [enableTaxCalculation, setEnableTaxCalculation] = useState(() => {
+    const saved = localStorage.getItem(TAX_CALCULATION_KEY);
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
+  useEffect(() => {
+    localStorage.setItem(TAX_CALCULATION_KEY, JSON.stringify(enableTaxCalculation));
+  }, [enableTaxCalculation, TAX_CALCULATION_KEY]);
 
   // Estados del scanner
   const [showScanner, setShowScanner] = useState(false);
@@ -1744,14 +1758,16 @@ export default function POSPage() {
     let tax1Amount = 0;
     let tax2Amount = 0;
 
-    cartItems.forEach((item) => {
-      if (item.product.tax1 && settings && settings.tax1 && settings.tax1 > 0) {
-        tax1Amount += item.price * item.quantity * (settings.tax1 / 100);
-      }
-      if (item.product.tax2 && settings && settings.tax2 && settings.tax2 > 0) {
-        tax2Amount += item.price * item.quantity * (settings.tax2 / 100);
-      }
-    });
+    if (enableTaxCalculation) {
+      cartItems.forEach((item) => {
+        if (item.product.tax1 && settings && settings.tax1 && settings.tax1 > 0) {
+          tax1Amount += item.price * item.quantity * (settings.tax1 / 100);
+        }
+        if (item.product.tax2 && settings && settings.tax2 && settings.tax2 > 0) {
+          tax2Amount += item.price * item.quantity * (settings.tax2 / 100);
+        }
+      });
+    }
 
     return { tax1Amount, tax2Amount, totalTaxes: tax1Amount + tax2Amount };
   };
@@ -2612,24 +2628,26 @@ export default function POSPage() {
       let quoteTax1Amount = 0;
       let quoteTax2Amount = 0;
 
-      cartItems.forEach((item) => {
-        if (
-          item.product.tax1 &&
-          settings &&
-          settings.tax1 &&
-          settings.tax1 > 0
-        ) {
-          quoteTax1Amount += item.price * item.quantity * (settings.tax1 / 100);
-        }
-        if (
-          item.product.tax2 &&
-          settings &&
-          settings.tax2 &&
-          settings.tax2 > 0
-        ) {
-          quoteTax2Amount += item.price * item.quantity * (settings.tax2 / 100);
-        }
-      });
+      if (enableTaxCalculation) {
+        cartItems.forEach((item) => {
+          if (
+            item.product.tax1 &&
+            settings &&
+            settings.tax1 &&
+            settings.tax1 > 0
+          ) {
+            quoteTax1Amount += item.price * item.quantity * (settings.tax1 / 100);
+          }
+          if (
+            item.product.tax2 &&
+            settings &&
+            settings.tax2 &&
+            settings.tax2 > 0
+          ) {
+            quoteTax2Amount += item.price * item.quantity * (settings.tax2 / 100);
+          }
+        });
+      }
 
       text += `💵 *RESUMEN:*\n`;
       text += `Subtotal: ${activeSymbol}${(quoteSubtotal * activeRate).toFixed(2)}\n`;
@@ -3875,12 +3893,12 @@ export default function POSPage() {
                           </Badge>
                         )}
                       </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col w-full mx-2 sm:mx-auto">
-                      <form onSubmit={(e) => {
-                        e.preventDefault();
-                        handleProcessSale(false);
-                      }}>
+                     </DialogTrigger>
+                     <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col w-full mx-2 sm:mx-auto">
+                       <form onSubmit={(e) => {
+                         e.preventDefault();
+                         handleProcessSale(false);
+                       }} className="flex flex-col flex-1 h-full">
                         <DialogHeader className="flex-shrink-0">
                           <div className="flex items-center justify-between gap-4">
                             <div>
@@ -3908,7 +3926,7 @@ export default function POSPage() {
                             </Select>
                           </div>
                         </DialogHeader>
-                        <div className="py-4 flex-1 overflow-y-auto">
+                        <div className="py-4 flex-1 overflow-y-auto scrollbar-hide">
                           {isLoadingPendingOrders && <p>Cargando pedidos...</p>}
                           {!isLoadingPendingOrders &&
                             pendingOrdersFromDB.length === 0 ? (
@@ -3948,7 +3966,7 @@ export default function POSPage() {
                               </Button>
                             </div>
                           ) : (
-                            <div className="space-y-4">
+                            <div className="space-y-4 overflow-y-auto scrollbar-hide">
                               {pendingOrdersFromDB
                                 .filter((order) =>
                                   pendingOrdersStatusFilter === "all"
@@ -4851,6 +4869,21 @@ export default function POSPage() {
               <CardFooter className="flex flex-col gap-2 mt-auto border-t pt-2 sm:pt-4 p-2 sm:p-4 w-full max-w-full">
                 {cartItems.length > 0 && (
                   <div className="w-full space-y-2 text-sm">
+                    {canEditPrice && (settings?.tax1 || settings?.tax2) && (
+                      <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
+                        <div className="flex flex-col">
+                          <span className="text-xs font-medium">Cálculo de Impuestos</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {enableTaxCalculation ? 'Impuestos activados' : 'Impuestos desactivados'}
+                          </span>
+                        </div>
+                        <Switch
+                          checked={enableTaxCalculation}
+                          onCheckedChange={setEnableTaxCalculation}
+                          className="data-[state=checked]:bg-primary"
+                        />
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span>Subtotal</span>
                       <span>
@@ -4919,11 +4952,23 @@ export default function POSPage() {
                           </span>
                         </DialogTitle>
                         <DialogDescription className="text-sm sm:text-base">
-                          Total a Pagar:{" "}
-                          <span className="font-bold text-primary">
-                            {activeSymbol}
-                            {(total * activeRate).toFixed(2)}
-                          </span>
+                          <div className="flex flex-col gap-1">
+                            <span>
+                              Total a Pagar:{" "}
+                              <span className="font-bold text-primary">
+                                {activeSymbol}
+                                {(total * activeRate).toFixed(2)}
+                              </span>
+                            </span>
+                            {(settings?.tax1 || settings?.tax2) && (
+                              <span className={cn(
+                                "text-xs font-medium flex items-center gap-1",
+                                enableTaxCalculation ? "text-green-600" : "text-orange-600"
+                              )}>
+                                {enableTaxCalculation ? "Impuestos aplicados" : "Impuestos NO aplicados"}
+                              </span>
+                            )}
+                          </div>
                         </DialogDescription>
                       </DialogHeader>
                       <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide">
@@ -5260,6 +5305,7 @@ export default function POSPage() {
             customer={selectedCustomer}
             payments={ticketType === "sale" ? lastSale?.payments : undefined}
             onShare={ticketType === "quote" ? handleShareQuote : undefined}
+            enableTaxCalculation={enableTaxCalculation}
           />
         )}
 
