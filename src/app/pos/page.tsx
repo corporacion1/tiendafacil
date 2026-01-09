@@ -2227,17 +2227,6 @@ export default function POSPage() {
       // Actualizar estado local
       setSales((prev) => [createdSale, ...prev]);
 
-      // Actualizar stock local de productos
-      let updatedProducts = [...products];
-      for (const item of cartItems) {
-        updatedProducts = updatedProducts.map((p) =>
-          p.id === item.product.id
-            ? { ...p, stock: p.stock - item.quantity }
-            : p,
-        );
-      }
-      setProducts(updatedProducts);
-
       // Increment Local Correlative if used (only affects ticket printing)
       if (localSeries && localCorrelative) {
         const nextCorr = (parseInt(localCorrelative) + 1).toString();
