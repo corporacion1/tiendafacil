@@ -497,8 +497,8 @@ export default function POSPage() {
     // Estado para rastrear el pedido actual que se está editando (para evitar duplicados al guardar cotización)
    const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
    const [currentOrder, setCurrentOrder] = useState<any | null>(null);
-   const [savedCartItems, setSavedCartItems] = useState<any | null>(null);
-   const [savedCustomerId, setSavedCustomerId] = useState<string | null>(null);
+  const [savedCartItems, setSavedCartItems] = useState<any | null>(null);
+  const [savedCustomerId, setSavedCustomerId] = useState<string | null>(null);
 
   const CART_STORAGE_KEY = `TIENDA_FACIL_CART_${activeStoreId}`;
 
@@ -528,6 +528,28 @@ export default function POSPage() {
       }
     }
   }, [CART_STORAGE_KEY]);
+
+  // useEffect para guardar carrito al cerrar/recargar la página
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (cartItems.length > 0) {
+        const message = 'Tienes productos en el carrito. ¿Quieres guardarlos?';
+        e.preventDefault();
+        e.returnValue = message;
+        return message;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      if (cartItems.length > 0) {
+        const minimalData = getMinimalCart(cartItems, selectedCustomerId);
+        localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(minimalData));
+      }
+    };
+  }, [cartItems, selectedCustomerId, CART_STORAGE_KEY]);
 
   const handleSaveCart = () => {
     if (cartItems.length === 0) {
@@ -622,6 +644,16 @@ export default function POSPage() {
       title: "Carrito limpiado",
       description: "Venta eliminada de memoria local.",
     });
+  };
+
+  const handleExitAndSave = () => {
+    handleSaveCart();
+    window.location.href = '/catalog';
+  };
+
+  const handleExitAndClear = () => {
+    handleClearCart();
+    window.location.href = '/catalog';
   };
 
   const currentMinimalCart = getMinimalCart(cartItems, selectedCustomerId);
