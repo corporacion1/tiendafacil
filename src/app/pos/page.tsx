@@ -3339,30 +3339,6 @@ export default function POSPage() {
             : `Pedido ${order.orderId} cargado parcialmente (${loadedCount}/${totalCount} productos)`,
       });
 
-      // Actualizar estado del pedido de 'pending' a 'processing' (ya se hizo arriba)
-      // Esta segunda llamada puede ser redundante, pero la mantenemos para asegurar
-      try {
-        console.log(
-          '🔄 Verificando estado del pedido como "processing":',
-          order.orderId,
-        );
-        await updateOrderStatus(
-          order.orderId,
-          "processing",
-          undefined,
-          userProfile?.displayName ||
-          (userProfile as any)?.name ||
-          "Usuario POS",
-        );
-        console.log("✅ Estado del pedido verificado exitosamente");
-      } catch (statusError) {
-        console.error(
-          "⚠️ Error al verificar estado del pedido (no crítico):",
-          statusError,
-        );
-        // No mostramos error al usuario porque el pedido ya se cargó correctamente
-      }
-
       // Cerrar modal de pedidos pendientes
       document.getElementById("pending-orders-close-button")?.click();
 
@@ -3898,7 +3874,7 @@ export default function POSPage() {
                        <form onSubmit={(e) => {
                          e.preventDefault();
                          handleProcessSale(false);
-                       }} className="flex flex-col flex-1 h-full">
+                       }} className="flex flex-col flex-1 h-full overflow-y-auto scrollbar-hidden p-2">
                         <DialogHeader className="flex-shrink-0">
                           <div className="flex items-center justify-between gap-4">
                             <div>
@@ -3926,11 +3902,11 @@ export default function POSPage() {
                             </Select>
                           </div>
                         </DialogHeader>
-                        <div className="py-4 flex-1 overflow-y-auto scrollbar-hide">
+                        <div className="flex flex-col h-full overflow-y-auto scrollbar-hide">
                           {isLoadingPendingOrders && <p>Cargando pedidos...</p>}
                           {!isLoadingPendingOrders &&
                             pendingOrdersFromDB.length === 0 ? (
-                            <div className="text-center text-muted-foreground py-8">
+                            <div className="text-center text-muted-foreground">
                               <p>No hay pedidos disponibles.</p>
                               <p className="text-xs mt-1">
                                 Los pedidos aparecerán aquí cuando los clientes
@@ -3966,7 +3942,7 @@ export default function POSPage() {
                               </Button>
                             </div>
                           ) : (
-                            <div className="space-y-4 overflow-y-auto scrollbar-hide">
+                            <div className="space-y-4">
                               {pendingOrdersFromDB
                                 .filter((order) =>
                                   pendingOrdersStatusFilter === "all"
