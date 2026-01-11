@@ -35,12 +35,13 @@ export const useUserOrders = (userEmail?: string, storeId?: string): UseUserOrde
 
   const fetchOrders = useCallback(async (showLoadingState = true, forceRefresh = false) => {
     // CORREGIDO: No limpiar pedidos si faltan parámetros, solo no hacer fetch
-    if (!userEmail || !storeId || !isActiveRef.current || !isPageVisibleRef.current) {
-      console.log('⏭️ Skipping fetch - missing parameters or inactive', {
+    if (!userEmail || !storeId || !isActiveRef.current || !isPageVisibleRef.current || !isOnline) {
+      console.log('⏭️ Skipping fetch - missing parameters, inactive or offline', {
         userEmail: !!userEmail,
         storeId: !!storeId,
         isActive: isActiveRef.current,
-        isPageVisible: isPageVisibleRef.current
+        isPageVisible: isPageVisibleRef.current,
+        isOnline
       });
       return;
     }
@@ -196,7 +197,7 @@ export const useUserOrders = (userEmail?: string, storeId?: string): UseUserOrde
   // Cleanup al desmontar
   useEffect(() => {
     return () => {
-      isActiveRef.current = true;  // Reiniciar a true para permitir fetches en proximos montajes
+      isActiveRef.current = false;
       stopPolling();
     };
   }, [stopPolling]);

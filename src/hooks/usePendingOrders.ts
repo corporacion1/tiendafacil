@@ -32,8 +32,10 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
   const MAX_RETRIES = 3;
 
   const fetchOrders = useCallback(async (showLoadingState = true) => {
-    if (!storeId || !isActiveRef.current) {
-      setOrders([]);
+    if (!storeId || !isActiveRef.current || !isOnline) {
+      if (!storeId || (!isOnline && showLoadingState)) {
+        setOrders([]);
+      }
       return;
     }
 
@@ -137,7 +139,7 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
   // Función para actualizar estado de pedido
   const updateOrderStatus = useCallback(async (orderId: string, status: string, saleId?: string, processedBy?: string): Promise<boolean> => {
     try {
-      
+
       if (!storeId) {
         console.error('❌ [POS] No storeId provided for order status update');
         throw new Error('storeId es requerido para actualizar el estado del pedido');
@@ -227,7 +229,7 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
   // Cleanup al desmontar
   useEffect(() => {
     return () => {
-      isActiveRef.current = true;
+      isActiveRef.current = false;
       stopPolling();
     };
   }, [stopPolling]);

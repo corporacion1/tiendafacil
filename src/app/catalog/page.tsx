@@ -505,7 +505,8 @@ export default function CatalogPage() {
 
   // PASO 0: SEGURIDAD - Verificar que usuario administrativo no acceda a tienda incorrecta
   useEffect(() => {
-    if (authUser && authUser.storeId && authUser.role !== 'user' && urlStoreId) {
+    // Los Super Usuarios (su) pueden acceder a cualquier tienda
+    if (authUser && authUser.storeId && authUser.role !== 'user' && authUser.role !== 'su' && urlStoreId) {
       // Si usuario administrativo intenta acceder a tienda diferente a la suya
       if (urlStoreId !== authUser.storeId) {
         console.warn('🚨 [Catalog] SEGURIDAD: Usuario administrativo intentando acceder a tienda no autorizada:', {
@@ -543,7 +544,11 @@ export default function CatalogPage() {
     // Esto es fundamental para el correcto funcionamiento de la multitienda
     // PERO con seguridad: usuarios administrativos solo pueden acceder a su tienda
     if (urlStoreId && urlStoreId !== activeStoreId) {
-      const isUnauthorizedAdminUser = authUser && authUser.role !== 'user' && urlStoreId !== authUser.storeId;
+      // Los super usuarios (su) tienen permiso para ver cualquier tienda
+      const isUnauthorizedAdminUser = authUser &&
+        authUser.role !== 'user' &&
+        authUser.role !== 'su' &&
+        urlStoreId !== authUser.storeId;
 
       if (isUnauthorizedAdminUser) {
         console.warn('🚨 [Catalog] Intento de cambio de tienda no autorizado:', {
@@ -609,7 +614,7 @@ export default function CatalogPage() {
 
   const [catalogStoreSettings, setCatalogStoreSettings] = useState<Store | null>(null);
   const [loadingCatalogStore, setLoadingCatalogStore] = useState(false);
-  const isLoading = isLoadingSettings || loadingCatalogStore;
+  const isLoading = isLoadingSettings || loadingCatalogStore || (isLoadingProducts && products.length === 0);
 
   // NUEVA FUNCIÓN: Cargar tienda desde Supabase
   const loadStoreFromSupabase = async (storeId: string) => {
@@ -921,6 +926,10 @@ export default function CatalogPage() {
   };
 
   const handleVisitStore = (storeId: string) => {
+    console.log('🏪 [Catalog] Iniciando cambio de tienda a:', storeId);
+    // Cambiar estado global primero para reactividad inmediata
+    switchStore(storeId);
+    // Luego actualizar URL para persistencia
     router.push(`/catalog?storeId=${storeId}`);
     setShowStoresDialog(false);
   };
@@ -1241,68 +1250,7 @@ export default function CatalogPage() {
     }
   }, [allAds?.length, currentStoreSettings?.businessType]); // Removido currentAdIndex para evitar loop
 
-  useEffect(() => {
-    if (!isAutoScrolling || !productsContainerRef.current) {
-      return;
-    }
 
-    const container = productsContainerRef.current;
-    let scrollTimeout: NodeJS.Timeout;
-    let isActive = true;
-
-    const performAutoScroll = () => {
-      if (!isActive || !container) return;
-
-      const scrollHeight = container.scrollHeight;
-      const containerHeight = container.clientHeight;
-      const maxScroll = scrollHeight - containerHeight;
-
-      if (maxScroll <= 0) {
-        scrollTimeout = setTimeout(performAutoScroll, 2000);
-        return;
-      }
-
-      // Calculate step based on actual item height + gap
-      // Find the grid container (first child)
-      const grid = container.querySelector('.grid') as HTMLElement;
-      const firstItem = grid?.firstElementChild as HTMLElement;
-
-      // Default to 400 if item not found, otherwise use item height + gap (24px for gap-6)
-      const scrollStep = firstItem ? firstItem.offsetHeight + 24 : 400;
-
-      // Consistent current position
-      const currentPos = container.scrollTop;
-
-      if (currentPos >= maxScroll - 10) {
-        // Reached end, resetting to top
-        container.scrollTo({ top: 0, behavior: 'smooth' });
-        scrollTimeout = setTimeout(performAutoScroll, 4000);
-      } else {
-        const targetPosition = Math.min(currentPos + scrollStep, maxScroll);
-
-        container.scrollTo({
-          top: targetPosition,
-          behavior: 'smooth'
-        });
-
-        // Load more items if we are getting close to the end of visible items
-        if (targetPosition >= maxScroll - 800) {
-          setVisibleItemsCount(prev => Math.min(prev + 12, itemsForGrid.length));
-        }
-
-        scrollTimeout = setTimeout(performAutoScroll, 3500);
-      }
-    };
-
-    scrollTimeout = setTimeout(performAutoScroll, 2000);
-
-    return () => {
-      isActive = false;
-      if (scrollTimeout) {
-        clearTimeout(scrollTimeout);
-      }
-    };
-  }, [isAutoScrolling, itemsForGrid.length]);
 
 
 
@@ -1470,10 +1418,10 @@ export default function CatalogPage() {
     }
   }, [searchTerm]);
 
-  // Reset pagination when filters change
+  // Reset pagination when filters or products change significantly
   useEffect(() => {
     setVisibleItemsCount(24);
-  }, [searchTerm, selectedFamily]);
+  }, [searchTerm, selectedFamily, storeIdForCatalog, products.length === 0]);
 
   const validatePhoneNumber = (phone: string): string | null => {
     if (!phone) return "El teléfono es requerido.";
@@ -1572,6 +1520,69 @@ export default function CatalogPage() {
     }
     return items;
   }, [sortedAndFilteredProducts, allAds, currentStoreSettings.businessType]);
+
+  useEffect(() => {
+    if (!isAutoScrolling || !productsContainerRef.current) {
+      return;
+    }
+
+    const container = productsContainerRef.current;
+    let scrollTimeout: NodeJS.Timeout;
+    let isActive = true;
+
+    const performAutoScroll = () => {
+      if (!isActive || !container) return;
+
+      const scrollHeight = container.scrollHeight;
+      const containerHeight = container.clientHeight;
+      const maxScroll = scrollHeight - containerHeight;
+
+      if (maxScroll <= 0) {
+        scrollTimeout = setTimeout(performAutoScroll, 2000);
+        return;
+      }
+
+      // Calculate step based on actual item height + gap
+      // Find the grid container (first child)
+      const grid = container.querySelector('.grid') as HTMLElement;
+      const firstItem = grid?.firstElementChild as HTMLElement;
+
+      // Default to 400 if item not found, otherwise use item height + gap (24px for gap-6)
+      const scrollStep = firstItem ? firstItem.offsetHeight + 24 : 400;
+
+      // Consistent current position
+      const currentPos = container.scrollTop;
+
+      if (currentPos >= maxScroll - 10) {
+        // Reached end, resetting to top
+        container.scrollTo({ top: 0, behavior: 'smooth' });
+        scrollTimeout = setTimeout(performAutoScroll, 4000);
+      } else {
+        const targetPosition = Math.min(currentPos + scrollStep, maxScroll);
+
+        container.scrollTo({
+          top: targetPosition,
+          behavior: 'smooth'
+        });
+
+        // Load more items if we are getting close to the end of visible items
+        if (targetPosition >= maxScroll - 800) {
+          setVisibleItemsCount(prev => Math.min(prev + 12, itemsForGrid.length));
+        }
+
+        scrollTimeout = setTimeout(performAutoScroll, 3500);
+      }
+    };
+
+    scrollTimeout = setTimeout(performAutoScroll, 2000);
+
+    return () => {
+      isActive = false;
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+      }
+    };
+  }, [isAutoScrolling, itemsForGrid.length]);
 
   const handleOpenOrderDialog = () => {
     if (cart.length === 0) {
