@@ -2733,14 +2733,19 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                     <span className="sr-only sm:not-sr-only font-medium">Tiendas</span>
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-3xl border-0 shadow-2xl bg-gradient-to-br from-background via-background to-purple-50/30">
-                  <DialogHeader className="px-6 pt-8 pb-4 flex flex-col items-center text-center">
-                    <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-purple-200 rounded-full flex items-center justify-center mb-4 shadow-lg ring-4 ring-purple-100/50">
-                      <StoreIcon className="w-8 h-8 text-purple-600" />
+                <DialogContent className="sm:max-w-3xl w-[95vw] max-h-[85vh] flex flex-col p-0 overflow-hidden rounded-[2.5rem] border-0 shadow-2xl bg-white">
+                  <DialogHeader className="relative px-8 pt-12 pb-8 flex flex-col items-center text-center bg-gradient-to-b from-purple-50/50 to-transparent">
+
+
+                    <div className="w-24 h-24 bg-gradient-to-tr from-purple-600 to-indigo-600 rounded-[2rem] flex items-center justify-center mb-6 shadow-2xl shadow-purple-500/30 relative">
+                      <StoreIcon className="w-12 h-12 text-white relative z-10" />
                     </div>
-                    <DialogTitle className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">Tiendas Disponibles</DialogTitle>
-                    <DialogDescription className="text-muted-foreground mt-2 max-w-md mx-auto">
-                      Explora nuestro ecosistema de tiendas y descubre nuevos productos
+
+                    <DialogTitle className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900 leading-tight">
+                      Tu <span className="text-purple-600">TiendaFácil</span>
+                    </DialogTitle>
+                    <DialogDescription className="text-lg text-gray-500 mt-3 max-w-sm mx-auto font-medium leading-tight">
+                      Portal exclusivo a los mejores comercios.
                     </DialogDescription>
                   </DialogHeader>
 
@@ -2756,35 +2761,34 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                         <p className="text-sm text-muted-foreground">No hay tiendas disponibles en este momento.</p>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pb-8">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pb-10">
                         {productionStores.map((store) => (
                           <Card
                             key={store.id}
                             className={cn(
-                              "group cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-[1.01] border border-purple-100 overflow-hidden flex flex-col h-full",
+                              "group cursor-pointer transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 border-0 bg-white shadow-lg shadow-gray-200/50 overflow-hidden flex flex-col h-full",
                               store.id === activeStoreId
-                                ? "border-purple-600 bg-purple-50/50 ring-2 ring-purple-100"
-                                : "hover:border-purple-300"
+                                ? "ring-2 ring-purple-500 bg-purple-50/30"
+                                : "hover:ring-1 hover:ring-purple-200"
                             )}
                             onClick={() => handleVisitStore(store.id)}
                           >
-                            <div className="flex flex-row sm:flex-col h-full">
-                              {/* Logo - Tamaño pequeño en móvil, banner-like en escritorio */}
-                              <div className="w-24 sm:w-full h-auto sm:aspect-video bg-gradient-to-br from-purple-50 to-white flex items-center justify-center p-3 sm:pb-0 border-r sm:border-r-0 sm:border-b border-purple-50 flex-shrink-0">
+                            <div className="flex flex-row h-full">
+                              <div className="w-24 sm:w-28 bg-gray-50 flex items-center justify-center p-3 flex-shrink-0 border-r border-gray-100">
                                 {store.logoUrl ? (
-                                  <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden shadow-sm ring-2 ring-white">
+                                  <div className="relative w-16 h-16 sm:w-18 sm:h-18 rounded-2xl overflow-hidden shadow-sm bg-white">
                                     <Image
                                       src={store.logoUrl}
                                       alt={store.name}
                                       fill
-                                      className="object-cover"
-                                      sizes="(max-width: 640px) 64px, 80px"
+                                      className="object-cover transition-transform group-hover:scale-110"
+                                      sizes="80px"
                                       unoptimized
                                     />
                                   </div>
                                 ) : (
-                                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-purple-100 flex items-center justify-center text-purple-600 shadow-inner">
-                                    <StoreIcon className="w-8 h-8 sm:w-10 sm:h-10 opacity-70" />
+                                  <div className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl bg-purple-100 flex items-center justify-center text-purple-600 group-hover:bg-purple-200 transition-colors">
+                                    <StoreIcon className="w-8 h-8 opacity-70" />
                                   </div>
                                 )}
                               </div>
@@ -2792,71 +2796,53 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                               <div className="flex-1 flex flex-col p-3 sm:p-4 min-w-0">
                                 <div className="flex items-start justify-between mb-1">
                                   <div className="flex-1 min-w-0 pr-2">
-                                    <h3 className="text-sm sm:text-lg font-bold text-purple-900 truncate group-hover:text-purple-700 transition-colors">
+                                    <h3 className="text-[14px] sm:text-base font-bold text-gray-900 truncate group-hover:text-purple-600 transition-colors">
                                       {store.name}
                                     </h3>
                                     {store.businessType && (
-                                      <Badge variant="secondary" className="text-[10px] sm:text-xs py-0 sm:py-0.5 px-1.5 bg-purple-100/50 text-purple-700 border-purple-100">
+                                      <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-gray-100 text-gray-500 group-hover:bg-purple-100 group-hover:text-purple-600 transition-colors">
                                         {store.businessType}
-                                      </Badge>
+                                      </span>
                                     )}
                                   </div>
                                   {store.id === activeStoreId && (
-                                    <div className="bg-purple-600 rounded-full p-1 shadow-md">
-                                      <Check className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+                                    <div className="w-5 h-5 bg-purple-600 rounded-full flex items-center justify-center shrink-0">
+                                      <Check className="w-3 h-3 text-white" />
                                     </div>
                                   )}
                                 </div>
 
-                                {/* Descripción mínima en móvil */}
-                                <div className="space-y-1 my-2">
-                                  {store.address && (
-                                    <p className="text-[11px] sm:text-xs text-muted-foreground flex items-center gap-1 leading-tight line-clamp-1 sm:line-clamp-2">
-                                      <MapPin className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-purple-400 flex-shrink-0" />
-                                      {store.address}
-                                    </p>
-                                  )}
-
-                                  {/* Mostrar detalles extras solo en desktop o si hay espacio */}
-                                  <div className="hidden sm:block">
-                                    {store.phone && (
-                                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                        <Phone className="w-3 h-3 text-purple-400 flex-shrink-0" />
-                                        {store.phone}
-                                      </p>
-                                    )}
-                                    <div className="flex items-center gap-1.5 mt-3 pt-2 border-t border-purple-100/50">
-                                      {store.primaryCurrencySymbol && (
-                                        <Badge variant="outline" className="text-[10px] sm:text-xs border-purple-200 text-purple-600 font-medium">
-                                          {store.primaryCurrencySymbol}
-                                        </Badge>
-                                      )}
-                                      {store.secondaryCurrencySymbol && (
-                                        <Badge variant="outline" className="text-[10px] sm:text-xs border-purple-200 text-violet-600 font-medium">
-                                          {store.secondaryCurrencySymbol}
-                                        </Badge>
-                                      )}
-                                    </div>
+                                {store.address && (
+                                  <div className="mt-2 text-[11px] sm:text-xs text-gray-400 flex items-center gap-1.5 truncate">
+                                    <MapPin className="w-3 h-3 text-gray-300 flex-shrink-0" />
+                                    {store.address}
                                   </div>
-                                </div>
+                                )}
 
-                                <div className="mt-auto pt-1 sm:pt-4">
+                                <div className="mt-auto pt-4 flex items-center justify-between border-t border-purple-50">
+                                  <div className="flex items-center gap-1.5">
+                                    {store.primaryCurrencySymbol && (
+                                      <span className="text-[10px] font-bold text-purple-500 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100 uppercase">
+                                        {store.primaryCurrencySymbol}
+                                      </span>
+                                    )}
+                                  </div>
                                   <Button
-                                    variant={store.id === activeStoreId ? "default" : "outline"}
+                                    variant={store.id === activeStoreId ? "default" : "secondary"}
                                     size="sm"
                                     className={cn(
-                                      "w-full h-8 sm:h-9 text-xs sm:text-sm rounded-lg sm:rounded-xl transition-all font-semibold",
+                                      "h-8 text-[11px] font-bold rounded-lg transition-all px-4",
                                       store.id === activeStoreId
-                                        ? "bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-200"
-                                        : "border-purple-200 text-purple-700 hover:bg-purple-50 hover:border-purple-400"
+                                        ? "bg-purple-600 hover:bg-purple-700 shadow-md shadow-purple-600/20"
+                                        : "bg-purple-50 text-purple-600 hover:bg-purple-100"
                                     )}
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleVisitStore(store.id);
                                     }}
                                   >
-                                    {store.id === activeStoreId ? 'Tienda actual' : 'Ir a tienda'}
-                                    <ArrowRight className="ml-1.5 h-3 w-3 sm:h-4 sm:w-4" />
+                                    {store.id === activeStoreId ? 'Actual' : 'Entrar'}
+                                    <ArrowRight className="ml-1 w-3 h-3 group-hover:translate-x-1 transition-transform" />
                                   </Button>
                                 </div>
                               </div>
@@ -2866,14 +2852,6 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                       </div>
                     )}
                   </div>
-
-                  <DialogFooter className="pt-4">
-                    <DialogClose asChild>
-                      <Button variant="outline" className="w-full rounded-xl">
-                        Cerrar
-                      </Button>
-                    </DialogClose>
-                  </DialogFooter>
                 </DialogContent>
               </Dialog>
 
