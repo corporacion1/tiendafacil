@@ -57,10 +57,10 @@ interface SettingsContextType {
   seedDatabase: (storeId: string) => Promise<boolean>;
   fetchCurrencyRates: () => Promise<CurrencyRate | null>;
   saveCurrencyRate: (rate: number, userName: string) => Promise<boolean>;
-  reloadProducts: () => Promise<void>;
+  reloadProducts: () => Promise<any>;
   // Funciones de sincronización automática
   syncAfterSave: (storeId: string) => Promise<void>;
-  syncProducts: () => Promise<void>;
+  syncProducts: () => Promise<any>;
 }
 
 
@@ -127,7 +127,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const [isClient, setIsClient] = useState(false);
 
   // Función para cargar datos desde Supabase - ESTABILIZADA
-  const loadDataFromSupabase = useCallback(async (storeId: string) => {
+  const loadDataFromSupabase = useCallback(async (storeId: string, minimal: boolean = false) => {
     try {
       setIsLoading(true);
 
@@ -218,10 +218,25 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
           .catch(() => []),
 
         // Cargar pagos de gastos
-        fetch(`/api/payments?storeId=${storeId}`)
+        !minimal ? fetch(`/api/payments?storeId=${storeId}`)
           .then(res => res.ok ? res.json() : [])
-          .catch(() => [])
+          .catch(() => []) : Promise.resolve([])
       ];
+
+      // CRÍTICO: Si es minimal, vaciar promesas que no necesitamos
+      if (minimal) {
+        // Mantenemos: settings[0], products[154], families[184], currency-rates[216], ads[195]
+        promises[1] = Promise.resolve([]); // Sales
+        promises[2] = Promise.resolve([]); // Purchases
+        promises[3] = Promise.resolve([]); // Customers
+        promises[4] = Promise.resolve([]); // Suppliers
+        promises[5] = Promise.resolve([]); // Units
+        promises[7] = Promise.resolve([]); // Warehouses
+        promises[9] = Promise.resolve([]); // Users
+        promises[10] = Promise.resolve([]); // CashSessions
+        promises[11] = Promise.resolve([]); // PendingOrders
+        promises[13] = Promise.resolve([]); // ExpensePayments
+      }
 
       // Ejecutar todas las peticiones en paralelo
       const results = await Promise.allSettled(promises);
@@ -429,24 +444,23 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     if (authActiveStoreId && isClient) {
       console.log('🔄 [SettingsContext] ActiveStoreId changed, reloading data:', authActiveStoreId);
 
-      // CRITICAL FIX: Immediate sync for administrative users after login
-      // This ensures data is available quickly after store switch
+      // CRITICAL FIX: Determine if we need full data based on route
+      const isCatalogRoute = pathname.startsWith('/catalog');
       const isAdministrativeUser = authUser && ['admin', 'pos', 'depositary'].includes(authUser.role);
 
-      if (isAdministrativeUser) {
-        console.log('⚡ [SettingsContext] Administrative user detected - immediate data sync');
-        // Load data immediately for administrative users
-        loadDataFromSupabase(authActiveStoreId);
+      if (isAdministrativeUser && !isCatalogRoute) {
+        console.log('⚡ [SettingsContext] Administrative user on admin route - immediate full data sync');
+        loadDataFromSupabase(authActiveStoreId, false);
       } else {
-        // Small delay for regular users to avoid unnecessary API calls
         const timeoutId = setTimeout(() => {
-          loadDataFromSupabase(authActiveStoreId);
+          console.log(`🔄 [SettingsContext] Syncing data (minimal: ${isCatalogRoute})`);
+          loadDataFromSupabase(authActiveStoreId, isCatalogRoute);
         }, 100);
 
         return () => clearTimeout(timeoutId);
       }
     }
-  }, [authActiveStoreId, isClient, loadDataFromSupabase, authUser?.role]);
+  }, [authActiveStoreId, isClient, loadDataFromSupabase, authUser?.role, pathname]);
 
   // Sincroniza userProfile con authUser
   useEffect(() => {
@@ -623,7 +637,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       const processedRates = rates.map((rate: Record<string, unknown>) => ({
         ...rate,
         id: (rate._id as string) || (rate.id as string) || `rate-${(rate.date as string) || Date.now()}`,
-        rate: rate.rate || rate.value ||1,
+        rate: rate.rate || rate.value || 1,
         date: (rate.date as string) || new Date().toISOString(),
         createdBy: rate.createdBy || rate.userId || 'Sistema'
       }));
@@ -678,7 +692,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     localStorage.setItem(ACTIVE_STORE_ID_STORAGE_KEY, storeId);
 
     // Recargar datos de configuración desde Supabase
-    await loadDataFromSupabase(storeId);
+    // OMITIDO: El useEffect ya se encarga de sincronizar cuando cambia activeStoreId
+    // await loadDataFromSupabase(storeId);
 
     // Removido toast para evitar loops infinitos
   }, [loadDataFromSupabase, setAuthActiveStoreId]); // Removido toast de dependencias

@@ -588,7 +588,8 @@ export default function CatalogPage() {
     products: syncedProducts,
     isLoading: isLoadingProducts,
     isPolling: isPollingProducts,
-    lastUpdated: productsLastUpdated
+    lastUpdated: productsLastUpdated,
+    error: productsError
   } = useProducts(storeIdForCatalog);
 
   // Usar productos sincronizados si están disponibles, sino usar del contexto
@@ -642,7 +643,9 @@ export default function CatalogPage() {
     const loadCatalogStoreSettings = async () => {
       if (!storeIdForCatalog) return;
 
+      // SI ya tenemos los settings en el contexto y coinciden, no re-cargar
       if (loggedInUserSettings && loggedInUserSettings.storeId === storeIdForCatalog) {
+        console.log('✅ [Catalog] Usando settings del contexto:', storeIdForCatalog);
         setCatalogStoreSettings(loggedInUserSettings);
         return;
       }
@@ -2730,18 +2733,18 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                     <span className="sr-only sm:not-sr-only font-medium">Tiendas</span>
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-2xl max-h-[80vh] rounded-2xl border-0 shadow-2xl bg-gradient-to-br from-background via-background to-purple-50/30">
-                  <DialogHeader className="text-center pb-4">
-                    <div className="mx-auto w-16 h-16 bg-gradient-to-br from-purple-100 to-purple-200 rounded-full flex items-center justify-center mb-4 shadow-lg ring-4 ring-purple-100/50">
+                <DialogContent className="sm:max-w-5xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-3xl border-0 shadow-2xl bg-gradient-to-br from-background via-background to-purple-50/30">
+                  <DialogHeader className="px-6 pt-8 pb-4 flex flex-col items-center text-center">
+                    <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-purple-200 rounded-full flex items-center justify-center mb-4 shadow-lg ring-4 ring-purple-100/50">
                       <StoreIcon className="w-8 h-8 text-purple-600" />
                     </div>
-                    <DialogTitle className="text-xl font-semibold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">Tiendas Disponibles</DialogTitle>
-                    <DialogDescription className="text-muted-foreground">
-                      Explora otras tiendas disponibles !!!
+                    <DialogTitle className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">Tiendas Disponibles</DialogTitle>
+                    <DialogDescription className="text-muted-foreground mt-2 max-w-md mx-auto">
+                      Explora nuestro ecosistema de tiendas y descubre nuevos productos
                     </DialogDescription>
                   </DialogHeader>
 
-                  <div className="flex-1 overflow-y-auto py-4 px-2">
+                  <div className="flex-1 overflow-y-auto invisible-scroll scrollbar-hide py-4 px-4 sm:px-6">
                     {isLoadingProductionStores ? (
                       <div className="flex flex-col items-center justify-center py-12">
                         <div className="w-12 h-12 animate-spin rounded-full border-3 border-purple-200 border-t-purple-600 mb-4" />
@@ -2753,77 +2756,111 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                         <p className="text-sm text-muted-foreground">No hay tiendas disponibles en este momento.</p>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pb-8">
                         {productionStores.map((store) => (
                           <Card
                             key={store.id}
                             className={cn(
-                              "cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] border-2",
+                              "group cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-[1.01] border border-purple-100 overflow-hidden flex flex-col h-full",
                               store.id === activeStoreId
-                                ? "border-purple-500 bg-purple-50/50"
-                                : "border-purple-100 hover:border-purple-300"
+                                ? "border-purple-600 bg-purple-50/50 ring-2 ring-purple-100"
+                                : "hover:border-purple-300"
                             )}
                             onClick={() => handleVisitStore(store.id)}
                           >
-                            <CardHeader className="pb-3">
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <CardTitle className="text-base font-semibold text-purple-900">{store.name}</CardTitle>
-                                  {store.businessType && (
-                                    <Badge variant="secondary" className="mt-1 text-xs">
-                                      {store.businessType}
-                                    </Badge>
+                            <div className="flex flex-row sm:flex-col h-full">
+                              {/* Logo - Tamaño pequeño en móvil, banner-like en escritorio */}
+                              <div className="w-24 sm:w-full h-auto sm:aspect-video bg-gradient-to-br from-purple-50 to-white flex items-center justify-center p-3 sm:pb-0 border-r sm:border-r-0 sm:border-b border-purple-50 flex-shrink-0">
+                                {store.logoUrl ? (
+                                  <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden shadow-sm ring-2 ring-white">
+                                    <Image
+                                      src={store.logoUrl}
+                                      alt={store.name}
+                                      fill
+                                      className="object-cover"
+                                      sizes="(max-width: 640px) 64px, 80px"
+                                      unoptimized
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-purple-100 flex items-center justify-center text-purple-600 shadow-inner">
+                                    <StoreIcon className="w-8 h-8 sm:w-10 sm:h-10 opacity-70" />
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex-1 flex flex-col p-3 sm:p-4 min-w-0">
+                                <div className="flex items-start justify-between mb-1">
+                                  <div className="flex-1 min-w-0 pr-2">
+                                    <h3 className="text-sm sm:text-lg font-bold text-purple-900 truncate group-hover:text-purple-700 transition-colors">
+                                      {store.name}
+                                    </h3>
+                                    {store.businessType && (
+                                      <Badge variant="secondary" className="text-[10px] sm:text-xs py-0 sm:py-0.5 px-1.5 bg-purple-100/50 text-purple-700 border-purple-100">
+                                        {store.businessType}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  {store.id === activeStoreId && (
+                                    <div className="bg-purple-600 rounded-full p-1 shadow-md">
+                                      <Check className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+                                    </div>
                                   )}
                                 </div>
-                                {store.id === activeStoreId && (
-                                  <Check className="w-5 h-5 text-purple-600 flex-shrink-0" />
-                                )}
+
+                                {/* Descripción mínima en móvil */}
+                                <div className="space-y-1 my-2">
+                                  {store.address && (
+                                    <p className="text-[11px] sm:text-xs text-muted-foreground flex items-center gap-1 leading-tight line-clamp-1 sm:line-clamp-2">
+                                      <MapPin className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-purple-400 flex-shrink-0" />
+                                      {store.address}
+                                    </p>
+                                  )}
+
+                                  {/* Mostrar detalles extras solo en desktop o si hay espacio */}
+                                  <div className="hidden sm:block">
+                                    {store.phone && (
+                                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                        <Phone className="w-3 h-3 text-purple-400 flex-shrink-0" />
+                                        {store.phone}
+                                      </p>
+                                    )}
+                                    <div className="flex items-center gap-1.5 mt-3 pt-2 border-t border-purple-100/50">
+                                      {store.primaryCurrencySymbol && (
+                                        <Badge variant="outline" className="text-[10px] sm:text-xs border-purple-200 text-purple-600 font-medium">
+                                          {store.primaryCurrencySymbol}
+                                        </Badge>
+                                      )}
+                                      {store.secondaryCurrencySymbol && (
+                                        <Badge variant="outline" className="text-[10px] sm:text-xs border-purple-200 text-violet-600 font-medium">
+                                          {store.secondaryCurrencySymbol}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="mt-auto pt-1 sm:pt-4">
+                                  <Button
+                                    variant={store.id === activeStoreId ? "default" : "outline"}
+                                    size="sm"
+                                    className={cn(
+                                      "w-full h-8 sm:h-9 text-xs sm:text-sm rounded-lg sm:rounded-xl transition-all font-semibold",
+                                      store.id === activeStoreId
+                                        ? "bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-200"
+                                        : "border-purple-200 text-purple-700 hover:bg-purple-50 hover:border-purple-400"
+                                    )}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleVisitStore(store.id);
+                                    }}
+                                  >
+                                    {store.id === activeStoreId ? 'Tienda actual' : 'Ir a tienda'}
+                                    <ArrowRight className="ml-1.5 h-3 w-3 sm:h-4 sm:w-4" />
+                                  </Button>
+                                </div>
                               </div>
-                            </CardHeader>
-                            <CardContent className="pb-3">
-                              {store.address && (
-                                <p className="text-xs text-muted-foreground mb-2 flex items-start gap-1">
-                                  <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                                  <span className="line-clamp-2">{store.address}</span>
-                                </p>
-                              )}
-                              {store.phone && (
-                                <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
-                                  <Phone className="w-3 h-3 flex-shrink-0" />
-                                  <span>{store.phone}</span>
-                                </p>
-                              )}
-                              <div className="flex items-center gap-2 mt-2 pt-2 border-t border-purple-100">
-                                {store.primaryCurrencySymbol && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {store.primaryCurrencySymbol}
-                                  </Badge>
-                                )}
-                                {store.secondaryCurrencySymbol && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {store.secondaryCurrencySymbol}
-                                  </Badge>
-                                )}
-                              </div>
-                            </CardContent>
-                            <CardFooter className="pt-0">
-                              <Button
-                                variant={store.id === activeStoreId ? "default" : "outline"}
-                                size="sm"
-                                className={cn(
-                                  "w-full",
-                                  store.id === activeStoreId
-                                    ? "bg-purple-600 hover:bg-purple-700"
-                                    : "hover:bg-purple-50"
-                                )}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleVisitStore(store.id);
-                                }}
-                              >
-                                {store.id === activeStoreId ? "Tienda Actual" : "Visitar Tienda"}
-                              </Button>
-                            </CardFooter>
+                            </div>
                           </Card>
                         ))}
                       </div>
@@ -3142,14 +3179,26 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
               </div>
             )}
           </div>
-          {itemsForGrid.length === 0 && !isLoading && (
+          {(itemsForGrid.length === 0 || productsError) && !isLoading && (
             <div className="text-center py-16 text-gray-500">
               <Package className="mx-auto h-12 w-12 mb-4 text-blue-300" />
-              <h3 className="text-lg font-semibold text-gray-700">Estamos buscando tus productos</h3>
-              <p className="text-gray-500">Por favor espera un momento...</p>
+              {productsError ? (
+                <>
+                  <h3 className="text-lg font-semibold text-red-500">Error al cargar productos</h3>
+                  <p className="text-gray-500">{productsError}</p>
+                  <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
+                    Reintentar
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-lg font-semibold text-gray-700">Estamos buscando tus productos</h3>
+                  <p className="text-gray-500">Por favor espera un momento...</p>
+                </>
+              )}
             </div>
           )}
-        </main>
+        </main >
 
         <Dialog open={isOrderDialogOpen} onOpenChange={setIsOrderDialogOpen}>
           <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto invisible-scroll rounded-2xl border-0 shadow-2xl bg-gradient-to-br from-background via-background to-blue-50/20">
@@ -3913,10 +3962,10 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
             </div>
           </div>
         </div>
-      </div>
+      </div >
 
       {/* Footer con información de la tienda */}
-      <footer className="bg-gray-50 border-t border-gray-200 py-6 px-4 mt-8">
+      < footer className="bg-gray-50 border-t border-gray-200 py-6 px-4 mt-8" >
         <div className="max-w-4xl mx-auto">
           <div className="text-center space-y-2">
             <h3 className="text-lg font-semibold text-gray-800">
@@ -3944,13 +3993,13 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
             </div>
           </div>
         </div>
-      </footer>
+      </footer >
 
       {/* Botón flotante para solicitar tienda */}
-      <StoreRequestButton />
+      < StoreRequestButton />
 
       {/* Modal de edición de perfil */}
-      <EditProfileModal
+      < EditProfileModal
         open={showProfileEditModal}
         onOpenChange={setShowProfileEditModal}
         currentUser={authUser}
