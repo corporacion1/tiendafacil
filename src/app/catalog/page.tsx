@@ -327,22 +327,18 @@ const CatalogProductCard = ({
 
   // Tracking de estados de carga de imágenes con retry logic
   const handleImageLoad = (url: string) => {
-    console.log(`✅ [CatalogCard] Image loaded successfully: ${url}`);
     setImageLoadStates(prev => ({ ...prev, [url]: 'loaded' }));
     // Reset retry count on successful load
     setRetryCount(prev => ({ ...prev, [url]: 0 }));
   };
 
   const handleImageError = (url: string, error?: any) => {
-    console.error(`❌ [CatalogCard] Image failed to load: ${url?.substring(0, 50)}...`, error);
-
     // Simplificado: solo marcar como error sin retry para evitar bucles
     setImageLoadStates(prev => ({ ...prev, [url]: 'error' }));
     setImageError(true);
 
     // Si es múltiple imagen y falla, fallback a single
     if (hasMultiple) {
-      console.warn(`⚠️ [CatalogCard] Multiple image failed for ${product.name}, falling back to single image`);
       setFallbackToSingle(true);
     }
   };
@@ -548,7 +544,7 @@ export default function CatalogPage() {
     // PERO con seguridad: usuarios administrativos solo pueden acceder a su tienda
     if (urlStoreId && urlStoreId !== activeStoreId) {
       const isUnauthorizedAdminUser = authUser && authUser.role !== 'user' && urlStoreId !== authUser.storeId;
-      
+
       if (isUnauthorizedAdminUser) {
         console.warn('🚨 [Catalog] Intento de cambio de tienda no autorizado:', {
           userStoreId: authUser.storeId,
@@ -556,7 +552,7 @@ export default function CatalogPage() {
         });
         return;
       }
-      
+
       console.log('🏪 [Catalog] CAMBIO DE TIENDA REQUERIDO desde URL:', {
         urlStoreId,
         currentActiveStoreId: activeStoreId,
@@ -1001,6 +997,7 @@ export default function CatalogPage() {
   const [isAutoScrolling, setIsAutoScrolling] = useState(true);
   const [lastMouseMove, setLastMouseMove] = useState(Date.now());
   const [scrollPosition, setScrollPosition] = useState(0);
+  const [visibleItemsCount, setVisibleItemsCount] = useState(24);
   const autoScrollRef = useRef<NodeJS.Timeout>();
   const productsScrollRef = useRef<NodeJS.Timeout>();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1252,54 +1249,51 @@ export default function CatalogPage() {
     const container = productsContainerRef.current;
     let scrollTimeout: NodeJS.Timeout;
     let isActive = true;
-    let currentPosition = 0;
 
     const performAutoScroll = () => {
-      if (!isActive || !container) {
-        console.log('🛑 Auto-scroll stopped: isActive =', isActive, 'container =', !!container);
-        return;
-      }
+      if (!isActive || !container) return;
 
       const scrollHeight = container.scrollHeight;
       const containerHeight = container.clientHeight;
       const maxScroll = scrollHeight - containerHeight;
 
-      console.log('📏 Scroll info:', { scrollHeight, containerHeight, maxScroll, currentPosition });
-
       if (maxScroll <= 0) {
-        console.log('⚠️ No content to scroll, retrying...');
         scrollTimeout = setTimeout(performAutoScroll, 2000);
         return;
       }
 
-      const scrollStep = 250; // Píxeles por paso
+      // Calculate step based on actual item height + gap
+      // Find the grid container (first child)
+      const grid = container.querySelector('.grid') as HTMLElement;
+      const firstItem = grid?.firstElementChild as HTMLElement;
 
-      if (currentPosition >= maxScroll) {
-        console.log('🔄 Reached end, resetting to top');
-        // Llegó al final, volver al inicio suavemente
+      // Default to 400 if item not found, otherwise use item height + gap (24px for gap-6)
+      const scrollStep = firstItem ? firstItem.offsetHeight + 24 : 400;
+
+      // Consistent current position
+      const currentPos = container.scrollTop;
+
+      if (currentPos >= maxScroll - 10) {
+        // Reached end, resetting to top
         container.scrollTo({ top: 0, behavior: 'smooth' });
-        currentPosition = 0;
-
-        // Pausa más larga al reiniciar el ciclo
         scrollTimeout = setTimeout(performAutoScroll, 4000);
       } else {
-        // Scroll hacia abajo
-        currentPosition += scrollStep;
-        const targetPosition = Math.min(currentPosition, maxScroll);
+        const targetPosition = Math.min(currentPos + scrollStep, maxScroll);
 
-        console.log('⬇️ Scrolling to:', targetPosition);
         container.scrollTo({
           top: targetPosition,
           behavior: 'smooth'
         });
 
-        // Continuar con el siguiente paso
-        scrollTimeout = setTimeout(performAutoScroll, 2500);
+        // Load more items if we are getting close to the end of visible items
+        if (targetPosition >= maxScroll - 800) {
+          setVisibleItemsCount(prev => Math.min(prev + 12, itemsForGrid.length));
+        }
+
+        scrollTimeout = setTimeout(performAutoScroll, 3500);
       }
     };
 
-    // Iniciar después de una pausa inicial
-    console.log('🚀 Starting auto-scroll...');
     scrollTimeout = setTimeout(performAutoScroll, 2000);
 
     return () => {
@@ -1308,7 +1302,7 @@ export default function CatalogPage() {
         clearTimeout(scrollTimeout);
       }
     };
-  }, [isAutoScrolling]);
+  }, [isAutoScrolling, itemsForGrid.length]);
 
 
 
@@ -1475,6 +1469,11 @@ export default function CatalogPage() {
       setLastAutoOpenedSku(null);
     }
   }, [searchTerm]);
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setVisibleItemsCount(24);
+  }, [searchTerm, selectedFamily]);
 
   const validatePhoneNumber = (phone: string): string | null => {
     if (!phone) return "El teléfono es requerido.";
@@ -3098,7 +3097,13 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
           {/* Contenedor con scroll para productos */}
           <div
             ref={productsContainerRef}
-            className="max-h-[calc(100vh-200px)] overflow-y-auto invisible-scroll pt-4"
+            className="max-h-[calc(100vh-200px)] overflow-y-auto invisible-scroll pt-4 scroll-smooth"
+            onScroll={(e) => {
+              const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+              if (scrollTop + clientHeight >= scrollHeight - 600) {
+                setVisibleItemsCount(prev => Math.min(prev + 12, itemsForGrid.length));
+              }
+            }}
           >
             {isLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-6 p-1">
@@ -3108,7 +3113,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-6 p-1">
-                {itemsForGrid.map((item, index) => {
+                {itemsForGrid.slice(0, visibleItemsCount).map((item, index) => {
                   if ('views' in item) {
                     return <AdCard key={`ad-${item.id}-${index}`} ad={item} onAdClick={handleAdClick} />;
                   }
