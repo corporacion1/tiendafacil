@@ -278,7 +278,7 @@ const formatPhoneForWhatsApp = (phone: string): string => {
 
 export default function POSPage() {
   useStoreSecurity();
-  
+
   const { hasPermission } = usePermissions();
   const { toast } = useToast();
   const {
@@ -508,9 +508,9 @@ export default function POSPage() {
   const [productImageError, setImageError] = useState(false);
 
   const [scannedOrderId, setScannedOrderId] = useState("");
-    // Estado para rastrear el pedido actual que se está editando (para evitar duplicados al guardar cotización)
-   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
-   const [currentOrder, setCurrentOrder] = useState<any | null>(null);
+  // Estado para rastrear el pedido actual que se está editando (para evitar duplicados al guardar cotización)
+  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
+  const [currentOrder, setCurrentOrder] = useState<any | null>(null);
   const [savedCartItems, setSavedCartItems] = useState<any | null>(null);
   const [savedCustomerId, setSavedCustomerId] = useState<string | null>(null);
 
@@ -2331,106 +2331,6 @@ export default function POSPage() {
       console.error("Error actualizando sesión de caja:", error);
     }
 
-    // Marcar pedidos relacionados como procesados
-    try {
-      if (currentOrderId) {
-        // Lógica prioritaria: Si tenemos el ID exacto del pedido (cargado explícitamente), usamos ese
-        console.log(
-          "🔗 Marcando pedido actual como procesado:",
-          currentOrderId,
-        );
-
-        const orderResponse = await fetch("/api/orders", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            orderId: currentOrderId,
-            status: "processed",
-            processedBy:
-              userProfile?.displayName ||
-              (userProfile as any)?.name ||
-              "Usuario POS",
-            saleId: saleId,
-            notes: `Pedido completado con venta ${saleId}`,
-          }),
-        });
-
-        if (orderResponse.ok) {
-          console.log(
-            "✅ Pedido actual marcado como procesado:",
-            currentOrderId,
-          );
-        } else {
-          console.warn(
-            "⚠️ No se pudo marcar pedido actual como procesado:",
-            currentOrderId,
-          );
-        }
-      } else {
-        // Lógica de fallback (heurística): Buscar coincidencias si no se cargó un pedido explícitamente
-        // Buscar si algún producto del carrito proviene de un pedido pendiente por coincidencia de cliente
-        const processingOrders = pendingOrdersFromDB.filter(
-          (order) =>
-            order.customerPhone === selectedCustomer?.phone ||
-            order.customerName === selectedCustomer?.name,
-        );
-
-        for (const order of processingOrders) {
-          // Verificar si los productos del pedido coinciden con los de la venta
-          const orderProductIds = order.items
-            .map((item) => item.productId)
-            .sort();
-          const saleProductIds = cartItems
-            .map((item) => item.product.id)
-            .sort();
-
-          // Si hay coincidencia significativa (al menos 70% de productos)
-          const matchingProducts = orderProductIds.filter((id) =>
-            saleProductIds.includes(id),
-          );
-          const matchPercentage =
-            matchingProducts.length / orderProductIds.length;
-
-          if (matchPercentage >= 0.7) {
-            console.log(
-              "🔗 Coincidencia encontrada - Marcando pedido como procesado:",
-              order.orderId,
-            );
-
-            const orderResponse = await fetch("/api/orders", {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                orderId: order.orderId,
-                status: "processed",
-                processedBy:
-                  userProfile?.displayName ||
-                  (userProfile as any)?.name ||
-                  "Usuario POS",
-                saleId: saleId,
-                notes: `Pedido completado con venta ${saleId} (coincidencia automática)`,
-              }),
-            });
-
-            if (orderResponse.ok) {
-              console.log(
-                "✅ Pedido heurístico marcado como procesado:",
-                order.orderId,
-              );
-            } else {
-              console.warn(
-                "⚠️ No se pudo marcar pedido heurístico como procesado:",
-                order.orderId,
-              );
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.warn("⚠️ Error marcando pedidos como procesados:", error);
-      // No fallar la venta por este error
-    }
-
     // lastSale was already set to the created sale returned by the server
     toast({
       title: "Venta Procesada",
@@ -2440,8 +2340,6 @@ export default function POSPage() {
     setCartItems([]);
     setIsProcessSaleDialogOpen(false);
     resetPaymentModal();
-    setCartItems([]);
-    setIsProcessSaleDialogOpen(false);
     // Do not reset selected customer immediately — keep it for ticket preview
     setCurrentOrderId(null); // Resetear orden actual después de venta exitosa
     setCurrentOrder(null);
@@ -2694,9 +2592,9 @@ export default function POSPage() {
     return text;
   };
 
-   const handleShareQuote = async () => {
+  const handleShareQuote = async () => {
     const cartItemsToUse = savedCartItems || cartItems;
-    
+
     if (cartItemsToUse.length === 0) {
       toast({
         variant: "destructive",
@@ -3675,11 +3573,9 @@ export default function POSPage() {
               </span>
               <span className="whitespace-nowrap">
                 Activos:{" "}
-                {
-                  products.filter(
-                    (p) => p.status === "active" || p.status === "promotion",
-                  ).length
-                }
+                {(products || []).filter(
+                  (p) => p.status === "active" || p.status === "promotion",
+                ).length}
               </span>
             </div>
           </div>
@@ -3858,12 +3754,9 @@ export default function POSPage() {
                           </Badge>
                         )}
                       </Button>
-                     </DialogTrigger>
-                     <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col w-full mx-2 sm:mx-auto">
-                       <form onSubmit={(e) => {
-                         e.preventDefault();
-                         handleProcessSale(false);
-                       }} className="flex flex-col flex-1 h-full overflow-y-auto scrollbar-hidden p-2">
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col w-full mx-2 sm:mx-auto">
+                      <div className="flex flex-col flex-1 h-full overflow-y-auto scrollbar-hidden p-2">
                         <DialogHeader className="flex-shrink-0">
                           <div className="flex items-center justify-between gap-4">
                             <div>
@@ -4002,10 +3895,10 @@ export default function POSPage() {
                                           )}
                                           <p className="text-xs text-muted-foreground">
                                             🕒{" "}
-                                            {format(
+                                            {order.createdAt ? format(
                                               new Date(order.createdAt as string),
                                               "dd/MM/yyyy HH:mm",
-                                            )}
+                                            ) : 'Fecha desconocida'}
                                           </p>
                                           {order.notes && (
                                             <p className="text-sm">
@@ -4040,6 +3933,7 @@ export default function POSPage() {
                                       </div>
                                       <div className="flex flex-col gap-2">
                                         <Button
+                                          type="button"
                                           size="sm"
                                           onClick={() => loadPendingOrder(order)}
                                           disabled={order.status === "processed" || order.status === "cancelled"}
@@ -4053,9 +3947,10 @@ export default function POSPage() {
                                         </Button>
                                         {order.customerPhone && (
                                           <Button
+                                            type="button"
                                             size="sm"
                                             variant="outline"
-                                            className="border-[#25D366] text-[#25D366] hover:bg-red-500 hover:text-white w-full sm:w-auto"
+                                            className="border-[#25D366] text-[#25D366] hover:bg-[#25D366] hover:text-white w-full sm:w-auto"
                                             onClick={(e) => {
                                               e.preventDefault();
                                               e.stopPropagation();
@@ -4075,6 +3970,7 @@ export default function POSPage() {
                                         )}
 
                                         <Button
+                                          type="button"
                                           size="sm"
                                           variant="outline"
                                           className="border-destructive text-destructive hover:bg-destructive hover:text-white w-full sm:w-auto"
@@ -4103,10 +3999,10 @@ export default function POSPage() {
                         </div>
                         <DialogFooter>
                           <DialogClose asChild id="pending-orders-close-button">
-                            <Button variant="outline">Cerrar</Button>
+                            <Button type="button" variant="outline">Cerrar</Button>
                           </DialogClose>
                         </DialogFooter>
-                      </form>
+                      </div>
                     </DialogContent>
                   </Dialog>
                 </div>
@@ -4655,9 +4551,7 @@ export default function POSPage() {
                                         {activeSymbol}
                                       </span>
                                       <Input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
+                                        type="decimal"
                                         value={(item.price * activeRate).toFixed(2)}
                                         onChange={(e) => {
                                           const value = e.target.value;
@@ -5256,12 +5150,12 @@ export default function POSPage() {
                 ? (savedCartItems || cartItems)
                 : lastSale
                   ? lastSale.items.map((item) => ({
-                      product: (products || []).find(
-                        (p) => p.id === item.productId,
-                      )!,
-                      quantity: item.quantity,
-                      price: item.price,
-                    }))
+                    product: (products || []).find(
+                      (p) => p.id === item.productId,
+                    )!,
+                    quantity: item.quantity,
+                    price: item.price,
+                  }))
                   : cartItems
             }
             saleId={lastSale?.id}
@@ -5438,178 +5332,177 @@ export default function POSPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        {/* Modal de Configuración Local */}
+        <Dialog open={isLocalConfigOpen} onOpenChange={setIsLocalConfigOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Configuración Local POS</DialogTitle>
+              <DialogDescription>
+                Configura la serie y correlativo para este dispositivo específico.
+                Estos valores se guardan en el navegador.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="local-series">Serie</Label>
+                <Input
+                  id="local-series"
+                  value={newLocalSeries}
+                  onChange={(e) => setNewLocalSeries(e.target.value)}
+                  placeholder="Ej: CAJA-1"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="local-correlative">Correlativo Actual</Label>
+                <Input
+                  id="local-correlative"
+                  type="number"
+                  value={newLocalCorrelative}
+                  onChange={(e) => setNewLocalCorrelative(e.target.value)}
+                  placeholder="Ej: 100"
+                />
+                <p className="text-xs text-muted-foreground">
+                  El próximo ID de venta será: {newLocalSeries || "..."}-
+                  {newLocalCorrelative
+                    ? newLocalCorrelative.padStart(6, "0")
+                    : "..."}
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsLocalConfigOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button onClick={handleSaveLocalConfig}>
+                Guardar Configuración
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        {/* Modal de Validación de PIN para cambiar precio mayorista */}
+        <Dialog
+          open={isPricePinOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setIsPricePinOpen(false);
+              setItemToTogglePrice(null);
+              setPricePin("");
+            }
+          }}
+        >
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-center flex flex-col items-center gap-2">
+                <ShieldCheck className="w-10 h-10 text-primary" />
+                Autorización Requerida
+              </DialogTitle>
+              <DialogDescription className="text-center">
+                Ingresa el PIN de seguridad para cambiar el precio a mayorista.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <Input
+                type="password"
+                placeholder="****"
+                className="text-center text-2xl tracking-[0.5em]"
+                value={pricePin}
+                onChange={(e) => setPricePin(e.target.value)}
+                maxLength={4}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleConfirmTogglePrice();
+                }}
+                autoFocus
+              />
+              <Button className="w-full" onClick={handleConfirmTogglePrice}>
+                Confirmar Cambio de Precio
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+        {/* Modal de Validación de PIN para Eliminar */}
+        <Dialog
+          open={isDeletePinOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setIsDeletePinOpen(false);
+              setItemToDelete(null);
+              setDeletePin("");
+            }
+          }}
+        >
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-center flex flex-col items-center gap-2">
+                <ShieldCheck className="w-10 h-10 text-primary" />
+                Autorización Requerida
+              </DialogTitle>
+              <DialogDescription className="text-center">
+                Ingresa el PIN de seguridad para eliminar este ítem.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <Input
+                type="password"
+                placeholder="****"
+                className="text-center text-2xl tracking-[0.5em]"
+                value={deletePin}
+                onChange={(e) => setDeletePin(e.target.value)}
+                maxLength={4}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleConfirmDelete();
+                }}
+                autoFocus
+              />
+              <Button className="w-full" onClick={handleConfirmDelete}>
+                Confirmar Eliminación
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+        {/* Modal de Validación de PIN para agregar producto inactivo */}
+        <Dialog
+          open={isInactiveProductPinOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setIsInactiveProductPinOpen(false);
+              setProductToAddInactive(null);
+              setInactiveProductPin("");
+            }
+          }}
+        >
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-center flex flex-col items-center gap-2">
+                <ShieldCheck className="w-10 h-10 text-primary" />
+                Autorización Requerida
+              </DialogTitle>
+              <DialogDescription className="text-center">
+                Ingresa el PIN de seguridad para agregar un producto inactivo al carrito.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <Input
+                type="password"
+                placeholder="****"
+                className="text-center text-2xl tracking-[0.5em]"
+                value={inactiveProductPin}
+                onChange={(e) => setInactiveProductPin(e.target.value)}
+                maxLength={4}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleConfirmAddInactiveProduct();
+                }}
+                autoFocus
+              />
+              <Button className="w-full" onClick={handleConfirmAddInactiveProduct}>
+                Confirmar Agregar Producto
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
-      {/* Modal de Configuración Local */}
-      <Dialog open={isLocalConfigOpen} onOpenChange={setIsLocalConfigOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Configuración Local POS</DialogTitle>
-            <DialogDescription>
-              Configura la serie y correlativo para este dispositivo específico.
-              Estos valores se guardan en el navegador.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="local-series">Serie</Label>
-              <Input
-                id="local-series"
-                value={newLocalSeries}
-                onChange={(e) => setNewLocalSeries(e.target.value)}
-                placeholder="Ej: CAJA-1"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="local-correlative">Correlativo Actual</Label>
-              <Input
-                id="local-correlative"
-                type="number"
-                value={newLocalCorrelative}
-                onChange={(e) => setNewLocalCorrelative(e.target.value)}
-                placeholder="Ej: 100"
-              />
-              <p className="text-xs text-muted-foreground">
-                El próximo ID de venta será: {newLocalSeries || "..."}-
-                {newLocalCorrelative
-                  ? newLocalCorrelative.padStart(6, "0")
-                  : "..."}
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsLocalConfigOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button onClick={handleSaveLocalConfig}>
-              Guardar Configuración
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      {/* Modal de Validación de PIN para cambiar precio mayorista */}
-      <Dialog
-        open={isPricePinOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setIsPricePinOpen(false);
-            setItemToTogglePrice(null);
-            setPricePin("");
-          }
-        }}
-      >
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-center flex flex-col items-center gap-2">
-              <ShieldCheck className="w-10 h-10 text-primary" />
-              Autorización Requerida
-            </DialogTitle>
-            <DialogDescription className="text-center">
-              Ingresa el PIN de seguridad para cambiar el precio a mayorista.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <Input
-              type="password"
-              placeholder="****"
-              className="text-center text-2xl tracking-[0.5em]"
-              value={pricePin}
-              onChange={(e) => setPricePin(e.target.value)}
-              maxLength={4}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleConfirmTogglePrice();
-              }}
-              autoFocus
-            />
-            <Button className="w-full" onClick={handleConfirmTogglePrice}>
-              Confirmar Cambio de Precio
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-      {/* Modal de Validación de PIN para Eliminar */}
-      <Dialog
-        open={isDeletePinOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setIsDeletePinOpen(false);
-            setItemToDelete(null);
-            setDeletePin("");
-          }
-        }}
-      >
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-center flex flex-col items-center gap-2">
-              <ShieldCheck className="w-10 h-10 text-primary" />
-              Autorización Requerida
-            </DialogTitle>
-            <DialogDescription className="text-center">
-              Ingresa el PIN de seguridad para eliminar este ítem.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <Input
-              type="password"
-              placeholder="****"
-              className="text-center text-2xl tracking-[0.5em]"
-              value={deletePin}
-              onChange={(e) => setDeletePin(e.target.value)}
-              maxLength={4}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleConfirmDelete();
-              }}
-              autoFocus
-            />
-            <Button className="w-full" onClick={handleConfirmDelete}>
-              Confirmar Eliminación
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-      {/* Modal de Validación de PIN para agregar producto inactivo */}
-      <Dialog
-        open={isInactiveProductPinOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setIsInactiveProductPinOpen(false);
-            setProductToAddInactive(null);
-            setInactiveProductPin("");
-          }
-        }}
-      >
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-center flex flex-col items-center gap-2">
-              <ShieldCheck className="w-10 h-10 text-primary" />
-              Autorización Requerida
-            </DialogTitle>
-            <DialogDescription className="text-center">
-              Ingresa el PIN de seguridad para agregar un producto inactivo al carrito.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <Input
-              type="password"
-              placeholder="****"
-              className="text-center text-2xl tracking-[0.5em]"
-              value={inactiveProductPin}
-              onChange={(e) => setInactiveProductPin(e.target.value)}
-              maxLength={4}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleConfirmAddInactiveProduct();
-              }}
-              autoFocus
-            />
-            <Button className="w-full" onClick={handleConfirmAddInactiveProduct}>
-              Confirmar Agregar Producto
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div >
+    </div>
   );
 }
- 
