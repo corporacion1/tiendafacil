@@ -592,22 +592,36 @@ export default function CatalogPage() {
     error: productsError
   } = useProducts(storeIdForCatalog);
 
-  // Usar productos sincronizados si están disponibles, sino usar del contexto
-  const products = syncedProducts.length > 0 ? syncedProducts : contextProducts;
+  // MODIFICADO: Sistema inteligente para evitar parpadeos de productos de otras tiendas
+  const products = useMemo(() => {
+    // 1. Prioridad: Productos recién sincronizados por useProducts para esta tienda
+    if (syncedProducts.length > 0 && syncedProducts.every(p => p.storeId === storeIdForCatalog)) {
+      console.log('📦 [Catalog] Usando syncedProducts:', syncedProducts.length);
+      return syncedProducts;
+    }
 
+    // 2. Fallback: Productos del contexto que pertenezcan a esta tienda (caché persistente)
+    const contextStoreProducts = contextProducts.filter(p => p.storeId === storeIdForCatalog);
+    if (contextStoreProducts.length > 0) {
+      console.log('📦 [Catalog] Usando contextProducts filtrados:', contextStoreProducts.length);
+      return contextStoreProducts;
+    }
+
+    // 3. Fallback final: Si useProducts está cargando y no hay nada, lista vacía para activar skeleton
+    return [];
+  }, [syncedProducts, contextProducts, storeIdForCatalog]);
 
 
   // CORREGIDO: Debug con throttling para evitar spam
   const debugCountRef = useRef(0);
   useEffect(() => {
     debugCountRef.current += 1;
-    // Solo log cada 5 cambios para evitar spam
-    if (debugCountRef.current % 5 === 0) {
+    // Solo log cada 10 cambios para evitar spam
+    if (debugCountRef.current % 10 === 0) {
       console.log('📊 Products en Catalog:', products.length);
-      console.log('📊 Families en Catalog:', families.length);
       console.log('📊 Active Store en Catalog:', storeIdForCatalog);
     }
-  }, [products.length, families.length, storeIdForCatalog]); // Solo longitudes, no arrays completos
+  }, [products.length, storeIdForCatalog]);
 
   // CORRECCIÓN #2: Estado de error por producto
   const [imageErrorState, setImageErrorState] = useState<Record<string, number>>({});

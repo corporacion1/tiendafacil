@@ -70,7 +70,7 @@ const SettingsContext = createContext<SettingsContextType | undefined>(undefined
 
 // localStorage solo para preferencias de usuario (tienda activa y moneda display)
 const CURRENCY_PREF_STORAGE_KEY = 'tienda_facil_currency_pref';
-const ACTIVE_STORE_ID_STORAGE_KEY = 'tienda_facil_active_store_id';
+const ACTIVE_STORE_ID_STORAGE_KEY = 'activeStoreId'; // Unificado con AuthContext
 
 function AppLoadingScreen() {
   return (
@@ -261,84 +261,73 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         loadedCount++;
       }
 
-      if (productsResult.status === 'fulfilled' && productsResult.value) {
-        setProducts(productsResult.value);
-        loadedCount++;
+      // CRÍTICO: Solo actualizar estados globales si NO estamos en modo minimal
+      // Esto evita limpiar el catálogo cuando navegamos por tiendas
+      if (!minimal) {
+        if (productsResult.status === 'fulfilled' && productsResult.value) {
+          setProducts(productsResult.value);
+          loadedCount++;
+        }
+        if (salesResult.status === 'fulfilled' && salesResult.value) {
+          setSales(salesResult.value);
+          loadedCount++;
+        }
+        if (purchasesResult.status === 'fulfilled' && purchasesResult.value) {
+          setPurchases(purchasesResult.value);
+          loadedCount++;
+        }
+        if (customersResult.status === 'fulfilled' && customersResult.value) {
+          setCustomers(customersResult.value);
+          loadedCount++;
+        }
+        if (suppliersResult.status === 'fulfilled' && suppliersResult.value) {
+          setSuppliers(suppliersResult.value);
+          loadedCount++;
+        }
+        if (unitsResult.status === 'fulfilled' && unitsResult.value) {
+          setUnits(unitsResult.value);
+          loadedCount++;
+        }
+        if (warehousesResult.status === 'fulfilled' && warehousesResult.value) {
+          setWarehouses(warehousesResult.value);
+          loadedCount++;
+        }
+        if (usersResult.status === 'fulfilled' && usersResult.value) {
+          setUsers(usersResult.value);
+          loadedCount++;
+        }
+        if (cashSessionsResult.status === 'fulfilled' && cashSessionsResult.value) {
+          setCashSessions(cashSessionsResult.value);
+          loadedCount++;
+        }
+        if (pendingOrdersResult.status === 'fulfilled' && pendingOrdersResult.value) {
+          setPendingOrders(pendingOrdersResult.value);
+          loadedCount++;
+        }
+        if (expensePaymentsResult && expensePaymentsResult.status === 'fulfilled' && expensePaymentsResult.value) {
+          setExpensePayments(expensePaymentsResult.value);
+          loadedCount++;
+        }
       }
 
-      if (salesResult.status === 'fulfilled' && salesResult.value) {
-        setSales(salesResult.value);
-        loadedCount++;
-      }
-
-      if (purchasesResult.status === 'fulfilled' && purchasesResult.value) {
-        setPurchases(purchasesResult.value);
-        loadedCount++;
-      }
-
-      if (customersResult.status === 'fulfilled' && customersResult.value) {
-        setCustomers(customersResult.value);
-        loadedCount++;
-      }
-
-      if (suppliersResult.status === 'fulfilled' && suppliersResult.value) {
-        setSuppliers(suppliersResult.value);
-        loadedCount++;
-      }
-
-      if (unitsResult.status === 'fulfilled' && unitsResult.value) {
-        setUnits(unitsResult.value);
-        loadedCount++;
-      }
-
+      // Los siguientes siempre se actualizan si están disponibles (Familias, Ads, Rates)
       if (familiesResult.status === 'fulfilled' && familiesResult.value) {
         setFamilies(familiesResult.value);
         loadedCount++;
       }
-
-      if (warehousesResult.status === 'fulfilled' && warehousesResult.value) {
-        setWarehouses(warehousesResult.value);
-        loadedCount++;
-      }
-
       if (adsResult.status === 'fulfilled' && adsResult.value) {
         setAds(adsResult.value);
         loadedCount++;
       }
-
-      if (usersResult.status === 'fulfilled' && usersResult.value) {
-        setUsers(usersResult.value);
-        loadedCount++;
-      }
-
-      if (cashSessionsResult.status === 'fulfilled' && cashSessionsResult.value) {
-        setCashSessions(cashSessionsResult.value);
-        loadedCount++;
-      }
-
-      if (pendingOrdersResult.status === 'fulfilled' && pendingOrdersResult.value) {
-        setPendingOrders(pendingOrdersResult.value);
-        loadedCount++;
-      }
-
       if (currencyRatesResult.status === 'fulfilled' && currencyRatesResult.value) {
         console.log('💰 [LoadData] Currency rates raw response:', currencyRatesResult.value);
-
-        // Procesar la respuesta de currency rates igual que en fetchCurrencyRates
         let rates = [];
         const rawData = currencyRatesResult.value;
+        if (Array.isArray(rawData)) rates = rawData;
+        else if (rawData.data && Array.isArray(rawData.data)) rates = rawData.data;
+        else if (rawData.history && Array.isArray(rawData.history)) rates = rawData.history;
+        else if (rawData.data?.history && Array.isArray(rawData.data.history)) rates = rawData.data.history;
 
-        if (Array.isArray(rawData)) {
-          rates = rawData;
-        } else if (rawData.data && Array.isArray(rawData.data)) {
-          rates = rawData.data;
-        } else if (rawData.history && Array.isArray(rawData.history)) {
-          rates = rawData.history;
-        } else if (rawData.data?.history && Array.isArray(rawData.data.history)) {
-          rates = rawData.data.history;
-        }
-
-        // Procesar las tasas igual que en fetchCurrencyRates
         const processedRates = rates.map((rate: Record<string, unknown>) => ({
           ...rate,
           id: (rate._id as string) || (rate.id as string) || `rate-${(rate.date as string) || Date.now()}`,
@@ -346,15 +335,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
           date: (rate.date as string) || new Date().toISOString(),
           createdBy: rate.createdBy || rate.userId || 'Sistema'
         }));
-
-        console.log('💰 [LoadData] Processed currency rates:', processedRates);
         setCurrencyRates(processedRates);
-        setCurrencyRates(processedRates);
-        loadedCount++;
-      }
-
-      if (expensePaymentsResult && expensePaymentsResult.status === 'fulfilled' && expensePaymentsResult.value) {
-        setExpensePayments(expensePaymentsResult.value);
         loadedCount++;
       }
 
