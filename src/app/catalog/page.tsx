@@ -629,7 +629,7 @@ export default function CatalogPage() {
 
   const [catalogStoreSettings, setCatalogStoreSettings] = useState<Store | null>(null);
   const [loadingCatalogStore, setLoadingCatalogStore] = useState(false);
-  const isLoading = isLoadingSettings || loadingCatalogStore || (isLoadingProducts && (products.length === 0 || products.some(p => p.storeId !== storeIdForCatalog)));
+  const isLoading = isLoadingSettings || loadingCatalogStore || isLoadingProducts;
 
   // NUEVA FUNCIÓN: Cargar tienda desde Supabase
   const loadStoreFromSupabase = async (storeId: string) => {
@@ -1446,6 +1446,16 @@ export default function CatalogPage() {
       setLastAutoOpenedSku(null);
     }
   }, [searchTerm]);
+
+  // Reiniciar filtros cuando cambia la tienda para evitar que filtros previos oculten productos
+  useEffect(() => {
+    if (storeIdForCatalog) {
+      console.log('🏪 [Catalog] Tienda cambiada, reiniciando filtros para:', storeIdForCatalog);
+      setSearchTerm("");
+      setSelectedFamily("all");
+      setVisibleItemsCount(24);
+    }
+  }, [storeIdForCatalog]);
 
   // Reset pagination when filters or products change significantly
   useEffect(() => {
@@ -3183,7 +3193,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
               </div>
             )}
           </div>
-          {(itemsForGrid.length === 0 || productsError) && !isLoading && (
+          {(sortedAndFilteredProducts.length === 0 || productsError) && !isLoading && (
             <div className="text-center py-16 text-gray-500">
               <Package className="mx-auto h-12 w-12 mb-4 text-blue-300" />
               {productsError ? (

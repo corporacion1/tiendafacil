@@ -38,9 +38,9 @@ export const useProducts = (storeId?: string): UseProductsReturn => {
       return;
     }
 
-    // Evitar fetches muy frecuentes
+    // Evitar fetches muy frecuentes (a menos que se fuerce)
     const now = Date.now();
-    if (now - lastFetchTimeRef.current < MIN_FETCH_INTERVAL) {
+    if (!showLoadingState && now - lastFetchTimeRef.current < MIN_FETCH_INTERVAL) {
       console.log('⏳ [Products] Skipping fetch - too frequent');
       return;
     }
@@ -176,9 +176,18 @@ export const useProducts = (storeId?: string): UseProductsReturn => {
 
   // Fetch inicial y reset al cambiar de tienda
   useEffect(() => {
+    if (!storeId) return;
+
     console.log('🔄 [Products] StoreId changed, resetting products state:', storeId);
-    setProducts([]); // Limpiar inmediatamente para evitar mostrar productos de la tienda anterior
-    fetchProducts();
+
+    // IMPORTANTE: Activar loading inmediatamente para evitar que el catálogo piense que no hay productos
+    setIsLoading(true);
+    setProducts([]);
+
+    // Reset temporal para permitir fetch inmediato
+    lastFetchTimeRef.current = 0;
+
+    fetchProducts(true);
   }, [fetchProducts, storeId]);
 
   // Manejar reconexión de red

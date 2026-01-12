@@ -436,12 +436,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         console.log('⚡ [SettingsContext] Administrative user on admin route - immediate full data sync');
         loadDataFromSupabase(authActiveStoreId, false);
       } else {
-        const timeoutId = setTimeout(() => {
-          console.log(`🔄 [SettingsContext] Syncing data (minimal: ${isCatalogRoute})`);
-          loadDataFromSupabase(authActiveStoreId, isCatalogRoute);
-        }, 100);
-
-        return () => clearTimeout(timeoutId);
+        console.log(`🔄 [SettingsContext] Syncing data (minimal: ${isCatalogRoute})`);
+        loadDataFromSupabase(authActiveStoreId, isCatalogRoute);
       }
     }
   }, [authActiveStoreId, isClient, loadDataFromSupabase, authUser?.role, pathname]);
