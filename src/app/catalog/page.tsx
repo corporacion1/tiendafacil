@@ -615,7 +615,7 @@ export default function CatalogPage() {
 
   const [catalogStoreSettings, setCatalogStoreSettings] = useState<Store | null>(null);
   const [loadingCatalogStore, setLoadingCatalogStore] = useState(false);
-  const isLoading = isLoadingSettings || loadingCatalogStore || (isLoadingProducts && products.length === 0);
+  const isLoading = isLoadingSettings || loadingCatalogStore || (isLoadingProducts && (products.length === 0 || products.some(p => p.storeId !== storeIdForCatalog)));
 
   // NUEVA FUNCIÓN: Cargar tienda desde Supabase
   const loadStoreFromSupabase = async (storeId: string) => {
@@ -929,12 +929,24 @@ export default function CatalogPage() {
   };
 
   const handleVisitStore = (storeId: string) => {
-    console.log('🏪 [Catalog] Iniciando cambio de tienda a:', storeId);
-    // Cambiar estado global primero para reactividad inmediata
-    switchStore(storeId);
-    // Luego actualizar URL para persistencia
-    router.push(`/catalog?storeId=${storeId}`);
+    // 1. Cerrar el diálogo inmediatamente para una respuesta visual instantánea
     setShowStoresDialog(false);
+
+    // 2. Pequeño delay para permitir que la animación de cierre del modal comience
+    // y evitar el bloqueo del hilo principal por renderizados pesados
+    setTimeout(() => {
+      console.log('🏪 [Catalog] Iniciando cambio de tienda a:', storeId);
+
+      // 3. Si la tienda es diferente a la actual, actualizamos la URL
+      // El useEffect de PASO 2 se encargará de llamar a switchStore(storeId)
+      // centralizando la lógica y evitando dobles llamadas/cargas.
+      if (storeId !== activeStoreId) {
+        // Usar router.push con scroll: false para una transición más suave
+        router.push(`/catalog?storeId=${storeId}`, { scroll: false });
+      } else {
+        console.log('✅ [Catalog] Ya estamos en la tienda:', storeId);
+      }
+    }, 50);
   };
 
   // Cargar tiendas de producción cuando se abre el diálogo

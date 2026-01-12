@@ -225,7 +225,10 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
       // CRÍTICO: Si es minimal, vaciar promesas que no necesitamos
       if (minimal) {
-        // Mantenemos: settings[0], products[154], families[184], currency-rates[216], ads[195]
+        // En modo minimal (Catalog), no cargamos productos aquí porque 
+        // el hook useProducts del CatalogPage se encarga con polling y optimización.
+        // Esto evita una "doble carga" masiva al entrar al catálogo.
+        promises[0] = Promise.resolve([]); // Products (Ya se cargan en useProducts)
         promises[1] = Promise.resolve([]); // Sales
         promises[2] = Promise.resolve([]); // Purchases
         promises[3] = Promise.resolve([]); // Customers
