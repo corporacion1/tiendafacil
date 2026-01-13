@@ -1280,9 +1280,9 @@ export default function CatalogPage() {
   const filteredBannerAds = useMemo(() => {
     return (allAds || []).filter(ad => {
       const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
-      return !isExpired && ad.status === 'active' && ad.targetBusinessTypes?.includes(currentStoreSettings?.businessType || '');
+      return !isExpired && ad.status === 'active';
     });
-  }, [allAds, currentStoreSettings?.businessType]);
+  }, [allAds]);
 
   useEffect(() => {
     if (isAutoScrolling && filteredBannerAds.length > 1 && !isLoading) {
@@ -1571,7 +1571,7 @@ export default function CatalogPage() {
   const itemsForGrid = useMemo(() => {
     const relevantAds = (allAds || []).filter(ad => {
       const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
-      return !isExpired && ad.status === 'active' && ad.targetBusinessTypes?.includes(currentStoreSettings?.businessType || '');
+      return !isExpired && ad.status === 'active';
     });
 
     const shuffledAds = [...relevantAds].sort(() => Math.random() - 0.5);
@@ -1586,7 +1586,7 @@ export default function CatalogPage() {
       }
     }
     return items;
-  }, [sortedAndFilteredProducts, allAds, currentStoreSettings.businessType]);
+  }, [sortedAndFilteredProducts, allAds]);
 
   useEffect(() => {
     if (!isAutoScrolling || !productsContainerRef.current) {
