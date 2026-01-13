@@ -2416,7 +2416,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
         <header className="sticky top-0 z-40 w-full border-b border-blue-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/90 shadow-sm">
           {/* Primera fila - Logo y botones principales */}
           <div className="container flex h-16 items-center justify-between">
-            <Logo className="w-32 h-10" />
+            <Logo className="w-32 h-10" settings={currentStoreSettings} />
             <div className="flex items-center gap-2">
               {/* Botón de cambio de moneda - solo visible si la tasa es reciente */}
               {isCurrencyRateRecent && (

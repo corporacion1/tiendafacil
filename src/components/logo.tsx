@@ -3,11 +3,13 @@
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { useSettings } from "@/contexts/settings-context";
+import { Settings } from "@/lib/types";
 
 const DEFAULT_LOGO_URL = "/tienda_facil_logo.svg";
 
-export const Logo = ({ className }: { className?: string }) => {
-  const { settings } = useSettings();
+export const Logo = ({ className, settings: propSettings }: { className?: string; settings?: Settings | null }) => {
+  const { settings: contextSettings } = useSettings();
+  const settings = propSettings !== undefined ? propSettings : contextSettings;
   const logoUrl = settings?.logoUrl || DEFAULT_LOGO_URL;
 
   return (
