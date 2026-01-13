@@ -282,11 +282,21 @@ const CatalogProductCard = ({
   const [retryCount, setRetryCount] = useState<Record<string, number>>({});
   const [fallbackToSingle, setFallbackToSingle] = useState(false);
 
-  const images = useMemo(() => getAllProductImages(product), [product.id]);
-  const hasMultiple = useMemo(() => hasMultipleImages(product), [product.id]);
-  const imageCount = useMemo(() => getImageCount(product), [product.id]);
-  const primaryImageUrl = useMemo(() => getPrimaryImageUrl(product), [product.id]);
+  const images = useMemo(() => getAllProductImages(product), [product]);
+  const hasMultiple = useMemo(() => hasMultipleImages(product), [product]);
+  const imageCount = useMemo(() => getImageCount(product), [product]);
+  const primaryImageUrl = useMemo(() => getPrimaryImageUrl(product), [product]);
   const imageUrl = useMemo(() => getDisplayImageUrl(primaryImageUrl), [primaryImageUrl]);
+
+  // CRÍTICO: Resetear estados de imagen cuando cambia el producto o la tienda
+  useEffect(() => {
+    setImageError(false);
+    setCurrentImageIndex(0);
+    setImageLoadStates({});
+    setRetryCount({});
+    setFallbackToSingle(false);
+    console.log(`🔄 [CatalogCard] Resetting image states for product: ${product.name} (store: ${activeStoreId})`);
+  }, [product.id, activeStoreId, product.name]);
 
   // Debug inicial del producto (solo una vez por producto)
   useEffect(() => {
@@ -595,7 +605,7 @@ export default function CatalogPage() {
   // MODIFICADO: Sistema inteligente para evitar parpadeos de productos de otras tiendas
   const products = useMemo(() => {
     // 1. Prioridad: Productos recién sincronizados por useProducts para esta tienda
-    if (syncedProducts.length > 0 && syncedProducts.every(p => p.storeId === storeIdForCatalog)) {
+    if (syncedProducts.length > 0) {
       console.log('📦 [Catalog] Usando syncedProducts:', syncedProducts.length);
       return syncedProducts;
     }
@@ -630,6 +640,27 @@ export default function CatalogPage() {
   const [catalogStoreSettings, setCatalogStoreSettings] = useState<Store | null>(null);
   const [loadingCatalogStore, setLoadingCatalogStore] = useState(false);
   const isLoading = isLoadingSettings || loadingCatalogStore || isLoadingProducts;
+
+  // Separar estados de carga para mejorar UX: el banner puede cargar antes que los productos
+  const isLoadingProductsOnly = loadingCatalogStore || isLoadingProducts;
+
+  // DEBUG: Monitorizar estados de carga
+  useEffect(() => {
+    console.log('⏳ [Catalog] Loading State Update:', {
+      isLoading,
+      components: {
+        isLoadingSettings,
+        loadingCatalogStore,
+        isLoadingProducts
+      },
+      data: {
+        syncedProductsCount: syncedProducts.length,
+        contextProductsCount: contextProducts.length,
+        totalProductsCount: products.length
+      },
+      store: storeIdForCatalog
+    });
+  }, [isLoading, isLoadingSettings, loadingCatalogStore, isLoadingProducts, syncedProducts.length, contextProducts.length, products.length, storeIdForCatalog]);
 
   // NUEVA FUNCIÓN: Cargar tienda desde Supabase
   const loadStoreFromSupabase = async (storeId: string) => {
@@ -1245,15 +1276,18 @@ export default function CatalogPage() {
     };
   }, [lastMouseMove]);
 
-  useEffect(() => {
-    const relevantAds = (allAds || []).filter(ad => {
+  // Filtrado de anuncios para el banner
+  const filteredBannerAds = useMemo(() => {
+    return (allAds || []).filter(ad => {
       const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
       return !isExpired && ad.status === 'active' && ad.targetBusinessTypes?.includes(currentStoreSettings?.businessType || '');
     });
+  }, [allAds, currentStoreSettings?.businessType]);
 
-    if (isAutoScrolling && relevantAds.length > 1) {
+  useEffect(() => {
+    if (isAutoScrolling && filteredBannerAds.length > 1 && !isLoading) {
       autoScrollRef.current = setInterval(() => {
-        setCurrentAdIndex(prev => (prev + 1) % relevantAds.length);
+        setCurrentAdIndex(prev => (prev + 1) % filteredBannerAds.length);
       }, 3000);
     } else {
       if (autoScrollRef.current) {
@@ -1266,19 +1300,13 @@ export default function CatalogPage() {
         clearInterval(autoScrollRef.current);
       }
     };
-  }, [isAutoScrolling, allAds?.length, currentStoreSettings?.businessType]); // Solo longitud de ads, no array completo
+  }, [isAutoScrolling, filteredBannerAds.length, isLoading]);
 
   useEffect(() => {
-    const relevantAds = (allAds || []).filter(ad => {
-      const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
-      return !isExpired && ad.status === 'active' && ad.targetBusinessTypes?.includes(currentStoreSettings?.businessType || '');
-    });
-
-    if (currentAdIndex >= relevantAds.length && relevantAds.length > 0) {
+    if (currentAdIndex >= filteredBannerAds.length && filteredBannerAds.length > 0) {
       setCurrentAdIndex(0);
     }
-  }, [allAds?.length, currentStoreSettings?.businessType]); // Removido currentAdIndex para evitar loop
-
+  }, [filteredBannerAds.length]);
 
 
 
@@ -3007,141 +3035,130 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
         <main className="container pt-0 pb-6">
 
           {/* Banner de Ads con Auto-scroll */}
-          {allAds && allAds.length > 0 && (
+          {isLoadingSettings ? (
+            <div className="hidden md:block">
+              <div className="relative overflow-hidden bg-gradient-to-r from-blue-50/50 to-green-50/50 border border-blue-100/50 shadow-sm rounded-b-2xl h-48 sm:h-64 animate-pulse">
+                <div className="absolute inset-0 flex items-center justify-center opacity-10">
+                  <Star className="w-16 h-16 text-blue-400" />
+                </div>
+              </div>
+            </div>
+          ) : filteredBannerAds.length > 0 && (
             <div className="hidden md:block">
               <div className="relative overflow-hidden bg-gradient-to-r from-green-50 to-blue-50 border border-green-100 shadow-sm rounded-b-2xl">
                 <div className="relative h-48 sm:h-64 pt-0" ref={containerRef}>
-                  {allAds
-                    .filter(ad => {
-                      const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
-                      return !isExpired && ad.status === 'active' && ad.targetBusinessTypes?.includes(currentStoreSettings?.businessType || '');
-                    })
-                    .map((ad, index) => (
-                      <div
-                        key={`${ad.id ?? 'ad'}-${index}`}
-                        className={`absolute inset-0 transition-opacity duration-1000 ${index === currentAdIndex ? 'opacity-100' : 'opacity-0'
-                          }`}
-                        onClick={() => handleAdClick(ad)}
-                      >
-                        <div className="relative h-full w-full cursor-pointer group">
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent z-10" />
-                          {ad.imageUrl ? (
-                            // Para imágenes base64, usar <img> nativo
-                            ad.imageUrl.startsWith('data:image') ? (
-                              <img
-                                src={ad.imageUrl}
-                                alt={ad.name}
-                                className="object-cover transition-transform duration-500 group-hover:scale-105 w-full h-full"
-                                data-ai-hint={ad.imageHint}
-                              />
-                            ) : (
-                              <Image
-                                src={ad.imageUrl}
-                                alt={ad.name}
-                                fill
-                                className="object-cover transition-transform duration-500 group-hover:scale-105"
-                                sizes="100vw"
-                                data-ai-hint={ad.imageHint}
-                              />
-                            )
+                  {filteredBannerAds.map((ad, index) => (
+                    <div
+                      key={`${ad.id ?? 'ad'}-${index}`}
+                      className={`absolute inset-0 transition-opacity duration-1000 ${index === currentAdIndex ? 'opacity-100' : 'opacity-0'
+                        }`}
+                      onClick={() => handleAdClick(ad)}
+                    >
+                      <div className="relative h-full w-full cursor-pointer group">
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent z-10" />
+                        {ad.imageUrl ? (
+                          // Para imágenes base64, usar <img> nativo
+                          ad.imageUrl.startsWith('data:image') ? (
+                            <img
+                              src={ad.imageUrl}
+                              alt={ad.name}
+                              className="object-cover transition-transform duration-500 group-hover:scale-105 w-full h-full"
+                              data-ai-hint={ad.imageHint}
+                            />
                           ) : (
-                            <div className="flex items-center justify-center h-full w-full bg-gradient-to-br from-green-100 to-blue-100">
-                              <Package className="w-20 h-20 text-green-500" />
-                            </div>
-                          )}
-
-                          {/* Badge de Publicidad */}
-                          <Badge className="absolute top-4 left-4 z-20 shadow-lg bg-gradient-to-r from-green-500 to-blue-500 border-0 text-white px-3 py-1">
-                            <Star className="w-3 h-3 mr-1" />
-                            Publicidad
-                          </Badge>
-
-                          {/* Badge Ver más */}
-                          <div className="absolute top-4 right-4 z-20">
-                            <Badge variant="secondary" className="bg-white/20 text-white backdrop-blur-sm">
-                              <Eye className="w-3 h-3 mr-1" />
-                              Ver más
-                            </Badge>
+                            <Image
+                              src={ad.imageUrl}
+                              alt={ad.name}
+                              fill
+                              className="object-cover transition-transform duration-500 group-hover:scale-105"
+                              sizes="100vw"
+                              data-ai-hint={ad.imageHint}
+                            />
+                          )
+                        ) : (
+                          <div className="flex items-center justify-center h-full w-full bg-gradient-to-br from-green-100 to-blue-100">
+                            <Package className="w-20 h-20 text-green-500" />
                           </div>
+                        )}
 
-                          {/* Contenido del Ad */}
-                          <div className="absolute bottom-0 left-0 right-0 p-6 z-20">
-                            <div className="space-y-2">
-                              <h3 className="text-xl sm:text-2xl font-bold text-white drop-shadow-lg">{ad.name}</h3>
-                              {ad.description && (
-                                <p className="text-sm sm:text-base text-white/90 drop-shadow-md line-clamp-2">{ad.description}</p>
-                              )}
-                              <div className="flex items-center gap-2 text-white/80 text-sm">
-                                <Eye className="w-4 h-4" />
-                                <span>{ad.views || 0} vistas</span>
-                              </div>
+                        {/* Badge de Publicidad */}
+                        <Badge className="absolute top-4 left-4 z-20 shadow-lg bg-gradient-to-r from-green-500 to-blue-500 border-0 text-white px-3 py-1">
+                          <Star className="w-3 h-3 mr-1" />
+                          Publicidad
+                        </Badge>
+
+                        {/* Badge Ver más */}
+                        <div className="absolute top-4 right-4 z-20">
+                          <Badge variant="secondary" className="bg-white/20 text-white backdrop-blur-sm">
+                            <Eye className="w-3 h-3 mr-1" />
+                            Ver más
+                          </Badge>
+                        </div>
+
+                        {/* Contenido del Ad */}
+                        <div className="absolute bottom-0 left-0 right-0 p-6 z-20">
+                          <div className="space-y-2">
+                            <h3 className="text-xl sm:text-2xl font-bold text-white drop-shadow-lg">{ad.name}</h3>
+                            {ad.description && (
+                              <p className="text-sm sm:text-base text-white/90 drop-shadow-md line-clamp-2">{ad.description}</p>
+                            )}
+                            <div className="flex items-center gap-2 text-white/80 text-sm">
+                              <Eye className="w-4 h-4" />
+                              <span>{ad.views || 0} vistas</span>
                             </div>
                           </div>
                         </div>
                       </div>
-                    ))}
+                    </div>
+                  ))}
                 </div>
 
                 {/* Controles de navegación */}
-                {allAds.filter(ad => {
-                  const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
-                  return !isExpired && ad.status === 'active' && ad.targetBusinessTypes?.includes(currentStoreSettings?.businessType || '');
-                }).length > 1 && (
-                    <>
-                      {/* Botones de navegación */}
-                      <button
-                        className="absolute left-4 top-1/2 transform -translate-y-1/2 z-30 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full p-2 transition-all duration-200"
-                        onClick={() => {
-                          const relevantAds = allAds.filter(ad => {
-                            const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
-                            return !isExpired && ad.status === 'active' && ad.targetBusinessTypes?.includes(currentStoreSettings?.businessType || '');
-                          });
-                          setCurrentAdIndex(prev => prev === 0 ? relevantAds.length - 1 : prev - 1);
-                          setIsAutoScrolling(false);
-                        }}
-                      >
-                        <ArrowRight className="w-5 h-5 text-white rotate-180" />
-                      </button>
+                {filteredBannerAds.length > 1 && (
+                  <>
+                    {/* Botones de navegación */}
+                    <button
+                      className="absolute left-4 top-1/2 transform -translate-y-1/2 z-30 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full p-2 transition-all duration-200"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentAdIndex(prev => (prev - 1 + filteredBannerAds.length) % filteredBannerAds.length);
+                        setIsAutoScrolling(false);
+                      }}
+                    >
+                      <ArrowRight className="w-5 h-5 text-white rotate-180" />
+                    </button>
 
-                      <button
-                        className="absolute right-4 top-1/2 transform -translate-y-1/2 z-30 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full p-2 transition-all duration-200"
-                        onClick={() => {
-                          const relevantAds = allAds.filter(ad => {
-                            const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
-                            return !isExpired && ad.status === 'active' && ad.targetBusinessTypes?.includes(currentStoreSettings?.businessType || '');
-                          });
-                          setCurrentAdIndex(prev => (prev + 1) % relevantAds.length);
-                          setIsAutoScrolling(false);
-                        }}
-                      >
-                        <ArrowRight className="w-5 h-5 text-white" />
-                      </button>
+                    <button
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 z-30 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full p-2 transition-all duration-200"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentAdIndex(prev => (prev + 1) % filteredBannerAds.length);
+                        setIsAutoScrolling(false);
+                      }}
+                    >
+                      <ArrowRight className="w-5 h-5 text-white" />
+                    </button>
 
-                      {/* Indicadores de posición */}
-                      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-30">
-                        <div className="flex space-x-2">
-                          {allAds
-                            .filter(ad => {
-                              const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
-                              return !isExpired && ad.status === 'active' && ad.targetBusinessTypes?.includes(currentStoreSettings?.businessType || '');
-                            })
-                            .map((_, index) => (
-                              <button
-                                key={index}
-                                className={`w-2 h-2 rounded-full transition-all duration-300 ${index === currentAdIndex
-                                  ? 'bg-white shadow-lg'
-                                  : 'bg-white/50 hover:bg-white/70'
-                                  }`}
-                                onClick={() => {
-                                  setCurrentAdIndex(index);
-                                  setIsAutoScrolling(false);
-                                }}
-                              />
-                            ))}
-                        </div>
+                    {/* Indicadores de posición */}
+                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-30">
+                      <div className="flex space-x-2">
+                        {filteredBannerAds.map((_, index) => (
+                          <button
+                            key={index}
+                            className={`w-2 h-2 rounded-full transition-all duration-300 ${index === currentAdIndex
+                              ? 'bg-white shadow-lg'
+                              : 'bg-white/50 hover:bg-white/70'
+                              }`}
+                            onClick={() => {
+                              setCurrentAdIndex(index);
+                              setIsAutoScrolling(false);
+                            }}
+                          />
+                        ))}
                       </div>
-                    </>
-                  )}
+                    </div>
+                  </>
+                )}
 
                 {/* Indicador de auto-scroll */}
                 {isAutoScrolling && (
@@ -3167,7 +3184,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
               }
             }}
           >
-            {isLoading ? (
+            {isLoadingProductsOnly ? (
               <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-6 p-1">
                 {[...Array(12)].map((_, i) => (
                   <Card key={i} className="animate-pulse"><div className="aspect-square bg-muted rounded-t-lg"></div><div className="p-4 space-y-2"><div className="h-4 bg-muted rounded w-3/4"></div><div className="h-8 bg-muted rounded w-full"></div></div></Card>
@@ -3193,7 +3210,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
               </div>
             )}
           </div>
-          {(sortedAndFilteredProducts.length === 0 || productsError) && !isLoading && (
+          {(sortedAndFilteredProducts.length === 0 || productsError) && !isLoadingProductsOnly && (
             <div className="text-center py-16 text-gray-500">
               <Package className="mx-auto h-12 w-12 mb-4 text-blue-300" />
               {productsError ? (

@@ -148,98 +148,53 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         storeSettings = null as any;
       }
 
-      // Array de promesas para cargar todos los datos en paralelo
-      const promises = [
-        // Cargar productos
-        fetch(`/api/products?storeId=${storeId}`)
-          .then(res => res.ok ? res.json() : [])
-          .catch(() => []),
+      // Array de promesas dinámico - SOLO cargar lo necesario
+      const promises: Promise<any>[] = [];
 
-        // Cargar ventas
-        fetch(`/api/sales?storeId=${storeId}`)
-          .then(res => res.ok ? res.json() : [])
-          .catch(() => []),
+      // Slot 0: Productos (solo en modo full)
+      promises.push(!minimal ? fetch(`/api/products?storeId=${storeId}`).then(res => res.ok ? res.json() : []).catch(() => []) : Promise.resolve([]));
 
-        // Cargar compras
-        fetch(`/api/purchases?storeId=${storeId}`)
-          .then(res => res.ok ? res.json() : [])
-          .catch(() => []),
+      // Slot 1: Ventas (solo en modo full)
+      promises.push(!minimal ? fetch(`/api/sales?storeId=${storeId}`).then(res => res.ok ? res.json() : []).catch(() => []) : Promise.resolve([]));
 
-        // Cargar clientes
-        fetch(`/api/costumers?storeId=${storeId}`)
-          .then(res => res.ok ? res.json() : [])
-          .catch(() => []),
+      // Slot 2: Compras (solo en modo full)
+      promises.push(!minimal ? fetch(`/api/purchases?storeId=${storeId}`).then(res => res.ok ? res.json() : []).catch(() => []) : Promise.resolve([]));
 
-        // Cargar proveedores
-        fetch(`/api/suppliers?storeId=${storeId}`)
-          .then(res => res.ok ? res.json() : [])
-          .catch(() => []),
+      // Slot 3: Clientes (solo en modo full)
+      promises.push(!minimal ? fetch(`/api/costumers?storeId=${storeId}`).then(res => res.ok ? res.json() : []).catch(() => []) : Promise.resolve([]));
 
-        // Cargar unidades
-        fetch(`/api/units?storeId=${storeId}`)
-          .then(res => res.ok ? res.json() : [])
-          .catch(() => []),
+      // Slot 4: Proveedores (solo en modo full)
+      promises.push(!minimal ? fetch(`/api/suppliers?storeId=${storeId}`).then(res => res.ok ? res.json() : []).catch(() => []) : Promise.resolve([]));
 
-        // Cargar familias
-        fetch(`/api/families?storeId=${storeId}`)
-          .then(res => res.ok ? res.json() : [])
-          .catch(() => []),
+      // Slot 5: Unidades (solo en modo full)
+      promises.push(!minimal ? fetch(`/api/units?storeId=${storeId}`).then(res => res.ok ? res.json() : []).catch(() => []) : Promise.resolve([]));
 
-        // Cargar almacenes
-        fetch(`/api/warehouses?storeId=${storeId}`)
-          .then(res => res.ok ? res.json() : [])
-          .catch(() => []),
+      // Slot 6: FAMILIAS (Siempre necesario para filtros del catálogo)
+      promises.push(fetch(`/api/families?storeId=${storeId}`).then(res => res.ok ? res.json() : []).catch(() => []));
 
-        // Cargar anuncios basados en businessType
-        storeSettings?.businessType
-          ? fetch(`/api/ads?businessType=${storeSettings.businessType}`)
-            .then(res => res.ok ? res.json() : [])
-            .catch(() => [])
-          : Promise.resolve([]),
+      // Slot 7: Almacenes (solo en modo full)
+      promises.push(!minimal ? fetch(`/api/warehouses?storeId=${storeId}`).then(res => res.ok ? res.json() : []).catch(() => []) : Promise.resolve([]));
 
-        // Cargar usuarios
-        fetch(`/api/users?storeId=${storeId}`)
-          .then(res => res.ok ? res.json() : [])
-          .catch(() => []),
+      // Slot 8: ANUNCIOS (Siempre necesario para el catálogo)
+      promises.push(storeSettings?.businessType
+        ? fetch(`/api/ads?businessType=${storeSettings.businessType}`).then(res => res.ok ? res.json() : []).catch(() => [])
+        : Promise.resolve([])
+      );
 
-        // Cargar sesiones de caja
-        fetch(`/api/cashsessions?storeId=${storeId}`)
-          .then(res => res.ok ? res.json() : [])
-          .catch(() => []),
+      // Slot 9: Usuarios (solo en modo full)
+      promises.push(!minimal ? fetch(`/api/users?storeId=${storeId}`).then(res => res.ok ? res.json() : []).catch(() => []) : Promise.resolve([]));
 
-        // Cargar órdenes pendientes (todas para reportes)
-        fetch(`/api/pending-orders?storeId=${storeId}&status=all`)
-          .then(res => res.ok ? res.json() : [])
-          .catch(() => []),
+      // Slot 10: Sesiones (solo en modo full)
+      promises.push(!minimal ? fetch(`/api/cashsessions?storeId=${storeId}`).then(res => res.ok ? res.json() : []).catch(() => []) : Promise.resolve([]));
 
-        // Cargar tasas de cambio
-        fetch(`/api/currency-rates?storeId=${storeId}`)
-          .then(res => res.ok ? res.json() : [])
-          .catch(() => []),
+      // Slot 11: Órdenes (solo en modo full)
+      promises.push(!minimal ? fetch(`/api/pending-orders?storeId=${storeId}&status=all`).then(res => res.ok ? res.json() : []).catch(() => []) : Promise.resolve([]));
 
-        // Cargar pagos de gastos
-        !minimal ? fetch(`/api/payments?storeId=${storeId}`)
-          .then(res => res.ok ? res.json() : [])
-          .catch(() => []) : Promise.resolve([])
-      ];
+      // Slot 12: TASAS (Siempre necesario)
+      promises.push(fetch(`/api/currency-rates?storeId=${storeId}`).then(res => res.ok ? res.json() : []).catch(() => []));
 
-      // CRÍTICO: Si es minimal, vaciar promesas que no necesitamos
-      if (minimal) {
-        // En modo minimal (Catalog), no cargamos productos aquí porque 
-        // el hook useProducts del CatalogPage se encarga con polling y optimización.
-        // Esto evita una "doble carga" masiva al entrar al catálogo.
-        promises[0] = Promise.resolve([]); // Products (Ya se cargan en useProducts)
-        promises[1] = Promise.resolve([]); // Sales
-        promises[2] = Promise.resolve([]); // Purchases
-        promises[3] = Promise.resolve([]); // Customers
-        promises[4] = Promise.resolve([]); // Suppliers
-        promises[5] = Promise.resolve([]); // Units
-        promises[7] = Promise.resolve([]); // Warehouses
-        promises[9] = Promise.resolve([]); // Users
-        promises[10] = Promise.resolve([]); // CashSessions
-        promises[11] = Promise.resolve([]); // PendingOrders
-        promises[13] = Promise.resolve([]); // ExpensePayments
-      }
+      // Slot 13: Pagos (solo en modo full)
+      promises.push(!minimal ? fetch(`/api/payments?storeId=${storeId}`).then(res => res.ok ? res.json() : []).catch(() => []) : Promise.resolve([]));
 
       // Ejecutar todas las peticiones en paralelo
       const results = await Promise.allSettled(promises);

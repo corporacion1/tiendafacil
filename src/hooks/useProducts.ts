@@ -54,7 +54,14 @@ export const useProducts = (storeId?: string): UseProductsReturn => {
     try {
       console.log('🔍 [Products] Fetching products for store:', storeId);
 
-      const response = await fetch(`/api/products?storeId=${encodeURIComponent(storeId)}`);
+      const response = await fetch(`/api/products?storeId=${encodeURIComponent(storeId)}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -106,16 +113,9 @@ export const useProducts = (storeId?: string): UseProductsReturn => {
         return formatted;
       }) : [];
 
-      // Solo actualizar si hay cambios reales
-      setProducts(prevProducts => {
-        const hasChanges = JSON.stringify(prevProducts) !== JSON.stringify(formattedProducts);
-        if (hasChanges) {
-          console.log('🔄 [Products] Products updated - changes detected');
-          setLastUpdated(new Date());
-          return formattedProducts;
-        }
-        return prevProducts;
-      });
+      // Actualizar productos
+      setProducts(formattedProducts);
+      setLastUpdated(new Date());
 
       // Reset retry counter on success
       retryCountRef.current = 0;
@@ -138,15 +138,16 @@ export const useProducts = (storeId?: string): UseProductsReturn => {
         });
       }
 
-      if (showLoadingState && products.length === 0) {
-        setProducts([]);
+      // Si falla la carga inicial y no hay productos, asegurar que el estado quede limpio
+      if (showLoadingState) {
+        setProducts(prev => prev.length === 0 ? [] : prev);
       }
     } finally {
       if (showLoadingState) {
         setIsLoading(false);
       }
     }
-  }, [storeId, toast, isOnline, products.length]);
+  }, [storeId, toast, isOnline]);
 
   // Función para iniciar polling
   const startPolling = useCallback(() => {
