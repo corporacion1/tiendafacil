@@ -1492,7 +1492,7 @@ export default function CatalogPage() {
 
   const validatePhoneNumber = (phone: string): string | null => {
     if (!phone) return "El teléfono es requerido.";
-    const phoneRegex = /^(0412|0414|0416|0424|0426)\d{7}$/;
+    const phoneRegex = /^(0212|0261|0412|0414|0416|0424|0426)\d{7}$/;
     if (!phoneRegex.test(phone)) {
       return "Formato inválido. Debe ser 0412, 0414, 0416, 0424 o 0426 seguido de 7 dígitos.";
     }
