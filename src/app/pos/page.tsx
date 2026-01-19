@@ -2717,7 +2717,7 @@ export default function POSPage() {
     }
 
     // Validar formato de teléfono venezolano
-    const phoneRegex = /^(0412|0414|0416|0424|0426)\d{7}$/;
+    const phoneRegex = /^(0212|0261|0412|0414|0416|0424|0426)\d{7}$/;
     if (!phoneRegex.test(newCustomer.phone?.trim() || "")) {
       toast({
         variant: "destructive",
