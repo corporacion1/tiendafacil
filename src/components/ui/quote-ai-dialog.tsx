@@ -142,8 +142,8 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
       });
 
       toast({
-        title: '✅ Cotización generada',
-        description: 'La cotización se ha generado correctamente.'
+        title: '🖨️ Impresión iniciada',
+        description: 'La cotización se ha preparado para imprimir.'
       });
 
       onOpenChange(false);
@@ -234,16 +234,14 @@ export function QuoteAIDialog({ isOpen, onOpenChange, cartItems, customer, saleI
                 <button
                   key={template.id}
                   onClick={() => setSelectedTemplate(template.id)}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    selectedTemplate === template.id
+                  className={`p-4 rounded-lg border-2 transition-all ${selectedTemplate === template.id
                       ? 'border-primary bg-primary/5'
                       : 'border-border hover:border-primary/50'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-2 mb-2">
-                    <div className={`w-4 h-4 rounded-full border-2 ${
-                      selectedTemplate === template.id ? 'border-primary bg-primary' : 'border-muted-foreground'
-                    }`}>
+                    <div className={`w-4 h-4 rounded-full border-2 ${selectedTemplate === template.id ? 'border-primary bg-primary' : 'border-muted-foreground'
+                      }`}>
                       {selectedTemplate === template.id && <div className="w-2 h-2 rounded-full bg-white" />}
                     </div>
                     <span className="font-semibold">{template.name}</span>

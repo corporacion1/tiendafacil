@@ -40,10 +40,16 @@ export async function generateQuotePDF({
       }
     };
 
-    await html2pdf().set(pdfOptions).from(element).save();
+    // Usar toPdf().get('pdf') para obtener el objeto jsPDF y llamar a autoPrint
+    // antes de abrirlo en una nueva ventana para imprimir
+    const worker = html2pdf().set(pdfOptions).from(element);
+    const pdf = await worker.toPdf().get('pdf');
+    pdf.autoPrint();
+    const pdfUrl = pdf.output('bloburl');
+    window.open(pdfUrl, '_blank');
   } catch (error) {
-    console.error('Error generating PDF:', error);
-    throw new Error('Error al generar el PDF de la cotización');
+    console.error('Error generating PDF for print:', error);
+    throw new Error('Error al generar el PDF de la cotización para imprimir');
   }
 }
 
