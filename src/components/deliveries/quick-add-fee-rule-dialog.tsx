@@ -108,7 +108,7 @@ export const QuickAddFeeRuleDialog = ({ open, onClose, onSuccess }: QuickAddFeeR
           priority: 1,
         });
       }
-      onClose(isOpen);
+      onClose();
     }}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>

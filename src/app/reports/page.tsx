@@ -74,6 +74,9 @@ export default function ReportsPage() {
         customers,
         cashSessions: cashSessionsData,
         pendingOrders: pendingOrdersData,
+        reloadAll,
+        reloadProducts,
+        reloadSales,
     } = useSettings();
 
     // Get active store ID for order fetching
@@ -172,16 +175,30 @@ export default function ReportsPage() {
 
     const movementsData: ReportMovement[] = useMemo(() => {
         if (!salesData || !purchasesData) return [];
-        const saleMovements = salesData.flatMap(sale =>
-            sale.items.map(item => ({
-                id: `mov-sale-${sale.id}-${item.productId}`,
-                productName: item.productName,
-                type: 'sale' as 'sale',
-                quantity: -item.quantity,
-                date: sale.date,
-                storeId: sale.storeId,
-            }))
-        );
+        const saleMovements = salesData
+            .filter(sale => sale.status !== 'returned')
+            .flatMap(sale =>
+                sale.items.map(item => ({
+                    id: `mov-sale-${sale.id}-${item.productId}`,
+                    productName: item.productName,
+                    type: 'sale' as 'sale',
+                    quantity: -item.quantity,
+                    date: sale.date,
+                    storeId: sale.storeId,
+                }))
+            );
+        const returnMovements = salesData
+            .filter(sale => sale.status === 'returned')
+            .flatMap(sale =>
+                sale.items.map(item => ({
+                    id: `mov-ret-${sale.id}-${item.productId}`,
+                    productName: item.productName,
+                    type: 'return' as any,
+                    quantity: item.quantity,
+                    date: sale.date,
+                    storeId: sale.storeId,
+                }))
+            );
         const purchaseMovements = purchasesData.flatMap(purchase =>
             purchase.items.map(item => ({
                 id: `mov-pur-${purchase.id}-${item.productId}`,
@@ -192,7 +209,7 @@ export default function ReportsPage() {
                 storeId: purchase.storeId,
             }))
         );
-        return [...saleMovements, ...purchaseMovements].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        return [...saleMovements, ...purchaseMovements, ...returnMovements].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     }, [salesData, purchasesData]);
 
     const [selectedSaleDetails, setSelectedSaleDetails] = useState<Sale | null>(null);
@@ -212,6 +229,9 @@ export default function ReportsPage() {
     const [isFetchingExpenses, setIsFetchingExpenses] = useState(false);
     const [deliveriesData, setDeliveriesData] = useState<DeliveryAssignment[]>([]);
     const [isFetchingDeliveries, setIsFetchingDeliveries] = useState(false);
+    const [saleToReturn, setSaleToReturn] = useState<Sale | null>(null);
+    const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
+    const [isReturning, setIsReturning] = useState(false);
     const { toast } = useToast();
 
     // Estados para paginación
@@ -268,19 +288,6 @@ export default function ReportsPage() {
         setSaleForPayment(sale);
         setIsPaymentModalOpen(true);
     }
-
-    const reloadSales = async () => {
-        if (!settings?.id) return;
-        try {
-            const response = await fetch(`/api/sales?storeId=${settings.id}`, { cache: 'no-store' });
-            if (response.ok) {
-                const data = await response.json();
-                setSales(data);
-            }
-        } catch (error) {
-            console.error('Error reloading sales:', error);
-        }
-    };
 
     const fetchAccountReceivables = async () => {
         if (!settings?.id) return;
@@ -510,6 +517,51 @@ export default function ReportsPage() {
         link.click();
         URL.revokeObjectURL(link.href);
         toast({ title: 'Exportación completada', description: `${filename} ha sido descargado.` });
+    };
+
+    const handleReturnSale = async () => {
+        if (!saleToReturn || !settings?.id) return;
+
+        setIsReturning(true);
+        try {
+            const response = await fetch('/api/sales/return', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    saleId: saleToReturn.id,
+                    storeId: settings.id,
+                    userId: 'user-pos', // TODO: Get actual user ID
+                    notes: 'Devolución solicitada desde el reporte de ventas.'
+                })
+            });
+
+            if (response.ok) {
+                toast({
+                    title: "Devolución Exitosa",
+                    description: "La venta ha sido devuelta, el inventario restituido y la caja ajustada.",
+                });
+                setIsReturnDialogOpen(false);
+                setSaleToReturn(null);
+                await reloadAll(); // Recarga integral (ventas, productos, caja)
+                fetchAccountReceivables(); // Recargar créditos
+            } else {
+                const error = await response.json();
+                toast({
+                    variant: "destructive",
+                    title: "Error en Devolución",
+                    description: error.error || "No se pudo procesar la devolución.",
+                });
+            }
+        } catch (error) {
+            console.error("Error returning sale:", error);
+            toast({
+                variant: "destructive",
+                title: "Error de Conexión",
+                description: "Ocurrió un error inesperado al conectar con el servidor.",
+            });
+        } finally {
+            setIsReturning(false);
+        }
     };
 
     const getTicketCartItems = (sale: Sale | null): CartItem[] => {
@@ -954,9 +1006,14 @@ export default function ReportsPage() {
                                                     <Badge variant={sale.transactionType === 'credito' ? 'destructive' : 'secondary'}>
                                                         {sale.transactionType === 'credito' ? 'Crédito' : 'Contado'}
                                                     </Badge>
-                                                    {sale.transactionType === 'credito' && (
+                                                    {sale.transactionType === 'credito' && sale.status !== 'returned' && (
                                                         <Badge variant={sale.status === 'paid' ? 'default' : 'destructive'} className="text-xs">
                                                             {sale.status === 'paid' ? 'Pagado' : 'Pendiente'}
+                                                        </Badge>
+                                                    )}
+                                                    {sale.status === 'returned' && (
+                                                        <Badge variant="outline" className="text-xs border-red-500 text-red-500">
+                                                            Devuelta
                                                         </Badge>
                                                     )}
                                                 </div>
@@ -984,6 +1041,18 @@ export default function ReportsPage() {
                                                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                                                         <DropdownMenuItem onSelect={() => handleViewDetails(sale)}>Ver Detalles</DropdownMenuItem>
                                                         <DropdownMenuItem onSelect={() => handlePrintTicket(sale)}>Imprimir Ticket</DropdownMenuItem>
+                                                        <Separator />
+                                                        <DropdownMenuItem
+                                                            disabled={sale.status === 'returned'}
+                                                            className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                                            onSelect={() => {
+                                                                setSaleToReturn(sale);
+                                                                setIsReturnDialogOpen(true);
+                                                            }}
+                                                        >
+                                                            <RefreshCw className="mr-2 h-4 w-4" />
+                                                            Realizar Devolución
+                                                        </DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
                                             </TableCell>
@@ -1307,8 +1376,8 @@ export default function ReportsPage() {
                                         <TableRow key={movement.id}>
                                             <TableCell>{movement.productName}</TableCell>
                                             <TableCell>
-                                                <Badge variant={movement.type === "sale" ? "destructive" : movement.type === "purchase" ? "secondary" : "outline"}>
-                                                    {movement.type === 'sale' ? 'Salida' : movement.type === 'purchase' ? 'Entrada(Compra)' : 'Ajuste'}
+                                                <Badge variant={movement.type === "sale" ? "destructive" : (movement.type === "purchase" || (movement.type as any) === "return") ? "secondary" : "outline"}>
+                                                    {movement.type === 'sale' ? 'Salida' : movement.type === 'purchase' ? 'Entrada(Compra)' : (movement.type as any) === 'return' ? 'Devolución' : 'Ajuste'}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="hidden md:table-cell">
@@ -1593,6 +1662,50 @@ export default function ReportsPage() {
                 </TabsContent>
 
             </Tabs>
+
+            {/* Return Sale Confirmation Dialog */}
+            <Dialog open={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="text-red-600">¿Confirmar Devolución de Venta?</DialogTitle>
+                        <DialogDescription asChild>
+                            <div className="text-sm text-muted-foreground">
+                                Estás a punto de anular la venta <strong>{saleToReturn?.id}</strong>.
+                                <br /><br />
+                                Esta acción realizará lo siguiente:
+                                <ul className="list-disc pl-5 mt-2 space-y-1">
+                                    <li>Restituirá los productos al inventario actual.</li>
+                                    <li>Eliminará los movimientos de salida originales.</li>
+                                    <li><strong>Descontará</strong> los montos cobrados de la sesión de caja actual si el cierre sigue abierto.</li>
+                                    <li>Eliminará cualquier crédito (cuenta por cobrar) asociado.</li>
+                                    <li>Marcará la venta como "Devuelta" con total 0.</li>
+                                </ul>
+                                <br />
+                                <strong>Esta acción no se puede deshacer.</strong> ¿Deseas continuar?
+                            </div>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button variant="outline" disabled={isReturning}>Cancelar</Button>
+                        </DialogClose>
+                        <Button
+                            variant="destructive"
+                            onClick={handleReturnSale}
+                            disabled={isReturning}
+                        >
+                            {isReturning ? (
+                                <>
+                                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                                    Procesando...
+                                </>
+                            ) : (
+                                "Confirmar Devolución"
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Details Dialog */}
             <Dialog open={!!selectedSaleDetails} onOpenChange={(open) => {
@@ -1909,7 +2022,7 @@ export default function ReportsPage() {
                                     <CardHeader><CardTitle>Resumen del Cierre</CardTitle></CardHeader>
                                     <CardContent className="space-y-2">
                                         <div className="flex justify-between"><span>Fondo de Caja:</span> <span className="font-medium">{activeSymbol}{((selectedSessionDetails.opening_balance || selectedSessionDetails.opening_amount || 0) * activeRate).toFixed(2)}</span></div>
-                                        <div className="flex justify-between"><span>Efectivo Esperado:</span> <span className="font-medium">{activeSymbol}{(selectedSessionDetails.calculated_cash * activeRate).toFixed(2)}</span></div>
+                                        <div className="flex justify-between"><span>Efectivo Esperado:</span> <span className="font-medium">{activeSymbol}{((selectedSessionDetails.calculated_cash || 0) * activeRate).toFixed(2)}</span></div>
                                         <div className="flex justify-between"><span>Efectivo Contado:</span> <span className="font-medium">{activeSymbol}{((selectedSessionDetails.closing_amount || 0) * activeRate).toFixed(2)}</span></div>
                                         <Separator />
                                         <div className={`flex justify-between font-bold ${selectedSessionDetails.difference !== 0 ? 'text-destructive' : ''}`}><span>Diferencia:</span> <span>{activeSymbol}{((selectedSessionDetails.difference || 0) * activeRate).toFixed(2)}</span></div>

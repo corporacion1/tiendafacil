@@ -187,7 +187,7 @@ export type Sale = {
   total: number;
   date: string;
   transactionType: 'contado' | 'credito';
-  status: 'paid' | 'unpaid';
+  status: 'paid' | 'unpaid' | 'returned';
   paidAmount: number;
   payments: SalePayment[];
   storeId: string;
@@ -338,30 +338,30 @@ export type CashSession = {
   notes?: string;
 
   // User info (snake_case from DB, camelCase from mapped objects)
-  opened_by: string;
+  opened_by?: string;
   openedBy?: string;
-  closed_by: string | null;
+  closed_by?: string | null;
   closedBy?: string | null;
 
   // Timestamps
-  opened_at: string; // Was incorrectly boolean
+  opened_at?: string; // Was incorrectly boolean
   opening_date?: string;
   openingDate?: string;
 
-  closed_at: string | null; // Was incorrectly boolean
+  closed_at?: string | null; // Was incorrectly boolean
   closing_date?: string | null;
   closingDate?: string | null;
 
   // Financials
-  opening_balance: number;
+  opening_balance?: number;
   openingBalance?: number;
   opening_amount?: number; // Legacy/DB alias
 
-  closing_balance: number | null;
+  closing_balance?: number | null;
   closingBalance?: number | null;
   closing_amount?: number | null;
 
-  calculated_cash: number;
+  calculated_cash?: number;
   calculatedCash?: number;
 
   difference: number;

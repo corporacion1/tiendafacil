@@ -58,6 +58,8 @@ interface SettingsContextType {
   fetchCurrencyRates: () => Promise<CurrencyRate | null>;
   saveCurrencyRate: (rate: number, userName: string) => Promise<boolean>;
   reloadProducts: () => Promise<any>;
+  reloadSales: () => Promise<any>;
+  reloadAll: () => Promise<void>;
   // Funciones de sincronización automática
   syncAfterSave: (storeId: string) => Promise<void>;
   syncProducts: () => Promise<any>;
@@ -712,6 +714,25 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, [activeStoreId]);
 
+  const reloadSales = useCallback(async () => {
+    if (!activeStoreId) return;
+    try {
+      const response = await fetch(`/api/sales?storeId=${activeStoreId}`, { cache: 'no-store' });
+      if (response.ok) {
+        const data = await response.json();
+        setSales(data || []);
+        return data;
+      }
+    } catch (error) {
+      console.error('Error reloading sales:', error);
+    }
+  }, [activeStoreId]);
+
+  const reloadAll = useCallback(async () => {
+    if (!activeStoreId) return;
+    await loadDataFromSupabase(activeStoreId, false);
+  }, [activeStoreId, loadDataFromSupabase]);
+
   const handleSetUserProfile = useCallback((user: UserProfile | null) => {
     setUserProfile(user);
   }, []);
@@ -776,6 +797,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       fetchCurrencyRates,
       saveCurrencyRate,
       reloadProducts,
+      reloadSales,
+      reloadAll,
       // Funciones de sincronización automática
       syncAfterSave: loadDataFromSupabase,
       syncProducts: reloadProducts,
