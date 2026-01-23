@@ -4830,7 +4830,7 @@ export default function POSPage() {
                           </div>
                         </DialogDescription>
                       </DialogHeader>
-                      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide">
+                      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide touch-modal">
                         <div className="grid md:grid-cols-2 gap-4 sm:gap-6 items-start p-1">
                           <div className="space-y-3 sm:space-y-4">
                             <h4 className="font-medium text-center md:text-left text-sm sm:text-base">
@@ -4919,14 +4919,14 @@ export default function POSPage() {
                               Agregar Pago
                             </Button>
 
-                            {remainingBalance > 0 && (
+                            {remainingBalance > 0.01 && (
                               <div className="space-y-2 pt-4">
                                 <div className="flex items-center space-x-2">
                                   <Switch
                                     id="credit-sale-switch"
                                     checked={isCreditSale}
                                     onCheckedChange={setIsCreditSale}
-                                    disabled={remainingBalance <= 0}
+                                    disabled={remainingBalance <= 0.01}
                                   />
                                   <Label htmlFor="credit-sale-switch">
                                     Cambiar Días de Crédito
@@ -5009,25 +5009,25 @@ export default function POSPage() {
                               <div
                                 className={cn(
                                   "flex justify-between",
-                                  remainingBalance > 0
+                                  remainingBalance > 0.01
                                     ? "text-destructive"
                                     : "text-green-600",
                                 )}
                               >
                                 <span>
-                                  {remainingBalance > 0 ? "Faltante:" : "Cambio:"}
+                                  {remainingBalance > 0.01 ? "Faltante:" : "Cambio:"}
                                 </span>
                                 <span>
                                   {activeSymbol}
                                   {(
-                                    Math.abs(remainingBalance) * activeRate
+                                    Math.max(0, Math.abs(remainingBalance) * activeRate)
                                   ).toFixed(2)}
                                 </span>
                               </div>
                             </div>
                           </div>
                         </div>
-                        {remainingBalance > 0 &&
+                        {remainingBalance > 0.01 &&
                           (selectedCustomerId === "eventual" ||
                             !selectedCustomer?.phone) && (
                             <div className="text-destructive text-xs sm:text-sm font-medium flex items-center gap-2 mt-3 p-2 bg-destructive/10 rounded-md">
@@ -5049,7 +5049,7 @@ export default function POSPage() {
                           </div>
                         )}
                       </div>
-                      <DialogFooter className="gap-2 sm:gap-1 mt-3 sm:mt-4 flex-shrink-0 flex-col sm:flex-row">
+                      <DialogFooter className="gap-2 mt-3 sm:mt-4 flex-shrink-0 flex-col sm:flex-row sm:flex-wrap">
                         <Button
                           type="button"
                           variant="outline"
@@ -5057,20 +5057,19 @@ export default function POSPage() {
                           disabled={
                             !localSeries ||
                             !localCorrelative ||
-                            (remainingBalance > 0 && !isCreditSale) ||
+                            (remainingBalance > 0.01 && !isCreditSale) ||
                             (isCreditSale &&
                               (selectedCustomerId === "eventual" ||
                                 !selectedCustomer?.phone))
                           }
-                          className="flex-1 h-8 sm:h-10 text-xs sm:text-sm"
+                          className="flex-1 h-auto py-2 sm:h-10 text-xs sm:text-sm whitespace-normal"
                         >
-                          <Check className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
-                          <span className="hidden sm:inline">
-                            {isCreditSale && remainingBalance > 0
+                          <Check className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                          <span>
+                            {isCreditSale && remainingBalance > 0.01
                               ? "Procesar a Crédito"
                               : "Procesar"}
                           </span>
-                          <span className="sm:hidden">Procesar</span>
                         </Button>
                         <Button
                           type="submit"
@@ -5079,18 +5078,17 @@ export default function POSPage() {
                           disabled={
                             !localSeries ||
                             !localCorrelative ||
-                            (remainingBalance > 0 && !isCreditSale) ||
+                            (remainingBalance > 0.01 && !isCreditSale) ||
                             (isCreditSale &&
                               (selectedCustomerId === "eventual" ||
                                 !selectedCustomer?.phone))
                           }
-                          className="flex-1 h-8 sm:h-10 text-xs sm:text-sm"
+                          className="flex-1 h-auto py-2 sm:h-10 text-xs sm:text-sm whitespace-normal"
                         >
-                          <Share className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
-                          <span className="hidden sm:inline">
+                          <Share className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                          <span>
                             Guardar & Compartir
                           </span>
-                          <span className="sm:hidden">Compartir</span>
                         </Button>
                         <Button
                           type="submit"
@@ -5098,18 +5096,17 @@ export default function POSPage() {
                           disabled={
                             !localSeries ||
                             !localCorrelative ||
-                            (remainingBalance > 0 && !isCreditSale) ||
+                            (remainingBalance > 0.01 && !isCreditSale) ||
                             (isCreditSale &&
                               (selectedCustomerId === "eventual" ||
                                 !selectedCustomer?.phone))
                           }
-                          className="flex-1 h-8 sm:h-10 text-xs sm:text-sm"
+                          className="flex-1 h-auto py-2 sm:h-10 text-xs sm:text-sm whitespace-normal"
                         >
-                          <Printer className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
-                          <span className="hidden sm:inline">
+                          <Printer className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 flex-shrink-0" />
+                          <span>
                             Guardar & Imprimir
                           </span>
-                          <span className="sm:hidden">Imprimir</span>
                         </Button>
                       </DialogFooter>
                     </form>

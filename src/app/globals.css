@@ -228,6 +228,11 @@
   /* Mejoras para touch en modales */
   .touch-modal {
     touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .touch-pan-y {
+    touch-action: pan-y;
   }
   
   /* Espaciado seguro para dispositivos con notch */

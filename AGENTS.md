@@ -9,11 +9,10 @@
 - `npm run lint` - Run ESLint
 - `npm run typecheck` - Run TypeScript type checking
 
-### Testing Commands
-- `npm test` - Run all tests
-- `npm test -- --testNamePattern="specific test"` - Run single test by name
-- `npm test -- path/to/test.test.ts` - Run single test file
-- `npm test -- --watch` - Run tests in watch mode
+### Testing
+- Jest is installed in devDependencies but no test script configured yet
+- Add to package.json: `"test": "jest"` to run tests
+- Add to package.json: `"test:watch": "jest --watch"` for watch mode
 
 ### Security & Maintenance
 - `npm run check-secrets` - Check for exposed secrets
@@ -167,8 +166,7 @@ src/
 ├── hooks/        # Custom React hooks
 ├── lib/          # Utilities, types, constants, API clients
 ├── contexts/     # React contexts
-├── services/     # API and business logic
-└── utils/        # Helper utilities
+└── services/     # API and business logic
 ```
 
 ## Development Workflow
@@ -192,3 +190,10 @@ src/
 - Validate all user inputs with Zod schemas
 - Use service role keys only server-side
 - Never commit `.env` files or secrets
+
+## Important Notes
+- Admin users (role: 'admin', 'seller', 'depositary') can only access their assigned storeId via `useStoreSecurity()` hook
+- Super users (role: 'su') can access all stores
+- Inventory movements are handled automatically by `/api/sales` backend
+- Order status updates should only happen via `updateOrderStatus()` hook, never direct API calls
+- No code should automatically mark orders as "processed" without user action
