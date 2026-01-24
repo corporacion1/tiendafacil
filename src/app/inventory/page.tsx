@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { File, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X, Package, Check, ImageOff, FileText, FileSpreadsheet, FileJson, Filter, Loader2, Plus, PackagePlus } from "lucide-react";
+import { File, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X, Package, Check, ImageOff, FileText, FileSpreadsheet, FileJson, Filter, Loader2, Plus, PackagePlus, Printer } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +43,8 @@ import { format, parseISO } from "date-fns";
 import { Pagination } from "@/components/ui/pagination";
 import * as XLSX from 'xlsx';
 import { useRef } from "react";
+import { CatalogTemplate } from "@/components/inventory/catalog-template";
+import { generateCatalogPDF, printCatalogPDF } from "@/components/inventory/catalog-pdf-generator";
 
 const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewMovements, setProductToDelete }: {
   product: Product;
@@ -155,13 +157,16 @@ const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewM
 
 export default function InventoryPage() {
   useStoreSecurity();
-  
+
   const { hasPermission } = usePermissions();
   const { toast } = useToast();
-  const { activeSymbol, activeRate, activeStoreId, products, setProducts, sales, reloadProducts } = useSettings();
+  const { activeSymbol, activeRate, activeStoreId, products, setProducts, sales, reloadProducts, settings } = useSettings();
   const { user } = useAuth();
   const { createWithSync, updateWithSync, deleteWithSync } = useAutoSync();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const catalogRef = useRef<HTMLDivElement>(null);
+  const [isExportingCatalog, setIsExportingCatalog] = useState(false);
+  const [isCatalogPreviewOpen, setIsCatalogPreviewOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [showImportConfirmation, setShowImportConfirmation] = useState(false);
   const [importStats, setImportStats] = useState({ created: 0, updated: 0, errors: 0, total: 0 });
@@ -755,6 +760,33 @@ export default function InventoryPage() {
     toast({ title: 'Exportación completada' });
   };
 
+  const handleExportCatalog = async () => {
+    const visibleProducts = getVisibleProducts();
+    if (visibleProducts.length === 0) {
+      toast({ variant: 'destructive', title: 'No hay productos para exportar' });
+      return;
+    }
+
+    setIsExportingCatalog(true);
+    toast({ title: 'Generando catálogo...', description: 'Estamos preparando tu catálogo ilustrado, esto puede tardar unos segundos.' });
+
+    try {
+      // Necesitamos esperar un momento para que el DOM se renderice si fuera necesario
+      if (catalogRef.current) {
+        await generateCatalogPDF({
+          element: catalogRef.current,
+          settings
+        });
+        toast({ title: '¡Catálogo listo!', description: 'El catálogo ha sido generado y descargado.' });
+      }
+    } catch (error: any) {
+      console.error('Error exporting catalog:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo generar el catálogo ilustrado.' });
+    } finally {
+      setIsExportingCatalog(false);
+    }
+  };
+
   const handleImportClick = () => {
     fileInputRef.current?.click();
   };
@@ -1056,6 +1088,18 @@ export default function InventoryPage() {
               </DropdownMenuContent>
             </DropdownMenu>
 
+            <Button
+              size="sm"
+              onClick={() => setIsCatalogPreviewOpen(true)}
+              className="h-8 gap-1 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md font-bold transition-all px-4"
+              disabled={isExportingCatalog}
+            >
+              <FileText className="h-3.5 w-3.5" />
+              <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                Catalogo Ilustrado
+              </span>
+            </Button>
+
             <Dialog>
               <DialogTrigger asChild>
                 <Button size="sm" className="h-8 gap-1 bg-blue-500 hover:bg-red-600 text-white">
@@ -1177,7 +1221,7 @@ export default function InventoryPage() {
             </Link>
 
           </div>
-        </div>
+        </div >
         <TabsContent value="all">
           {renderProductsTable(paginatedProducts)}
         </TabsContent>
@@ -1190,7 +1234,7 @@ export default function InventoryPage() {
         <TabsContent value="promotion">
           {renderProductsTable(paginatedProducts)}
         </TabsContent>
-      </Tabs>
+      </Tabs >
 
       <Dialog open={!!productToEdit} onOpenChange={async (isOpen) => {
         if (!isOpen) {
@@ -1232,8 +1276,8 @@ export default function InventoryPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => productToDelete && handleDelete(productToDelete.id)} 
+            <AlertDialogAction
+              onClick={() => productToDelete && handleDelete(productToDelete.id)}
               disabled={isDeleting}
               className="bg-destructive hover:bg-destructive/90"
             >
@@ -1398,6 +1442,84 @@ export default function InventoryPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+
+      {/* Catalog Preview Modal */}
+      <Dialog open={isCatalogPreviewOpen} onOpenChange={setIsCatalogPreviewOpen}>
+        <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="p-6 pb-2">
+            <DialogTitle className="text-2xl font-black text-indigo-700">Previsualización del Catálogo</DialogTitle>
+            <DialogDescription>
+              Revisa cómo se verá tu catálogo antes de exportarlo. Se incluyen {getVisibleProducts().length} productos.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-grow overflow-auto p-4 sm:p-8 bg-slate-100/50 flex justify-center border-y border-slate-200 no-scrollbar" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <style dangerouslySetInnerHTML={{ __html: `.no-scrollbar::-webkit-scrollbar { display: none; }` }} />
+            <div className="shadow-2xl origin-top scale-[0.4] sm:scale-[0.6] md:scale-[0.8] lg:scale-90 xl:scale-100 transition-transform">
+              <CatalogTemplate
+                products={getVisibleProducts()}
+                settings={settings}
+                activeSymbol={activeSymbol}
+                activeRate={activeRate}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="p-4 sm:p-6 shrink-0 border-t flex flex-row items-center justify-end gap-3 bg-transparent">
+            <DialogClose asChild>
+              <Button variant="outline" disabled={isExportingCatalog}>
+                Cerrar
+              </Button>
+            </DialogClose>
+
+            <Button
+              onClick={async () => {
+                if (catalogRef.current) {
+                  await printCatalogPDF(catalogRef.current);
+                }
+              }}
+              variant="secondary"
+              className="gap-2"
+              disabled={isExportingCatalog}
+            >
+              <Printer className="h-4 w-4" />
+              Imprimir
+            </Button>
+
+            <Button
+              onClick={async () => {
+                await handleExportCatalog();
+                setIsCatalogPreviewOpen(false);
+              }}
+              className="gap-2"
+              disabled={isExportingCatalog}
+            >
+              {isExportingCatalog ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Descargando...
+                </>
+              ) : (
+                <>
+                  <FileText className="h-4 w-4" />
+                  Descargar PDF
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Hidden Catalog Template for PDF Generation */}
+      <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', opacity: 0 }}>
+        <div ref={catalogRef}>
+          <CatalogTemplate
+            products={getVisibleProducts()}
+            settings={settings}
+            activeSymbol={activeSymbol}
+            activeRate={activeRate}
+          />
+        </div>
+      </div>
+    </div >
   );
 }
