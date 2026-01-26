@@ -17,31 +17,24 @@ export async function generateCatalogPDF({
         const pdfOptions = {
             margin: [0, 0, 0, 0],
             filename: filename || `catalogo-${settings?.name || 'tienda'}-${new Date().toISOString().split('T')[0]}.pdf`,
-            image: { type: 'jpeg', quality: 1.0 },
+            image: { type: 'jpeg', quality: 0.98 },
             html2canvas: {
-                scale: 4, // Ultra alta resolución para texto perfecto
+                scale: 2, // High resolution
                 useCORS: true,
                 letterRendering: true,
                 allowTaint: true,
                 logging: false,
                 backgroundColor: '#ffffff',
-                windowWidth: 850, // Ajustado al ancho real del catálogo para evitar saltos de línea
+                windowWidth: 794, // EXACTO A4 @ 96 DPI
                 scrollX: 0,
                 scrollY: 0,
-                onclone: (clonedDoc: Document) => {
-                    const el = clonedDoc.getElementById('catalog-pdf-template');
-                    if (el) {
-                        el.style.transform = 'none';
-                        el.style.margin = '0';
-                    }
-                }
             },
             jsPDF: {
                 unit: 'mm',
-                format: 'letter',
+                format: 'a4',
                 orientation: 'portrait',
                 compress: true,
-                precision: 32
+                precision: 2
             },
             pagebreak: { mode: 'css' }
         };
@@ -60,8 +53,14 @@ export async function printCatalogPDF(element: HTMLElement): Promise<void> {
         const pdfOptions = {
             margin: 0,
             image: { type: 'jpeg', quality: 1.0 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
+            html2canvas: {
+                scale: 2,
+                useCORS: true,
+                letterRendering: true, // Fix for text cut-off
+                windowWidth: 794,
+                scrollX: 0
+            },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
         const worker = html2pdf().from(element).set(pdfOptions);

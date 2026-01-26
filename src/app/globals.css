@@ -255,12 +255,34 @@
      max-height: 90dvh;
    }
 
-   /* Scrollbar invisible para modal de tiendas */
-   #stores-dialog-scroll::-webkit-scrollbar {
-     display: none !important;
-     width: 0 !important;
-     height: 0 !important;
-   }
+/* Scrollbar invisible para modal de tiendas */
+  #stores-dialog-scroll::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+/* Print rules for catalog printing to avoid truncation and bad page breaks */
+@media print {
+  #catalog-pdf-template .text-base {
+    white-space: normal !important;
+  }
+  #catalog-pdf-template .line-clamp-3,
+  #catalog-pdf-template .line-clamp-4 {
+    display: block !important;
+    -webkit-line-clamp: unset !important;
+    white-space: normal !important;
+  }
+  #catalog-pdf-template .inventory-card {
+    page-break-inside: avoid !important;
+  }
+  /* Avoid breaking header/footer within catalog pages on print */
+  #catalog-pdf-template .print-header,
+  #catalog-pdf-template .print-footer {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}
 
    #stores-dialog-scroll::-webkit-scrollbar-track {
      display: none !important;

@@ -1511,7 +1511,7 @@ export default function InventoryPage() {
       </Dialog>
       {/* Hidden Catalog Template for PDF Generation */}
       <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', opacity: 0 }}>
-        <div ref={catalogRef}>
+        <div ref={catalogRef} style={{ width: '794px' }}>
           <CatalogTemplate
             products={getVisibleProducts()}
             settings={settings}
