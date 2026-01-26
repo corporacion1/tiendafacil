@@ -105,7 +105,7 @@ export const CatalogTemplate = ({ products, settings, activeSymbol, activeRate }
                                         <div className="flex-grow flex flex-col min-h-0 pb-1">
                                             {/* Name - Relaxed leading to prevent cut-off */}
                                             <h2 className="text-[15px] font-black text-slate-900 uppercase leading-[1.3] mb-2 shrink-0 pb-0.5"
-                                                style={{ WebkitBoxOrient: 'vertical', WebkitLineClamp: 4, display: '-webkit-box', overflow: 'hidden' }}>
+                                                style={{ WebkitBoxOrient: 'vertical', WebkitLineClamp: 4, display: '-webkit-box', overflow: 'visible' }}>
                                                 {product.name}
                                             </h2>
                                             {product.sku && (
@@ -148,7 +148,7 @@ export const CatalogTemplate = ({ products, settings, activeSymbol, activeRate }
                                 {settings?.whatsapp && <span className="text-[10px] text-green-600 font-bold flex items-center gap-1 leading-none">
                                     WhatsApp: {settings.whatsapp}
                                 </span>}
-                                <span className="text-[8px] text-blue-500 mt-1 underline truncate max-w-[220px] block leading-relaxed">{storeUrl}</span>
+                                <span className="text-[8px] text-blue-500 mt-1 underline max-w-[220px] block leading-relaxed">{storeUrl}</span>
                             </div>
                         </div>
                         <div className="text-right">
