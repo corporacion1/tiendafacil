@@ -343,10 +343,26 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit, (errors) => {
           console.error('[ProductForm] Validation errors:', JSON.stringify(errors, null, 2));
+
+          // Lógica de Foco en el primer error
+          const errorFields = Object.keys(errors);
+          if (errorFields.length > 0) {
+            const firstErrorField = errorFields[0];
+            // Intentar encontrar el input por nombre
+            const element = document.querySelector(`[name="${firstErrorField}"]`);
+            if (element) {
+              // Pequeño timeout para asegurar que el UI se actualice
+              setTimeout(() => {
+                (element as HTMLElement).focus();
+                (element as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }, 100);
+            }
+          }
+
           toast({
             variant: "destructive",
             title: "Error de validación",
-            description: "Por favor revisa los campos del formulario.",
+            description: "Por favor revisa los campos marcados en rojo.",
           });
         })} className="grid gap-6">
           {/* Hidden ID field to ensure it's passed on submit */}
