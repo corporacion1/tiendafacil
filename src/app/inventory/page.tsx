@@ -813,17 +813,18 @@ export default function InventoryPage() {
       for (const row of jsonData) {
         try {
           // Normalizar datos del Excel
-          const name = row['Nombre'] || row['nombre'] || row['Name'] || row['name'];
-          if (!name) continue;
+          const rawName = row['Nombre'] || row['nombre'] || row['Name'] || row['name'];
+          if (!rawName) continue;
+          const name = String(rawName).trim();
 
-          const sku = (row['SKU'] || row['sku'] || '').toString();
+          const sku = (row['SKU'] || row['sku'] || '').toString().trim();
           const price = parseFloat(row['Precio Detal'] || row['Precio'] || row['price'] || 0);
           const cost = parseFloat(row['Costo'] || row['cost'] || 0);
           const stock = parseInt(row['Stock'] || row['stock'] || 0);
-          const warehouse = row['Almacen'] || row['almacen'] || row['Warehouse'] || row['warehouse'] || '';
-          const family = row['Familia'] || row['familia'] || row['Family'] || row['family'] || '';
-          const unit = row['Unidad'] || row['unidad'] || row['Unit'] || row['unit'] || '';
-          const description = row['Descripcion'] || row['descripcion'] || row['Description'] || row['description'] || '';
+          const warehouse = (row['Almacen'] || row['almacen'] || row['Warehouse'] || row['warehouse'] || '').toString().trim();
+          const family = (row['Familia'] || row['familia'] || row['Family'] || row['family'] || '').toString().trim();
+          const unit = (row['Unidad'] || row['unidad'] || row['Unit'] || row['unit'] || '').toString().trim();
+          const description = (row['Descripcion'] || row['descripcion'] || row['Description'] || row['description'] || '').toString().trim();
 
           // Lógica para Tipo (Soporta String y Boolean)
           let type: 'product' | 'service' = 'product';
@@ -842,7 +843,7 @@ export default function InventoryPage() {
 
           // Buscar producto existente
           const existingProduct = products.find(p =>
-            (sku && p.sku === sku) ||
+            (sku && p.sku && p.sku.toLowerCase() === sku.toLowerCase()) ||
             (p.name.toLowerCase() === name.toLowerCase())
           );
 
