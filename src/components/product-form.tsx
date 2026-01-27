@@ -44,7 +44,7 @@ const productSchema = z.object({
   family: z.preprocess((val) => val === null ? undefined : val, z.string().optional()),
   warehouse: z.preprocess((val) => val === null ? undefined : val, z.string().optional()),
   description: z.string().optional(),
-  imageUrl: z.string().url("Debe ser una URL válida.").optional().or(z.literal('')),
+  imageUrl: z.preprocess((val) => val === null ? "" : val, z.string().url("Debe ser una URL válida.").optional().or(z.literal(''))),
   imageHint: z.preprocess((val) => val === null ? undefined : val, z.string().optional()),
   // Nuevos campos para múltiples imágenes
   images: z.array(z.object({
@@ -59,7 +59,7 @@ const productSchema = z.object({
       width: z.number(),
       height: z.number()
     }).optional()
-  })).optional(),
+  })).min(1, "Debe agregar al menos una imagen del producto."),
   primaryImageIndex: z.number().optional(),
   // Tipo: Producto Simple o Servicio/Fabricación
   type: z.enum(["product", "service"]),
@@ -85,8 +85,11 @@ const getInitialValues = (product?: Product): ProductFormValues => {
       warehouse: product.warehouse ?? undefined,
       // Ensure affectsInventory is set based on type
       affectsInventory: product.affectsInventory ?? (product.type === 'product'),
-      // ✅ Asegurar que siempre tengamos un ID válido para Supabase
-      id: product.id || (product as any)?._id
+      id: product.id || (product as any)?._id,
+      // Asegurar que imageUrl no sea null
+      imageUrl: product.imageUrl || "",
+      // Asegurar que las imágenes sean un array
+      images: product.images || [],
     };
   }
 
@@ -348,8 +351,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
           const errorFields = Object.keys(errors);
           if (errorFields.length > 0) {
             const firstErrorField = errorFields[0];
-            // Intentar encontrar el input por nombre
-            const element = document.querySelector(`[name="${firstErrorField}"]`);
+            // Intentar encontrar el input por nombre O por ID específico
+            const element = document.querySelector(`[name="${firstErrorField}"]`) || document.getElementById(`field-${firstErrorField}`);
             if (element) {
               // Pequeño timeout para asegurar que el UI se actualice
               setTimeout(() => {
@@ -531,7 +534,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                     control={form.control}
                     name="images"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem id="field-images" tabIndex={-1} className="focus:ring-2 focus:ring-red-500 rounded-lg p-1">
                         <FormLabel>Imágenes del Producto</FormLabel>
                         <FormControl>
                           <MultiImageUpload

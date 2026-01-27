@@ -1,9 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Building2, Store, CheckCircle, XCircle } from "lucide-react"
+import { Building2, Store, CheckCircle, XCircle, RefreshCw } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import type { StoreStatsResponse } from "@/lib/types"
+
+import { useAuth } from "@/contexts/AuthContext"
 
 interface StoresDashboardProps {
   onStatsUpdate?: (stats: StoreStatsResponse) => void
@@ -13,14 +16,28 @@ export function StoresDashboard({ onStatsUpdate }: StoresDashboardProps) {
   const [stats, setStats] = useState<StoreStatsResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isRetrying, setIsRetrying] = useState(false)
+  const { token } = useAuth()
 
   const fetchStats = async () => {
     try {
       setError(null)
-      const response = await fetch('/api/stores-admin/stats')
+      setIsRetrying(true)
+
+      const headers: Record<string, string> = {}
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
+      const response = await fetch('/api/stores-admin/stats', {
+        headers,
+        // Add cache: 'no-store' to ensure we get fresh data and avoid some network caching issues
+        cache: 'no-store'
+      })
 
       if (!response.ok) {
-        throw new Error('Error al cargar estadísticas')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Error al cargar estadísticas')
       }
 
       const data = await response.json()
@@ -28,9 +45,10 @@ export function StoresDashboard({ onStatsUpdate }: StoresDashboardProps) {
       onStatsUpdate?.(data)
     } catch (err) {
       console.error('Error fetching store stats:', err)
-      setError(err instanceof Error ? err.message : 'Error desconocido')
+      setError(err instanceof Error ? err.message : 'Error de red o servidor')
     } finally {
       setLoading(false)
+      setIsRetrying(false)
     }
   }
 
@@ -38,10 +56,10 @@ export function StoresDashboard({ onStatsUpdate }: StoresDashboardProps) {
     fetchStats()
 
     // Auto-refresh every 30 seconds
-    const interval = setInterval(fetchStats, 30000)
+    const interval = setInterval(fetchStats, 60000) // Increase to 60s to reduce load
 
     return () => clearInterval(interval)
-  }, [])
+  }, [token]) // Re-run if token changes
 
   if (loading) {
     return (
@@ -67,12 +85,21 @@ export function StoresDashboard({ onStatsUpdate }: StoresDashboardProps) {
   if (error) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="md:col-span-2 lg:col-span-4">
+        <Card className="md:col-span-2 lg:col-span-4 border-destructive/50 bg-destructive/5">
           <CardContent className="pt-6">
-            <div className="text-center text-destructive">
-              <XCircle className="h-8 w-8 mx-auto mb-2" />
-              <p className="font-medium">Error al cargar estadísticas</p>
-              <p className="text-sm text-muted-foreground">{error}</p>
+            <div className="text-center">
+              <XCircle className="h-10 w-10 mx-auto mb-3 text-destructive" />
+              <h3 className="font-semibold text-lg mb-1">Error al cargar estadísticas</h3>
+              <p className="text-sm text-destructive/80 mb-6 max-w-md mx-auto">{error}</p>
+              <Button
+                onClick={() => fetchStats()}
+                variant="outline"
+                className="gap-2"
+                disabled={isRetrying}
+              >
+                <RefreshCw className={`h-4 w-4 ${isRetrying ? 'animate-spin' : ''}`} />
+                {isRetrying ? 'Reintentando...' : 'Reintentar ahora'}
+              </Button>
             </div>
           </CardContent>
         </Card>

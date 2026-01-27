@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/contexts/AuthContext"
 import type { StoreWithStats, StoreDetailedInfo } from "@/lib/types"
 
 interface StoreDetailsModalProps {
@@ -22,13 +23,19 @@ export function StoreDetailsModal({ store, open, onOpenChange }: StoreDetailsMod
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
+  const { token } = useAuth()
 
   const fetchStoreDetails = async (storeId: string) => {
     try {
       setLoading(true)
       setError(null)
 
-      const response = await fetch(`/api/stores-admin/${storeId}`)
+      const headers: Record<string, string> = {}
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
+      const response = await fetch(`/api/stores-admin/${storeId}`, { headers })
 
       if (!response.ok) {
         throw new Error('Error al cargar los detalles de la tienda')
@@ -56,7 +63,12 @@ export function StoreDetailsModal({ store, open, onOpenChange }: StoreDetailsMod
   const fetchStoreUsers = async (storeId: string) => {
     try {
       setLoadingUsers(true);
-      const response = await fetch(`/api/stores-admin/${storeId}/users`);
+      const headers: Record<string, string> = {}
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
+      const response = await fetch(`/api/stores-admin/${storeId}/users`, { headers });
 
       console.log('Response status:', response.status);
 

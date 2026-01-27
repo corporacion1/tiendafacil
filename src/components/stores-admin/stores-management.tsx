@@ -12,6 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useToast } from "@/hooks/use-toast"
 import { CreateStoreModal } from "@/components/create-store-modal"
 import { useSettings } from "@/contexts/settings-context"
+import { useAuth } from "@/contexts/AuthContext"
 import Image from "next/image"
 import type { StoreWithStats, StoreFilters, StoresAdminResponse } from "@/lib/types"
 
@@ -28,6 +29,7 @@ export function StoresManagement({ onStoreSelect, onStatusChange }: StoresManage
   const [switchingStore, setSwitchingStore] = useState<string | null>(null)
   const { toast } = useToast()
   const { switchStore } = useSettings()
+  const { token } = useAuth()
 
   const [filters, setFilters] = useState<StoreFilters>({
     search: '',
@@ -51,10 +53,15 @@ export function StoresManagement({ onStoreSelect, onStatusChange }: StoresManage
         status: filters.status,
         sortBy: filters.sortBy,
         sortOrder: filters.sortOrder,
-        limit: '100' // Get more stores for admin view
+        limit: '100'
       })
 
-      const response = await fetch(`/api/stores-admin?${params}`)
+      const headers: Record<string, string> = {}
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
+      const response = await fetch(`/api/stores-admin?${params}`, { headers })
 
       if (!response.ok) {
         throw new Error('Error al cargar las tiendas')
@@ -82,9 +89,14 @@ export function StoresManagement({ onStoreSelect, onStatusChange }: StoresManage
 
   const handleStatusChange = async (storeId: string, newStatus: 'active' | 'inactive') => {
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch('/api/stores-admin/status', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ storeId, newStatus })
       })
 
