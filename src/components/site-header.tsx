@@ -1,13 +1,15 @@
 
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
-import { PanelLeft, UserCircle, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
+import { TrendingUp, PanelLeft, UserCircle, LogOut } from "lucide-react";
+import { CurrencyRateModal } from "./currency-rate-modal";
 import {
   Tooltip,
   TooltipContent,
@@ -41,6 +43,7 @@ export function SiteHeader({ toggleSidebar, isSidebarExpanded }: SiteHeaderProps
   const router = useRouter();
   const { toast } = useToast();
   const { canAccess, hasPermission } = usePermissions();
+  const [isRateModalOpen, setIsRateModalOpen] = useState(false);
   const {
     settings,
     activeCurrency,
@@ -177,6 +180,31 @@ export function SiteHeader({ toggleSidebar, isSidebarExpanded }: SiteHeaderProps
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
+
+        {userProfile && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsRateModalOpen(true)}
+                  className="text-primary hover:text-primary hover:bg-primary/10 transition-colors"
+                >
+                  <TrendingUp className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Actualizar tasa de cambio</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+
+        <CurrencyRateModal
+          open={isRateModalOpen}
+          onOpenChange={setIsRateModalOpen}
+        />
 
         <ThemeToggle />
 
