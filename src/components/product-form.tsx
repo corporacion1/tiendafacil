@@ -59,11 +59,20 @@ const productSchema = z.object({
       width: z.number(),
       height: z.number()
     }).optional()
-  })).min(1, "Debe agregar al menos una imagen del producto."),
+  })),
   primaryImageIndex: z.number().optional(),
   // Tipo: Producto Simple o Servicio/Fabricación
   type: z.enum(["product", "service"]),
   affectsInventory: z.boolean().default(true),
+}).superRefine((data, ctx) => {
+  // Solo requerir imágenes si es un producto (no servicio)
+  if (data.type === 'product' && (!data.images || data.images.length === 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Debe agregar al menos una imagen del producto.",
+      path: ["images"],
+    });
+  }
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -535,7 +544,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                     name="images"
                     render={({ field }) => (
                       <FormItem id="field-images" tabIndex={-1} className="focus:ring-2 focus:ring-red-500 rounded-lg p-1">
-                        <FormLabel>Imágenes del Producto</FormLabel>
+                        <FormLabel>Imágenes del Producto {form.watch('type') === 'service' && <span className="text-muted-foreground font-normal">(Opcional)</span>}</FormLabel>
                         <FormControl>
                           <MultiImageUpload
                             productId={(product?.id ?? (product as any)?._id ?? form.watch('id'))}
@@ -565,7 +574,10 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                           />
                         </FormControl>
                         <FormDescription>
-                          Sube hasta 4 imágenes del producto. Se optimizarán automáticamente.
+                          {form.watch('type') === 'service'
+                            ? "Puedes subir hasta 4 imágenes si lo deseas. No es obligatorio para servicios."
+                            : "Sube al menos una imagen (máximo 4). Se optimizarán automáticamente."
+                          }
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
