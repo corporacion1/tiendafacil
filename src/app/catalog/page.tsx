@@ -2792,8 +2792,8 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                     <span className="sr-only sm:not-sr-only font-medium">Tiendas</span>
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-3xl w-[95vw] max-h-[85vh] flex flex-col p-0 overflow-hidden rounded-[2.5rem] border-0 shadow-2xl bg-white">
-                  <DialogHeader className="relative px-8 pt-12 pb-8 flex flex-col items-center text-center bg-gradient-to-b from-purple-50/50 to-transparent">
+                <DialogContent className="sm:max-w-3xl w-[95vw] max-h-[85vh] p-0 overflow-y-auto invisible-scroll scrollbar-hide rounded-[2.5rem] border-0 shadow-2xl bg-white">
+                  <DialogHeader className="relative px-8 pt-12 pb-4 flex flex-col items-center text-center bg-gradient-to-b from-purple-50/50 to-transparent">
 
 
                     <div className="w-24 h-24 bg-gradient-to-tr from-purple-600 to-indigo-600 rounded-[2rem] flex items-center justify-center mb-6 shadow-2xl shadow-purple-500/30 relative">
@@ -2808,7 +2808,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                     </DialogDescription>
                   </DialogHeader>
 
-                  <div className="flex-1 overflow-y-auto invisible-scroll scrollbar-hide py-4 px-4 sm:px-6">
+                  <div className="py-4 px-4 sm:px-6">
                     {isLoadingProductionStores ? (
                       <div className="flex flex-col items-center justify-center py-12">
                         <div className="w-12 h-12 animate-spin rounded-full border-3 border-purple-200 border-t-purple-600 mb-4" />
