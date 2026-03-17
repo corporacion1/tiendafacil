@@ -916,7 +916,7 @@ export default function CatalogPage() {
       const { data: stores, error } = await supabase
         .from('stores')
         .select('*')
-        .eq('status', 'inProduction')
+        .neq('status', 'inactive')
         .order('name', { ascending: true });
 
       if (error) {
@@ -930,7 +930,10 @@ export default function CatalogPage() {
       }
 
       if (stores && stores.length > 0) {
-        const transformedStores: Store[] = stores.map((store: any) => ({
+        // Filtrar tiendas que están en producción real (sin demo data o explícitamente en inProduction)
+        const prodStores = stores.filter((s: Record<string, any>) => s.status === 'inProduction' || s.use_demo_data === false);
+        
+        const transformedStores: Store[] = prodStores.map((store: any) => ({
           id: store.id,
           storeId: store.id,
           name: store.name,

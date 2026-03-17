@@ -319,6 +319,7 @@ export async function POST(request: NextRequest) {
       
       // Agregar campos opcionales básicos que probablemente existan
       if (body.notes !== undefined) basicOrderData.notes = body.notes;
+      if (body.customerAddress !== undefined) basicOrderData.customer_address = body.customerAddress;
       
       const result = await supabase
         .from('orders')
@@ -465,8 +466,11 @@ export async function PUT(request: NextRequest) {
       // Agregar campos básicos que probablemente existan
       if (status) basicUpdateData.status = status;
       if (notes !== undefined) basicUpdateData.notes = notes;
+      if (items) basicUpdateData.items = items;
+      if (total !== undefined) basicUpdateData.total = total;
       if (customerName) basicUpdateData.customer_name = customerName;
       if (customerPhone) basicUpdateData.customer_phone = customerPhone;
+      if (customerAddress !== undefined) basicUpdateData.customer_address = customerAddress;
       // Solo actualizar customer_email si tiene un valor válido (no vacío)
       if (customerEmail !== undefined && customerEmail !== "") basicUpdateData.customer_email = customerEmail;
       

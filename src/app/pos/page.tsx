@@ -2390,6 +2390,7 @@ export default function POSPage() {
         : "Cliente Eventual",
       customerPhone: selectedCustomer?.phone || "",
       customerEmail: selectedCustomer?.email || "",
+      customerAddress: selectedCustomer?.address || "",
       items: cartItems.map((item) => ({
         productId: item.product.id,
         productName: item.product.name,

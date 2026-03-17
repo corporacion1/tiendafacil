@@ -101,7 +101,8 @@ export function StoresManagement({ onStoreSelect, onStatusChange }: StoresManage
       })
 
       if (!response.ok) {
-        throw new Error('Error al actualizar el estado')
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'Error al actualizar el estado');
       }
 
       const result = await response.json()
@@ -119,12 +120,12 @@ export function StoresManagement({ onStoreSelect, onStatusChange }: StoresManage
         title: "Estado actualizado",
         description: result.message
       })
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error updating store status:', err)
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo actualizar el estado de la tienda"
+        description: err.message || "No se pudo actualizar el estado de la tienda"
       })
     }
   }

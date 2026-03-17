@@ -4,16 +4,17 @@ import { supabaseAdmin } from '@/lib/supabase';
 export async function PUT(request: NextRequest) {
   try {
     const data = await request.json();
-    const { storeId, status } = data;
+    const { storeId, status, newStatus } = data;
+    const targetStatus = newStatus || status;
 
-    if (!storeId || !status) {
+    if (!storeId || !targetStatus) {
       return NextResponse.json({ error: 'storeId y status son requeridos' }, { status: 400 });
     }
 
     const { data: updated, error } = await supabaseAdmin
       .from('stores')
       .update({
-        status: status,
+        status: targetStatus,
         updated_at: new Date().toISOString()
       })
       .eq('id', storeId)
