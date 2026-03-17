@@ -911,62 +911,49 @@ export default function CatalogPage() {
   const loadProductionStores = async () => {
     try {
       setIsLoadingProductionStores(true);
-      console.log('🏪 [Catalog] Cargando tiendas de producción...');
+      console.log('🏪 [Catalog] Cargando tiendas de producción desde API...');
 
-      const { data: stores, error } = await supabase
-        .from('stores')
-        .select('*')
-        .neq('status', 'inactive')
-        .order('name', { ascending: true });
-
-      if (error) {
-        console.error('❌ [Supabase] Error loading production stores:', error);
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'No se pudieron cargar las tiendas disponibles.'
-        });
-        return;
+      const response = await fetch('/api/stores/production');
+      
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `HTTP ${response.status}`);
       }
 
+      const data = await response.json();
+      const stores = data.stores || [];
+
       if (stores && stores.length > 0) {
-        // Filtrar tiendas que están en producción real
-        // Incluimos tanto 'inProduction' como 'active', pero descartamos la tienda DEMO específica 
-        // para que no aparezca en la lista de tiendas reales de producción.
-        const prodStores = stores.filter((s: Record<string, any>) => 
-          (s.status === 'inProduction' || s.status === 'active') && 
-          s.id !== 'ST-1234567890123'
-        );
-        
-        const transformedStores: Store[] = prodStores.map((store: any) => ({
+        const transformedStores: Store[] = stores.map((store: any) => ({
           id: store.id,
           storeId: store.id,
           name: store.name,
-          businessType: store.business_type,
+          businessType: store.businessType || store.business_type,
           address: store.address,
           phone: store.phone,
           email: store.email,
-          taxId: store.tax_id,
-          logoUrl: store.logo_url,
-          primaryCurrencyName: store.primary_currency,
-          primaryCurrencySymbol: store.primary_currency_symbol,
-          secondaryCurrencyName: store.secondary_currency,
-          secondaryCurrencySymbol: store.secondary_currency_symbol,
+          taxId: store.tax_id || store.taxId,
+          logoUrl: store.logo_url || store.logoUrl,
+          primaryCurrencyName: store.primary_currency || store.primaryCurrencyName,
+          primaryCurrencySymbol: store.primary_currency_symbol || store.primaryCurrencySymbol,
+          secondaryCurrencyName: store.secondary_currency || store.secondaryCurrencyName,
+          secondaryCurrencySymbol: store.secondary_currency_symbol || store.secondaryCurrencySymbol,
           tax1: store.tax1,
           tax2: store.tax2,
-          colorPalette: store.color_palette,
+          colorPalette: store.color_palette || store.colorPalette,
           status: store.status,
           whatsapp: store.whatsapp,
           meta: store.meta,
           tiktok: store.tiktok,
-          createdAt: store.created_at,
-          updatedAt: store.updated_at
+          createdAt: store.created_at || store.createdAt,
+          updatedAt: store.updated_at || store.updatedAt
         }));
 
         setProductionStores(transformedStores);
-        console.log('✅ [Catalog] Tiendas de producción cargadas:', transformedStores.length);
+        console.log(`✅ [Catalog] Tiendas procesadas: ${transformedStores.length} de ${stores.length} traídas de DB`);
+        console.log('📋 IDs cargados:', transformedStores.map(s => s.id));
       } else {
-        console.log('⚠️ [Catalog] No se encontraron tiendas de producción');
+        console.log('⚠️ [Catalog] No se recibió ninguna tienda desde la base de datos');
         setProductionStores([]);
       }
     } catch (error) {

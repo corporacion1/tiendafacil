@@ -62,3 +62,34 @@ export async function POST(request: Request) {
         );
     }
 }
+
+export async function GET() {
+    try {
+        console.log('🔍 [Production API] Fetching all production stores...');
+        
+        const { data: stores, error } = await supabaseAdmin
+            .from('stores')
+            .select('*')
+            .not('status', 'eq', 'inactive')
+            .order('name', { ascending: true });
+
+        if (error) {
+            console.error('❌ [Production API] Error fetching stores:', error);
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        const productionStores = (stores || []).filter((s: any) => 
+            s.status === 'inProduction' || 
+            s.status === 'active'
+        ).filter((s: any) => s.id !== 'ST-1234567890123');
+
+        console.log(`✅ [Production API] Found ${productionStores.length} production stores`);
+
+        return NextResponse.json({
+            stores: productionStores
+        });
+    } catch (error: any) {
+        console.error('❌ [Production API] Server error:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}
