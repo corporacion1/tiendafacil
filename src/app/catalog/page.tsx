@@ -930,8 +930,13 @@ export default function CatalogPage() {
       }
 
       if (stores && stores.length > 0) {
-        // Filtrar tiendas que están en producción real (sin demo data o explícitamente en inProduction)
-        const prodStores = stores.filter((s: Record<string, any>) => s.status === 'inProduction' || s.use_demo_data === false);
+        // Filtrar tiendas que están en producción real
+        // Incluimos tanto 'inProduction' como 'active', pero descartamos la tienda DEMO específica 
+        // para que no aparezca en la lista de tiendas reales de producción.
+        const prodStores = stores.filter((s: Record<string, any>) => 
+          (s.status === 'inProduction' || s.status === 'active') && 
+          s.id !== 'ST-1234567890123'
+        );
         
         const transformedStores: Store[] = prodStores.map((store: any) => ({
           id: store.id,
