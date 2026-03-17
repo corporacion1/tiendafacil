@@ -2872,10 +2872,16 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                                 </div>
 
                                 {store.address && (
-                                  <div className="mt-2 text-[11px] sm:text-xs text-gray-400 flex items-center gap-1.5 truncate">
+                                  <a
+                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store.address)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="mt-2 text-[11px] sm:text-xs text-gray-400 hover:text-purple-600 flex items-center gap-1.5 truncate transition-colors"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
                                     <MapPin className="w-3 h-3 text-gray-300 flex-shrink-0" />
-                                    {store.address}
-                                  </div>
+                                    <span className="truncate border-b border-transparent hover:border-purple-600">{store.address}</span>
+                                  </a>
                                 )}
 
                                 <div className="mt-auto pt-4 flex items-center justify-between border-t border-purple-50">
