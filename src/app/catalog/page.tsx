@@ -206,7 +206,7 @@ const AdCard = ({ ad, onAdClick }: { ad: Ad; onAdClick: (ad: Ad) => void }) => {
       className="overflow-hidden group flex flex-col border border-green-100 shadow-sm hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-green-50 to-blue-50 backdrop-blur-sm rounded-2xl cursor-pointer"
       onClick={() => onAdClick(ad)}
     >
-      <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative">
+      <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent z-10 rounded-t-2xl" />
         {displayAdImageUrl && !adImageError ? (
           // Para imágenes base64, usar <img> nativo
@@ -361,7 +361,7 @@ const CatalogProductCard = ({
   return (
     <Card className="overflow-hidden group flex flex-col border border-blue-100 shadow-sm hover:shadow-xl hover:border-blue-200 transition-all duration-300 bg-white rounded-2xl">
       <CardContent
-        className="p-0 flex flex-col items-center justify-center aspect-square relative cursor-pointer"
+        className="p-0 flex flex-col items-center justify-center aspect-square relative cursor-pointer overflow-hidden"
         onClick={() => onImageClick(product)}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => setIsHovering(false)}
