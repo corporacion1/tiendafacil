@@ -107,6 +107,9 @@ export class MovementService {
       // Determinar si este producto afecta inventario
       const affectsInventory = product.type === 'product' && product.affects_inventory !== false;
 
+      // Determinar almacén (usar el del producto si no se especifica)
+      const warehouseId = request.warehouseId || product.warehouse || 'main';
+
       // Los servicios se registran para contabilidad pero no afectan stock físico
       if (!affectsInventory) {
         console.log('🔧 [MovementService] Servicio detectado, registrando solo para contabilidad:', request.productId);
@@ -114,7 +117,7 @@ export class MovementService {
         // Crear movimiento contable sin afectar stock
         const movementData = {
           product_id: request.productId,
-          warehouse_id: request.warehouseId,
+          warehouse_id: warehouseId,
           movement_type: request.movementType,
           quantity: request.quantity,
           unit_cost: request.unitCost || product.cost || 0,
@@ -152,7 +155,7 @@ export class MovementService {
       // Crear el movimiento
       const movementData = {
         product_id: request.productId,
-        warehouse_id: request.warehouseId,
+        warehouse_id: warehouseId,
         movement_type: request.movementType,
         quantity: request.quantity,
         unit_cost: unitCost,

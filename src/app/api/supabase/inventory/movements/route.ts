@@ -26,7 +26,7 @@ export async function PUT(request: Request) {
         // Get current product to calculate the difference
         const { data: product, error: productError } = await supabaseAdmin
             .from('products')
-            .select('stock, cost')
+            .select('stock, cost, warehouse')
             .eq('id', product_id)
             .eq('store_id', store_id)
             .single();
@@ -58,7 +58,7 @@ export async function PUT(request: Request) {
             id: IDGenerator.generate('movement'),
             product_id,
             store_id,
-            warehouse_id: null,
+            warehouse_id: product.warehouse || null,
             movement_type: 'adjustment',
             quantity: quantity,
             previous_stock: previousStock,
@@ -119,7 +119,7 @@ export async function POST(request: Request) {
         // 1. Get current product to calculate stock change and get cost
         const { data: product, error: productError } = await supabaseAdmin
             .from('products')
-            .select('stock, cost, type')
+            .select('stock, cost, type, warehouse')
             .eq('id', product_id)
             .eq('store_id', store_id)
             .single();
@@ -153,7 +153,7 @@ export async function POST(request: Request) {
             id: IDGenerator.generate('movement'),
             product_id,
             store_id,
-            warehouse_id: warehouse_id || null,
+            warehouse_id: warehouse_id || product.warehouse || null,
             movement_type,
             quantity: movementQuantity,
             previous_stock: previousStock,

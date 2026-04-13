@@ -103,7 +103,7 @@ export async function POST(request: Request) {
           // Get current product stock
           const { data: product } = await supabaseAdmin
             .from('products')
-            .select('stock, cost')
+            .select('stock, cost, warehouse')
             .eq('id', item.productId)
             .eq('store_id', data.storeId)
             .single();
@@ -128,7 +128,7 @@ export async function POST(request: Request) {
               id: IDGenerator.generate('movement'),
               product_id: item.productId,
               store_id: data.storeId,
-              warehouse_id: null,
+              warehouse_id: product.warehouse || null,
               movement_type: 'purchase',
               quantity: item.quantity,
               previous_stock: previousStock,
