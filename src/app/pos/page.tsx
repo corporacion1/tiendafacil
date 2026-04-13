@@ -338,6 +338,10 @@ export default function POSPage() {
   const [inactiveProductPin, setInactiveProductPin] = useState("");
   const [isInactiveProductPinOpen, setIsInactiveProductPinOpen] = useState(false);
 
+  // -- Estado para validación de PIN al activar venta a crédito --
+  const [isCreditPinOpen, setIsCreditPinOpen] = useState(false);
+  const [creditPin, setCreditPin] = useState("");
+
   // NOTA: El chequeo de isLocked se hace más abajo, después de todos los hooks
 
   // Hook para pedidos pendientes con sincronización automática
@@ -1974,6 +1978,7 @@ export default function POSPage() {
     setCurrentPaymentAmount("");
     setCurrentPaymentRef("");
     setCurrentPaymentMethod("efectivo");
+    setIsCreditSale(false);
   };
 
   // Función para validar stock antes de la venta
@@ -2077,7 +2082,16 @@ export default function POSPage() {
       return;
     }
 
-    const isCredit = remainingBalance > 0;
+    const isCredit = isCreditSale;
+
+    if (!isCredit && remainingBalance > 0.01) {
+      toast({
+        variant: "destructive",
+        title: "Diferencia de pago",
+        description: "Las ventas de contado deben estar totalmente pagadas. Registra el pago completo o cambia a venta a crédito.",
+      });
+      return;
+    }
 
     if (
       isCredit &&
@@ -2363,6 +2377,35 @@ export default function POSPage() {
         // Share the created sale (server-generated id)
         handleShareSale(createdSale);
       }, 200);
+    }
+  };
+
+  const handleConfirmCreditActivation = async () => {
+    try {
+      const isValid = await checkPin(creditPin);
+      if (isValid) {
+        setIsCreditSale(true);
+        setIsCreditPinOpen(false);
+        setCreditPin("");
+        toast({
+          title: "Crédito Autorizado",
+          description: "Venta a crédito activada.",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "PIN Incorrecto",
+          description: "No se pudo autorizar la venta a crédito.",
+        });
+        setCreditPin("");
+      }
+    } catch (error) {
+      console.error("Error verifying PIN:", error);
+      toast({
+        variant: "destructive",
+        title: "Error de Seguridad",
+        description: "Ocurrió un error al verificar el PIN.",
+      });
     }
   };
 
@@ -4926,11 +4969,24 @@ export default function POSPage() {
                                   <Switch
                                     id="credit-sale-switch"
                                     checked={isCreditSale}
-                                    onCheckedChange={setIsCreditSale}
-                                    disabled={remainingBalance <= 0.01}
+                                    onCheckedChange={(checked) => {
+                                      if (checked && hasPin) {
+                                        setCreditPin("");
+                                        setIsCreditPinOpen(true);
+                                      } else {
+                                        setIsCreditSale(checked);
+                                      }
+                                    }}
                                   />
-                                  <Label htmlFor="credit-sale-switch">
-                                    Cambiar Días de Crédito
+                                  <Label htmlFor="credit-sale-switch" className="flex flex-col">
+                                    <span className="text-xs sm:text-sm font-medium">
+                                      {isCreditSale ? "Venta a Crédito" : "Venta de Contado (Default)"}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground">
+                                      {isCreditSale
+                                        ? "Se registrará una cuenta por cobrar"
+                                        : "El pago debe ser completado ahora"}
+                                    </span>
                                   </Label>
                                 </div>
 
@@ -4956,7 +5012,7 @@ export default function POSPage() {
                                     />
                                     <p className="text-xs text-muted-foreground">
                                       La venta se marcará como no pagada y se
-                                      registrará el crédito.
+                                      registrará el crédito por {activeSymbol}{(remainingBalance * activeRate).toFixed(2)}.
                                     </p>
                                   </div>
                                 )}
@@ -5009,33 +5065,43 @@ export default function POSPage() {
                               </div>
                               <div
                                 className={cn(
-                                  "flex justify-between",
-                                  remainingBalance > 0.01
-                                    ? "text-destructive"
-                                    : "text-green-600",
+                                  "flex justify-between items-center p-2 rounded-md",
+                                  remainingBalance < -0.01
+                                    ? "bg-green-100 text-green-700 border border-green-200"
+                                    : remainingBalance > 0.01
+                                      ? "text-destructive"
+                                      : "text-green-600",
                                 )}
                               >
-                                <span>
-                                  {remainingBalance > 0.01 ? "Faltante:" : "Cambio:"}
+                                <span className={remainingBalance < -0.01 ? "font-bold animate-pulse" : ""}>
+                                  {remainingBalance > 0.01 ? "Faltante:" : remainingBalance < -0.01 ? "VUELTO / CAMBIO:" : "Cambio:"}
                                 </span>
-                                <span>
+                                <span className={cn(
+                                  remainingBalance < -0.01 ? "text-xl font-black" : "font-black"
+                                )}>
                                   {activeSymbol}
                                   {(
                                     Math.max(0, Math.abs(remainingBalance) * activeRate)
                                   ).toFixed(2)}
                                 </span>
                               </div>
+                              {remainingBalance < -0.01 && (
+                                <p className="text-[10px] text-green-600 text-right font-bold uppercase mt-1">
+                                  Entregar cambio al cliente
+                                </p>
+                              )}
                             </div>
                           </div>
                         </div>
-                        {remainingBalance > 0.01 &&
-                          (selectedCustomerId === "eventual" ||
-                            !selectedCustomer?.phone) && (
+                        {((isCreditSale && (selectedCustomerId === "eventual" || !selectedCustomer?.phone)) ||
+                          (!isCreditSale && remainingBalance > 0.01)) && (
                             <div className="text-destructive text-xs sm:text-sm font-medium flex items-center gap-2 mt-3 p-2 bg-destructive/10 rounded-md">
                               <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                               <span className="text-xs sm:text-sm">
-                                Para guardar como crédito a ({creditDays}) días,
-                                debe seleccionar un cliente debidamente registrado
+                                {isCreditSale
+                                  ? `Para guardar como crédito a (${creditDays}) días, debe seleccionar un cliente debidamente registrado`
+                                  : "Las ventas de contado deben estar totalmente pagadas. Registra el pago completo o cambia a crédito."
+                                }
                               </span>
                             </div>
                           )}
@@ -5496,6 +5562,45 @@ export default function POSPage() {
               />
               <Button className="w-full" onClick={handleConfirmAddInactiveProduct}>
                 Confirmar Agregar Producto
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+        {/* Modal de Validación de PIN para activar crédito */}
+        <Dialog
+          open={isCreditPinOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setIsCreditPinOpen(false);
+              setCreditPin("");
+            }
+          }}
+        >
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-center flex flex-col items-center gap-2">
+                <ShieldCheck className="w-10 h-10 text-primary" />
+                Autorización Requerida
+              </DialogTitle>
+              <DialogDescription className="text-center">
+                Ingresa el PIN de seguridad para activar la venta a crédito.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <Input
+                type="password"
+                placeholder="****"
+                className="text-center text-2xl tracking-[0.5em]"
+                value={creditPin}
+                onChange={(e) => setCreditPin(e.target.value)}
+                maxLength={4}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleConfirmCreditActivation();
+                }}
+                autoFocus
+              />
+              <Button className="w-full" onClick={handleConfirmCreditActivation}>
+                Autorizar Crédito
               </Button>
             </div>
           </DialogContent>
