@@ -1309,13 +1309,26 @@ export default function InventoryPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg mb-4">
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-600">
-                  +{productMovements.filter(m => m.quantity > 0).reduce((sum, m) => sum + m.quantity, 0)}
+                  +{productMovements.reduce((sum, m) => {
+                    const type = m.movementType?.toLowerCase();
+                    const isInput = ['purchase', 'initial_stock', 'transfer_in', 'return'].includes(type) || 
+                                   (type === 'adjustment' && m.quantity > 0);
+                    return isInput ? sum + Math.abs(m.quantity) : sum;
+                  }, 0)}
                 </div>
                 <div className="text-sm text-muted-foreground">Total Entradas</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-red-600">
-                  {productMovements.filter(m => m.quantity < 0).reduce((sum, m) => sum + Math.abs(m.quantity), 0)}
+                  {productMovements.reduce((sum, m) => {
+                    const type = m.movementType?.toLowerCase();
+                    const isOutput = ['sale', 'transfer_out', 'damage', 'expiry', 'return_to_supplier'].includes(type) || 
+                                    (type === 'adjustment' && m.quantity < 0);
+                    // También handles legacy cases where sales had positive quantities
+                    const isLegacyOutput = ['sale', 'transfer_out', 'damage', 'expiry'].includes(type) && m.quantity > 0;
+                    
+                    return (isOutput || isLegacyOutput) ? sum + Math.abs(m.quantity) : sum;
+                  }, 0)}
                 </div>
                 <div className="text-sm text-muted-foreground">Total Salidas</div>
               </div>
