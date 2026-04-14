@@ -4850,8 +4850,8 @@ export default function POSPage() {
                       <span className="sm:hidden">Venta</span>
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col w-full mx-2 sm:mx-auto">
-                    <form onSubmit={(e) => { e.preventDefault(); handleProcessSale(false); }}>
+                  <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col w-full mx-2 sm:mx-auto p-0">
+                    <div className="flex-1 overflow-hidden flex flex-col p-6">
                       <DialogHeader className="flex-shrink-0">
                         <DialogTitle className="text-lg sm:text-xl flex items-center gap-2">
                           Finalizar Venta
@@ -4936,6 +4936,12 @@ export default function POSPage() {
                                     setCurrentPaymentAmount(value.toFixed(2));
                                   }
                                 }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    handleAddPayment();
+                                  }
+                                }}
                                 className="h-8 sm:h-10 text-xs sm:text-sm"
                               />
                             </div>
@@ -4952,11 +4958,18 @@ export default function POSPage() {
                                     onChange={(e) =>
                                       setCurrentPaymentRef(e.target.value)
                                     }
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        handleAddPayment();
+                                      }
+                                    }}
                                     className="h-8 sm:h-10 text-xs sm:text-sm"
                                   />
                                 </div>
                               )}
                             <Button
+                              type="button"
                               className="w-full h-8 sm:h-10 text-xs sm:text-sm"
                               onClick={handleAddPayment}
                               disabled={
@@ -5144,7 +5157,7 @@ export default function POSPage() {
                           </span>
                         </Button>
                         <Button
-                          type="submit"
+                          type="button"
                           variant="secondary"
                           onClick={() => handleProcessSale(false, true)}
                           disabled={
@@ -5163,7 +5176,7 @@ export default function POSPage() {
                           </span>
                         </Button>
                         <Button
-                          type="submit"
+                          type="button"
                           onClick={() => handleProcessSale(true)}
                           disabled={
                             !localSeries ||
@@ -5181,7 +5194,7 @@ export default function POSPage() {
                           </span>
                         </Button>
                       </DialogFooter>
-                    </form>
+                    </div>
                   </DialogContent>
                 </Dialog>
                 <div className="flex flex-col sm:flex-row gap-2 w-full">

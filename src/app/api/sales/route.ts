@@ -181,7 +181,7 @@ export async function POST(request: Request) {
               store_id: data.storeId,
               warehouse_id: product.warehouse || null,
               movement_type: 'sale',
-              quantity: -item.quantity,
+              quantity: item.quantity,
               previous_stock: previousStock,
               new_stock: newStock,
               reference_type: 'sale',
@@ -190,7 +190,6 @@ export async function POST(request: Request) {
               notes: `Sale ${saleId}`,
               unit_cost: product.cost || 0,
               total_value: (product.cost || 0) * item.quantity,
-              product_name: product.name || item.productName || 'Unknown Product',
               batch_id: null,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
