@@ -141,6 +141,12 @@ import { RouteGuard } from "@/components/route-guard";
 import { usePermissions } from "@/hooks/use-permissions";
 import { useStoreSecurity } from "@/hooks/use-store-security";
 import { IDGenerator } from "@/lib/id-generator";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const ProductCard = ({
   product,
@@ -162,96 +168,130 @@ const ProductCard = ({
   const imageUrl = getDisplayImageUrl(primaryImage);
 
   return (
-    <Card
-      className={cn(
-        "overflow-hidden group cursor-pointer w-full max-w-full transition-all duration-300",
-        isClicked && "ring-2 ring-green-500 ring-offset-2 scale-95",
-      )}
-      onClick={() => onAddToCart(product)}
-    >
-      <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative isolate w-full max-w-full">
-        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
-          <Button size="sm" className="text-xs px-2 py-1">
-            Agregar
-          </Button>
-        </div>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="absolute top-0.5 right-0.5 h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity z-20"
-          onClick={(e) => {
-            e.stopPropagation();
-            onShowDetails(product);
-          }}
-        >
-          <ZoomIn className="h-3 w-3 sm:h-4 sm:w-4" />
-        </Button>
-        {/* Efecto de éxito al agregar */}
-        {isClicked && (
-          <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center z-30 animate-pulse">
-            <div className="bg-green-500 text-white rounded-full p-2">
-              <Check className="w-6 h-6" />
-            </div>
-          </div>
-        )}
-        <div className="relative w-full h-full max-w-full overflow-hidden rounded-t-lg">
-          {imageUrl && !imageError ? (
-            <Image
-              src={imageUrl}
-              alt={product.name}
-              fill
-              sizes="(max-width: 480px) 50vw, (max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1024px) 20vw, 16vw"
-              className={cn(
-                "object-cover transition-all duration-300 group-hover:scale-105 w-full h-full",
-                isClicked && "scale-110 brightness-110",
+    <Tooltip>
+      <TooltipTrigger asChild>
+          <Card
+            className={cn(
+              "overflow-hidden group cursor-pointer w-full max-w-full transition-all duration-300 hover:scale-105 hover:shadow-lg hover:z-50",
+              isClicked && "ring-2 ring-green-500 ring-offset-2 scale-95",
+            )}
+            onClick={() => onAddToCart(product)}
+          >
+            <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative isolate w-full max-w-full">
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                <Button size="sm" className="text-xs px-2 py-1">
+                  Agregar
+                </Button>
+              </div>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="absolute top-0.5 right-0.5 h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity z-20"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onShowDetails(product);
+                }}
+              >
+                <ZoomIn className="h-3 w-3 sm:h-4 sm:w-4" />
+              </Button>
+              {/* Efecto de éxito al agregar */}
+              {isClicked && (
+                <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center z-30 animate-pulse">
+                  <div className="bg-green-500 text-white rounded-full p-2">
+                    <Check className="w-6 h-6" />
+                  </div>
+                </div>
               )}
-              data-ai-hint={product.imageHint}
-              unoptimized
-              onError={() => setImageError(true)}
-              priority={false}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-muted">
-              <Package
-                className={cn(
-                  "w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground transition-all duration-300",
-                  isClicked && "scale-110 text-green-500",
+              <div className="relative w-full h-full max-w-full overflow-hidden rounded-t-lg">
+                {imageUrl && !imageError ? (
+                  <Image
+                    src={imageUrl}
+                    alt={product.name}
+                    fill
+                    sizes="(max-width: 480px) 50vw, (max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1024px) 20vw, 16vw"
+                    className={cn(
+                      "object-cover transition-all duration-300 group-hover:scale-110 w-full h-full",
+                      isClicked && "scale-110 brightness-110",
+                    )}
+                    data-ai-hint={product.imageHint}
+                    unoptimized
+                    onError={() => setImageError(true)}
+                    priority={false}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-muted">
+                    <Package
+                      className={cn(
+                        "w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground transition-all duration-300",
+                        isClicked && "scale-110 text-green-500",
+                      )}
+                    />
+                  </div>
                 )}
-              />
+              </div>
+              <div className="absolute top-1 left-1 bg-primary text-primary-foreground text-xs font-bold px-1.5 py-0.5 rounded text-[10px] sm:text-xs">
+                {activeSymbol}
+                {(product.price * activeRate).toFixed(2)}
+              </div>
+              {product.status === "inactive" && (
+                <div className="absolute top-1 right-1 bg-destructive text-destructive-foreground p-1 rounded z-20">
+                  <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+                </div>
+              )}
+              {product.status === "hidden" && (
+                <div className="absolute top-1 right-1 bg-muted text-muted-foreground p-1 rounded z-20">
+                  <EyeOff className="h-3 w-3 sm:h-4 sm:w-4" />
+                </div>
+              )}
+            </CardContent>
+            <CardFooter className={cn(
+              "p-1 backdrop-blur-sm w-full max-w-full",
+              product.status === "inactive"
+                ? "bg-destructive/20"
+                : product.status === "hidden"
+                  ? "bg-muted/20"
+                  : "bg-background/80"
+            )}>
+              <h3 className={cn(
+                "text-[10px] font-medium truncate w-full",
+                (product.status === "inactive" || product.status === "hidden") && "text-muted-foreground"
+              )}>
+                {product.name}
+              </h3>
+            </CardFooter>
+          </Card>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="max-w-[280px] p-4 bg-popover text-popover-foreground shadow-2xl border-2">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 border-b pb-1 mb-1">
+              <Badge variant="outline" className="text-[10px] font-mono whitespace-nowrap px-1 py-0 h-4">
+                {product.sku || product.id.slice(0, 8)}
+              </Badge>
+              <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                Código del Producto
+              </span>
             </div>
-          )}
-        </div>
-        <div className="absolute top-1 left-1 bg-primary text-primary-foreground text-xs font-bold px-1.5 py-0.5 rounded text-[10px] sm:text-xs">
-          {activeSymbol}
-          {(product.price * activeRate).toFixed(2)}
-        </div>
-        {product.status === "inactive" && (
-          <div className="absolute top-1 right-1 bg-destructive text-destructive-foreground p-1 rounded z-20">
-            <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+            <div>
+              <p className="text-sm font-bold leading-tight line-clamp-2">
+                {product.name}
+              </p>
+            </div>
+            {product.description && (
+              <div className="pt-1 border-t">
+                <p className="text-xs text-muted-foreground italic leading-normal">
+                  {product.description}
+                </p>
+              </div>
+            )}
+            <div className="flex justify-between items-center pt-2 mt-2 border-t text-primary">
+              <span className="text-[10px] font-semibold">PRECIO</span>
+              <span className="text-sm font-black">
+                {activeSymbol}{(product.price * activeRate).toFixed(2)}
+              </span>
+            </div>
           </div>
-        )}
-        {product.status === "hidden" && (
-          <div className="absolute top-1 right-1 bg-muted text-muted-foreground p-1 rounded z-20">
-            <EyeOff className="h-3 w-3 sm:h-4 sm:w-4" />
-          </div>
-        )}
-      </CardContent>
-      <CardFooter className={cn(
-        "p-1 backdrop-blur-sm w-full max-w-full",
-        product.status === "inactive"
-          ? "bg-destructive/20"
-          : product.status === "hidden"
-            ? "bg-muted/20"
-            : "bg-background/80"
-      )}>
-        <h3 className={cn(
-          "text-[10px] font-medium truncate w-full",
-          (product.status === "inactive" || product.status === "hidden") && "text-muted-foreground"
-        )}>
-          {product.name}
-        </h3>
-      </CardFooter>
-    </Card>
+      </TooltipContent>
+    </Tooltip>
   );
 };
 
@@ -352,6 +392,19 @@ export default function POSPage() {
     updateOrderStatus,
     refetch: refetchPendingOrders,
   } = usePendingOrders(activeStoreId);
+
+  // Estados para contador de pedidos
+  const ordersSummary = useMemo(() => {
+    const pending = (pendingOrdersFromDB || []).filter(
+      (o) => o.status?.toLowerCase() === "pending" || o.status?.toLowerCase() === "processing"
+    ).length;
+
+    const attended = (pendingOrdersFromDB || []).filter(
+      (o) => o.status?.toLowerCase() === "processed"
+    ).length;
+
+    return { pending, attended };
+  }, [pendingOrdersFromDB]);
 
   // Hook para estado de red
   const { isOnline } = useNetworkStatus();
@@ -3792,9 +3845,13 @@ export default function POSPage() {
                       <Button variant="secondary" disabled={!isSessionReady}>
                         <Archive className="mr-2 h-4 w-4" />
                         Pedidos de Clientes
-                        {pendingOrdersFromDB.length > 0 && (
-                          <Badge variant="destructive" className="ml-2">
-                            {pendingOrdersFromDB.length}
+                        {ordersSummary.pending > 0 ? (
+                          <Badge variant="destructive" className="ml-2 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]">
+                            {ordersSummary.pending}
+                          </Badge>
+                        ) : (ordersSummary.attended > 0) && (
+                          <Badge variant="secondary" className="ml-2 bg-green-500 hover:bg-green-600 text-white border-none px-2">
+                             {ordersSummary.attended}
                           </Badge>
                         )}
                         {!isOnline && (
@@ -4220,17 +4277,19 @@ export default function POSPage() {
                   </div>
                 )}
                 {isSessionReady && (
-                  <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-1 xs:gap-2 sm:gap-3 md:gap-4 p-1 sm:p-2 w-full max-w-full overflow-hidden">
-                    {filteredProducts.map((product) => (
-                      <ProductCard
-                        key={getProductKey(product)}
-                        product={product}
-                        onAddToCart={addToCart}
-                        onShowDetails={handleShowDetails}
-                        isClicked={clickedProductId === getProductKey(product)}
-                      />
-                    ))}
-                  </div>
+                  <TooltipProvider delayDuration={1000}>
+                    <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-1 xs:gap-2 sm:gap-3 md:gap-4 p-1 sm:p-2 w-full max-w-full overflow-hidden">
+                      {filteredProducts.map((product) => (
+                        <ProductCard
+                          key={getProductKey(product)}
+                          product={product}
+                          onAddToCart={addToCart}
+                          onShowDetails={handleShowDetails}
+                          isClicked={clickedProductId === getProductKey(product)}
+                        />
+                      ))}
+                    </div>
+                  </TooltipProvider>
                 )}
               </CardContent>
             </Card>

@@ -31,7 +31,7 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
   const MIN_FETCH_INTERVAL = 2000; // Mínimo 2 segundos entre fetches
   const MAX_RETRIES = 3;
 
-  const fetchOrders = useCallback(async (showLoadingState = true) => {
+  const fetchOrders = useCallback(async (showLoadingState = true, force = false) => {
     if (!storeId || !isActiveRef.current || !isOnline) {
       if (!storeId || (!isOnline && showLoadingState)) {
         setOrders([]);
@@ -39,9 +39,9 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
       return;
     }
 
-    // Evitar fetches muy frecuentes
+    // Evitar fetches muy frecuentes, a menos que se fuerce la actualización
     const now = Date.now();
-    if (now - lastFetchTimeRef.current < MIN_FETCH_INTERVAL) {
+    if (!force && (now - lastFetchTimeRef.current < MIN_FETCH_INTERVAL)) {
       return;
     }
     lastFetchTimeRef.current = now;
@@ -146,6 +146,14 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
       }
 
       const processor = processedBy || 'POS';
+
+      // Actualización optimista para feedback instantáneo
+      setOrders(prev => prev.map(order => 
+        order.orderId === orderId 
+          ? { ...order, status, processedBy: processor, saleId } 
+          : order
+      ));
+
       const response = await fetch('/api/orders', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -165,8 +173,8 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
         throw new Error(`Error al actualizar estado del pedido: ${response.status} - ${errorText}`);
       }
 
-      // Refrescar la lista de pedidos
-      await fetchOrders(false);
+      // Refrescar la lista de pedidos forzando el bypass del timer
+      await fetchOrders(false, true);
 
       return true;
 
@@ -252,7 +260,7 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
     };
   }, [storeId, fetchOrders, startPolling, stopPolling]);
 
-  const refetch = useCallback(() => fetchOrders(true), [fetchOrders]);
+  const refetch = useCallback(() => fetchOrders(true, true), [fetchOrders]);
 
   return {
     orders,
