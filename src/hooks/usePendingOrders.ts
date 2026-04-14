@@ -9,7 +9,7 @@ interface UsePendingOrdersReturn {
   error: string | null;
   refetch: () => Promise<void>;
   isPolling: boolean;
-  updateOrderStatus: (orderId: string, status: string, saleId?: string, processedBy?: string) => Promise<boolean>;
+  updateOrderStatus: (orderId: string, status: PendingOrder['status'], saleId?: string, processedBy?: string) => Promise<boolean>;
 }
 
 export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
@@ -137,7 +137,7 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
   }, [storeId, toast, isOnline]);
 
   // Función para actualizar estado de pedido
-  const updateOrderStatus = useCallback(async (orderId: string, status: string, saleId?: string, processedBy?: string): Promise<boolean> => {
+  const updateOrderStatus = useCallback(async (orderId: string, status: PendingOrder['status'], saleId?: string, processedBy?: string): Promise<boolean> => {
     try {
 
       if (!storeId) {
