@@ -470,7 +470,7 @@ export default function POSPage() {
     amount: number;
     reference?: string;
   }>>([]);
-  const [currentPaymentMethod, setCurrentPaymentMethod] = useState("efectivo");
+  const [currentPaymentMethod, setCurrentPaymentMethod] = useState(paymentMethods[0]?.id || "efectivo");
   const [currentPaymentAmount, setCurrentPaymentAmount] = useState<
     number | string
   >("");
@@ -1881,15 +1881,20 @@ export default function POSPage() {
       return;
     }
 
-    // Validar que no exceda el total pendiente (con pequeña tolerancia)
-    if (amount > remainingBalance + 0.01) {
+    // Validar que no exceda el total pendiente (excepto para efectivo o métodos que permitan cambio)
+    const canHaveChange = method.name.toLowerCase().includes("efectivo") || method.id === "efectivo";
+    
+    if (!canHaveChange && amount > remainingBalance + 0.01) {
       toast({
         variant: "destructive",
-        title: "Monto excesivo",
-        description: `El monto no puede ser mayor al saldo pendiente (${activeSymbol}${(remainingBalance * activeRate).toFixed(2)}).`,
+        title: "Monto excedido",
+        description: `Para este método de pago, el monto no puede superar el saldo pendiente (${activeSymbol}${(remainingBalance * activeRate).toFixed(2)}).`,
       });
       return;
     }
+
+    // Para efectivo, permitimos cualquier monto mayor para calcular el cambio
+    // No hay restricción aquí para efectivo.
 
     // Validar referencia si es requerida
     if (method.requiresRef && !currentPaymentRef.trim()) {
@@ -1977,7 +1982,7 @@ export default function POSPage() {
     setPayments([]);
     setCurrentPaymentAmount("");
     setCurrentPaymentRef("");
-    setCurrentPaymentMethod("efectivo");
+    setCurrentPaymentMethod(paymentMethods[0]?.id || "efectivo");
     setIsCreditSale(false);
   };
 
@@ -2048,11 +2053,11 @@ export default function POSPage() {
       setIsSessionModalOpen(true);
       toast({
         variant: "destructive",
-        title: "Caja cerrada",
+        title: "La caja no está iniciada",
         description:
           localSeries
-            ? `No existe una sesión abierta para la serie ${localSeries}. Abre la caja para continuar.`
-            : "No existe una sesión de caja abierta. Abre la caja para continuar.",
+            ? `Debes iniciar o retomar la sesión de caja para la serie ${localSeries} antes de procesar ventas.`
+            : "No existe una sesión de caja activa. Debes iniciar una sesión de caja para continuar.",
       });
       return;
     }
