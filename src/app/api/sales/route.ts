@@ -236,7 +236,7 @@ export async function POST(request: Request) {
           original_amount: createdSale.total,
           paid_amount: createdSale.paid_amount || 0,
           remaining_balance: createdSale.total - (createdSale.paid_amount || 0),
-          status: (createdSale.paid_amount >= createdSale.total) ? 'paid' : 'pending',
+          status: (createdSale.paid_amount >= createdSale.total - 0.01) ? 'paid' : (createdSale.paid_amount > 0 ? 'partial' : 'pending'),
           sale_date: createdSale.date,
           due_date: creditDueDate,
           credit_days: creditDays || null,

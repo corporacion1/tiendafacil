@@ -383,7 +383,7 @@ export default function CreditsPage() {
                             <TableCell>
                                 <div className="flex flex-col">
                                     <span>{format(parseISO(account.dueDate), "dd/MM/yyyy")}</span>
-                                    {daysPastDue > 0 && (
+                                    {daysPastDue > 0 && account.status !== 'paid' && (
                                         <span className="text-xs text-red-600">{daysPastDue} días vencido</span>
                                     )}
                                 </div>

@@ -169,7 +169,7 @@ export async function POST(request: Request) {
       original_amount: sale.total,
       paid_amount: sale.paid_amount || 0,
       remaining_balance: sale.total - (sale.paid_amount || 0),
-      status: sale.paid_amount >= sale.total ? 'paid' : 'pending',
+      status: sale.paid_amount >= sale.total - 0.01 ? 'paid' : (sale.paid_amount > 0 ? 'partial' : 'pending'),
       sale_date: sale.date,
       due_date: dueDate.toISOString(),
       last_payment_date: (sale.paid_amount > 0) ? new Date().toISOString() : null,
@@ -307,7 +307,11 @@ export async function PUT(request: Request) {
     const newRemainingBalance = Math.max(0, currentRemaining - payment.amount);
 
     // Status para account_receivables
-    const newStatus = newRemainingBalance <= 0.01 ? 'paid' : (new Date() > new Date(account.due_date) ? 'overdue' : 'pending');
+    const isPaid = newRemainingBalance <= 0.01;
+    const isOverdue = !isPaid && new Date() > new Date(account.due_date);
+    const isPartial = !isPaid && !isOverdue && newPaidAmount > 0;
+    
+    const newStatus = isPaid ? 'paid' : (isOverdue ? 'overdue' : (isPartial ? 'partial' : 'pending'));
 
     console.log('📝 [Credits API] Valores calculados:', {
       currentPaid,
