@@ -41,7 +41,7 @@ import { useAutoSync } from "@/hooks/use-auto-sync";
 import { useStoreSecurity } from "@/hooks/use-store-security";
 import { format, parseISO } from "date-fns";
 import { Pagination } from "@/components/ui/pagination";
-import * as XLSX from 'xlsx';
+// import * as XLSX from 'xlsx'; - Removed static import to fix SSR issue
 import { useRef } from "react";
 import { CatalogTemplate } from "@/components/inventory/catalog-template";
 import { generateCatalogPDF, printCatalogPDF } from "@/components/inventory/catalog-pdf-generator";
@@ -680,7 +680,7 @@ function InventoryContent() {
     setCurrentPage(1);
   }, [searchTerm, activeTab, productTypeFilter]);
 
-  const exportData = (format: 'csv' | 'json' | 'txt' | 'xlsx') => {
+  const exportData = async (format: 'csv' | 'json' | 'txt' | 'xlsx') => {
     const data = getVisibleProducts();
     if (data.length === 0) {
       toast({ variant: 'destructive', title: 'No hay datos para exportar' });
@@ -692,6 +692,7 @@ function InventoryContent() {
     let fileExtension = '';
 
     if (format === 'xlsx') {
+      const XLSX = await import('xlsx');
       const dataToExport = data.map(p => ({
         SKU: p.sku || '',
         Nombre: p.name,
@@ -797,6 +798,7 @@ function InventoryContent() {
 
     setIsImporting(true);
     try {
+      const XLSX = await import('xlsx');
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data);
       const worksheetName = workbook.SheetNames[0];

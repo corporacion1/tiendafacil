@@ -33,46 +33,46 @@ export async function GET(request: Request) {
     const summary = {
       // Totales generales
       totalAccounts: accounts.length,
-      totalAmount: accounts.reduce((sum, acc) => sum + (acc.original_amount || 0), 0),
-      totalPaid: accounts.reduce((sum, acc) => sum + (acc.paid_amount || 0), 0),
-      totalPending: accounts.reduce((sum, acc) => sum + (acc.remaining_balance || 0), 0),
+      totalAmount: accounts.reduce((sum: number, acc: any) => sum + (acc.original_amount || 0), 0),
+      totalPaid: accounts.reduce((sum: number, acc: any) => sum + (acc.paid_amount || 0), 0),
+      totalPending: accounts.reduce((sum: number, acc: any) => sum + (acc.remaining_balance || 0), 0),
 
       // Por estado
       byStatus: {
-        pending: accounts.filter(acc => acc.status === 'pending').length,
-        partial: accounts.filter(acc => acc.status === 'partial').length,
-        overdue: accounts.filter(acc => acc.status === 'overdue').length
+        pending: accounts.filter((acc: any) => acc.status === 'pending').length,
+        partial: accounts.filter((acc: any) => acc.status === 'partial').length,
+        overdue: accounts.filter((acc: any) => acc.status === 'overdue').length
       },
 
       // Montos por estado
       amountsByStatus: {
         pending: accounts
-          .filter(acc => acc.status === 'pending')
-          .reduce((sum, acc) => sum + (acc.remaining_balance || 0), 0),
+          .filter((acc: any) => acc.status === 'pending')
+          .reduce((sum: number, acc: any) => sum + (acc.remaining_balance || 0), 0),
         partial: accounts
-          .filter(acc => acc.status === 'partial')
-          .reduce((sum, acc) => sum + (acc.remaining_balance || 0), 0),
+          .filter((acc: any) => acc.status === 'partial')
+          .reduce((sum: number, acc: any) => sum + (acc.remaining_balance || 0), 0),
         overdue: accounts
-          .filter(acc => acc.status === 'overdue')
-          .reduce((sum, acc) => sum + (acc.remaining_balance || 0), 0)
+          .filter((acc: any) => acc.status === 'overdue')
+          .reduce((sum: number, acc: any) => sum + (acc.remaining_balance || 0), 0)
       },
 
       // Análisis de vencimientos (aging)
       aging: {
-        current: accounts.filter(acc => new Date(acc.due_date) >= now).length,
-        days1to30: accounts.filter(acc => {
+        current: accounts.filter((acc: any) => new Date(acc.due_date) >= now).length,
+        days1to30: accounts.filter((acc: any) => {
           const daysPastDue = Math.floor((now.getTime() - new Date(acc.due_date).getTime()) / (1000 * 60 * 60 * 24));
           return daysPastDue >= 1 && daysPastDue <= 30;
         }).length,
-        days31to60: accounts.filter(acc => {
+        days31to60: accounts.filter((acc: any) => {
           const daysPastDue = Math.floor((now.getTime() - new Date(acc.due_date).getTime()) / (1000 * 60 * 60 * 24));
           return daysPastDue >= 31 && daysPastDue <= 60;
         }).length,
-        days61to90: accounts.filter(acc => {
+        days61to90: accounts.filter((acc: any) => {
           const daysPastDue = Math.floor((now.getTime() - new Date(acc.due_date).getTime()) / (1000 * 60 * 60 * 24));
           return daysPastDue >= 61 && daysPastDue <= 90;
         }).length,
-        over90: accounts.filter(acc => {
+        over90: accounts.filter((acc: any) => {
           const daysPastDue = Math.floor((now.getTime() - new Date(acc.due_date).getTime()) / (1000 * 60 * 60 * 24));
           return daysPastDue > 90;
         }).length
@@ -81,39 +81,39 @@ export async function GET(request: Request) {
       // Montos por aging
       agingAmounts: {
         current: accounts
-          .filter(acc => new Date(acc.due_date) >= now)
-          .reduce((sum, acc) => sum + (acc.remaining_balance || 0), 0),
+          .filter((acc: any) => new Date(acc.due_date) >= now)
+          .reduce((sum: number, acc: any) => sum + (acc.remaining_balance || 0), 0),
         days1to30: accounts
-          .filter(acc => {
+          .filter((acc: any) => {
             const daysPastDue = Math.floor((now.getTime() - new Date(acc.due_date).getTime()) / (1000 * 60 * 60 * 24));
             return daysPastDue >= 1 && daysPastDue <= 30;
           })
-          .reduce((sum, acc) => sum + (acc.remaining_balance || 0), 0),
+          .reduce((sum: number, acc: any) => sum + (acc.remaining_balance || 0), 0),
         days31to60: accounts
-          .filter(acc => {
+          .filter((acc: any) => {
             const daysPastDue = Math.floor((now.getTime() - new Date(acc.due_date).getTime()) / (1000 * 60 * 60 * 24));
             return daysPastDue >= 31 && daysPastDue <= 60;
           })
-          .reduce((sum, acc) => sum + (acc.remaining_balance || 0), 0),
+          .reduce((sum: number, acc: any) => sum + (acc.remaining_balance || 0), 0),
         days61to90: accounts
-          .filter(acc => {
+          .filter((acc: any) => {
             const daysPastDue = Math.floor((now.getTime() - new Date(acc.due_date).getTime()) / (1000 * 60 * 60 * 24));
             return daysPastDue >= 61 && daysPastDue <= 90;
           })
-          .reduce((sum, acc) => sum + (acc.remaining_balance || 0), 0),
+          .reduce((sum: number, acc: any) => sum + (acc.remaining_balance || 0), 0),
         over90: accounts
-          .filter(acc => {
+          .filter((acc: any) => {
             const daysPastDue = Math.floor((now.getTime() - new Date(acc.due_date).getTime()) / (1000 * 60 * 60 * 24));
             return daysPastDue > 90;
           })
-          .reduce((sum, acc) => sum + (acc.remaining_balance || 0), 0)
+          .reduce((sum: number, acc: any) => sum + (acc.remaining_balance || 0), 0)
       },
 
       // Top clientes con más deuda (agregación manual en JS)
       topDebtors: (() => {
         const debtorMap = new Map();
 
-        accounts.forEach(acc => {
+        accounts.forEach((acc: any) => {
           const customerId = acc.customer_id;
           if (!debtorMap.has(customerId)) {
             debtorMap.set(customerId, {
@@ -142,14 +142,14 @@ export async function GET(request: Request) {
 
       // Próximos vencimientos (próximos 7 días)
       upcomingDue: accounts
-        .filter(acc => {
+        .filter((acc: any) => {
           const dueDate = new Date(acc.due_date);
           const sevenDaysFromNow = new Date();
           sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
           return dueDate >= now && dueDate <= sevenDaysFromNow;
         })
-        .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
-        .map(acc => ({
+        .sort((a: any, b: any) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
+        .map((acc: any) => ({
           id: acc.id,
           saleId: acc.sale_id,
           customerId: acc.customer_id,
@@ -173,8 +173,8 @@ export async function GET(request: Request) {
         averageDaysToCollect: 0, // Se calcularía con cuentas pagadas
         collectionRate: 0, // Porcentaje de cuentas cobradas vs creadas
         averageDebtPerCustomer: accounts.length > 0
-          ? accounts.reduce((sum, acc) => sum + (acc.remaining_balance || 0), 0) /
-          new Set(accounts.map(acc => acc.customer_id)).size
+          ? accounts.reduce((sum: number, acc: any) => sum + (acc.remaining_balance || 0), 0) /
+          new Set(accounts.map((acc: any) => acc.customer_id)).size
           : 0
       },
 

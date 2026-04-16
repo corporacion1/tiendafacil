@@ -83,7 +83,7 @@ class NeonQueryBuilder {
 
   async execute() {
     try {
-      // @ts-expect-error - Using sql.query as per Neon documentation for parameterized queries
+      // Using sql.query as per Neon documentation for parameterized queries
       const queryFn = (sql as any).query || sql;
 
       if (this.action === 'insert') {
