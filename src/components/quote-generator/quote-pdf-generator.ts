@@ -1,4 +1,4 @@
-import html2pdf from 'html2pdf.js';
+// import html2pdf from 'html2pdf.js'; // Removed static import to prevent SSR 'self is not defined' error
 import type { QuotePrintOptions } from './types';
 import type { Store, CartItem, Customer } from '@/lib/types';
 
@@ -42,6 +42,7 @@ export async function generateQuotePDF({
 
     // Usar toPdf().get('pdf') para obtener el objeto jsPDF y llamar a autoPrint
     // antes de abrirlo en una nueva ventana para imprimir
+    const html2pdf = (await import('html2pdf.js')).default;
     const worker = html2pdf().set(pdfOptions).from(element);
     const pdf = await worker.toPdf().get('pdf');
     pdf.autoPrint();
@@ -82,6 +83,7 @@ export async function downloadQuotePDF({
       }
     };
 
+    const html2pdf = (await import('html2pdf.js')).default;
     await html2pdf().set(pdfOptions).from(element).save();
   } catch (error) {
     console.error('Error downloading PDF:', error);

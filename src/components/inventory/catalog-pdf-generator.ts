@@ -1,4 +1,4 @@
-import html2pdf from 'html2pdf.js';
+// import html2pdf from 'html2pdf.js'; // Removed static import to prevent SSR 'self is not defined' error
 import { Store, Product } from '@/lib/types';
 import { getDisplayImageUrl } from '@/lib/utils';
 
@@ -41,6 +41,8 @@ export async function generateCatalogPDF({
 
         // Esperar a que las imágenes y fuentes terminen de cargar
         await document.fonts.ready;
+        
+        const html2pdf = (await import('html2pdf.js')).default;
         await html2pdf().from(element).set(pdfOptions).save();
     } catch (error) {
         console.error('Error generating Catalog PDF:', error);
@@ -63,6 +65,7 @@ export async function printCatalogPDF(element: HTMLElement): Promise<void> {
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
+        const html2pdf = (await import('html2pdf.js')).default;
         const worker = html2pdf().from(element).set(pdfOptions);
         const pdf = await worker.toPdf().get('pdf');
 
