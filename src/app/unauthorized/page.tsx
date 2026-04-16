@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, Home, LogOut, Store } from 'lucide-react';
 
-export default function UnauthorizedPage() {
+import { Suspense } from 'react';
+
+function UnauthorizedContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, logout } = useAuth();
@@ -129,5 +131,17 @@ export default function UnauthorizedPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function UnauthorizedPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+      </div>
+    }>
+      <UnauthorizedContent />
+    </Suspense>
   );
 }

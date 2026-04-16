@@ -38,6 +38,8 @@
   ],
   "exclude": [
     "node_modules",
+    ".next",
+    "scratch",
     "src/__tests__/**/*"
   ]
 }

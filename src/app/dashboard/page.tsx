@@ -1,5 +1,5 @@
 "use client"
-import { useState, useMemo } from "react"
+import { useState, useMemo, Suspense } from "react"
 import { ArrowUpRight, DollarSign, Users, Package, ShoppingBag, AlertTriangle, Database, Calendar, CalendarDays, CalendarRange, TrendingUp, BarChart3, Package2 } from "lucide-react"
 import Link from "next/link"
 import { Bar, BarChart, Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from "recharts"
@@ -30,7 +30,7 @@ const getDate = (d: any): Date => {
   return new Date()
 }
 
-export default function Dashboard() {
+function DashboardContent() {
   useStoreSecurity()
   
   const { activeSymbol, activeRate, isLoadingSettings, activeStoreId, userProfile, sales, purchases, products, expensePayments } = useSettings()
@@ -424,5 +424,20 @@ export default function Dashboard() {
 
       </main>
     </div>
+  )
+}
+
+export default function Dashboard() {
+  return (
+    <Suspense fallback={
+       <div className="flex min-h-screen items-center justify-center bg-gray-50">
+         <div className="flex flex-col items-center gap-4">
+           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+           <p className="text-sm font-medium text-gray-600">Cargando Dashboard...</p>
+         </div>
+       </div>
+    }>
+      <DashboardContent />
+    </Suspense>
   )
 }

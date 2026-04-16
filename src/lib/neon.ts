@@ -29,7 +29,7 @@ export const getSql = () => {
 
 // Proxy to allow using it as sql`query` or sql(query, params)
 // We only invoke getSql() when the proxy is actually used/called
-export const sql = new Proxy(() => {}, {
+export const sql: any = new Proxy(() => {}, {
   apply: (target, thisArg, argArray) => {
     return getSql()(...argArray);
   },

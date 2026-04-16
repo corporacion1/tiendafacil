@@ -1,7 +1,7 @@
 "use client";
 
 // Imports
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, Suspense } from "react";
 import Image from "next/image";
 import { Package, ShoppingBag, Plus, Minus, Trash2, Send, LayoutGrid, Instagram, Star, Search, UserCircle, LogOut, MoreHorizontal, Copy, AlertCircle, QrCode, Pencil, ArrowRight, Check, User, Phone, Mail, Eye, ScanLine, X, Store as StoreIcon, ArrowLeftRight, Share, MapPin, Truck, Armchair, UserRound, Camera } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
@@ -481,7 +481,7 @@ const CatalogProductCard = ({
   );
 }
 
-export default function CatalogPage() {
+function CatalogContent() {
   const { toast } = useToast();
   const router = useRouter();
 
@@ -4034,5 +4034,17 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
         currentUser={authUser}
       />
     </>
+  );
+}
+
+export default function CatalogPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+      </div>
+    }>
+      <CatalogContent />
+    </Suspense>
   );
 }

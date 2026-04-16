@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import { PinModal } from "@/components/pin-modal";
 import { CartExitModal } from "@/components/CartExitModal";
 import Image from "next/image";
@@ -316,7 +316,7 @@ const formatPhoneForWhatsApp = (phone: string): string => {
   return "58" + cleanPhone;
 };
 
-export default function POSPage() {
+function POSContent() {
   useStoreSecurity();
 
   const { hasPermission } = usePermissions();
@@ -5684,5 +5684,20 @@ export default function POSPage() {
         </Dialog>
       </div>
     </div>
+  );
+}
+
+export default function POSPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+          <p className="text-sm font-medium text-gray-600">Cargando Punto de Venta...</p>
+        </div>
+      </div>
+    }>
+      <POSContent />
+    </Suspense>
   );
 }

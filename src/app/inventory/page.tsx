@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { File, MoreHorizontal, PlusCircle, Trash2, Search, ArrowUpDown, X, Package, Check, ImageOff, FileText, FileSpreadsheet, FileJson, Filter, Loader2, Plus, PackagePlus, Printer } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -155,7 +155,7 @@ const ProductRow = ({ product, activeSymbol, activeRate, handleEdit, handleViewM
   );
 }
 
-export default function InventoryPage() {
+function InventoryContent() {
   useStoreSecurity();
 
   const { hasPermission } = usePermissions();
@@ -1535,5 +1535,20 @@ export default function InventoryPage() {
         </div>
       </div>
     </div >
+  );
+}
+
+export default function InventoryPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p className="text-sm font-medium text-gray-600">Cargando Inventario...</p>
+        </div>
+      </div>
+    }>
+      <InventoryContent />
+    </Suspense>
   );
 }
