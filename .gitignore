@@ -257,6 +257,7 @@ next-env.d.ts
 *.temp
 /tmp/
 /temp/
+/scratch/
 
 # Cache
 .cache/

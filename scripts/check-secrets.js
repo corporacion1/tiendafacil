@@ -33,7 +33,7 @@ const sensitivePatterns = [
     /"private_key":\s*"-----BEGIN PRIVATE KEY-----/gi,
 
     // Database URLs con credenciales
-    /postgres:\/\/[^:]+:[^@]+@[^\/]+/gi,
+    /postgresql?:\/\/[^:]+:[^@]+@[^\/]+/gi,
     /mysql:\/\/[^:]+:[^@]+@[^\/]+/gi,
     /mongodb(\+srv)?:\/\/[^:]+:[^@]+@/gi,
 
@@ -63,6 +63,7 @@ const ignorePatterns = [
     'CHANGELOG.md',
     'check-secrets.js',
     'cleanup.js',
+    'scratch',
 ];
 
 function log(message, color = 'reset') {
@@ -133,6 +134,7 @@ function checkGitignore() {
         '*.pem',
         '*.key',
         '*-service-account.json',
+        '/scratch/',
     ];
 
     const missing = requiredPatterns.filter(pattern => !gitignoreContent.includes(pattern));

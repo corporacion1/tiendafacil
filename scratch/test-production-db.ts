@@ -1,7 +1,11 @@
 import { neon } from '@neondatabase/serverless';
 
 async function testConnection() {
-  const url = 'postgresql://neondb_owner:npg_eP4vTAYZJE5g@ep-long-sea-aebyx8rz-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    console.error('❌ DATABASE_URL not found in environment variables');
+    return;
+  }
   console.log('🔗 Testing connection to NEW URL:', url);
   
   try {
