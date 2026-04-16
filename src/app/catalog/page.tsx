@@ -662,24 +662,21 @@ export default function CatalogPage() {
     });
   }, [isLoading, isLoadingSettings, loadingCatalogStore, isLoadingProducts, syncedProducts.length, contextProducts.length, products.length, storeIdForCatalog]);
 
-  // NUEVA FUNCIÓN: Cargar tienda desde Supabase
+  // NUEVA FUNCIÓN: Cargar tienda desde API (ahora compatible con Neon)
   const loadStoreFromSupabase = async (storeId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('stores')
-        .select('*')
-        .eq('id', storeId)
-        .single();
-
-      if (error) {
-        console.error('❌ [Supabase] Error loading store:', error);
+      const response = await fetch(`/api/stores?id=${encodeURIComponent(storeId)}`);
+      
+      if (!response.ok) {
+        console.error('❌ [Catalog] Error loading store from API:', response.status);
         return defaultStore;
       }
 
-      console.log('✅ [Supabase] Store settings loaded:', data?.name);
+      const data = await response.json();
+      console.log('✅ [Catalog] Store settings loaded from API:', data?.name);
       return data;
     } catch (error) {
-      console.error('❌ [Supabase] Exception loading store:', error);
+      console.error('❌ [Catalog] Exception loading store from API:', error);
       return defaultStore;
     }
   };

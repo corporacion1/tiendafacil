@@ -178,7 +178,7 @@ src/
 ## Key Dependencies
 - **UI**: Next.js 15 + App Router, Tailwind CSS, shadcn/ui
 - **Forms**: React Hook Form + Zod
-- **Database**: Supabase (primary), MongoDB (legacy)
+- **Database**: Neon (primary via Neon Bridge), Supabase (Storage & Auth), MongoDB (legacy)
 - **State**: React Context + useReducer
 - **Testing**: Jest + React Testing Library
 - **Icons**: Lucide React

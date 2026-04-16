@@ -1,5 +1,6 @@
 // src/lib/supabase.ts - Supabase Client Configuration
 import { createClient } from '@supabase/supabase-js';
+import { neonBridge } from './neon-bridge';
 
 function getSupabaseUrl() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -33,8 +34,14 @@ export const supabase = new Proxy({} as any, {
 
 // Cliente para operaciones del servidor (usa service role - acceso total)
 let _supabaseAdmin: any;
+
 export const supabaseAdmin = new Proxy({} as any, {
   get: (target, prop) => {
+    // Si se accede a 'from', redirigir a Neon si está configurado y estamos en el servidor
+    if (prop === 'from' && typeof window === 'undefined' && process.env.DATABASE_URL) {
+      return neonBridge.from;
+    }
+
     if (!_supabaseAdmin) {
       _supabaseAdmin = createClient(getSupabaseUrl(), getSupabaseServiceKey(), {
         auth: {
