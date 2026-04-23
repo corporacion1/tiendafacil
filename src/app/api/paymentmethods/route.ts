@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 import { IDGenerator } from '@/lib/id-generator';
 
 export async function GET(request: NextRequest) {
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     const storeId = searchParams.get('storeId');
     if (!storeId) return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
 
-    const { data: paymentMethods, error } = await supabaseAdmin
+    const { data: paymentMethods, error } = await dbAdmin
       .from('payment_methods')
       .select('*')
       .eq('store_id', storeId)
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       is_active: data.isActive !== undefined ? data.isActive : true
     };
 
-    const { data: created, error } = await supabaseAdmin
+    const { data: created, error } = await dbAdmin
       .from('payment_methods')
       .insert([methodData])
       .select()
@@ -96,7 +96,7 @@ export async function PUT(request: NextRequest) {
     if (data.description !== undefined) updateData.description = data.description;
     if (data.isActive !== undefined) updateData.is_active = data.isActive;
 
-    const { data: updated, error } = await supabaseAdmin
+    const { data: updated, error } = await dbAdmin
       .from('payment_methods')
       .update(updateData)
       .eq('id', data.id)
@@ -134,7 +134,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Faltan parámetros 'id' y/o 'storeId'" }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await dbAdmin
       .from('payment_methods')
       .delete()
       .eq('id', id)

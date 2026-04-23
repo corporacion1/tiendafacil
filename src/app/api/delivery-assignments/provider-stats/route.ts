@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function GET(request: NextRequest) {
     try {
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
         today.setHours(0, 0, 0, 0);
         const startOfDay = today.toISOString();
 
-        const { data: assignments, error } = await supabaseAdmin
+        const { data: assignments, error } = await dbAdmin
             .from('delivery_assignments')
             .select('delivery_status, provider_commission_amount')
             .eq('delivery_provider_id', providerId)

@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'orderId y status son requeridos' }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await dbAdmin
       .from('orders')
       .update({
         delivery_status: status,

@@ -1,15 +1,15 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin, uploadImage, deleteImage } from '@/lib/supabase';
+import { dbAdmin, uploadImage, deleteImage } from '@/lib/db-client';
 
 /**
- * POST - Subir múltiples imágenes a Supabase Storage
+ * POST - Subir múltiples imágenes a DB Storage
  */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log('🚀 [API] POST /api/products/[id]/images iniciado (Supabase)');
+    console.log('🚀 [API] POST /api/products/[id]/images iniciado (DB)');
     
     const resolvedParams = await params;
     const productId = resolvedParams.id;
@@ -25,9 +25,9 @@ export async function POST(
       return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
     }
     
-    // Verificar que el producto existe en Supabase
+    // Verificar que el producto existe en Database
     console.log('🔍 [API] Buscando producto:', { id: productId, storeId });
-    const { data: product, error: productError } = await supabaseAdmin
+    const { data: product, error: productError } = await dbAdmin
       .from('products')
       .select('*')
       .eq('id', productId)
@@ -57,14 +57,14 @@ export async function POST(
       return NextResponse.json({ error: 'No se enviaron archivos' }, { status: 400 });
     }
     
-    // Subir archivos a Supabase Storage (carpeta 'products')
+    // Subir archivos a Database Storage (carpeta 'products')
     const uploadedImages = [];
     
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       console.log(`📷 [API] Procesando archivo ${i + 1}: ${file.name} (${file.size} bytes)`);
       
-      // Validar tamaño (máximo 5MB para Supabase Storage)
+      // Validar tamaño (máximo 5MB para Database Storage)
       if (file.size > 5 * 1024 * 1024) {
         console.warn(`⚠️ [API] Archivo muy grande: ${file.name}`);
         return NextResponse.json({ 
@@ -80,7 +80,7 @@ export async function POST(
       }
       
       try {
-        // Subir a Supabase Storage en carpeta 'products'
+        // Subir a Database Storage en carpeta 'products'
         const { url, path } = await uploadImage(file, 'products');
         
         const newImage = {
@@ -107,7 +107,7 @@ export async function POST(
     // Actualizar producto con nuevas imágenes
     const updatedImages = [...currentImages, ...uploadedImages];
     
-    const { data: updatedProduct, error: updateError } = await supabaseAdmin
+    const { data: updatedProduct, error: updateError } = await dbAdmin
       .from('products')
       .update({
         images: JSON.stringify(updatedImages),
@@ -152,7 +152,7 @@ export async function POST(
 }
 
 /**
- * DELETE - Eliminar una imagen de Supabase Storage
+ * DELETE - Eliminar una imagen de DB Storage
  */
 export async function DELETE(
   request: NextRequest,
@@ -175,7 +175,7 @@ export async function DELETE(
     }
     
     // Obtener producto
-    const { data: product, error: productError } = await supabaseAdmin
+    const { data: product, error: productError } = await dbAdmin
       .from('products')
       .select('*')
       .eq('id', productId)
@@ -205,7 +205,7 @@ export async function DELETE(
       }, { status: 404 });
     }
     
-    // Eliminar de Supabase Storage si tiene storagePath
+    // Eliminar de Database Storage si tiene storagePath
     if (imageToDelete.storagePath) {
       try {
         await deleteImage(imageToDelete.storagePath);
@@ -220,7 +220,7 @@ export async function DELETE(
       img.id !== imageId && img._id !== imageId
     );
     
-    const { data: updatedProduct, error: updateError } = await supabaseAdmin
+    const { data: updatedProduct, error: updateError } = await dbAdmin
       .from('products')
       .update({
         images: JSON.stringify(updatedImages),
@@ -283,7 +283,7 @@ export async function PUT(
     }
     
     // Obtener producto
-    const { data: product, error: productError } = await supabaseAdmin
+    const { data: product, error: productError } = await dbAdmin
       .from('products')
       .select('*')
       .eq('id', productId)
@@ -312,7 +312,7 @@ export async function PUT(
       return null;
     }).filter((img: any) => img !== null);
     
-    const { data: updatedProduct, error: updateError } = await supabaseAdmin
+    const { data: updatedProduct, error: updateError } = await dbAdmin
       .from('products')
       .update({
         images: JSON.stringify(reorderedImages),

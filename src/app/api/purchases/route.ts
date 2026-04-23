@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 import { IDGenerator } from '@/lib/id-generator';
 
 export async function GET(request: Request) {
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
 
     console.log('📦 [Purchases API] GET purchases for store:', storeId);
 
-    const { data: purchases, error } = await supabaseAdmin
+    const { data: purchases, error } = await dbAdmin
       .from('purchases')
       .select('*')
       .eq('store_id', storeId)
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
     console.log('📦 [Purchases API] Inserting purchase:', purchaseId);
 
     // Insert purchase
-    const { data: createdPurchase, error: purchaseError } = await supabaseAdmin
+    const { data: createdPurchase, error: purchaseError } = await dbAdmin
       .from('purchases')
       .insert([purchaseData])
       .select()
@@ -101,7 +101,7 @@ export async function POST(request: Request) {
       for (const item of data.items) {
         try {
           // Get current product stock
-          const { data: product } = await supabaseAdmin
+          const { data: product } = await dbAdmin
             .from('products')
             .select('stock, cost, warehouse')
             .eq('id', item.productId)
@@ -113,7 +113,7 @@ export async function POST(request: Request) {
             const newStock = previousStock + item.quantity;
 
             // Update product stock and cost
-            await supabaseAdmin
+            await dbAdmin
               .from('products')
               .update({
                 stock: newStock,
@@ -123,7 +123,7 @@ export async function POST(request: Request) {
               .eq('id', item.productId)
               .eq('store_id', data.storeId);
 
-            // Create movement record with correct Supabase column names
+            // Create movement record with correct Database column names
             const movementData = {
               id: IDGenerator.generate('movement'),
               product_id: item.productId,
@@ -143,7 +143,7 @@ export async function POST(request: Request) {
               updated_at: new Date().toISOString()
             };
 
-            const { error: movementError } = await supabaseAdmin
+            const { error: movementError } = await dbAdmin
               .from('inventory_movements')
               .insert(movementData);
 
@@ -203,7 +203,7 @@ export async function PUT(request: Request) {
     if (data.documentNumber !== undefined) updateData.document_number = data.documentNumber;
     if (data.responsible !== undefined) updateData.responsible = data.responsible;
 
-    const { data: updatedPurchase, error } = await supabaseAdmin
+    const { data: updatedPurchase, error } = await dbAdmin
       .from('purchases')
       .update(updateData)
       .eq('id', data.id)
@@ -252,7 +252,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'id and storeId are required' }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await dbAdmin
       .from('purchases')
       .delete()
       .eq('id', id)

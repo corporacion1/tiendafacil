@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 import { IDGenerator } from '@/lib/id-generator';
 
 export async function GET(request: NextRequest) {
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
     }
 
-    let query = supabaseAdmin
+    let query = dbAdmin
       .from('delivery_zones')
       .select('*')
       .eq('store_id', storeId);
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     const id = IDGenerator.generate('zone');
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await dbAdmin
       .from('delivery_zones')
       .insert([{
         id,

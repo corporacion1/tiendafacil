@@ -1,6 +1,6 @@
 // src/app/api/reports/movements/route.ts
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function GET(request: Request) {
   try {
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     console.log('📊 [Reports Movements API] Obteniendo movimientos para storeId:', storeId);
 
     // Construir query
-    let query = supabaseAdmin
+    let query = dbAdmin
       .from('inventory_movements')
       .select('*')
       .eq('store_id', storeId);
@@ -47,7 +47,7 @@ export async function GET(request: Request) {
     const enrichedMovements = await Promise.all(
       (movements || []).map(async (movement: any) => {
         try {
-          const { data: product } = await supabaseAdmin
+          const { data: product } = await dbAdmin
             .from('products')
             .select('name, sku')
             .eq('id', movement.product_id)

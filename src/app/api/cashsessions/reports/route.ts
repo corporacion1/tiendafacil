@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function GET(request: NextRequest) {
     try {
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
         console.log(`📊 [Report API] Generando reporte ${type} para sesión ${sessionId}`);
 
         // 1. Obtener la sesión
-        const { data: session, error: sessionError } = await supabaseAdmin
+        const { data: session, error: sessionError } = await dbAdmin
             .from('cash_sessions')
             .select('*')
             .eq('id', sessionId)
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
         if (session.series) {
             console.log(`📊 [Report API] Intentando filtrar ventas por serie: ${session.series}`);
             
-            const { data: seriesFilteredSales, error: seriesError } = await supabaseAdmin
+            const { data: seriesFilteredSales, error: seriesError } = await dbAdmin
                 .from('sales')
                 .select('*')
                 .eq('store_id', storeId)
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
             if (seriesError && seriesError.code === '42703') {
                 console.log(`⚠️ [Report API] Columna 'series' no existe, obteniendo todas las ventas del período`);
                 
-                const { data: allSales, error: allSalesError } = await supabaseAdmin
+                const { data: allSales, error: allSalesError } = await dbAdmin
                     .from('sales')
                     .select('*')
                     .eq('store_id', storeId)
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
             }
         } else {
             // Si no hay serie en la sesión, obtener todas las ventas del período
-            const { data: allSales, error: allSalesError } = await supabaseAdmin
+            const { data: allSales, error: allSalesError } = await dbAdmin
                 .from('sales')
                 .select('*')
                 .eq('store_id', storeId)
@@ -186,7 +186,7 @@ export async function POST(request: NextRequest) {
         console.log('🔒 [CashSessions Reports API] Cerrando sesión:', sessionId);
 
         // 1. Obtener la sesión actual
-        const { data: currentSession, error: fetchError } = await supabaseAdmin
+        const { data: currentSession, error: fetchError } = await dbAdmin
             .from('cash_sessions')
             .select('*')
             .eq('id', sessionId)
@@ -206,7 +206,7 @@ export async function POST(request: NextRequest) {
         const startDate = currentSession.opening_date;
         const closingDate = new Date().toISOString();
 
-        const { data: sales, error: salesError } = await supabaseAdmin
+        const { data: sales, error: salesError } = await dbAdmin
             .from('sales')
             .select('*')
             .eq('store_id', storeId)
@@ -257,7 +257,7 @@ export async function POST(request: NextRequest) {
         console.log('📊 [CashSessions Reports API] Datos de cierre calculados:', updateData);
 
         // 4. Actualizar sesión en BD
-        const { data: closedSession, error: updateError } = await supabaseAdmin
+        const { data: closedSession, error: updateError } = await dbAdmin
             .from('cash_sessions')
             .update(updateData)
             .eq('id', sessionId)

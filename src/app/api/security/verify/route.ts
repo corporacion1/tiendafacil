@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { dbAdmin as db } from '@/lib/db-client';
 import bcrypt from 'bcryptjs';
 
 export async function POST(request: Request) {
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     console.log('🔐 [Security Verify] Verificando PIN para store:', storeId);
 
     // Obtener configuración de seguridad
-    const { data: securityConfig, error } = await supabase
+    const { data: securityConfig, error } = await db
       .from('store_security')
       .select('*')
       .eq('store_id', storeId)
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       remainingAttempts = 5;
       isLocked = false;
 
-      await supabase
+      await db
         .from('store_security')
         .update({
           remaining_attempts: remainingAttempts,
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
       remainingAttempts = Math.max(0, remainingAttempts - 1);
       isLocked = remainingAttempts === 0;
 
-      await supabase
+      await db
         .from('store_security')
         .update({
           remaining_attempts: remainingAttempts,

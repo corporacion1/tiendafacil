@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { dbAdmin as db } from '@/lib/db-client';
 import { IDGenerator } from '@/lib/id-generator';
 
 export async function POST(request: Request) {
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
 
     if (!fromCurrency || !toCurrency) {
       // Obtener configuración de la tienda para usar las monedas correctas
-      const { data: storeSettings, error: storeError } = await supabase
+      const { data: storeSettings, error: storeError } = await db
         .from('stores')
         .select('primary_currency, secondary_currency')
         .eq('id', storeId)
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
 
     console.log('💾 [Currency API] Creando nueva tasa:', rateData);
 
-    const { data: newRate, error: insertError } = await supabase
+    const { data: newRate, error: insertError } = await db
       .from('currency_rates')
       .insert(rateData)
       .select()
@@ -102,7 +102,7 @@ export async function GET(request: Request) {
     }
 
     // Obtener historial (últimas 10 tasas, ordenadas por fecha)
-    const { data: history, error: historyError } = await supabase
+    const { data: history, error: historyError } = await db
       .from('currency_rates')
       .select('*')
       .eq('store_id', storeId)

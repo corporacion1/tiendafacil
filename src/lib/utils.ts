@@ -7,7 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 
 /**
  * Resuelve la URL de una imagen, priorizando almacenamiento local
- * y usando un placeholder para imágenes de Supabase que ya no son accesibles.
+ * y usando un placeholder para imágenes de DB que ya no son accesibles.
  */
 export const getDisplayImageUrl = (url?: string, type: 'product' | 'ad' | 'store' | 'user' = 'product'): string => {
   if (!url || url === '' || url === '/placeholder.svg') {
@@ -18,8 +18,8 @@ export const getDisplayImageUrl = (url?: string, type: 'product' | 'ad' | 'store
   if (url.startsWith('data:')) return url;
   if (url.startsWith('/')) return url;
 
-  // 2. Si es una URL completa de Supabase o externa, devolverla tal cual para que el navegador la cargue
-  // Esto permite que las imágenes migradas de Supabase sigan funcionando si no se han descargado localmente
+  // 2. Si es una URL completa de Database o externa, devolverla tal cual para que el navegador la cargue
+  // Esto permite que las imágenes migradas de Database sigan funcionando si no se han descargado localmente
   if (url.startsWith('http')) {
     return url;
   }

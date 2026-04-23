@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { dbAdmin as db } from '@/lib/db-client';
 import bcrypt from 'bcryptjs';
 
 export async function POST(request: Request) {
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
 
     // Verificar PIN actual si se proporciona (para cambio)
     if (currentPin) {
-      const { data: existingConfig } = await supabase
+      const { data: existingConfig } = await db
         .from('store_security')
         .select('pin_hash')
         .eq('store_id', storeId)
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     const pinHash = await bcrypt.hash(newPin, saltRounds);
 
     // Insertar o actualizar configuración
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('store_security')
       .upsert({
         store_id: storeId,
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       .select();
 
     if (error) {
-      console.error('❌ [Security PIN] Error de Supabase:', error);
+      console.error('❌ [Security PIN] Error de DB:', error);
       return NextResponse.json(
         { error: 'Error guardando configuración de PIN' },
         { status: 500 }
@@ -88,7 +88,7 @@ export async function DELETE(request: Request) {
 
     console.log('🔐 [Security PIN] Eliminando PIN para store:', storeId);
 
-    const { error } = await supabase
+    const { error } = await db
       .from('store_security')
       .delete()
       .eq('store_id', storeId);

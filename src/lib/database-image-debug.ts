@@ -114,7 +114,7 @@ export async function debugProductImagesInDatabase(productId: string, storeId: s
         issues.push(`Image ${i} has no URL`);
       } else if (!(image.url.startsWith('http://') || image.url.startsWith('https://'))) {
         issues.push(`Image ${i} is not an external URL (expected format for DB storage)`);
-        recommendations.push('Images should be stored as external URLs (e.g., Supabase) in database');
+        recommendations.push('Images should be stored as external URLs (e.g., DB) in database');
       } else {
         // Basic URL validation
         try {

@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { dbAdmin as db } from '@/lib/db-client';
 
 /**
  * GET - Obtener un producto específico por ID
@@ -18,10 +18,10 @@ export async function GET(
       return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
     }
     
-    console.log('🔍 [API] GET producto Supabase:', { id: productId, storeId });
+    console.log('🔍 [API] GET producto DB:', { id: productId, storeId });
     
-    // ✅ CORREGIDO: Usar Supabase en lugar de MongoDB
-    const { data: product, error } = await supabase
+    // ✅ CORREGIDO: Usar Database en lugar de MongoDB
+    const { data: product, error } = await db
       .from('products')
       .select('*')
       .eq('id', productId)
@@ -29,7 +29,7 @@ export async function GET(
       .single();
     
     if (error) {
-      console.error('❌ [API] Error Supabase GET:', error);
+      console.error('❌ [API] Error DB GET:', error);
       return NextResponse.json({ error: 'Error al buscar producto' }, { status: 500 });
     }
     
@@ -59,7 +59,7 @@ export async function PUT(
     const productId = resolvedParams.id;
     const data = await request.json();
     
-    console.log('📥 [API] PUT producto Supabase:', { id: productId, storeId: data.storeId });
+    console.log('📥 [API] PUT producto DB:', { id: productId, storeId: data.storeId });
     console.log('📦 [API] Datos recibidos:', {
       name: data.name,
       hasImages: !!data.images,
@@ -73,7 +73,7 @@ export async function PUT(
       return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
     }
     
-    // ✅ CORREGIDO: Mapear campos de MongoDB a Supabase
+    // ✅ CORREGIDO: Mapear campos de MongoDB a Database
     const updateData = {
       name: data.name,
       sku: data.sku,
@@ -97,10 +97,10 @@ export async function PUT(
       updated_at: new Date().toISOString()
     };
     
-    console.log('🔄 [API] Actualizando producto en Supabase...');
+    console.log('🔄 [API] Actualizando producto en DB...');
     
-    // ✅ CORREGIDO: Usar Supabase en lugar de MongoDB
-    const { data: updated, error } = await supabase
+    // ✅ CORREGIDO: Usar Database en lugar de MongoDB
+    const { data: updated, error } = await db
       .from('products')
       .update(updateData)
       .eq('id', productId)
@@ -109,7 +109,7 @@ export async function PUT(
       .single();
     
     if (error) {
-      console.error('❌ [API] Error Supabase PUT:', error);
+      console.error('❌ [API] Error DB PUT:', error);
       return NextResponse.json({ error: 'Error al actualizar producto' }, { status: 500 });
     }
     
@@ -149,10 +149,10 @@ export async function DELETE(
       return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
     }
     
-    console.log('🗑️ [API] DELETE producto Supabase:', { id: productId, storeId });
+    console.log('🗑️ [API] DELETE producto DB:', { id: productId, storeId });
     
-    // ✅ CORREGIDO: Usar Supabase en lugar de MongoDB
-    const { data: deleted, error } = await supabase
+    // ✅ CORREGIDO: Usar Database en lugar de MongoDB
+    const { data: deleted, error } = await db
       .from('products')
       .delete()
       .eq('id', productId)
@@ -161,7 +161,7 @@ export async function DELETE(
       .single();
     
     if (error) {
-      console.error('❌ [API] Error Supabase DELETE:', error);
+      console.error('❌ [API] Error DB DELETE:', error);
       return NextResponse.json({ error: 'Error al eliminar producto' }, { status: 500 });
     }
     

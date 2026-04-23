@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 import { calculateDistanceKm } from '@/lib/delivery-utils';
 
 export async function GET(
@@ -12,7 +12,7 @@ export async function GET(
     const pointLat = parseFloat(searchParams.get('lat') || '0');
     const pointLon = parseFloat(searchParams.get('lon') || '0');
 
-    const { data: zone, error } = await supabaseAdmin
+    const { data: zone, error } = await dbAdmin
       .from('delivery_zones')
       .select('*')
       .eq('id', resolvedParams.id)
@@ -68,7 +68,7 @@ export async function DELETE(
   try {
     const resolvedParams = await params;
 
-    const { data: zone, error } = await supabaseAdmin
+    const { data: zone, error } = await dbAdmin
       .from('delivery_zones')
       .select('id')
       .eq('id', resolvedParams.id)
@@ -78,7 +78,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Zona no encontrada' }, { status: 404 });
     }
 
-    const { error: deleteError } = await supabaseAdmin
+    const { error: deleteError } = await dbAdmin
       .from('delivery_zones')
       .delete()
       .eq('id', resolvedParams.id);
@@ -103,7 +103,7 @@ export async function PUT(
     const resolvedParams = await params;
     const body = await request.json();
 
-    // Transformar nombres de camelCase a snake_case para Supabase
+    // Transformar nombres de camelCase a snake_case para Database
     const updates: any = {};
     if (body.name !== undefined) updates.name = body.name;
     if (body.description !== undefined) updates.description = body.description;
@@ -117,7 +117,7 @@ export async function PUT(
     if (body.priority !== undefined) updates.priority = body.priority;
     if (body.status !== undefined) updates.status = body.status;
 
-    const { data: zone, error } = await supabaseAdmin
+    const { data: zone, error } = await dbAdmin
       .from('delivery_zones')
       .select('*')
       .eq('id', resolvedParams.id)
@@ -130,7 +130,7 @@ export async function PUT(
       throw error;
     }
 
-    const { data: updatedZone, error: updateError } = await supabaseAdmin
+    const { data: updatedZone, error: updateError } = await dbAdmin
       .from('delivery_zones')
       .update(updates)
       .eq('id', resolvedParams.id)

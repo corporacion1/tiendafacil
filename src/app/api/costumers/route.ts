@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { dbAdmin as db } from '@/lib/db-client';
 
-// Eliminada inicialización local para usar el cliente centralizado con soporte Neon
-const getSupabaseClient = () => supabase;
+// Eliminada inicialización local para usar el cliente centralizado con soporte PostgreSQL
+const getDBClient = () => db;
 
 // Helper para generar IDs
 const generateId = (prefix: string) => {
@@ -18,23 +18,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
     }
 
-    // Obtener clientes de Supabase
-    const supabase = getSupabaseClient();
-    const { data: customers, error } = await supabase
+    // Obtener clientes de Database
+    const db = getDBClient();
+    const { data: customers, error } = await db
       .from('customers')
       .select('*')
       .eq('store_id', storeId)
       .order('name', { ascending: true });
 
     if (error) {
-      console.error('❌ Error obteniendo clientes de Supabase:', error);
+      console.error('❌ Error obteniendo clientes de DB:', error);
       return NextResponse.json(
         { error: 'No se pudo obtener la lista de clientes', detalles: error.message },
         { status: 500 }
       );
     }
 
-    // Mapear campos de Supabase a tu formato actual
+    // Mapear campos de Database a tu formato actual
     const formattedCustomers = customers?.map((customer: any) => ({
       id: customer.id,
       name: customer.name,
@@ -69,8 +69,8 @@ export async function POST(request: NextRequest) {
 
     // Verificar si ya existe un cliente con el mismo teléfono en la misma tienda
     if (data.phone && data.phone.trim()) {
-      const supabase = getSupabaseClient();
-      const { data: existingCustomer, error: searchError } = await supabase
+      const db = getDBClient();
+      const { data: existingCustomer, error: searchError } = await db
         .from('customers')
         .select('id, name')
         .eq('store_id', data.storeId)
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     // Generar ID único si no se proporciona
     const customerId = data.id || generateId('CUST');
 
-    // Preparar datos para Supabase
+    // Preparar datos para Database
     const customerData = {
       id: customerId,
       name: data.name.trim(),
@@ -100,18 +100,18 @@ export async function POST(request: NextRequest) {
       // created_at and updated_at removed to test if columns are missing
     };
 
-    console.log('👤 [Customers API] Creando cliente en Supabase:', customerId);
+    console.log('👤 [Customers API] Creando cliente en DB:', customerId);
 
-    // Insertar cliente en Supabase
-    const supabase = getSupabaseClient();
-    const { data: createdCustomer, error } = await supabase
+    // Insertar cliente en Database
+    const db = getDBClient();
+    const { data: createdCustomer, error } = await db
       .from('customers')
       .insert([customerData])
       .select()
       .single();
 
     if (error) {
-      console.error('❌ Error creando cliente en Supabase:', error);
+      console.error('❌ Error creando cliente en DB:', error);
 
       // Verificar si es error de duplicado
       if (error.code === '23505') { // Código de violación de unique constraint
@@ -172,9 +172,9 @@ export async function PUT(request: NextRequest) {
 
     console.log('👤 [Customers API] Actualizando cliente:', data.id);
 
-    // Actualizar en Supabase
-    const supabase = getSupabaseClient();
-    const { data: updatedCustomer, error } = await supabase
+    // Actualizar en Database
+    const db = getDBClient();
+    const { data: updatedCustomer, error } = await db
       .from('customers')
       .update(updateData)
       .eq('id', data.id)
@@ -183,7 +183,7 @@ export async function PUT(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('❌ Error actualizando cliente en Supabase:', error);
+      console.error('❌ Error actualizando cliente en DB:', error);
       return NextResponse.json(
         { error: 'Error al actualizar el cliente', detalles: error.message },
         { status: 500 }
@@ -230,16 +230,16 @@ export async function DELETE(request: NextRequest) {
 
     console.log('👤 [Customers API] Eliminando cliente:', id);
 
-    // Eliminar de Supabase
-    const supabase = getSupabaseClient();
-    const { error } = await supabase
+    // Eliminar de Database
+    const db = getDBClient();
+    const { error } = await db
       .from('customers')
       .delete()
       .eq('id', id)
       .eq('store_id', storeId);
 
     if (error) {
-      console.error('❌ Error eliminando cliente de Supabase:', error);
+      console.error('❌ Error eliminando cliente de DB:', error);
       return NextResponse.json(
         { error: 'Error al eliminar el cliente', detalles: error.message },
         { status: 500 }

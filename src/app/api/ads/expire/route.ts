@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 // POST /api/ads/expire - Forzar inactivación de anuncios vencidos (para testing/admin)
 export async function POST() {
@@ -8,7 +8,7 @@ export async function POST() {
     console.log('🔄 [Ads API] Checking for expired ads:', now);
 
     // Buscar anuncios vencidos que aún estén activos
-    const { data: expiredAds, error: fetchError } = await supabaseAdmin
+    const { data: expiredAds, error: fetchError } = await dbAdmin
       .from('ads')
       .select('*')
       .lt('expiry_date', now)
@@ -27,7 +27,7 @@ export async function POST() {
     }
 
     // Inactivar anuncios vencidos
-    const { error: updateError } = await supabaseAdmin
+    const { error: updateError } = await dbAdmin
       .from('ads')
       .update({ status: 'inactive' })
       .lt('expiry_date', now)

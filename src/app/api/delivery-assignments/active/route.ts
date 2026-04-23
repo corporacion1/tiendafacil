@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await dbAdmin
       .from('delivery_assignments')
       .select('*')
       .eq('store_id', storeId)

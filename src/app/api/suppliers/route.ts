@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 import { IDGenerator } from '@/lib/id-generator';
 
 export async function GET(request: NextRequest) {
@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
 
     if (!storeId) return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
 
-    const { data: suppliers, error } = await supabaseAdmin
+    const { data: suppliers, error } = await dbAdmin
       .from('suppliers')
       .select('*')
       .eq('store_id', storeId)
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       address: data.address || null
     };
 
-    const { data: created, error } = await supabaseAdmin
+    const { data: created, error } = await dbAdmin
       .from('suppliers')
       .insert([supplierData])
       .select()
@@ -97,7 +97,7 @@ export async function PUT(request: NextRequest) {
     if (data.phone !== undefined) updateData.phone = data.phone;
     if (data.address !== undefined) updateData.address = data.address;
 
-    const { data: updated, error } = await supabaseAdmin
+    const { data: updated, error } = await dbAdmin
       .from('suppliers')
       .update(updateData)
       .eq('id', data.id)
@@ -135,7 +135,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Faltan parámetros 'id' y/o 'storeId'" }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await dbAdmin
       .from('suppliers')
       .delete()
       .eq('id', id)

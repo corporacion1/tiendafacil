@@ -16,8 +16,8 @@ import { InventoryMovement, Product, Purchase, Sale } from "@/lib/types"
 
 import { useDashboardStats } from "@/hooks/useDashboardStats"
 
-// Cliente Supabase
-import { supabase } from '@/lib/supabase'
+// Cliente Database
+import { db } from '@/lib/db-client'
 
 type TimeFilter = 'day' | 'week' | 'month'
 type GraphType = 'financial' | 'inventory' | 'roi' | 'cashflow'

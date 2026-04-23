@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function PATCH(
   request: NextRequest,
@@ -21,7 +21,7 @@ export async function PATCH(
       updateData.current_longitude = currentLongitude;
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await dbAdmin
       .from('delivery_assignments')
       .update(updateData)
       .eq('id', resolvedParams.id)

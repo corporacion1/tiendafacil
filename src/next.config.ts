@@ -2,20 +2,20 @@
 const nextConfig = {
   images: {
     domains: [
-      'jdbqvzpjdyaksuaxhmty.supabase.co',
+      'jdbqvzpjdyaksuaxhmty.db.co',
       'images.unsplash.com',
       'i.imgur.com'
     ],
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'jdbqvzpjdyaksuaxhmty.supabase.co',
+        hostname: 'jdbqvzpjdyaksuaxhmty.db.co',
         pathname: '/storage/v1/object/public/**',
       },
     ],
   },
   experimental: {
-    serverComponentsExternalPackages: ['@supabase/supabase-js'],
+    serverComponentsExternalPackages: ['@db/db-js'],
   },
   typescript: {
     ignoreBuildErrors: false,

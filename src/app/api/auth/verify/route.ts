@@ -1,6 +1,6 @@
 // src/app/api/auth/verify/route.ts
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function POST(request: Request) {
   try {
@@ -46,8 +46,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Buscar usuario en Supabase para asegurar que sigue existiendo/activo
-    const { data: user, error } = await supabaseAdmin
+    // Buscar usuario en Database para asegurar que sigue existiendo/activo
+    const { data: user, error } = await dbAdmin
       .from('users')
       .select('*')
       .eq('uid', decodedPayload.uid)

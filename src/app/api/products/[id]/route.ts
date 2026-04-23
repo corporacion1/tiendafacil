@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 /**
  * GET - Obtener un producto por ID
@@ -20,7 +20,7 @@ export async function GET(
 
         console.log('📦 [Products API] GET product:', { productId, storeId });
 
-        const { data: product, error } = await supabaseAdmin
+        const { data: product, error } = await dbAdmin
             .from('products')
             .select('*')
             .eq('id', productId)
@@ -108,7 +108,7 @@ export async function PUT(
             warehouse: data.warehouse
         });
 
-        // Transformar camelCase a snake_case para Supabase
+        // Transformar camelCase a snake_case para Database
         const updateData: any = {
             updated_at: new Date().toISOString()
         };
@@ -136,7 +136,7 @@ export async function PUT(
         if (data.warehouse !== undefined) updateData.warehouse = data.warehouse;
         if (data.affectsInventory !== undefined) updateData.affects_inventory = data.affectsInventory;
 
-        const { data: updatedProduct, error } = await supabaseAdmin
+        const { data: updatedProduct, error } = await dbAdmin
             .from('products')
             .update(updateData)
             .eq('id', productId)
@@ -220,7 +220,7 @@ export async function DELETE(
 
         console.log('🗑️ [Products API] DELETE product:', { productId, storeId });
 
-        const { error } = await supabaseAdmin
+        const { error } = await dbAdmin
             .from('products')
             .delete()
             .eq('id', productId)

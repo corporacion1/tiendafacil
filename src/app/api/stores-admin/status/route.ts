@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function PUT(request: NextRequest) {
   try {
@@ -11,7 +11,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'storeId y status son requeridos' }, { status: 400 });
     }
 
-    const { data: updated, error } = await supabaseAdmin
+    const { data: updated, error } = await dbAdmin
       .from('stores')
       .update({
         status: targetStatus,

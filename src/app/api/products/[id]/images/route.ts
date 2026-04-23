@@ -1,18 +1,18 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { dbAdmin as db } from '@/lib/db-client';
 import { v4 as uuidv4 } from 'uuid';
 
 const BUCKET_NAME = 'product-images';
 
 /**
- * POST - Subir múltiples imágenes a Supabase Storage
+ * POST - Subir múltiples imágenes a DB Storage
  */
 export async function POST(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        console.log('🚀 [API] POST /api/products/[id]/images iniciado (Supabase)');
+        console.log('🚀 [API] POST /api/products/[id]/images iniciado (DB)');
 
         const resolvedParams = await params;
         const productId = resolvedParams.id;
@@ -32,7 +32,7 @@ export async function POST(
         }
 
         // 1. Obtener producto actual para ver imágenes existentes
-        const { data: product, error: fetchError } = await supabase
+        const { data: product, error: fetchError } = await db
             .from('products')
             .select('images, primary_image_index')
             .eq('id', productId)
@@ -67,7 +67,7 @@ export async function POST(
 
             console.log('📤 [API] Subiendo archivo:', filePath);
 
-            const { data: uploadData, error: uploadError } = await supabase
+            const { data: uploadData, error: uploadError } = await db
                 .storage
                 .from(BUCKET_NAME)
                 .upload(filePath, file, {
@@ -81,7 +81,7 @@ export async function POST(
             }
 
             // Obtener URL pública
-            const { data: { publicUrl } } = supabase
+            const { data: { publicUrl } } = db
                 .storage
                 .from(BUCKET_NAME)
                 .getPublicUrl(filePath);
@@ -89,7 +89,7 @@ export async function POST(
             newImages.push({
                 id: uuidv4(),
                 url: publicUrl,
-                supabasePath: filePath,
+                DBPath: filePath,
                 alt: file.name,
                 order: currentImages.length + newImages.length,
                 uploadedAt: new Date().toISOString()
@@ -111,7 +111,7 @@ export async function POST(
             }
         }
 
-        const { data: updatedProduct, error: updateError } = await supabase
+        const { data: updatedProduct, error: updateError } = await db
             .from('products')
             .update({
                 images: updatedImages,
@@ -165,16 +165,16 @@ export async function DELETE(
         const { searchParams } = new URL(request.url);
         const imageId = searchParams.get('imageId');
         const storeId = searchParams.get('storeId');
-        const supabasePath = searchParams.get('supabasePath');
+        const DBPath = searchParams.get('DBPath');
 
-        console.log('🗑️ [API] DELETE image:', { productId, imageId, supabasePath });
+        console.log('🗑️ [API] DELETE image:', { productId, imageId, DBPath });
 
         if (!storeId || !imageId) {
             return NextResponse.json({ error: 'Datos incompletos' }, { status: 400 });
         }
 
         // 1. Obtener producto
-        const { data: product, error: fetchError } = await supabase
+        const { data: product, error: fetchError } = await db
             .from('products')
             .select('images, primary_image_index')
             .eq('id', productId)
@@ -186,8 +186,8 @@ export async function DELETE(
             return NextResponse.json({ error: 'Producto no encontrado' }, { status: 404 });
         }
 
-        // 2. Encontrar la imagen y obtener su supabasePath
-        // IMPORTANTE: images puede venir como string JSON de Supabase
+        // 2. Encontrar la imagen y obtener su DatabasePath
+        // IMPORTANTE: images puede venir como string JSON de Database
         let currentImages = product.images || [];
         if (typeof currentImages === 'string') {
             try {
@@ -209,10 +209,10 @@ export async function DELETE(
         }
 
         // 3. Eliminar de Storage (si tiene path)
-        const pathToDelete = imageToDelete.supabasePath || supabasePath;
+        const pathToDelete = imageToDelete.DBPath || DBPath;
         if (pathToDelete) {
             console.log('🗑️ [API] Eliminando de Storage:', pathToDelete);
-            const { error: storageError } = await supabase
+            const { error: storageError } = await db
                 .storage
                 .from(BUCKET_NAME)
                 .remove([pathToDelete]);
@@ -222,7 +222,7 @@ export async function DELETE(
                 // Continuamos para eliminar la referencia en BD
             }
         } else {
-            console.log('⚠️ [API] No se encontró supabasePath, solo eliminando referencia en BD');
+            console.log('⚠️ [API] No se encontró DBPath, solo eliminando referencia en BD');
         }
 
         // 4. Actualizar array en BD
@@ -239,7 +239,7 @@ export async function DELETE(
             img.order = index;
         });
 
-        const { data: updatedProduct, error: updateError } = await supabase
+        const { data: updatedProduct, error: updateError } = await db
             .from('products')
             .update({
                 images: updatedImages,
@@ -297,7 +297,7 @@ export async function PUT(
         console.log('🔄 [API] PUT images (reorder/primary):', { productId, primaryImageIndex });
 
         // Actualizar imágenes y primary index
-        const { data: updatedProduct, error: updateError } = await supabase
+        const { data: updatedProduct, error: updateError } = await db
             .from('products')
             .update({
                 images: images,

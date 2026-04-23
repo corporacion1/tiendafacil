@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function POST(
   request: NextRequest,
@@ -38,7 +38,7 @@ export async function POST(
 
     console.log('📤 Datos a actualizar:', JSON.stringify(updateData, null, 2));
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await dbAdmin
       .from('delivery_assignments')
       .update(updateData)
       .eq('id', resolvedParams.id)
@@ -46,7 +46,7 @@ export async function POST(
       .maybeSingle();
 
     if (error) {
-      console.error('❌ Error en Supabase:', error);
+      console.error('❌ Error en DB:', error);
       throw error;
     }
 
@@ -60,7 +60,7 @@ export async function POST(
     // Actualizar orden a 'delivered'
     console.log('🔄 Actualizando order:', data.order_id);
     
-    const { error: orderError } = await supabaseAdmin
+    const { error: orderError } = await dbAdmin
       .from('orders')
       .update({
         delivery_status: 'delivered',

@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Llamar a la función SQL de cálculo de tarifa
-    const { data, error } = await supabaseAdmin.rpc('calculate_delivery_fee', {
+    const { data, error } = await dbAdmin.rpc('calculate_delivery_fee', {
       store_id_param: storeId,
       destination_lat: destinationLat,
       destination_lon: destinationLon,

@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { comparePassword } from '@/lib/auth';
-import { neonBridge } from '@/lib/neon-bridge';
+import { dbBridge } from '@/lib/sql-template-bridge';
 
 export async function POST(request: Request) {
   try {
-    console.log('🔐 [Login API] Usando base de datos local vía neonBridge');
+    console.log('🔐 [Login API] Usando base de datos local vía dbBridge');
 
     const { email, password } = await request.json();
 
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     console.log('👤 [Login API] Buscando usuario:', email);
 
     // Buscar usuario en la tabla local 'users' usando el bridge
-    const { data: user, error } = await neonBridge
+    const { data: user, error } = await dbBridge
       .from('users')
       .select('*')
       .eq('email', email.toLowerCase())

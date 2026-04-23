@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 // Helper to generate recipient ID
 const generateRecipientId = () => `REC-${Date.now().toString().slice(-8)}`;
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'storeId is required' }, { status: 400 });
         }
 
-        const { data: recipients, error } = await supabaseAdmin
+        const { data: recipients, error } = await dbAdmin
             .from('payment_recipients')
             .select('*')
             .eq('store_id', storeId)
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
 
         const recipientId = generateRecipientId();
 
-        const { data: recipient, error } = await supabaseAdmin
+        const { data: recipient, error } = await dbAdmin
             .from('payment_recipients')
             .insert({
                 id: recipientId,
@@ -133,7 +133,7 @@ export async function PUT(request: Request) {
         if (updates.address !== undefined) dbUpdates.address = updates.address;
         if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
 
-        const { data: recipient, error } = await supabaseAdmin
+        const { data: recipient, error } = await dbAdmin
             .from('payment_recipients')
             .update(dbUpdates)
             .eq('id', id)
@@ -176,7 +176,7 @@ export async function DELETE(request: Request) {
         }
 
         // Check if recipient is used in any payments
-        const { data: payments, error: checkError } = await supabaseAdmin
+        const { data: payments, error: checkError } = await dbAdmin
             .from('payments')
             .select('id')
             .eq('recipient_name', id)
@@ -193,7 +193,7 @@ export async function DELETE(request: Request) {
             );
         }
 
-        const { error } = await supabaseAdmin
+        const { error } = await dbAdmin
             .from('payment_recipients')
             .delete()
             .eq('id', id);

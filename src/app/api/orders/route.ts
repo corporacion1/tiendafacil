@@ -1,8 +1,8 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { dbAdmin as db } from '@/lib/db-client';
 import { unstable_cache, revalidateTag } from 'next/cache';
 
-// Eliminada inicialización local de Supabase para usar el cliente centralizado con soporte Neon
+// Eliminada inicialización local de Database para usar el cliente centralizado con soporte PostgreSQL
 
 // Helper para generar IDs
 const generateId = (prefix: string) => {
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
   
   // Si se busca por ID específico, buscar orden individual
   if (id) {
-    const { data: order, error } = await supabase
+    const { data: order, error } = await db
       .from('orders')
       .select('*')
       .or(`order_id.eq.${id},id.eq.${id}`)
@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
     // Función cacheada
     const getCachedOrders = unstable_cache(
       async (sId: string, sStatus: string | null, cEmail: string | null) => {
-        let query = supabase
+        let query = db
           .from('orders')
           .select('*')
           .eq('store_id', sId)
@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
     if (noCache) {
       // Fetch directly from database without cache
       
-      let query = supabase
+      let query = db
         .from('orders')
         .select('*')
         .eq('store_id', storeId);
@@ -246,7 +246,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Preparar datos para Supabase - Solo incluir campos que existen en la tabla
+    // Preparar datos para Database - Solo incluir campos que existen en la tabla
     const orderData: any = {
       id: orderId, // Add id field for NOT NULL constraint
       order_id: orderId,
@@ -283,8 +283,8 @@ export async function POST(request: NextRequest) {
     }
 
 
-    // Insertar pedido en Supabase
-    let { data: createdOrder, error } = await supabase
+    // Insertar pedido en Database
+    let { data: createdOrder, error } = await db
       .from('orders')
       .insert([orderData])
       .select()
@@ -313,7 +313,7 @@ export async function POST(request: NextRequest) {
       if (body.notes !== undefined) basicOrderData.notes = body.notes;
       if (body.customerAddress !== undefined) basicOrderData.customer_address = body.customerAddress;
       
-      const result = await supabase
+      const result = await db
         .from('orders')
         .insert([basicOrderData])
         .select()
@@ -324,7 +324,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (error) {
-      console.error('❌ [Orders API] Error creando pedido en Supabase:', error);
+      console.error('❌ [Orders API] Error creando pedido en DB:', error);
       return NextResponse.json(
         { error: 'Error al crear el pedido', detalles: error.message },
         { status: 500 }
@@ -437,8 +437,8 @@ export async function PUT(request: NextRequest) {
       if (saleId) updateData.sale_id = saleId;
     }
 
-    // Actualizar en Supabase
-    let { data: updatedOrder, error } = await supabase
+    // Actualizar en Database
+    let { data: updatedOrder, error } = await db
       .from('orders')
       .update(updateData)
       .eq('order_id', orderId)
@@ -466,7 +466,7 @@ export async function PUT(request: NextRequest) {
       // Solo actualizar customer_email si tiene un valor válido (no vacío)
       if (customerEmail !== undefined && customerEmail !== "") basicUpdateData.customer_email = customerEmail;
       
-      const result = await supabase
+      const result = await db
         .from('orders')
         .update(basicUpdateData)
         .eq('order_id', orderId)
@@ -479,7 +479,7 @@ export async function PUT(request: NextRequest) {
     }
 
     if (error) {
-      console.error('❌ [Orders API] Error actualizando pedido en Supabase:', error);
+      console.error('❌ [Orders API] Error actualizando pedido en DB:', error);
       return NextResponse.json(
         { error: 'Error al actualizar el pedido', detalles: error.message },
         { status: 500 }
@@ -552,7 +552,7 @@ export async function DELETE(request: NextRequest) {
     }
 
 
-    const { data: deleted, error } = await supabase
+    const { data: deleted, error } = await db
       .from('orders')
       .delete()
       .eq('order_id', orderId)

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 import { IDGenerator } from '@/lib/id-generator';
 
 // GET /api/warehouses - Obtener almacenes por storeId
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
     console.log(' [Warehouses API] GET warehouses for store:', storeId);
 
-    const { data: warehouses, error } = await supabaseAdmin
+    const { data: warehouses, error } = await dbAdmin
       .from('warehouses')
       .select('*')
       .eq('store_id', storeId)
@@ -61,14 +61,14 @@ export async function POST(request: NextRequest) {
       location: body.location || null
     };
 
-    const { data: created, error } = await supabaseAdmin
+    const { data: created, error } = await dbAdmin
       .from('warehouses')
       .insert(warehouseData)
       .select()
       .single();
 
     if (error) {
-      console.error('❌ [Warehouses API] Supabase error:', error);
+      console.error('❌ [Warehouses API] DB error:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
@@ -107,7 +107,7 @@ export async function PUT(request: NextRequest) {
     if (updateData.name !== undefined) dbupdateData.name = updateData.name;
     if (updateData.location !== undefined) dbupdateData.location = updateData.location;
 
-    const { data: updated, error } = await supabaseAdmin
+    const { data: updated, error } = await dbAdmin
       .from('warehouses')
       .update(dbupdateData)
       .eq('id', id)
@@ -151,7 +151,7 @@ export async function DELETE(request: NextRequest) {
 
     console.log(' [Warehouses API] DELETE warehouse:', id);
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await dbAdmin
       .from('warehouses')
       .delete()
       .eq('id', id)

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 import { IDGenerator } from '@/lib/id-generator';
 
 // GET /api/families - Obtener familias por storeId
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
     console.log(' [Families API] GET families for store:', storeId);
 
-    const { data: families, error } = await supabaseAdmin
+    const { data: families, error } = await dbAdmin
       .from('families')
       .select('*')
       .eq('store_id', storeId)
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       description: body.description || null
     };
 
-    const { data: created, error } = await supabaseAdmin
+    const { data: created, error } = await dbAdmin
       .from('families')
       .insert(familyData)
       .select()
@@ -107,7 +107,7 @@ export async function PUT(request: NextRequest) {
     if (updateData.name !== undefined) dbUpdateData.name = updateData.name;
     if (updateData.description !== undefined) dbUpdateData.description = updateData.description;
 
-    const { data: updated, error } = await supabaseAdmin
+    const { data: updated, error } = await dbAdmin
       .from('families')
       .update(dbUpdateData)
       .eq('id', id)
@@ -151,7 +151,7 @@ export async function DELETE(request: NextRequest) {
 
     console.log(' [Families API] DELETE family:', id);
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await dbAdmin
       .from('families')
       .delete()
       .eq('id', id)

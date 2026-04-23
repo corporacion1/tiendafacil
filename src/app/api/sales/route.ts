@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 import { IDGenerator } from '@/lib/id-generator';
 import { revalidateTag } from 'next/cache';
 
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
     }
 
-    const { data: sales, error } = await supabaseAdmin
+    const { data: sales, error } = await dbAdmin
       .from('sales')
       .select('*')
       .eq('store_id', storeId)
@@ -97,7 +97,7 @@ export async function POST(request: Request) {
     // and return the client-provided values as a fallback in the response.
     let createdSale: any = null;
     const attemptInsert = async (payload: any) => {
-      const res = await supabaseAdmin
+      const res = await dbAdmin
         .from('sales')
         .insert([payload])
         .select()
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
 
     if (firstAttempt.error) {
       const errMsg = (firstAttempt.error.message || '').toLowerCase();
-      // Detect common Postgres/Supabase messages about missing columns
+      // Detect common Postgres/Database messages about missing columns
       const missingColumnDetected = errMsg.includes('could not find') || errMsg.includes('does not exist') || errMsg.includes('column') && errMsg.includes('does not exist');
 
       if (missingColumnDetected) {
@@ -156,7 +156,7 @@ export async function POST(request: Request) {
       for (const item of data.items) {
         try {
           // Get current product stock and cost
-          const { data: product } = await supabaseAdmin
+          const { data: product } = await dbAdmin
             .from('products')
             .select('stock, cost, warehouse, name')
             .eq('id', item.productId)
@@ -168,13 +168,13 @@ export async function POST(request: Request) {
             const newStock = previousStock - item.quantity;
 
             // Update product stock
-            await supabaseAdmin
+            await dbAdmin
               .from('products')
               .update({ stock: newStock, updated_at: new Date().toISOString() })
               .eq('id', item.productId)
               .eq('store_id', data.storeId);
 
-            // Create movement record with correct Supabase column names (user provided schema)
+            // Create movement record with correct Database column names (user provided schema)
             const movementData = {
               id: IDGenerator.generate('movement'),
               product_id: item.productId,
@@ -195,7 +195,7 @@ export async function POST(request: Request) {
               updated_at: new Date().toISOString()
             };
 
-            const { error: movementError } = await supabaseAdmin
+            const { error: movementError } = await dbAdmin
               .from('inventory_movements')
               .insert(movementData);
 
@@ -249,7 +249,7 @@ export async function POST(request: Request) {
           updated_at: new Date().toISOString()
         };
 
-        const { error: accountError } = await supabaseAdmin
+        const { error: accountError } = await dbAdmin
           .from('account_receivables')
           .insert(accountData);
 
@@ -327,7 +327,7 @@ export async function PUT(request: Request) {
     if (data.userId !== undefined) updateData.user_id = data.userId;
     if (data.customerRifNit !== undefined) updateData.customer_rif_nit = data.customerRifNit;
 
-    const { data: updatedSale, error } = await supabaseAdmin
+    const { data: updatedSale, error } = await dbAdmin
       .from('sales')
       .update(updateData)
       .eq('id', data.id)
@@ -382,7 +382,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'id and storeId are required' }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await dbAdmin
       .from('sales')
       .delete()
       .eq('id', id)

@@ -1,10 +1,10 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function GET(request: NextRequest) {
   try {
     // Get all stores
-    const { data: allStores, error: storesError } = await supabaseAdmin
+    const { data: allStores, error: storesError } = await dbAdmin
       .from('stores')
       .select('*');
 
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const production = stores.filter((s: any) => s.status === 'inProduction').length;
 
     // Get total users count
-    const { count: totalUsers, error: usersError } = await supabaseAdmin
+    const { count: totalUsers, error: usersError } = await dbAdmin
       .from('users')
       .select('*', { count: 'exact', head: true });
 
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 
         // Try to get owner info
         if (store.owner_ids && Array.isArray(store.owner_ids) && store.owner_ids.length > 0) {
-          const { data: userData } = await supabaseAdmin
+          const { data: userData } = await dbAdmin
             .from('users')
             .select('display_name, email')
             .eq('uid', store.owner_ids[0])

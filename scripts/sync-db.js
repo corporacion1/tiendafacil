@@ -1,7 +1,7 @@
 const { Pool } = require('pg');
 
-const NEON_URL = "postgresql://neondb_owner:npg_eP4vTAYZJE5g@ep-long-sea-aebyx8rz-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require";
-const LOCAL_URL = "postgresql://postgres:19a1e3ef@localhost:5432/tiendafacil";
+const NEON_URL = process.env.NEON_DATABASE_URL || "";
+const LOCAL_URL = process.env.LOCAL_DATABASE_URL || "postgresql://postgres@localhost:5432/tiendafacil";
 
 async function migrate() {
   const neonPool = new Pool({ connectionString: NEON_URL });

@@ -170,7 +170,7 @@ export function MultiImageUpload({
     }
   }, [currentImages, productId, onError]);
 
-  // ✅ CORREGIDO: Endpoints actualizados para Supabase
+  // ✅ CORREGIDO: Endpoints actualizados para Database
   const uploadToServer = async (files: File[]) => {
     try {
       const slots = Math.max(0, maxImages - (existingImages?.length || 0));
@@ -188,7 +188,7 @@ export function MultiImageUpload({
 
       setUploadingImages(prev => prev.map(item => ({ ...item, progress: 50, status: 'processing' })));
 
-      // ✅ CORREGIDO: Endpoint actualizado para Supabase
+      // ✅ CORREGIDO: Endpoint actualizado para Database
       const response = await fetch(`/api/products/${productId}/images`, {
         method: 'POST',
         body: formData
@@ -207,7 +207,7 @@ export function MultiImageUpload({
 
       try {
         if (productId && effectiveStoreId) {
-          // ✅ CORREGIDO: Endpoint actualizado para Supabase
+          // ✅ CORREGIDO: Endpoint actualizado para Database
           const refresh = await fetch(`/api/products/${productId}?storeId=${effectiveStoreId}`);
           if (refresh.ok) {
             const freshProduct = await refresh.json();
@@ -252,7 +252,7 @@ export function MultiImageUpload({
     }
   };
 
-  // ✅ CORREGIDO: Endpoints actualizados para Supabase
+  // ✅ CORREGIDO: Endpoints actualizados para Database
   const handleRemoveImage = useCallback(async (imageId: string) => {
     if (!productId || !effectiveStoreId) {
       onError(`No puedes eliminar imágenes hasta guardar el producto. Faltan datos (productId=${productId ?? 'null'}, storeId=${effectiveStoreId ?? 'null'})`);
@@ -262,7 +262,7 @@ export function MultiImageUpload({
       try {
         const match = existingImages.find(img => img.id === imageId || (img as any)?._id === imageId);
         const realImageId = match ? (match.id || (match as any)?._id) : imageId;
-        // ✅ CORREGIDO: Endpoint actualizado para Supabase
+        // ✅ CORREGIDO: Endpoint actualizado para Database
         const response = await fetch(`/api/products/${productId}/images?imageId=${realImageId}&storeId=${effectiveStoreId}`, { method: 'DELETE' });
         if (!response.ok) {
           const errorText = await response.text();
@@ -279,7 +279,7 @@ export function MultiImageUpload({
     }
   }, [productId, effectiveStoreId, existingImages, onImagesChange, onError]);
 
-  // ✅ CORREGIDO: Endpoints actualizados para Supabase
+  // ✅ CORREGIDO: Endpoints actualizados para Database
   const handleSetAsPrimary = useCallback(async (imageId: string) => {
     if (!productId || !effectiveStoreId) {
       onError(`No puedes cambiar la imagen principal hasta guardar el producto. Faltan datos (productId=${productId ?? 'null'}, storeId=${effectiveStoreId ?? 'null'})`);
@@ -314,7 +314,7 @@ export function MultiImageUpload({
     }
   }, [existingImages, productId, effectiveStoreId, onImagesChange, onError]);
 
-  // ✅ CORREGIDO: Endpoints actualizados para Supabase
+  // ✅ CORREGIDO: Endpoints actualizados para Database
   const handleMoveImage = useCallback(async (imageId: string, direction: 'up' | 'down') => {
     if (!productId || !effectiveStoreId) {
       onError(`No puedes reordenar imágenes hasta guardar el producto. Faltan datos (productId=${productId ?? 'null'}, storeId=${effectiveStoreId ?? 'null'})`);

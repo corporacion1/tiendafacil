@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { dbAdmin as db } from '@/lib/db-client';
 
 export async function GET(request: Request) {
     try {
@@ -8,7 +8,7 @@ export async function GET(request: Request) {
 
         if (email) {
             // Buscar usuario específico
-            const { data: user, error } = await supabase
+            const { data: user, error } = await db
                 .from('users')
                 .select('uid, email, role, status, store_id, created_at, password')
                 .eq('email', email.toLowerCase())
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
         }
 
         // Listar todos los usuarios
-        const { data: users, error } = await supabase
+        const { data: users, error } = await db
             .from('users')
             .select('uid, email, role, status, store_id, created_at')
             .order('created_at', { ascending: false })

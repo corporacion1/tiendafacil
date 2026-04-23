@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function PATCH(
   request: NextRequest,
@@ -45,7 +45,7 @@ export async function PATCH(
       updateData.cancelled_at = new Date().toISOString();
     }
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await dbAdmin
       .from('delivery_assignments')
       .update(updateData)
       .eq('id', resolvedParams.id)
@@ -53,7 +53,7 @@ export async function PATCH(
       .maybeSingle();
 
     if (error) {
-      console.error('❌ Error en Supabase update:', error);
+      console.error('❌ Error en DB update:', error);
       throw error;
     }
 
@@ -64,7 +64,7 @@ export async function PATCH(
 
     console.log('✅ Asignación actualizada:', data.id);
 
-    await supabaseAdmin
+    await dbAdmin
       .from('orders')
       .update({
         delivery_status: status,  // Mantener el mismo status que delivery_assignments
@@ -78,14 +78,14 @@ export async function PATCH(
       const now = new Date();
       const durationMinutes = Math.round((now.getTime() - assignedAt.getTime()) / 60000);
       
-      await supabaseAdmin
+      await dbAdmin
         .from('delivery_assignments')
         .update({ actual_duration_minutes: durationMinutes })
         .eq('id', resolvedParams.id);
     }
 
     // Recargar los datos actualizados
-    const { data: updatedData } = await supabaseAdmin
+    const { data: updatedData } = await dbAdmin
       .from('delivery_assignments')
       .select('*')
       .eq('id', resolvedParams.id)

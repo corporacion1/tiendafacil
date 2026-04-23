@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { dbAdmin as db } from '@/lib/db-client';
 
 export async function GET(request: Request) {
   try {
@@ -15,8 +15,8 @@ export async function GET(request: Request) {
 
     console.log('🔐 [Security Status] Verificando estado para store:', storeId);
 
-    // Buscar configuración de seguridad en Supabase
-    const { data: securityConfig, error } = await supabase
+    // Buscar configuración de seguridad en Database
+    const { data: securityConfig, error } = await db
       .from('store_security')
       .select('*')
       .eq('store_id', storeId)

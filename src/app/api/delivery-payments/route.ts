@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
     }
 
-    let query = supabaseAdmin
+    let query = dbAdmin
       .from('delivery_payments')
       .select('*')
       .eq('store_id', storeId);
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
 
     const id = `PAY-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await dbAdmin
       .from('delivery_payments')
       .insert([{
         id,
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
 
     // Marcar asignaciones como pagadas
     if (deliveryAssignmentIds && deliveryAssignmentIds.length > 0) {
-      await supabaseAdmin
+      await dbAdmin
         .from('delivery_assignments')
         .update({
           provider_payment_status: 'paid',

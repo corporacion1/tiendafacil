@@ -22,7 +22,7 @@ export function getPool() {
     }
 
     pool = new Pool({
-      connectionString: connectionString || 'postgresql://postgres:19a1e3ef@localhost:5433/tiendafacil',
+      connectionString: connectionString || 'postgresql://postgres@localhost:5433/tiendafacil',
       // Configuraciones para entorno local
       max: 20,
       idleTimeoutMillis: 30000,

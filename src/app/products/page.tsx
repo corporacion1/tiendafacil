@@ -20,7 +20,7 @@ export default function ProductsPage() {
   const router = useRouter();
 
   // Función para crear producto usando la API
-  const createProductInSupabase = async (productData: Product) => {
+  const createProductInDB = async (productData: Product) => {
     try {
       console.log('📤 [Products Page] Sending product to API:', productData);
 
@@ -59,8 +59,8 @@ export default function ProductsPage() {
         userId: (user as any)?.id || 'system' // Para rastrear quién creó el producto
       } as any;
 
-      // Usar la API en lugar de Supabase directo
-      const savedProduct = await createProductInSupabase(newProduct);
+      // Usar la API en lugar de Database directo
+      const savedProduct = await createProductInDB(newProduct);
 
       // Actualizar el estado local
       setProducts(prev => [savedProduct, ...prev]);

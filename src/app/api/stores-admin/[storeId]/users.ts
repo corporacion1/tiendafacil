@@ -1,13 +1,13 @@
 // pages/api/stores-admin/[storeId]/users.ts
 import { NextApiRequest, NextApiResponse } from 'next';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { storeId } = req.query;
 
   try {
     // Obtener usuarios con roles en esta tienda
-    const { data: userRoles, error } = await supabaseAdmin
+    const { data: userRoles, error } = await dbAdmin
       .from('users')
       .select(`
           uid,

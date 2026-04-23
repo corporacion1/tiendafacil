@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { dbAdmin as db } from '@/lib/db-client';
 
 // GET /api/credits/summary - Obtener resumen de cuentas por cobrar
 export async function GET(request: Request) {
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     const now = new Date();
 
     // Obtener todas las cuentas activas (no pagadas ni canceladas)
-    const { data: allAccounts, error } = await supabase
+    const { data: allAccounts, error } = await db
       .from('account_receivables')
       .select('*')
       .eq('store_id', storeId)

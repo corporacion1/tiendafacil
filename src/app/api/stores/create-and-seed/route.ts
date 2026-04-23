@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function POST(request: NextRequest) {
     try {
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
         }
 
         // 1. Find the user by email to get the UID
-        const { data: userData, error: userError } = await supabaseAdmin
+        const { data: userData, error: userError } = await dbAdmin
             .from('users')
             .select('uid')
             .eq('email', ownerEmail)
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
         console.log('🆕 [CreateAndSeed API] Generated Store ID:', storeId);
 
         // 2. Create Store
-        const { data: store, error: storeError } = await supabaseAdmin
+        const { data: store, error: storeError } = await dbAdmin
             .from('stores')
             .insert({
                 id: storeId,
@@ -55,9 +55,9 @@ export async function POST(request: NextRequest) {
 
         // 3. Seed Data (Simplified for now - just basic structure if needed)
         // In a real scenario, we would call the seed logic here.
-        // For now, we'll just return success as the user requested "don't record in supabase" 
+        // For now, we'll just return success as the user requested "don't record in db" 
         // which might imply they just want the error gone or the flow to complete.
-        // But wait, the user said "don't record in supabase" meaning it FAILED to record.
+        // But wait, the user said "don't record in db" meaning it FAILED to record.
         // So we MUST record it.
 
         return NextResponse.json({

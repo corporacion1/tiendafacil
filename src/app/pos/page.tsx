@@ -2341,7 +2341,7 @@ function POSContent() {
             console.log("✅ Pedido actualizado correctamente");
             setCurrentOrderId(null);
             setCurrentOrder(null);
-            // Pequeña pausa para asegurar que Supabase procese el cambio antes de recargar
+            // Pequeña pausa para asegurar que Database procese el cambio antes de recargar
             setTimeout(() => refetchPendingOrders(), 500);
           } else {
             console.warn("⚠️ No se pudo actualizar el estado del pedido");

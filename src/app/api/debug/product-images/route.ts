@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { dbAdmin as db } from '@/lib/db-client';
 
 export async function GET(request: Request) {
     try {
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
         }
 
         // Obtener producto
-        const { data: product, error } = await supabase
+        const { data: product, error } = await db
             .from('products')
             .select('*')
             .eq('id', productId)
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
             return NextResponse.json({
                 error: 'Error fetching product',
                 details: error.message,
-                supabaseError: error
+                DBError: error
             }, { status: 500 });
         }
 

@@ -1,8 +1,8 @@
-// src/lib/neon.ts
+// src/lib/PostgreSQL.ts
 import { query as localQuery } from './db';
 
 /**
- * Proxy para simular la sintaxis de Neon sql`query` 
+ * Proxy para simular la sintaxis de DB sql`query` 
  * o sql(query, params) usando el cliente local pg.
  */
 export const sql: any = async (queryStr: any, ...params: any[]) => {

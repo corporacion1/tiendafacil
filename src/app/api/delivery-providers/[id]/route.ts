@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function GET(
   request: NextRequest,
@@ -7,7 +7,7 @@ export async function GET(
 ) {
   try {
     const resolvedParams = await params;
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await dbAdmin
       .from('delivery_providers')
       .select('*')
       .eq('id', resolvedParams.id)
@@ -82,7 +82,7 @@ export async function PUT(
     if (body.photoUrl !== undefined) updateData.photo_url = body.photoUrl;
     if (body.notes !== undefined) updateData.notes = body.notes;
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await dbAdmin
       .from('delivery_providers')
       .update(updateData)
       .eq('id', resolvedParams.id)
@@ -129,7 +129,7 @@ export async function DELETE(
 ) {
   try {
     const resolvedParams = await params;
-    const { error } = await supabaseAdmin
+    const { error } = await dbAdmin
       .from('delivery_providers')
       .delete()
       .eq('id', resolvedParams.id);

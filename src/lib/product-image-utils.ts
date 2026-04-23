@@ -1,5 +1,5 @@
 import { Product, ProductImage } from './types';
-// Supabase dependency removed: images will be stored/served from local API endpointslitar logging de debug - REDUCIDO para evitar spam
+// Database dependency removed: images will be stored/served from local API endpointslitar logging de debug - REDUCIDO para evitar spam
 const DEBUG_IMAGES = typeof window !== 'undefined' && window.location.search.includes('debug=images');
 
 /**

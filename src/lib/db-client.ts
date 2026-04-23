@@ -1,16 +1,16 @@
-// src/lib/supabase.ts
-import { neonBridge } from './neon-bridge';
+// src/lib/db.ts
+import { dbBridge } from './db-bridge';
 import { LocalStorageService } from '@/services/local-storage';
 
 /**
  * Proxy para mantener compatibilidad con el código existente mientras
  * se migra a PostgreSQL local.
  */
-export const supabase = neonBridge;
-export const supabaseAdmin = neonBridge;
+export const db = dbBridge;
+export const dbAdmin = dbBridge;
 
 /**
- * Mapeo de funciones de imagen de Supabase a almacenamiento local
+ * Mapeo de funciones de imagen de DB a almacenamiento local
  */
 export async function uploadImage(file: File, bucket: string = 'products') {
   const bytes = await file.arrayBuffer();
@@ -53,4 +53,4 @@ export async function uploadBase64Image(base64: string, fileName: string, folder
 }
 
 // Si alguna parte del código usa la clase predeterminada
-export default neonBridge;
+export default dbBridge;

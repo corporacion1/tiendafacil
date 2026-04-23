@@ -1,4 +1,4 @@
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 // Definir tipos
 export enum MovementType {
@@ -92,7 +92,7 @@ export class MovementService {
       });
 
       // Obtener stock actual del producto
-      const { data: product, error: productError } = await supabaseAdmin
+      const { data: product, error: productError } = await dbAdmin
         .from('products')
         .select('*')
         .eq('id', request.productId)
@@ -132,7 +132,7 @@ export class MovementService {
           store_id: request.storeId
         };
 
-        const { data: movement, error } = await supabaseAdmin
+        const { data: movement, error } = await dbAdmin
           .from('inventory_movements')
           .insert([movementData])
           .select()
@@ -170,7 +170,7 @@ export class MovementService {
         store_id: request.storeId
       };
 
-      const { data: movement, error: movementError } = await supabaseAdmin
+      const { data: movement, error: movementError } = await dbAdmin
         .from('inventory_movements')
         .insert([movementData])
         .select()
@@ -179,7 +179,7 @@ export class MovementService {
       if (movementError) throw movementError;
 
       // ACTUALIZAR EL STOCK REAL DEL PRODUCTO
-      const { error: updateError } = await supabaseAdmin
+      const { error: updateError } = await dbAdmin
         .from('products')
         .update({ stock: newStock })
         .eq('id', request.productId)
@@ -237,7 +237,7 @@ export class MovementService {
     filters?: MovementFilters
   ): Promise<InventoryMovementDocument[]> {
     try {
-      let query = supabaseAdmin
+      let query = dbAdmin
         .from('inventory_movements')
         .select('*')
         .eq('product_id', productId)
@@ -291,7 +291,7 @@ export class MovementService {
     date: Date
   ): Promise<number> {
     try {
-      const { data: movements, error } = await supabaseAdmin
+      const { data: movements, error } = await dbAdmin
         .from('inventory_movements')
         .select('quantity')
         .eq('product_id', productId)
@@ -329,7 +329,7 @@ export class MovementService {
   }> {
     try {
       // Obtener stock actual del producto
-      const { data: product, error } = await supabaseAdmin
+      const { data: product, error } = await dbAdmin
         .from('products')
         .select('stock')
         .eq('id', productId)
@@ -584,7 +584,7 @@ export class MovementService {
     movementCount: number;
   }> {
     try {
-      const { data: movements, error } = await supabaseAdmin
+      const { data: movements, error } = await dbAdmin
         .from('inventory_movements')
         .select('*')
         .eq('product_id', productId)

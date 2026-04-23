@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function POST(request: Request) {
     try {
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
         console.log('🗑️ [Reset API] Resetting data for store:', storeId);
 
         // Check if store is in production
-        const { data: store, error: storeError } = await supabaseAdmin
+        const { data: store, error: storeError } = await dbAdmin
             .from('stores')
             .select('status')
             .eq('id', storeId)
@@ -32,25 +32,25 @@ export async function POST(request: Request) {
 
         // Delete all transactional data for this store
         console.log('🗑️ [Reset API] Deleting products...');
-        await supabaseAdmin.from('products').delete().eq('store_id', storeId);
+        await dbAdmin.from('products').delete().eq('store_id', storeId);
 
         console.log('🗑️ [Reset API] Deleting sales...');
-        await supabaseAdmin.from('sales').delete().eq('store_id', storeId);
+        await dbAdmin.from('sales').delete().eq('store_id', storeId);
 
         console.log('🗑️ [Reset API] Deleting purchases...');
-        await supabaseAdmin.from('purchases').delete().eq('store_id', storeId);
+        await dbAdmin.from('purchases').delete().eq('store_id', storeId);
 
         console.log('🗑️ [Reset API] Deleting inventory movements...');
-        await supabaseAdmin.from('inventory_movements').delete().eq('store_id', storeId);
+        await dbAdmin.from('inventory_movements').delete().eq('store_id', storeId);
 
         console.log('🗑️ [Reset API] Deleting customers...');
-        await supabaseAdmin.from('customers').delete().eq('store_id', storeId);
+        await dbAdmin.from('customers').delete().eq('store_id', storeId);
 
         console.log('🗑️ [Reset API] Deleting suppliers...');
-        await supabaseAdmin.from('suppliers').delete().eq('store_id', storeId);
+        await dbAdmin.from('suppliers').delete().eq('store_id', storeId);
 
         console.log('🗑️ [Reset API] Deleting cash sessions...');
-        await supabaseAdmin.from('cash_sessions').delete().eq('store_id', storeId);
+        await dbAdmin.from('cash_sessions').delete().eq('store_id', storeId);
 
         console.log('✅ [Reset API] Store data reset successfully');
 

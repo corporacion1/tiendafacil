@@ -128,12 +128,12 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   const [isLoading, setIsLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
 
-  // Función para cargar datos desde Supabase - ESTABILIZADA
-  const loadDataFromSupabase = useCallback(async (storeId: string, minimal: boolean = false) => {
+  // Función para cargar datos desde Database - ESTABILIZADA
+  const loadDataFromDb = useCallback(async (storeId: string, minimal: boolean = false) => {
     try {
       setIsLoading(true);
 
-      console.log(`📥 Cargando datos desde Supabase para tienda: ${storeId}`);
+      console.log(`📥 Cargando datos desde DB para tienda: ${storeId}`);
 
       // Primero cargar settings para obtener el businessType
       let storeSettings = await fetch(`/api/stores?id=${storeId}`)
@@ -296,10 +296,10 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         loadedCount++;
       }
 
-      console.log(`✅ ${loadedCount}/15 tipos de datos cargados desde Supabase`);
+      console.log(`✅ ${loadedCount}/15 tipos de datos cargados desde DB`);
 
     } catch (error) {
-      console.error('❌ Error cargando datos desde Supabase:', error);
+      console.error('❌ Error cargando datos desde DB:', error);
       // Removido toast para evitar loops infinitos
     } finally {
       setIsLoading(false);
@@ -309,7 +309,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
   // ✅ FUNCIÓN SEEDDATABASE ESTABILIZADA
   const seedDatabase = useCallback(async (storeId: string) => {
     try {
-      console.log('🌱 Iniciando SEED COMPLETO en Supabase para store:', storeId);
+      console.log('🌱 Iniciando SEED COMPLETO en DB para store:', storeId);
 
       const response = await fetch('/api/seed', {
         method: 'POST',
@@ -333,14 +333,14 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       console.log('✅ SEED COMPLETO exitoso:', result);
 
       // Recargar datos después del seed
-      await loadDataFromSupabase(storeId);
+      await loadDataFromDb(storeId);
       return true;
 
     } catch (error) {
       console.error('❌ Error en seedDatabase:', error);
       return false;
     }
-  }, [loadDataFromSupabase]); // Mantener dependencia pero loadDataFromSupabase ya está estabilizado
+  }, [loadDataFromDb]); // Mantener dependencia pero loadDataFromDb ya está estabilizado
 
   // Cargar configuración inicial al montar el componente - ESTABILIZADO
   useEffect(() => {
@@ -371,14 +371,14 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
         setDisplayCurrency('secondary');
       }
 
-      // Cargar datos de configuración SOLO desde Supabase
+      // Cargar datos de configuración SOLO desde Database
       if (storeIdToUse) {
-        await loadDataFromSupabase(storeIdToUse);
+        await loadDataFromDb(storeIdToUse);
       }
     };
 
     initializeSettings();
-  }, [loadDataFromSupabase, authActiveStoreId, setAuthActiveStoreId, authUser]); // Incluir authUser para detectar login/logout
+  }, [loadDataFromDb, authActiveStoreId, setAuthActiveStoreId, authUser]); // Incluir authUser para detectar login/logout
 
   // Sincronizar datos cuando cambie el activeStoreId del AuthContext
   useEffect(() => {
@@ -391,13 +391,13 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
       if (isAdministrativeUser && !isCatalogRoute) {
         console.log('⚡ [SettingsContext] Administrative user on admin route - immediate full data sync');
-        loadDataFromSupabase(authActiveStoreId, false);
+        loadDataFromDb(authActiveStoreId, false);
       } else {
         console.log(`🔄 [SettingsContext] Syncing data (minimal: ${isCatalogRoute})`);
-        loadDataFromSupabase(authActiveStoreId, isCatalogRoute);
+        loadDataFromDb(authActiveStoreId, isCatalogRoute);
       }
     }
-  }, [authActiveStoreId, isClient, loadDataFromSupabase, authUser?.role, pathname]);
+  }, [authActiveStoreId, isClient, loadDataFromDb, authUser?.role, pathname]);
 
   // Sincroniza userProfile con authUser
   useEffect(() => {
@@ -469,7 +469,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       console.error('❌ [Context] Error saving settings:', error);
       throw error;
     }
-  }, [activeStoreId, updateSettingsState, loadDataFromSupabase]); // Dependencias estabilizadas
+  }, [activeStoreId, updateSettingsState, loadDataFromDb]); // Dependencias estabilizadas
 
   // ✅ FUNCIÓN GUARDARCURRENCYRATE CORREGIDA Y DEFINITIVA
   const saveCurrencyRate = useCallback(async (rate: number, userName: string) => {
@@ -628,12 +628,12 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     // Also save to old localStorage key for backward compatibility
     localStorage.setItem(ACTIVE_STORE_ID_STORAGE_KEY, storeId);
 
-    // Recargar datos de configuración desde Supabase
+    // Recargar datos de configuración desde Database
     // OMITIDO: El useEffect ya se encarga de sincronizar cuando cambia activeStoreId
-    // await loadDataFromSupabase(storeId);
+    // await loadDataFromDb(storeId);
 
     // Removido toast para evitar loops infinitos
-  }, [loadDataFromSupabase, setAuthActiveStoreId]); // Removido toast de dependencias
+  }, [loadDataFromDb, setAuthActiveStoreId]); // Removido toast de dependencias
 
   const toggleDisplayCurrency = useCallback(() => {
     const newPreference = displayCurrency === 'primary' ? 'secondary' : 'primary';
@@ -730,8 +730,8 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
 
   const reloadAll = useCallback(async () => {
     if (!activeStoreId) return;
-    await loadDataFromSupabase(activeStoreId, false);
-  }, [activeStoreId, loadDataFromSupabase]);
+    await loadDataFromDb(activeStoreId, false);
+  }, [activeStoreId, loadDataFromDb]);
 
   const handleSetUserProfile = useCallback((user: UserProfile | null) => {
     setUserProfile(user);
@@ -800,7 +800,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
       reloadSales,
       reloadAll,
       // Funciones de sincronización automática
-      syncAfterSave: loadDataFromSupabase,
+      syncAfterSave: loadDataFromDb,
       syncProducts: reloadProducts,
       expensePayments,
       setExpensePayments
@@ -839,7 +839,7 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     fetchCurrencyRates,
     saveCurrencyRate,
     reloadProducts,
-    loadDataFromSupabase
+    loadDataFromDb
   ]);
 
   if (isLoading && !isPublicPath && isClient) {

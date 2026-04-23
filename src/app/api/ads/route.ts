@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 import { IDGenerator } from '@/lib/id-generator';
 
 // GET /api/ads - Obtener anuncios filtrados por tipo de negocio
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
     console.log('📢 [Ads API] GET ads:', { businessType, storeId });
 
-    let query = supabaseAdmin
+    let query = dbAdmin
       .from('ads')
       .select('*')
       .order('created_at', { ascending: false });
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       expiry_date: body.expiryDate || null
     };
 
-    const { data: created, error } = await supabaseAdmin
+    const { data: created, error } = await dbAdmin
       .from('ads')
       .insert(adData)
       .select()
@@ -151,7 +151,7 @@ export async function PUT(request: NextRequest) {
     if (updateData.targetBusinessTypes !== undefined) dbUpdateData.target_business_types = updateData.targetBusinessTypes;
     if (updateData.expiryDate !== undefined) dbUpdateData.expiry_date = updateData.expiryDate;
 
-    const { data: updated, error } = await supabaseAdmin
+    const { data: updated, error } = await dbAdmin
       .from('ads')
       .update(dbUpdateData)
       .eq('id', id)
@@ -202,7 +202,7 @@ export async function DELETE(request: NextRequest) {
 
     console.log('🗑️ [Ads API] DELETE ad:', id);
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await dbAdmin
       .from('ads')
       .delete()
       .eq('id', id)

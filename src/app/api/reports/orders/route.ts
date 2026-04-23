@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 import { OrderTransformer } from '@/lib/order-transformer';
 
 export async function GET(request: NextRequest) {
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch ALL orders with complete data for reports
-    const { data: orders, error } = await supabaseAdmin
+    const { data: orders, error } = await dbAdmin
       .from('orders')
       .select('*')
       .eq('store_id', storeId)

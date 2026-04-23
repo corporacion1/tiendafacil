@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function GET(
     request: NextRequest,
@@ -16,7 +16,7 @@ export async function GET(
 
     try {
         // Obtener directamente los usuarios de esta tienda
-        const { data: users, error } = await supabaseAdmin
+        const { data: users, error } = await dbAdmin
             .from('users')
             .select(`
         uid,

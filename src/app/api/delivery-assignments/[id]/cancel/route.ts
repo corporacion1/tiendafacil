@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +23,7 @@ export async function POST(
 
     // Intento 1: Buscar por ID (PK) SIEMPRE.
     // Asumimos que la columna 'id' es texto y acepta cualquier valor.
-    const { data: dataById, error: errorById } = await supabaseAdmin
+    const { data: dataById, error: errorById } = await dbAdmin
       .from('delivery_assignments')
       .select('id, delivery_status')
       .eq('id', id)
@@ -41,7 +41,7 @@ export async function POST(
     // Intento 2: Buscar por order_id si no se encontró por ID
     if (!foundAssignment) {
       console.log('🔄 No encontrado por ID, buscando por order_id...');
-      const { data: dataByOrder, error: errorByOrder } = await supabaseAdmin
+      const { data: dataByOrder, error: errorByOrder } = await dbAdmin
         .from('delivery_assignments')
         .select('id, delivery_status')
         .eq('order_id', id)
@@ -66,7 +66,7 @@ export async function POST(
     console.log(`✅ Asignación confirmada. ID Real: ${realId}`);
 
     // Paso 1: Resetear montos usando el ID Real
-    const { error: resetError } = await supabaseAdmin
+    const { error: resetError } = await dbAdmin
       .from('delivery_assignments')
       .update({
         delivery_fee: 0,
@@ -88,7 +88,7 @@ export async function POST(
       updated_at: new Date().toISOString()
     };
 
-    const { data: updateData, error: updateError } = await supabaseAdmin
+    const { data: updateData, error: updateError } = await dbAdmin
       .from('delivery_assignments')
       .update(updatePayload)
       .eq('id', realId)
@@ -106,7 +106,7 @@ export async function POST(
 
     if (updateData && updateData.order_id) {
       // Actualizar orden a 'cancelled' y resetear delivery_fee
-      const { error: orderError } = await supabaseAdmin
+      const { error: orderError } = await dbAdmin
         .from('orders')
         .update({
           delivery_status: 'cancelled',

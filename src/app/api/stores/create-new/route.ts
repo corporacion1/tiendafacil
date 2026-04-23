@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function POST(request: NextRequest) {
     try {
@@ -18,10 +18,10 @@ export async function POST(request: NextRequest) {
         const storeId = `ST-${Date.now()}`;
 
         console.log('🆕 [CreateStore API] Generated Store ID:', storeId);
-        console.log('🛠️ [CreateStore API] Attempting to insert into Supabase...');
+        console.log('🛠️ [CreateStore API] Attempting to insert into DB...');
 
         // Create Store
-        const { data: store, error: storeError } = await supabaseAdmin
+        const { data: store, error: storeError } = await dbAdmin
             .from('stores')
             .insert({
                 id: storeId,
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
             .single();
 
         if (storeError) {
-            console.error('❌ [CreateStore API] Error creating store in Supabase:', storeError);
+            console.error('❌ [CreateStore API] Error creating store in DB:', storeError);
             throw new Error(`Error creating store: ${storeError.message}`);
         }
 

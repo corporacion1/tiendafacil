@@ -42,7 +42,7 @@ import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { useProducts } from "@/hooks/useProducts";
 import { usePermissions } from "@/hooks/use-permissions";
 import dynamic from 'next/dynamic';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/db-client';
 import { date } from "zod";
 import { IDGenerator } from "@/lib/id-generator";
 import DeliveryMap from '@/components/deliveries/delivery-map';
@@ -196,7 +196,7 @@ const BarcodeScannerComponent = dynamic(
   { ssr: false }
 );
 
-// Cliente Supabase
+// Cliente Database
 const AdCard = ({ ad, onAdClick }: { ad: Ad; onAdClick: (ad: Ad) => void }) => {
   const [adImageError, setAdImageError] = useState(false);
   const displayAdImageUrl = getDisplayImageUrl(ad.imageUrl || '', 'ad');
@@ -653,8 +653,8 @@ function CatalogContent() {
     });
   }, [isLoading, isLoadingSettings, loadingCatalogStore, isLoadingProducts, syncedProducts.length, contextProducts.length, products.length, storeIdForCatalog]);
 
-  // NUEVA FUNCIÓN: Cargar tienda desde API (ahora compatible con Neon)
-  const loadStoreFromSupabase = async (storeId: string) => {
+  // NUEVA FUNCIÓN: Cargar tienda desde API (ahora compatible con PostgreSQL)
+  const loadStoreFromDB = async (storeId: string) => {
     try {
       const response = await fetch(`/api/stores?id=${encodeURIComponent(storeId)}`);
       
@@ -685,13 +685,13 @@ function CatalogContent() {
 
       try {
         setLoadingCatalogStore(true);
-        console.log('🏪 [Catalog] Loading store settings from Supabase for:', storeIdForCatalog);
+        console.log('🏪 [Catalog] Loading store settings from DB for:', storeIdForCatalog);
 
-        const storeData = await loadStoreFromSupabase(storeIdForCatalog);
-        console.log('✅ [Catalog] Store settings loaded from Supabase:', storeData?.name);
+        const storeData = await loadStoreFromDB(storeIdForCatalog);
+        console.log('✅ [Catalog] Store settings loaded from DB:', storeData?.name);
         setCatalogStoreSettings(storeData);
       } catch (error) {
-        console.error('❌ [Catalog] Error loading store settings from Supabase:', error);
+        console.error('❌ [Catalog] Error loading store settings from DB:', error);
         setCatalogStoreSettings(defaultStore);
       } finally {
         setLoadingCatalogStore(false);
@@ -984,18 +984,18 @@ function CatalogContent() {
     }
   }, [showStoresDialog]);
 
-  // NUEVA FUNCIÓN: Incrementar vistas de anuncios en Supabase
-  const incrementAdViewsSupabase = async (adId: string) => {
+  // NUEVA FUNCIÓN: Incrementar vistas de anuncios en Database
+  const incrementAdViewsDB = async (adId: string) => {
     try {
       // Primero obtener las vistas actuales
-      const { data: adData, error: fetchError } = await supabase
+      const { data: adData, error: fetchError } = await db
         .from('ads')
         .select('views')
         .eq('id', adId)
         .single();
 
       if (fetchError) {
-        console.error('❌ [Supabase] Error fetching ad views:', fetchError);
+        console.error('❌ [DB] Error fetching ad views:', fetchError);
         return null;
       }
 
@@ -1003,27 +1003,27 @@ function CatalogContent() {
       const newViews = currentViews + 1;
 
       // Actualizar las vistas
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('ads')
         .update({ views: newViews })
         .eq('id', adId);
 
       if (error) {
-        console.error('❌ [Supabase] Error updating ad views:', error);
+        console.error('❌ [DB] Error updating ad views:', error);
         return null;
       }
 
       return newViews;
     } catch (error) {
-      console.error('❌ [Supabase] Exception updating ad views:', error);
+      console.error('❌ [DB] Exception updating ad views:', error);
       return null;
     }
   };
 
-  // MODIFICADO: Usar Supabase para incrementar vistas
+  // MODIFICADO: Usar Database para incrementar vistas
   const incrementAdViews = async (adId: string) => {
     try {
-      const newViews = await incrementAdViewsSupabase(adId);
+      const newViews = await incrementAdViewsDB(adId);
 
       if (newViews !== null) {
         // Actualizar el anuncio seleccionado con las nuevas vistas silenciosamente
@@ -1032,7 +1032,7 @@ function CatalogContent() {
       }
     } catch (error) {
       // Error silencioso - solo log en consola
-      console.error('Error incrementing ad views with Supabase:', error);
+      console.error('Error incrementing ad views with DB:', error);
     }
     return null;
   };
@@ -1117,22 +1117,22 @@ function CatalogContent() {
     return Object.keys(errors).length === 0;
   };
 
-  const createCustomerInSupabase = async (customerData: any) => {
+  const createCustomerInDB = async (customerData: any) => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('customers')
         .insert([customerData])
         .select()
         .single();
 
       if (error) {
-        console.error('❌ [Supabase] Error creating customer:', error);
-        throw new Error('Error al registrar usuario en Supabase');
+        console.error('❌ [DB] Error creating customer:', error);
+        throw new Error('Error al registrar usuario en DB');
       }
 
       return data;
     } catch (error) {
-      console.error('❌ [Supabase] Exception creating customer:', error);
+      console.error('❌ [DB] Exception creating customer:', error);
       throw error;
     }
   };
@@ -1142,7 +1142,7 @@ function CatalogContent() {
 
     try {
       setIsSubmittingRegister(true);
-      const newCustomer = await createCustomerInSupabase({
+      const newCustomer = await createCustomerInDB({
         id: IDGenerator.generate('customer', storeIdForCatalog),
         name: registerForm.name,
         email: registerForm.email,
@@ -1163,7 +1163,7 @@ function CatalogContent() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo completar el registro en Supabase."
+        description: "No se pudo completar el registro en DB."
       });
     } finally {
       setIsSubmittingRegister(false);
@@ -1783,7 +1783,7 @@ function CatalogContent() {
     );
   };
 
-  const createOrderInSupabase = async (orderData: Order) => {
+  const createOrderInDB = async (orderData: Order) => {
     try {
       console.log('📦 [API] Creating order via API:', orderData.orderId);
       console.log('📦 [API] Order data being sent:', JSON.stringify(orderData, null, 2));
@@ -1907,7 +1907,7 @@ function CatalogContent() {
 
         console.log('🔍 [Order Update] Updating order:', orderIdToUse, 'with data:', updateData);
 
-        const updatedOrder = await updateOrderInSupabase(orderIdToUse, updateData);
+        const updatedOrder = await updateOrderInDB(orderIdToUse, updateData);
 
         // Forzar actualización de la lista de pedidos para reflejar el pedido actualizado
         await refetchOrders(true);
@@ -1958,8 +1958,8 @@ function CatalogContent() {
           deliveryProviderID: ''
         };
 
-        // MODIFICADO: Guardar en Supabase en lugar de MongoDB
-        const savedOrder = await createOrderInSupabase(newPendingOrder);
+        // MODIFICADO: Guardar en Database en lugar de MongoDB
+        const savedOrder = await createOrderInDB(newPendingOrder);
       }
 
       await generateQrCode(orderIdToUse);
@@ -2001,7 +2001,7 @@ function CatalogContent() {
 
     } catch (error) {
       console.error('Error:', error);
-      toast({ variant: "destructive", title: 'Error al guardar pedido en Supabase' });
+      toast({ variant: "destructive", title: 'Error al guardar pedido en DB' });
     } finally {
       setIsSubmittingOrder(false);
     }
@@ -2298,7 +2298,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
   };
 
   // NUEVA FUNCIÓN: Actualizar pedido usando API (evita problemas de RLS)
-  const updateOrderInSupabase = async (orderId: string, updates: any) => {
+  const updateOrderInDB = async (orderId: string, updates: any) => {
     try {
       console.log('🔄 [API] Updating order via API:', orderId);
 
@@ -2330,11 +2330,11 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
     }
   };
 
-  // MODIFICADO: Usar Supabase para eliminar/cancelar pedidos
+  // MODIFICADO: Usar Database para eliminar/cancelar pedidos
   const handleDeleteOrder = async (orderId: string) => {
     try {
-      // Soft delete: actualizar estado a 'cancelled' en Supabase
-      const updatedOrder = await updateOrderInSupabase(orderId, {
+      // Soft delete: actualizar estado a 'cancelled' en Database
+      const updatedOrder = await updateOrderInDB(orderId, {
         status: 'cancelled',
         updatedAt: new Date().toISOString()
       });
@@ -2352,11 +2352,11 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
         description: "El pedido ha sido marcado como cancelado."
       });
     } catch (error) {
-      console.error('Error cancelling order in Supabase:', error);
+      console.error('Error cancelling order in DB:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo cancelar el pedido en Supabase."
+        description: "No se pudo cancelar el pedido en DB."
       });
     }
   };

@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 import bcrypt from 'bcryptjs';
 
 export async function PUT(request: NextRequest) {
@@ -13,17 +13,17 @@ export async function PUT(request: NextRequest) {
 
     console.log('📝 [Users Edit API] Updating user:', { uid, updateData });
 
-    // Preparar datos para actualizar en Supabase
-    const supabaseUpdateData: any = {};
+    // Preparar datos para actualizar en Database
+    const DBUpdateData: any = {};
 
-    if (updateData.displayName !== undefined) supabaseUpdateData.display_name = updateData.displayName;
-    if (updateData.email !== undefined) supabaseUpdateData.email = updateData.email;
-    if (updateData.phone !== undefined) supabaseUpdateData.phone = updateData.phone;
-    if (updateData.role !== undefined) supabaseUpdateData.role = updateData.role;
-    if (updateData.status !== undefined) supabaseUpdateData.status = updateData.status;
-    if (updateData.permissions !== undefined) supabaseUpdateData.permissions = updateData.permissions;
-    if (updateData.storeId !== undefined) supabaseUpdateData.store_id = updateData.storeId;
-    if (updateData.photoURL !== undefined) supabaseUpdateData.photo_url = updateData.photoURL;
+    if (updateData.displayName !== undefined) DBUpdateData.display_name = updateData.displayName;
+    if (updateData.email !== undefined) DBUpdateData.email = updateData.email;
+    if (updateData.phone !== undefined) DBUpdateData.phone = updateData.phone;
+    if (updateData.role !== undefined) DBUpdateData.role = updateData.role;
+    if (updateData.status !== undefined) DBUpdateData.status = updateData.status;
+    if (updateData.permissions !== undefined) DBUpdateData.permissions = updateData.permissions;
+    if (updateData.storeId !== undefined) DBUpdateData.store_id = updateData.storeId;
+    if (updateData.photoURL !== undefined) DBUpdateData.photo_url = updateData.photoURL;
 
     // Si hay cambio de contraseña (soporta tanto 'password' como 'newPassword')
     const passwordToUpdate = updateData.newPassword || updateData.password;
@@ -32,13 +32,13 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json({ error: 'La contraseña debe tener al menos 6 caracteres' }, { status: 400 });
       }
       const salt = await bcrypt.genSalt(10);
-      supabaseUpdateData.password = await bcrypt.hash(passwordToUpdate, salt);
+      DBUpdateData.password = await bcrypt.hash(passwordToUpdate, salt);
       console.log('🔐 [Users Edit API] Password will be updated');
     }
 
-    const { data: updatedUser, error } = await supabaseAdmin
+    const { data: updatedUser, error } = await dbAdmin
       .from('users')
-      .update(supabaseUpdateData)
+      .update(DBUpdateData)
       .eq('uid', uid)
       .select()
       .single();
@@ -85,7 +85,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'uid y storeId son requeridos' }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await dbAdmin
       .from('users')
       .delete()
       .eq('uid', uid)

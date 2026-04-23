@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ storeId: string }> }) {
   try {
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: 'Store ID is required' }, { status: 400 });
     }
 
-    const { data: store, error } = await supabaseAdmin
+    const { data: store, error } = await dbAdmin
       .from('stores')
       .select('*')
       .eq('id', storeId)
@@ -70,7 +70,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (data.status) updateData.status = data.status;
     if (data.subscriptionPlan) updateData.subscription_plan = data.subscriptionPlan;
 
-    const { data: updated, error } = await supabaseAdmin
+    const { data: updated, error } = await dbAdmin
       .from('stores')
       .update(updateData)
       .eq('id', storeId)

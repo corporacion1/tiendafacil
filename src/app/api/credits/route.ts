@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 import { IDGenerator } from '@/lib/id-generator';
 
 // GET /api/credits - Obtener cuentas por cobrar
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     console.log('🔍 [Credits API] Buscando cuentas por cobrar:', { storeId, customerId, status, overdue });
 
     // Construir query - Simplificado sin JOIN complejo
-    let query = supabaseAdmin
+    let query = dbAdmin
       .from('account_receivables')
       .select('*')
       .eq('store_id', storeId);
@@ -121,7 +121,7 @@ export async function POST(request: Request) {
     console.log('💳 [Credits API] Creando cuenta por cobrar para venta:', saleId);
 
     // Obtener la venta
-    const { data: sale, error: saleError } = await supabaseAdmin
+    const { data: sale, error: saleError } = await dbAdmin
       .from('sales')
       .select('*')
       .eq('id', saleId)
@@ -141,7 +141,7 @@ export async function POST(request: Request) {
     }
 
     // Verificar si ya existe una cuenta por cobrar para esta venta
-    const { data: existingAccount } = await supabaseAdmin
+    const { data: existingAccount } = await dbAdmin
       .from('account_receivables')
       .select('*')
       .eq('sale_id', saleId)
@@ -179,7 +179,7 @@ export async function POST(request: Request) {
       updated_by: createdBy
     };
 
-    const { data: account, error } = await supabaseAdmin
+    const { data: account, error } = await dbAdmin
       .from('account_receivables')
       .insert(accountData)
       .select()
@@ -250,7 +250,7 @@ export async function PUT(request: Request) {
     console.log('💰 [Credits API] Agregando pago a cuenta:', accountId, payment.amount);
 
     // Obtener cuenta actual
-    const { data: account, error: accountError } = await supabaseAdmin
+    const { data: account, error: accountError } = await dbAdmin
       .from('account_receivables')
       .select('*')
       .eq('id', accountId)
@@ -271,7 +271,7 @@ export async function PUT(request: Request) {
 
     // Validar referencias duplicadas
     if (payment.reference && payment.reference.trim()) {
-      const { data: duplicateAccount } = await supabaseAdmin
+      const { data: duplicateAccount } = await dbAdmin
         .from('account_receivables')
         .select('*')
         .eq('store_id', account.store_id)
@@ -322,7 +322,7 @@ export async function PUT(request: Request) {
       paymentsCount: updatedPayments.length
     });
 
-    const { data: updatedAccount, error: updateError } = await supabaseAdmin
+    const { data: updatedAccount, error: updateError } = await dbAdmin
       .from('account_receivables')
       .update({
         paid_amount: newPaidAmount,
@@ -354,7 +354,7 @@ export async function PUT(request: Request) {
         finalStatus
       });
 
-      const { data: syncData, error: syncError, count } = await supabaseAdmin
+      const { data: syncData, error: syncError, count } = await dbAdmin
         .from('sales')
         .update({
           paid_amount: newPaidAmount,

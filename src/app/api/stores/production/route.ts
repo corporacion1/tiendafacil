@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function POST(request: Request) {
     try {
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
         console.log('🏭 [Production API] Changing store to production mode:', storeId);
 
         // Check if store exists
-        const { data: store, error: storeError } = await supabaseAdmin
+        const { data: store, error: storeError } = await dbAdmin
             .from('stores')
             .select('status')
             .eq('id', storeId)
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
         }
 
         // Update store status to production
-        const { error: updateError } = await supabaseAdmin
+        const { error: updateError } = await dbAdmin
             .from('stores')
             .update({
                 status: 'inProduction',
@@ -67,7 +67,7 @@ export async function GET() {
     try {
         console.log('🔍 [Production API] Fetching all production stores...');
         
-        const { data: stores, error } = await supabaseAdmin
+        const { data: stores, error } = await dbAdmin
             .from('stores')
             .select('*')
             .not('status', 'eq', 'inactive')

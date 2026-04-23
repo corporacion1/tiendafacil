@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 interface OrderData {
   order_id: string;
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
     }
 
-    const { data: orders, error: ordersError } = await supabaseAdmin
+    const { data: orders, error: ordersError } = await dbAdmin
       .from('orders')
       .select('order_id, customer_name, customer_phone, customer_email, customer_address, items, total, delivery_method, delivery_status, delivery_fee, created_at, updated_at, latitude, longitude')
       .eq('store_id', storeId)
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 
     const orderIds = (orders as OrderData[])?.map((o: OrderData) => o.order_id) || [];
 
-    const { data: assignments, error: assignmentsError } = await supabaseAdmin
+    const { data: assignments, error: assignmentsError } = await dbAdmin
       .from('delivery_assignments')
       .select('order_id')
       .in('order_id', orderIds);

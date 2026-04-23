@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
 
     // Si se proporciona storeId, devolver esa tienda específica
     if (storeId) {
-      const { data: store, error } = await supabaseAdmin
+      const { data: store, error } = await dbAdmin
         .from('stores')
         .select('*')
         .eq('id', storeId)
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       let adminName = 'Sin administrador';
       let adminContact = '';
       
-      const { data: userData } = await supabaseAdmin
+      const { data: userData } = await dbAdmin
         .from('users')
         .select('display_name, email, phone')
         .eq('store_id', storeId)
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Get user count for this store (only admin users with matching store_id)
-      const { count: userCount } = await supabaseAdmin
+      const { count: userCount } = await dbAdmin
         .from('users')
         .select('*', { count: 'exact', head: true })
         .eq('store_id', storeId)
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Si no, devolver todas las tiendas (admin)
-    const { data: stores, error } = await supabaseAdmin
+    const { data: stores, error } = await dbAdmin
       .from('stores')
       .select('*')
       .order('created_at', { ascending: false });
@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
         let adminName = 'Sin administrador';
         let adminContact = '';
         
-        const { data: userData } = await supabaseAdmin
+        const { data: userData } = await dbAdmin
           .from('users')
           .select('display_name, email, phone')
           .eq('store_id', s.id)
@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Get user count for this store (only admin users with matching store_id)
-        const { count: userCount } = await supabaseAdmin
+        const { count: userCount } = await dbAdmin
           .from('users')
           .select('*', { count: 'exact', head: true })
           .eq('store_id', s.id)

@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 import { revalidateTag } from 'next/cache';
 
 export async function GET(
@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const resolvedParams = await params;
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await dbAdmin
       .from('delivery_assignments')
       .select('*')
       .eq('id', resolvedParams.id)
@@ -82,7 +82,7 @@ export async function DELETE(
 ) {
   try {
     const resolvedParams = await params;
-    const { error } = await supabaseAdmin
+    const { error } = await dbAdmin
       .from('delivery_assignments')
       .delete()
       .eq('id', resolvedParams.id);
@@ -138,7 +138,7 @@ export async function PUT(
       estimatedDurationMinutes
     });
 
-    // Transformar camelCase a snake_case para Supabase
+    // Transformar camelCase a snake_case para Database
     const updateData: any = {
       updated_at: new Date().toISOString()
     };
@@ -155,12 +155,12 @@ export async function PUT(
     if (deliveryFee !== undefined) updateData.delivery_fee = deliveryFee;
     if (estimatedDurationMinutes !== undefined) updateData.estimated_duration_minutes = estimatedDurationMinutes;
 
-    console.log('📦 Datos actualizados para Supabase:', JSON.stringify(updateData, null, 2));
+    console.log('📦 Datos actualizados para DB:', JSON.stringify(updateData, null, 2));
 
     // Primero verificar si la asignación existe
     console.log('🔍 Buscando asignación con ID:', resolvedParams.id);
     
-    const { data: existingAssignment, error: fetchError } = await supabaseAdmin
+    const { data: existingAssignment, error: fetchError } = await dbAdmin
       .from('delivery_assignments')
       .select('id')
       .eq('id', resolvedParams.id)
@@ -176,7 +176,7 @@ export async function PUT(
       console.error('❌ ID buscado:', resolvedParams.id);
       
       // Verificar si hay asignaciones en la tabla
-      const { data: allAssignments, error: countError } = await supabaseAdmin
+      const { data: allAssignments, error: countError } = await dbAdmin
         .from('delivery_assignments')
         .select('id', { count: 'exact', head: true })
         .limit(5);
@@ -199,7 +199,7 @@ export async function PUT(
 
     console.log('✅ Asignación encontrada:', existingAssignment);
 
-    const { data: updatedAssignment, error: updateError } = await supabaseAdmin
+    const { data: updatedAssignment, error: updateError } = await dbAdmin
       .from('delivery_assignments')
       .update(updateData)
       .eq('id', resolvedParams.id)
@@ -246,7 +246,7 @@ export async function PUT(
 
       console.log('📦 Datos para actualizar en orders:', JSON.stringify(orderUpdateData, null, 2));
 
-      await supabaseAdmin
+      await dbAdmin
         .from('orders')
         .update(orderUpdateData)
         .eq('order_id', updatedAssignment.order_id);

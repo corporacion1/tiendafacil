@@ -1,6 +1,6 @@
 // src/app/api/auth/register/route.ts
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 import bcrypt from 'bcryptjs';
 
 const SALT_ROUNDS = 10;
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     }
 
     // 3. Verificar si el email ya existe
-    const { data: existingUser } = await supabaseAdmin
+    const { data: existingUser } = await dbAdmin
       .from('users')
       .select('email')
       .eq('email', email.toLowerCase())
@@ -48,14 +48,14 @@ export async function POST(request: Request) {
       email: email.toLowerCase().trim(),
       password: hashedPassword,
       phone: phone.trim(),
-      store_id: storeId.trim(), // snake_case para Supabase
+      store_id: storeId.trim(), // snake_case para Database
       role: 'user',
       display_name: email.split('@')[0],
       created_at: new Date().toISOString(),
       status: 'active'
     };
 
-    const { data: newUser, error } = await supabaseAdmin
+    const { data: newUser, error } = await dbAdmin
       .from('users')
       .insert([userData])
       .select()
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
-    console.log('✅ Usuario guardado en Supabase con UID:', newUser.uid);
+    console.log('✅ Usuario guardado en DB con UID:', newUser.uid);
 
     // 6. Responder con éxito
     return NextResponse.json({

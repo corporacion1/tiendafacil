@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { dbAdmin as db } from '@/lib/db-client';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // CONSULTA DIRECTA A LA DB - SIN NINGUNA TRANSFORMACIÓN
-    let query = supabase
+    let query = db
       .from('orders')
       .select('*')
       .eq('store_id', storeId)

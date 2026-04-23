@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { dbAdmin as db } from '@/lib/db-client';
 
 /**
  * GET - Debug: Ver estado actual de un producto
@@ -14,14 +14,14 @@ export async function GET(
         const { searchParams } = new URL(request.url);
         const storeId = searchParams.get('storeId');
 
-        console.log('🔍 [Debug] Consultando producto (Supabase):', { productId, storeId });
+        console.log('🔍 [Debug] Consultando producto (DB):', { productId, storeId });
 
         if (!storeId) {
             return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
         }
 
-        // Consultar producto en Supabase
-        const { data: product, error } = await supabase
+        // Consultar producto en Database
+        const { data: product, error } = await db
             .from('products')
             .select('*')
             .eq('id', productId)
@@ -29,7 +29,7 @@ export async function GET(
             .single();
 
         if (error) {
-            console.error('❌ [Debug] Error Supabase:', error);
+            console.error('❌ [Debug] Error DB:', error);
             return NextResponse.json({ error: 'Error al buscar producto' }, { status: 500 });
         }
 
@@ -59,7 +59,7 @@ export async function GET(
                 url: img.url,
                 alt: img.alt,
                 order: img.order,
-                supabasePath: img.supabasePath,
+                DBPath: img.DBPath,
                 isPrimary: index === (product.primary_image_index || 0)
             })) || [],
 

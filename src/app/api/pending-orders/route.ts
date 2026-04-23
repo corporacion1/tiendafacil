@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
 
     const status = searchParams.get('status'); // 'all', 'pending', 'processed', etc.
 
-    let query = supabaseAdmin
+    let query = dbAdmin
       .from('orders')
       .select('*')
       .eq('store_id', storeId);
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       customer: data.customer
     };
 
-    const { data: created, error } = await supabaseAdmin
+    const { data: created, error } = await dbAdmin
       .from('orders')
       .insert([orderData])
       .select()
@@ -120,7 +120,7 @@ export async function PUT(request: NextRequest) {
     if (data.total !== undefined) updateData.total = data.total;
     if (data.customer) updateData.customer = data.customer;
 
-    const { data: updated, error } = await supabaseAdmin
+    const { data: updated, error } = await dbAdmin
       .from('orders')
       .update(updateData)
       .eq('order_id', data.orderId)
@@ -159,7 +159,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Faltan parámetros 'orderId' y/o 'storeId'" }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await dbAdmin
       .from('orders')
       .delete()
       .eq('order_id', orderId)

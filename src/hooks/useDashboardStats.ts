@@ -14,13 +14,13 @@ interface DashboardStats {
     totalInventoryValue: number;
   };
   topProducts: Array<{
-    id: string; // ✅ CORREGIDO: Cambiado _id por id (Supabase)
+    id: string; // ✅ CORREGIDO: Cambiado _id por id (Database)
     productName: string;
     totalSold: number;
     totalRevenue: number;
   }>;
   topCustomers: Array<{
-    id: string; // ✅ CORREGIDO: Cambiado _id por id (Supabase)
+    id: string; // ✅ CORREGIDO: Cambiado _id por id (Database)
     customerName: string;
     totalSpent: number;
     purchaseCount: number;
@@ -49,7 +49,7 @@ export const useDashboardStats = () => {
 
         const data = await response.json();
         
-        // ✅ CORREGIDO: Para Supabase, los datos vienen directamente, no en {success, data}
+        // ✅ CORREGIDO: Para Database, los datos vienen directamente, no en {success, data}
         if (data) {
           setStats(data);
         } else {

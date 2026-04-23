@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function DELETE(
   request: NextRequest,
@@ -7,7 +7,7 @@ export async function DELETE(
 ) {
   try {
     const resolvedParams = await params;
-    const { error } = await supabaseAdmin
+    const { error } = await dbAdmin
       .from('delivery_payments')
       .delete()
       .eq('id', resolvedParams.id);

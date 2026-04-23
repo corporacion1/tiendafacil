@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 // Leer tienda actual
 export async function GET(request: NextRequest) {
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
     console.log('🔍 [Stores API] Buscando tienda con ID:', id);
 
-    const { data: store, error } = await supabaseAdmin
+    const { data: store, error } = await dbAdmin
       .from('stores')
       .select('*')
       .eq('id', id)
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar si ya existe una tienda con este id
-    const { data: existingStore } = await supabaseAdmin
+    const { data: existingStore } = await dbAdmin
       .from('stores')
       .select('*')
       .eq('id', storeId)
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
       saleCorrelative: data.saleCorrelative || 0
     };
 
-    const { data: created, error } = await supabaseAdmin
+    const { data: created, error } = await dbAdmin
       .from('stores')
       .insert(storeData)
       .select()
@@ -234,7 +234,7 @@ export async function PUT(request: NextRequest) {
     if (data.meta !== undefined) updateData.meta = data.meta;
     if (data.tiktok !== undefined) updateData.tiktok = data.tiktok;
 
-    const { data: updated, error } = await supabaseAdmin
+    const { data: updated, error } = await dbAdmin
       .from('stores')
       .update(updateData)
       .eq('id', storeId)
@@ -296,7 +296,7 @@ export async function DELETE(request: NextRequest) {
 
     console.log('🗑️ [Stores API] Eliminando tienda:', id);
 
-    const { data: deleted, error } = await supabaseAdmin
+    const { data: deleted, error } = await dbAdmin
       .from('stores')
       .delete()
       .eq('id', id)

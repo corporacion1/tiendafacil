@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 import { IDGenerator } from '@/lib/id-generator';
 
 // MODIFICAR el GET en /app/api/products/route.ts
@@ -14,14 +14,14 @@ export async function GET(request: NextRequest) {
 
     console.log(`🔍 [Products API] Fetching data for store: ${storeId}`);
 
-        const { data: products, error } = await supabaseAdmin
+        const { data: products, error } = await dbAdmin
       .from('products')
       .select('*')
       .eq('store_id', storeId)
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('❌ [Products API] Supabase error:', error);
+      console.error('❌ [Products API] DB error:', error);
       throw error;
     }
 
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
 
     const initialStock = Number(data.stock) || 0;
 
-    // Transformar camelCase a snake_case para Supabase
+    // Transformar camelCase a snake_case para Database
     const productData = {
       id: data.id,
       store_id: data.storeId,
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
 
     console.log('📤 [Products API] Inserting product data:', JSON.stringify(productData, null, 2));
 
-    const { data: created, error } = await supabaseAdmin
+    const { data: created, error } = await dbAdmin
       .from('products')
       .insert(productData)
       .select()
@@ -232,7 +232,7 @@ export async function PUT(request: NextRequest) {
     if (data.warehouse !== undefined) updateData.warehouse = data.warehouse;
     if (data.affectsInventory !== undefined) updateData.affects_inventory = data.affectsInventory;
 
-    const { data: updated, error } = await supabaseAdmin
+    const { data: updated, error } = await dbAdmin
       .from('products')
       .update(updateData)
       .eq('id', data.id)
@@ -297,7 +297,7 @@ export async function DELETE(request: NextRequest) {
 
     console.log('🗑️ [Products API] DELETE product:', { id, storeId });
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await dbAdmin
       .from('products')
       .delete()
       .eq('id', id)

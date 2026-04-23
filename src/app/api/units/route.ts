@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 import { IDGenerator } from '@/lib/id-generator';
 
 // GET /api/units - Obtener unidades por storeId
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
 
     console.log(' [Units API] GET units for store:', storeId);
 
-    const { data: units, error } = await supabaseAdmin
+    const { data: units, error } = await dbAdmin
       .from('units')
       .select('*')
       .eq('store_id', storeId)
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       abbreviation: body.abbreviation || null
     };
 
-    const { data: created, error } = await supabaseAdmin
+    const { data: created, error } = await dbAdmin
       .from('units')
       .insert(unitData)
       .select()
@@ -102,7 +102,7 @@ export async function PUT(request: NextRequest) {
     if (updateData.name !== undefined) dbUpdateData.name = updateData.name;
     if (updateData.abbreviation !== undefined) dbUpdateData.abbreviation = updateData.abbreviation;
 
-    const { data: updated, error } = await supabaseAdmin
+    const { data: updated, error } = await dbAdmin
       .from('units')
       .update(dbUpdateData)
       .eq('id', id)
@@ -146,7 +146,7 @@ export async function DELETE(request: NextRequest) {
 
     console.log(' [Units API] DELETE unit:', id);
 
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await dbAdmin
       .from('units')
       .delete()
       .eq('id', id)

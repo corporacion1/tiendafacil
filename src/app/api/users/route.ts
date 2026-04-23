@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 import { IDGenerator } from '@/lib/id-generator';
 
 // GET /api/users - Obtener todos los usuarios (solo para superadmin)
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const storeId = searchParams.get('storeId');
 
-    let query = supabaseAdmin
+    let query = dbAdmin
       .from('users')
       .select('*')
       .order('created_at', { ascending: false });
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       password: body.password // Nota: En producción esto debería estar hasheado
     };
 
-    const { data: savedUser, error } = await supabaseAdmin
+    const { data: savedUser, error } = await dbAdmin
       .from('users')
       .insert([userData])
       .select()
@@ -108,19 +108,19 @@ export async function PUT(request: NextRequest) {
     }
 
     // Mapear campos a snake_case
-    const supabaseUpdateData: any = {};
-    if (updateData.email) supabaseUpdateData.email = updateData.email;
-    if (updateData.displayName) supabaseUpdateData.display_name = updateData.displayName;
-    if (updateData.photoURL) supabaseUpdateData.photo_url = updateData.photoURL;
-    if (updateData.role) supabaseUpdateData.role = updateData.role;
-    if (updateData.status) supabaseUpdateData.status = updateData.status;
-    if (updateData.storeId) supabaseUpdateData.store_id = updateData.storeId;
-    if (updateData.storeRequest) supabaseUpdateData.store_request = updateData.storeRequest;
-    if (updateData.phone) supabaseUpdateData.phone = updateData.phone;
+    const DBUpdateData: any = {};
+    if (updateData.email) DBUpdateData.email = updateData.email;
+    if (updateData.displayName) DBUpdateData.display_name = updateData.displayName;
+    if (updateData.photoURL) DBUpdateData.photo_url = updateData.photoURL;
+    if (updateData.role) DBUpdateData.role = updateData.role;
+    if (updateData.status) DBUpdateData.status = updateData.status;
+    if (updateData.storeId) DBUpdateData.store_id = updateData.storeId;
+    if (updateData.storeRequest) DBUpdateData.store_request = updateData.storeRequest;
+    if (updateData.phone) DBUpdateData.phone = updateData.phone;
 
-    const { data: updatedUser, error } = await supabaseAdmin
+    const { data: updatedUser, error } = await dbAdmin
       .from('users')
-      .update(supabaseUpdateData)
+      .update(DBUpdateData)
       .eq('uid', uid)
       .select()
       .single();
@@ -162,7 +162,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'uid es requerido' }, { status: 400 });
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await dbAdmin
       .from('users')
       .delete()
       .eq('uid', uid);

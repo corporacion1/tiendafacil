@@ -1,8 +1,8 @@
-// src/lib/neon-bridge.ts
+// src/lib/PostgreSQL-bridge.ts
 import { query as localQuery } from './db';
 
 /**
- * A bridge to mimic Supabase query builder for local PostgreSQL.
+ * A bridge to mimic DB query builder for local PostgreSQL.
  */
 class LocalQueryBuilder {
   private table: string;
@@ -136,9 +136,9 @@ class LocalQueryBuilder {
   }
 
   or(filter: string) {
-    // Simplificación extrema: Supabase .or('id.eq.1,name.eq.foo')
+    // Simplificación extrema: Database .or('id.eq.1,name.eq.foo')
     // Por ahora, solo lo ignoramos o intentamos parsear lo básico
-    console.warn('⚠️ neonBridge: .or() is not fully implemented. Filter:', filter);
+    console.warn('⚠️ dbBridge: .or() is not fully implemented. Filter:', filter);
     return this;
   }
 
@@ -180,7 +180,7 @@ class LocalQueryBuilder {
         
         return result;
       } catch (error: any) {
-        console.error('❌ neonBridge (Client):', error);
+        console.error('❌ dbBridge (Client):', error);
         return { data: null, error: { message: error.message } };
       }
     }
@@ -348,10 +348,10 @@ class LocalQueryBuilder {
   }
 }
 
-export const neonBridge = {
+export const dbBridge = {
   from: (table: string) => new LocalQueryBuilder(table),
   rpc: (fn: string, params?: any) => {
-    console.warn(`⚠️ neonBridge: .rpc('${fn}') called but not implemented.`);
+    console.warn(`⚠️ dbBridge: .rpc('${fn}') called but not implemented.`);
     return { data: null, error: null };
   },
   storage: {
@@ -370,7 +370,7 @@ export const neonBridge = {
           }
           return { data: { path: filePath }, error: null };
         } catch (error: any) {
-          console.error('❌ neonBridge Storage Error:', error);
+          console.error('❌ dbBridge Storage Error:', error);
           return { data: null, error };
         }
       },

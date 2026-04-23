@@ -10,7 +10,7 @@ import path from 'path';
 import 'dotenv/config';
 
 // Configuración de la base de datos desde .env.local
-const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:19a1e3ef@localhost:5433/tiendafacil';
+const connectionString = process.env.DATABASE_URL || 'postgresql://postgres@localhost:5433/tiendafacil';
 
 async function downloadImage(url: string, destPath: string) {
     if (fs.existsSync(destPath)) {

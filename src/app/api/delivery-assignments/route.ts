@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 import { IDGenerator } from '@/lib/id-generator';
 import { revalidateTag } from 'next/cache';
 
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
     }
 
-    let query = supabaseAdmin
+    let query = dbAdmin
       .from('delivery_assignments')
       .select('*')
       .eq('store_id', storeId);
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
 
     console.log('📤 Creando delivery_assignment');
 
-    // Transformar camelCase a snake_case para Supabase
+    // Transformar camelCase a snake_case para Database
     const assignmentData = {
       id: id,
       order_id: orderId,
@@ -182,10 +182,10 @@ export async function POST(request: NextRequest) {
     console.log('📦 Datos para insertar en delivery_assignments:', JSON.stringify(assignmentData, null, 2));
     console.log('📦 Longitud de datos:', JSON.stringify(assignmentData).length, 'bytes');
 
-    console.log('🔄 Ejecutando INSERT en Supabase...');
+    console.log('🔄 Ejecutando INSERT en DB...');
     const startTime = Date.now();
 
-    const { data: createdAssignment, error: insertError } = await supabaseAdmin
+    const { data: createdAssignment, error: insertError } = await dbAdmin
       .from('delivery_assignments')
       .insert([assignmentData])
       .select()
@@ -266,7 +266,7 @@ export async function POST(request: NextRequest) {
 
       console.log('📦 Datos para actualizar en orders:', JSON.stringify(orderUpdateData, null, 2));
 
-      await supabaseAdmin
+      await dbAdmin
         .from('orders')
         .update(orderUpdateData)
         .eq('order_id', orderId);

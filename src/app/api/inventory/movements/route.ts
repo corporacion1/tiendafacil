@@ -1,7 +1,7 @@
 // src/app/api/inventory/movements/route.ts
 import { NextResponse } from 'next/server';
 import { MovementService } from '@/services/MovementService';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 // GET /api/inventory/movements - Obtener movimientos con filtros
 export async function GET(request: Request) {
@@ -141,7 +141,7 @@ export async function PUT(request: Request) {
     }
 
     // Obtener producto actual para saber el stock anterior
-    const { data: product, error } = await supabaseAdmin
+    const { data: product, error } = await dbAdmin
       .from('products')
       .select('stock, name')
       .eq('id', productId)

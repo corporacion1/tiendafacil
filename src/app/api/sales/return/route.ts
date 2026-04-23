@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 import { MovementService, MovementType, ReferenceType } from '@/services/MovementService';
 import { revalidateTag } from 'next/cache';
 
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
         console.log(`🔄 [Return API] Iniciando devolución de venta: ${saleId} para tienda: ${storeId}`);
 
         // 1. Obtener detalles de la venta
-        const { data: sale, error: saleError } = await supabaseAdmin
+        const { data: sale, error: saleError } = await dbAdmin
             .from('sales')
             .select('*')
             .eq('id', saleId)
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
         for (const item of items) {
             try {
                 // Obtener datos actuales del producto para calcular stock y obtener warehouse
-                const { data: product, error: pError } = await supabaseAdmin
+                const { data: product, error: pError } = await dbAdmin
                     .from('products')
                     .select('*')
                     .eq('id', item.productId)
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
                 console.log(`🏭 [Return API] Restaurando producto ${item.productId}: ${previousStock} -> ${newStock}`);
 
                 // ACTUALIZACIÓN MANUAL DE STOCK PARA SEGURIDAD
-                const { error: updateError } = await supabaseAdmin
+                const { error: updateError } = await dbAdmin
                     .from('products')
                     .update({
                         stock: newStock,
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
                     updated_at: new Date().toISOString()
                 };
 
-                const { error: movInsertError } = await supabaseAdmin
+                const { error: movInsertError } = await dbAdmin
                     .from('inventory_movements')
                     .insert(movementData);
 
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
 
         // 3. Eliminar movimientos de salida originales
         // Borramos los movimientos donde reference_id sea saleId y el tipo sea 'sale' (salida)
-        const { error: deleteError } = await supabaseAdmin
+        const { error: deleteError } = await dbAdmin
             .from('inventory_movements')
             .delete()
             .eq('reference_id', saleId)
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
 
         // 4. Actualizar sesión de caja
         // Buscamos la sesión que contiene esta venta
-        const { data: sessions, error: sessionsError } = await supabaseAdmin
+        const { data: sessions, error: sessionsError } = await dbAdmin
             .from('cash_sessions')
             .select('*')
             .eq('store_id', storeId)
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
 
                     const updatedSalesIds = salesIds.filter((id: string) => id !== saleId);
 
-                    const { error: sessionUpdateError } = await supabaseAdmin
+                    const { error: sessionUpdateError } = await dbAdmin
                         .from('cash_sessions')
                         .update({
                             transactions: updatedTransactions,
@@ -165,14 +165,14 @@ export async function POST(request: NextRequest) {
         }
 
         // 5. Eliminar cuentas por cobrar (créditos) asociadas
-        await supabaseAdmin
+        await dbAdmin
             .from('account_receivables')
             .delete()
             .eq('sale_id', saleId)
             .eq('store_id', storeId);
 
         // 6. Marcar la venta como devuelta
-        const { error: updateSaleError } = await supabaseAdmin
+        const { error: updateSaleError } = await dbAdmin
             .from('sales')
             .update({
                 status: 'returned',

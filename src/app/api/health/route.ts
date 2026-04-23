@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function GET() {
   try {
     const start = Date.now();
-    const { data, error } = await supabaseAdmin.from('products').select('count', { count: 'exact', head: true });
+    const { data, error } = await dbAdmin.from('products').select('count', { count: 'exact', head: true });
     const duration = Date.now() - start;
 
     if (error) {
@@ -15,7 +15,7 @@ export async function GET() {
       status: 'healthy',
       timestamp: new Date().toISOString(),
       database: {
-        type: 'supabase',
+        type: 'db',
         latency: `${duration}ms`,
         connected: true
       },
@@ -27,7 +27,7 @@ export async function GET() {
       timestamp: new Date().toISOString(),
       error: error.message,
       database: {
-        type: 'supabase',
+        type: 'db',
         connected: false
       }
     }, { status: 503 });

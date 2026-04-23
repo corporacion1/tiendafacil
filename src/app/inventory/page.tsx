@@ -455,7 +455,7 @@ function InventoryContent() {
       if (movementType === 'adjustment') {
         // Para ajustes, usar la API PUT que registra automáticamente el movimiento
         newStock = movementQuantity;
-        apiEndpoint = '/api/supabase/inventory/movements';
+        apiEndpoint = '/api/db/inventory/movements';
         requestBody = {
           product_id: movementProduct.id,
           new_stock: newStock,
@@ -500,7 +500,7 @@ function InventoryContent() {
         }
 
         // Registrar movimiento manual
-        apiEndpoint = '/api/supabase/inventory/movements';
+        apiEndpoint = '/api/db/inventory/movements';
         requestBody = {
           product_id: movementProduct.id,
           warehouse_id: movementProduct.warehouse || null,
@@ -598,7 +598,7 @@ function InventoryContent() {
   const loadProductMovements = async (productId: string) => {
     setIsLoadingMovements(true);
     try {
-      const response = await fetch(`/api/supabase/inventory/movements?productId=${productId}&storeId=${activeStoreId}`);
+      const response = await fetch(`/api/db/inventory/movements?productId=${productId}&storeId=${activeStoreId}`);
       if (response.ok) {
         const data = await response.json();
         // API returns array directly now

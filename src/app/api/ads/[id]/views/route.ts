@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 // POST /api/ads/[id]/views - Incrementar vistas de un anuncio
 export async function POST(
@@ -16,7 +16,7 @@ export async function POST(
     console.log('👁️ [Ads API] Incrementing views for ad:', id);
 
     // Primero obtener el valor actual de views
-    const { data: ad, error: fetchError } = await supabaseAdmin
+    const { data: ad, error: fetchError } = await dbAdmin
       .from('ads')
       .select('views')
       .eq('id', id)
@@ -32,7 +32,7 @@ export async function POST(
 
     // Incrementar views
     const newViews = (ad.views || 0) + 1;
-    const { data: updated, error: updateError } = await supabaseAdmin
+    const { data: updated, error: updateError } = await dbAdmin
       .from('ads')
       .update({ views: newViews })
       .eq('id', id)

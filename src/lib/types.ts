@@ -65,10 +65,10 @@ export type ProductImage = {
     width: number;
     height: number;
   };
-  // DEPRECATED: supabasePath is a legacy field referencing Supabase storage.
+  // DEPRECATED: DatabasePath is a legacy field referencing Database storage.
   // Kept for backward compatibility only. New images use GridFS and local API
   // endpoints (`/api/images/:id`).
-  supabasePath?: string;
+  DBPath?: string;
 };
 
 export type Product = {

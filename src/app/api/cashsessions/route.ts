@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 import { IDGenerator } from '@/lib/id-generator';
 
 enum SessionStatus {
@@ -7,7 +7,7 @@ enum SessionStatus {
   CLOSED = 'closed'
 }
 
-const supabase = supabaseAdmin;
+const db = dbAdmin;
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
     console.log('🔍 [CashSessions API] Buscando sesiones:', { storeId, status });
 
-    let supabaseQuery = supabase
+    let DBQuery = db
       .from('cash_sessions')
       .select('*')
       .eq('store_id', storeId)
@@ -30,10 +30,10 @@ export async function GET(request: NextRequest) {
       .limit(limit);
 
     if (status) {
-      supabaseQuery = supabaseQuery.eq('status', status);
+      DBQuery = DBQuery.eq('status', status);
     }
 
-    const { data: cashSessions, error } = await supabaseQuery;
+    const { data: cashSessions, error } = await DBQuery;
 
     if (error) {
       console.error('❌ [CashSessions API] Error fetching:', error);
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     console.log('💰 [CashSessions API] Creando nueva sesión:', data.id);
 
     // Check for existing open session
-    const { data: existingOpenSession, error: checkError } = await supabase
+    const { data: existingOpenSession, error: checkError } = await db
       .from('cash_sessions')
       .select('*')
       .eq('store_id', data.storeId)
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
       notes: data.notes || ''
     };
 
-    const { data: created, error: createError } = await supabase
+    const { data: created, error: createError } = await db
       .from('cash_sessions')
       .insert([sessionData])
       .select()
@@ -155,7 +155,7 @@ export async function PUT(request: NextRequest) {
     if (!storeId) {
       console.warn('⚠️ [CashSessions API] storeId not provided, fetching from session');
       // Fetch the session to get storeId
-      const { data: session } = await supabase
+      const { data: session } = await db
         .from('cash_sessions')
         .select('store_id')
         .eq('id', data.id)
@@ -184,7 +184,7 @@ export async function PUT(request: NextRequest) {
     if (data.status === SessionStatus.CLOSED && data.closingBalance !== undefined) {
       console.log('🔒 [CashSessions API] Cerrando sesión con balance:', data.closingBalance);
 
-      const { data: currentSession, error: fetchError } = await supabase
+      const { data: currentSession, error: fetchError } = await db
         .from('cash_sessions')
         .select('*')
         .eq('id', data.id)
@@ -229,7 +229,7 @@ export async function PUT(request: NextRequest) {
 
     console.log('📝 [CashSessions API] Update data:', JSON.stringify(updateData, null, 2));
 
-    const { data: updated, error: updateError } = await supabase
+    const { data: updated, error: updateError } = await db
       .from('cash_sessions')
       .update(updateData)
       .eq('id', data.id)
@@ -280,7 +280,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Faltan parámetros 'id' y/o 'storeId'" }, { status: 400 });
     }
 
-    const { data: deleted, error } = await supabase
+    const { data: deleted, error } = await db
       .from('cash_sessions')
       .delete()
       .eq('id', id)

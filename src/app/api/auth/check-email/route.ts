@@ -1,6 +1,6 @@
 // src/app/api/auth/check-email/route.ts
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function POST(request: Request) {
   try {
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: existingUser } = await supabaseAdmin
+    const { data: existingUser } = await dbAdmin
       .from('users')
       .select('email')
       .eq('email', email.toLowerCase().trim())

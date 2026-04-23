@@ -1,6 +1,6 @@
 // src/app/api/dashboard/stats/route.ts
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 export async function GET(request: Request) {
   try {
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
 
     // 1. Estadísticas de ventas
     // Nota: Para producción, esto debería ser una función RPC en Postgres
-    const { data: sales, error: salesError } = await supabaseAdmin
+    const { data: sales, error: salesError } = await dbAdmin
       .from('sales')
       .select('total, items, customer_id, customer_name')
       .eq('store_id', storeId);
@@ -84,7 +84,7 @@ export async function GET(request: Request) {
       .slice(0, 5);
 
     // 4. Estadísticas de inventario
-    const { data: products, error: productsError } = await supabaseAdmin
+    const { data: products, error: productsError } = await dbAdmin
       .from('products')
       .select('stock, price, type')
       .eq('store_id', storeId)

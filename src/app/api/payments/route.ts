@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { dbAdmin } from '@/lib/db-client';
 
 // Helper to generate payment ID
 const generatePaymentId = () => `PAY-${Date.now().toString().slice(-8)}`;
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: 'storeId is required' }, { status: 400 });
         }
 
-        const { data: payments, error } = await supabaseAdmin
+        const { data: payments, error } = await dbAdmin
             .from('payments')
             .select('*')
             .eq('store_id', storeId)
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
 
         const paymentId = generatePaymentId();
 
-        const { data: payment, error } = await supabaseAdmin
+        const { data: payment, error } = await dbAdmin
             .from('payments')
             .insert({
                 id: paymentId,
@@ -161,7 +161,7 @@ export async function PUT(request: Request) {
         if (updates.responsible) dbUpdates.responsible = updates.responsible;
         if (updates.paymentDate) dbUpdates.payment_date = updates.paymentDate;
 
-        const { data: payment, error } = await supabaseAdmin
+        const { data: payment, error } = await dbAdmin
             .from('payments')
             .update(dbUpdates)
             .eq('id', id)
@@ -208,7 +208,7 @@ export async function DELETE(request: Request) {
             return NextResponse.json({ error: 'Payment ID is required' }, { status: 400 });
         }
 
-        const { error } = await supabaseAdmin
+        const { error } = await dbAdmin
             .from('payments')
             .delete()
             .eq('id', id);

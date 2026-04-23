@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { dbAdmin as db } from '@/lib/db-client';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -14,14 +14,14 @@ export async function POST(
         const productId = resolvedParams.id;
         const { storeId } = await request.json();
 
-        console.log('🔄 [Migrate] Iniciando migración del producto (Supabase):', { productId, storeId });
+        console.log('🔄 [Migrate] Iniciando migración del producto (DB):', { productId, storeId });
 
         if (!storeId) {
             return NextResponse.json({ error: 'storeId requerido' }, { status: 400 });
         }
 
         // Buscar el producto
-        const { data: product, error: fetchError } = await supabase
+        const { data: product, error: fetchError } = await db
             .from('products')
             .select('*')
             .eq('id', productId)
@@ -70,13 +70,13 @@ export async function POST(
                 width: 800,
                 height: 600
             }
-            // No tiene supabasePath porque es una imagen legacy
+            // No tiene DatabasePath porque es una imagen legacy
         };
 
         console.log('🖼️ [Migrate] Imagen migrada creada:', migratedImage);
 
         // Actualizar producto
-        const { data: updatedProduct, error: updateError } = await supabase
+        const { data: updatedProduct, error: updateError } = await db
             .from('products')
             .update({
                 images: [migratedImage],
