@@ -1263,7 +1263,7 @@ export default function SettingsPage() {
                                                     {new Date(rate.date).toLocaleDateString()}
                                                 </TableCell>
                                                 <TableCell className="font-mono">
-                                                    {rate.rate.toFixed(4)}
+                                                    {Number(rate.rate).toFixed(4)}
                                                 </TableCell>
                                             </TableRow>
                                         ))}

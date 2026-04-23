@@ -4096,7 +4096,7 @@ function POSContent() {
                                     </div>
                                     <Separator className="my-2" />
                                     <p className="text-right font-bold">
-                                      Total: ${order.total.toFixed(2)}
+                                      Total: ${(Number(order.total) || 0).toFixed(2)}
                                     </p>
                                   </div>
                                 ))}

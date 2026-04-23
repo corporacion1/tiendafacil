@@ -29,11 +29,12 @@ const adSchema = z.object({
   description: z.string().optional(),
   imageUrl: z.string().optional().refine((val) => {
     if (val === undefined || val === '') return true;
-    // allow absolute URLs or data URIs
+    // allow absolute URLs, local paths or data URIs
     if (/^https?:\/\//i.test(val)) return true;
+    if (val.startsWith('/')) return true;
     if (/^data:image\//.test(val)) return true;
     return false;
-  }, { message: 'La imagen debe ser una URL válida o un data URI.' }),
+  }, { message: 'La imagen debe ser una URL válida, una ruta local o un data URI.' }),
   imageHint: z.preprocess((val) => val === null ? undefined : val, z.string().optional()),
   linkUrl: z.string().url("Debe ser una URL válida").optional().or(z.literal('')),
   targetBusinessTypes: z.array(z.string()).min(1, "Debes seleccionar al menos un tipo de negocio."),
@@ -121,7 +122,7 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
       <form onSubmit={form.handleSubmit(handleSubmit, onInvalid)} className="grid gap-6">
         {/* Hidden ID field to ensure it's passed on submit */}
         {ad?.id && <input type="hidden" {...form.register("id")} />}
-        <AlertDialog>
+        <div className="grid gap-6">
           <Card>
             <CardHeader>
               <CardTitle>Detalles del Anuncio</CardTitle>
@@ -205,6 +206,7 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
                       <FormLabel>Imagen del Anuncio</FormLabel>
                       <FormControl>
                         <ImageUpload
+                          type="ad"
                           currentImage={field.value}
                           onImageUploaded={(url) => {
                             // Ensure react-hook-form marks the form as dirty when image changes
@@ -273,28 +275,14 @@ export const AdForm: React.FC<AdFormProps> = ({ ad, onSubmit, onCancel }) => {
 
           <div className="flex justify-end gap-2 mt-6">
             {onCancel && (
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" disabled={!isDirty}>Cancelar</Button>
-              </AlertDialogTrigger>
+              <Button variant="outline" type="button" disabled={!isDirty} onClick={onCancel}>Cancelar</Button>
             )}
             <Button type="submit">
               {ad ? "Guardar Cambios" : "Crear Anuncio"}
             </Button>
           </div>
 
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>¿Descartar cambios?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Tienes cambios sin guardar. ¿Estás seguro de que quieres descartarlos?
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Continuar Editando</AlertDialogCancel>
-              <AlertDialogAction onClick={onCancel}>Sí, descartar</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        </div>
       </form>
     </Form>
   );

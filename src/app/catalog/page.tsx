@@ -199,7 +199,7 @@ const BarcodeScannerComponent = dynamic(
 // Cliente Supabase
 const AdCard = ({ ad, onAdClick }: { ad: Ad; onAdClick: (ad: Ad) => void }) => {
   const [adImageError, setAdImageError] = useState(false);
-  const displayAdImageUrl = getDisplayImageUrl(ad.imageUrl || '');
+  const displayAdImageUrl = getDisplayImageUrl(ad.imageUrl || '', 'ad');
 
   return (
     <Card
@@ -208,7 +208,7 @@ const AdCard = ({ ad, onAdClick }: { ad: Ad; onAdClick: (ad: Ad) => void }) => {
     >
       <CardContent className="p-0 flex flex-col items-center justify-center aspect-square relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent z-10 rounded-t-2xl" />
-        {displayAdImageUrl && !adImageError ? (
+        {(displayAdImageUrl && displayAdImageUrl !== '/placeholder.svg' && !adImageError) ? (
           // Para imágenes base64, usar <img> nativo
           displayAdImageUrl.startsWith('data:image') ? (
             <img
@@ -219,14 +219,10 @@ const AdCard = ({ ad, onAdClick }: { ad: Ad; onAdClick: (ad: Ad) => void }) => {
               onError={() => setAdImageError(true)}
             />
           ) : (
-            <Image
+            <img
               src={displayAdImageUrl}
               alt={ad.name}
-              fill
-              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-              className="object-cover transition-transform duration-500 group-hover:scale-110 rounded-t-2xl"
-              data-ai-hint={ad.imageHint}
-              unoptimized
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 rounded-t-2xl"
               onError={() => setAdImageError(true)}
             />
           )
@@ -367,7 +363,7 @@ const CatalogProductCard = ({
         onMouseLeave={() => setIsHovering(false)}
       >
         <div className="absolute inset-0 bg-gradient-to-t from-blue-900/70 via-blue-900/10 to-transparent z-10 rounded-t-2xl" />
-        {displayImageUrl && !imageError ? (
+        {(displayImageUrl && displayImageUrl !== '/placeholder.svg' && !imageError) ? (
           // Para imágenes base64, usar <img> nativo ya que Next.js Image no las optimiza correctamente
           displayImageUrl.startsWith('data:image') ? (
             <img
@@ -388,15 +384,10 @@ const CatalogProductCard = ({
               }}
             />
           ) : (
-            <Image
+            <img
               src={displayImageUrl}
               alt={currentImage?.alt || product.name}
-              fill
-              loading="lazy"
-              sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-              className="object-cover transition-transform duration-500 group-hover:scale-110 rounded-t-2xl"
-              data-ai-hint={currentImage?.alt || product.imageHint}
-              unoptimized
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 rounded-t-2xl"
               onLoad={() => handleImageLoad(displayImageUrl)}
               onError={(e) => {
                 console.error(`❌ [CatalogCard] Image load failed for ${product.name} (url=${displayImageUrl})`);
@@ -3056,23 +3047,11 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent z-10" />
                         {ad.imageUrl ? (
                           // Para imágenes base64, usar <img> nativo
-                          ad.imageUrl.startsWith('data:image') ? (
-                            <img
-                              src={ad.imageUrl}
-                              alt={ad.name}
-                              className="object-cover transition-transform duration-500 group-hover:scale-105 w-full h-full"
-                              data-ai-hint={ad.imageHint}
-                            />
-                          ) : (
-                            <Image
-                              src={ad.imageUrl}
-                              alt={ad.name}
-                              fill
-                              className="object-cover transition-transform duration-500 group-hover:scale-105"
-                              sizes="100vw"
-                              data-ai-hint={ad.imageHint}
-                            />
-                          )
+                          <img
+                            src={getDisplayImageUrl(ad.imageUrl || '', 'ad')}
+                            alt={ad.name}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          />
                         ) : (
                           <div className="flex items-center justify-center h-full w-full bg-gradient-to-br from-green-100 to-blue-100">
                             <Package className="w-20 h-20 text-green-500" />

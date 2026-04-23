@@ -127,7 +127,10 @@ export async function POST(
 
         if (updateError) {
             console.error('❌ [API] Error actualizando producto:', updateError);
-            return NextResponse.json({ error: 'Error al actualizar base de datos' }, { status: 500 });
+            return NextResponse.json({ 
+                error: 'Error al actualizar base de datos',
+                details: updateError.message || JSON.stringify(updateError)
+            }, { status: 500 });
         }
 
         console.log('✅ [API] Imágenes subidas exitosamente');

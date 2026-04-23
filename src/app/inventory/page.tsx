@@ -1426,26 +1426,28 @@ function InventoryContent() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Importación</AlertDialogTitle>
-            <AlertDialogDescription>
-              Se ha analizado el archivo Excel. Resumen de cambios detectados:
-              <ul className="mt-2 text-sm space-y-1">
-                <li className="flex items-center gap-2">
-                  <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-semibold">NUEVOS</span>
-                  <span>{importStats.created} productos nuevos</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-semibold">EXISTENTES</span>
-                  <span>{importStats.updated} productos a actualizar</span>
-                </li>
-                {importStats.errors > 0 && (
-                  <li className="flex items-center gap-2 text-red-600">
-                    <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-semibold">ERRORES</span>
-                    <span>{importStats.errors} filas inválidas</span>
+            <AlertDialogDescription asChild>
+              <div>
+                Se ha analizado el archivo Excel. Resumen de cambios detectados:
+                <ul className="mt-2 text-sm space-y-1">
+                  <li className="flex items-center gap-2">
+                    <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-semibold">NUEVOS</span>
+                    <span>{importStats.created} productos nuevos</span>
                   </li>
-                )}
-              </ul>
-              <div className="mt-4 p-3 bg-muted/50 rounded-md text-sm text-muted-foreground">
-                ¿Desea proceder? Esta acción modificará la base de datos de forma permanente.
+                  <li className="flex items-center gap-2">
+                    <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-semibold">EXISTENTES</span>
+                    <span>{importStats.updated} productos a actualizar</span>
+                  </li>
+                  {importStats.errors > 0 && (
+                    <li className="flex items-center gap-2 text-red-600">
+                      <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-semibold">ERRORES</span>
+                      <span>{importStats.errors} filas inválidas</span>
+                    </li>
+                  )}
+                </ul>
+                <div className="mt-4 p-3 bg-muted/50 rounded-md text-sm text-muted-foreground">
+                  ¿Desea proceder? Esta acción modificará la base de datos de forma permanente.
+                </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { uploadImage } from '@/lib/supabase';
+import { LocalStorageService } from '@/services/local-storage';
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,15 +16,15 @@ export async function POST(request: NextRequest) {
     if (!file.type || !file.type.startsWith('image/')) {
       return NextResponse.json({ error: 'El archivo debe ser una imagen' }, { status: 400 });
     }
-    if (file.size > 5 * 1024 * 1024) { // 5MB for Supabase Storage
-      return NextResponse.json({ error: 'La imagen debe ser menor a 5MB' }, { status: 400 });
+    if (file.size > 10 * 1024 * 1024) { // 10MB para local
+      return NextResponse.json({ error: 'La imagen debe ser menor a 10MB' }, { status: 400 });
     }
 
     // Determinar carpeta según parámetro o referer
-    let folder: 'products' | 'ads' | 'stores' | 'users' = 'products';
+    let folder: string = 'products';
     
-    if (folderParam && ['products', 'ads', 'stores', 'users'].includes(folderParam)) {
-      folder = folderParam as any;
+    if (folderParam) {
+      folder = folderParam;
     } else {
       // Intentar detectar por referer
       const referer = request.headers.get('referer') || '';
@@ -37,17 +37,25 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('[api/upload/image] Uploading to Supabase Storage:', { 
-      filename: file.name, 
+    // Preparar el archivo como buffer para el servicio local
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    // Generar nombre de archivo único
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+
+    console.log('[api/upload/image] Uploading to Local Storage:', { 
+      filename: fileName, 
       size: file.size, 
       type: file.type,
       folder 
     });
 
-    // Subir a Supabase Storage
-    const { url, path } = await uploadImage(file, folder);
+    // Subir a disco local
+    const { url, path } = await LocalStorageService.uploadFile(buffer, fileName, folder, file.type);
 
-    console.log('[api/upload/image] Uploaded successfully:', { url, path, folder });
+    console.log('[api/upload/image] Uploaded locally successfully:', { url, path, folder });
 
     return NextResponse.json({ 
       url, 
@@ -59,7 +67,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('[api/upload/image] Unexpected error:', error);
     return NextResponse.json({ 
-      error: error instanceof Error ? error.message : 'Error al subir la imagen' 
+      error: error instanceof Error ? error.message : 'Error al subir la imagen localmente' 
     }, { status: 500 });
   }
-}
+}

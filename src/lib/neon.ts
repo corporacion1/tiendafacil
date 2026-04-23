@@ -1,62 +1,30 @@
 // src/lib/neon.ts
-import { neon } from '@neondatabase/serverless';
-
-// Exported as a getter to avoid throwing at module load time on the client
-let _sql: any;
-
-export const getSql = () => {
-  // Silent fail on client during module load/discovery
-  if (typeof window !== 'undefined') {
-    return () => { throw new Error('Neon database client cannot be used on the client side'); };
-  }
-  
-  if (!process.env.DATABASE_URL) {
-    // Return a dummy function instead of throwing to prevent build/init crashes
-    console.warn('⚠️ [Neon] DATABASE_URL is not defined. Queries will fail.');
-    return () => { throw new Error('DATABASE_URL is not defined in environment variables'); };
-  }
-
-  if (!_sql) {
-    try {
-      _sql = neon(process.env.DATABASE_URL);
-    } catch (e) {
-      console.error('❌ [Neon] Error initializing client:', e);
-      return () => { throw e; };
-    }
-  }
-  return _sql;
-};
-
-// Proxy to allow using it as sql`query` or sql(query, params)
-// We only invoke getSql() when the proxy is actually used/called
-export const sql: any = new Proxy(() => {}, {
-  apply: (target, thisArg, argArray) => {
-    return getSql()(...argArray);
-  },
-  get: (target, prop) => {
-    // Avoid triggering getSql() for common JS/internal properties
-    if (prop === '$$typeof' || prop === 'constructor' || prop === 'prototype' || typeof prop === 'symbol') {
-      return undefined;
-    }
-    const s = getSql();
-    return s[prop];
-  }
-});
+import { query as localQuery } from './db';
 
 /**
- * Executes a SQL query using Neon.
+ * Proxy para simular la sintaxis de Neon sql`query` 
+ * o sql(query, params) usando el cliente local pg.
  */
-export async function query<T>(queryStr: string, params: any[] = []): Promise<T[]> {
+export const sql: any = async (queryStr: any, ...params: any[]) => {
   if (typeof window !== 'undefined') {
-    throw new Error('Neon queries cannot be executed on the client side');
+    throw new Error('Database queries cannot be executed on the client side');
+  }
+
+  // Si se usa como template tag: sql`SELECT...`
+  if (Array.isArray(queryStr)) {
+    let text = queryStr[0];
+    for (let i = 1; i < queryStr.length; i++) {
+        text += `$${i}${queryStr[i]}`;
+    }
+    return await localQuery(text, params);
   }
   
-  try {
-    const s = getSql();
-    const result = await s(queryStr, params);
-    return result as T[];
-  } catch (error) {
-    console.error('Neon Query Error:', error);
-    throw error;
-  }
+  // Si se usa como función: sql('SELECT...', [...])
+  return await localQuery(queryStr, params[0] || []);
+};
+
+// Mantener compatibilidad con la función query exportada
+export async function query<T>(queryStr: string, params: any[] = []): Promise<T[]> {
+  return await localQuery<T>(queryStr, params);
 }
+

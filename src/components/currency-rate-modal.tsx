@@ -120,7 +120,7 @@ export function CurrencyRateModal({ open, onOpenChange }: CurrencyRateModalProps
                                     </div>
                                     {currencyRates.length > 0 && (
                                         <span className="text-primary tabular-nums font-bold">
-                                            Actual: {settings?.secondaryCurrencySymbol} {currencyRates[0].rate.toFixed(2)}
+                                            Actual: {settings?.secondaryCurrencySymbol} {Number(currencyRates[0].rate).toFixed(2)}
                                         </span>
                                     )}
                                 </CardTitle>
@@ -253,11 +253,11 @@ export function CurrencyRateModal({ open, onOpenChange }: CurrencyRateModalProps
                                 <div className="bg-muted/50 p-4 rounded-lg space-y-3 border">
                                     <div className="flex justify-between items-center text-muted-foreground">
                                         <span className="text-xs uppercase font-semibold">Tasa Anterior</span>
-                                        <span className="font-mono font-bold">{settings?.secondaryCurrencySymbol} {currentRateValue?.toFixed(2)}</span>
+                                        <span className="font-mono font-bold">{settings?.secondaryCurrencySymbol} {Number(currentRateValue).toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-primary">
                                         <span className="text-xs uppercase font-semibold">Nueva Tasa</span>
-                                        <span className="text-lg font-mono font-bold">{settings?.secondaryCurrencySymbol} {targetRateValue.toFixed(2)}</span>
+                                        <span className="text-lg font-mono font-bold">{settings?.secondaryCurrencySymbol} {Number(targetRateValue).toFixed(2)}</span>
                                     </div>
 
                                     <div className="pt-2 border-t flex justify-between items-center">
@@ -267,7 +267,7 @@ export function CurrencyRateModal({ open, onOpenChange }: CurrencyRateModalProps
                                             <span>{trend.label}</span>
                                             {trend.diff && trend.diff !== 0 ? (
                                                 <span className="text-xs">
-                                                    ({trend.diff > 0 ? '+' : ''}{trend.diff.toFixed(2)})
+                                                    ({trend.diff > 0 ? '+' : ''}{Number(trend.diff).toFixed(2)})
                                                 </span>
                                             ) : null}
                                         </div>

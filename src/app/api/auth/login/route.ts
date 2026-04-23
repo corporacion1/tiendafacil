@@ -1,27 +1,10 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-import { comparePassword } from '@/lib/auth'; // Usa tu función existente
-
-// Inicialización lazy dentro del handler para evitar errores en build time
-// const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-// const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+import { comparePassword } from '@/lib/auth';
+import { neonBridge } from '@/lib/neon-bridge';
 
 export async function POST(request: Request) {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error('❌ [Login API] Missing Supabase environment variables');
-      return NextResponse.json(
-        { success: false, msg: 'Error de configuración del servidor' },
-        { status: 500 }
-      );
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    console.log('🔐 [Login API] Usando tabla users con auth.ts helpers');
+    console.log('🔐 [Login API] Usando base de datos local vía neonBridge');
 
     const { email, password } = await request.json();
 
@@ -37,19 +20,19 @@ export async function POST(request: Request) {
 
     console.log('👤 [Login API] Buscando usuario:', email);
 
-    // Buscar usuario en TU tabla users
-    const { data: user, error } = await supabase
+    // Buscar usuario en la tabla local 'users' usando el bridge
+    const { data: user, error } = await neonBridge
       .from('users')
       .select('*')
       .eq('email', email.toLowerCase())
       .single();
 
     if (error) {
-      console.error('❌ [Login API] Error en query Supabase:', error);
+      console.error('❌ [Login API] Error en query local:', error);
       return NextResponse.json(
         {
           success: false,
-          msg: 'Error al buscar usuario',
+          msg: 'Error al buscar usuario localmente',
           error: error.message
         },
         { status: 500 }
@@ -68,9 +51,8 @@ export async function POST(request: Request) {
     }
 
     console.log('🔍 [Login API] Usuario encontrado:', user.email, 'Role:', user.role);
-    console.log('📋 [Login API] Campos del usuario:', Object.keys(user));
 
-    // Verificar contraseña usando TU función de auth.ts
+    // Verificar contraseña
     const isPasswordValid = await comparePassword(password, user.password);
 
     if (!isPasswordValid) {
@@ -86,7 +68,7 @@ export async function POST(request: Request) {
 
     console.log('✅ [Login API] Contraseña válida');
 
-    // Crear token
+    // Crear token (como se hacía antes)
     const tokenPayload = {
       uid: user.uid,
       email: user.email,
@@ -120,8 +102,6 @@ export async function POST(request: Request) {
       }
     };
 
-    console.log('✅ [Login API] Login exitoso para:', user.email);
-
     return NextResponse.json(responseData);
 
   } catch (error: any) {
@@ -135,4 +115,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+}

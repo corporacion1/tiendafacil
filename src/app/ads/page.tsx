@@ -41,7 +41,7 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
   setAdToDelete: (ad: Ad | null) => void;
 }) => {
   const [imageError, setImageError] = useState(false);
-  const imageUrl = getDisplayImageUrl(ad.imageUrl);
+  const imageUrl = getDisplayImageUrl(ad.imageUrl, 'ad');
   const isExpired = ad.expiryDate ? isPast(new Date(ad.expiryDate as string)) : false;
   const [isClient, setIsClient] = useState(false);
 
@@ -68,17 +68,16 @@ const AdRow = ({ ad, handleEdit, setAdToDelete }: {
 
   return (
     <TableRow className={cn(isExpired && "text-muted-foreground")}>
-      <TableCell className="hidden sm:table-cell">
-        <div className="relative flex items-center justify-center w-10 h-10 bg-muted rounded-md overflow-hidden isolate">
-          {imageUrl && !imageError ? (
-            <Image
+      <TableCell className="w-[60px] pr-0">
+        <div className="relative flex items-center justify-center w-12 h-12 bg-muted rounded-lg overflow-hidden border border-border shadow-sm">
+          {imageUrl ? (
+            <img
               src={imageUrl}
               alt={ad.name}
-              fill
-              sizes="40px"
-              className="object-cover"
-              data-ai-hint={ad.imageHint}
-              onError={() => setImageError(true)}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/placeholder.svg';
+              }}
             />
           ) : (
             <Package className="h-5 w-5 text-muted-foreground" />

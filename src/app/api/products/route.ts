@@ -60,7 +60,11 @@ export async function GET(request: NextRequest) {
 
   } catch (error: any) {
     console.error('❌ [Products API] Unexpected error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ 
+      error: 'Error interno del servidor al obtener productos',
+      details: error.message || String(error),
+      code: error.code || 'UNKNOWN_ERROR'
+    }, { status: 500 });
   }
 }
 

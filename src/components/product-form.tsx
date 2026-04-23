@@ -44,7 +44,7 @@ const productSchema = z.object({
   family: z.preprocess((val) => val === null ? undefined : val, z.string().optional()),
   warehouse: z.preprocess((val) => val === null ? undefined : val, z.string().optional()),
   description: z.string().optional(),
-  imageUrl: z.preprocess((val) => val === null ? "" : val, z.string().url("Debe ser una URL válida.").optional().or(z.literal(''))),
+  imageUrl: z.preprocess((val) => val === null ? "" : val, z.string().optional().or(z.literal(''))),
   imageHint: z.preprocess((val) => val === null ? undefined : val, z.string().optional()),
   // Nuevos campos para múltiples imágenes
   images: z.array(z.object({
@@ -64,15 +64,6 @@ const productSchema = z.object({
   // Tipo: Producto Simple o Servicio/Fabricación
   type: z.enum(["product", "service"]),
   affectsInventory: z.boolean().default(true),
-}).superRefine((data, ctx) => {
-  // Solo requerir imágenes si es un producto (no servicio)
-  if (data.type === 'product' && (!data.images || data.images.length === 0)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Debe agregar al menos una imagen del producto.",
-      path: ["images"],
-    });
-  }
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -204,7 +195,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     }
   }, [product, form]);
 
-  // Si por alguna razón el ID no está en el form pero sí en props, establecerlo
   useEffect(() => {
     const currentId = form.getValues('id');
     if (!currentId && product?.id) {
@@ -236,23 +226,17 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     }
   };
 
-  // Efecto para detectar cliente
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Función para manejar el escaneo de códigos de barras
   const handleScan = (result: string) => {
     if (result && result !== lastScannedCode) {
       setLastScannedCode(result);
       setScannerError(null);
-
-      // Establecer el SKU escaneado en el formulario
       setValue('sku', result);
-      trigger('sku'); // Validar el campo
-
+      trigger('sku');
       setShowScanner(false);
-
       toast({
         title: "¡Código escaneado!",
         description: `SKU "${result}" agregado al formulario.`
@@ -261,34 +245,11 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
   };
 
   const handleScanError = (error: any) => {
-    // Ignorar errores normales de "No MultiFormat Readers" que son esperados
-    if (error && error.message && error.message.includes('No MultiFormat Readers')) {
-      return; // Este es un error normal cuando no hay código visible
-    }
-
-    console.error('Scanner error:', error);
-
-    // Solo mostrar errores reales de permisos o cámara
+    if (error && error.message && error.message.includes('No MultiFormat Readers')) return;
     if (error && error.name === 'NotAllowedError') {
       setScannerError('Permisos de cámara denegados. Por favor, permite el acceso a la cámara.');
     } else if (error && error.name === 'NotFoundError') {
       setScannerError('No se encontró ninguna cámara en el dispositivo.');
-    }
-    // No mostrar otros errores que son normales durante el escaneo
-  };
-
-  const handleImageUrlBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
-    const url = e.target.value;
-    if (url) {
-      const isUrlValid = await trigger("imageUrl");
-      if (!isUrlValid) {
-        toast({
-          variant: "destructive",
-          title: "URL de imagen inválida",
-          description: "La URL debe tener un formato válido (ej: https://...).",
-        });
-        setValue("imageUrl", "", { shouldDirty: true });
-      }
     }
   };
 
@@ -308,41 +269,10 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     }
   };
 
-  // Estado para controlar si ya se cargaron los warehouses
-  const [warehousesReady, setWarehousesReady] = useState(false);
-
   useEffect(() => {
-    if (warehouses && warehouses.length > 0) {
-      setWarehousesReady(true);
-
-      // Si hay producto y warehouses, sincronizar
-      if (product && product.warehouse) {
-        const exists = warehouses.some(w => w.id === product.warehouse);
-        if (exists) {
-          // Forzar actualización del valor
-          form.setValue('warehouse', product.warehouse, { shouldValidate: true });
-        }
-      }
-    }
-  }, [warehouses, product, form]);
-
-  // Agrega esto después de los otros useEffect
-  useEffect(() => {
-    // Cuando cambie el tipo, manejar warehouse
     const productType = form.watch('type');
     const currentWarehouse = form.getValues('warehouse');
-
-    console.log('🔄 [ProductForm] Type changed:', {
-      type: productType,
-      currentWarehouse,
-      shouldHaveWarehouse: productType === 'product'
-    });
-
-    if (productType === 'service') {
-      // Si es servicio y tiene warehouse, mantenerlo pero no mostrar
-      console.log('📝 [ProductForm] Service with warehouse, keeping value:', currentWarehouse);
-    } else if (productType === 'product' && !currentWarehouse) {
-      // Si es producto y no tiene warehouse, setear uno por defecto
+    if (productType === 'product' && !currentWarehouse) {
       const defaultWarehouse = warehouses?.[0]?.id || '';
       if (defaultWarehouse) {
         form.setValue('warehouse', defaultWarehouse, { shouldDirty: false });
@@ -354,32 +284,25 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
     <>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit, (errors) => {
-          console.error('[ProductForm] Validation errors:', JSON.stringify(errors, null, 2));
-
-          // Lógica de Foco en el primer error
           const errorFields = Object.keys(errors);
           if (errorFields.length > 0) {
             const firstErrorField = errorFields[0];
-            // Intentar encontrar el input por nombre O por ID específico
             const element = document.querySelector(`[name="${firstErrorField}"]`) || document.getElementById(`field-${firstErrorField}`);
             if (element) {
-              // Pequeño timeout para asegurar que el UI se actualice
               setTimeout(() => {
                 (element as HTMLElement).focus();
                 (element as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
               }, 100);
             }
           }
-
           toast({
             variant: "destructive",
             title: "Error de validación",
             description: "Por favor revisa los campos marcados en rojo.",
           });
         })} className="grid gap-6">
-          {/* Hidden ID field to ensure it's passed on submit */}
           {product?.id && <input type="hidden" {...form.register("id")} />}
-          <AlertDialog>
+          <div className="grid gap-6">
             <Card>
               <CardHeader>
                 <CardTitle>Detalles del Producto</CardTitle>
@@ -411,9 +334,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                             </Button>
                           </div>
                         </FormControl>
-                        <FormDescription>
-                          Puedes escanear un código de barras usando el botón del scanner
-                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -529,13 +449,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                       )}
                     />
                   )}
-                  {form.watch('type') === 'service' && (
-                    <input
-                      type="hidden"
-                      {...form.register("warehouse")}
-                      value={form.getValues("warehouse") || ""}
-                    />
-                  )}
                 </div>
 
                 <div className="space-y-4">
@@ -543,18 +456,17 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                     control={form.control}
                     name="images"
                     render={({ field }) => (
-                      <FormItem id="field-images" tabIndex={-1} className="focus:ring-2 focus:ring-red-500 rounded-lg p-1">
-                        <FormLabel>Imágenes del Producto {form.watch('type') === 'service' && <span className="text-muted-foreground font-normal">(Opcional)</span>}</FormLabel>
+                      <FormItem className="rounded-lg border p-4 bg-muted/10">
+                        <FormLabel className="text-base font-semibold">Imágenes del Producto</FormLabel>
                         <FormControl>
                           <MultiImageUpload
                             productId={(product?.id ?? (product as any)?._id ?? form.watch('id'))}
                             storeId={product?.storeId ?? activeStoreId}
-                            existingImages={field.value || []}
+                            existingImages={Array.isArray(field.value) ? field.value : []}
                             maxImages={4}
                             onImagesChange={(newImages) => {
                               field.onChange(newImages);
-                              // Actualizar campos de compatibilidad
-                              if (newImages.length > 0) {
+                              if (newImages && newImages.length > 0) {
                                 setValue('imageUrl', newImages[0].url);
                                 setValue('imageHint', newImages[0].alt || undefined);
                                 setValue('primaryImageIndex', 0);
@@ -567,18 +479,45 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                             onError={(error) => {
                               toast({
                                 variant: "destructive",
-                                title: "Error con las imágenes",
+                                title: "Aviso de imágenes",
                                 description: error
                               });
                             }}
                           />
                         </FormControl>
-                        <FormDescription>
-                          {form.watch('type') === 'service'
-                            ? "Puedes subir hasta 4 imágenes si lo deseas. No es obligatorio para servicios."
-                            : "Sube al menos una imagen (máximo 4). Se optimizarán automáticamente."
-                          }
-                        </FormDescription>
+                        <div className="mt-4 pt-4 border-t border-dashed">
+                          <FormLabel className="text-xs text-muted-foreground uppercase font-bold tracking-wider">O ingresar URL local manualmente:</FormLabel>
+                          <div className="flex gap-2 mt-1">
+                            <Input 
+                              value={watchedImageUrl || ""} 
+                              onChange={(e) => setValue("imageUrl", e.target.value)}
+                              placeholder="/uploads/products/mi-producto.jpg"
+                              className="h-9 text-sm"
+                            />
+                            <Button 
+                              type="button" 
+                              variant="secondary" 
+                              size="sm"
+                              className="h-9"
+                              onClick={() => {
+                                if (watchedImageUrl && (!field.value || field.value.length === 0)) {
+                                  field.onChange([{
+                                    id: `manual-${Date.now()}`,
+                                    url: watchedImageUrl,
+                                    alt: "Imagen manual",
+                                    order: 0,
+                                    uploadedAt: new Date().toISOString()
+                                  }]);
+                                }
+                              }}
+                            >
+                              Vincular
+                            </Button>
+                          </div>
+                          <FormDescription className="text-[10px] mt-1 italic">
+                            Si ya copiaste el archivo a la carpeta public/uploads, escribe la ruta arriba y dale a "Vincular".
+                          </FormDescription>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -671,7 +610,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
               </CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Switch de Tipo */}
                   <FormField
                     control={form.control}
                     name="type"
@@ -687,7 +625,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                               onCheckedChange={(checked) => {
                                 const newType = checked ? 'service' : 'product';
                                 field.onChange(newType);
-                                // Cuando cambia a servicio, automáticamente no afecta inventario
                                 if (newType === 'service') {
                                   form.setValue('affectsInventory', false);
                                   form.setValue('stock', 0);
@@ -709,7 +646,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                     )}
                   />
 
-                  {/* Campo de Stock (solo para productos) */}
                   {form.watch('type') === 'product' && (
                     <FormField
                       control={form.control}
@@ -724,19 +660,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                         </FormItem>
                       )}
                     />
-                  )}
-
-                  {/* Indicador para servicios */}
-                  {form.watch('type') === 'service' && (
-                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                      <div className="flex items-center gap-2 text-blue-700">
-                        <Package className="w-4 h-4" />
-                        <span className="text-sm font-medium">Servicio o Fabricación - Sin inventario físico</span>
-                      </div>
-                      <p className="text-xs text-blue-600 mt-1">
-                        Los servicios y fabricación no requieren control de stock
-                      </p>
-                    </div>
                   )}
                 </div>
                 <FormField
@@ -762,15 +685,12 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                     </FormItem>
                   )}
                 />
-
               </CardContent>
             </Card>
 
             <div className="flex justify-end gap-2 mt-6">
               {onCancel && (
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" disabled={submitting}>Cancelar</Button>
-                </AlertDialogTrigger>
+                <Button variant="outline" type="button" disabled={submitting} onClick={onCancel}>Cancelar</Button>
               )}
               <Button type="submit" disabled={submitting}>
                 {submitting ? (
@@ -784,23 +704,10 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
               </Button>
             </div>
 
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>¿Descartar cambios?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Tienes cambios sin guardar. ¿Estás seguro de que quieres descartarlos?
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Continuar Editando</AlertDialogCancel>
-                <AlertDialogAction onClick={onCancel}>Sí, descartar</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          </div>
         </form>
       </Form>
 
-      {/* Modal del Scanner */}
       <Dialog open={showScanner} onOpenChange={setShowScanner}>
         <DialogContent className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto invisible-scroll rounded-2xl border-0 shadow-2xl mx-auto my-4">
           <DialogHeader>
@@ -808,9 +715,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
               <ScanLine className="w-5 h-5 text-green-600" />
               Scanner de SKU
             </DialogTitle>
-            <DialogDescription>
-              Apunta la cámara hacia el código de barras para obtener el SKU
-            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -824,26 +728,10 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                     torch={false}
                     delay={300}
                     onUpdate={(err: any, result: any) => {
-                      if (result) {
-                        console.log('Código detectado:', result.text);
-                        handleScan(result.text);
-                      }
-                      if (err && err.name !== 'NotFoundException') {
-                        console.error('Scanner error:', err);
-                        handleScanError(err);
-                      }
+                      if (result) handleScan(result.text);
+                      if (err && err.name !== 'NotFoundException') handleScanError(err);
                     }}
                   />
-                </div>
-
-                {/* Overlay con marco de escaneo */}
-                <div className="absolute inset-0 pointer-events-none">
-                  <div className="absolute inset-4 border-2 border-green-400 rounded-lg">
-                    <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-green-400 rounded-tl-lg"></div>
-                    <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-green-400 rounded-tr-lg"></div>
-                    <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-green-400 rounded-bl-lg"></div>
-                    <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-green-400 rounded-br-lg"></div>
-                  </div>
                 </div>
               </div>
             )}
@@ -854,17 +742,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSubmit, onC
                 <p className="text-sm text-destructive">{scannerError}</p>
               </div>
             )}
-
+            
             <div className="text-center space-y-2">
-              <div className="bg-blue-50 p-3 rounded-lg">
-                <p className="text-sm font-medium text-blue-800 mb-2">Consejos para escanear:</p>
-                <ul className="text-xs text-blue-700 space-y-1">
-                  <li>• Mantén el código de barras dentro del marco verde</li>
-                  <li>• Asegúrate de que haya buena iluminación</li>
-                  <li>• Mantén la cámara estable y enfocada</li>
-                  <li>• Funciona con códigos de barras y códigos QR</li>
-                </ul>
-              </div>
 
               <p className="text-sm text-muted-foreground">
                 También puedes escribir el SKU manualmente en el campo

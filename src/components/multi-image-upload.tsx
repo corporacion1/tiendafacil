@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { cn } from '@/lib/utils';
+import { cn, getDisplayImageUrl } from '@/lib/utils';
 import { ProductImage } from '@/lib/types';
 import { validateMultipleImageFiles, formatFileSize } from '@/lib/image-validation';
 import { fileToBase64 } from '@/lib/image-processing';
@@ -65,7 +65,7 @@ const SafeImage = ({
 
   return (
     <img
-      src={src}
+      src={getDisplayImageUrl(src, 'product')}
       alt={alt}
       className={`object-cover rounded-lg ${className}`}
       onError={() => setImageError(true)}
@@ -94,9 +94,10 @@ export function MultiImageUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
 
-  const currentImages = existingImages.length;
+  const safeExistingImages = Array.isArray(existingImages) ? existingImages : [];
+  const currentImages = safeExistingImages.length;
   const canAddMore = currentImages < maxImages && !disabled;
-  const remainingSlots = maxImages - currentImages;
+  const remainingSlots = Math.max(0, maxImages - currentImages);
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault(); e.stopPropagation();
@@ -440,14 +441,14 @@ export function MultiImageUpload({
         </div>
       )}
 
-      {existingImages.length > 0 && (
+      {safeExistingImages.length > 0 && (
         <div className="space-y-2 w-full max-w-full">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-medium">Imágenes del producto ({existingImages.length}/{maxImages})</h4>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-full">
-            {existingImages.map((image, index) => (
+            {safeExistingImages.map((image, index) => (
               <Card key={image.id} className="relative group hover:shadow-lg transition-shadow w-full">
                 <CardContent className="p-3">
                   <div className="aspect-square relative rounded-lg overflow-hidden bg-muted shadow-sm max-h-[180px] w-full">
@@ -515,11 +516,13 @@ export function MultiImageUpload({
         </div>
       )}
 
-      {existingImages.length === 0 && uploadingImages.length === 0 && (
-        <div className="text-center py-8 text-muted-foreground">
-          <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>No hay imágenes agregadas aún</p>
-          <p className="text-sm">Agrega hasta {maxImages} imágenes para este producto</p>
+      {safeExistingImages.length === 0 && uploadingImages.length === 0 && (
+        <div className="text-center py-6 border-2 border-dashed rounded-lg bg-muted/20">
+          <ImageIcon className="w-8 h-8 mx-auto mb-2 opacity-50 text-muted-foreground" />
+          <p className="text-sm font-medium">No hay imágenes</p>
+          <p className="text-xs text-muted-foreground px-4">
+            Usa el recuadro superior para agregar hasta {maxImages} fotos.
+          </p>
         </div>
       )}
     </div>

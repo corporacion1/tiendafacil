@@ -4,16 +4,21 @@ import { useState, useRef, useEffect } from 'react';
 import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import Image from 'next/image';
 import { getDisplayImageUrl } from '@/lib/utils';
 
 interface ImageUploadProps {
   onImageUploaded: (imageUrl: string) => void;
   currentImage?: string;
   className?: string;
+  type?: 'product' | 'ad' | 'store' | 'user';
 }
 
-export function ImageUpload({ onImageUploaded, currentImage, className }: ImageUploadProps) {
+export function ImageUpload({ 
+  onImageUploaded, 
+  currentImage, 
+  className,
+  type = 'product'
+}: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentImage || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -26,7 +31,6 @@ export function ImageUpload({ onImageUploaded, currentImage, className }: ImageU
       return;
     }
 
-    // Show the image directly - Supabase URLs are valid and should be displayed
     setPreviewUrl(currentImage);
   }, [currentImage]);
 
@@ -59,13 +63,14 @@ export function ImageUpload({ onImageUploaded, currentImage, className }: ImageU
     try {
       const formData = new FormData();
       formData.append('file', file);
+      // Sugerir la carpeta destino según el tipo
+      formData.append('folder', type === 'ad' ? 'ads' : type === 'store' ? 'stores' : type === 'user' ? 'users' : 'products');
 
       const response = await fetch('/api/upload/image', {
         method: 'POST',
         body: formData,
       });
 
-      // If server returned an error, try to extract its message and show it
       if (!response.ok) {
         let errorMessage = `Error al subir la imagen (${response.status})`;
         try {
@@ -79,15 +84,12 @@ export function ImageUpload({ onImageUploaded, currentImage, className }: ImageU
 
       const data = await response.json();
 
-      // Basic validation of returned payload
       if (!data || !data.url) {
         throw new Error('Respuesta inválida del servidor al subir la imagen');
       }
 
       setPreviewUrl(data.url);
       onImageUploaded(data.url);
-
-      // El toast de éxito se maneja en el componente padre si se necesita
 
     } catch (error) {
       console.error('Error uploading image:', error);
@@ -109,6 +111,8 @@ export function ImageUpload({ onImageUploaded, currentImage, className }: ImageU
       fileInputRef.current.value = '';
     }
   };
+
+  const displayUrl = previewUrl ? getDisplayImageUrl(previewUrl, type) : null;
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -149,17 +153,19 @@ export function ImageUpload({ onImageUploaded, currentImage, className }: ImageU
         className="hidden"
       />
 
-      {previewUrl ? (
-        <div className="relative w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden">
-          <Image
-            src={previewUrl}
+      {displayUrl ? (
+        <div className="relative w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden bg-muted">
+          <img
+            src={displayUrl}
             alt="Preview"
-            fill
-            className="object-cover"
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = '/placeholder.svg';
+            }}
           />
         </div>
       ) : (
-        <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+        <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-muted/50">
           <ImageIcon className="h-8 w-8 text-gray-400" />
         </div>
       )}

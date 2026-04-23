@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
 
   images: {
     // Permitir imágenes base64 (se usarán con <img> nativo para evitar problemas)
-    unoptimized: false, // Mantener optimización para URLs remotas
+    unoptimized: true, // Desactivar optimización para priorizar archivos locales y evitar cache externo
     remotePatterns: [
       {
         protocol: 'https',
@@ -51,21 +51,15 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'jdbqvzpjdyaksuaxhmty.supabase.co',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
         hostname: 'www.dropbox.com',
         port: '',
         pathname: '/**'
-      },
-      {
-        protocol: 'https',
-        hostname: 'ozqqhqffoopwkrcivoun.supabase.co',
-        port: '',
-        pathname: '/storage/v1/object/public/**'
-      },
-      {
-        protocol: 'https',
-        hostname: 'jdbqvzpjdyaksuaxhmty.supabase.co',
-        port: '',
-        pathname: '/storage/v1/object/public/**'
       }
     ],
   },
@@ -73,6 +67,19 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '4mb',
     },
+  },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        dns: false,
+        'pg-native': false,
+      };
+    }
+    return config;
   },
 };
 
