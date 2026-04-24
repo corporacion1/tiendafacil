@@ -27,8 +27,8 @@ export const usePendingOrders = (storeId?: string): UsePendingOrdersReturn => {
   const retryCountRef = useRef<number>(0);
 
   // Configuración del polling
-  const POLLING_INTERVAL = 3000; // 3 segundos
-  const MIN_FETCH_INTERVAL = 2000; // Mínimo 2 segundos entre fetches
+  const POLLING_INTERVAL = 15000; // 15 segundos
+  const MIN_FETCH_INTERVAL = 10000; // Mínimo 10 segundos entre fetches
   const MAX_RETRIES = 3;
 
   const fetchOrders = useCallback(async (showLoadingState = true, force = false) => {

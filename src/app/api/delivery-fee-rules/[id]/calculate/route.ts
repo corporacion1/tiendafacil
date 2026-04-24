@@ -33,15 +33,17 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error;
 
+    const resultData = data as any[] | null;
+
     // Calcular minutos estimados
-    const distanceKm = data?.[0]?.distance_km || 0;
+    const distanceKm = resultData?.[0]?.distance_km || 0;
     const estimatedMinutes = Math.ceil(distanceKm * 5);
 
     return NextResponse.json({
-      fee: data?.[0]?.fee || 0,
+      fee: resultData?.[0]?.fee || 0,
       distanceKm: distanceKm,
-      ruleId: data?.[0]?.rule_id,
-      zoneId: data?.[0]?.zone_id,
+      ruleId: resultData?.[0]?.rule_id,
+      zoneId: resultData?.[0]?.zone_id,
       estimatedMinutes
     });
   } catch (error: any) {

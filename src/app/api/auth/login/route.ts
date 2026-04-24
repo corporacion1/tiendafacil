@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { comparePassword } from '@/lib/auth';
-import { dbBridge } from '@/lib/sql-template-bridge';
+import { dbBridge } from '@/lib/db-bridge';
 
 export async function POST(request: Request) {
   try {

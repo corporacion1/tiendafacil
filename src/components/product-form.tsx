@@ -46,8 +46,12 @@ const productSchema = z.object({
   description: z.string().optional(),
   imageUrl: z.preprocess((val) => val === null ? "" : val, z.string().optional().or(z.literal(''))),
   imageHint: z.preprocess((val) => val === null ? undefined : val, z.string().optional()),
-  // Nuevos campos para múltiples imágenes
-  images: z.array(z.object({
+  // Nuevos campos para múltiples imágenes - permitir cualquier valor que no sea array válido
+  images: z.preprocess((val) => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    return [];
+  }, z.array(z.object({
     id: z.string(),
     url: z.string(),
     thumbnailUrl: z.string().optional(),
@@ -59,8 +63,12 @@ const productSchema = z.object({
       width: z.number(),
       height: z.number()
     }).optional()
-  })),
-  primaryImageIndex: z.number().optional(),
+  }))),
+  primaryImageIndex: z.preprocess((val) => {
+    if (val === null || val === undefined) return 0;
+    if (typeof val !== 'number') return 0;
+    return val;
+  }, z.number().optional()),
   // Tipo: Producto Simple o Servicio/Fabricación
   type: z.enum(["product", "service"]),
   affectsInventory: z.boolean().default(true),
@@ -75,6 +83,14 @@ interface ProductFormProps {
 }
 
 const getInitialValues = (product?: Product): ProductFormValues => {
+  // Función auxiliar para asegurar que images sea un array válido
+  const normalizeImages = (img: any): ProductFormValues['images'] => {
+    if (!img) return [];
+    if (Array.isArray(img)) return img;
+    if (typeof img === 'object') return [img]; // Si es un objeto único, convertir a array
+    return [];
+  };
+
   if (product) {
     return {
       ...product,
@@ -88,8 +104,9 @@ const getInitialValues = (product?: Product): ProductFormValues => {
       id: product.id || (product as any)?._id,
       // Asegurar que imageUrl no sea null
       imageUrl: product.imageUrl || "",
-      // Asegurar que las imágenes sean un array
-      images: product.images || [],
+      // Asegurar que las imágenes sean un array válido
+      images: normalizeImages(product.images),
+      primaryImageIndex: product.primaryImageIndex ?? 0,
     };
   }
 

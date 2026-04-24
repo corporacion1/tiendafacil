@@ -385,7 +385,17 @@ export const SettingsProvider = ({ children }: { children: React.ReactNode }) =>
     if (authActiveStoreId && isClient) {
       console.log('🔄 [SettingsContext] ActiveStoreId changed, reloading data:', authActiveStoreId);
 
-      // CRITICAL FIX: Determine if we need full data based on route
+      // CRITICAL FIX: Limpiar datos de la tienda anterior antes de cargar los nuevos
+      // Esto evita que se muestren productos o imágenes de la tienda anterior mientras carga
+      setProducts([]);
+      setSales([]);
+      setPurchases([]);
+      setCustomers([]);
+      setSuppliers([]);
+      setPendingOrders([]);
+      setCashSessions([]);
+
+      // Determine if we need full data based on route
       const isCatalogRoute = pathname.startsWith('/catalog');
       const isAdministrativeUser = authUser && ['admin', 'pos', 'depositary'].includes(authUser.role);
 

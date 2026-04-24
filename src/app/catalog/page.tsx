@@ -3,7 +3,7 @@
 // Imports
 import { useState, useMemo, useEffect, useRef, Suspense } from "react";
 import Image from "next/image";
-import { Package, ShoppingBag, Plus, Minus, Trash2, Send, LayoutGrid, Instagram, Star, Search, UserCircle, LogOut, MoreHorizontal, Copy, AlertCircle, QrCode, Pencil, ArrowRight, Check, User, Phone, Mail, Eye, ScanLine, X, Store as StoreIcon, ArrowLeftRight, Share, MapPin, Truck, Armchair, UserRound, Camera } from "lucide-react";
+import { Package, ShoppingBag, Plus, Minus, Trash2, Send, LayoutGrid, Instagram, Star, Search, UserCircle, LogOut, MoreHorizontal, Copy, AlertCircle, QrCode, Pencil, ArrowRight, Check, User, Phone, Mail, Eye, ScanLine, X, Store as StoreIcon, ArrowLeftRight, Share, MapPin, Truck, Armchair, UserRound, Camera, ChevronUp } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import QRCode from "qrcode";
 import Link from "next/link";
@@ -1048,7 +1048,7 @@ function CatalogContent() {
   const [currentAdIndex, setCurrentAdIndex] = useState(0);
   const [isAutoScrolling, setIsAutoScrolling] = useState(true);
   const [lastMouseMove, setLastMouseMove] = useState(Date.now());
-  const [scrollPosition, setScrollPosition] = useState(0);
+  const [isBannerMinimized, setIsBannerMinimized] = useState(false); // Normal: inicia visible
   const [visibleItemsCount, setVisibleItemsCount] = useState(24);
   const autoScrollRef = useRef<NodeJS.Timeout>();
   const productsScrollRef = useRef<NodeJS.Timeout>();
@@ -1258,6 +1258,22 @@ function CatalogContent() {
       }
     };
   }, [lastMouseMove]);
+
+  // Manejar scroll de ventana para minimizar banner si el body es el que scrollea
+  // Manejar scroll de ventana para minimizar banner
+  useEffect(() => {
+    const handleWindowScroll = () => {
+      const scrollY = window.scrollY;
+      if (scrollY > 50 && !isBannerMinimized) {
+        setIsBannerMinimized(true);
+      } else if (scrollY <= 5 && isBannerMinimized) {
+        setIsBannerMinimized(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleWindowScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleWindowScroll);
+  }, [isBannerMinimized]);
 
   // Filtrado de anuncios para el banner
   const filteredBannerAds = useMemo(() => {
@@ -2974,10 +2990,10 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
               )}
             </div>
           </div>
+        </header>
 
-          {/* Segunda fila - Búsqueda y filtros */}
-          <div className="container border-t border-blue-100/50 bg-gradient-to-r from-blue-50/50 to-green-50/50 relative">
-
+        {/* Barra de búsqueda - Fuera del header */}
+          <div className="container border-b border-blue-100/50 bg-gradient-to-r from-blue-50/50 to-green-50/50 relative">
             <div className="flex flex-col sm:flex-row gap-3 items-center pt-3 pb-0">
               <div className="relative flex-grow w-full">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500" />
@@ -2989,7 +3005,6 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-11 pr-12 py-2.5 text-sm border-0 bg-white/80 rounded-xl h-10 focus-visible:ring-2 focus-visible:ring-blue-400/30 text-gray-700 placeholder:text-gray-500"
                 />
-                {/* Botón Scanner dentro del input */}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -3019,23 +3034,30 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
               </div>
             </div>
           </div>
-        </header>
 
-        <main className="container pt-0 pb-6">
-
+          <main className="container pt-0 pb-6">
           {/* Banner de Ads con Auto-scroll */}
           {isLoadingSettings ? (
             <div className="hidden md:block">
-              <div className="relative overflow-hidden bg-gradient-to-r from-blue-50/50 to-green-50/50 border border-blue-100/50 shadow-sm rounded-b-2xl h-48 sm:h-64 animate-pulse">
-                <div className="absolute inset-0 flex items-center justify-center opacity-10">
-                  <Star className="w-16 h-16 text-blue-400" />
+              <div className={cn(
+                "transition-all duration-500 ease-in-out overflow-hidden",
+                isBannerMinimized ? "max-h-0 opacity-0" : "max-h-[300px] opacity-100"
+              )}>
+                <div className="relative overflow-hidden bg-gradient-to-r from-blue-50/50 to-green-50/50 border border-blue-100/50 shadow-sm rounded-b-2xl h-48 sm:h-64 animate-pulse">
+                  <div className="absolute inset-0 flex items-center justify-center opacity-10">
+                    <Star className="w-16 h-16 text-blue-400" />
+                  </div>
                 </div>
               </div>
             </div>
           ) : filteredBannerAds.length > 0 && (
             <div className="hidden md:block">
-              <div className="relative overflow-hidden bg-gradient-to-r from-green-50 to-blue-50 border border-green-100 shadow-sm rounded-b-2xl">
-                <div className="relative h-48 sm:h-64 pt-0" ref={containerRef}>
+              <div className={cn(
+                "transition-all duration-500 ease-in-out overflow-hidden",
+                isBannerMinimized ? "max-h-0 opacity-0" : "max-h-[300px] opacity-100"
+              )}>
+                <div className="relative overflow-hidden bg-gradient-to-r from-green-50 to-blue-50 border border-green-100 shadow-sm rounded-b-2xl h-48 sm:h-64">
+                  <div className="relative h-full pt-0" ref={containerRef}>
                   {filteredBannerAds.map((ad, index) => (
                     <div
                       key={`${ad.id ?? 'ad'}-${index}`}
@@ -3043,7 +3065,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                         }`}
                       onClick={() => handleAdClick(ad)}
                     >
-                      <div className="relative h-full w-full cursor-pointer group">
+                      <div className="relative h-full w-full cursor-pointer group pointer-events-auto">
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent z-10" />
                         {ad.imageUrl ? (
                           // Para imágenes base64, usar <img> nativo
@@ -3071,6 +3093,18 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                             Ver más
                           </Badge>
                         </div>
+
+                        {/* Botón cerrar/plegar banner */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsBannerMinimized(true);
+                          }}
+                          className="absolute bottom-4 right-4 z-30 bg-black/30 hover:bg-black/50 text-white rounded-full p-2 transition-colors duration-200"
+                          title="Plegar banner"
+                        >
+                          <ChevronUp className="w-5 h-5" />
+                        </button>
 
                         {/* Contenido del Ad */}
                         <div className="absolute bottom-0 left-0 right-0 p-6 z-20">
@@ -3147,6 +3181,7 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
                   </div>
                 )}
               </div>
+              </div>
             </div>
           )}
 
@@ -3156,6 +3191,13 @@ ${imageCount > 1 && !specificImageUrl ? `📸 ${imageCount} imágenes disponible
             className="max-h-[calc(100vh-200px)] overflow-y-auto invisible-scroll pt-4 scroll-smooth"
             onScroll={(e) => {
               const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+              
+              if (scrollTop > 150 && !isBannerMinimized) {
+                setIsBannerMinimized(true);
+              } else if (scrollTop <= 20 && isBannerMinimized) {
+                setIsBannerMinimized(false);
+              }
+
               if (scrollTop + clientHeight >= scrollHeight - 600) {
                 setVisibleItemsCount(prev => Math.min(prev + 12, itemsForGrid.length));
               }

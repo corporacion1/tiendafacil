@@ -31,7 +31,7 @@ import { Logo } from "./logo";
 import { getNavItems, adminNavItems, settingsNav } from "@/lib/navigation";
 import { Badge } from "./ui/badge";
 import { defaultStoreId } from "@/lib/data";
-import { signOut } from "firebase/auth";
+
 
 interface SiteHeaderProps {
   toggleSidebar: () => void;

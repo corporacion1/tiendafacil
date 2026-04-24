@@ -2,6 +2,8 @@ import { NextResponse, NextRequest } from 'next/server';
 import { dbAdmin } from '@/lib/db-client';
 import { IDGenerator } from '@/lib/id-generator';
 
+export const dynamic = 'force-dynamic';
+
 // MODIFICAR el GET en /app/api/products/route.ts
 export async function GET(request: NextRequest) {
   try {

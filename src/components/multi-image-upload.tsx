@@ -199,10 +199,11 @@ export function MultiImageUpload({
       }
 
       const result = await response.json();
-      setUploadingImages(prev => prev.map(item => ({ ...item, progress: 100, status: 'completed' })));
+setUploadingImages(prev => prev.map(item => ({ ...item, progress: 100, status: 'completed' })));
 
-      if (result.product && result.product.images) {
-        onImagesChange(result.product.images);
+      const normalizedImages = Array.isArray(result?.product?.images) ? result.product.images : [];
+      if (normalizedImages.length > 0) {
+        onImagesChange(normalizedImages);
       }
 
       try {
@@ -211,7 +212,10 @@ export function MultiImageUpload({
           const refresh = await fetch(`/api/products/${productId}?storeId=${effectiveStoreId}`);
           if (refresh.ok) {
             const freshProduct = await refresh.json();
-            if (freshProduct?.images) onImagesChange(freshProduct.images);
+            const freshImages = Array.isArray(freshProduct?.images) ? freshProduct.images : [];
+            if (freshImages.length > 0) {
+              onImagesChange(freshImages);
+            }
           }
         }
       } catch { }
@@ -268,10 +272,12 @@ export function MultiImageUpload({
           const errorText = await response.text();
           console.error('❌ [MultiImageUpload] Error eliminando imagen:', errorText);
           onError(`Error al eliminar la imagen: ${errorText || 'Error desconocido'}`);
-          return;
+return;
         }
         const result = await response.json();
-        if (result.product && result.product.images) onImagesChange(result.product.images);
+        // Normalizar siempre a array, incluso vacío
+        const deletedImages = Array.isArray(result?.product?.images) ? result.product.images : [];
+        onImagesChange(deletedImages);
       } catch (error) {
         console.error('❌ [MultiImageUpload] Error eliminando imagen:', error);
         onError(`Error al eliminar la imagen: ${error instanceof Error ? error.message : 'Error desconocido'}`);
@@ -303,10 +309,11 @@ export function MultiImageUpload({
             primaryImageIndex: 0,
             storeId: effectiveStoreId
           })
-        });
+});
         if (!response.ok) throw new Error('Error al establecer imagen principal en el servidor');
         const result = await response.json();
-        if (result.product && result.product.images) onImagesChange(result.product.images);
+        const primaryImages = Array.isArray(result?.product?.images) ? result.product.images : [];
+        onImagesChange(primaryImages);
       } catch (error) {
         console.error('Error estableciendo imagen principal:', error);
         onError('Error al establecer la imagen principal en el servidor.');
@@ -339,10 +346,11 @@ export function MultiImageUpload({
             primaryImageIndex: 0,
             storeId: effectiveStoreId
           })
-        });
+});
         if (!response.ok) throw new Error('Error al reordenar imágenes en el servidor');
         const result = await response.json();
-        if (result.product && result.product.images) onImagesChange(result.product.images);
+        const movedImages = Array.isArray(result?.product?.images) ? result.product.images : [];
+        onImagesChange(movedImages);
       } catch (error) {
         console.error('Error reordenando imágenes:', error);
         onError('Error al reordenar las imágenes en el servidor.');
@@ -450,11 +458,15 @@ export function MultiImageUpload({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-full">
             {safeExistingImages.map((image, index) => (
               <Card key={image.id} className="relative group hover:shadow-lg transition-shadow w-full">
-                <CardContent className="p-3">
+<CardContent className="p-3">
                   <div className="aspect-square relative rounded-lg overflow-hidden bg-muted shadow-sm max-h-[180px] w-full">
                     {(() => {
                       // Generate cache-buster URL for each image
-                      const imageUrl = image.thumbnailUrl || image.url;
+                      const rawUrl = image.thumbnailUrl || image.url;
+                      const imageUrl = typeof rawUrl === 'string' ? rawUrl : '';
+                      if (!imageUrl) {
+                        return <div className="flex items-center justify-center h-full bg-muted"><ImageIcon className="w-8 h-8 text-muted-foreground" /></div>;
+                      }
                       const cacheBuster = image.uploadedAt || Date.now();
                       const imageWithCacheBuster = imageUrl.includes('?') 
                         ? `${imageUrl}&v=${cacheBuster}` 

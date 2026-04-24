@@ -5,7 +5,7 @@ export const IMAGE_VALIDATION_CONFIG = {
   MAX_FILE_SIZE: 5 * 1024 * 1024, // 5MB en bytes
   MAX_IMAGES_PER_PRODUCT: 4,
   ALLOWED_FORMATS: ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'],
-  ALLOWED_EXTENSIONS: ['.jpg', '.jpeg', '.png', '.webp'],
+  ALLOWED_EXTENSIONS: ['.jpg', '.jpeg', '.png', '.webp', '.jfif'],
   MIN_DIMENSIONS: { width: 100, height: 100 },
   MAX_DIMENSIONS: { width: 4000, height: 4000 }
 };
@@ -66,7 +66,7 @@ export function validateImageFormat(file: File): ImageValidationResult {
   // Validar extensión del archivo
   const extension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
   if (!IMAGE_VALIDATION_CONFIG.ALLOWED_EXTENSIONS.includes(extension)) {
-    errors.push(`Extensión no válida (${extension}). Extensiones permitidas: .jpg, .jpeg, .png, .webp.`);
+    errors.push(`Extensión no válida (${extension}). Extensiones permitidas: .jpg, .jpeg, .png, .webp, .jfif.`);
   }
   
   return {

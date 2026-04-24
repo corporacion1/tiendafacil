@@ -28,8 +28,8 @@ export const useProducts = (storeId?: string): UseProductsReturn => {
   const retryCountRef = useRef<number>(0);
 
   // Configuración del polling - productos cambian menos frecuentemente
-  const POLLING_INTERVAL = 30000; // 30 segundos (menos frecuente que pedidos)
-  const MIN_FETCH_INTERVAL = 5000; // Mínimo 5 segundos entre fetches
+  const POLLING_INTERVAL = 300000; // 5 minutos (menos frecuente que pedidos)
+  const MIN_FETCH_INTERVAL = 60000; // Mínimo 1 minuto entre fetches
   const MAX_RETRIES = 3;
 
   const fetchProducts = useCallback(async (showLoadingState = true) => {

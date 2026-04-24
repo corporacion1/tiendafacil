@@ -19,10 +19,15 @@ class LocalQueryBuilder {
     this.table = table;
   }
 
-  select(columns: string = '*') {
+  private countMethod: string | null = null;
+
+  select(columns: string = '*', options?: { count?: string, head?: boolean }) {
     this.columns = columns;
     if (this.action === 'select') {
       this.action = 'select';
+    }
+    if (options && options.count) {
+      this.countMethod = options.count;
     }
     return this;
   }
@@ -335,7 +340,11 @@ class LocalQueryBuilder {
         return { data: null, error: { code: 'PGRST116', message: 'No rows found' } };
       }
 
-      return { data: data || (this.isSingle ? null : []), error: null };
+      const result: any = { data: data || (this.isSingle ? null : []), error: null };
+      if (this.countMethod) {
+        result.count = resultRows.length;
+      }
+      return result;
     } catch (error: any) {
       console.error(`Local Bridge Error (${this.action} ${this.table}):`, error);
       return { data: null, error: { message: error.message, details: error.hint } };
