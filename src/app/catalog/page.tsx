@@ -1224,7 +1224,13 @@ function CatalogContent() {
     const checkInactivity = () => {
       const now = Date.now();
       if (now - lastMouseMove > 5000) { // 5 seconds of inactivity
-        setIsAutoScrolling(true);
+        if (!isAutoScrolling) {
+          setIsAutoScrolling(true);
+          // Minimizar banner al iniciar auto-scroll
+          if (!isBannerMinimized) {
+            setIsBannerMinimized(true);
+          }
+        }
       }
     };
 
@@ -1257,7 +1263,7 @@ function CatalogContent() {
         productsContainer.removeEventListener('scroll', handleActivity);
       }
     };
-  }, [lastMouseMove]);
+  }, [lastMouseMove, isBannerMinimized]);
 
   // Manejar scroll de ventana para minimizar banner si el body es el que scrollea
   // Manejar scroll de ventana para minimizar banner
